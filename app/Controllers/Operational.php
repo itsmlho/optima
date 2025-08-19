@@ -24,13 +24,19 @@ class Operational extends Controller
 
     public function delivery()
     {
-        return view('operational/delivery');
+        return view('operational/delivery', [
+            'title' => 'Delivery Instructions'
+        ]);
+
     }
 
     public function tracking()
     {
-        return view('operational/tracking');
+        return view('operational/tracking', [
+            'title' => 'Track Kontrak -> SPK -> DI',
+        ]);
     }
+    
 
     public function diList()
     {

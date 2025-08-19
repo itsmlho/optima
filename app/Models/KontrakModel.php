@@ -16,7 +16,11 @@ class KontrakModel extends Model
         'no_kontrak',
         'no_po_marketing', 
         'pelanggan',
+        'pic',
+        'kontak',
         'lokasi',
+        'nilai_total',
+        'total_units',
         'tanggal_mulai',
         'tanggal_berakhir',
         'status',
@@ -91,7 +95,7 @@ class KontrakModel extends Model
     {
         $builder = $this->db->table($this->table);
         
-        // Search functionality
+        // Search functionality for counting
         if (!empty($search)) {
             $builder->groupStart()
                     ->like('no_kontrak', $search)
@@ -101,8 +105,24 @@ class KontrakModel extends Model
                     ->groupEnd();
         }
 
-        // Get total records
+        // Get total records with search filter
         $totalRecords = $builder->countAllResults(false);
+
+        // Reset builder for actual data query
+        $builder = $this->db->table($this->table);
+        
+        // Explicitly select all columns we need
+        $builder->select('id, no_kontrak, no_po_marketing, pelanggan, pic, kontak, lokasi, nilai_total, total_units, tanggal_mulai, tanggal_berakhir, status, dibuat_pada, diperbarui_pada');
+        
+        // Apply search again for data query
+        if (!empty($search)) {
+            $builder->groupStart()
+                    ->like('no_kontrak', $search)
+                    ->orLike('pelanggan', $search)
+                    ->orLike('lokasi', $search)
+                    ->orLike('status', $search)
+                    ->groupEnd();
+        }
 
         // Order
         $columns = ['no_kontrak', 'pelanggan', 'tanggal_mulai', 'tanggal_berakhir', 'status'];
@@ -128,6 +148,58 @@ class KontrakModel extends Model
             'recordsFiltered' => $totalRecords,
             'stats' => $stats
         ];
+    }
+
+    /**
+     * DataTables server-side processing method
+     */
+    public function getDataTable($request)
+    {
+        $start = $request->getPost('start') ?? 0;
+        $length = $request->getPost('length') ?? 10;
+        $searchValue = $request->getPost('search')['value'] ?? '';
+        $orderColumn = $request->getPost('order')[0]['column'] ?? 0;
+        $orderDir = $request->getPost('order')[0]['dir'] ?? 'desc';
+
+        return $this->getContractsForDataTable($start, $length, $searchValue, $orderColumn, $orderDir);
+    }
+
+    /**
+     * Count all data for DataTables
+     */
+    public function countAllData()
+    {
+        return $this->countAll();
+    }
+
+    /**
+     * Count filtered data for DataTables
+     */
+    public function countFilteredData($request)
+    {
+        $searchValue = $request->getPost('search')['value'] ?? '';
+        
+        if (empty($searchValue)) {
+            return $this->countAll();
+        }
+
+        $builder = $this->db->table($this->table);
+        $builder->groupStart()
+                ->like('no_kontrak', $searchValue)
+                ->orLike('pelanggan', $searchValue)
+                ->orLike('lokasi', $searchValue)
+                ->orLike('status', $searchValue)
+                ->groupEnd();
+
+        return $builder->countAllResults();
+    }
+
+    /**
+     * Get statistics for dashboard
+     */
+    public function getStats()
+    {
+        return $this->getContractStatistics();
     }
 
     /**

@@ -1,14 +1,9 @@
 <?= $this->extend('layouts/base') ?>
 <?= $this->section('content') ?>
-
-<div class="container-fluid py-3">
-  <h5 class="mb-3">
-    <i class="fas fa-route text-primary"></i> Tracking Pengiriman Unit
-  </h5>
   
   <!-- Search Form -->
   <div class="card mb-4 shadow-sm border-0">
-    <div class="card-header bg-gradient-primary text-white">
+    <div class="card-header">
       <h6 class="mb-0"><i class="fas fa-search me-2"></i>Pencarian Tracking Pengiriman</h6>
     </div>
     <div class="card-body bg-light">
@@ -24,13 +19,13 @@
         <div class="col-md-6">
           <label for="searchValue" class="form-label fw-bold">Nomor:</label>
           <div class="input-group input-group-lg">
-            <span class="input-group-text bg-primary text-white"><i class="fas fa-hashtag"></i></span>
+            <span class="input-group-text"></span>
             <input type="text" class="form-control" id="searchValue" name="search_value" 
                    placeholder="Masukkan nomor yang ingin dilacak..." autocomplete="off">
           </div>
         </div>
         <div class="col-md-2">
-          <button type="submit" class="btn btn-primary btn-lg w-100 shadow">
+          <button type="submit" class="btn btn-primary">
             <i class="fas fa-search me-2"></i> Lacak
           </button>
         </div>
@@ -52,12 +47,9 @@
   <div id="trackingResults" style="display: none;">
     <!-- Summary Info -->
     <div class="card mb-4 shadow-sm border-0">
-        <div class="card-header bg-gradient-info text-white">
+        <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Ringkasan Informasi</h6>
-                <button class="btn btn-light btn-sm" onclick="window.print()">
-                    <i class="fas fa-print me-1"></i>Print
-                </button>
             </div>
         </div>
         <div class="card-body">
@@ -67,7 +59,7 @@
 
     <!-- Progress Timeline -->
     <div class="card mb-4 shadow-sm border-0">
-      <div class="card-header bg-gradient-success text-white">
+      <div class="card-header">
         <h6 class="mb-0"><i class="fas fa-route me-2"></i>Timeline Pengiriman</h6>
       </div>
       <div class="card-body">
@@ -77,7 +69,7 @@
 
     <!-- Detailed Steps -->
     <div class="card shadow-sm border-0">
-      <div class="card-header bg-gradient-warning text-white">
+      <div class="card-header">
         <h6 class="mb-0"><i class="fas fa-list-ol me-2"></i>Detail Tahapan Tracking</h6>
       </div>
       <div class="card-body">
@@ -119,27 +111,27 @@
 }
 
 .timeline-icon {
-  width: 60px; 
-  height: 60px; 
+  width: 48px; 
+  height: 48px; 
   border-radius: 50%; 
   display: flex; 
   align-items: center; 
   justify-content: center; 
-  font-size: 24px;
-  margin-bottom: 15px; 
+  font-size: 20px;
+  margin-bottom: 12px; 
   position: relative; 
   z-index: 2; 
-  border: 3px solid #e9ecef; 
+  border: 2px solid #e9ecef; 
   background: white;
   color: #6c757d;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06); 
   cursor: pointer; 
-  transition: all 0.3s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .timeline-icon:hover { 
-  transform: scale(1.05); 
-  box-shadow: 0 4px 15px rgba(0,0,0,0.12); 
+  transform: scale(1.03); 
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
 }
 
 .timeline-icon.completed { 
@@ -153,8 +145,7 @@
   background: #007bff; 
   color: white;
   border-color: #007bff;
-  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
-  animation: currentPulse 2s infinite;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.12);
 }
 
 .timeline-icon.pending { 
@@ -537,66 +528,40 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function renderSummary(data) {
     const picInfo = data.spk?.pic ? `${data.spk.pic}${data.spk.kontak ? ' (' + data.spk.kontak + ')' : ''}` : '-';
-    const unitInfo = getUnitInfo(data);
-    const progressPercentage = calculateProgress(data);
-    
+    const unitInfo = getUnitInfo(data); // Assuming this function exists
+    const numbersInfo = `
+        <span class="text-muted">PO:</span> <strong class="me-3">${data.po_kontrak_nomor || '-'}</strong>
+        <span class="text-muted">SPK:</span> <strong class="me-3">${data.spk?.nomor_spk || '-'}</strong>
+        <span class="text-muted">DI:</span> <strong>${data.di?.nomor_di || '-'}</strong>
+    `;
+
+
     summaryDiv.innerHTML = `
-        <div class="col-md-6 mb-3">
-            <div class="info-pair">
-                <span class="label"><i class="fas fa-building me-2"></i>Pelanggan:</span>
-                <span class="value">${data.di?.pelanggan || data.spk?.pelanggan || '-'}</span>
-            </div>
-        </div>
-        <div class="col-md-6 mb-3">
-            <div class="info-pair">
-                <span class="label"><i class="fas fa-map-marker-alt me-2"></i>Lokasi Kirim:</span>
-                <span class="value">${data.di?.lokasi || data.spk?.lokasi || '-'}</span>
-            </div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <div class="info-pair">
-                <span class="label"><i class="fas fa-file-contract me-2"></i>No. Kontrak/PO:</span>
-                <span class="value">${data.po_kontrak_nomor || '-'}</span>
-            </div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <div class="info-pair">
-                <span class="label"><i class="fas fa-clipboard-list me-2"></i>No. SPK:</span>
-                <span class="value">${data.spk?.nomor_spk || '-'}</span>
-            </div>
-        </div>
-        <div class="col-md-4 mb-3">
-            <div class="info-pair">
-                <span class="label"><i class="fas fa-truck-loading me-2"></i>No. DI:</span>
-                <span class="value">${data.di?.nomor_di || '-'}</span>
-            </div>
-        </div>
-        <div class="col-md-6 mb-3">
-            <div class="info-pair">
-                <span class="label"><i class="fas fa-user-tie me-2"></i>PIC & Kontak:</span>
-                <span class="value">${picInfo}</span>
-            </div>
-        </div>
-        <div class="col-md-6 mb-3">
-            <div class="info-pair">
-                <span class="label"><i class="fas fa-forklift me-2"></i>Informasi Unit:</span>
-                <span class="value">${unitInfo}</span>
-            </div>
-        </div>
-        <div class="col-12">
-            <div class="info-pair">
-                <span class="label"><i class="fas fa-chart-line me-2"></i>Progress Pengiriman:</span>
-                <div class="progress mt-2" style="height: 25px;">
-                    <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" 
-                         role="progressbar" style="width: ${progressPercentage}%" 
-                         aria-valuenow="${progressPercentage}" aria-valuemin="0" aria-valuemax="100">
-                        ${progressPercentage}% Complete
-                    </div>
+        <div class="row align-items-center">
+            <div class="col-lg-7 mb-3">
+                <div class="info-pair">
+                    <span class="label">Pelanggan & Lokasi</span>
+                    <h6 class="value mb-0">${data.di?.pelanggan || data.spk?.pelanggan || '-'}</h6>
+                    <small class="text-muted">${data.di?.lokasi || data.spk?.lokasi || '-'}</small>
                 </div>
+            </div>
+            <div class="col-lg-5 mb-3">
+                <div class="info-pair">
+                    <span class="label">Informasi Unit & PIC</span>
+                    <h6 class="value mb-0">${unitInfo}</h6>
+                    <small class="text-muted">PIC: ${picInfo}</small>
+                </div>
+            </div>
+            <div class="col-12"><hr class="my-2"></div>
+            <div class="col-12">
+                 <div class="info-pair text-center">
+                    <small class="value">${numbersInfo}</small>
+                 </div>
             </div>
         </div>
     `;
   }
+
 
   function renderTimeline(data) {
     const steps = getStepsConfig(data);
@@ -631,102 +596,88 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function renderAccordion(data) {
     const steps = getStepsConfig(data);
-    let accordionHtml = '';
-
+    let html = '<ul class="list-group list-group-flush">';
     steps.forEach((step, index) => {
-        const isCompleted = step.actualDate && step.actualDate !== '-';
-        const isCurrent = !isCompleted && (index === 0 || (steps[index-1].actualDate && steps[index-1].actualDate !== '-'));
-        const statusBadge = isCompleted ? 
-          '<span class="badge status-badge-completed">✓ Selesai</span>' : 
-          (isCurrent ? '<span class="badge status-badge-current">⟳ Proses</span>' : 
-          '<span class="badge status-badge-pending">○ Menunggu</span>');
-        
-        accordionHtml += `
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="heading-${index}">
-                <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${index}" aria-expanded="${index === 0}" aria-controls="collapse-${index}">
-                    <div class="d-flex w-100 align-items-center">
-                        <i class="${step.icon} me-3 text-primary"></i>
-                        ${statusBadge}
-                        <strong class="mx-3">${step.step}</strong>
-                        <small class="ms-auto text-muted">${isCompleted ? formatDateTime(step.actualDate) : (step.estimatedTime || '')}</small>
-                    </div>
-                </button>
-            </h2>
-            <div id="collapse-${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="heading-${index}">
-                <div class="accordion-body">
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <div class="detail-label"><i class="fas fa-user me-1"></i>Penanggung Jawab</div>
-                            <div class="detail-value">${step.pic || 'Belum ditentukan'}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="detail-label"><i class="fas fa-calendar-plus me-1"></i>Tanggal Rencana</div>
-                            <div class="detail-value">${formatDateTime(step.plannedDate)}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="detail-label"><i class="fas fa-calendar-check me-1"></i>Tanggal Aktual</div>
-                            <div class="detail-value">${formatDateTime(step.actualDate)}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="detail-label"><i class="fas fa-clock me-1"></i>Status Waktu</div>
-                            <div class="detail-value">${step.delay || 'Belum selesai'}</div>
-                        </div>
-                    </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="detail-label"><i class="fas fa-info-circle me-1"></i>Detail & Catatan</div>
-                            <div class="detail-value">${step.details || 'Tidak ada catatan tambahan'}</div>
-                            ${step.requirements ? `
-                            <div class="detail-label mt-3"><i class="fas fa-tasks me-1"></i>Persyaratan</div>
-                            <div class="detail-value">${step.requirements}</div>
-                            ` : ''}
-                        </div>
-                        <div class="col-md-4">
-                            <div class="detail-label"><i class="fas fa-chart-pie me-1"></i>Informasi Status</div>
-                            <div class="detail-value">
-                                ${isCompleted ? 
-                                  `<span class="badge bg-success">Tahap Selesai</span><br><small class="text-muted">Dilanjutkan ke tahap berikutnya</small>` :
-                                  (isCurrent ? 
-                                    `<span class="badge bg-primary">Sedang Dikerjakan</span><br><small class="text-muted">Tahap sedang dalam proses</small>` :
-                                    `<span class="badge bg-secondary">Menunggu</span><br><small class="text-muted">Menunggu tahap sebelumnya selesai</small>`
-                                  )
-                                }
-                            </div>
-                            ${step.estimatedCompletion ? `
-                            <div class="detail-label mt-2"><i class="fas fa-hourglass-half me-1"></i>Estimasi Selesai</div>
-                            <div class="detail-value">${step.estimatedCompletion}</div>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
+      const isCompleted = step.actualDate && step.actualDate !== '-';
+      const isCurrent = !isCompleted && (index === 0 || (steps[index-1].actualDate && steps[index-1].actualDate !== '-'));
+      const badge = isCompleted
+        ? '<span class="badge bg-success">✓ Selesai</span>'
+        : (isCurrent ? '<span class="badge bg-primary">⟳ Proses</span>' : '<span class="badge bg-secondary">Menunggu</span>');
+
+      // Build compact meta pieces (only if available)
+      const meta = [];
+      if (step.pic) meta.push(`<i class=\"fas fa-user me-1\"></i>${step.pic}`);
+      if (step.plannedDate) meta.push(`<i class=\"fas fa-calendar-plus me-1\"></i>${formatDateTime(step.plannedDate)}`);
+      if (step.actualDate) meta.push(`<i class=\"fas fa-calendar-check me-1\"></i>${formatDateTime(step.actualDate)}`);
+      if (step.delay && step.delay !== '-') meta.push(`<i class=\"fas fa-clock me-1\"></i>${step.delay}`);
+      const metaLine = meta.length ? `<div class=\"text-muted small mt-1\">${meta.join(' • ')}</div>` : '';
+
+      // Short details line (trim long strings)
+      const details = (step.details && typeof step.details === 'string') ? step.details : '';
+      const shortDetails = details ? `<div class=\"small\">${details.length > 140 ? details.substring(0, 140) + '…' : details}</div>` : '';
+
+      html += `
+        <li class=\"list-group-item\">
+          <div class=\"d-flex align-items-start gap-3\">
+            <div class=\"text-primary mt-1\"><i class=\"${step.icon}\"></i></div>
+            <div class=\"flex-grow-1\">
+              <div class=\"d-flex align-items-center gap-2\">
+                <strong>${step.step}</strong>
+                ${badge}
+                <small class=\"ms-auto text-muted\">${isCompleted ? formatDateTime(step.actualDate) : (step.estimatedTime || '')}</small>
+              </div>
+              ${metaLine}
+              ${shortDetails}
             </div>
-        </div>
-        `;
+          </div>
+        </li>`;
     });
-    accordionDiv.innerHTML = accordionHtml;
+    html += '</ul>';
+    accordionDiv.innerHTML = html;
   }
 
   function getStepsConfig(data) {
     const spkSpecs = data.spk?.spesifikasi ? JSON.parse(data.spk.spesifikasi) : {};
+    const diStatus = normalizeStatus(data.di?.status);
+
+    // Robust fallbacks for SPK creator and created date
+    const spkCreatedAt = coalesce(
+      data.spk?.created_at,
+      data.spk?.dibuat_pada,
+      data.spk?.createdAt,
+      data.spk?.created_date
+    );
+    const spkCreator = coalesce(
+      data.spk?.created_by_name,
+      data.spk?.dibuat_oleh_name,
+      data.spk?.created_by_fullname,
+      data.spk?.created_by
+    );
     
     return [
       {
         step: 'SPK Dibuat', event: 'Marketing', icon: 'fas fa-file-signature',
-        plannedDate: data.spk?.created_at, actualDate: data.spk?.created_at,
-        pic: data.spk?.created_by_name || 'Marketing',
-        details: `Pelanggan: ${data.spk?.pelanggan || '-'}. PIC: ${data.spk?.pic || '-'}. Kontak: ${data.spk?.kontak || '-'}`,
+        plannedDate: spkCreatedAt, actualDate: spkCreatedAt,
+        pic: spkCreator || 'Marketing',
+        details: `Dibuat oleh: ${spkCreator || '-'} · Tanggal: ${formatDateTime(spkCreatedAt)} · Pelanggan: ${data.spk?.pelanggan || '-'}`,
         requirements: 'Dokumen kontrak dan spesifikasi unit telah lengkap',
-        estimatedCompletion: formatDateTime(data.spk?.created_at),
-        popoverContent: `Dibuat oleh: <strong>${data.spk?.created_by_name || '-'}</strong><br>Tanggal: ${formatDateTime(data.spk?.created_at)}<br>Jenis: ${data.spk?.jenis_spk || '-'}`
+        estimatedCompletion: formatDateTime(spkCreatedAt),
+        popoverContent: `Dibuat oleh: <strong>${spkCreator || '-'}</strong><br>Tanggal: ${formatDateTime(spkCreatedAt)}<br>Jenis: ${data.spk?.jenis_spk || '-'}`
       },
       {
         step: 'Persiapan Unit', event: 'Service Team', icon: 'fas fa-tools',
         plannedDate: data.spk?.persiapan_unit_estimasi_mulai, actualDate: data.spk?.persiapan_unit_tanggal_approve,
         pic: data.spk?.persiapan_unit_mekanik || 'Tim Service',
         delay: calculateDelay(data.spk?.persiapan_unit_estimasi_selesai, data.spk?.persiapan_unit_tanggal_approve),
-        details: `Unit ID: ${spkSpecs.selected?.unit_id || '-'}. Aksesoris: ${data.spk?.persiapan_aksesoris_tersedia ? JSON.parse(data.spk.persiapan_aksesoris_tersedia).join(', ') : 'Tidak ada data'}`,
+        details: (() => {
+          const unitNomor = coalesce(spkSpecs.selected?.nomor_unit, spkSpecs.nomor_unit, data.spk?.unit_nomor, data.spk?.nomor_unit, spkSpecs.selected?.serial_number);
+          const merk = coalesce(spkSpecs.merk_unit, data.spk?.unit_merk, spkSpecs.selected?.merk);
+          const model = coalesce(spkSpecs.tipe_jenis, data.spk?.unit_model, spkSpecs.selected?.model, spkSpecs.model_unit);
+          const jenis = coalesce(spkSpecs.jenis_unit, data.spk?.unit_jenis, spkSpecs.selected?.jenis);
+          const kapasitas = coalesce(spkSpecs.kapasitas_id, data.spk?.unit_kapasitas, spkSpecs.selected?.kapasitas);
+          const aks = data.spk?.persiapan_aksesoris_tersedia ? (() => { try { return JSON.parse(data.spk.persiapan_aksesoris_tersedia).join(', ');} catch { return data.spk.persiapan_aksesoris_tersedia; } })() : 'Tidak ada data';
+          return `No. Unit: ${unitNomor || '-'} | Merk: ${merk || '-'} | Model: ${model || '-'} | Jenis: ${jenis || '-'} | Kapasitas: ${kapasitas || '-'}<br>Aksesoris: ${aks}`;
+        })(),
         requirements: 'Unit tersedia di inventory dan dalam kondisi baik',
         estimatedCompletion: formatDateTime(data.spk?.persiapan_unit_estimasi_selesai),
         popoverContent: `Mekanik: <strong>${data.spk?.persiapan_unit_mekanik || '-'}</strong><br>Estimasi: ${formatDateTime(data.spk?.persiapan_unit_estimasi_selesai)}`
@@ -773,9 +724,14 @@ document.addEventListener('DOMContentLoaded', function() {
       },
       {
         step: 'Persiapan Kirim', event: 'Logistics', icon: 'fas fa-calendar-alt',
-        plannedDate: data.di?.dibuat_pada, actualDate: data.di?.status === 'DISPATCHED' || data.di?.status === 'ARRIVED' ? data.di?.diperbarui_pada : null,
+        plannedDate: data.di?.dibuat_pada,
+        actualDate: coalesce(
+          // step considered selesai saat jadwal kirim sudah ada
+          data.di?.tanggal_kirim,
+          diStatus === 'DIKIRIM' || diStatus === 'SAMPAI' ? coalesce(data.di?.berangkat_pada, data.di?.kirim_pada, data.di?.diperbarui_pada) : null
+        ),
         pic: 'Tim Logistik',
-        delay: calculateDelay(data.di?.tanggal_kirim, data.di?.diperbarui_pada),
+        delay: calculateDelay(data.di?.tanggal_kirim, coalesce(data.di?.berangkat_pada, data.di?.kirim_pada, data.di?.diperbarui_pada)),
         details: `Tanggal Kirim: ${formatDateTime(data.di?.tanggal_kirim)}. Driver: ${data.di?.driver || '-'}. Kendaraan: ${data.di?.vehicle || '-'}`,
         requirements: 'Penjadwalan driver dan kendaraan angkut',
         estimatedTime: formatDateTime(data.di?.tanggal_kirim),
@@ -783,9 +739,10 @@ document.addEventListener('DOMContentLoaded', function() {
       },
       {
         step: 'Berangkat', event: 'On The Way', icon: 'fas fa-truck',
-        plannedDate: data.di?.tanggal_kirim, actualDate: data.di?.status === 'DISPATCHED' || data.di?.status === 'ARRIVED' ? data.di?.diperbarui_pada : null,
+        plannedDate: data.di?.tanggal_kirim,
+        actualDate: (diStatus === 'DIKIRIM' || diStatus === 'SAMPAI') ? coalesce(data.di?.berangkat_pada, data.di?.kirim_pada, data.di?.diperbarui_pada) : null,
         pic: data.di?.driver || 'Driver',
-        delay: calculateDelay(data.di?.tanggal_kirim, data.di?.diperbarui_pada),
+        delay: calculateDelay(data.di?.tanggal_kirim, coalesce(data.di?.berangkat_pada, data.di?.kirim_pada, data.di?.diperbarui_pada)),
         details: `Kendaraan: ${data.di?.vehicle || '-'}. No. Polisi: ${data.di?.license_plate || '-'}. Rute: ${data.di?.route || 'Standar'}`,
         requirements: 'Unit telah dimuat dan siap dikirim ke lokasi pelanggan',
         estimatedTime: 'Sesuai jadwal pengiriman',
@@ -793,9 +750,10 @@ document.addEventListener('DOMContentLoaded', function() {
       },
       {
         step: 'Sampai di Tujuan', event: 'Delivered', icon: 'fas fa-flag-checkered',
-        plannedDate: data.di?.estimated_arrival, actualDate: data.di?.status === 'ARRIVED' ? data.di?.diperbarui_pada : null,
+        plannedDate: coalesce(data.di?.estimated_arrival, data.di?.estimasi_tiba),
+        actualDate: diStatus === 'SAMPAI' ? coalesce(data.di?.sampai_pada, data.di?.tiba_pada, data.di?.arrived_at, data.di?.diperbarui_pada) : null,
         pic: data.di?.receiver || 'Penerima',
-        delay: calculateDelay(data.di?.estimated_arrival, data.di?.status === 'ARRIVED' ? data.di?.diperbarui_pada : null),
+        delay: calculateDelay(coalesce(data.di?.estimated_arrival, data.di?.estimasi_tiba), diStatus === 'SAMPAI' ? coalesce(data.di?.sampai_pada, data.di?.tiba_pada, data.di?.arrived_at, data.di?.diperbarui_pada) : null),
         details: `Diterima oleh: ${data.di?.receiver || 'Belum ada konfirmasi'}. Kondisi: ${data.di?.delivery_condition || 'Baik'}. Lokasi: ${data.di?.lokasi || '-'}`,
         requirements: 'Unit diterima pelanggan dalam kondisi baik dan sesuai spesifikasi',
         estimatedTime: 'Sesuai estimasi perjalanan',
@@ -861,6 +819,29 @@ document.addEventListener('DOMContentLoaded', function() {
         return 'Tepat Waktu';
       }
     } catch (e) { return '-'; }
+  }
+
+  // Helpers to simplify and make data robust
+  function coalesce(...vals) {
+    for (const v of vals) {
+      if (v !== undefined && v !== null && v !== '' && v !== '-') return v;
+    }
+    return undefined;
+  }
+
+  function normalizeStatus(status) {
+    if (!status) return '';
+    const s = String(status).toUpperCase();
+    const map = {
+      'DISPATCHED': 'DIKIRIM',
+      'DELIVERED': 'SAMPAI',
+      'ARRIVED': 'SAMPAI',
+      'PENDING': 'DIAJUKAN',
+      'PROCESSING': 'DIPROSES',
+      'CANCELED': 'DIBATALKAN',
+      'CANCELLED': 'DIBATALKAN'
+    };
+    return map[s] || s;
   }
 
   function getUnitInfo(data) {

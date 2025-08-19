@@ -8,10 +8,12 @@ use App\Models\KontrakModel;
 class Kontrak extends BaseController
 {
     protected $kontrakModel;
+    protected $db;
 
     public function __construct()
     {
         $this->kontrakModel = new KontrakModel();
+        $this->db = \Config\Database::connect();
     }
 
     /**
@@ -30,28 +32,18 @@ class Kontrak extends BaseController
      */
     public function getDataTable()
     {
-        // Add CORS headers for debugging
-        $this->response->setHeader('Access-Control-Allow-Origin', '*');
-        $this->response->setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-        $this->response->setHeader('Access-Control-Allow-Headers', 'Content-Type');
-        
-        // Log the incoming request
-        log_message('debug', 'Kontrak::getDataTable called');
-        log_message('debug', 'POST data: ' . json_encode($this->request->getPost()));
-        
         try {
-            $list = $this->kontrakModel->getDataTable($this->request);
-            log_message('debug', 'Raw data from model: ' . json_encode($list));
+            $result = $this->kontrakModel->getDataTable($this->request);
             
             $data = [];
             
-            foreach ($list as $contract) {
+            foreach ($result['data'] as $contract) {
                 $row = [];
+                $row['id']              = $contract['id'];
                 $row['contract_number'] = '<strong>' . esc($contract['no_kontrak']) . '</strong>';
+                $row['po']              = esc(isset($contract['no_po_marketing']) ? $contract['no_po_marketing'] : '-');
                 $row['client_name']     = esc($contract['pelanggan']);
                 $row['period']          = date('d M Y', strtotime($contract['tanggal_mulai'])) . ' - ' . date('d M Y', strtotime($contract['tanggal_berakhir']));
-                $row['value']           = 'Rp ' . number_format($contract['nilai_total'] ?? 0, 0, ',', '.');
-                $row['total_units']     = '<span class="badge bg-dark">' . esc($contract['total_units']) . ' Unit</span>';
                 
                 // Status badge with proper color
                 $statusClass = 'bg-secondary';
@@ -89,13 +81,11 @@ class Kontrak extends BaseController
 
             $response = [
                 "draw"            => intval($this->request->getPost('draw') ?? 1),
-                "recordsTotal"    => $this->kontrakModel->countAllData(),
-                "recordsFiltered" => $this->kontrakModel->countFilteredData($this->request),
+                "recordsTotal"    => $result['recordsTotal'],
+                "recordsFiltered" => $result['recordsFiltered'],
                 "data"            => $data,
-                "stats"           => $this->kontrakModel->getStats()
+                "stats"           => $result['stats']
             ];
-            
-            log_message('debug', 'Final response: ' . json_encode($response));
             
             return $this->response->setJSON($response);
             
@@ -137,7 +127,11 @@ class Kontrak extends BaseController
             'no_kontrak'        => $this->request->getPost('contract_number'),
             'no_po_marketing'   => $this->request->getPost('po_number'),
             'pelanggan'         => $this->request->getPost('client_name'),
+            'pic'               => $this->request->getPost('pic') ?: null,
+            'kontak'            => $this->request->getPost('kontak') ?: null,
             'lokasi'            => $this->request->getPost('project_name'),
+            'nilai_total'       => $this->request->getPost('contract_value') ?: 0,
+            'total_units'       => $this->request->getPost('total_units') ?: 0,
             'tanggal_mulai'     => $this->request->getPost('start_date'),
             'tanggal_berakhir'  => $this->request->getPost('end_date'),
             'status'            => $this->request->getPost('status'),
@@ -181,7 +175,11 @@ class Kontrak extends BaseController
             'no_kontrak'        => $this->request->getPost('contract_number'),
             'no_po_marketing'   => $this->request->getPost('po_number'),
             'pelanggan'         => $this->request->getPost('client_name'),
+            'pic'               => $this->request->getPost('pic') ?: null,
+            'kontak'            => $this->request->getPost('kontak') ?: null,
             'lokasi'            => $this->request->getPost('project_name'),
+            'nilai_total'       => $this->request->getPost('contract_value') ?: 0,
+            'total_units'       => $this->request->getPost('total_units') ?: 0,
             'tanggal_mulai'     => $this->request->getPost('start_date'),
             'tanggal_berakhir'  => $this->request->getPost('end_date'),
             'status'            => $this->request->getPost('status'),
@@ -238,20 +236,6 @@ class Kontrak extends BaseController
     }
 
     /**
-     * Debug endpoint untuk test data
-     */
-    public function debug()
-    {
-        $data = $this->kontrakModel->findAll();
-        return $this->response->setJSON([
-            'success' => true,
-            'total_records' => count($data),
-            'data' => $data,
-            'table_name' => $this->kontrakModel->getTable()
-        ]);
-    }
-
-    /**
      * Edit contract - return view with data
      */
     public function edit($id)
@@ -267,5 +251,78 @@ class Kontrak extends BaseController
         ];
         
         return view('marketing/kontrak_edit', $data);
+    }
+
+    /**
+     * Get units related to a contract for display in detail modal.
+     */
+    public function getContractUnits($kontrakId)
+    {
+        try {
+            // Validasi kontrak ID
+            $kontrak = $this->kontrakModel->find($kontrakId);
+            if (!$kontrak) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Kontrak tidak ditemukan'
+                ]);
+            }
+            
+            // Query dengan foreign key yang benar
+            $query = "
+                SELECT DISTINCT
+                    iu.id_inventory_unit,
+                    iu.no_unit,
+                    COALESCE(mu.merk_unit, 'N/A') as merk,
+                    COALESCE(mu.model_unit, 'N/A') as model,
+                    COALESCE(kap.kapasitas_unit, 'N/A') as kapasitas,
+                    COALESCE(tu.jenis, 'N/A') as jenis_unit,
+                    COALESCE(dept.nama_departemen, 'N/A') as departemen,
+                    COALESCE(su.status_unit, 'UNKNOWN') as status,
+                    iu.status_unit_id,
+                    iu.kontrak_id
+                FROM inventory_unit iu
+                LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+                LEFT JOIN kapasitas kap ON kap.id_kapasitas = iu.kapasitas_unit_id
+                LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
+                LEFT JOIN departemen dept ON dept.id_departemen = iu.departemen_id
+                LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
+                WHERE iu.kontrak_id = ?
+                ORDER BY iu.no_unit ASC
+            ";
+            
+            $result = $this->db->query($query, [$kontrakId]);
+            $units = $result->getResultArray();
+            
+            // Format response
+            $formattedUnits = [];
+            foreach ($units as $unit) {
+                $formattedUnits[] = [
+                    'id' => $unit['id_inventory_unit'],
+                    'no_unit' => $unit['no_unit'] ?: '-',
+                    'merk' => $unit['merk'],
+                    'model' => $unit['model'],
+                    'kapasitas' => $unit['kapasitas'],
+                    'jenis_unit' => $unit['jenis_unit'],
+                    'departemen' => $unit['departemen'],
+                    'status' => $unit['status']
+                ];
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $formattedUnits,
+                'total' => count($formattedUnits),
+                'kontrak_id' => $kontrakId,
+                'kontrak_number' => $kontrak['no_kontrak']
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::getContractUnits Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error retrieving contract units: ' . $e->getMessage()
+            ]);
+        }
     }
 }

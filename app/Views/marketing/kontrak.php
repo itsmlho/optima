@@ -6,6 +6,15 @@
     .card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
     .table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
     .modal-header { background: linear-gradient(135deg, #e9ecef 0%, #e9ecef 100%); color: white; border-radius: 15px 15px 0 0; }
+    .filter-card.active { 
+        transform: translateY(-3px); 
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
+        border: 2px solid #fff; 
+    }
+    .filter-card:hover { 
+        transform: translateY(-5px); 
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
+    }
 </style>
 <?= $this->endSection() ?>
 
@@ -13,10 +22,10 @@
 
     <!-- Statistics Cards (Nilai akan diisi oleh JavaScript) -->
     <div class="row g-4 mb-4">
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-primary text-white h-100"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-total">0</h2><h6 class="card-title text-uppercase small">Total Kontrak</h6></div></div></div>
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-success text-white h-100"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-active">0</h2><h6 class="card-title text-uppercase small">Kontrak Aktif</h6></div></div></div>
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-warning text-white h-100"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-expiring">0</h2><h6 class="card-title text-uppercase small">Akan Berakhir</h6></div></div></div>
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-secondary text-white h-100"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-expired">0</h2><h6 class="card-title text-uppercase small">Telah Berakhir</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-total">0</h2><h6 class="card-title text-uppercase small">Total Kontrak</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="Aktif" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-active">0</h2><h6 class="card-title text-uppercase small">Kontrak Aktif</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="expiring" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-expiring">0</h2><h6 class="card-title text-uppercase small">Akan Berakhir</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-secondary text-white h-100 filter-card" data-filter="Berakhir" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-expired">0</h2><h6 class="card-title text-uppercase small">Telah Berakhir</h6></div></div></div>
     </div>
 
     <!-- Tabel Daftar Kontrak -->
@@ -32,10 +41,9 @@
                 <thead>
                     <tr>
                         <th>No. Kontrak</th>
-                        <th>Klien</th>
+                        <th>No. PO</th>
+                        <th>Nama Perusahaan</th>
                         <th>Periode Kontrak</th>
-                        <th>Nilai</th>
-                        <th>Total Unit</th> <!-- UPDATE: Kolom baru ditambahkan -->
                         <th>Status</th>
                         <th>Aksi</th>
                     </tr>
@@ -61,12 +69,17 @@
                     <div class="row">
                         <div class="col-md-6 mb-3"><label class="form-label">No. Kontrak*</label><input type="text" class="form-control" name="contract_number" required></div>
                         <div class="col-md-6 mb-3"><label class="form-label">No. PO Klien</label><input type="text" class="form-control" name="po_number"></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Nama Klien*</label><input type="text" class="form-control" name="client_name" required></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Nama Proyek</label><input type="text" class="form-control" name="project_name"></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Tanggal Mulai*</label><input type="date" class="form-control" name="start_date" required></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Tanggal Berakhir*</label><input type="date" class="form-control" name="end_date" required></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Nama Perusahaan*</label><input type="text" class="form-control" name="client_name" required></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Nama PIC</label><input type="text" class="form-control" name="pic"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Kontak PIC</label><input type="text" class="form-control" name="kontak"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Lokasi</label><input type="text" class="form-control" name="lokasi"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Tanggal Mulai Kontrak*</label><input type="date" class="form-control" name="start_date" required></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Tanggal Berakhir Kontrak*</label><input type="date" class="form-control" name="end_date" required></div>
                         <div class="col-md-6 mb-3"><label class="form-label">Nilai Kontrak (Rp)*</label><input type="number" class="form-control" name="contract_value" required></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Status Awal*</label><select class="form-select" name="status" required><option value="Aktif">Aktif</option><option value="Pending">Pending</option><option value="Berakhir">Berakhir</option><option value="Dibatalkan">Dibatalkan</option></select></div>
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Catatan*</label>
+                            <textarea class="form-control" name="catatan" rows="3" required placeholder="Contoh: Catatan khusus kontrak, syarat tambahan, atau informasi penting lainnya."></textarea>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -118,6 +131,21 @@ $(document).ready(function() {
     console.log('Initializing DataTable...');
     console.log('AJAX URL:', '<?= base_url('marketing/contracts/getDataTable') ?>');
     
+    // Global variable for current filter
+    let currentKontrakFilter = 'all';
+    
+    // Function to apply filter and reload DataTable
+    function applyKontrakFilter(filter) {
+        currentKontrakFilter = filter;
+        
+        // Update active card styling
+        $('.filter-card').removeClass('active');
+        $(`[data-filter="${filter}"]`).addClass('active');
+        
+        // Reload DataTable with new filter
+        contractsTable.ajax.reload();
+    }
+    
     const contractsTable = $('#contractsTable').DataTable({
         processing: true,
         serverSide: true,
@@ -127,6 +155,10 @@ $(document).ready(function() {
             data: function(d) {
                 // Add CSRF token to the data
                 d['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
+                
+                // Add current filter to the data
+                d.statusFilter = currentKontrakFilter;
+                
                 console.log('Sending data:', d);
                 return d;
             },
@@ -159,13 +191,12 @@ $(document).ready(function() {
             }
         },
         columns: [
-            { data: 'contract_number' },
-            { data: 'client_name' },
-            { data: 'period' },
-            { data: 'value' },
-            { data: 'total_units' }, // UPDATE: Kolom baru ditambahkan
-            { data: 'status' },
-            { data: 'actions', orderable: false }
+            { data: 'contract_number', name: 'no_kontrak' },
+            { data: 'po', name: 'no_po_marketing' },
+            { data: 'client_name', name: 'pelanggan' },
+            { data: 'period', name: 'tanggal_mulai' },
+            { data: 'status', name: 'status' },
+            { data: 'actions', name: 'actions', orderable: false, searchable: false }
         ],
         order: [[0, 'desc']], // Changed to first column (contract_number)
         drawCallback: function(settings) {
@@ -175,8 +206,35 @@ $(document).ready(function() {
             if(json && json.data && json.data.length===0){
                 console.log('No rows rendered. If expected rows exist in DB, check controller Marketing::getDataTable and DB connection.');
             }
+            // Make first column (No. Kontrak) clickable to open contract detail modal
+            try {
+                const api = this.api();
+                api.rows({ page: 'current' }).every(function(rowIdx){
+                    const rowData = this.data();
+                    const node = this.node();
+                    if (!rowData) return;
+                    const $cell = $(node).find('td').eq(0);
+                    if ($cell && $cell.length && !$cell.find('a.contract-link').length) {
+                        // Extract text from the HTML content for display
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = rowData.contract_number || '';
+                        const contractText = tempDiv.textContent || tempDiv.innerText || '';
+                        
+                        $cell.html(`<a href="#" class="contract-link text-decoration-none" onclick="openContractDetail(${rowData.id});return false;"><strong>${contractText}</strong></a>`);
+                    }
+                });
+            } catch(e){ console.warn('Failed to attach contract links', e); }
         }
     });
+
+    // Add filter card click listeners
+    $('.filter-card').on('click', function() {
+        const filter = $(this).data('filter');
+        applyKontrakFilter(filter);
+    });
+    
+    // Set default active filter (all)
+    $('[data-filter="all"]').addClass('active');
 
     $('#addContractForm').on('submit', function(e) {
         e.preventDefault();
@@ -190,7 +248,14 @@ $(document).ready(function() {
         $.ajax({
             url: url,
             method: 'POST',
-            data: $(this).serialize() + '&<?= csrf_token() ?>=' + '<?= csrf_hash() ?>',
+            data: (function(form){
+                let payload = $(form).serialize();
+                // add CSRF
+                payload += '&<?= csrf_token() ?>=' + '<?= csrf_hash() ?>';
+                // on create, backend requires status; set default to PENDING without showing a field
+                if (!isEdit) payload += '&status=' + encodeURIComponent('Pending');
+                return payload;
+            })(this),
             dataType: 'json',
             success: function(response) {
                 $('#addContractModal').modal('hide');
@@ -227,6 +292,135 @@ function viewContractUnits(contractId) {
     window.location.href = `<?= base_url('marketing/list-unit/') ?>${contractId}`;
 }
 
+// Open contract detail modal (AJAX) similar to SPK detail view
+function openContractDetail(id){
+    console.log('Opening contract detail for ID:', id);
+    
+    const pdfBtn = document.getElementById('btnPrintContract');
+    if (pdfBtn) { pdfBtn.href = `<?= base_url('marketing/kontrak/print/') ?>${id}`; }
+    const body = document.getElementById('contractDetailBody');
+    if (!body) {
+        console.error('contractDetailBody element not found');
+        return;
+    }
+    
+    body.innerHTML = '<p class="text-muted">Memuat...</p>';
+    
+    const detailUrl = `<?= base_url('marketing/kontrak/detail/') ?>${id}`;
+    console.log('Fetching from URL:', detailUrl);
+    
+    fetch(detailUrl)
+        .then(r => {
+            console.log('Response status:', r.status);
+            return r.json();
+        })
+        .then(j => {
+            console.log('Response data:', j);
+            if (!j || !j.success) { 
+                body.innerHTML = '<div class="text-danger">Gagal memuat detail kontrak: ' + (j.message || 'Unknown error') + '</div>'; 
+                return; 
+            }
+            const d = j.data || {};
+            const esc = (s)=>{ if(s===null||s===undefined||s==='') return '-'; return String(s).replaceAll('<','&lt;').replaceAll('>','&gt;'); };
+            
+            // Basic contract information
+            let contractInfo = `
+                <div class="row g-2">
+                    <div class="col-6"><strong>No. Kontrak:</strong> ${esc(d.no_kontrak||d.contract_number)}</div>
+                    <div class="col-6"><strong>No. PO:</strong> ${esc(d.no_po_marketing || '-')}</div>
+                    <div class="col-6"><strong>Nama Perusahaan:</strong> ${esc(d.pelanggan||d.client_name)}</div>
+                    <div class="col-6"><strong>Alamat / Lokasi:</strong> ${esc(d.lokasi || d.lokasi || '-')}</div>
+                    <div class="col-6"><strong>PIC:</strong> ${esc(d.pic || '-')}</div>
+                    <div class="col-6"><strong>Kontak:</strong> ${esc(d.kontak || '-')}</div>
+                    <div class="col-6"><strong>Periode:</strong> ${esc(d.periode|| (d.tanggal_mulai? (d.tanggal_mulai + ' - ' + (d.tanggal_berakhir||'-')) : '-'))}</div>
+                    <div class="col-6"><strong>Nilai:</strong> ${d.nilai_total ? 'Rp ' + new Intl.NumberFormat('id-ID').format(d.nilai_total) : '-'}</div>
+                    <div class="col-6"><strong>Total Unit:</strong> <span id="contractUnitsTotal">-</span></div>
+                    <div class="col-6"><strong>Status:</strong> ${esc(d.status)}</div>
+                    <div class="col-12"><hr></div>
+                    <div class="col-12"><strong>Catatan:</strong> ${esc(d.catatan || '-')}</div>
+                    <div class="col-12"><hr></div>
+                    <div class="col-12"><h6><strong>Unit yang Terkait:</strong></h6></div>
+                    <div class="col-12" id="contractUnitsContainer">
+                        <div class="text-muted">Memuat daftar unit...</div>
+                    </div>
+                </div>
+            `;
+            
+            body.innerHTML = contractInfo;
+            
+            // Load units for this contract
+            fetch(`<?= base_url('marketing/kontrak/units/') ?>${id}`)
+                .then(response => response.json())
+                .then(unitsData => {
+                    console.log('Units data:', unitsData);
+                    const unitsContainer = document.getElementById('contractUnitsContainer');
+                    
+                    if (unitsData.success && unitsData.data && unitsData.data.length > 0) {
+                        // Update the total units count using server-derived total
+                        const totalSpan = document.getElementById('contractUnitsTotal');
+                        if (totalSpan) totalSpan.textContent = unitsData.total ?? unitsData.data.length;
+                        let unitsTable = `
+                            <div class="table-responsive">
+                                <table class="table table-sm table-bordered">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>No. Unit</th>
+                                            <th>Merk</th>
+                                            <th>Model</th>
+                                            <th>Kapasitas</th>
+                                            <th>Jenis Unit</th>
+                                            <th>Departemen</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        unitsData.data.forEach(unit => {
+                            unitsTable += `
+                                <tr>
+                                    <td>${esc(unit.no_unit)}</td>
+                                    <td>${esc(unit.merk)}</td>
+                                    <td>${esc(unit.model)}</td>
+                                    <td>${esc(unit.kapasitas)}</td>
+                                    <td>${esc(unit.jenis_unit)}</td>
+                                    <td>${esc(unit.departemen)}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        unitsTable += `
+                                    </tbody>
+                                </table>
+                            </div>
+                            <small class="text-muted">Total: ${unitsData.total ?? unitsData.data.length} unit(s). Untuk detail lengkap unit, kunjungi halaman <a href="<?= base_url('marketing/list-unit/') ?>${id}" target="_blank">List Unit</a>.</small>
+                        `;
+                        
+                        unitsContainer.innerHTML = unitsTable;
+                    } else {
+                        const totalSpan = document.getElementById('contractUnitsTotal');
+                        if (totalSpan) totalSpan.textContent = '0';
+                        unitsContainer.innerHTML = '<div class="text-muted"><em>Tidak ada unit yang terkait dengan kontrak ini.</em></div>';
+                    }
+                })
+                .catch(unitsError => {
+                    console.warn('Error loading units:', unitsError);
+                    const unitsContainer = document.getElementById('contractUnitsContainer');
+                    if (unitsContainer) {
+                        unitsContainer.innerHTML = '<div class="text-warning"><em>Gagal memuat daftar unit.</em></div>';
+                    }
+                    const totalSpan = document.getElementById('contractUnitsTotal');
+                    if (totalSpan) totalSpan.textContent = '-';
+                });
+            // show modal
+            console.log('Showing modal...');
+            new bootstrap.Modal(document.getElementById('contractDetailModal')).show();
+        })
+        .catch((error) => { 
+            console.error('Fetch error:', error);
+            if (body) body.innerHTML = '<div class="text-danger">Gagal memuat detail kontrak: ' + error.message + '</div>'; 
+        });
+}
+
 function editContract(contractId) {
     // Load data kontrak untuk edit
     $.ajax({
@@ -240,10 +434,13 @@ function editContract(contractId) {
                 $('input[name="contract_number"]').val(contract.no_kontrak);
                 $('input[name="po_number"]').val(contract.no_po_marketing);
                 $('input[name="client_name"]').val(contract.pelanggan);
-                $('input[name="project_name"]').val(contract.lokasi);
+                $('input[name="lokasi"]').val(contract.lokasi);
                 $('input[name="start_date"]').val(contract.tanggal_mulai);
                 $('input[name="end_date"]').val(contract.tanggal_berakhir);
-                $('select[name="status"]').val(contract.status);
+                $('input[name="contract_value"]').val(contract.nilai_total);
+                $('input[name="total_units"]').val(contract.total_units || 0);
+                $('input[name="pic"]').val(contract.pic);
+                $('input[name="kontak"]').val(contract.kontak);
                 
                 // Change form action to update
                 $('#addContractForm').attr('action', 'update');
@@ -287,4 +484,17 @@ function deleteContract(contractId) {
     });
 }
 </script>
+<!-- Contract Detail Modal -->
+<div class="modal fade" id="contractDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header"><h6 class="modal-title">Detail Kontrak</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body"><div id="contractDetailBody"><p class="text-muted">Memuat...</p></div></div>
+            <div class="modal-footer">
+                <a class="btn btn-outline-secondary" id="btnPrintContract" href="#" target="_blank" rel="noopener">Print PDF</a>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            </div>
+        </div>
+    </div>
+</div>
 <?= $this->endSection() ?>

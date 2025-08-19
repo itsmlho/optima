@@ -1,45 +1,75 @@
 <?= $this->extend('layouts/base') ?>
+
+<?= $this->section('css') ?>
+<style>
+    .card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
+    .table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
+    .modal-header { background: linear-gradient(135deg, #e9ecef 0%, #e9ecef 100%); color: white; border-radius: 15px 15px 0 0; }
+    .filter-card.active { 
+        transform: translateY(-3px); 
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
+        border: 2px solid #fff; 
+    }
+    .filter-card:hover { 
+        transform: translateY(-5px); 
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
+    }
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
-    <div class="d-flex justify-content-end align-items-center mb-3">
-        <div class="d-flex gap-2">
-            <a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/tracking') ?>">Tracking</a>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#spkModal">Buat SPK</button>
-        </div>
+
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-total-spk">0</h2><h6 class="card-title text-uppercase small">Total SPK</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="READY" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-ready">0</h2><h6 class="card-title text-uppercase small">Ready</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-in-progress">0</h2><h6 class="card-title text-uppercase small">In Progress</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="COMPLETED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-completed">0</h2><h6 class="card-title text-uppercase small">Completed</h6></div></div></div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-header">Daftar SPK</div>
+    <div class="card table-card mb-3">
+        <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+            <h5 class="h5 mb-0 text-gray-800">Daftar SPK</h5>
+            <div class="d-flex gap-2 align-items-center">
+                <a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/tracking') ?>">Tracking</a>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#spkModal">Buat SPK</button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span>Show</span>
+                    <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>entries</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span>Search:</span>
+                    <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="" style="width: 200px;">
+                </div>
+            </div>
+            
             <div class="table-responsive">
                 <table class="table table-sm mb-0" id="spkList">
                     <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Aksi</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
-        </div>
-    </div>
-
-    <div class="card mb-3">
-        <div class="card-header">Monitoring Kontrak → SPK</div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-sm mb-0" id="monitoringTable">
-                    <thead>
-                        <tr>
-                            <th>Kontrak</th>
-                            <th>PO Marketing</th>
-                            <th>Nama Perusahaan</th>
-                            <th>Lokasi</th>
-                            <th>Total SPK</th>
-                            <th>SUB</th>
-                            <th>PROG</th>
-                            <th>READY</th>
-                            <th>DELIV</th>
-                            <th>CANCEL</th>
-                            <th>Update</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+            
+            <!-- Pagination and Info -->
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div id="spkTableInfo">
+                    Showing 0 to 0 of 0 entries
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0" id="spkPagination">
+                        <!-- Pagination will be generated by JavaScript -->
+                    </ul>
+                </nav>
             </div>
         </div>
     </div>
@@ -60,11 +90,11 @@
                         </div>
                         <div class="mb-2">
                             <label class="form-label" id="kontrakLabel">Kontrak/PO (<span id="kontrakStatusTxt">Pending</span>)</label>
-                            <input class="form-control" list="kontrakOptions" name="po_kontrak_nomor" placeholder="Cari no kontrak / no PO / pelanggan" autocomplete="off">
+                            <input class="form-control" list="kontrakOptions" name="po_kontrak_nomor" placeholder="Cari no kontrak / no PO / Nama Perusahaan" autocomplete="off">
                             <datalist id="kontrakOptions"></datalist>
                             <div class="form-text" id="kontrakHelp">Ketik untuk mencari dari kontrak status Pending.</div>
                         </div>
-                        <div class="mb-2"><label class="form-label">Pelanggan</label><input class="form-control" name="pelanggan" id="inpPelanggan" required></div>
+                        <div class="mb-2"><label class="form-label">Nama Perusahaan</label><input class="form-control" name="pelanggan" id="inpPelanggan" required></div>
                         <div class="mb-2"><label class="form-label">PIC (Person In Charge)</label><input class="form-control" name="pic" id="inpPic" placeholder="Nama PIC dari perusahaan"></div>
                         <div class="mb-2"><label class="form-label">Kontak PIC</label><input class="form-control" name="kontak" id="inpKontak" placeholder="Nomor telepon/HP PIC"></div>
                         <div class="mt-2"><label class="form-label">Lokasi</label><input class="form-control" name="lokasi" id="inpLokasi" placeholder="Otomatis mengikuti Pelanggan"></div>
@@ -81,14 +111,14 @@
                             <div class="col-4" data-spec="tipe_unit"><label class="form-label">Tipe Unit</label><select class="form-select" id="optTipeUnit"></select></div>
                             <div class="col-4" data-spec="tipe_jenis"><label class="form-label">Jenis</label><select class="form-select" name="spesifikasi[tipe_jenis]" id="optTipeJenis"></select></div>
                             <div class="col-6" data-spec="merk_unit"><label class="form-label">Merk Unit</label><select class="form-select" name="spesifikasi[merk_unit]" id="optMerkUnit"></select></div>
-                            <div class="col-6" data-spec="valve_id"><label class="form-label">Valve</label><select class="form-select" name="spesifikasi[valve_id]" id="optValve"></select></div>
-                            <div class="col-6" data-spec="jenis_baterai"><label class="form-label">Baterai (Jenis)</label><select class="form-select" name="spesifikasi[jenis_baterai]" id="optJenisBaterai"></select></div>
-                            <div class="col-6" data-spec="attachment_tipe"><label class="form-label">Attachment (Tipe)</label><select class="form-select" name="spesifikasi[attachment_tipe]" id="optAttachmentTipe"></select></div>
-                            <div class="col-6" data-spec="attachment_merk"><label class="form-label">Merk Attachment</label><select class="form-select" name="spesifikasi[attachment_merk]" id="optAttachmentMerk"></select></div>
-                            <div class="col-6" data-spec="roda_id"><label class="form-label">Roda</label><select class="form-select" name="spesifikasi[roda_id]" id="optRoda"></select></div>
                             <div class="col-6" data-spec="kapasitas_id"><label class="form-label">Kapasitas</label><select class="form-select" name="spesifikasi[kapasitas_id]" id="optKapasitas"></select></div>
+                            <div class="col-6" data-spec="jenis_baterai"><label class="form-label">Baterai</label><select class="form-select" name="spesifikasi[jenis_baterai]" id="optJenisBaterai"></select></div>
+                            <div class="col-6" data-spec="attachment_tipe"><label class="form-label">Attachment</label><select class="form-select" name="spesifikasi[attachment_tipe]" id="optAttachmentTipe"></select></div>
+                            <div class="col-6" data-spec="attachment_merk"><label class="form-label">Merk Attachment</label><select class="form-select" name="spesifikasi[attachment_merk]" id="optAttachmentMerk"></select></div>
                             <div class="col-6" data-spec="mast_id"><label class="form-label">Mast</label><select class="form-select" name="spesifikasi[mast_id]" id="optMast"></select></div>
                             <div class="col-6" data-spec="ban_id"><label class="form-label">Ban</label><select class="form-select" name="spesifikasi[ban_id]" id="optBan"></select></div>
+                            <div class="col-6" data-spec="roda_id"><label class="form-label">Roda</label><select class="form-select" name="spesifikasi[roda_id]" id="optRoda"></select></div>
+                            <div class="col-6" data-spec="valve_id"><label class="form-label">Valve</label><select class="form-select" name="spesifikasi[valve_id]" id="optValve"></select></div>
                         </div>
                         <div class="mt-2" id="accBlock">
                             <label class="form-label">Aksesoris</label>
@@ -172,60 +202,233 @@
         const cls = (entity==='DI'?mapDI[s]:mapSPK[s]) || 'secondary';
         return `<span class="badge bg-${cls}">${status}</span>`;
     }
+    
+    // Global variables for filtering
+    let allSpkData = [];
+    let currentFilter = 'all';
+    let currentSearchTerm = '';
+    let currentPage = 1;
+    let entriesPerPage = 10;
+    
+    // Update statistics cards
+    function updateSpkStats(data) {
+        const stats = {
+            total: 0,
+            inProgress: 0,
+            ready: 0,
+            completed: 0
+        };
+        
+        (data || []).forEach(spk => {
+            stats.total++;
+            const status = (spk.status || '').toUpperCase();
+            if (status === 'IN_PROGRESS') stats.inProgress++;
+            else if (status === 'READY') stats.ready++;
+            else if (status === 'COMPLETED' || status === 'DELIVERED') stats.completed++;
+        });
+        
+        document.getElementById('stat-total-spk').textContent = stats.total;
+        document.getElementById('stat-in-progress').textContent = stats.inProgress;
+        document.getElementById('stat-ready').textContent = stats.ready;
+        document.getElementById('stat-completed').textContent = stats.completed;
+    }
+    
+    // Apply both status filter and search
+    function applyFilters() {
+        let filteredData = allSpkData;
+        
+        // Apply status filter
+        if (currentFilter !== 'all') {
+            filteredData = filteredData.filter(spk => {
+                const status = (spk.status || '').toUpperCase();
+                if (currentFilter === 'COMPLETED') {
+                    return status === 'COMPLETED' || status === 'DELIVERED';
+                }
+                return status === currentFilter;
+            });
+        }
+        
+        // Apply search filter
+        if (currentSearchTerm.trim() !== '') {
+            const searchTerm = currentSearchTerm.toLowerCase();
+            filteredData = filteredData.filter(spk => {
+                return (spk.nomor_spk || '').toLowerCase().includes(searchTerm) ||
+                       (spk.pelanggan || '').toLowerCase().includes(searchTerm) ||
+                       (spk.po_kontrak_nomor || '').toLowerCase().includes(searchTerm) ||
+                       (spk.pic || '').toLowerCase().includes(searchTerm) ||
+                       (spk.kontak || '').toLowerCase().includes(searchTerm) ||
+                       (spk.jenis_spk || '').toLowerCase().includes(searchTerm);
+            });
+        }
+        
+        renderSpkTable(filteredData);
+        updatePagination(filteredData);
+    }
+    
+    // Update pagination and info
+    function updatePagination(data) {
+        const totalEntries = data.length;
+        const totalPages = Math.ceil(totalEntries / entriesPerPage);
+        const startEntry = totalEntries === 0 ? 0 : (currentPage - 1) * entriesPerPage + 1;
+        const endEntry = Math.min(currentPage * entriesPerPage, totalEntries);
+        
+        // Update info text
+        document.getElementById('spkTableInfo').textContent = 
+            `Showing ${startEntry} to ${endEntry} of ${totalEntries} entries` +
+            (currentSearchTerm.trim() !== '' ? ' (filtered from ' + allSpkData.length + ' total entries)' : '');
+        
+        // Generate pagination
+        const pagination = document.getElementById('spkPagination');
+        pagination.innerHTML = '';
+        
+        if (totalPages <= 1) return;
+        
+        // Previous button
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+        prevLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage - 1}); return false;">Previous</a>`;
+        pagination.appendChild(prevLi);
+        
+        // Page numbers
+        const startPage = Math.max(1, currentPage - 2);
+        const endPage = Math.min(totalPages, currentPage + 2);
+        
+        if (startPage > 1) {
+            const firstLi = document.createElement('li');
+            firstLi.className = 'page-item';
+            firstLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(1); return false;">1</a>`;
+            pagination.appendChild(firstLi);
+            
+            if (startPage > 2) {
+                const dotsLi = document.createElement('li');
+                dotsLi.className = 'page-item disabled';
+                dotsLi.innerHTML = '<span class="page-link">...</span>';
+                pagination.appendChild(dotsLi);
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i}); return false;">${i}</a>`;
+            pagination.appendChild(li);
+        }
+        
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) {
+                const dotsLi = document.createElement('li');
+                dotsLi.className = 'page-item disabled';
+                dotsLi.innerHTML = '<span class="page-link">...</span>';
+                pagination.appendChild(dotsLi);
+            }
+            
+            const lastLi = document.createElement('li');
+            lastLi.className = 'page-item';
+            lastLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${totalPages}); return false;">${totalPages}</a>`;
+            pagination.appendChild(lastLi);
+        }
+        
+        // Next button
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+        nextLi.innerHTML = `<a class="page-link" href="#" onclick="changePage(${currentPage + 1}); return false;">Next</a>`;
+        pagination.appendChild(nextLi);
+    }
+    
+    // Change page function
+    function changePage(page) {
+        currentPage = page;
+        applyFilters();
+    }
+    
+    // Filter SPK data based on status
+    function filterSpkData(filter) {
+        currentFilter = filter;
+        currentPage = 1; // Reset to first page when filtering
+        
+        // Update active card styling
+        document.querySelectorAll('.filter-card').forEach(card => {
+            card.classList.remove('active');
+        });
+        document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+        
+        applyFilters();
+    }
+    
+    // Render SPK table with given data
+    function renderSpkTable(data) {
+        const tb = document.querySelector('#spkList tbody');
+        tb.innerHTML = '';
+        
+        // Calculate pagination
+        const startIndex = (currentPage - 1) * entriesPerPage;
+        const endIndex = startIndex + entriesPerPage;
+        const paginatedData = data.slice(startIndex, endIndex);
+        
+        paginatedData.forEach(r=>{
+            const tr = document.createElement('tr');
+            const diBtn = (r.status === 'READY')
+              ? `<button class="btn btn-sm btn-primary buat-di" data-id="${r.id}" data-spk='${JSON.stringify({id:r.id, nomor_spk:r.nomor_spk, po:r.po_kontrak_nomor, pelanggan:r.pelanggan, lokasi:r.lokasi}).replace(/'/g,"&apos;")}' title="Buat DI">Buat DI</button>`
+              : '';
+            const aksiBtn = diBtn || '<span class="text-muted">-</span>';
+            tr.innerHTML = `<td><a href="#" onclick=\"openDetail(${r.id});return false;\">${r.nomor_spk}</a></td>`+
+              `<td><span class=\"badge bg-dark\">${r.jenis_spk||'UNIT'}</span></td>`+
+              `<td>${r.po_kontrak_nomor||'-'}</td>`+
+              `<td>${r.pelanggan||'-'}</td>`+
+              `<td>${r.pic||'-'}</td>`+
+              `<td>${r.kontak||'-'}</td>`+
+              `<td>${statusBadge('SPK', r.status)}</td>`+
+              `<td>${aksiBtn}</td>`;
+            tb.appendChild(tr);
+        });
+        
+        // Wire up Buat DI buttons
+        tb.querySelectorAll('.buat-di').forEach(btn=>{
+            btn.addEventListener('click', (e)=>{
+                const data = JSON.parse(e.currentTarget.getAttribute('data-spk').replace(/&apos;/g, "'"));
+                document.getElementById('diSpkId').value = data.id || '';
+                document.getElementById('diNoSpk').value = data.nomor_spk || '';
+                document.getElementById('diPoNo').value = data.po || '';
+                document.getElementById('diPelanggan').value = data.pelanggan || '';
+                document.getElementById('diLokasi').value = data.lokasi || '';
+                const diPicEl = document.getElementById('diPic');
+                if (diPicEl) diPicEl.value = data.pic || '';
+                const diKontakEl = document.getElementById('diKontak');
+                if (diKontakEl) diKontakEl.value = data.kontak || '';
+                // Load selected items summary
+                const sum = document.getElementById('diSelectedSummary');
+                if (sum) { sum.innerHTML = '<span class="text-muted">Memuat item terpilih...</span>'; }
+                fetch(`<?= base_url('marketing/spk/detail/') ?>${data.id}`).then(r=>r.json()).then(j=>{
+                    if (sum) {
+                        if (j && j.success) {
+                            const s = j.spesifikasi || {};
+                            const u = s.selected && s.selected.unit ? s.selected.unit : null;
+                            const a = s.selected && s.selected.attachment ? s.selected.attachment : null;
+                            const unit = u ? `${u.no_unit||'-'} - ${u.merk_unit||'-'} ${u.model_unit||''} @ ${u.lokasi_unit||'-'}${u.serial_number?` [SN: ${u.serial_number}]`:''}` : null;
+                            const att  = a ? `${a.tipe||'-'} ${a.merk||''} ${a.model||''}${a.sn_attachment?` [SN: ${a.sn_attachment}]`:''}${a.lokasi_penyimpanan?` @ ${a.lokasi_penyimpanan}`:''}` : null;
+                            const html = `<ul class=\"mb-0\">${unit?`<li>Unit: ${unit}</li>`:''}${att?`<li>Attachment: ${att}</li>`:''}</ul>`;
+                            sum.innerHTML = (unit || att) ? html : '<span class="text-muted">Belum ada item yang ditetapkan Service.</span>';
+                        } else {
+                            sum.innerHTML = '<span class="text-danger">Gagal memuat ringkasan item.</span>';
+                        }
+                    }
+                });
+                const modal = new bootstrap.Modal(document.getElementById('diModal'));
+                modal.show();
+            });
+        });
+    }
+    
     function loadSpk(){
         fetch('<?= base_url('marketing/spk/list') ?>').then(r=>r.json()).then(j=>{
-            const tb = document.querySelector('#spkList tbody');
-            tb.innerHTML = '';
-            (j.data||[]).forEach(r=>{
-                const tr = document.createElement('tr');
-                const diBtn = (r.status === 'READY')
-                  ? `<button class="btn btn-sm btn-primary buat-di" data-id="${r.id}" data-spk='${JSON.stringify({id:r.id, nomor_spk:r.nomor_spk, po:r.po_kontrak_nomor, pelanggan:r.pelanggan, lokasi:r.lokasi}).replace(/'/g,"&apos;")}' title="Buat DI">Buat DI</button>`
-                  : '';
-                const aksiBtn = diBtn || '<span class="text-muted">-</span>';
-                tr.innerHTML = `<td><a href="#" onclick=\"openDetail(${r.id});return false;\">${r.nomor_spk}</a></td>`+
-                  `<td><span class=\"badge bg-dark\">${r.jenis_spk||'UNIT'}</span></td>`+
-                  `<td>${r.po_kontrak_nomor||'-'}</td>`+
-                  `<td>${r.pelanggan||'-'}</td>`+
-                  `<td>${r.pic||'-'}</td>`+
-                  `<td>${r.kontak||'-'}</td>`+
-                  `<td>${statusBadge('SPK', r.status)}</td>`+
-                  `<td>${aksiBtn}</td>`;
-                tb.appendChild(tr);
-            });
-            // Wire up Buat DI buttons
-            tb.querySelectorAll('.buat-di').forEach(btn=>{
-                btn.addEventListener('click', (e)=>{
-                    const data = JSON.parse(e.currentTarget.getAttribute('data-spk').replace(/&apos;/g, "'"));
-                    document.getElementById('diSpkId').value = data.id || '';
-                    document.getElementById('diNoSpk').value = data.nomor_spk || '';
-                    document.getElementById('diPoNo').value = data.po || '';
-                    document.getElementById('diPelanggan').value = data.pelanggan || '';
-                    document.getElementById('diLokasi').value = data.lokasi || '';
-                    document.getElementById('diPic').value = data.pic || '';
-                    document.getElementById('diKontak').value = data.kontak || '';
-                    // Load selected items summary
-                    const sum = document.getElementById('diSelectedSummary');
-                    if (sum) { sum.innerHTML = '<span class="text-muted">Memuat item terpilih...</span>'; }
-                    fetch(`<?= base_url('marketing/spk/detail/') ?>${data.id}`).then(r=>r.json()).then(j=>{
-                        if (sum) {
-                            if (j && j.success) {
-                                const s = j.spesifikasi || {};
-                                const u = s.selected && s.selected.unit ? s.selected.unit : null;
-                                const a = s.selected && s.selected.attachment ? s.selected.attachment : null;
-                                const unit = u ? `${u.no_unit||'-'} - ${u.merk_unit||'-'} ${u.model_unit||''} @ ${u.lokasi_unit||'-'}${u.serial_number?` [SN: ${u.serial_number}]`:''}` : null;
-                                const att  = a ? `${a.tipe||'-'} ${a.merk||''} ${a.model||''}${a.sn_attachment?` [SN: ${a.sn_attachment}]`:''}${a.lokasi_penyimpanan?` @ ${a.lokasi_penyimpanan}`:''}` : null;
-                                const html = `<ul class=\"mb-0\">${unit?`<li>Unit: ${unit}</li>`:''}${att?`<li>Attachment: ${att}</li>`:''}</ul>`;
-                                sum.innerHTML = (unit || att) ? html : '<span class="text-muted">Belum ada item yang ditetapkan Service.</span>';
-                            } else {
-                                sum.innerHTML = '<span class="text-danger">Gagal memuat ringkasan item.</span>';
-                            }
-                        }
-                    });
-                    const modal = new bootstrap.Modal(document.getElementById('diModal'));
-                    modal.show();
-                });
-            });
-            // Detail now opens by clicking the No. SPK link
+            const data = j.data || [];
+            allSpkData = data; // Store for filtering
+            
+            // Update statistics
+            updateSpkStats(data);
+            
+            // Apply current filters
+            applyFilters();
         });
     }
     function loadKontrakOptions(q){
@@ -242,6 +445,12 @@
                 const o = document.createElement('option');
                 o.value = opt.no_po_marketing || opt.no_kontrak || '';
                 o.label = opt.label;
+                // carry extra info for autofill
+                o.dataset.pelanggan = opt.pelanggan || opt.client_name || '';
+                o.dataset.lokasi = opt.lokasi || opt.alamat || '';
+                o.dataset.pic = opt.pic || opt.nama_pic || '';
+                o.dataset.kontak = opt.kontak || opt.kontak_pic || '';
+                o.dataset.id = opt.id || opt.contract_id || '';
                 dl.appendChild(o);
             });
         });
@@ -249,6 +458,7 @@
     function loadMonitoring(){
         fetch('<?= base_url('marketing/spk/monitoring') ?>').then(r=>r.json()).then(j=>{
             const tb = document.querySelector('#monitoringTable tbody');
+            if (!tb) return; // Skip if monitoring table doesn't exist
             tb.innerHTML = '';
             (j.data||[]).forEach(r=>{
                 const tr = document.createElement('tr');
@@ -273,47 +483,132 @@
     loadSpk();
     loadKontrakOptions('');
     loadMonitoring();
+    
+    // Add filter card click listeners
+    document.querySelectorAll('.filter-card').forEach(card => {
+        card.addEventListener('click', (e) => {
+            const filter = e.currentTarget.getAttribute('data-filter');
+            filterSpkData(filter);
+        });
+    });
+    
+    // Add search functionality
+    const spkSearchInput = document.getElementById('spkSearch');
+    if (spkSearchInput) {
+        spkSearchInput.addEventListener('input', (e) => {
+            currentSearchTerm = e.target.value;
+            currentPage = 1; // Reset to first page when searching
+            applyFilters();
+        });
+    }
+    
+    // Add entries per page functionality
+    const entriesSelect = document.getElementById('entriesPerPage');
+    if (entriesSelect) {
+        entriesSelect.addEventListener('change', (e) => {
+            entriesPerPage = parseInt(e.target.value);
+            currentPage = 1; // Reset to first page when changing entries per page
+            applyFilters();
+        });
+    }
+    
+    // Set default active filter (all)
+    document.querySelector('[data-filter="all"]').classList.add('active');
+    
     const kontrakInput = document.querySelector('input[name="po_kontrak_nomor"]');
     const pelangganInput = document.getElementById('inpPelanggan');
     const lokasiInput = document.getElementById('inpLokasi');
-    kontrakInput.addEventListener('input', (e) => {
-            const v = e.target.value.trim();
-            // fetch as user types (debounce-lite)
-            loadKontrakOptions(v);
-            // try to find matching option and autofill pelanggan & lokasi from dataset
-            const dl = document.getElementById('kontrakOptions');
-            const match = Array.from(dl.options).find(o => o.value === v);
-            if (match) {
-                // We can't store custom data in datalist options cross-browser reliably; parse from label first
-                // Label format: "<no kontrak> (<no po>) - <pelanggan>"
-                if (match.label) {
-                    const parts = match.label.split(' - ');
-                    if (parts[1]) {
-                        pelangganInput.value = parts[1];
-                    }
-                }
+    const picInput = document.getElementById('inpPic');
+    const kontakInput = document.getElementById('inpKontak');
+
+    function fillKontrakFields(src){
+        if (!src) return;
+        if (src.pelanggan !== undefined && src.pelanggan !== '') pelangganInput.value = src.pelanggan;
+        if (src.lokasi !== undefined && src.lokasi !== '' && lokasiInput) lokasiInput.value = src.lokasi;
+        if (picInput && src.pic !== undefined && src.pic !== '') picInput.value = src.pic;
+        if (kontakInput && src.kontak !== undefined && src.kontak !== '') kontakInput.value = src.kontak;
+    }
+
+    function fetchKontrakDetailByQuery(query){
+        if (!query) return;
+        const url = new URL('<?= base_url('marketing/spk/kontrak-options') ?>', window.location.origin);
+        url.searchParams.set('q', query);
+        const jenisSel = document.querySelector('select[name="jenis_spk"]');
+        const jenis = jenisSel ? jenisSel.value : 'UNIT';
+        url.searchParams.set('status', (jenis === 'TUKAR') ? 'Aktif' : 'Pending');
+        fetch(url).then(r=>r.json()).then(j=>{
+            const rows = j.data||[];
+            const exact = rows.find(x => x.no_po_marketing === query || x.no_kontrak === query || x.label?.includes(query));
+            if (!exact) return;
+            // If detail fields exist in list, use them
+            const prelim = {
+                pelanggan: exact.pelanggan || exact.client_name,
+                lokasi: exact.lokasi || exact.alamat,
+                pic: exact.pic || exact.nama_pic,
+                kontak: exact.kontak || exact.kontak_pic
+            };
+            fillKontrakFields(prelim);
+            // If still missing PIC/Kontak and id is available, fetch full detail
+            if ((!prelim.pic || !prelim.kontak) && (exact.id || exact.contract_id)) {
+                const id = exact.id || exact.contract_id;
+                fetch(`<?= base_url('marketing/kontrak/detail/') ?>${id}`).then(rr=>rr.json()).then(dd=>{
+                    if (!(dd && dd.success && dd.data)) return;
+                    const d = dd.data;
+                    fillKontrakFields({
+                        pelanggan: d.pelanggan || d.client_name,
+                        lokasi: d.lokasi || d.alamat,
+                        pic: d.pic || d.nama_pic,
+                        kontak: d.kontak || d.kontak_pic || d.telepon || d.telp
+                    });
+                }).catch(()=>{});
             }
-        });
+        }).catch(()=>{});
+    }
+
+    let kontrakInputTimer = null;
+    kontrakInput.addEventListener('input', (e) => {
+        const v = e.target.value.trim();
+        // fetch as user types (debounce-lite)
+        loadKontrakOptions(v);
+        if (kontrakInputTimer) clearTimeout(kontrakInputTimer);
+        kontrakInputTimer = setTimeout(() => {
+            const dl = document.getElementById('kontrakOptions');
+            const opts = Array.from(dl.options || []);
+            const match = opts.find(o => o.value === v) || opts.find(o => (o.label||'').toLowerCase().includes(v.toLowerCase()));
+            if (match && match.dataset) {
+                fillKontrakFields({
+                    pelanggan: match.dataset.pelanggan || '',
+                    lokasi: match.dataset.lokasi || '',
+                    pic: match.dataset.pic || '',
+                    kontak: match.dataset.kontak || ''
+                });
+            }
+            // Ensure completeness via detail fetch
+            if (v) fetchKontrakDetailByQuery(v);
+        }, 250);
+    });
         // Lokasi mengikuti perubahan Pelanggan secara langsung
         pelangganInput.addEventListener('input', ()=>{ /* do not mirror lokasi automatically anymore */ });
 
         // Override lokasi based on kontrak lookup when focus leaves kontrak field (fetch selected option’s lokasi via API)
         kontrakInput.addEventListener('change', () => {
             const v = kontrakInput.value.trim();
-            const url = new URL('<?= base_url('marketing/spk/kontrak-options') ?>', window.location.origin);
-            if (v) url.searchParams.set('q', v);
-            const jenisSel = document.querySelector('select[name="jenis_spk"]');
-            const jenis = jenisSel ? jenisSel.value : 'UNIT';
-            url.searchParams.set('status', (jenis === 'TUKAR') ? 'Aktif' : 'Pending');
-            fetch(url).then(r=>r.json()).then(j=>{
-                const rows = j.data||[];
-                // Try exact match by no_po_marketing or no_kontrak
-                const exact = rows.find(x => x.no_po_marketing === v || x.no_kontrak === v);
-                if (exact) {
-                    if (exact.pelanggan) pelangganInput.value = exact.pelanggan;
-                    if (exact.lokasi) lokasiInput.value = exact.lokasi;
-                }
-            });
+            const dl = document.getElementById('kontrakOptions');
+            const match = Array.from(dl.options).find(o => o.value === v);
+            // Prefer dataset from selected option for instant fill
+            if (match && match.dataset) {
+                fillKontrakFields({
+                    pelanggan: match.dataset.pelanggan || '',
+                    lokasi: match.dataset.lokasi || '',
+                    pic: match.dataset.pic || '',
+                    kontak: match.dataset.kontak || ''
+                });
+                // Always ensure completeness via detail fetch
+                fetchKontrakDetailByQuery(v);
+                return;
+            }
+            // Fallback: API lookup if no option matched
+            fetchKontrakDetailByQuery(v);
         });
 
         // Toggle fields by jenis SPK and update kontrak labels/help
@@ -414,7 +709,16 @@
             ];
             specTypes.forEach(s => {
                 fetch(`<?= base_url('marketing/spk/spec-options') ?>?type=${s.type}`)
-                    .then(r => r.json()).then(j => { if (j.success) { const el = document.querySelector(s.sel); if (el) fillSelect(el, j.data || []); } });
+                    .then(r => r.json()).then(j => {
+                        if (j.success) {
+                            const el = document.querySelector(s.sel);
+                            if (el) {
+                                fillSelect(el, j.data || []);
+                                // After Departemen options are loaded, (re)apply battery rules
+                                if (s.type === 'departemen') { applyBatteryRules(); }
+                            }
+                        }
+                    });
             });
 
             // Cascading dropdowns (Departemen -> Tipe -> Jenis) ala Purchasing
@@ -439,7 +743,11 @@
                     if ($tipe) $tipe.innerHTML = '<option value="">- Pilih -</option>' + types.map(t=>`<option value="${t}">${t}</option>`).join('');
                 });
             }
-            if($dept){ $dept.addEventListener('change', reloadTipeFromDept); }
+            if($dept){
+                $dept.addEventListener('change', reloadTipeFromDept);
+                // Also apply battery rules when Departemen changes
+                $dept.addEventListener('change', applyBatteryRules);
+            }
 
             // tipe -> jenis list using same API filtered by departemen & tipe
             function reloadJenisFromTipe(){
@@ -459,36 +767,25 @@
             if($tipe){ $tipe.addEventListener('change', reloadJenisFromTipe); }
 
             // tipe change could be used to constrain jenis further via same API (optional here as we store text directly)
-            // merk -> model cascade using Purchasing get_model_unit_merk
-            const modelSelect = document.createElement('select');
-            modelSelect.className = 'form-select';
-            modelSelect.name = 'spesifikasi[model_unit_id]';
-            modelSelect.id = 'optModelUnit';
-            const merkContainer = document.querySelector('[data-spec="merk_unit"]').parentElement || document;
-            // Insert model select after merk
-            const merkRow = document.querySelector('#optMerkUnit');
-            if (merkRow) {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'col-6';
-                wrapper.setAttribute('data-spec','model_unit_id');
-                wrapper.innerHTML = '<label class="form-label">Model Unit</label>';
-                wrapper.appendChild(modelSelect);
-                document.getElementById('specGrid').appendChild(wrapper);
+            // Battery lock rules: disable Baterai field based on Departemen containing DIESEL/GASOLINE
+            function applyBatteryRules(){
+                const deptEl = document.getElementById('optDepartemen');
+                const batEl = document.getElementById('optJenisBaterai');
+                if (!batEl) return;
+                let txt = '';
+                if (deptEl && deptEl.selectedIndex >= 0) {
+                    const opt = deptEl.options[deptEl.selectedIndex];
+                    txt = (opt && (opt.text || opt.label || '')).toUpperCase();
+                }
+                const isEngine = txt.includes('DIESEL') || txt.includes('GASOLINE');
+                batEl.disabled = isEngine;
+                batEl.title = isEngine ? 'Non-aktif untuk unit bermesin Diesel/Gasoline' : '';
+                if (isEngine) { try { batEl.value = ''; } catch(e){} }
             }
-            function reloadModelByMerk(){
-                const sel = document.getElementById('optMerkUnit');
-                if(!sel) return;
-                const merk = sel.value;
-                const mdl = document.getElementById('optModelUnit');
-                if(!merk){ mdl.innerHTML = '<option value="">- Pilih Merk dulu -</option>'; return; }
-                const url = new URL('<?= base_url('purchasing/api/get_model_unit_merk') ?>', window.location.origin);
-                url.searchParams.set('merk', merk);
-                fetch(url).then(r=>r.json()).then(j=>{
-                    const rows = (j.data||[]);
-                    mdl.innerHTML = '<option value="">- Pilih Model -</option>' + rows.map(it=>`<option value="${it.id_model_unit}">${it.model_unit}</option>`).join('');
-                }).catch(()=>{ mdl.innerHTML = '<option value="">Gagal memuat model</option>'; });
-            }
-            if ($merk) { $merk.addEventListener('change', reloadModelByMerk); }
+            // Re-apply battery rules when Jenis or Departemen changes
+            if ($jenis) { $jenis.addEventListener('change', applyBatteryRules); }
+            // Also apply once on load
+            applyBatteryRules();
     });
     </script>
     <!-- Detail SPK Modal -->

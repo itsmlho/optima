@@ -11,16 +11,7 @@
 .swal2-html-container .form-check-label {
 	margin-left: 0.5rem;
 }
-/* Pastikan SweetAlert2 di atas modal 			body.innerHTML = `
-				<div class="row g-2">
-					<div class="col-6"><strong>No SPK:</strong> ${d.nomor_spk}</div>
-					<div class="col-6"><strong>Jenis SPK:</strong> <span class="badge bg-dark">${d.jenis_spk||'UNIT'}</span></div>
-					<div class="col-6"><strong>Kontrak/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
-					<div class="col-6"><strong>Pelanggan:</strong> ${d.pelanggan||'-'}</div>
-					<div class="col-6"><strong>PIC:</strong> ${d.pic||'-'}</div>
-					<div class="col-6"><strong>Kontak:</strong> ${d.kontak||'-'}</div>
-					<div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
-					<div class="col-12"><hr></div>`p dan backdrop tidak menghalangi input */
+/* Pastikan SweetAlert2 di atas modal */
 .swal2-container {
 	z-index: 2000 !important;
 }
@@ -32,20 +23,59 @@
 .modal.sweetalert-disable {
 	pointer-events: none !important;
 }
-/* Pastikan SweetAlert2 di atas modal Bootstrap */
-.swal2-container {
-	z-index: 2000 !important;
+
+.filter-card { 
+    cursor: pointer; 
+    transition: all 0.3s ease; 
+}
+.filter-card.active { 
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
+    border: 2px solid #fff; 
+}
+.filter-card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
 }
 </style>
+  <!-- Statistics Cards -->
+  <div class="row g-4 mb-4">
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="totalSPK">0</h2><h6 class="card-title text-uppercase small">Total SPK</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-secondary text-white h-100 filter-card" data-filter="SUBMITTED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="submittedSPK">0</h2><h6 class="card-title text-uppercase small">Submitted</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="inProgressSPK">0</h2><h6 class="card-title text-uppercase small">In Progress</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="READY" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="readySPK">0</h2><h6 class="card-title text-uppercase small">Ready</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="COMPLETED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="completedSPK">0</h2><h6 class="card-title text-uppercase small">Completed</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-danger text-white h-100 filter-card" data-filter="CANCELLED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="cancelledSPK">0</h2><h6 class="card-title text-uppercase small">Cancelled</h6></div></div></div>
+  </div>
 
-<!-- <div class="container-fluid py-3"> -->
-	<div class="card">
-		<div class="card-header d-flex justify-content-between align-items-center">
-			<span>Daftar SPK</span>
+	<!-- Tabel Daftar SPK Service -->
+	<div class="card table-card">
+		<div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+			<h5 class="h5 mb-0 text-gray-800">Daftar SPK Service</h5>
 		</div>
-		<div class="card-body p-0">
+		<div class="card-body">
+			<!-- DataTable-style controls -->
+			<div class="row mb-3">
+				<div class="col-md-6 d-flex align-items-center">
+					<label class="me-2">Show</label>
+					<select class="form-select form-select-sm me-2" id="entriesPerPage" style="width: auto;">
+						<option value="10">10</option>
+						<option value="25">25</option>
+						<option value="50">50</option>
+						<option value="100">100</option>
+					</select>
+					<span>entries</span>
+				</div>
+				<div class="col-md-6">
+					<div class="input-group input-group-sm">
+						<span class="input-group-text">Search:</span>
+						<input type="text" class="form-control" id="searchInput" placeholder="Cari No. SPK, Pelanggan, PIC...">
+					</div>
+				</div>
+			</div>
+
 			<div class="table-responsive">
-				<table class="table table-sm mb-0" id="spkTable">
+				<table class="table table-striped table-hover" id="spkTable" style="width:100%">
 					<thead>
 						<tr>
 							<th>No. SPK</th>
@@ -59,6 +89,18 @@
 					</thead>
 					<tbody></tbody>
 				</table>
+			</div>
+
+			<!-- Pagination -->
+			<div class="row mt-3">
+				<div class="col-md-6">
+					<div id="tableInfo" class="text-muted"></div>
+				</div>
+				<div class="col-md-6">
+					<nav>
+						<ul class="pagination pagination-sm justify-content-end mb-0" id="pagination"></ul>
+					</nav>
+				</div>
 			</div>
 		</div>
 	</div>
@@ -157,17 +199,78 @@
 	</div>
 </div>
 <script>
+// Global variables
+let allSPKData = [];
+let filteredSPKData = [];
+let currentFilter = 'all';
+let currentPage = 1;
+let entriesPerPage = 10;
+
 // Unified notifier (fallbacks)
-function notify(msg, type='Berhasil menyiapkan SPK'){
+function notify(msg, type='success'){
 	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
 	if (typeof showNotification==='function') return showNotification(msg, type);
 	alert(msg);
 }
+
 document.addEventListener('DOMContentLoaded', () => {
 	const tbody = document.querySelector('#spkTable tbody');
+	
 	const load = () => fetch('<?= base_url('service/spk/list') ?>').then(r=>r.json()).then(j=>{
+		allSPKData = j.data || [];
+		updateStatistics();
+		applyFilters();
+	});
+	
+	function updateStatistics() {
+		const total = allSPKData.length;
+		const submitted = allSPKData.filter(item => (item.status || '').toUpperCase() === 'SUBMITTED').length;
+		const inProgress = allSPKData.filter(item => (item.status || '').toUpperCase() === 'IN_PROGRESS').length;
+		const ready = allSPKData.filter(item => (item.status || '').toUpperCase() === 'READY').length;
+		const completed = allSPKData.filter(item => (item.status || '').toUpperCase() === 'COMPLETED' || (item.status || '').toUpperCase() === 'DELIVERED').length;
+		const cancelled = allSPKData.filter(item => (item.status || '').toUpperCase() === 'CANCELLED').length;
+		
+		document.getElementById('totalSPK').textContent = total;
+		document.getElementById('submittedSPK').textContent = submitted;
+		document.getElementById('inProgressSPK').textContent = inProgress;
+		document.getElementById('readySPK').textContent = ready;
+		document.getElementById('completedSPK').textContent = completed;
+		document.getElementById('cancelledSPK').textContent = cancelled;
+	}
+	
+	function applyFilters() {
+		const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+		
+		// Filter by status
+		let filtered = currentFilter === 'all' ? [...allSPKData] : 
+					   currentFilter === 'COMPLETED' ? 
+					   allSPKData.filter(item => ['COMPLETED', 'DELIVERED'].includes((item.status || '').toUpperCase())) :
+					   allSPKData.filter(item => (item.status || '').toUpperCase() === currentFilter);
+		
+		// Filter by search term
+		if (searchTerm) {
+			filtered = filtered.filter(item => {
+				return (item.nomor_spk || '').toLowerCase().includes(searchTerm) ||
+					   (item.pelanggan || '').toLowerCase().includes(searchTerm) ||
+					   (item.pic || '').toLowerCase().includes(searchTerm) ||
+					   (item.kontak || '').toLowerCase().includes(searchTerm) ||
+					   (item.lokasi || '').toLowerCase().includes(searchTerm);
+			});
+		}
+		
+		filteredSPKData = filtered;
+		currentPage = 1; // Reset to first page
+		renderSPKTable();
+		updatePagination();
+	}
+	
+	function renderSPKTable() {
+		const startIndex = (currentPage - 1) * entriesPerPage;
+		const endIndex = startIndex + entriesPerPage;
+		const dataToShow = filteredSPKData.slice(startIndex, endIndex);
+		
 		tbody.innerHTML = '';
-		(j.data||[]).forEach(r=>{
+		dataToShow.forEach(r=>{
 			const tr = document.createElement('tr');
 			const badge = (s)=>{ const m={SUBMITTED:'secondary',IN_PROGRESS:'info',READY:'success',DELIVERED:'primary',COMPLETED:'primary',CANCELLED:'danger'}; const c=m[(s||'').toUpperCase()]||'secondary'; return `<span class="badge bg-${c}">${s}</span>`; };
 			
@@ -222,8 +325,81 @@ document.addEventListener('DOMContentLoaded', () => {
 				<td>${actionBtn}</td>`;
 			tbody.appendChild(tr);
 		});
+		
+		// Update table info
+		const totalEntries = filteredSPKData.length;
+		const start = totalEntries === 0 ? 0 : ((currentPage - 1) * entriesPerPage) + 1;
+		const end = Math.min(currentPage * entriesPerPage, totalEntries);
+		document.getElementById('tableInfo').textContent = 
+			`Showing ${start} to ${end} of ${totalEntries} entries`;
+	}
+	
+	function updatePagination() {
+		const totalPages = Math.ceil(filteredSPKData.length / entriesPerPage);
+		const pagination = document.getElementById('pagination');
+		pagination.innerHTML = '';
+		
+		// Previous button
+		const prevLi = document.createElement('li');
+		prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+		prevLi.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + (currentPage - 1) + ')">Previous</a>';
+		pagination.appendChild(prevLi);
+		
+		// Page numbers
+		for (let i = 1; i <= totalPages; i++) {
+			const li = document.createElement('li');
+			li.className = `page-item ${currentPage === i ? 'active' : ''}`;
+			li.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + i + ')">' + i + '</a>';
+			pagination.appendChild(li);
+		}
+		
+		// Next button
+		const nextLi = document.createElement('li');
+		nextLi.className = `page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`;
+		nextLi.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + (currentPage + 1) + ')">Next</a>';
+		pagination.appendChild(nextLi);
+	}
+	
+	window.changePage = function(page) {
+		const totalPages = Math.ceil(filteredSPKData.length / entriesPerPage);
+		if (page >= 1 && page <= totalPages) {
+			currentPage = page;
+			renderSPKTable();
+			updatePagination();
+		}
+	}
+	
+	// Event listeners
+	document.getElementById('entriesPerPage').addEventListener('change', function() {
+		entriesPerPage = parseInt(this.value);
+		currentPage = 1;
+		renderSPKTable();
+		updatePagination();
 	});
+	
+	document.getElementById('searchInput').addEventListener('input', function() {
+		applyFilters();
+	});
+	
+	// Filter card click listeners
+	document.querySelectorAll('.filter-card[data-filter]').forEach(card => {
+		card.addEventListener('click', function() {
+			const filter = this.dataset.filter;
+			currentFilter = filter;
+			
+			// Update active card
+			document.querySelectorAll('.filter-card[data-filter]').forEach(c => c.classList.remove('active'));
+			this.classList.add('active');
+			
+			applyFilters();
+		});
+	});
+	
+	// Set default active filter
+	document.querySelector('[data-filter="all"]').classList.add('active');
+	
 	load();
+	
 	window.confirmReady = (id) => {
 		fetch(`<?= base_url('service/spk/confirm-ready/') ?>${id}`, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}})
 		 .then(r=>r.json()).then(()=>load());

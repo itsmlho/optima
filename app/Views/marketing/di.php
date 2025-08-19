@@ -1,33 +1,63 @@
 <?= $this->extend('layouts/base') ?>
 <?= $this->section('content') ?>
+
 <div class="container-fluid py-3">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h5 class="mb-0">Delivery Instructions (Marketing)</h5>
-    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#diCreateModal">Buat DI</button>
+<style>
+.filter-card { 
+    cursor: pointer; 
+    transition: all 0.3s ease; 
+}
+.filter-card.active { 
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
+    border: 2px solid #fff; 
+}
+.filter-card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
+}
+</style>
+
+  <!-- Statistics Cards -->
+  <div class="row g-4 mb-4">
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="totalDI">0</h2><h6 class="card-title text-uppercase small">Total DI</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-secondary text-white h-100 filter-card" data-filter="DIAJUKAN" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="diajukanDI">0</h2><h6 class="card-title text-uppercase small">Diajukan</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="DIPROSES" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="diprosesDI">0</h2><h6 class="card-title text-uppercase small">Diproses</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="DIKIRIM" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="dikirimDI">0</h2><h6 class="card-title text-uppercase small">Dikirim</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="SAMPAI" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="sampaiDI">0</h2><h6 class="card-title text-uppercase small">Sampai</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-danger text-white h-100 filter-card" data-filter="DIBATALKAN" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="dibatalkanDI">0</h2><h6 class="card-title text-uppercase small">Dibatalkan</h6></div></div></div>
   </div>
 
-  <div class="card">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-sm mb-0" id="diTable">
-          <thead>
-            <tr>
-              <th>No. DI</th>
-              <th>No. SPK</th>
-              <th>PO/Kontrak</th>
-              <th>Nama Perusahaan</th>
-              <th>PIC</th>
-              <th>Kontak</th>
-              <th>Lokasi</th>
-              <th>Tanggal Kirim</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+  <!-- Tabel Daftar DI -->
+  <div class="card table-card">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+      <h5 class="h5 mb-0 text-gray-800">Daftar Delivery Instructions (DI)</h5>
+      <button class="btn btn-sm btn-primary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#diCreateModal">
+        <span class="fw-semibold">+ Buat DI</span>
+      </button>
+    </div>
+    <div class="card-body">
+      <table id="diTable" class="table table-striped table-hover" style="width:100%">
+        <thead>
+          <tr>
+            <th>No. DI</th>
+            <th>No. SPK</th>
+            <th>PO/Kontrak</th>
+            <th>Nama Perusahaan</th>
+            <th>PIC</th>
+            <th>Kontak</th>
+            <th>Lokasi</th>
+            <th>Tanggal Kirim</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Data akan dimuat oleh DataTables melalui AJAX -->
+        </tbody>
+      </table>
     </div>
   </div>
+</div>
 
 
   <!-- Create DI Modal (from READY SPK) -->
@@ -55,29 +85,112 @@
   </div>
 </div>
 <script>
+let currentStatusFilter = 'all';
+
 document.addEventListener('DOMContentLoaded', ()=>{
-  const tb = document.querySelector('#diTable tbody');
-  function loadDI(){
-    fetch('<?= base_url('marketing/di/list') ?>').then(r=>r.json()).then(j=>{
-      tb.innerHTML = '';
-      (j.data||[]).forEach(r=>{
-        const tr = document.createElement('tr');
-        const badge = (s)=>{ const m={SUBMITTED:'secondary',DISPATCHED:'info',ARRIVED:'success',CANCELLED:'danger'}; const c=m[(s||'').toUpperCase()]||'secondary'; return `<span class="badge bg-${c}">${s}</span>`; };
-        tr.innerHTML = `
-          <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
-          <td>${r.spk_id || '-'}</td>
-          <td>${r.po_kontrak_nomor||'-'}</td>
-          <td>${r.pelanggan||'-'}</td>
-          <td>${r.spk_pic||'-'}</td>
-          <td>${r.spk_kontak||'-'}</td>
-          <td>${r.lokasi||'-'}</td>
-          <td>${r.tanggal_kirim||'-'}</td>
-          <td>${badge(r.status)}</td>`;
-        tb.appendChild(tr);
-      });
-    });
+  // Store filtered data globally for filter functionality
+  let allData = [];
+  let filteredData = [];
+
+  // Initialize DataTable
+  const table = $('#diTable').DataTable({
+    processing: true,
+    serverSide: false,
+    ajax: {
+      url: '<?= base_url('marketing/di/list') ?>',
+      type: 'GET',
+      dataSrc: function(json) {
+        allData = json.data || [];
+        updateStatistics(allData);
+        applyCurrentFilter();
+        return filteredData;
+      }
+    },
+    columns: [
+      { data: 'nomor_di', render: function(data, type, row) {
+        return `<a href="#" onclick="openDiDetail(${row.id});return false;">${data}</a>`;
+      }},
+      { data: 'spk_id', defaultContent: '-' },
+      { data: 'po_kontrak_nomor', defaultContent: '-' },
+      { data: 'pelanggan', defaultContent: '-' },
+      { data: 'spk_pic', defaultContent: '-' },
+      { data: 'spk_kontak', defaultContent: '-' },
+      { data: 'lokasi', defaultContent: '-' },
+      { data: 'tanggal_kirim', defaultContent: '-' },
+      { data: 'status', render: function(data, type, row) {
+        const statusMap = {
+          'DIAJUKAN': { class: 'secondary', text: 'Diajukan' },
+          'DIPROSES': { class: 'warning', text: 'Diproses' },
+          'DIKIRIM': { class: 'info', text: 'Dikirim' },
+          'SAMPAI': { class: 'success', text: 'Sampai' },
+          'DIBATALKAN': { class: 'danger', text: 'Dibatalkan' }
+        };
+        const status = statusMap[data?.toUpperCase()] || { class: 'secondary', text: 'Diajukan' };
+        return `<span class="badge bg-${status.class}">${status.text}</span>`;
+      }}
+    ],
+    order: [[0, 'desc']],
+    language: {
+      processing: "Memuat...",
+      search: "Cari:",
+      lengthMenu: "Tampilkan _MENU_ entri",
+      info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ entri",
+      infoEmpty: "Menampilkan 0 sampai 0 dari 0 entri",
+      infoFiltered: "(disaring dari _MAX_ entri keseluruhan)",
+      paginate: {
+        first: "Pertama",
+        last: "Terakhir", 
+        next: "Selanjutnya",
+        previous: "Sebelumnya"
+      }
+    }
+  });
+
+  function updateStatistics(data) {
+    const total = data.length;
+    const diajukan = data.filter(item => !item.status || item.status.toUpperCase() === 'DIAJUKAN').length;
+    const diproses = data.filter(item => item.status?.toUpperCase() === 'DIPROSES').length;
+    const dikirim = data.filter(item => item.status?.toUpperCase() === 'DIKIRIM').length;
+    const sampai = data.filter(item => item.status?.toUpperCase() === 'SAMPAI').length;
+    const dibatalkan = data.filter(item => item.status?.toUpperCase() === 'DIBATALKAN').length;
+    
+    document.getElementById('totalDI').textContent = total;
+    document.getElementById('diajukanDI').textContent = diajukan;
+    document.getElementById('diprosesDI').textContent = diproses;
+    document.getElementById('dikirimDI').textContent = dikirim;
+    document.getElementById('sampaiDI').textContent = sampai;
+    document.getElementById('dibatalkanDI').textContent = dibatalkan;
   }
-  loadDI();
+
+  function applyCurrentFilter() {
+    if (currentStatusFilter === 'all') {
+      filteredData = [...allData];
+    } else {
+      filteredData = allData.filter(item => {
+        const status = item.status?.toUpperCase() || 'DIAJUKAN';
+        return status === currentStatusFilter;
+      });
+    }
+  }
+
+  // Filter cards click handlers
+  document.querySelectorAll('.filter-card[data-filter]').forEach(card => {
+    card.addEventListener('click', function() {
+      const filter = this.dataset.filter;
+      currentStatusFilter = filter;
+      
+      // Update active card
+      document.querySelectorAll('.filter-card[data-filter]').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      
+      // Apply filter and refresh table
+      applyCurrentFilter();
+      table.clear().rows.add(filteredData).draw();
+    });
+  });
+
+  // Set default active filter
+  document.querySelector('[data-filter="all"]').classList.add('active');
 
   window.openDiDetail = (id) => {
     const modal = new bootstrap.Modal(document.getElementById('diDetailModal'));
@@ -125,7 +238,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (j && j.success){
           bootstrap.Modal.getInstance(document.getElementById('diCreateModal')).hide();
           e.target.reset();
-          loadDI();
+          table.ajax.reload(); // Reload DataTable instead of custom loadDI
           if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI dibuat: ' + (j.nomor||''), 'success');
           else if (typeof showNotification==='function') showNotification('DI dibuat: ' + (j.nomor||''), 'success');
           else alert('DI dibuat: ' + (j.nomor||''));

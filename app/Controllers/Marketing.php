@@ -136,6 +136,12 @@ class Marketing extends Controller
             'title' => 'Surat Perintah Kerja (SPK)'
         ]);
     }
+    public function di()
+    {
+        return view('marketing/di', [
+            'title' => 'Delivery Instructions (DI)'
+        ]);
+    }
 
     // Generate/download SPK PDF (server-rendered HTML -> Dompdf)
     public function spkPdf($id)
@@ -424,12 +430,6 @@ class Marketing extends Controller
     }
 
 
-
-    // DI page
-    public function di()
-    {
-        return view('marketing/di');
-    }
 
     // --- SPK Minimal APIs for integrated workflow ---
     public function spkList()
@@ -1002,6 +1002,25 @@ class Marketing extends Controller
             $builder = $this->db->table('kontrak k');
             $countBuilder = $this->db->table('kontrak k');
 
+            // Status filter functionality
+            $statusFilter = trim($this->request->getPost('statusFilter') ?? 'all');
+            if ($statusFilter !== 'all') {
+                if ($statusFilter === 'expiring') {
+                    // Expiring contracts (Aktif status and expiring within 30 days)
+                    $expiringDate = date('Y-m-d', strtotime('+30 days'));
+                    $builder->where('k.status', 'Aktif')
+                           ->where('k.tanggal_berakhir <=', $expiringDate)
+                           ->where('k.tanggal_berakhir >=', date('Y-m-d'));
+                    $countBuilder->where('k.status', 'Aktif')
+                                ->where('k.tanggal_berakhir <=', $expiringDate)
+                                ->where('k.tanggal_berakhir >=', date('Y-m-d'));
+                } else {
+                    // Standard status filter
+                    $builder->where('k.status', $statusFilter);
+                    $countBuilder->where('k.status', $statusFilter);
+                }
+            }
+
             // Search functionality
             if ($searchValue !== '') {
                 $builder->groupStart()
@@ -1065,7 +1084,9 @@ class Marketing extends Controller
                 }
 
                 $data[] = [
+                    'id' => $row['id'],
                     'contract_number' => esc($row['no_kontrak']),
+                    'po' => esc($row['no_po_marketing'] ?? ''),
                     'client_name' => esc($row['pelanggan']),
                     'period' => $period,
                     'value' => 'Rp ' . number_format(0, 0, ',', '.'), // Placeholder (no column yet)

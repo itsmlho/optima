@@ -165,13 +165,14 @@ $routes->group('marketing',  static function ($routes) {
 
     // KONTRAK CRUD
     $routes->group('kontrak', static function ($routes) {
-        $routes->get('/', 'Marketing::kontrak'); 
-        $routes->post('getDataTable', 'Marketing::getDataTable');
-        $routes->post('store', 'Marketing::storeKontrak');
-        $routes->get('edit/(:num)', 'Marketing::editKontrak/$1');
-        $routes->post('update/(:num)', 'Marketing::updateKontrak/$1');
-        $routes->post('delete/(:num)', 'Marketing::deleteKontrak/$1');
-        $routes->get('detail/(:num)', 'Marketing::detailKontrak/$1');
+        $routes->get('/', 'Kontrak::index'); 
+        $routes->post('getDataTable', 'Kontrak::getDataTable');
+        $routes->post('store', 'Kontrak::store');
+        $routes->get('edit/(:num)', 'Kontrak::edit/$1');
+        $routes->post('update/(:num)', 'Kontrak::update/$1');
+        $routes->post('delete/(:num)', 'Kontrak::delete/$1');
+        $routes->get('detail/(:num)', 'Kontrak::detail/$1');
+        $routes->get('units/(:num)', 'Kontrak::getContractUnits/$1');
     });
     // SPK Marketing
     $routes->get('spk', 'Marketing::spk');

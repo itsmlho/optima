@@ -24,6 +24,7 @@ class InventoryUnitModel extends Model
         'departemen_id',
         'tanggal_kirim',
         'keterangan',
+        'kontrak_id',  // Foreign key ke tabel kontrak
         'tipe_unit_id',
         'model_unit_id',
         'kapasitas_unit_id',

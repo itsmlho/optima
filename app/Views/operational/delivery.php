@@ -1,61 +1,124 @@
 <?= $this->extend('layouts/base') ?>
 <?= $this->section('content') ?>
+
 <div class="container-fluid py-3">
-  <h5 class="mb-3">Delivery Instructions</h5>
-  <div class="card">
-    <div class="card-body p-0">
-      <div class="table-responsive">
-        <table class="table table-sm mb-0" id="diTable">
-          <thead>
-            <tr>
-              <th>No. DI</th>
-              <th>PO/Kontrak</th>
-              <th>Pelanggan</th>
-              <th>Lokasi</th>
-              <th>Item</th>
-              <th>Tanggal Kirim</th>
-              <th>Status</th>
-              <th>Aksi</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-      </div>
+<style>
+.filter-card { 
+    cursor: pointer; 
+    transition: all 0.3s ease; 
+}
+.filter-card.active { 
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
+    border: 2px solid #fff; 
+}
+.filter-card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
+}
+</style>
+
+  <!-- Statistics Cards -->
+  <div class="row g-4 mb-4">
+  <div class="col-xl-2 col-md-4"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="totalDI">0</h2><h6 class="card-title text-uppercase small">Total DI</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-secondary text-white h-100 filter-card" data-filter="DIAJUKAN" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="diajukanDI">0</h2><h6 class="card-title text-uppercase small">Diajukan</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="DIPROSES" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="diprosesDI">0</h2><h6 class="card-title text-uppercase small">Diproses</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="DIKIRIM" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="dikirimDI">0</h2><h6 class="card-title text-uppercase small">Dikirim</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="SAMPAI" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="sampaiDI">0</h2><h6 class="card-title text-uppercase small">Sampai</h6></div></div></div>
+    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-danger text-white h-100 filter-card" data-filter="DIBATALKAN" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="dibatalkanDI">0</h2><h6 class="card-title text-uppercase small">Dibatalkan</h6></div></div></div>
+  </div>
+
+  <!-- Tabel Delivery -->
+  <div class="card table-card">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+      <h5 class="h5 mb-0 text-gray-800">Daftar Delivery Instructions</h5>
+    </div>
+    <div class="card-body">
+      <table id="diTable" class="table table-striped table-hover" style="width:100%">
+        <thead>
+          <tr>
+            <th>No. DI</th>
+            <th>PO/Kontrak</th>
+            <th>Pelanggan</th>
+            <th>Lokasi</th>
+            <th>Item</th>
+            <th>Tanggal Kirim</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
     </div>
   </div>
 </div>
+
 <script>
+let currentStatusFilter = 'all';
+
 // Global variables for approval workflow
 let currentApprovalStage = '';
 let currentDiId = null;
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  const tb = document.querySelector('#diTable tbody');
-  function load(){
-    fetch('<?= base_url('operational/delivery/list') ?>').then(r=>r.json()).then(j=>{
-      tb.innerHTML = '';
-      (j.data||[]).forEach(r=>{
-        const tr = document.createElement('tr');
-        const badge = (s)=>{ const m={DIAJUKAN:'secondary',DIPROSES:'info',DIKIRIM:'warning',SAMPAI:'success',DIBATALKAN:'danger'}; const c=m[(s||'').toUpperCase()]||'secondary'; return `<span class="badge bg-${c}">${s}</span>`; };
+  // Store filtered data globally for filter functionality
+  let allData = [];
+  let filteredData = [];
+
+  // Initialize DataTable
+  const table = $('#diTable').DataTable({
+    processing: true,
+    serverSide: false,
+    ajax: {
+      url: '<?= base_url('operational/delivery/list') ?>',
+      type: 'GET',
+      dataSrc: function(json) {
+        allData = json.data || [];
+        updateStatistics(allData);
+        applyCurrentFilter();
+        return filteredData;
+      }
+    },
+    columns: [
+      { data: 'nomor_di', render: function(data, type, row) {
+        return `<a href="#" onclick="openDiDetail(${row.id});return false;">${data}</a>`;
+      }},
+      { data: 'po_kontrak_nomor', defaultContent: '-' },
+      { data: 'pelanggan', defaultContent: '-' },
+      { data: 'lokasi', defaultContent: '-' },
+      { data: 'items_label', defaultContent: '-' },
+      { data: 'tanggal_kirim', defaultContent: '-' },
+      { data: 'status', render: function(data, type, row) {
+        const statusMap = {
+          'DIAJUKAN': { class: 'secondary', text: 'Diajukan' },
+          'DIPROSES': { class: 'warning', text: 'Diproses' },
+          'DIKIRIM': { class: 'info', text: 'Dikirim' },
+          'SAMPAI': { class: 'success', text: 'Sampai' },
+          'DIBATALKAN': { class: 'danger', text: 'Dibatalkan' }
+        };
+        const status = statusMap[data?.toUpperCase()] || { class: 'secondary', text: 'Diajukan' };
+        return `<span class="badge bg-${status.class}">${status.text}</span>`;
+      }},
+      { data: null, render: function(data, type, row) {
         // Conditional action button based on status - approval workflow style
         let aksiBtn = '';
-        if (!r.status || r.status === 'DIAJUKAN') {
+        if (!row.status || row.status === 'DIAJUKAN') {
           aksiBtn = '<span class="text-muted">Menunggu diproses</span>';
-        } else if (r.status === 'DIPROSES') {
+        } else if (row.status === 'DIPROSES') {
           // Show approval stage buttons directly in table
-          const perencanaanDone = r.perencanaan_tanggal_approve ? true : false;
-          const berangkatDone = r.berangkat_tanggal_approve ? true : false;
-          const sampaiDone = r.sampai_tanggal_approve ? true : false;
+          const perencanaanDone = row.perencanaan_tanggal_approve ? true : false;
+          const berangkatDone = row.berangkat_tanggal_approve ? true : false;
+          const sampaiDone = row.sampai_tanggal_approve ? true : false;
           
           let approvalButtons = [];
           
           // Add active button for current stage
           if (!perencanaanDone) {
-            approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Perencanaan Pengiriman', ${r.id})">Perencanaan</button>`);
+            approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Perencanaan Pengiriman', ${row.id})">Perencanaan</button>`);
           } else if (!berangkatDone) {
-            approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('berangkat', 'Berangkat', ${r.id})">Berangkat</button>`);
+            approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('berangkat', 'Berangkat', ${row.id})">Berangkat</button>`);
           } else if (!sampaiDone) {
-            approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('sampai', 'Sampai', ${r.id})">Sampai</button>`);
+            approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('sampai', 'Sampai', ${row.id})">Sampai</button>`);
           } else {
             // All approvals done - should be ARRIVED status already
             approvalButtons.push('<span class="text-info">Menunggu update status ke ARRIVED</span>');
@@ -68,24 +131,79 @@ document.addEventListener('DOMContentLoaded', ()=>{
           if (sampaiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Sampai</small>');
           
           aksiBtn = approvalButtons.join(' ') + (completedBadges.length > 0 ? '<br>' + completedBadges.join('') : '');
-        } else if (r.status === 'SAMPAI') {
+        } else if (row.status === 'SAMPAI') {
           aksiBtn = '<span class="text-success">Completed</span>';
         } else {
           aksiBtn = '<span class="text-muted">-</span>';
         }
-        tr.innerHTML = `
-          <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
-          <td>${r.po_kontrak_nomor||'-'}</td>
-          <td>${r.pelanggan||'-'}</td>
-          <td>${r.lokasi||'-'}</td>
-          <td>${r.items_label||'-'}</td>
-          <td>${r.tanggal_kirim||'-'}</td>
-          <td>${badge(r.status)}</td>
-          <td>${aksiBtn}</td>`;
+        
+        return aksiBtn;
+      }}
+    ],
+    order: [[0, 'desc']],
+    language: {
+      processing: "Memuat...",
+      search: "Cari:",
+      lengthMenu: "Tampilkan _MENU_ entri",
+      info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ entri",
+      infoEmpty: "Menampilkan 0 sampai 0 dari 0 entri",
+      infoFiltered: "(disaring dari _MAX_ entri keseluruhan)",
+      paginate: {
+        first: "Pertama",
+        last: "Terakhir", 
+        next: "Selanjutnya",
+        previous: "Sebelumnya"
+      }
+    }
+  });
 
-        tb.appendChild(tr);
+  function updateStatistics(data) {
+    const total = data.length;
+    const diajukan = data.filter(item => !item.status || item.status.toUpperCase() === 'DIAJUKAN').length;
+    const diproses = data.filter(item => item.status?.toUpperCase() === 'DIPROSES').length;
+    const dikirim = data.filter(item => item.status?.toUpperCase() === 'DIKIRIM').length;
+    const sampai = data.filter(item => item.status?.toUpperCase() === 'SAMPAI').length;
+    const dibatalkan = data.filter(item => item.status?.toUpperCase() === 'DIBATALKAN').length;
+    
+    document.getElementById('totalDI').textContent = total;
+    document.getElementById('diajukanDI').textContent = diajukan;
+    document.getElementById('diprosesDI').textContent = diproses;
+    document.getElementById('dikirimDI').textContent = dikirim;
+    document.getElementById('sampaiDI').textContent = sampai;
+    document.getElementById('dibatalkanDI').textContent = dibatalkan;
+  }
+
+  function applyCurrentFilter() {
+    if (currentStatusFilter === 'all') {
+      filteredData = [...allData];
+    } else {
+      filteredData = allData.filter(item => {
+        const status = item.status?.toUpperCase() || 'DIAJUKAN';
+        return status === currentStatusFilter;
+      });
+    }
+  }
+
+  // Filter cards click handlers
+  document.querySelectorAll('.filter-card[data-filter]').forEach(card => {
+    card.addEventListener('click', function() {
+      const filter = this.dataset.filter;
+      currentStatusFilter = filter;
+      
+      // Update active card
+      document.querySelectorAll('.filter-card[data-filter]').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      
+      // Apply filter and refresh table
+      applyCurrentFilter();
+      table.clear().rows.add(filteredData).draw();
+    });
+  });
+
+  // Set default active filter
+  document.querySelector('[data-filter="all"]').classList.add('active');
+
   // Approval Stage Modal Functions (similar to SPK workflow)
-  
   window.openApprovalModal = (stage, stageTitle, diId) => {
     currentApprovalStage = stage;
     currentDiId = diId;
@@ -217,10 +335,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       container.innerHTML = '';
     }
   }
-      });
-    });
-  }
-  
+
   // Add form submission handler for approval stage
   document.getElementById('approvalStageForm').addEventListener('submit', function(e){
     e.preventDefault();
@@ -251,7 +366,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (j && j.success) {
         bootstrap.Modal.getInstance(document.getElementById('approvalStageModal')).hide();
         // Reload table to update buttons
-        load();
+        table.ajax.reload(null, false);
         notify(j.message || 'Approval berhasil disimpan', 'success');
       } else {
         notify(j.message || 'Gagal menyimpan approval', 'error');
@@ -261,14 +376,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       notify('Terjadi kesalahan pada sistem: ' + error.message, 'error');
     });
   });
-  
-  // Unified notifier (fallbacks)
-  window.notify = function(msg, type='success'){
-    if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
-    if (typeof showNotification==='function') return showNotification(msg, type);
-    alert(msg);
-  }
-  
+
   window.openDiDetail = (id) => {
     currentDiId = id;
     const modal = new bootstrap.Modal(document.getElementById('diDetailModal'));
@@ -297,11 +405,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
         
         // Add buttons for incomplete stages
         if (!perencanaanDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'perencanaan\', \'Perencanaan Pengiriman\')">Perencanaan</button>');
+          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'perencanaan\', \'Perencanaan Pengiriman\', '+d.id+')">Perencanaan</button>');
         } else if (!berangkatDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'berangkat\', \'Berangkat\')">Berangkat</button>');
+          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'berangkat\', \'Berangkat\', '+d.id+')">Berangkat</button>');
         } else if (!sampaiDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'sampai\', \'Sampai\')">Sampai</button>');
+          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'sampai\', \'Sampai\', '+d.id+')">Sampai</button>');
         }
         
         // Show completed stages with checkmarks
@@ -379,7 +487,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
             <li class="list-group-item">
               <strong>Berangkat</strong><br>
               <div class="row g-2">
-                <div class="col-md-6">Tanggal Kirim: ${d.perencanaan_tanggal_approve||'-'}</div>
+                <div class="col-md-6">Tanggal Kirim: ${d.tanggal_kirim || d.berangkat_tanggal_approve || '-'}</div>
                 <div class="col-md-6">Estimasi Sampai: ${d.estimasi_sampai||'-'}</div>
                 <div class="col-md-6">Nama Supir: ${d.nama_supir||'-'}</div>
                 <div class="col-md-6">No HP Supir: ${d.no_hp_supir||'-'}</div>
@@ -415,7 +523,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               if (result && result.success) {
                 notify('DI berhasil diproses. Status menjadi DIPROSES.', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('diDetailModal')).hide();
-                load(); // Reload table
+                table.ajax.reload(null, false); // Reload table
               } else {
                 notify(result.message || 'Gagal memproses DI', 'error');
               }
@@ -426,14 +534,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
       modal.show();
     });
   }
+
+  // Unified notifier (fallbacks)
+  window.notify = function(msg, type='success'){
+    if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
+    if (typeof showNotification==='function') return showNotification(msg, type);
+    alert(msg);
+  }
   
   window.upd = (id, st) => {
     const fd = new FormData(); fd.append('status', st);
     fetch('<?= base_url('operational/delivery/update-status/') ?>'+id, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
-      .then(r=>r.json()).then(()=>load());
+      .then(r=>r.json()).then(()=>table.ajax.reload(null, false));
   }
-  
-  load();
 });
 </script>
 <!-- Approval Stage Modal -->
