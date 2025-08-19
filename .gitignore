@@ -1,0 +1,5 @@
+# .gitignore
+writable/*
+!writable/index.html
+!writable/.htaccess
+app/Config/Database.php

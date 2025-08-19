@@ -1,0 +1,134 @@
+# # Disable directory browsing
+# Options -Indexes
+
+# # ----------------------------------------------------------------------
+# # Rewrite engine
+# # ----------------------------------------------------------------------
+
+# # Turning on the rewrite engine is necessary for the following rules and features.
+# # FollowSymLinks must be enabled for this to work.
+# <IfModule mod_rewrite.c>
+# 	Options +FollowSymlinks
+# 	RewriteEngine On
+
+# 	# If you installed CodeIgniter in a subfolder, you will need to
+# 	# change the following line to match the subfolder you need.
+# 	# http://httpd.apache.org/docs/current/mod/mod_rewrite.html#rewritebase
+# 	# RewriteBase /
+
+# 	# Redirect Trailing Slashes...
+# 	RewriteCond %{REQUEST_FILENAME} !-d
+# 	RewriteCond %{REQUEST_URI} (.+)/$
+# 	RewriteRule ^ %1 [L,R=301]
+
+# 	# Rewrite "www.example.com -> example.com"
+# 	RewriteCond %{HTTPS} !=on
+# 	RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+# 	RewriteRule ^ http://%1%{REQUEST_URI} [R=301,L]
+
+# 	# Checks to see if the user is attempting to access a valid file,
+# 	# such as an image or css document, if this isn't true it sends the
+# 	# request to the front controller, index.php
+# 	RewriteCond %{REQUEST_FILENAME} !-f
+# 	RewriteCond %{REQUEST_FILENAME} !-d
+# 	RewriteRule ^([\s\S]*)$ index.php/$1 [L,NC,QSA]
+
+# 	# Ensure Authorization header is passed along
+# 	RewriteCond %{HTTP:Authorization} .
+# 	RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+# </IfModule>
+
+# <IfModule !mod_rewrite.c>
+# 	# If we don't have mod_rewrite installed, all 404's
+# 	# can be sent to index.php, and everything works as normal.
+# 	ErrorDocument 404 index.php
+# </IfModule>
+
+# # Disable server signature start
+# ServerSignature Off
+# # Disable server signature end
+# File: public/.htaccess
+
+# Protect application and system files from being viewed
+RewriteEngine On
+RewriteRule ^(app|system|tests)($|/) - [F]
+
+# Allow any files or directories that exist to be displayed directly
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Rewrite all other URLs to index.php/URL
+RewriteRule ^(.*)$ index.php/$1 [L]
+
+# CodeIgniter 4 & Bootstrap Pro Optimizations
+RewriteEngine On
+
+# Handle Angular/Vue.js History API fallback
+# RewriteCond %{REQUEST_FILENAME} !-f
+# RewriteCond %{REQUEST_FILENAME} !-d
+# RewriteRule ^(.*)$ index.php/$1 [L]
+
+# Those redirects are for when you access app without index.php in the URL
+RewriteCond %{HTTP:X-Forwarded-Proto} !https
+RewriteCond %{HTTPS} off
+RewriteCond %{HTTP_HOST} ^localhost$ [NC]
+RewriteRule .* - [E=proto:http]
+
+RewriteCond %{HTTP:X-Forwarded-Proto} =https [OR]
+RewriteCond %{HTTPS} on
+RewriteCond %{HTTP_HOST} ^localhost$ [NC]
+RewriteRule .* - [E=proto:https]
+
+# Removes access to CodeIgniter system folder by users.
+# Additionally this will allow you to create a System.php controller,
+# previously this would not have been possible.
+# 'system' can be replaced if you have renamed your system folder.
+RewriteCond %{REQUEST_URI} ^/system.*
+RewriteRule ^(.*)$ index.php/$1 [L]
+
+# Ensures that users can only access the system folder by users.
+# If you want any single file to be accessible you can uncomment line below.
+# This could be to allow robots.txt for example
+#RewriteCond %{REQUEST_URI} ^/(robots\.txt|favicon\.ico|sitemap\.xml)$
+#RewriteRule ^(.*)$ - [L]
+
+# Checks to see if the user is attempting to access a valid file,
+# such as an image or css document, if this isn't true it sends the
+# request to the boot strap file, index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.+)$ index.php/$1 [L]
+
+# Ensure Authorization header is passed along
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+# ===============================================
+# BOOTSTRAP PRO OPTIMIZATIONS
+# ===============================================
+
+# Enable compression for CSS/JS files
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE text/javascript
+</IfModule>
+
+# Set cache headers for static assets
+<IfModule mod_expires.c>
+    ExpiresActive on
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/javascript "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpg "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+    ExpiresByType image/gif "access plus 1 month"
+    ExpiresByType image/svg+xml "access plus 1 month"
+</IfModule>
+
+# Add proper MIME types
+<IfModule mod_mime.c>
+    AddType text/css .css
+    AddType application/javascript .js
+</IfModule>

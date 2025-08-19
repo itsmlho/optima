@@ -1,0 +1,1606 @@
+/*!
+ * OPTIMA Bootstrap Pro v1.0.0
+ * Professional Admin Dashboard for PT Sarana Mitra Luas Tbk
+ * Copyright 2024 PT Sarana Mitra Luas Tbk
+ * Based on Bootstrap Pro design principles
+ */
+
+/* ==============================
+   CSS Custom Properties
+   ============================== */
+:root {
+    /* Primary Colors - Professional Blue Theme */
+    --bs-primary: #0061f2;
+    --bs-primary-rgb: 0, 97, 242;
+    --bs-primary-100: #cce5ff;
+    --bs-primary-200: #99cbff;
+    --bs-primary-300: #66b2ff;
+    --bs-primary-400: #3398ff;
+    --bs-primary-500: #0061f2;
+    --bs-primary-600: #0056d6;
+    --bs-primary-700: #004bb3;
+    --bs-primary-800: #003f8f;
+    --bs-primary-900: #00346b;
+
+    /* Secondary Colors */
+    --bs-secondary: #69707a;
+    --bs-secondary-rgb: 105, 112, 122;
+    --bs-success: #00ac69;
+    --bs-success-rgb: 0, 172, 105;
+    --bs-warning: #ffb607;
+    --bs-warning-rgb: 255, 182, 7;
+    --bs-danger: #e81500;
+    --bs-danger-rgb: 232, 21, 0;
+    --bs-info: #39afd1;
+    --bs-info-rgb: 57, 175, 209;
+
+    /* Neutral Colors */
+    --bs-gray-100: #f8f9fa;
+    --bs-gray-200: #e9ecef;
+    --bs-gray-300: #dee2e6;
+    --bs-gray-400: #ced4da;
+    --bs-gray-500: #adb5bd;
+    --bs-gray-600: #6c757d;
+    --bs-gray-700: #495057;
+    --bs-gray-800: #343a40;
+    --bs-gray-900: #212529;
+
+    /* Brand Colors for PT Sarana Mitra Luas */
+    --optima-blue: #0061f2;
+    --optima-blue-light: #4d8cff;
+    --optima-blue-dark: #0048b8;
+    --optima-orange: #ff8c00;
+    --optima-orange-light: #ffb347;
+    --optima-green: #00ac69;
+    --optima-red: #e81500;
+
+    /* Typography */
+    --bs-font-sans-serif: "Metropolis", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --bs-font-monospace: "Roboto Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    --bs-font-size-base: 0.9375rem;
+    --bs-font-size-lg: 1.125rem;
+    --bs-font-size-sm: 0.875rem;
+    --bs-font-size-xs: 0.75rem;
+
+    /* Spacing */
+    --bs-spacer: 1rem;
+    --bs-gutter-x: 1.5rem;
+    --bs-gutter-y: 0;
+
+    /* Borders */
+    --bs-border-width: 1px;
+    --bs-border-style: solid;
+    --bs-border-color: #dee2e6;
+    --bs-border-radius: 0.375rem;
+    --bs-border-radius-sm: 0.25rem;
+    --bs-border-radius-lg: 0.5rem;
+    --bs-border-radius-xl: 1rem;
+    --bs-border-radius-2xl: 2rem;
+    --bs-border-radius-pill: 50rem;
+
+    /* Box Shadows */
+    --bs-box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --bs-box-shadow-sm: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    --bs-box-shadow-lg: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+    --bs-box-shadow-inset: inset 0 1px 2px rgba(0, 0, 0, 0.075);
+
+    /* Transitions */
+    --bs-transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+/* Dark Mode Variables */
+[data-bs-theme="dark"] {
+    --bs-body-color: #adb5bd;
+    --bs-body-bg: #212529;
+    --bs-emphasis-color: #ffffff;
+    --bs-secondary-color: rgba(173, 181, 189, 0.75);
+    --bs-secondary-bg: #343a40;
+    --bs-tertiary-color: rgba(173, 181, 189, 0.5);
+    --bs-tertiary-bg: #2c3034;
+    --bs-primary-text-emphasis: #6ea8fe;
+    --bs-secondary-text-emphasis: #a7acb1;
+    --bs-success-text-emphasis: #75b798;
+    --bs-info-text-emphasis: #6edff6;
+    --bs-warning-text-emphasis: #ffda6a;
+    --bs-danger-text-emphasis: #ea868f;
+    --bs-light-text-emphasis: #f8f9fa;
+    --bs-dark-text-emphasis: #dee2e6;
+    --bs-primary-bg-subtle: #031633;
+    --bs-secondary-bg-subtle: #161719;
+    --bs-success-bg-subtle: #051b11;
+    --bs-info-bg-subtle: #032830;
+    --bs-warning-bg-subtle: #332701;
+    --bs-danger-bg-subtle: #2c0b0e;
+    --bs-light-bg-subtle: #343a40;
+    --bs-dark-bg-subtle: #1a1d20;
+    --bs-primary-border-subtle: #084298;
+    --bs-secondary-border-subtle: #41464b;
+    --bs-success-border-subtle: #0f5132;
+    --bs-info-border-subtle: #087990;
+    --bs-warning-border-subtle: #997404;
+    --bs-danger-border-subtle: #842029;
+    --bs-light-border-subtle: #495057;
+    --bs-dark-border-subtle: #343a40;
+    --bs-heading-color: #ffffff;
+    --bs-link-color: #6ea8fe;
+    --bs-link-hover-color: #8bb9fe;
+    --bs-code-color: #e685b5;
+    --bs-border-color: #495057;
+    --bs-border-color-translucent: rgba(255, 255, 255, 0.15);
+    --bs-form-valid-color: #75b798;
+    --bs-form-valid-border-color: #75b798;
+    --bs-form-invalid-color: #ea868f;
+    --bs-form-invalid-border-color: #ea868f;
+}
+
+/* ==============================
+   Base Styles
+   ============================== */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--bs-font-sans-serif);
+    font-size: var(--bs-font-size-base);
+    font-weight: 400;
+    line-height: 1.6;
+    color: var(--bs-body-color);
+    text-align: var(--bs-body-text-align);
+    background-color: var(--bs-body-bg);
+    -webkit-text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* ==============================
+   Navigation Styles
+   ============================== */
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.5rem;
+    color: var(--optima-blue) !important;
+}
+
+.navbar-brand .brand-text {
+    background: linear-gradient(135deg, var(--optima-blue), var(--optima-blue-light));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 800;
+}
+
+.navbar-nav .nav-link {
+    padding: 0.5rem 1rem;
+    font-weight: 500;
+    color: var(--bs-gray-600);
+    transition: var(--bs-transition);
+}
+
+.navbar-nav .nav-link:hover {
+    color: var(--optima-blue);
+}
+
+.navbar-nav .nav-link.active {
+    color: var(--optima-blue);
+    font-weight: 600;
+}
+
+/* ==============================
+   Sidebar Styles
+   ============================== */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 250px;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-right: 1px solid var(--bs-border-color);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.sidebar.collapsed {
+    width: 80px;
+}
+
+.sidebar-brand {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--bs-border-color);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.sidebar-brand:hover {
+    background-color: rgba(0, 97, 242, 0.05);
+    text-decoration: none;
+}
+
+.sidebar-brand:focus {
+    outline: none;
+    text-decoration: none;
+}
+
+.sidebar-brand-icon {
+    width: 3rem;
+    height: 3rem;
+    background: linear-gradient(135deg, var(--optima-blue) 0%, #4d8cff 100%);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    margin-right: 0.75rem;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 97, 242, 0.25);
+    transition: all 0.3s ease;
+}
+
+.optima-logo {
+    width: 2.5rem;
+    height: 2.5rem;
+    object-fit: contain;
+    transition: all 0.3s ease;
+    filter: brightness(1.1);
+}
+
+.sidebar-brand:hover .sidebar-brand-icon {
+    transform: translateY(-2px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 97, 242, 0.4);
+}
+
+.sidebar-brand:hover .optima-logo {
+    transform: scale(1.05);
+}
+
+.sidebar-brand-text {
+    font-weight: 700;
+    font-size: 1.25rem;
+    color: var(--optima-blue);
+}
+
+.sidebar-nav {
+    padding: 1rem 0;
+}
+
+.sidebar-nav .nav-item {
+    margin-bottom: 0.25rem;
+}
+
+.sidebar-nav .nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    color: var(--bs-gray-600);
+    text-decoration: none;
+    font-weight: 500;
+    transition: var(--bs-transition);
+    border-radius: 0;
+}
+
+.sidebar-nav .nav-link:hover {
+    color: var(--optima-blue);
+    background-color: rgba(0, 97, 242, 0.05);
+}
+
+.sidebar-nav .nav-link.active {
+    color: var(--optima-blue);
+    background-color: rgba(0, 97, 242, 0.1);
+    font-weight: 600;
+    border-right: 3px solid var(--optima-blue);
+}
+
+.sidebar-nav .nav-link i {
+    width: 1.5rem;
+    text-align: center;
+    margin-right: 0.75rem;
+    font-size: 1rem;
+}
+
+.sidebar-nav .nav-link-text {
+    transition: opacity 0.3s ease;
+}
+
+.sidebar.collapsed .nav-link-text {
+    opacity: 0;
+}
+
+.sidebar.collapsed .nav-link {
+    justify-content: center;
+    padding: 0.75rem;
+}
+
+/* ==============================
+   Main Content Area
+   ============================== */
+.main-content {
+    margin-left: 280px;
+    min-height: 100vh;
+    transition: margin-left 0.3s ease;
+}
+
+.main-content.expanded {
+    margin-left: 80px;
+}
+
+.content-header {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-bottom: 1px solid var(--bs-border-color);
+    padding: 1rem 2rem;
+    position: sticky;
+    top: 0;
+    z-index: 500;
+    margin-left: 0;
+    padding-left: 2rem;
+}
+
+.content-header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--bs-gray-800);
+    margin-bottom: 0.25rem;
+}
+
+.content-header .breadcrumb {
+    margin-bottom: 0;
+    background: none;
+    padding: 0;
+}
+
+.content-header .breadcrumb-item {
+    font-size: 0.875rem;
+    color: var(--bs-gray-600);
+}
+
+.content-header .breadcrumb-item.active {
+    color: var(--optima-blue);
+}
+
+.content-body {
+    padding: 2rem;
+}
+
+/* ==============================
+   Card Styles
+   ============================== */
+.card {
+    border: none;
+    border-radius: var(--bs-border-radius-lg);
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    transition: var(--bs-transition);
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+.card-header {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-bottom: 1px solid var(--bs-border-color);
+    padding: 1.25rem;
+    font-weight: 600;
+    color: var(--bs-gray-800);
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+.card-footer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-top: 1px solid var(--bs-border-color);
+    padding: 1rem 1.5rem;
+}
+
+/* Stats Cards */
+.stats-card {
+    background: linear-gradient(135deg, var(--optima-blue) 0%, var(--optima-blue-light) 100%);
+    color: white;
+    border-radius: var(--bs-border-radius-xl);
+    box-shadow: 0 0.5rem 1rem rgba(0, 97, 242, 0.25);
+}
+
+.stats-card .card-body {
+    padding: 2rem;
+}
+
+.stats-card .stats-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.stats-card .stats-label {
+    font-size: 1rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stats-card .stats-icon {
+    font-size: 2rem;
+    opacity: 0.3;
+    float: right;
+}
+
+/* Success Stats Card */
+.stats-card.success {
+    background: linear-gradient(135deg, var(--bs-success) 0%, #4dd289 100%);
+}
+
+/* Warning Stats Card */
+.stats-card.warning {
+    background: linear-gradient(135deg, var(--bs-warning) 0%, #ffcc47 100%);
+}
+
+/* Danger Stats Card */
+.stats-card.danger {
+    background: linear-gradient(135deg, var(--bs-danger) 0%, #ff4757 100%);
+}
+
+/* Info Stats Card */
+.stats-card.info {
+    background: linear-gradient(135deg, var(--bs-info) 0%, #70c6e0 100%);
+}
+
+/* ==============================
+   Button Styles
+   ============================== */
+.btn {
+    padding: 0.625rem 1.25rem;
+    font-weight: 500;
+    border-radius: var(--bs-border-radius);
+    transition: var(--bs-transition);
+    border: none;
+    cursor: pointer;
+    text-transform: none;
+    letter-spacing: 0.025rem;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--optima-blue) 0%, var(--optima-blue-light) 100%);
+    color: white;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 97, 242, 0.25);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--optima-blue-dark) 0%, var(--optima-blue) 100%);
+    box-shadow: 0 0.5rem 1rem rgba(0, 97, 242, 0.3);
+    transform: translateY(-0.125rem);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, var(--bs-success) 0%, #4dd289 100%);
+    color: white;
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 172, 105, 0.25);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #008f57 0%, var(--bs-success) 100%);
+    box-shadow: 0 0.5rem 1rem rgba(0, 172, 105, 0.3);
+    transform: translateY(-0.125rem);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, var(--bs-warning) 0%, #ffcc47 100%);
+    color: white;
+    box-shadow: 0 0.25rem 0.5rem rgba(255, 182, 7, 0.25);
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #e6a200 0%, var(--bs-warning) 100%);
+    box-shadow: 0 0.5rem 1rem rgba(255, 182, 7, 0.3);
+    transform: translateY(-0.125rem);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, var(--bs-danger) 0%, #ff4757 100%);
+    color: white;
+    box-shadow: 0 0.25rem 0.5rem rgba(232, 21, 0, 0.25);
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #cc1100 0%, var(--bs-danger) 100%);
+    box-shadow: 0 0.5rem 1rem rgba(232, 21, 0, 0.3);
+    transform: translateY(-0.125rem);
+}
+
+.btn-outline-primary {
+    border: 2px solid var(--optima-blue);
+    color: var(--optima-blue);
+    background: transparent;
+}
+
+.btn-outline-primary:hover {
+    background: var(--optima-blue);
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+.btn-lg {
+    padding: 0.75rem 1.5rem;
+    font-size: 1.125rem;
+}
+
+/* ==============================
+   Form Styles
+   ============================== */
+.form-control {
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    padding: 0.75rem 1rem;
+    font-size: var(--bs-font-size-base);
+    transition: var(--bs-transition);
+}
+
+.form-control:focus {
+    border-color: var(--optima-blue);
+    box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--bs-gray-700);
+    margin-bottom: 0.5rem;
+}
+
+.form-select {
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius);
+    padding: 0.75rem 1rem;
+    font-size: var(--bs-font-size-base);
+    transition: var(--bs-transition);
+}
+
+.form-select:focus {
+    border-color: var(--optima-blue);
+    box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.25);
+}
+
+.form-check-input {
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-top: 0.125rem;
+    margin-right: 0.5rem;
+    border: 1px solid var(--bs-border-color);
+    border-radius: var(--bs-border-radius-sm);
+}
+
+.form-check-input:checked {
+    background-color: var(--optima-blue);
+    border-color: var(--optima-blue);
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.25);
+}
+
+.form-check-label {
+    font-weight: 500;
+    color: var(--bs-gray-700);
+}
+
+/* ==============================
+   Table Styles
+   ============================== */
+.table {
+    --bs-table-bg: transparent;
+    --bs-table-accent-bg: transparent;
+    --bs-table-striped-color: var(--bs-body-color);
+    --bs-table-striped-bg: rgba(0, 0, 0, 0.025);
+    --bs-table-active-color: var(--bs-body-color);
+    --bs-table-active-bg: rgba(0, 0, 0, 0.05);
+    --bs-table-hover-color: var(--bs-body-color);
+    --bs-table-hover-bg: rgba(0, 0, 0, 0.075);
+    width: 100%;
+    margin-bottom: 1rem;
+    color: var(--bs-body-color);
+    vertical-align: top;
+    border-color: var(--bs-border-color);
+}
+
+.table th {
+    padding: 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    font-weight: 600;
+    color: var(--bs-gray-800);
+    border-bottom: 2px solid var(--bs-border-color);
+}
+
+.table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--bs-border-color);
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 97, 242, 0.05);
+}
+
+/* ==============================
+   Badge Styles
+   ============================== */
+.badge {
+    padding: 0.5em 0.75em;
+    font-size: 0.75em;
+    font-weight: 500;
+    border-radius: var(--bs-border-radius-pill);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, var(--optima-blue) 0%, var(--optima-blue-light) 100%) !important;
+}
+
+.badge.bg-success {
+    background: linear-gradient(135deg, var(--bs-success) 0%, #4dd289 100%) !important;
+}
+
+.badge.bg-warning {
+    background: linear-gradient(135deg, var(--bs-warning) 0%, #ffcc47 100%) !important;
+}
+
+.badge.bg-danger {
+    background: linear-gradient(135deg, var(--bs-danger) 0%, #ff4757 100%) !important;
+}
+
+/* ==============================
+   Alert Styles
+   ============================== */
+.alert {
+    padding: 1rem 1.25rem;
+    border-radius: var(--bs-border-radius-lg);
+    border: none;
+    font-weight: 500;
+}
+
+.alert-primary {
+    background: linear-gradient(135deg, rgba(0, 97, 242, 0.1) 0%, rgba(0, 97, 242, 0.05) 100%);
+    color: var(--optima-blue-dark);
+    border-left: 4px solid var(--optima-blue);
+}
+
+.alert-success {
+    background: linear-gradient(135deg, rgba(0, 172, 105, 0.1) 0%, rgba(0, 172, 105, 0.05) 100%);
+    color: #006644;
+    border-left: 4px solid var(--bs-success);
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, rgba(255, 182, 7, 0.1) 0%, rgba(255, 182, 7, 0.05) 100%);
+    color: #cc9200;
+    border-left: 4px solid var(--bs-warning);
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, rgba(232, 21, 0, 0.1) 0%, rgba(232, 21, 0, 0.05) 100%);
+    color: #bb1100;
+    border-left: 4px solid var(--bs-danger);
+}
+
+/* ==============================
+   Modal Styles
+   ============================== */
+.modal-content {
+    border: none;
+    border-radius: var(--bs-border-radius-xl);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border-bottom: 1px solid var(--bs-border-color);
+    padding: 1.5rem;
+    border-top-left-radius: var(--bs-border-radius-xl);
+    border-top-right-radius: var(--bs-border-radius-xl);
+}
+
+.modal-title {
+    font-weight: 600;
+    color: var(--bs-gray-800);
+}
+
+.modal-body {
+    padding: 2rem;
+}
+
+.modal-footer {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border-top: 1px solid var(--bs-border-color);
+    padding: 1.5rem;
+    border-bottom-left-radius: var(--bs-border-radius-xl);
+    border-bottom-right-radius: var(--bs-border-radius-xl);
+}
+
+/* ==============================
+   Dropdown Styles
+   ============================== */
+.dropdown-menu {
+    border: none;
+    border-radius: var(--bs-border-radius-lg);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    padding: 0.5rem 0;
+}
+
+.dropdown-item {
+    padding: 0.75rem 1.25rem;
+    font-weight: 500;
+    color: var(--bs-gray-700);
+    transition: var(--bs-transition);
+}
+
+.dropdown-item:hover {
+    background-color: rgba(0, 97, 242, 0.05);
+    color: var(--optima-blue);
+}
+
+.dropdown-item.active {
+    background-color: var(--optima-blue);
+    color: white;
+}
+
+/* ==============================
+   Pagination Styles
+   ============================== */
+.pagination {
+    --bs-pagination-padding-x: 0.75rem;
+    --bs-pagination-padding-y: 0.5rem;
+    --bs-pagination-font-size: 0.875rem;
+    --bs-pagination-color: var(--bs-gray-600);
+    --bs-pagination-bg: #ffffff;
+    --bs-pagination-border-width: 1px;
+    --bs-pagination-border-color: var(--bs-border-color);
+    --bs-pagination-border-radius: var(--bs-border-radius);
+    --bs-pagination-hover-color: var(--optima-blue);
+    --bs-pagination-hover-bg: rgba(0, 97, 242, 0.05);
+    --bs-pagination-hover-border-color: var(--optima-blue);
+    --bs-pagination-focus-color: var(--optima-blue);
+    --bs-pagination-focus-bg: rgba(0, 97, 242, 0.05);
+    --bs-pagination-focus-box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.25);
+    --bs-pagination-active-color: #ffffff;
+    --bs-pagination-active-bg: var(--optima-blue);
+    --bs-pagination-active-border-color: var(--optima-blue);
+    --bs-pagination-disabled-color: var(--bs-gray-400);
+    --bs-pagination-disabled-bg: #ffffff;
+    --bs-pagination-disabled-border-color: var(--bs-border-color);
+}
+
+/* ==============================
+   Progress Styles
+   ============================== */
+.progress {
+    height: 0.5rem;
+    background-color: var(--bs-gray-200);
+    border-radius: var(--bs-border-radius-pill);
+    overflow: hidden;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--optima-blue) 0%, var(--optima-blue-light) 100%);
+    transition: width 0.6s ease;
+}
+
+.progress-bar.bg-success {
+    background: linear-gradient(90deg, var(--bs-success) 0%, #4dd289 100%) !important;
+}
+
+.progress-bar.bg-warning {
+    background: linear-gradient(90deg, var(--bs-warning) 0%, #ffcc47 100%) !important;
+}
+
+.progress-bar.bg-danger {
+    background: linear-gradient(90deg, var(--bs-danger) 0%, #ff4757 100%) !important;
+}
+
+/* ==============================
+   Utility Classes
+   ============================== */
+.text-primary {
+    color: var(--optima-blue) !important;
+}
+
+.text-success {
+    color: var(--bs-success) !important;
+}
+
+.text-warning {
+    color: var(--bs-warning) !important;
+}
+
+.text-danger {
+    color: var(--bs-danger) !important;
+}
+
+.bg-primary {
+    background-color: var(--optima-blue) !important;
+}
+
+.bg-gradient-primary {
+    background: linear-gradient(135deg, var(--optima-blue) 0%, var(--optima-blue-light) 100%) !important;
+}
+
+.bg-gradient-success {
+    background: linear-gradient(135deg, var(--bs-success) 0%, #4dd289 100%) !important;
+}
+
+.bg-gradient-warning {
+    background: linear-gradient(135deg, var(--bs-warning) 0%, #ffcc47 100%) !important;
+}
+
+.bg-gradient-danger {
+    background: linear-gradient(135deg, var(--bs-danger) 0%, #ff4757 100%) !important;
+}
+
+.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.shadow {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+}
+
+.shadow-lg {
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+}
+
+.rounded-xl {
+    border-radius: var(--bs-border-radius-xl) !important;
+}
+
+.rounded-2xl {
+    border-radius: var(--bs-border-radius-2xl) !important;
+}
+
+/* ==============================
+   Responsive Design
+   ============================== */
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+    
+    .content-header {
+        padding: 1rem;
+    }
+    
+    .content-body {
+        padding: 1rem;
+    }
+    
+    .stats-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    .stats-card .stats-value {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .content-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .card-body {
+        padding: 1rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .stats-card .stats-value {
+        font-size: 1.75rem;
+    }
+}
+
+/* ==============================
+   Animation Classes
+   ============================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(-100%);
+    }
+    to {
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.animate-fadeIn {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.animate-slideIn {
+    animation: slideIn 0.3s ease-in-out;
+}
+
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* ==============================
+   Loading Styles
+   ============================== */
+.loading-spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 3px solid var(--bs-gray-200);
+    border-top: 3px solid var(--optima-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 9999;
+}
+
+/* ==============================
+   Dark Mode Styles
+   ============================== */
+[data-bs-theme="dark"] .sidebar {
+    background: linear-gradient(135deg, #2c3034 0%, #212529 100%);
+    border-right-color: #495057;
+}
+
+[data-bs-theme="dark"] .sidebar-brand-text {
+    color: var(--optima-blue-light);
+}
+
+[data-bs-theme="dark"] .sidebar-nav .nav-link {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .sidebar-nav .nav-link:hover {
+    color: var(--optima-blue-light);
+    background-color: rgba(77, 140, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .sidebar-nav .nav-link.active {
+    color: var(--optima-blue-light);
+    background-color: rgba(77, 140, 255, 0.15);
+    border-right-color: var(--optima-blue-light);
+}
+
+[data-bs-theme="dark"] .content-header {
+    background: linear-gradient(135deg, #2c3034 0%, #212529 100%);
+    border-bottom-color: #495057;
+}
+
+[data-bs-theme="dark"] .content-header h1 {
+    color: #ffffff;
+}
+
+[data-bs-theme="dark"] .card {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .card-header {
+    background: linear-gradient(135deg, #343a40 0%, #2c3034 100%);
+    border-bottom-color: #495057;
+    color: #ffffff;
+}
+
+[data-bs-theme="dark"] .card-footer {
+    background: linear-gradient(135deg, #2c3034 0%, #343a40 100%);
+    border-top-color: #495057;
+}
+
+[data-bs-theme="dark"] .table th {
+    background: linear-gradient(135deg, #2c3034 0%, #343a40 100%);
+    color: #ffffff;
+    border-bottom-color: #495057;
+}
+
+[data-bs-theme="dark"] .table td {
+    border-bottom-color: #495057;
+}
+
+[data-bs-theme="dark"] .table-hover tbody tr:hover {
+    background-color: rgba(77, 140, 255, 0.1);
+}
+
+[data-bs-theme="dark"] .modal-content {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .modal-header {
+    background: linear-gradient(135deg, #343a40 0%, #2c3034 100%);
+    border-bottom-color: #495057;
+}
+
+[data-bs-theme="dark"] .modal-footer {
+    background: linear-gradient(135deg, #2c3034 0%, #343a40 100%);
+    border-top-color: #495057;
+}
+
+[data-bs-theme="dark"] .dropdown-menu {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .dropdown-item {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .dropdown-item:hover {
+    background-color: rgba(77, 140, 255, 0.1);
+    color: var(--optima-blue-light);
+}
+
+/* ==============================
+   Print Styles
+   ============================== */
+@media print {
+    .sidebar,
+    .content-header,
+    .btn,
+    .modal,
+    .dropdown-menu {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+    }
+    
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+    }
+    
+    .table {
+        border-collapse: collapse !important;
+    }
+    
+    .table th,
+    .table td {
+        border: 1px solid #ddd !important;
+    }
+} 
+
+/* ==============================
+   Division-Specific Color Themes
+   Soft Color Palette for Each Module
+   ============================== */
+
+/* Admin/User Management - Soft Blue Theme */
+.admin-header, .user-management-header {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%) !important;
+    color: #1565c0 !important;
+    border-left: 4px solid #2196f3;
+}
+
+.admin-header h1, .user-management-header h1 {
+    color: #1565c0 !important;
+}
+
+.admin-header .breadcrumb-item, .user-management-header .breadcrumb-item {
+    color: #1976d2 !important;
+}
+
+/* Forklift/Equipment - Soft Orange Theme */
+.forklift-header, .equipment-header {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%) !important;
+    color: #e65100 !important;
+    border-left: 4px solid #ff9800;
+}
+
+.forklift-header h1, .equipment-header h1 {
+    color: #e65100 !important;
+}
+
+.forklift-header .breadcrumb-item, .equipment-header .breadcrumb-item {
+    color: #f57c00 !important;
+}
+
+/* Marketing - Soft Green Theme */
+.marketing-header {
+    background: linear-gradient(135deg, #e8f5e8 0%, #a5d6a7 100%) !important;
+    color: #2e7d32 !important;
+    border-left: 4px solid #4caf50;
+}
+
+.marketing-header h1 {
+    color: #2e7d32 !important;
+}
+
+.marketing-header .breadcrumb-item {
+    color: #388e3c !important;
+}
+
+/* Service - Soft Purple Theme */
+.service-header {
+    background: linear-gradient(135deg, #f3e5f5 0%, #ce93d8 100%) !important;
+    color: #6a1b9a !important;
+    border-left: 4px solid #9c27b0;
+}
+
+.service-header h1 {
+    color: #6a1b9a !important;
+}
+
+.service-header .breadcrumb-item {
+    color: #7b1fa2 !important;
+}
+
+/* Finance - Soft Teal Theme */
+.finance-header, .financial-header {
+    background: linear-gradient(135deg, #e0f2f1 0%, #80cbc4 100%) !important;
+    color: #00695c !important;
+    border-left: 4px solid #009688;
+}
+
+.finance-header h1, .financial-header h1 {
+    color: #00695c !important;
+}
+
+.finance-header .breadcrumb-item, .financial-header .breadcrumb-item {
+    color: #00796b !important;
+}
+
+/* Reports - Soft Indigo Theme */
+.reports-header {
+    background: linear-gradient(135deg, #e8eaf6 0%, #9fa8da 100%) !important;
+    color: #283593 !important;
+    border-left: 4px solid #3f51b5;
+}
+
+.reports-header h1 {
+    color: #283593 !important;
+}
+
+.reports-header .breadcrumb-item {
+    color: #303f9f !important;
+}
+
+/* Warehouse - Soft Brown Theme */
+.warehouse-header {
+    background: linear-gradient(135deg, #efebe9 0%, #bcaaa4 100%) !important;
+    color: #5d4037 !important;
+    border-left: 4px solid #795548;
+}
+
+.warehouse-header h1 {
+    color: #5d4037 !important;
+}
+
+.warehouse-header .breadcrumb-item {
+    color: #6d4c41 !important;
+}
+
+/* System/Settings - Soft Gray Theme */
+.system-header, .settings-header {
+    background: linear-gradient(135deg, #f5f5f5 0%, #bdbdbd 100%) !important;
+    color: #424242 !important;
+    border-left: 4px solid #757575;
+}
+
+.system-header h1, .settings-header h1 {
+    color: #424242 !important;
+}
+
+.system-header .breadcrumb-item, .settings-header .breadcrumb-item {
+    color: #616161 !important;
+}
+
+/* Dashboard - Soft Cyan Theme */
+.dashboard-header {
+    background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%) !important;
+    color: #00838f !important;
+    border-left: 4px solid #00bcd4;
+}
+
+.dashboard-header h1 {
+    color: #00838f !important;
+}
+
+.dashboard-header .breadcrumb-item {
+    color: #0097a7 !important;
+}
+
+/* Rental Management - Soft Pink Theme */
+.rental-header {
+    background: linear-gradient(135deg, #fce4ec 0%, #f8bbd9 100%) !important;
+    color: #ad1457 !important;
+    border-left: 4px solid #e91e63;
+}
+
+.rental-header h1 {
+    color: #ad1457 !important;
+}
+
+.rental-header .breadcrumb-item {
+    color: #c2185b !important;
+}
+
+/* Customers - Soft Lime Theme */
+.customers-header {
+    background: linear-gradient(135deg, #f9fbe7 0%, #dcedc8 100%) !important;
+    color: #689f38 !important;
+    border-left: 4px solid #8bc34a;
+}
+
+.customers-header h1 {
+    color: #689f38 !important;
+}
+
+.customers-header .breadcrumb-item {
+    color: #7cb342 !important;
+}
+
+/* Dark Mode Support for Division Headers */
+[data-bs-theme="dark"] .admin-header,
+[data-bs-theme="dark"] .user-management-header {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 100%) !important;
+    color: #bbdefb !important;
+}
+
+[data-bs-theme="dark"] .forklift-header,
+[data-bs-theme="dark"] .equipment-header {
+    background: linear-gradient(135deg, #e65100 0%, #ff6f00 100%) !important;
+    color: #ffcc80 !important;
+}
+
+[data-bs-theme="dark"] .marketing-header {
+    background: linear-gradient(135deg, #1b5e20 0%, #2e7d32 100%) !important;
+    color: #a5d6a7 !important;
+}
+
+[data-bs-theme="dark"] .service-header {
+    background: linear-gradient(135deg, #4a148c 0%, #6a1b9a 100%) !important;
+    color: #ce93d8 !important;
+}
+
+[data-bs-theme="dark"] .finance-header,
+[data-bs-theme="dark"] .financial-header {
+    background: linear-gradient(135deg, #004d40 0%, #00695c 100%) !important;
+    color: #80cbc4 !important;
+}
+
+[data-bs-theme="dark"] .reports-header {
+    background: linear-gradient(135deg, #1a237e 0%, #283593 100%) !important;
+    color: #9fa8da !important;
+}
+
+[data-bs-theme="dark"] .warehouse-header {
+    background: linear-gradient(135deg, #3e2723 0%, #5d4037 100%) !important;
+    color: #bcaaa4 !important;
+}
+
+[data-bs-theme="dark"] .system-header,
+[data-bs-theme="dark"] .settings-header {
+    background: linear-gradient(135deg, #212121 0%, #424242 100%) !important;
+    color: #bdbdbd !important;
+}
+
+[data-bs-theme="dark"] .dashboard-header {
+    background: linear-gradient(135deg, #006064 0%, #00838f 100%) !important;
+    color: #80deea !important;
+}
+
+[data-bs-theme="dark"] .rental-header {
+    background: linear-gradient(135deg, #880e4f 0%, #ad1457 100%) !important;
+    color: #f8bbd9 !important;
+}
+
+[data-bs-theme="dark"] .customers-header {
+    background: linear-gradient(135deg, #33691e 0%, #689f38 100%) !important;
+    color: #dcedc8 !important;
+}
+
+/* Universal theme class application */
+.content-header.themed {
+    transition: all 0.3s ease-in-out;
+}
+
+.content-header.themed h1,
+.content-header.themed .breadcrumb-item {
+    transition: color 0.3s ease-in-out;
+}
+
+/* ==============================
+   Division-Based Theme Detection
+   ============================== */
+
+/* 
+ * Division themes disabled - using consistent white theme
+ * All pages now use clean white header styling
+ */
+
+/* Clean White Header Theme - Applied to all pages */
+.content-header,
+.d-sm-flex.align-items-center.justify-content-between.mb-4,
+.container-fluid > div:first-child {
+    background: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid #e3e6f0 !important;
+    border-radius: 8px !important;
+    margin-bottom: 1.5rem !important;
+    margin-left: 0 !important;
+    margin-right: 1.5rem !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    padding: 1.5rem !important;
+    transition: all 0.3s ease !important;
+}
+
+.content-header h1,
+.content-header h3,
+.d-sm-flex.align-items-center.justify-content-between.mb-4 h1,
+.container-fluid > div:first-child h1 {
+    color: #333333 !important;
+    margin-bottom: 0.5rem !important;
+    font-weight: 600 !important;
+}
+
+.content-header .breadcrumb-item,
+.d-sm-flex.align-items-center.justify-content-between.mb-4 .breadcrumb-item {
+    color: #6c757d !important;
+}
+
+.content-header .breadcrumb-item.active {
+    color: #333333 !important;
+}
+
+.content-header .breadcrumb-item a {
+    color: #6c757d !important;
+    text-decoration: none !important;
+}
+
+.content-header .breadcrumb-item a:hover {
+    color: #333333 !important;
+    text-decoration: underline !important;
+}
+
+/* Dark mode support for white theme */
+[data-bs-theme="dark"] .content-header,
+[data-bs-theme="dark"] .d-sm-flex.align-items-center.justify-content-between.mb-4,
+[data-bs-theme="dark"] .container-fluid > div:first-child {
+    background: #2d3748 !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #4a5568 !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-bs-theme="dark"] .content-header h1,
+[data-bs-theme="dark"] .content-header h3,
+[data-bs-theme="dark"] .d-sm-flex.align-items-center.justify-content-between.mb-4 h1,
+[data-bs-theme="dark"] .container-fluid > div:first-child h1 {
+    color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .content-header .breadcrumb-item,
+[data-bs-theme="dark"] .d-sm-flex.align-items-center.justify-content-between.mb-4 .breadcrumb-item {
+    color: #a0aec0 !important;
+}
+
+[data-bs-theme="dark"] .content-header .breadcrumb-item.active {
+    color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] .content-header .breadcrumb-item a {
+    color: #a0aec0 !important;
+}
+
+[data-bs-theme="dark"] .content-header .breadcrumb-item a:hover {
+    color: #e2e8f0 !important;
+}
+
+/* All division-specific themes removed - now using consistent white theme */
+
+/* Override any remaining division-specific styles */
+body[data-division] .content-header,
+body[data-division] .d-sm-flex.align-items-center.justify-content-between.mb-4,
+body[data-division] .container-fluid > div:first-child,
+[class*="-theme"] .content-header,
+[class*="-theme"] .d-sm-flex.align-items-center.justify-content-between.mb-4 {
+    background: #ffffff !important;
+    color: #333333 !important;
+    border: 1px solid #e3e6f0 !important;
+    border-radius: 8px !important;
+    margin-bottom: 1.5rem !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+    padding: 1.5rem !important;
+    transition: all 0.3s ease !important;
+}
+
+body[data-division] .content-header h1,
+body[data-division] .content-header h3,
+body[data-division] .d-sm-flex.align-items-center.justify-content-between.mb-4 h1,
+body[data-division] .container-fluid > div:first-child h1,
+[class*="-theme"] .content-header h1,
+[class*="-theme"] .content-header h3 {
+    color: #333333 !important;
+    margin-bottom: 0.5rem !important;
+    font-weight: 600 !important;
+}
+
+body[data-division] .content-header .breadcrumb-item,
+body[data-division] .d-sm-flex.align-items-center.justify-content-between.mb-4 .breadcrumb-item,
+[class*="-theme"] .content-header .breadcrumb-item {
+    color: #6c757d !important;
+}
+
+body[data-division] .content-header .breadcrumb-item.active,
+[class*="-theme"] .content-header .breadcrumb-item.active {
+    color: #333333 !important;
+}
+
+body[data-division] .content-header .breadcrumb-item a,
+[class*="-theme"] .content-header .breadcrumb-item a {
+    color: #6c757d !important;
+    text-decoration: none !important;
+}
+
+body[data-division] .content-header .breadcrumb-item a:hover,
+[class*="-theme"] .content-header .breadcrumb-item a:hover {
+    color: #333333 !important;
+    text-decoration: underline !important;
+}
+
+/* Dark mode overrides for division themes */
+[data-bs-theme="dark"] body[data-division] .content-header,
+[data-bs-theme="dark"] body[data-division] .d-sm-flex.align-items-center.justify-content-between.mb-4,
+[data-bs-theme="dark"] body[data-division] .container-fluid > div:first-child,
+[data-bs-theme="dark"] [class*="-theme"] .content-header {
+    background: #2d3748 !important;
+    color: #e2e8f0 !important;
+    border: 1px solid #4a5568 !important;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.2) !important;
+}
+
+[data-bs-theme="dark"] body[data-division] .content-header h1,
+[data-bs-theme="dark"] body[data-division] .content-header h3,
+[data-bs-theme="dark"] body[data-division] .d-sm-flex.align-items-center.justify-content-between.mb-4 h1,
+[data-bs-theme="dark"] body[data-division] .container-fluid > div:first-child h1,
+[data-bs-theme="dark"] [class*="-theme"] .content-header h1,
+[data-bs-theme="dark"] [class*="-theme"] .content-header h3 {
+    color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] body[data-division] .content-header .breadcrumb-item,
+[data-bs-theme="dark"] body[data-division] .d-sm-flex.align-items-center.justify-content-between.mb-4 .breadcrumb-item,
+[data-bs-theme="dark"] [class*="-theme"] .content-header .breadcrumb-item {
+    color: #a0aec0 !important;
+}
+
+[data-bs-theme="dark"] body[data-division] .content-header .breadcrumb-item.active,
+[data-bs-theme="dark"] [class*="-theme"] .content-header .breadcrumb-item.active {
+    color: #e2e8f0 !important;
+}
+
+[data-bs-theme="dark"] body[data-division] .content-header .breadcrumb-item a,
+[data-bs-theme="dark"] [class*="-theme"] .content-header .breadcrumb-item a {
+    color: #a0aec0 !important;
+}
+
+[data-bs-theme="dark"] body[data-division] .content-header .breadcrumb-item a:hover,
+[data-bs-theme="dark"] [class*="-theme"] .content-header .breadcrumb-item a:hover {
+    color: #e2e8f0 !important;
+}
+
+/* Company Footer Styling */
+.company-footer {
+    background: #f8f9fa;
+    border-top: 1px solid #e3e6f0;
+    padding: 1rem 0;
+    margin-top: auto;
+    position: relative;
+    z-index: 1;
+}
+
+.company-credit-logo {
+    height: 28px;
+    width: auto;
+    max-width: 150px;
+    object-fit: contain;
+    transition: all 0.3s ease;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.company-credit-logo:hover {
+    opacity: 0.8;
+    transform: scale(1.05);
+}
+
+/* Dark mode footer */
+[data-bs-theme="dark"] .company-footer {
+    background: #2d3748;
+    border-top: 1px solid #4a5568;
+}
+
+[data-bs-theme="dark"] .company-footer .text-muted {
+    color: #a0aec0 !important;
+}
+
+/* Ensure main content doesn't overlap footer */
+.main-content {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    flex-direction: column;
+}
+
+.content-body {
+    flex: 1;
+}
+
+/* Mobile responsive footer */
+@media (max-width: 767.98px) {
+    .company-footer .col-md-6:last-child {
+        text-align: center !important;
+        margin-top: 0.5rem;
+    }
+    
+    .company-credit-logo {
+        height: 20px;
+        max-width: 100px;
+    }
+} 
+
+/* ==============================
+   ACCESSIBILITY: FOCUS INDICATOR
+   ============================== */
+button:focus, a:focus, input:focus, select:focus, textarea:focus {
+  outline: 2px solid #0061f2;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(0,97,242,0.15);
+  z-index: 2;
+} 

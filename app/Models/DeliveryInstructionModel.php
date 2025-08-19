@@ -1,0 +1,32 @@
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+class DeliveryInstructionModel extends Model
+{
+    protected $table = 'delivery_instructions';
+    protected $primaryKey = 'id';
+    protected $returnType = 'array';
+    protected $allowedFields = [
+        'spk_id','nomor_di','po_kontrak_nomor','pelanggan','lokasi','tanggal_kirim','status','catatan','dibuat_oleh','dibuat_pada','diperbarui_pada',
+        'perencanaan_tanggal_approve','estimasi_sampai','nama_supir','no_hp_supir','no_sim_supir','kendaraan','no_polisi_kendaraan',
+        'berangkat_tanggal_approve','catatan_berangkat',
+        'sampai_tanggal_approve','catatan_sampai'
+    ];
+    protected $useTimestamps = false;
+
+    /** Generate next DI number with prefix DI/YYYYMM/NNN */
+    public function generateNextNumber(): string
+    {
+        $prefix = 'DI/'.date('Ym').'/';
+        $row = $this->db->table($this->table)->like('nomor_di', $prefix)->orderBy('id','DESC')->get()->getRowArray();
+        $seq = 1;
+        if ($row && isset($row['nomor_di'])) {
+            $parts = explode('/', $row['nomor_di']);
+            $seq = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
+        }
+        return $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
+    }
+}
