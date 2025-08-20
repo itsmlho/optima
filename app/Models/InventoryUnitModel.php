@@ -24,7 +24,10 @@ class InventoryUnitModel extends Model
         'departemen_id',
         'tanggal_kirim',
         'keterangan',
+        'harga_sewa_bulanan', // Harga sewa per bulan untuk kontrak
+        'harga_sewa_harian',  // Harga sewa per hari untuk kontrak
         'kontrak_id',  // Foreign key ke tabel kontrak
+        'kontrak_spesifikasi_id', // Foreign key ke kontrak_spesifikasi
         'tipe_unit_id',
         'model_unit_id',
         'kapasitas_unit_id',

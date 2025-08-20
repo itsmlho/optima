@@ -6,6 +6,7 @@ use CodeIgniter\Controller;
 use CodeIgniter\Database\BaseBuilder;
 use App\Models\SpkModel;
 use App\Models\KontrakModel;
+use App\Models\KontrakSpesifikasiModel;
 use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
 use App\Models\DeliveryInstructionModel;
@@ -19,6 +20,7 @@ class Marketing extends Controller
     protected $db;
     protected $spkModel;
     protected $kontrakModel;
+    protected $kontrakSpesifikasiModel;
     protected $unitModel;
     protected $attModel;
     protected $diModel;
@@ -30,6 +32,7 @@ class Marketing extends Controller
     $this->db = \Config\Database::connect();
     $this->spkModel = new SpkModel();
     $this->kontrakModel = new KontrakModel();
+    $this->kontrakSpesifikasiModel = new KontrakSpesifikasiModel();
     $this->unitModel = new InventoryUnitModel();
     $this->attModel = new InventoryAttachmentModel();
     $this->diModel = new DeliveryInstructionModel();
@@ -662,71 +665,165 @@ class Marketing extends Controller
         if (!$this->request->isAJAX()) {
             return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
         }
-        // Build spesifikasi array and normalize nested values (e.g., aksesoris JSON string -> array)
-        $spec = $this->request->getPost('spesifikasi') ?? [];
-        if (isset($spec['aksesoris']) && is_string($spec['aksesoris'])) {
-            $decoded = json_decode($spec['aksesoris'], true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $spec['aksesoris'] = $decoded;
+
+        $this->db->transBegin();
+
+        try {
+            // Check if this is new workflow with kontrak_spesifikasi_id
+            $kontrakSpesifikasiId = $this->request->getPost('kontrak_spesifikasi_id');
+            $jumlahUnit = (int)($this->request->getPost('jumlah_unit') ?: 1);
+
+            if ($kontrakSpesifikasiId) {
+                // New workflow: Create SPK based on contract specification
+                $spesifikasi = $this->kontrakSpesifikasiModel->find($kontrakSpesifikasiId);
+                if (!$spesifikasi) {
+                    throw new \Exception('Spesifikasi kontrak tidak ditemukan.');
+                }
+
+                // Check if enough units are needed
+                $available = $spesifikasi['jumlah_dibutuhkan'] - $spesifikasi['jumlah_tersedia'];
+                if ($jumlahUnit > $available) {
+                    throw new \Exception("Jumlah unit melebihi yang dibutuhkan. Maksimal: {$available} unit");
+                }
+
+                // Get contract info
+                $kontrak = $this->kontrakModel->find($spesifikasi['kontrak_id']);
+                if (!$kontrak) {
+                    throw new \Exception('Kontrak tidak ditemukan.');
+                }
+
+                // Build specification array from kontrak_spesifikasi
+                $spec = [
+                    'departemen_id' => $spesifikasi['departemen_id'],
+                    'tipe_unit_id' => $spesifikasi['tipe_unit_id'],
+                    'tipe_jenis' => $spesifikasi['tipe_jenis'],
+                    'merk_unit' => $spesifikasi['merk_unit'],
+                    'model_unit' => $spesifikasi['model_unit'],
+                    'kapasitas_id' => $spesifikasi['kapasitas_id'],
+                    'attachment_tipe' => $spesifikasi['attachment_tipe'],
+                    'attachment_merk' => $spesifikasi['attachment_merk'],
+                    'jenis_baterai' => $spesifikasi['jenis_baterai'],
+                    'charger_id' => $spesifikasi['charger_id'],
+                    'mast_id' => $spesifikasi['mast_id'],
+                    'ban_id' => $spesifikasi['ban_id'],
+                    'roda_id' => $spesifikasi['roda_id'],
+                    'valve_id' => $spesifikasi['valve_id'],
+                    'aksesoris' => []
+                ];
+
+                $payload = [
+                    'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
+                    'jenis_spk' => 'UNIT',
+                    'kontrak_id' => $kontrak['id'],
+                    'kontrak_spesifikasi_id' => $kontrakSpesifikasiId,
+                    'jumlah_unit' => $jumlahUnit,
+                    'po_kontrak_nomor' => $kontrak['no_kontrak'],
+                    'pelanggan' => $this->request->getPost('pelanggan') ?: $kontrak['pelanggan'],
+                    'pic' => $this->request->getPost('pic') ?: $kontrak['pic'],
+                    'kontak' => $this->request->getPost('kontak') ?: $kontrak['kontak'],
+                    'lokasi' => $this->request->getPost('lokasi') ?: $kontrak['lokasi'],
+                    'delivery_plan' => $this->request->getPost('delivery_plan') ?: null,
+                    'spesifikasi' => json_encode($spec),
+                    'catatan' => $this->request->getPost('catatan') ?: null,
+                    'status' => 'SUBMITTED',
+                    'dibuat_oleh' => session('user_id') ?: 1,
+                    'dibuat_pada' => date('Y-m-d H:i:s')
+                ];
+
+            } else {
+                // Legacy workflow: manual specification input
+                $spec = $this->request->getPost('spesifikasi') ?? [];
+                if (isset($spec['aksesoris']) && is_string($spec['aksesoris'])) {
+                    $decoded = json_decode($spec['aksesoris'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $spec['aksesoris'] = $decoded;
+                    }
+                }
+
+                $jenis = strtoupper(trim((string)$this->request->getPost('jenis_spk') ?: 'UNIT'));
+                $allowedJenis = ['UNIT','ATTACHMENT','TUKAR'];
+                if (!in_array($jenis, $allowedJenis, true)) { $jenis = 'UNIT'; }
+
+                $payload = [
+                    'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
+                    'jenis_spk' => $jenis,
+                    'po_kontrak_nomor' => $this->request->getPost('po_kontrak_nomor') ?: null,
+                    'pelanggan' => $this->request->getPost('pelanggan') ?: '',
+                    'pic' => $this->request->getPost('pic') ?: null,
+                    'kontak' => $this->request->getPost('kontak') ?: null,
+                    'lokasi' => $this->request->getPost('lokasi') ?: null,
+                    'delivery_plan' => $this->request->getPost('delivery_plan') ?: null,
+                    'spesifikasi' => json_encode($spec),
+                    'catatan' => $this->request->getPost('catatan') ?: null,
+                    'status' => 'SUBMITTED',
+                    'dibuat_oleh' => session('user_id') ?: 1,
+                    'dibuat_pada' => date('Y-m-d H:i:s')
+                ];
             }
+
+            $this->spkModel->insert($payload);
+
+            $this->db->transCommit();
+
+            // Notify Service team
+            $this->sendSpkNotification($payload['nomor_spk']);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'SPK berhasil dibuat',
+                'nomor' => $payload['nomor_spk'],
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
         }
-        $jenis = strtoupper(trim((string)$this->request->getPost('jenis_spk') ?: 'UNIT'));
-        $allowedJenis = ['UNIT','ATTACHMENT','TUKAR'];
-        if (!in_array($jenis, $allowedJenis, true)) { $jenis = 'UNIT'; }
-        // kontrak_id not used anymore; rely on selected kontrak/PO reference and pelanggan
-        $payload = [
-            'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
-            'jenis_spk' => $jenis,
-            'po_kontrak_nomor' => $this->request->getPost('po_kontrak_nomor') ?: null,
-            'pelanggan' => $this->request->getPost('pelanggan') ?: '',
-            'pic' => $this->request->getPost('pic') ?: null,
-            'kontak' => $this->request->getPost('kontak') ?: null,
-            'lokasi' => $this->request->getPost('lokasi') ?: null,
-            'delivery_plan' => $this->request->getPost('delivery_plan') ?: null,
-            'spesifikasi' => json_encode($spec),
-            'catatan' => $this->request->getPost('catatan') ?: null,
-            'status' => 'SUBMITTED',
-            'dibuat_oleh' => session('user_id') ?: 1,
-            'dibuat_pada' => date('Y-m-d H:i:s')
-        ];
-    $this->spkModel->insert($payload);
-        // Notify Service team bell: new SPK submitted
+    }
+
+    private function sendSpkNotification($nomorSpk)
+    {
         try {
-            // Ensure notifications table exists (Notifications controller does this too, but we'll be defensive)
+            // Ensure notifications table exists
             if (!$this->db->tableExists('notifications')) {
-                $notifCtrl = new \App\Controllers\Notifications();
-                // call a method that creates table without sending output
-                $ref = new \ReflectionClass($notifCtrl);
-                $m = $ref->getMethod('create'); // touch controller to ensure DB available; table creation occurs in create/stream/getCount, fallback below
+                return; // Skip if notifications not available
             }
-        } catch (\Throwable $e) { /* ignore */ }
-        // Insert a broadcast-to-role notification if schema supports target_role
-        try {
+
             $dataNotif = [
                 'title' => 'SPK Baru',
-                'message' => 'SPK ' . $payload['nomor_spk'] . ' diajukan oleh Marketing untuk diproses Service.',
+                'message' => 'SPK ' . $nomorSpk . ' diajukan oleh Marketing untuk diproses Service.',
                 'type' => 'info',
                 'user_id' => null,
                 'url' => base_url('service/spk_service'),
                 'is_read' => 0,
                 'created_at' => date('Y-m-d H:i:s')
             ];
-            // target_role column may or may not exist; attempt insert with it first
+
+            // Check if target_role column exists
             $hasTargetRole = false;
             try {
                 $this->db->query('SELECT target_role FROM notifications LIMIT 1');
                 $hasTargetRole = true;
-            } catch (\Throwable $e) { $hasTargetRole = false; }
-            if ($hasTargetRole) { $dataNotif['target_role'] = 'service'; }
+            } catch (\Throwable $e) { 
+                $hasTargetRole = false; 
+            }
+
+            if ($hasTargetRole) { 
+                $dataNotif['target_role'] = 'service'; 
+            }
+
             if ($this->notifModel) {
                 $this->notifModel->insert($dataNotif);
             } else {
                 $this->db->table('notifications')->insert($dataNotif);
             }
         } catch (\Throwable $e) {
-            // silent fail; notifications are optional
+            // Silent fail; notifications are optional
         }
-        return $this->response->setJSON(['success'=>true,'message'=>'SPK dibuat','nomor'=>$payload['nomor_spk'],'csrf_hash'=>csrf_hash()]);
     }
 
     // Generic options endpoint for SPK specifications
@@ -736,9 +833,12 @@ class Marketing extends Controller
         // Predefined simple maps
         $map = [
             'departemen'      => ['table'=>'departemen','id'=>'id_departemen','name'=>'nama_departemen','order'=>'nama_departemen'],
+            'tipe_unit'       => null, // Special handling for DISTINCT tipe
+            'jenis_unit'      => null, // DISTINCT jenis from tipe_unit filtered by tipe_unit_id
             'kapasitas'       => ['table'=>'kapasitas','id'=>'id_kapasitas','name'=>'kapasitas_unit','order'=>'kapasitas_unit'],
             'mast'            => ['table'=>'tipe_mast','id'=>'id_mast','name'=>'tipe_mast','order'=>'tipe_mast'],
             'ban'             => ['table'=>'tipe_ban','id'=>'id_ban','name'=>'tipe_ban','order'=>'tipe_ban'],
+            'charger'         => ['table'=>'charger','id'=>'id_charger','name'=>"CONCAT(merk_charger, ' - ', tipe_charger)",'order'=>'merk_charger'],
             'baterai'         => ['table'=>'baterai','id'=>'id','name'=>"CONCAT(merk_baterai, ' ', tipe_baterai)",'order'=>'merk_baterai'],
             'attachment'      => ['table'=>'attachment','id'=>'id_attachment','name'=>"CONCAT(merk, ' ', model)",'order'=>'merk'],
             'attachment_merk' => null, // DISTINCT merk from attachment
@@ -751,8 +851,66 @@ class Marketing extends Controller
             'roda'            => null, // jenis_roda.id_roda, jenis_roda.tipe_roda
         ];
 
-        // Handle special DISTINCT cases
-    if ($type === 'tipe_jenis') {
+        // Handle special DISTINCT cases and departmental filtering
+        if ($type === 'tipe_unit') {
+            // Get DISTINCT tipe names with MIN(id) to avoid duplicates in UI
+            $rows = $this->db->table('tipe_unit')
+                ->select('MIN(id_tipe_unit) as id, TRIM(tipe) as name', false)
+                ->where('tipe IS NOT NULL', null, false)
+                ->where("TRIM(tipe) <> ''", null, false)
+                ->groupBy('TRIM(tipe)')
+                ->orderBy('name','ASC')
+                ->limit(200)
+                ->get()->getResultArray();
+            
+            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+        }
+
+        if ($type === 'jenis_unit') {
+            $tipeUnit = trim($this->request->getGet('parent_tipe') ?? '');
+            $builder = $this->db->table('tipe_unit')
+                ->select('DISTINCT TRIM(jenis) as name', false)
+                ->where('jenis IS NOT NULL', null, false)
+                ->where("TRIM(jenis) <> ''", null, false);
+            
+            if ($tipeUnit !== '') {
+                $builder->where('tipe', $tipeUnit);
+            }
+            
+            $rows = $builder->orderBy('name','ASC')
+                ->limit(200)
+                ->get()->getResultArray();
+            
+            // map id = name for simple string options
+            $rows = array_map(fn($r)=>['id'=>$r['name'],'name'=>$r['name']], $rows);
+            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+        }
+
+        // Check departemen for baterai/charger locking
+        if ($type === 'baterai' || $type === 'charger') {
+            $departemenId = trim($this->request->getGet('departemen_id') ?? '');
+            
+            // Check if departemen is Electric
+            $isElectric = false;
+            if ($departemenId !== '') {
+                $dept = $this->db->table('departemen')
+                    ->select('nama_departemen')
+                    ->where('id_departemen', $departemenId)
+                    ->get()->getRowArray();
+                
+                if ($dept && (stripos($dept['nama_departemen'], 'electric') !== false || 
+                             stripos($dept['nama_departemen'], 'listrik') !== false)) {
+                    $isElectric = true;
+                }
+            }
+            
+            // If not electric, return empty array
+            if (!$isElectric) {
+                return $this->response->setJSON(['success'=>true,'data'=>[],'csrf_hash'=>csrf_hash()]);
+            }
+        }
+
+        if ($type === 'tipe_jenis') {
             $rows = $this->db->table('tipe_unit')
                 ->select('DISTINCT TRIM(jenis) as name', false)
         ->where('jenis IS NOT NULL', null, false)
@@ -830,6 +988,31 @@ class Marketing extends Controller
             return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Unknown type','csrf_hash'=>csrf_hash()]);
         }
         $cfg = $map[$type];
+        
+        // Special handling for charger based on departemen filtering
+        if ($type === 'charger') {
+            $departemenId = trim($this->request->getGet('departemen_id') ?? '');
+            
+            // Check if departemen is Electric first
+            $isElectric = false;
+            if ($departemenId !== '') {
+                $dept = $this->db->table('departemen')
+                    ->select('nama_departemen')
+                    ->where('id_departemen', $departemenId)
+                    ->get()->getRowArray();
+                
+                if ($dept && (stripos($dept['nama_departemen'], 'electric') !== false || 
+                             stripos($dept['nama_departemen'], 'listrik') !== false)) {
+                    $isElectric = true;
+                }
+            }
+            
+            // If not electric, return empty array
+            if (!$isElectric) {
+                return $this->response->setJSON(['success'=>true,'data'=>[],'csrf_hash'=>csrf_hash()]);
+            }
+        }
+        
         $builder = $this->db->table($cfg['table'])
             ->select($cfg['id'].' as id')
             ->select($cfg['name'].' as name', false)
@@ -984,6 +1167,36 @@ class Marketing extends Controller
     public function kontrak()
     {
         return view('marketing/kontrak');
+    }
+
+    // Get active contracts that have specifications for SPK creation
+    public function getActiveContracts()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
+        }
+
+        try {
+            $kontraks = $this->kontrakModel
+                ->select('kontrak.id, kontrak.no_kontrak, kontrak.pelanggan')
+                ->join('kontrak_spesifikasi ks', 'ks.kontrak_id = kontrak.id', 'inner')
+                ->whereIn('kontrak.status', ['Aktif', 'Pending'])
+                ->groupBy('kontrak.id, kontrak.no_kontrak, kontrak.pelanggan')
+                ->orderBy('kontrak.dibuat_pada', 'DESC')
+                ->findAll();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $kontraks,
+                'csrf_hash' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal mengambil data kontrak: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
     }
 
     public function getDataTable()
@@ -1421,5 +1634,67 @@ class Marketing extends Controller
             .'<li><a class="dropdown-item" href="'.base_url('marketing/penawaran').'?unit='.$id.'"><i class="fas fa-file-invoice me-2 text-primary"></i>Penawaran</a></li>'
             .'<li><a class="dropdown-item" href="'.base_url('marketing/booking').'?unit='.$id.'"><i class="fas fa-calendar-plus me-2 text-success"></i>Booking</a></li>'
             .'</ul></div>';
+    }
+
+    /**
+     * Get contract details by ID
+     */
+    public function getKontrak($id)
+    {
+        try {
+            $contract = $this->kontrakModel->find((int)$id);
+            
+            if (!$contract) {
+                return $this->response->setStatusCode(404)->setJSON([
+                    'success' => false,
+                    'message' => 'Kontrak tidak ditemukan',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contract,
+                'csrf_hash' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '[Marketing::getKontrak] Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memuat detail kontrak',
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    /**
+     * Find contract by specification ID
+     */
+    public function findBySpesifikasi($spekId)
+    {
+        try {
+            $spek = $this->kontrakSpesifikasiModel->find((int)$spekId);
+            
+            if (!$spek) {
+                return $this->response->setStatusCode(404)->setJSON([
+                    'success' => false,
+                    'message' => 'Spesifikasi tidak ditemukan',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'kontrak_id' => $spek['kontrak_id'],
+                'csrf_hash' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '[Marketing::findBySpesifikasi] Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal mencari kontrak',
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
     }
 }

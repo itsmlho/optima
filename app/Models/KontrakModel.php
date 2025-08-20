@@ -21,6 +21,7 @@ class KontrakModel extends Model
         'lokasi',
         'nilai_total',
         'total_units',
+        'jenis_sewa',
         'tanggal_mulai',
         'tanggal_berakhir',
         'status',
@@ -40,7 +41,7 @@ class KontrakModel extends Model
         'pelanggan' => 'required|max_length[255]',
         'tanggal_mulai' => 'required|valid_date',
         'tanggal_berakhir' => 'required|valid_date',
-        'status' => 'required|in_list[Aktif,Berakhir,Pending,Dibatalkan]'
+        'status' => 'permit_empty|in_list[Aktif,Berakhir,Pending,Dibatalkan]'
     ];
 
     protected $validationMessages = [

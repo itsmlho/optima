@@ -13,7 +13,7 @@ class SpkModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        'nomor_spk','jenis_spk','kontrak_id','po_kontrak_nomor','pelanggan','pic','kontak','lokasi',
+        'nomor_spk','jenis_spk','kontrak_id','kontrak_spesifikasi_id','jumlah_unit','po_kontrak_nomor','pelanggan','pic','kontak','lokasi',
         'delivery_plan','spesifikasi','catatan','status',
         'dibuat_oleh','dibuat_pada','diperbarui_pada',
         'persiapan_unit_mekanik','persiapan_unit_estimasi_mulai','persiapan_unit_estimasi_selesai','persiapan_unit_tanggal_approve',

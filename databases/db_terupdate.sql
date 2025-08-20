@@ -143,14 +143,16 @@ CREATE TABLE IF NOT EXISTS `delivery_instructions` (
   KEY `idx_di_berangkat_approve` (`berangkat_tanggal_approve`),
   KEY `idx_di_sampai_approve` (`sampai_tanggal_approve`),
   CONSTRAINT `fk_di_spk` FOREIGN KEY (`spk_id`) REFERENCES `spk` (`id`) ON DELETE SET NULL
-) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table optima_db.delivery_instructions: ~4 rows (approximately)
+-- Dumping data for table optima_db.delivery_instructions: ~5 rows (approximately)
 REPLACE INTO `delivery_instructions` (`id`, `nomor_di`, `spk_id`, `po_kontrak_nomor`, `pelanggan`, `lokasi`, `tanggal_kirim`, `catatan`, `status`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`, `perencanaan_tanggal_approve`, `estimasi_sampai`, `nama_supir`, `no_hp_supir`, `no_sim_supir`, `kendaraan`, `no_polisi_kendaraan`, `berangkat_tanggal_approve`, `catatan_berangkat`, `sampai_tanggal_approve`, `catatan_sampai`) VALUES
 	(8, 'DI/202508/001', 9, NULL, '', NULL, '2025-08-19', NULL, 'SAMPAI', 1, '2025-08-18 04:13:18', '2025-08-18 08:20:58', '2025-08-18', '2025-08-21', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', '2025-08-18', NULL, '2025-08-18', 'asd'),
 	(9, 'DI/202508/002', 7, 'test/1/1/2', 'ADIT', '123', '2025-08-20', NULL, 'DIPROSES', 1, '2025-08-18 06:44:27', '2025-08-18 07:41:25', '2025-08-18', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
 	(10, 'DI/202508/003', 4, 'test/1/1/2', 'ADIT', '123', '2025-08-20', 'a', 'SAMPAI', 1, '2025-08-18 07:42:28', '2025-08-19 02:45:41', '2025-08-19', '2025-08-23', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', '2025-08-19', 'a', '2025-08-19', 'asd'),
-	(11, 'DI/202508/004', 14, '1233', 'kaleng', 'kaaleng', '2025-08-20', NULL, 'SAMPAI', 1, '2025-08-19 02:54:26', '2025-08-19 02:55:17', '2025-08-19', '2025-08-20', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', '2025-08-19', NULL, '2025-08-19', 'as');
+	(11, 'DI/202508/004', 14, '1233', 'kaleng', 'kaaleng', '2025-08-20', NULL, 'SAMPAI', 1, '2025-08-19 02:54:26', '2025-08-19 02:55:17', '2025-08-19', '2025-08-20', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', '2025-08-19', NULL, '2025-08-19', 'as'),
+	(12, 'DI/202508/005', 13, 'test/1/1/2', 'ADIT', '123', '2025-08-20', NULL, 'DIPROSES', 1, '2025-08-19 07:35:59', '2025-08-19 14:40:21', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+	(13, 'DI/202508/006', 3, 'PO-CL-0350', 'PT. Maju Bersama Sejahtera', 'Sunter, Jakarta Utara', '2025-08-20', NULL, '', 1, '2025-08-19 07:46:13', '2025-08-19 14:46:13', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 -- Dumping structure for table optima_db.delivery_items
 CREATE TABLE IF NOT EXISTS `delivery_items` (
@@ -164,12 +166,14 @@ CREATE TABLE IF NOT EXISTS `delivery_items` (
   KEY `idx_di_items_di` (`di_id`),
   KEY `idx_di_items_type` (`item_type`),
   CONSTRAINT `fk_di_items_di` FOREIGN KEY (`di_id`) REFERENCES `delivery_instructions` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table optima_db.delivery_items: ~2 rows (approximately)
+-- Dumping data for table optima_db.delivery_items: ~4 rows (approximately)
 REPLACE INTO `delivery_items` (`id`, `di_id`, `item_type`, `unit_id`, `attachment_id`, `keterangan`) VALUES
 	(12, 10, 'UNIT', 7, NULL, NULL),
-	(13, 10, 'ATTACHMENT', NULL, 3, NULL);
+	(13, 10, 'ATTACHMENT', NULL, 3, NULL),
+	(14, 13, 'UNIT', 7, NULL, NULL),
+	(15, 13, 'ATTACHMENT', NULL, 5, NULL);
 
 -- Dumping structure for table optima_db.departemen
 CREATE TABLE IF NOT EXISTS `departemen` (
@@ -342,7 +346,10 @@ CREATE TABLE IF NOT EXISTS `inventory_unit` (
   `departemen_id` int DEFAULT NULL COMMENT 'FK ke tabel departemen',
   `tanggal_kirim` datetime DEFAULT NULL,
   `keterangan` text COLLATE utf8mb4_general_ci,
+  `harga_sewa_bulanan` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa per bulan',
+  `harga_sewa_harian` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa per hari',
   `kontrak_id` int unsigned DEFAULT NULL COMMENT 'Foreign key ke tabel kontrak',
+  `kontrak_spesifikasi_id` int unsigned DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi untuk tracking spek mana',
   `tipe_unit_id` int DEFAULT NULL COMMENT 'FK ke tabel tipe_unit',
   `model_unit_id` int DEFAULT NULL COMMENT 'FK ke tabel model_unit (sudah termasuk merk)',
   `kapasitas_unit_id` int DEFAULT NULL COMMENT 'FK ke tabel kapasitas',
@@ -379,6 +386,7 @@ CREATE TABLE IF NOT EXISTS `inventory_unit` (
   KEY `ban_id` (`ban_id`),
   KEY `valve_id` (`valve_id`),
   KEY `idx_kontrak_id` (`kontrak_id`),
+  KEY `fk_inventory_unit_kontrak_spesifikasi` (`kontrak_spesifikasi_id`),
   CONSTRAINT `fk_inventory_unit_kontrak` FOREIGN KEY (`kontrak_id`) REFERENCES `kontrak` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `inventory_unit_ibfk_1` FOREIGN KEY (`id_po`) REFERENCES `purchase_orders` (`id_po`),
   CONSTRAINT `inventory_unit_ibfk_10` FOREIGN KEY (`model_baterai_id`) REFERENCES `baterai` (`id`),
@@ -386,6 +394,7 @@ CREATE TABLE IF NOT EXISTS `inventory_unit` (
   CONSTRAINT `inventory_unit_ibfk_12` FOREIGN KEY (`roda_id`) REFERENCES `jenis_roda` (`id_roda`),
   CONSTRAINT `inventory_unit_ibfk_13` FOREIGN KEY (`ban_id`) REFERENCES `tipe_ban` (`id_ban`),
   CONSTRAINT `inventory_unit_ibfk_14` FOREIGN KEY (`valve_id`) REFERENCES `valve` (`id_valve`),
+  CONSTRAINT `inventory_unit_ibfk_15` FOREIGN KEY (`kontrak_spesifikasi_id`) REFERENCES `kontrak_spesifikasi` (`id`) ON DELETE SET NULL,
   CONSTRAINT `inventory_unit_ibfk_2` FOREIGN KEY (`status_unit_id`) REFERENCES `status_unit` (`id_status`),
   CONSTRAINT `inventory_unit_ibfk_3` FOREIGN KEY (`departemen_id`) REFERENCES `departemen` (`id_departemen`),
   CONSTRAINT `inventory_unit_ibfk_4` FOREIGN KEY (`tipe_unit_id`) REFERENCES `tipe_unit` (`id_tipe_unit`),
@@ -397,19 +406,19 @@ CREATE TABLE IF NOT EXISTS `inventory_unit` (
 ) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table optima_db.inventory_unit: ~12 rows (approximately)
-REPLACE INTO `inventory_unit` (`id_inventory_unit`, `no_unit`, `serial_number`, `id_po`, `tahun_unit`, `status_unit_id`, `status_aset`, `lokasi_unit`, `departemen_id`, `tanggal_kirim`, `keterangan`, `kontrak_id`, `tipe_unit_id`, `model_unit_id`, `kapasitas_unit_id`, `model_mast_id`, `tinggi_mast`, `sn_mast`, `model_mesin_id`, `sn_mesin`, `model_attachment_id`, `sn_attachment`, `model_baterai_id`, `sn_baterai`, `model_charger_id`, `sn_charger`, `roda_id`, `ban_id`, `valve_id`, `created_at`, `updated_at`) VALUES
-	(1, 1, NULL, 122, '2025', 3, 0, 'Warehouse', 2, NULL, '', 1, 9, 6, 2, 5, NULL, '', 4, '', NULL, '', NULL, '', NULL, '', 4, 3, 4, '2025-08-12 02:22:14', '2025-08-19 11:38:34'),
-	(2, 2, NULL, 123, '2025', 3, 0, 'Warehouse', 2, NULL, '', NULL, 10, 3, 10, 2, NULL, '', 2, '', NULL, '', NULL, '', NULL, '', 2, 2, 3, '2025-08-12 03:15:49', '2025-08-19 11:15:22'),
-	(4, 4, 'test', 38, '2025', 3, NULL, 'POS 1', 3, NULL, NULL, 8, 12, 6, 6, 2, NULL, 'test', 2, 'test', 2, NULL, 2, 'test', 6, NULL, 2, 1, 3, '2025-08-12 04:47:28', '2025-08-19 11:38:34'),
-	(5, 7, 'test2', 38, '2025', 3, NULL, 'POS 1', 3, NULL, NULL, 8, 12, 6, 6, 2, NULL, 'test2', 2, 'test2', 2, NULL, 2, 'test2', 6, NULL, 2, 1, 3, '2025-08-12 04:49:52', '2025-08-19 11:38:34'),
-	(6, NULL, 'test3', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test3', 2, 'test3', 2, NULL, 2, 'test3', 6, NULL, 2, 1, 3, '2025-08-12 04:50:15', '2025-08-16 21:00:03'),
-	(7, 3, 'test4', 38, '2025', 7, NULL, 'POS 1', 3, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test4', 2, 'test4', 3, '', 2, 'test4', 6, NULL, 2, 1, 3, '2025-08-12 04:54:09', '2025-08-16 01:23:28'),
-	(8, NULL, 'andara', 39, '2025', 8, NULL, 'POS 1', 2, NULL, NULL, NULL, 2, 1, 3, 1, NULL, 'andara', 3, 'andara', NULL, NULL, 6, 'andara', NULL, NULL, 1, 3, 1, '2025-08-12 08:15:40', '2025-08-16 21:00:03'),
-	(9, NULL, 'adaaaaa', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adaaaaa', 2, 'adaaaaa', 5, 'wae', 2, 'adaaaaa', 6, NULL, 2, 1, 3, '2025-08-12 08:21:22', '2025-08-16 21:00:03'),
-	(10, 6, 'adit', 38, '2025', 3, NULL, 'POS 1', 3, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adit', 2, 'adit', 2, NULL, 2, 'adit', 6, NULL, 2, 1, 3, '2025-08-16 04:20:16', '2025-08-18 09:33:12'),
-	(11, NULL, 'adit', 47, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, 3, 6, 4, 5, NULL, 'adit', 3, 'adit', NULL, NULL, 3, 'adit', NULL, NULL, 2, 3, 2, '2025-08-16 04:20:38', '2025-08-16 21:00:03'),
-	(12, 5, 'adit', 39, '2025', 3, NULL, 'POS 1', 2, NULL, NULL, NULL, 2, 1, 3, 1, NULL, 'adit', 3, 'adit', NULL, NULL, 6, 'adit', NULL, NULL, 1, 3, 1, '2025-08-16 04:24:32', '2025-08-16 21:59:26'),
-	(13, NULL, 'adit', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adit', 2, 'adit', 2, NULL, 2, 'adit', 6, NULL, 2, 1, 3, '2025-08-16 04:26:43', '2025-08-16 21:00:03');
+REPLACE INTO `inventory_unit` (`id_inventory_unit`, `no_unit`, `serial_number`, `id_po`, `tahun_unit`, `status_unit_id`, `status_aset`, `lokasi_unit`, `departemen_id`, `tanggal_kirim`, `keterangan`, `harga_sewa_bulanan`, `harga_sewa_harian`, `kontrak_id`, `kontrak_spesifikasi_id`, `tipe_unit_id`, `model_unit_id`, `kapasitas_unit_id`, `model_mast_id`, `tinggi_mast`, `sn_mast`, `model_mesin_id`, `sn_mesin`, `model_attachment_id`, `sn_attachment`, `model_baterai_id`, `sn_baterai`, `model_charger_id`, `sn_charger`, `roda_id`, `ban_id`, `valve_id`, `created_at`, `updated_at`) VALUES
+	(1, 1, NULL, 122, '2025', 3, 0, 'Warehouse', 2, NULL, '', NULL, NULL, 1, NULL, 9, 6, 2, 5, NULL, '', 4, '', NULL, '', NULL, '', NULL, '', 4, 3, 4, '2025-08-12 02:22:14', '2025-08-19 11:38:34'),
+	(2, 2, NULL, 123, '2025', 3, 0, 'Warehouse', 2, NULL, '', NULL, NULL, NULL, NULL, 10, 3, 10, 2, NULL, '', 2, '', NULL, '', NULL, '', NULL, '', 2, 2, 3, '2025-08-12 03:15:49', '2025-08-19 11:15:22'),
+	(4, 4, 'test', 38, '2025', 3, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, 8, NULL, 12, 6, 6, 2, NULL, 'test', 2, 'test', 2, NULL, 2, 'test', 6, NULL, 2, 1, 3, '2025-08-12 04:47:28', '2025-08-19 11:38:34'),
+	(5, 7, 'test2', 38, '2025', 3, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, 8, NULL, 12, 6, 6, 2, NULL, 'test2', 2, 'test2', 2, NULL, 2, 'test2', 6, NULL, 2, 1, 3, '2025-08-12 04:49:52', '2025-08-19 11:38:34'),
+	(6, NULL, 'test3', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test3', 2, 'test3', 2, NULL, 2, 'test3', 6, NULL, 2, 1, 3, '2025-08-12 04:50:15', '2025-08-16 21:00:03'),
+	(7, 3, 'test4', 38, '2025', 7, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test4', 2, 'test4', 3, '', 2, 'test4', 6, NULL, 2, 1, 3, '2025-08-12 04:54:09', '2025-08-16 01:23:28'),
+	(8, NULL, 'andara', 39, '2025', 8, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 3, 1, NULL, 'andara', 3, 'andara', NULL, NULL, 6, 'andara', NULL, NULL, 1, 3, 1, '2025-08-12 08:15:40', '2025-08-16 21:00:03'),
+	(9, NULL, 'adaaaaa', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adaaaaa', 2, 'adaaaaa', 5, 'wae', 2, 'adaaaaa', 6, NULL, 2, 1, 3, '2025-08-12 08:21:22', '2025-08-16 21:00:03'),
+	(10, 6, 'adit', 38, '2025', 3, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adit', 2, 'adit', 2, NULL, 2, 'adit', 6, NULL, 2, 1, 3, '2025-08-16 04:20:16', '2025-08-18 09:33:12'),
+	(11, NULL, 'adit', 47, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 3, 6, 4, 5, NULL, 'adit', 3, 'adit', NULL, NULL, 3, 'adit', NULL, NULL, 2, 3, 2, '2025-08-16 04:20:38', '2025-08-16 21:00:03'),
+	(12, 5, 'adit', 39, '2025', 3, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 3, 1, NULL, 'adit', 3, 'adit', NULL, NULL, 6, 'adit', NULL, NULL, 1, 3, 1, '2025-08-16 04:24:32', '2025-08-16 21:59:26'),
+	(13, NULL, 'adit', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adit', 2, 'adit', 2, NULL, 2, 'adit', 6, NULL, 2, 1, 3, '2025-08-16 04:26:43', '2025-08-16 21:00:03');
 
 -- Dumping structure for table optima_db.jenis_roda
 CREATE TABLE IF NOT EXISTS `jenis_roda` (
@@ -504,6 +513,7 @@ CREATE TABLE IF NOT EXISTS `kontrak` (
   `kontak` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Kontak PIC (telepon/email)',
   `nilai_total` decimal(15,2) DEFAULT NULL COMMENT 'Nilai total kontrak dalam rupiah',
   `total_units` int unsigned NOT NULL DEFAULT '0' COMMENT 'Total unit yang terkait dengan kontrak ini',
+  `jenis_sewa` enum('BULANAN','HARIAN') COLLATE utf8mb4_general_ci DEFAULT 'BULANAN' COMMENT 'Jenis periode sewa',
   `tanggal_mulai` date NOT NULL,
   `tanggal_berakhir` date NOT NULL,
   `status` enum('Aktif','Berakhir','Pending','Dibatalkan') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
@@ -514,19 +524,80 @@ CREATE TABLE IF NOT EXISTS `kontrak` (
   UNIQUE KEY `no_kontrak_unik` (`no_kontrak`),
   KEY `fk_kontrak_dibuat_oleh` (`dibuat_oleh`),
   KEY `idx_total_units` (`total_units`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table optima_db.kontrak: ~9 rows (approximately)
-REPLACE INTO `kontrak` (`id`, `no_kontrak`, `no_po_marketing`, `pelanggan`, `lokasi`, `pic`, `kontak`, `nilai_total`, `total_units`, `tanggal_mulai`, `tanggal_berakhir`, `status`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
-	(1, '001/SML/RENT/I/2025', 'PO-CL-0123', 'PT. Logistik Cepat Indonesia', 'Gudang Cikarang', NULL, NULL, NULL, 0, '2025-01-15', '2026-01-14', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-04 17:08:02'),
-	(2, '002/SML/RENT/III/2025', 'PO-CL-0245', 'PT. Gudang Jaya Abadi', 'Kawasan Industri MM2100', NULL, NULL, NULL, 0, '2025-03-10', '2025-09-09', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-04 17:08:02'),
-	(3, '003/SML/RENT/VI/2024', 'PO-CL-0350', 'PT. Maju Bersama Sejahtera', 'Sunter, Jakarta Utara', NULL, NULL, NULL, 0, '2024-06-20', '2025-06-19', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-14 08:51:43'),
-	(4, '004/SML/RENT/VII/2025', 'PO-CL-0488', 'PT. Angkasa Kargo', 'Area Kargo Bandara Soekarno-Hatta', NULL, NULL, NULL, 0, '2025-08-01', '2026-07-31', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-14 07:55:21'),
-	(5, '005/SML/RENT/VIII/2025', 'PO-CL-0511', 'PT. Samudera Logistik', 'Tanjung Priok', NULL, NULL, NULL, 0, '2025-08-20', '2025-09-05', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-14 08:47:07'),
-	(6, 'test/1/1/1', 'test/1/1/1', 'ADIT', '123', NULL, NULL, NULL, 0, '2025-08-15', '2025-08-17', 'Pending', 1, '2025-08-15 09:41:59', '2025-08-15 16:41:59'),
-	(7, 'test/1/1/2', 'test/1/1/2', 'ADIT', '123', NULL, NULL, NULL, 0, '2025-08-15', '2025-08-17', 'Aktif', 1, '2025-08-15 09:42:08', '2025-08-19 02:45:41'),
-	(8, 'test/1/1/3', '1233', 'kaleng', 'kaaleng', NULL, NULL, NULL, 0, '2025-08-19', '2025-08-19', 'Aktif', 1, '2025-08-19 02:47:02', '2025-08-19 02:55:17'),
-	(9, 'test/1/1/4', '1234', 'kalengg', 'kaalengg', NULL, NULL, NULL, 0, '2025-08-19', '2025-08-19', 'Pending', 1, '2025-08-19 02:47:14', '2025-08-19 09:47:14');
+-- Dumping data for table optima_db.kontrak: ~12 rows (approximately)
+REPLACE INTO `kontrak` (`id`, `no_kontrak`, `no_po_marketing`, `pelanggan`, `lokasi`, `pic`, `kontak`, `nilai_total`, `total_units`, `jenis_sewa`, `tanggal_mulai`, `tanggal_berakhir`, `status`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
+	(1, '001/SML/RENT/I/2025', 'PO-CL-0123', 'PT. Logistik Cepat Indonesia', 'Gudang Cikarang', NULL, NULL, 0.00, 1, 'BULANAN', '2025-01-15', '2026-01-14', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-20 13:34:08'),
+	(2, '002/SML/RENT/III/2025', 'PO-CL-0245', 'PT. Gudang Jaya Abadi', 'Kawasan Industri MM2100', NULL, NULL, NULL, 0, 'BULANAN', '2025-03-10', '2025-09-09', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-04 17:08:02'),
+	(3, '003/SML/RENT/VI/2024', 'PO-CL-0350', 'PT. Maju Bersama Sejahtera', 'Sunter, Jakarta Utara', NULL, NULL, NULL, 0, 'BULANAN', '2024-06-20', '2025-06-19', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-14 08:51:43'),
+	(4, '004/SML/RENT/VII/2025', 'PO-CL-0488', 'PT. Angkasa Kargo', 'Area Kargo Bandara Soekarno-Hatta', NULL, NULL, NULL, 0, 'BULANAN', '2025-08-01', '2026-07-31', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-14 07:55:21'),
+	(5, '005/SML/RENT/VIII/2025', 'PO-CL-0511', 'PT. Samudera Logistik', 'Tanjung Priok', NULL, NULL, NULL, 0, 'BULANAN', '2025-08-20', '2025-09-05', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-14 08:47:07'),
+	(6, 'test/1/1/1', 'test/1/1/1', 'ADIT', '123', NULL, NULL, NULL, 0, 'BULANAN', '2025-08-15', '2025-08-17', 'Pending', 1, '2025-08-15 09:41:59', '2025-08-15 16:41:59'),
+	(7, 'test/1/1/2', 'test/1/1/2', 'ADIT', '123', NULL, NULL, NULL, 0, 'BULANAN', '2025-08-15', '2025-08-17', 'Aktif', 1, '2025-08-15 09:42:08', '2025-08-19 02:45:41'),
+	(8, 'test/1/1/3', '1233', 'kaleng', 'kaaleng', NULL, NULL, NULL, 0, 'BULANAN', '2025-08-19', '2025-08-19', 'Aktif', 1, '2025-08-19 02:47:02', '2025-08-19 02:55:17'),
+	(9, 'test/1/1/4', '1234', 'kalengg', 'kaalengg', NULL, NULL, NULL, 0, 'BULANAN', '2025-08-19', '2025-08-19', 'Pending', 1, '2025-08-19 02:47:14', '2025-08-19 09:47:14'),
+	(10, 'test/1/1/5', '12345', 'Sarana Mitra Luas', 'gemalapik', 'Adit', '082134555233', 3703701.00, 3, 'BULANAN', '2025-08-31', '2025-12-31', 'Pending', 1, '2025-08-19 09:29:28', '2025-08-20 14:26:51'),
+	(11, 'test/1/1/6', '123456', 'Sarana Mitra Luas', 'Gemalapik', 'Adit', '082134555233', 150000000.00, 10, 'BULANAN', '2025-08-31', '2025-12-31', 'Pending', 1, '2025-08-20 03:42:59', '2025-08-20 14:21:42'),
+	(12, 'test/1/1/7', '1234567', 'Sarana Mitra Luas', 'Gemalapik', 'Adit', '082134555233', 490480480.00, 4, 'BULANAN', '2025-08-31', '2025-12-31', 'Pending', 1, '2025-08-20 06:19:37', '2025-08-20 16:22:46');
+
+-- Dumping structure for table optima_db.kontrak_spesifikasi
+CREATE TABLE IF NOT EXISTS `kontrak_spesifikasi` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `kontrak_id` int unsigned NOT NULL,
+  `spek_kode` varchar(50) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Kode unik spesifikasi dalam kontrak (A, B, C)',
+  `jumlah_dibutuhkan` int NOT NULL DEFAULT '1' COMMENT 'Jumlah unit yang dibutuhkan untuk spek ini',
+  `jumlah_tersedia` int NOT NULL DEFAULT '0' COMMENT 'Jumlah unit yang sudah di-assign',
+  `harga_per_unit_bulanan` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa bulanan per unit',
+  `harga_per_unit_harian` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa harian per unit',
+  `catatan_spek` text COLLATE utf8mb4_general_ci COMMENT 'Catatan khusus untuk spesifikasi ini',
+  `departemen_id` int DEFAULT NULL,
+  `tipe_unit_id` int DEFAULT NULL,
+  `tipe_jenis` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `kapasitas_id` int DEFAULT NULL,
+  `merk_unit` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `model_unit` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `attachment_tipe` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `attachment_merk` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `jenis_baterai` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `charger_id` int DEFAULT NULL,
+  `mast_id` int DEFAULT NULL,
+  `ban_id` int DEFAULT NULL,
+  `roda_id` int DEFAULT NULL,
+  `valve_id` int DEFAULT NULL,
+  `aksesoris` json DEFAULT NULL COMMENT 'Array aksesoris yang dibutuhkan',
+  `dibuat_pada` datetime DEFAULT CURRENT_TIMESTAMP,
+  `diperbarui_pada` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_kontrak_spek` (`kontrak_id`,`spek_kode`),
+  KEY `departemen_id` (`departemen_id`),
+  KEY `tipe_unit_id` (`tipe_unit_id`),
+  KEY `kapasitas_id` (`kapasitas_id`),
+  KEY `charger_id` (`charger_id`),
+  KEY `mast_id` (`mast_id`),
+  KEY `ban_id` (`ban_id`),
+  KEY `roda_id` (`roda_id`),
+  KEY `valve_id` (`valve_id`),
+  CONSTRAINT `kontrak_spesifikasi_ibfk_1` FOREIGN KEY (`kontrak_id`) REFERENCES `kontrak` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `kontrak_spesifikasi_ibfk_2` FOREIGN KEY (`departemen_id`) REFERENCES `departemen` (`id_departemen`) ON DELETE SET NULL,
+  CONSTRAINT `kontrak_spesifikasi_ibfk_3` FOREIGN KEY (`tipe_unit_id`) REFERENCES `tipe_unit` (`id_tipe_unit`) ON DELETE SET NULL,
+  CONSTRAINT `kontrak_spesifikasi_ibfk_4` FOREIGN KEY (`kapasitas_id`) REFERENCES `kapasitas` (`id_kapasitas`) ON DELETE SET NULL,
+  CONSTRAINT `kontrak_spesifikasi_ibfk_5` FOREIGN KEY (`charger_id`) REFERENCES `charger` (`id_charger`) ON DELETE SET NULL,
+  CONSTRAINT `kontrak_spesifikasi_ibfk_6` FOREIGN KEY (`mast_id`) REFERENCES `tipe_mast` (`id_mast`) ON DELETE SET NULL,
+  CONSTRAINT `kontrak_spesifikasi_ibfk_7` FOREIGN KEY (`ban_id`) REFERENCES `tipe_ban` (`id_ban`) ON DELETE SET NULL,
+  CONSTRAINT `kontrak_spesifikasi_ibfk_8` FOREIGN KEY (`roda_id`) REFERENCES `jenis_roda` (`id_roda`) ON DELETE SET NULL,
+  CONSTRAINT `kontrak_spesifikasi_ibfk_9` FOREIGN KEY (`valve_id`) REFERENCES `valve` (`id_valve`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Dumping data for table optima_db.kontrak_spesifikasi: ~7 rows (approximately)
+REPLACE INTO `kontrak_spesifikasi` (`id`, `kontrak_id`, `spek_kode`, `jumlah_dibutuhkan`, `jumlah_tersedia`, `harga_per_unit_bulanan`, `harga_per_unit_harian`, `catatan_spek`, `departemen_id`, `tipe_unit_id`, `tipe_jenis`, `kapasitas_id`, `merk_unit`, `model_unit`, `attachment_tipe`, `attachment_merk`, `jenis_baterai`, `charger_id`, `mast_id`, `ban_id`, `roda_id`, `valve_id`, `aksesoris`, `dibuat_pada`, `diperbarui_pada`) VALUES
+	(4, 1, 'SPEC-001', 1, 0, NULL, NULL, 'Test', 1, NULL, 'Forklift', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-20 06:34:08', '2025-08-20 06:34:08'),
+	(5, 12, 'SPEC-001', 1, 0, 123123123.00, NULL, '', 1, 6, 'COUNTER BALANCE', 10, 'BT', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 1, 6, 1, 2, NULL, '2025-08-20 07:17:47', '2025-08-20 07:17:47'),
+	(6, 12, 'SPEC-002', 1, 0, 123123123.00, NULL, '', 1, 6, 'COUNTER BALANCE', 10, 'BT', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 1, 6, 1, 2, NULL, '2025-08-20 07:17:47', '2025-08-20 07:17:47'),
+	(7, 11, 'SPEC-001', 10, 0, 15000000.00, NULL, '', 1, 6, 'COUNTER BALANCE', 41, 'HELI', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 18, 1, 1, 3, NULL, '2025-08-20 07:21:42', '2025-08-20 07:21:42'),
+	(8, 10, 'SPEC-001', 3, 0, 1234567.00, NULL, '', 2, 6, 'HAND PALLET', 41, 'JUNGHEINRICH', NULL, 'FORK', NULL, 'Lead Acid', 16, 17, 6, 1, 1, NULL, '2025-08-20 07:26:51', '2025-08-20 07:26:51'),
+	(9, 12, 'SPEC-003', 1, 0, 234234234.00, NULL, '', 2, 6, 'PALLET MOVER', 19, 'MHE DEMAG', NULL, 'FORK', NULL, 'Lead Acid', 15, 17, 2, 3, 3, NULL, '2025-08-20 07:38:35', '2025-08-20 07:38:35'),
+	(10, 12, 'SPEC-004', 1, 0, 10000000.00, NULL, '', 2, 6, 'PALLET STACKER', NULL, 'JUNGHEINRICH', NULL, 'FORK POSITIONER', NULL, 'Lithium-ion', 9, 16, 3, 3, 1, '["LAMPU UTAMA", "LAMPU MUNDUR", "LAMPU SIGN", "LAMPU STOP", "BLUE SPOT", "BACK BUZZER", "CAMERA", "SPEED LIMITER", "VOICE ANNOUNCER", "HORN SPEAKER", "HORN KLASON", "BIO METRIC", "ACRYLIC", "APAR 1 KG", "APAR 3 KG", "P3K", "TELEMATIC"]', '2025-08-20 09:22:46', '2025-08-20 09:22:46');
 
 -- Dumping structure for table optima_db.mesin
 CREATE TABLE IF NOT EXISTS `mesin` (
@@ -1332,7 +1403,7 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
--- Dumping data for table optima_db.notifications: ~13 rows (approximately)
+-- Dumping data for table optima_db.notifications: ~12 rows (approximately)
 REPLACE INTO `notifications` (`id`, `user_id`, `target_role`, `url`, `role`, `division`, `message`, `link`, `is_read`, `created_at`, `read_at`) VALUES
 	(1, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: tester) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-11 16:37:42', NULL),
 	(2, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: tester324234) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-12 09:00:10', NULL),
@@ -1986,120 +2057,7 @@ REPLACE INTO `role_permissions` (`id`, `role_id`, `permission_id`, `granted`, `a
 	(17, 1, 17, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 	(18, 1, 18, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 	(19, 1, 19, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(20, 1, 20, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(21, 1, 21, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(22, 1, 22, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(23, 1, 23, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(24, 1, 24, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(25, 1, 25, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(26, 1, 26, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(27, 1, 27, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(28, 1, 28, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(29, 1, 29, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(30, 1, 30, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(31, 1, 31, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(32, 1, 32, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(33, 1, 33, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(34, 1, 34, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(35, 1, 35, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(36, 1, 36, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(37, 1, 37, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(38, 1, 38, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(39, 1, 39, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(40, 1, 40, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(41, 1, 41, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(42, 1, 42, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(43, 1, 43, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(44, 1, 44, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(45, 1, 45, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(46, 1, 46, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(47, 1, 47, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(48, 1, 48, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(49, 1, 49, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
-	(50, 1, 50, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57');
-
--- Dumping structure for table optima_db.sparepart
-CREATE TABLE IF NOT EXISTS `sparepart` (
-  `id_sparepart` int NOT NULL AUTO_INCREMENT,
-  `kode` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
-  `desc_sparepart` text COLLATE utf8mb4_general_ci NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id_sparepart`),
-  UNIQUE KEY `kode` (`kode`)
-) ENGINE=InnoDB AUTO_INCREMENT=12913 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- Dumping data for table optima_db.sparepart: ~13,168 rows (approximately)
-REPLACE INTO `sparepart` (`id_sparepart`, `kode`, `desc_sparepart`, `created_at`, `updated_at`) VALUES
-	(1, ' PL01-0105', 'GEAR REVERSE CLUTH 3302-64 / 33332-26600-71 TOYOTA 60-8FD25-30', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(2, ' TL01-0333', 'TIMAH 0,8', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(3, 'AT01-0000', 'BALE CLAMP OPEN RANGE 2400 MOUNTING CLASS 4 JUNG KYUNG (SPEC 7TON)', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(4, 'AT01-0001', 'BUSHING INNER 25x30x17', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(5, 'AT01-0002', 'CARTON CLAMP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(6, 'AT01-0003', 'DOUBLE PALLET JUNGKYUNG JK4FC KAP.2200KG', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(7, 'AT01-0004', 'FORK POSITIONER-MEYER TYPE:6-8107H CAP:3500KG/at 500 mm', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(8, 'AT01-0005', 'SEPATU FORKLIFT 2.5 TON / 3 TON / 5 TON / 7 TON', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(9, 'AT01-0007', 'KABEL PTO 3000 MM DUTRO', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(10, 'AT01-0008', 'KABEL POMPA 4000 MM DUTRO DUMP TRUCK', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(11, 'AT01-0009', 'PAPER ROLL CLAMP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(12, 'AT01-0010', 'RANTAI MAST BL-634 / 94230-50710 / STD MLH 3.3m CAT DP20-25', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(13, 'AT01-0011', 'RANTAI MAST BL-834, CAT 4 TON', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(14, 'AT01-0012', 'ROD CYLINDER FOR SIDE SHIFTER, DIAMETER 20', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(15, 'AT01-0014', 'SIDE SHIFTER-MEYER TYPE:1-9107H Cap:3500/500mm', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(16, 'AT01-0015', 'BUSHING 94104-10300 40X44X4, TILT CAT DP40N-KD', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(17, 'AT01-0016', 'SAMBUNGAN RANTAI / CONNECT LINK CL 16 B-1, NICHIYU FBR18-75C-700MSF', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(18, 'AT01-0017', 'UPPER BEARING SS012A01-0013, BUSHING SIDE SHIFTER MEYER', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(19, 'AT01-0018', 'LOWER HOOK PAD SS012A01-0015 /,101030701C BUSHING SIDE SHIFTER MEYER 2500KG/3500KG/4900KG', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(20, 'AT01-0019', 'LOWER PAD SS012A01-0014 /101030702C, BUSHING SIDE SHIFTER MEYER 2500KG', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(21, 'AT01-0020', 'LOWER PAD 101040246C SIDE MEYER 3500KG', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(22, 'AT01-0021', 'BUSHING / TEFLON DUDUKAN BATTERY JUNGHEINRICH', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(23, 'AT01-0022', 'PADS KIT FOR SIDE SHIFTER MEYER (UPPER BEARING SS21A01-0013 4PC, LOWER BEARING SS12A01-0015 2PC, LOWER BEARING SS12A01-0014 2PC)', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(24, 'AT01-0023', 'SAMBUNGAN RANTAI BL-634 C/L, CAT 2.5 TON', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(25, 'AT01-0024', 'BUSHING, MAST SUPPORT 76149-10110-71, TOYOTA 8FD25', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(26, 'AT01-0025', 'AS,PIN 28X213mm PAPER ROLL CLAMP CASCADE', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(27, 'AT01-0026', 'SAMBUNGAN RANTAI / CONNECT LINK BL-823, TOY 8FD25', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(28, 'AT01-0027', 'UPPER BEARING TEFLON SIDE SHIFTER, 3 TON', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(29, 'AT01-0028', 'COVER ( TUTUP PIN 0170061201 ) ROTATING ROLL CLAMP KAUP 3T458', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(30, 'AT01-0029', 'AS, PIN UK 34.8X262mm ( bolt 0190104003 ) PAPER ROLL CLAMP KAUP 3T458/MODOO', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(31, 'AT01-0030', 'AS, PIN UK 40X345MM CARTON CLAMP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(32, 'AT01-0032', 'SAMBUNGAN RANTAI / CONNECT LINK BL-1023 CAT/MITS DP40N', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(33, 'AT01-0033', 'BUSHING 25X28X17, BRACKET YALE', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(34, 'AT01-0034', 'WORM SHAFT,RF2001-A400B.MODOO', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(35, 'AT01-0035', 'WORM WHEEL,RF2001-A600B.MODOO', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(36, 'AT01-0036', 'BUSHING, MAST SUPPORT, SUMITOMO', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(37, 'AT01-0037', 'KARET KONVEYER 12,5mmx1M SERAT', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(38, 'AT01-0038', 'BALE CLAMP TYPE KBC 22A-04B CAP 2200/KG 600MM L.C OR 520-2120MM AS 450X1000MM IW SIDESHIFTING TYPE CT CASS 3A(F/L CAP 3.5 TON) ATT WEIGHT 565 KG', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(39, 'AT01-0039', 'SIDE SHIFTER MEYER TYPE 1-9107H CAP:3500KG/AT 500MM L.C ISO CLASS 3A (F/L CAP 3.5 TON )', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(40, 'AT01-0040', 'BUSHING, MAST SUPPORT, 14602-84530 NICHIYU FB25-30P', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(41, 'AT01-0041', 'FM-X 14  COLD STORE VERSION, UP TO-30°, CLOSED HEIGHT:2.800 MM, RATED LIFT:6.800 MM, HYDRAULIC CONTROL: 5 LEVERS CENTRAL CONTROL UNIT TO OPERATE LIFT.', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(42, 'AT01-0042', 'REACH FORKS BOLZONI AURAMO TYPE RS20EOA - 1350 CLASS 2A', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(43, 'AT01-0043', 'CAT GP25ND NO MAST/FORK (INCLUDE LPG TANK + BRACKET)', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(44, 'AT01-0044', 'CAP-BODY FIXING SIDE SHIFTER (10103004C) MEYER 2,5', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(45, 'AT01-0045', 'LOWER PAD 101050305C SIDE SHIFTER MEYER 4900KG', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(46, 'AT01-0047', 'AS, PIN UK 39.8mmX340mm (10mmX8mm) PAPER ROLL CLAMP MOODO', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(47, 'AT01-0048', 'AS, PIN UK 31,5MMX330MM  PAPPER ROLL CLAMP CASCADE', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(48, 'AT01-0049', 'IMPRABOARD (POLYCARBONATE)', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(49, 'AT01-0050', 'ROTATING ROLL CLAMP 3T458 (8800013728/001) 1600MM KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(50, 'AT01-0051', 'ROTATING ROLL CLAMP 3T458 (8800013728/002) 1600MM KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(51, 'AT01-0052', 'ROTATING ROLL CLAMP 3T458 (8800013728/003) 1600MM KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(52, 'AT01-0053', 'ROTATING ROLL CLAMP 2T458 (8800013729/001) 1350MM KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(53, 'AT01-0054', 'ROTATING ROLL CLAMP 2T458 (8800013729/002) 1350MM KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(54, 'AT01-0055', 'ROTATING TISSUE ROLL CLAMP 4T458T (8800015112) 2100MM KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(55, 'AT01-0056', 'ROTATING ROLL CLAMP 4T458 (88000151411) 1600MM KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(56, 'AT01-0057', 'ROTATING TISSUE ROLL CLAMP 4T458T (8800015605) 2100MM KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(57, 'AT01-0058', 'SIDE SHIFTER 2T151P4N/8800013082/011 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(58, 'AT01-0059', 'SIDE SHIFTER 2T151P4N/8800013082/012 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(59, 'AT01-0060', 'SIDE SHIFTER 2T151P4N/8800013082/013 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(60, 'AT01-0061', 'SIDE SHIFTER 2T151P4N/8800013082/014 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(61, 'AT01-0062', 'SIDE SHIFTER 2T151P4N/8800013082/015 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(62, 'AT01-0063', 'SIDE SHIFTER 3T151P4N/8800013084/001 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(63, 'AT01-0064', 'SIDE SHIFTER 3T151P4N/8800013084/002 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(64, 'AT01-0065', 'SIDE SHIFTER 3T151P4N/8800013084/003 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(65, 'AT01-0066', 'SIDE SHIFTER 3T151P4N/8800013084/004 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(66, 'AT01-0067', 'SIDE SHIFTER 3T151P4N/8800013084/006 KAUP', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(67, 'AT01-0068', 'RANTAI MAST/CHAIN LIFT M.L.H 60M / 94430-80760 ( BL-1023 ) CAT / MITS DP40N-DP50CN', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(68, 'AT01-0069', 'RANTAI / CHAIN ( 77 LINKX2E )-MFH 3000 MM A136827 DOOSAN 70S-5', '2025-07-23 04:19:46', '2025-07-23 04:19:46'),
-	(69, 'AT01-0070', 'SHAFT A137068 DOOSAN D70S-5', '2025-07-23 04:19:46', '2025-07-23 04:19:46');
+	(20, 1, 20, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57');
 
 -- Dumping structure for table optima_db.spk
 CREATE TABLE IF NOT EXISTS `spk` (
@@ -2107,6 +2065,8 @@ CREATE TABLE IF NOT EXISTS `spk` (
   `nomor_spk` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
   `jenis_spk` enum('UNIT','ATTACHMENT','TUKAR') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'UNIT',
   `kontrak_id` int unsigned DEFAULT NULL,
+  `kontrak_spesifikasi_id` int unsigned DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi',
+  `jumlah_unit` int DEFAULT '1' COMMENT 'Jumlah unit dalam SPK ini',
   `po_kontrak_nomor` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
   `pelanggan` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
   `pic` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
@@ -2144,25 +2104,27 @@ CREATE TABLE IF NOT EXISTS `spk` (
   KEY `idx_spk_status` (`status`),
   KEY `idx_spk_po_kontrak_nomor` (`po_kontrak_nomor`),
   KEY `idx_spk_jenis` (`jenis_spk`),
-  KEY `idx_spk_kontrak_id` (`kontrak_id`)
+  KEY `idx_spk_kontrak_id` (`kontrak_id`),
+  KEY `fk_spk_kontrak_spesifikasi` (`kontrak_spesifikasi_id`),
+  CONSTRAINT `spk_ibfk_1` FOREIGN KEY (`kontrak_spesifikasi_id`) REFERENCES `kontrak_spesifikasi` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- Dumping data for table optima_db.spk: ~14 rows (approximately)
-REPLACE INTO `spk` (`id`, `nomor_spk`, `jenis_spk`, `kontrak_id`, `po_kontrak_nomor`, `pelanggan`, `pic`, `kontak`, `lokasi`, `delivery_plan`, `spesifikasi`, `status`, `persiapan_unit_mekanik`, `persiapan_unit_estimasi_mulai`, `persiapan_unit_estimasi_selesai`, `persiapan_unit_tanggal_approve`, `persiapan_unit_id`, `persiapan_aksesoris_tersedia`, `fabrikasi_mekanik`, `fabrikasi_estimasi_mulai`, `fabrikasi_estimasi_selesai`, `fabrikasi_tanggal_approve`, `fabrikasi_attachment_id`, `painting_mekanik`, `painting_estimasi_mulai`, `painting_estimasi_selesai`, `painting_tanggal_approve`, `pdi_mekanik`, `pdi_estimasi_mulai`, `pdi_estimasi_selesai`, `pdi_tanggal_approve`, `pdi_catatan`, `catatan`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
-	(1, 'SPK/202508/001', 'UNIT', NULL, 'PO-CL-0488', 'PT. Angkasa Kargo', NULL, NULL, 'Area Kargo Bandara Soekarno-Hatta', NULL, '{"ban_id": "6", "mast_id": "14", "roda_id": "1", "selected": {"unit_id": 7, "inventory_attachment_id": 1}, "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Back Buzzer", "Camera AI", "Apar 3kg", "Horn Speaker", "Sensor Parking", "Bio Metric", "Horn (klakson)", "P3K", "Safety Belt Interloc", "Telematic"], "merk_unit": "CAT", "tipe_jenis": "DUMP TRUCK", "kapasitas_id": "41", "departemen_id": "2", "jenis_baterai": "Lead Acid", "attachment_merk": "CASCADE", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-14 06:46:06', '2025-08-16 21:00:03'),
-	(2, 'SPK/202508/002', 'UNIT', NULL, 'PO-CL-0511', 'PT. Samudera Logistik', NULL, NULL, 'Tanjung Priok', NULL, '{"ban_id": "2", "mast_id": "17", "roda_id": "1", "selected": {"unit_id": 4, "inventory_attachment_id": 6}, "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line", "Work Light", "Back Buzzer", "Voice Announcer", "Horn Speaker", "Sensor Parking", "Bio Metric", "Horn (klakson)", "P3K", "Safety Belt Interloc"], "merk_unit": "HELI", "tipe_jenis": "COUNTER BALANCE", "kapasitas_id": "43", "departemen_id": "2", "jenis_baterai": "Lead Acid", "attachment_merk": "CASCADE", "attachment_tipe": "FORKLIFT SCALE"}', 'COMPLETED', NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-14 07:05:59', '2025-08-16 21:00:03'),
-	(3, 'SPK/202508/003', 'UNIT', NULL, 'PO-CL-0350', 'PT. Maju Bersama Sejahtera', NULL, NULL, 'Sunter, Jakarta Utara', NULL, '{"ban_id": "5", "mast_id": "17", "roda_id": "4", "selected": {"unit_id": 7, "inventory_attachment_id": 5}, "valve_id": "1", "aksesoris": ["Lampu-lampu", "Red Line", "Back Buzzer", "Camera", "Camera AI", "Speed Limitter", "Apar 1kg", "Apar 3kg", "P3K", "Safety Belt Interloc", "Beacon"], "merk_unit": "LOGITRANS", "tipe_jenis": "TOWING", "kapasitas_id": "42", "departemen_id": "2", "jenis_baterai": "Lead Acid", "attachment_merk": "CASCADE", "attachment_tipe": "FORK POSITIONER"}', 'READY', NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-14 08:01:08', '2025-08-16 21:00:03'),
-	(4, 'SPK/202508/004', 'UNIT', NULL, 'test/1/1/2', 'ADIT', NULL, NULL, '123', NULL, '{"ban_id": "4", "mast_id": "17", "roda_id": "1", "selected": {"unit_id": 7, "inventory_attachment_id": 4}, "valve_id": "3", "aksesoris": ["Lampu-lampu", "Blue Light Spot", "Back Buzzer", "Camera AI", "Laser Fork", "Voice Announcer", "Sensor Parking", "Bio Metric", "P3K", "Safety Belt Interloc", "Beacon"], "merk_unit": "HYSTER", "tipe_jenis": "SCRUBER", "kapasitas_id": "43", "departemen_id": "1", "jenis_baterai": "Lithium-ion", "model_unit_id": "198", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', NULL, NULL, NULL, NULL, 4, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-15 09:42:53', '2025-08-18 07:42:28'),
-	(5, 'SPK/202508/005', 'UNIT', NULL, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-18', '{"ban_id": "5", "mast_id": "17", "roda_id": "1", "selected": {"unit_id": 9, "inventory_attachment_id": 6}, "valve_id": "2", "aksesoris": ["Rotary Lamp", "Blue Light Spot", "Red Line", "Work Light", "Sensor Parking", "Bio Metric", "Horn (klakson)", "P3K", "Safety Belt Interloc"], "merk_unit": "KOMATSU", "tipe_jenis": "COMPACTOR / VIBRO", "kapasitas_id": "43", "departemen_id": "1", "jenis_baterai": "", "model_unit_id": "252", "attachment_merk": "CASCADE", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-16 02:21:30', '2025-08-16 21:05:42'),
-	(6, 'SPK/202508/006', 'UNIT', NULL, 'test/1/1/1', 'ADIT', NULL, NULL, '123', '2025-08-18', '{"ban_id": "6", "mast_id": "14", "roda_id": "1", "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Laser Fork", "Voice Announcer", "Horn Speaker", "Sensor Parking"], "merk_unit": "KOMATSU", "tipe_jenis": "PALLET MOVER", "kapasitas_id": "40", "departemen_id": "2", "jenis_baterai": "Lead Acid", "model_unit_id": "253", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'IN_PROGRESS', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 03:25:25', 2, NULL, 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 03:25:36', NULL, 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 03:25:40', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 03:25:44', NULL, NULL, 1, '2025-08-16 02:56:25', '2025-08-16 21:05:42'),
-	(7, 'SPK/202508/007', 'UNIT', NULL, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-16', '{"ban_id": "3", "mast_id": "22", "roda_id": "3", "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line", "Laser Fork", "Voice Announcer", "Horn Speaker", "Sensor Parking"], "merk_unit": "KOMATSU", "tipe_jenis": "SCRUBER", "kapasitas_id": "41", "departemen_id": "2", "jenis_baterai": "Lead Acid", "model_unit_id": "254", "attachment_merk": "CASCADE", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 04:12:48', 1, '["Lampu-lampu","Rotary Lamp","Blue Light Spot","Red Line","Laser Fork","Voice Announcer","Horn Speaker"]', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 04:13:08', 2, 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 04:13:14', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 04:13:32', 'tidak ada sensor parking', NULL, 1, '2025-08-16 03:54:30', '2025-08-18 06:44:27'),
-	(8, 'SPK/202508/008', 'UNIT', NULL, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-19', '{"ban_id": "2", "mast_id": "17", "roda_id": "4", "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line", "Work Light", "Laser Fork", "Voice Announcer", "Horn Speaker", "Sensor Parking", "Bio Metric"], "merk_unit": "HELI", "tipe_jenis": "COUNTER BALANCE", "kapasitas_id": "41", "departemen_id": "3", "jenis_baterai": "Lead Acid", "model_unit_id": "146", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'IN_PROGRESS', 'JOHANA - DEPI', '2025-08-16', '2025-08-16', '2025-08-16 04:46:11', 3, '["Lampu-lampu","Rotary Lamp","Blue Light Spot","Red Line","Work Light","Laser Fork","Voice Announcer","Horn Speaker"]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-16 04:45:17', '2025-08-16 21:05:42'),
-	(9, 'SPK/202508/009', 'UNIT', NULL, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-15', '{"ban_id": "4", "mast_id": "1", "roda_id": "1", "valve_id": "3", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line"], "merk_unit": "KOMATSU", "tipe_jenis": "DUMP TRUCK", "kapasitas_id": "9", "departemen_id": "1", "jenis_baterai": "Lithium-ion", "model_unit_id": "250", "attachment_merk": "CASCADE", "attachment_tipe": "FORK"}', 'COMPLETED', 'JOHANA - DEPI', '2025-08-18', '2025-08-18', '2025-08-16 13:18:49', 4, '["Lampu-lampu","Rotary Lamp","Blue Light Spot","Red Line"]', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 13:19:11', 3, 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 13:19:16', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 13:20:03', 'ok', NULL, 1, '2025-08-16 12:47:25', '2025-08-18 04:13:18'),
-	(10, 'SPK/202508/010', 'UNIT', NULL, 'test/1/1/1', 'ADIT', NULL, NULL, '123', '2025-08-16', '{"ban_id": "4", "mast_id": "22", "roda_id": "3", "valve_id": "3", "aksesoris": ["Horn Speaker", "Bio Metric", "Horn (klakson)", "P3K"], "merk_unit": "HELI", "tipe_jenis": "PALLET MOVER", "kapasitas_id": "40", "departemen_id": "2", "jenis_baterai": "Lead Acid", "model_unit_id": "132", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'IN_PROGRESS', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 14:59:26', 12, '["Horn Speaker","Bio Metric","Horn (klakson)"]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-16 13:36:27', '2025-08-16 14:59:26'),
-	(11, 'SPK/202508/011', 'UNIT', NULL, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-16', '{"ban_id": "6", "mast_id": "13", "roda_id": "3", "valve_id": "1", "aksesoris": ["Sensor Parking", "Bio Metric", "Horn (klakson)", "P3K"], "merk_unit": "HANGCHA", "tipe_jenis": "COMPACTOR / VIBRO", "kapasitas_id": "40", "departemen_id": "1", "jenis_baterai": "Lithium-ion", "model_unit_id": "116", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 14:50:45', 12, '["Sensor Parking","Bio Metric","Horn (klakson)","P3K"]', 'ARIZAL-EKA', '2025-08-18', '2025-08-18', '2025-08-18 01:31:23', 3, 'SAMSURI-RIKI', '2025-08-18', '2025-08-18', '2025-08-18 01:31:32', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-18 01:31:39', 'a', NULL, 1, '2025-08-16 14:12:06', '2025-08-18 03:53:35'),
-	(12, 'SPK/202508/012', 'UNIT', NULL, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-19', '{"ban_id": "2", "mast_id": "15", "roda_id": "1", "valve_id": "2", "aksesoris": ["Lampu-lampu", "Red Line", "Work Light", "Bio Metric", "Horn (klakson)", "P3K"], "merk_unit": "BT", "tipe_jenis": "SCRUBER", "kapasitas_id": "43", "departemen_id": "2", "jenis_baterai": "Lithium-ion", "model_unit_id": "2", "attachment_merk": "CASCADE", "attachment_tipe": "FORK"}', 'IN_PROGRESS', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-18 02:33:12', 10, '["Lampu-lampu","Red Line","Work Light"]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-18 02:32:15', '2025-08-18 02:33:12'),
-	(13, 'SPK/202508/013', 'UNIT', NULL, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-13', '{"ban_id": "3", "mast_id": "14", "roda_id": "4", "valve_id": "1", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line"], "merk_unit": "LOGITRANS", "tipe_jenis": "COMPACTOR / VIBRO", "kapasitas_id": "41", "departemen_id": "1", "jenis_baterai": "Lead Acid", "model_unit_id": "259", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'READY', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-18 02:34:06', 7, '["Lampu-lampu","Rotary Lamp","Blue Light Spot"]', 'ARIZAL-EKA', '2025-08-18', '2025-08-18', '2025-08-18 10:15:55', 3, 'SAMSURI-RIKI', '2025-08-18', '2025-08-18', '2025-08-18 10:15:58', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-18 10:16:04', 'assdea', NULL, 1, '2025-08-18 02:33:49', '2025-08-18 10:16:04'),
-	(14, 'SPK/202508/014', 'UNIT', NULL, '1233', 'kaleng', 'joko', '082134555233', 'kaaleng', '2025-08-20', '{"ban_id": "6", "mast_id": "15", "roda_id": "1", "valve_id": "1", "aksesoris": ["Lampu-lampu", "Red Line", "Work Light", "Back Buzzer", "Camera", "Laser Fork", "Voice Announcer", "Sensor Parking", "Bio Metric", "Horn (klakson)"], "merk_unit": "JUNGHEINRICH", "tipe_jenis": "COMPACTOR / VIBRO", "kapasitas_id": "40", "departemen_id": "1", "jenis_baterai": "Lithium-ion", "model_unit_id": "216", "attachment_merk": "CASCADE", "attachment_tipe": "FORKLIFT SCALE"}', 'COMPLETED', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-19 02:48:52', 5, '["Lampu-lampu","Red Line","Work Light","Back Buzzer","Camera","Laser Fork","Voice Announcer"]', 'ARIZAL-EKA', '2025-08-18', '2025-08-18', '2025-08-19 02:48:57', 3, 'SAMSURI-RIKI', '2025-08-18', '2025-08-18', '2025-08-19 02:49:01', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-19 02:49:07', 'ok', NULL, 1, '2025-08-19 02:48:19', '2025-08-19 02:54:26');
+REPLACE INTO `spk` (`id`, `nomor_spk`, `jenis_spk`, `kontrak_id`, `kontrak_spesifikasi_id`, `jumlah_unit`, `po_kontrak_nomor`, `pelanggan`, `pic`, `kontak`, `lokasi`, `delivery_plan`, `spesifikasi`, `status`, `persiapan_unit_mekanik`, `persiapan_unit_estimasi_mulai`, `persiapan_unit_estimasi_selesai`, `persiapan_unit_tanggal_approve`, `persiapan_unit_id`, `persiapan_aksesoris_tersedia`, `fabrikasi_mekanik`, `fabrikasi_estimasi_mulai`, `fabrikasi_estimasi_selesai`, `fabrikasi_tanggal_approve`, `fabrikasi_attachment_id`, `painting_mekanik`, `painting_estimasi_mulai`, `painting_estimasi_selesai`, `painting_tanggal_approve`, `pdi_mekanik`, `pdi_estimasi_mulai`, `pdi_estimasi_selesai`, `pdi_tanggal_approve`, `pdi_catatan`, `catatan`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
+	(1, 'SPK/202508/001', 'UNIT', NULL, NULL, 1, 'PO-CL-0488', 'PT. Angkasa Kargo', NULL, NULL, 'Area Kargo Bandara Soekarno-Hatta', NULL, '{"ban_id": "6", "mast_id": "14", "roda_id": "1", "selected": {"unit_id": 7, "inventory_attachment_id": 1}, "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Back Buzzer", "Camera AI", "Apar 3kg", "Horn Speaker", "Sensor Parking", "Bio Metric", "Horn (klakson)", "P3K", "Safety Belt Interloc", "Telematic"], "merk_unit": "CAT", "tipe_jenis": "DUMP TRUCK", "kapasitas_id": "41", "departemen_id": "2", "jenis_baterai": "Lead Acid", "attachment_merk": "CASCADE", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-14 06:46:06', '2025-08-16 21:00:03'),
+	(2, 'SPK/202508/002', 'UNIT', NULL, NULL, 1, 'PO-CL-0511', 'PT. Samudera Logistik', NULL, NULL, 'Tanjung Priok', NULL, '{"ban_id": "2", "mast_id": "17", "roda_id": "1", "selected": {"unit_id": 4, "inventory_attachment_id": 6}, "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line", "Work Light", "Back Buzzer", "Voice Announcer", "Horn Speaker", "Sensor Parking", "Bio Metric", "Horn (klakson)", "P3K", "Safety Belt Interloc"], "merk_unit": "HELI", "tipe_jenis": "COUNTER BALANCE", "kapasitas_id": "43", "departemen_id": "2", "jenis_baterai": "Lead Acid", "attachment_merk": "CASCADE", "attachment_tipe": "FORKLIFT SCALE"}', 'COMPLETED', NULL, NULL, NULL, NULL, 2, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-14 07:05:59', '2025-08-16 21:00:03'),
+	(3, 'SPK/202508/003', 'UNIT', NULL, NULL, 1, 'PO-CL-0350', 'PT. Maju Bersama Sejahtera', NULL, NULL, 'Sunter, Jakarta Utara', NULL, '{"ban_id": "5", "mast_id": "17", "roda_id": "4", "selected": {"unit_id": 7, "inventory_attachment_id": 5}, "valve_id": "1", "aksesoris": ["Lampu-lampu", "Red Line", "Back Buzzer", "Camera", "Camera AI", "Speed Limitter", "Apar 1kg", "Apar 3kg", "P3K", "Safety Belt Interloc", "Beacon"], "merk_unit": "LOGITRANS", "tipe_jenis": "TOWING", "kapasitas_id": "42", "departemen_id": "2", "jenis_baterai": "Lead Acid", "attachment_merk": "CASCADE", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', NULL, NULL, NULL, NULL, 3, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-14 08:01:08', '2025-08-19 07:46:13'),
+	(4, 'SPK/202508/004', 'UNIT', NULL, NULL, 1, 'test/1/1/2', 'ADIT', NULL, NULL, '123', NULL, '{"ban_id": "4", "mast_id": "17", "roda_id": "1", "selected": {"unit_id": 7, "inventory_attachment_id": 4}, "valve_id": "3", "aksesoris": ["Lampu-lampu", "Blue Light Spot", "Back Buzzer", "Camera AI", "Laser Fork", "Voice Announcer", "Sensor Parking", "Bio Metric", "P3K", "Safety Belt Interloc", "Beacon"], "merk_unit": "HYSTER", "tipe_jenis": "SCRUBER", "kapasitas_id": "43", "departemen_id": "1", "jenis_baterai": "Lithium-ion", "model_unit_id": "198", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', NULL, NULL, NULL, NULL, 4, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-15 09:42:53', '2025-08-18 07:42:28'),
+	(5, 'SPK/202508/005', 'UNIT', NULL, NULL, 1, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-18', '{"ban_id": "5", "mast_id": "17", "roda_id": "1", "selected": {"unit_id": 9, "inventory_attachment_id": 6}, "valve_id": "2", "aksesoris": ["Rotary Lamp", "Blue Light Spot", "Red Line", "Work Light", "Sensor Parking", "Bio Metric", "Horn (klakson)", "P3K", "Safety Belt Interloc"], "merk_unit": "KOMATSU", "tipe_jenis": "COMPACTOR / VIBRO", "kapasitas_id": "43", "departemen_id": "1", "jenis_baterai": "", "model_unit_id": "252", "attachment_merk": "CASCADE", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', NULL, NULL, NULL, NULL, 1, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-16 02:21:30', '2025-08-16 21:05:42'),
+	(6, 'SPK/202508/006', 'UNIT', NULL, NULL, 1, 'test/1/1/1', 'ADIT', NULL, NULL, '123', '2025-08-18', '{"ban_id": "6", "mast_id": "14", "roda_id": "1", "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Laser Fork", "Voice Announcer", "Horn Speaker", "Sensor Parking"], "merk_unit": "KOMATSU", "tipe_jenis": "PALLET MOVER", "kapasitas_id": "40", "departemen_id": "2", "jenis_baterai": "Lead Acid", "model_unit_id": "253", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'IN_PROGRESS', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 03:25:25', 2, NULL, 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 03:25:36', NULL, 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 03:25:40', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 03:25:44', NULL, NULL, 1, '2025-08-16 02:56:25', '2025-08-16 21:05:42'),
+	(7, 'SPK/202508/007', 'UNIT', NULL, NULL, 1, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-16', '{"ban_id": "3", "mast_id": "22", "roda_id": "3", "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line", "Laser Fork", "Voice Announcer", "Horn Speaker", "Sensor Parking"], "merk_unit": "KOMATSU", "tipe_jenis": "SCRUBER", "kapasitas_id": "41", "departemen_id": "2", "jenis_baterai": "Lead Acid", "model_unit_id": "254", "attachment_merk": "CASCADE", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 04:12:48', 1, '["Lampu-lampu","Rotary Lamp","Blue Light Spot","Red Line","Laser Fork","Voice Announcer","Horn Speaker"]', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 04:13:08', 2, 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 04:13:14', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 04:13:32', 'tidak ada sensor parking', NULL, 1, '2025-08-16 03:54:30', '2025-08-18 06:44:27'),
+	(8, 'SPK/202508/008', 'UNIT', NULL, NULL, 1, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-19', '{"ban_id": "2", "mast_id": "17", "roda_id": "4", "valve_id": "2", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line", "Work Light", "Laser Fork", "Voice Announcer", "Horn Speaker", "Sensor Parking", "Bio Metric"], "merk_unit": "HELI", "tipe_jenis": "COUNTER BALANCE", "kapasitas_id": "41", "departemen_id": "3", "jenis_baterai": "Lead Acid", "model_unit_id": "146", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'IN_PROGRESS', 'JOHANA - DEPI', '2025-08-16', '2025-08-16', '2025-08-16 04:46:11', 3, '["Lampu-lampu","Rotary Lamp","Blue Light Spot","Red Line","Work Light","Laser Fork","Voice Announcer","Horn Speaker"]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-16 04:45:17', '2025-08-16 21:05:42'),
+	(9, 'SPK/202508/009', 'UNIT', NULL, NULL, 1, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-15', '{"ban_id": "4", "mast_id": "1", "roda_id": "1", "valve_id": "3", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line"], "merk_unit": "KOMATSU", "tipe_jenis": "DUMP TRUCK", "kapasitas_id": "9", "departemen_id": "1", "jenis_baterai": "Lithium-ion", "model_unit_id": "250", "attachment_merk": "CASCADE", "attachment_tipe": "FORK"}', 'COMPLETED', 'JOHANA - DEPI', '2025-08-18', '2025-08-18', '2025-08-16 13:18:49', 4, '["Lampu-lampu","Rotary Lamp","Blue Light Spot","Red Line"]', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 13:19:11', 3, 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 13:19:16', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 13:20:03', 'ok', NULL, 1, '2025-08-16 12:47:25', '2025-08-18 04:13:18'),
+	(10, 'SPK/202508/010', 'UNIT', NULL, NULL, 1, 'test/1/1/1', 'ADIT', NULL, NULL, '123', '2025-08-16', '{"ban_id": "4", "mast_id": "22", "roda_id": "3", "valve_id": "3", "aksesoris": ["Horn Speaker", "Bio Metric", "Horn (klakson)", "P3K"], "merk_unit": "HELI", "tipe_jenis": "PALLET MOVER", "kapasitas_id": "40", "departemen_id": "2", "jenis_baterai": "Lead Acid", "model_unit_id": "132", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'IN_PROGRESS', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 14:59:26', 12, '["Horn Speaker","Bio Metric","Horn (klakson)"]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-16 13:36:27', '2025-08-16 14:59:26'),
+	(11, 'SPK/202508/011', 'UNIT', NULL, NULL, 1, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-16', '{"ban_id": "6", "mast_id": "13", "roda_id": "3", "valve_id": "1", "aksesoris": ["Sensor Parking", "Bio Metric", "Horn (klakson)", "P3K"], "merk_unit": "HANGCHA", "tipe_jenis": "COMPACTOR / VIBRO", "kapasitas_id": "40", "departemen_id": "1", "jenis_baterai": "Lithium-ion", "model_unit_id": "116", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-16 14:50:45', 12, '["Sensor Parking","Bio Metric","Horn (klakson)","P3K"]', 'ARIZAL-EKA', '2025-08-18', '2025-08-18', '2025-08-18 01:31:23', 3, 'SAMSURI-RIKI', '2025-08-18', '2025-08-18', '2025-08-18 01:31:32', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-18 01:31:39', 'a', NULL, 1, '2025-08-16 14:12:06', '2025-08-18 03:53:35'),
+	(12, 'SPK/202508/012', 'UNIT', NULL, NULL, 1, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-19', '{"ban_id": "2", "mast_id": "15", "roda_id": "1", "valve_id": "2", "aksesoris": ["Lampu-lampu", "Red Line", "Work Light", "Bio Metric", "Horn (klakson)", "P3K"], "merk_unit": "BT", "tipe_jenis": "SCRUBER", "kapasitas_id": "43", "departemen_id": "2", "jenis_baterai": "Lithium-ion", "model_unit_id": "2", "attachment_merk": "CASCADE", "attachment_tipe": "FORK"}', 'IN_PROGRESS', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-18 02:33:12', 10, '["Lampu-lampu","Red Line","Work Light"]', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 1, '2025-08-18 02:32:15', '2025-08-18 02:33:12'),
+	(13, 'SPK/202508/013', 'UNIT', NULL, NULL, 1, 'test/1/1/2', 'ADIT', NULL, NULL, '123', '2025-08-13', '{"ban_id": "3", "mast_id": "14", "roda_id": "4", "valve_id": "1", "aksesoris": ["Lampu-lampu", "Rotary Lamp", "Blue Light Spot", "Red Line"], "merk_unit": "LOGITRANS", "tipe_jenis": "COMPACTOR / VIBRO", "kapasitas_id": "41", "departemen_id": "1", "jenis_baterai": "Lead Acid", "model_unit_id": "259", "attachment_merk": "COMPULOAD", "attachment_tipe": "FORK POSITIONER"}', 'COMPLETED', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-18 02:34:06', 7, '["Lampu-lampu","Rotary Lamp","Blue Light Spot"]', 'ARIZAL-EKA', '2025-08-18', '2025-08-18', '2025-08-18 10:15:55', 3, 'SAMSURI-RIKI', '2025-08-18', '2025-08-18', '2025-08-18 10:15:58', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-18 10:16:04', 'assdea', NULL, 1, '2025-08-18 02:33:49', '2025-08-19 07:35:59'),
+	(14, 'SPK/202508/014', 'UNIT', NULL, NULL, 1, '1233', 'kaleng', 'joko', '082134555233', 'kaaleng', '2025-08-20', '{"ban_id": "6", "mast_id": "15", "roda_id": "1", "valve_id": "1", "aksesoris": ["Lampu-lampu", "Red Line", "Work Light", "Back Buzzer", "Camera", "Laser Fork", "Voice Announcer", "Sensor Parking", "Bio Metric", "Horn (klakson)"], "merk_unit": "JUNGHEINRICH", "tipe_jenis": "COMPACTOR / VIBRO", "kapasitas_id": "40", "departemen_id": "1", "jenis_baterai": "Lithium-ion", "model_unit_id": "216", "attachment_merk": "CASCADE", "attachment_tipe": "FORKLIFT SCALE"}', 'COMPLETED', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-19 02:48:52', 5, '["Lampu-lampu","Red Line","Work Light","Back Buzzer","Camera","Laser Fork","Voice Announcer"]', 'ARIZAL-EKA', '2025-08-18', '2025-08-18', '2025-08-19 02:48:57', 3, 'SAMSURI-RIKI', '2025-08-18', '2025-08-18', '2025-08-19 02:49:01', 'IYAN', '2025-08-16', '2025-08-16', '2025-08-19 02:49:07', 'ok', NULL, 1, '2025-08-19 02:48:19', '2025-08-19 02:54:26');
 
 -- Dumping structure for table optima_db.spk_status_history
 CREATE TABLE IF NOT EXISTS `spk_status_history` (
@@ -2176,9 +2138,9 @@ CREATE TABLE IF NOT EXISTS `spk_status_history` (
   PRIMARY KEY (`id`),
   KEY `idx_spk_status_history_spk` (`spk_id`),
   CONSTRAINT `fk_spk_status_spk` FOREIGN KEY (`spk_id`) REFERENCES `spk` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
--- Dumping data for table optima_db.spk_status_history: ~17 rows (approximately)
+-- Dumping data for table optima_db.spk_status_history: ~16 rows (approximately)
 REPLACE INTO `spk_status_history` (`id`, `spk_id`, `status_from`, `status_to`, `changed_by`, `note`, `changed_at`) VALUES
 	(1, 1, 'SUBMITTED', 'IN_PROGRESS', 1, NULL, '2025-08-14 06:46:43'),
 	(2, 1, 'IN_PROGRESS', 'READY', 1, NULL, '2025-08-14 06:47:03'),
@@ -2197,7 +2159,9 @@ REPLACE INTO `spk_status_history` (`id`, `spk_id`, `status_from`, `status_to`, `
 	(15, 9, 'READY', 'COMPLETED', 1, 'DI dibuat oleh Marketing', '2025-08-18 04:13:18'),
 	(16, 7, 'READY', 'COMPLETED', 1, 'DI dibuat oleh Marketing', '2025-08-18 06:44:27'),
 	(17, 4, 'READY', 'COMPLETED', 1, 'DI dibuat oleh Marketing', '2025-08-18 07:42:28'),
-	(18, 14, 'READY', 'COMPLETED', 1, 'DI dibuat oleh Marketing', '2025-08-19 02:54:26');
+	(18, 14, 'READY', 'COMPLETED', 1, 'DI dibuat oleh Marketing', '2025-08-19 02:54:26'),
+	(19, 13, 'READY', 'COMPLETED', 1, 'DI dibuat oleh Marketing', '2025-08-19 07:35:59'),
+	(20, 3, 'READY', 'COMPLETED', 1, 'DI dibuat oleh Marketing', '2025-08-19 07:46:13');
 
 -- Dumping structure for table optima_db.spk_units
 CREATE TABLE IF NOT EXISTS `spk_units` (
@@ -2326,6 +2290,51 @@ REPLACE INTO `tipe_unit` (`id_tipe_unit`, `tipe`, `jenis`, `id_departemen`) VALU
 	(13, 'Forklift', 'THREE WHEEL', 2),
 	(14, 'Kendaraan Industri', 'TOWING', 2),
 	(15, 'Peralatan Angkat', 'SCISSOR LIFT', 2);
+
+-- Dumping structure for procedure optima_db.update_kontrak_totals_proc
+DELIMITER //
+CREATE PROCEDURE `update_kontrak_totals_proc`(IN kontrak_id_param INT UNSIGNED)
+BEGIN
+    DECLARE total_units_count INT DEFAULT 0;
+    DECLARE nilai_total_amount DECIMAL(15,2) DEFAULT 0;
+    DECLARE jenis_sewa_kontrak VARCHAR(10) DEFAULT 'BULANAN';
+
+    -- Get kontrak jenis_sewa
+    SELECT jenis_sewa INTO jenis_sewa_kontrak
+    FROM kontrak
+    WHERE id = kontrak_id_param;
+
+    -- Set default jika NULL
+    IF jenis_sewa_kontrak IS NULL THEN
+        SET jenis_sewa_kontrak = 'BULANAN';
+    END IF;
+
+    -- Calculate totals dari kontrak_spesifikasi
+    IF jenis_sewa_kontrak = 'HARIAN' THEN
+        SELECT
+            COALESCE(SUM(ks.jumlah_dibutuhkan), 0) as total_units,
+            COALESCE(SUM(ks.jumlah_dibutuhkan * COALESCE(ks.harga_per_unit_harian, 0)), 0) as nilai_total
+            INTO total_units_count, nilai_total_amount
+        FROM kontrak_spesifikasi ks
+        WHERE ks.kontrak_id = kontrak_id_param;
+    ELSE
+        -- Default BULANAN
+        SELECT
+            COALESCE(SUM(ks.jumlah_dibutuhkan), 0) as total_units,
+            COALESCE(SUM(ks.jumlah_dibutuhkan * COALESCE(ks.harga_per_unit_bulanan, 0)), 0) as nilai_total
+            INTO total_units_count, nilai_total_amount
+        FROM kontrak_spesifikasi ks
+        WHERE ks.kontrak_id = kontrak_id_param;
+    END IF;
+
+    -- Update kontrak
+    UPDATE kontrak SET
+        total_units = total_units_count,
+        nilai_total = nilai_total_amount
+    WHERE id = kontrak_id_param;
+
+END//
+DELIMITER ;
 
 -- Dumping structure for table optima_db.users
 CREATE TABLE IF NOT EXISTS `users` (
@@ -2501,6 +2510,77 @@ REPLACE INTO `valve` (`id_valve`, `jumlah_valve`) VALUES
 	(2, '3 Valve'),
 	(3, '4 Valve'),
 	(4, '5 Valve ');
+
+-- Dumping structure for trigger optima_db.update_kontrak_totals_after_spek_delete
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `update_kontrak_totals_after_spek_delete` AFTER DELETE ON `kontrak_spesifikasi` FOR EACH ROW BEGIN
+    CALL update_kontrak_totals_proc(OLD.kontrak_id);
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
+
+-- Dumping structure for trigger optima_db.update_kontrak_totals_after_spek_insert
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `update_kontrak_totals_after_spek_insert` AFTER INSERT ON `kontrak_spesifikasi` FOR EACH ROW BEGIN
+    CALL update_kontrak_totals_proc(NEW.kontrak_id);
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
+
+-- Dumping structure for trigger optima_db.update_kontrak_totals_after_spek_update
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `update_kontrak_totals_after_spek_update` AFTER UPDATE ON `kontrak_spesifikasi` FOR EACH ROW BEGIN
+    CALL update_kontrak_totals_proc(NEW.kontrak_id);
+    
+    -- If kontrak_id changed, update old kontrak too
+    IF OLD.kontrak_id != NEW.kontrak_id THEN
+        CALL update_kontrak_totals_proc(OLD.kontrak_id);
+    END IF;
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
+
+-- Dumping structure for trigger optima_db.update_kontrak_totals_after_unit_delete
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `update_kontrak_totals_after_unit_delete` AFTER DELETE ON `inventory_unit` FOR EACH ROW BEGIN
+    IF OLD.kontrak_id IS NOT NULL THEN
+        CALL update_kontrak_totals_proc(OLD.kontrak_id);
+    END IF;
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
+
+-- Dumping structure for trigger optima_db.update_kontrak_totals_after_unit_insert
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `update_kontrak_totals_after_unit_insert` AFTER INSERT ON `inventory_unit` FOR EACH ROW BEGIN
+    IF NEW.kontrak_id IS NOT NULL THEN
+        CALL update_kontrak_totals_proc(NEW.kontrak_id);
+    END IF;
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
+
+-- Dumping structure for trigger optima_db.update_kontrak_totals_after_unit_update
+SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION';
+DELIMITER //
+CREATE TRIGGER `update_kontrak_totals_after_unit_update` AFTER UPDATE ON `inventory_unit` FOR EACH ROW BEGIN
+    -- Update old kontrak if changed
+    IF OLD.kontrak_id IS NOT NULL AND (OLD.kontrak_id != NEW.kontrak_id OR NEW.kontrak_id IS NULL) THEN
+        CALL update_kontrak_totals_proc(OLD.kontrak_id);
+    END IF;
+    
+    -- Update new kontrak
+    IF NEW.kontrak_id IS NOT NULL THEN
+        CALL update_kontrak_totals_proc(NEW.kontrak_id);
+    END IF;
+END//
+DELIMITER ;
+SET SQL_MODE=@OLDTMP_SQL_MODE;
 
 -- Removing temporary table and create final VIEW structure
 DROP TABLE IF EXISTS `user_all_permissions`;

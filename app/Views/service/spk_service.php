@@ -24,35 +24,85 @@
 	pointer-events: none !important;
 }
 
-.filter-card { 
-    cursor: pointer; 
-    transition: all 0.3s ease; 
+.filter-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #dee2e6;
 }
-.filter-card.active { 
-    transform: translateY(-3px); 
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
-    border: 2px solid #fff; 
+
+.filter-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-color: #0d6efd;
 }
-.filter-card:hover { 
-    transform: translateY(-5px); 
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
+
+.filter-card.active {
+  background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
+  color: white;
+  border-color: #0d6efd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+}
+
+.filter-card.active .text-muted {
+  color: rgba(255,255,255,0.8) !important;
 }
 </style>
+
+<div class="container-fluid py-3">
   <!-- Statistics Cards -->
-  <div class="row g-4 mb-4">
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="totalSPK">0</h2><h6 class="card-title text-uppercase small">Total SPK</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-secondary text-white h-100 filter-card" data-filter="SUBMITTED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="submittedSPK">0</h2><h6 class="card-title text-uppercase small">Submitted</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="inProgressSPK">0</h2><h6 class="card-title text-uppercase small">In Progress</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="READY" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="readySPK">0</h2><h6 class="card-title text-uppercase small">Ready</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="COMPLETED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="completedSPK">0</h2><h6 class="card-title text-uppercase small">Completed</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-danger text-white h-100 filter-card" data-filter="CANCELLED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="cancelledSPK">0</h2><h6 class="card-title text-uppercase small">Cancelled</h6></div></div></div>
+  <div class="row mb-4">
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="all">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-primary" id="totalSPK">0</h5>
+          <small class="text-muted">Total SPK</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="SUBMITTED">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-secondary" id="submittedSPK">0</h5>
+          <small class="text-muted">Submitted</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="IN_PROGRESS">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-info" id="inProgressSPK">0</h5>
+          <small class="text-muted">In Progress</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="READY">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-success" id="readySPK">0</h5>
+          <small class="text-muted">Ready</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="COMPLETED">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-primary" id="completedSPK">0</h5>
+          <small class="text-muted">Completed</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="CANCELLED">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-danger" id="cancelledSPK">0</h5>
+          <small class="text-muted">Cancelled</small>
+        </div>
+      </div>
+    </div>
   </div>
 
-	<!-- Tabel Daftar SPK Service -->
-	<div class="card table-card">
-		<div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-			<h5 class="h5 mb-0 text-gray-800">Daftar SPK Service</h5>
-		</div>
+	<div class="card">
 		<div class="card-body">
 			<!-- DataTable-style controls -->
 			<div class="row mb-3">
@@ -75,7 +125,7 @@
 			</div>
 
 			<div class="table-responsive">
-				<table class="table table-striped table-hover" id="spkTable" style="width:100%">
+				<table class="table table-sm mb-0" id="spkTable">
 					<thead>
 						<tr>
 							<th>No. SPK</th>
@@ -382,21 +432,18 @@ document.addEventListener('DOMContentLoaded', () => {
 	});
 	
 	// Filter card click listeners
-	document.querySelectorAll('.filter-card[data-filter]').forEach(card => {
+	document.querySelectorAll('.filter-card').forEach(card => {
 		card.addEventListener('click', function() {
 			const filter = this.dataset.filter;
 			currentFilter = filter;
 			
 			// Update active card
-			document.querySelectorAll('.filter-card[data-filter]').forEach(c => c.classList.remove('active'));
+			document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
 			this.classList.add('active');
 			
 			applyFilters();
 		});
 	});
-	
-	// Set default active filter
-	document.querySelector('[data-filter="all"]').classList.add('active');
 	
 	load();
 	

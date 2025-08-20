@@ -1,63 +1,136 @@
 <?= $this->extend('layouts/base') ?>
 <?= $this->section('content') ?>
 
-<div class="container-fluid py-3">
 <style>
-.filter-card { 
-    cursor: pointer; 
-    transition: all 0.3s ease; 
+.filter-card {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 1px solid #dee2e6;
 }
-.filter-card.active { 
-    transform: translateY(-3px); 
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
-    border: 2px solid #fff; 
+
+.filter-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-color: #0d6efd;
 }
-.filter-card:hover { 
-    transform: translateY(-5px); 
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
+
+.filter-card.active {
+  background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
+  color: white;
+  border-color: #0d6efd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+}
+
+.filter-card.active .text-muted {
+  color: rgba(255,255,255,0.8) !important;
 }
 </style>
 
+<div class="container-fluid py-3">
   <!-- Statistics Cards -->
-  <div class="row g-4 mb-4">
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="totalDI">0</h2><h6 class="card-title text-uppercase small">Total DI</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-secondary text-white h-100 filter-card" data-filter="DIAJUKAN" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="diajukanDI">0</h2><h6 class="card-title text-uppercase small">Diajukan</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="DIPROSES" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="diprosesDI">0</h2><h6 class="card-title text-uppercase small">Diproses</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="DIKIRIM" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="dikirimDI">0</h2><h6 class="card-title text-uppercase small">Dikirim</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="SAMPAI" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="sampaiDI">0</h2><h6 class="card-title text-uppercase small">Sampai</h6></div></div></div>
-    <div class="col-xl-2 col-md-4"><div class="card card-stats bg-danger text-white h-100 filter-card" data-filter="DIBATALKAN" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="dibatalkanDI">0</h2><h6 class="card-title text-uppercase small">Dibatalkan</h6></div></div></div>
-  </div>
-
-  <!-- Tabel Daftar DI -->
-  <div class="card table-card">
-    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h5 class="h5 mb-0 text-gray-800">Daftar Delivery Instructions (DI)</h5>
-      <button class="btn btn-sm btn-primary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#diCreateModal">
-        <span class="fw-semibold">+ Buat DI</span>
+  <div class="row mb-4">
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="all">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-primary" id="totalDI">0</h5>
+          <small class="text-muted">Total DI</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="SUBMITTED">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-secondary" id="submittedDI">0</h5>
+          <small class="text-muted">Submitted</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="DISPATCHED">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-info" id="dispatchedDI">0</h5>
+          <small class="text-muted">Dispatched</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="ARRIVED">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-success" id="arrivedDI">0</h5>
+          <small class="text-muted">Arrived</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2">
+      <div class="card filter-card text-center" data-filter="CANCELLED">
+        <div class="card-body py-3">
+          <h5 class="mb-1 text-danger" id="cancelledDI">0</h5>
+          <small class="text-muted">Cancelled</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-2 d-flex align-items-center">
+      <button class="btn btn-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#diCreateModal">
+        <i class="fas fa-plus"></i> Buat DI
       </button>
     </div>
+  </div>
+
+  <div class="card">
     <div class="card-body">
-      <table id="diTable" class="table table-striped table-hover" style="width:100%">
-        <thead>
-          <tr>
-            <th>No. DI</th>
-            <th>No. SPK</th>
-            <th>PO/Kontrak</th>
-            <th>Nama Perusahaan</th>
-            <th>PIC</th>
-            <th>Kontak</th>
-            <th>Lokasi</th>
-            <th>Tanggal Kirim</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- Data akan dimuat oleh DataTables melalui AJAX -->
-        </tbody>
-      </table>
+      <!-- DataTable-style controls -->
+      <div class="row mb-3">
+        <div class="col-md-6 d-flex align-items-center">
+          <label class="me-2">Show</label>
+          <select class="form-select form-select-sm me-2" id="entriesPerPage" style="width: auto;">
+            <option value="10">10</option>
+            <option value="25">25</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span>entries</span>
+        </div>
+        <div class="col-md-6">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text">Search:</span>
+            <input type="text" class="form-control" id="searchInput" placeholder="Cari No. DI, SPK, PO, Pelanggan...">
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="table table-sm mb-0" id="diTable">
+          <thead>
+            <tr>
+              <th>No. DI</th>
+              <th>No. SPK</th>
+              <th>PO/Kontrak</th>
+              <th>Nama Perusahaan</th>
+              <th>PIC</th>
+              <th>Kontak</th>
+              <th>Lokasi</th>
+              <th>Tanggal Kirim</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <div id="tableInfo" class="text-muted"></div>
+        </div>
+        <div class="col-md-6">
+          <nav>
+            <ul class="pagination pagination-sm justify-content-end mb-0" id="pagination"></ul>
+          </nav>
+        </div>
+      </div>
     </div>
   </div>
-</div>
 
 
   <!-- Create DI Modal (from READY SPK) -->
@@ -85,112 +158,155 @@
   </div>
 </div>
 <script>
-let currentStatusFilter = 'all';
+// Global variables
+let allDIData = [];
+let filteredDIData = [];
+let currentFilter = 'all';
+let currentPage = 1;
+let entriesPerPage = 10;
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  // Store filtered data globally for filter functionality
-  let allData = [];
-  let filteredData = [];
-
-  // Initialize DataTable
-  const table = $('#diTable').DataTable({
-    processing: true,
-    serverSide: false,
-    ajax: {
-      url: '<?= base_url('marketing/di/list') ?>',
-      type: 'GET',
-      dataSrc: function(json) {
-        allData = json.data || [];
-        updateStatistics(allData);
-        applyCurrentFilter();
-        return filteredData;
-      }
-    },
-    columns: [
-      { data: 'nomor_di', render: function(data, type, row) {
-        return `<a href="#" onclick="openDiDetail(${row.id});return false;">${data}</a>`;
-      }},
-      { data: 'spk_id', defaultContent: '-' },
-      { data: 'po_kontrak_nomor', defaultContent: '-' },
-      { data: 'pelanggan', defaultContent: '-' },
-      { data: 'spk_pic', defaultContent: '-' },
-      { data: 'spk_kontak', defaultContent: '-' },
-      { data: 'lokasi', defaultContent: '-' },
-      { data: 'tanggal_kirim', defaultContent: '-' },
-      { data: 'status', render: function(data, type, row) {
-        const statusMap = {
-          'DIAJUKAN': { class: 'secondary', text: 'Diajukan' },
-          'DIPROSES': { class: 'warning', text: 'Diproses' },
-          'DIKIRIM': { class: 'info', text: 'Dikirim' },
-          'SAMPAI': { class: 'success', text: 'Sampai' },
-          'DIBATALKAN': { class: 'danger', text: 'Dibatalkan' }
-        };
-        const status = statusMap[data?.toUpperCase()] || { class: 'secondary', text: 'Diajukan' };
-        return `<span class="badge bg-${status.class}">${status.text}</span>`;
-      }}
-    ],
-    order: [[0, 'desc']],
-    language: {
-      processing: "Memuat...",
-      search: "Cari:",
-      lengthMenu: "Tampilkan _MENU_ entri",
-      info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ entri",
-      infoEmpty: "Menampilkan 0 sampai 0 dari 0 entri",
-      infoFiltered: "(disaring dari _MAX_ entri keseluruhan)",
-      paginate: {
-        first: "Pertama",
-        last: "Terakhir", 
-        next: "Selanjutnya",
-        previous: "Sebelumnya"
-      }
-    }
-  });
-
-  function updateStatistics(data) {
-    const total = data.length;
-    const diajukan = data.filter(item => !item.status || item.status.toUpperCase() === 'DIAJUKAN').length;
-    const diproses = data.filter(item => item.status?.toUpperCase() === 'DIPROSES').length;
-    const dikirim = data.filter(item => item.status?.toUpperCase() === 'DIKIRIM').length;
-    const sampai = data.filter(item => item.status?.toUpperCase() === 'SAMPAI').length;
-    const dibatalkan = data.filter(item => item.status?.toUpperCase() === 'DIBATALKAN').length;
+  const tb = document.querySelector('#diTable tbody');
+  
+  function loadDI(){
+    fetch('<?= base_url('marketing/di/list') ?>').then(r=>r.json()).then(j=>{
+      allDIData = j.data || [];
+      updateStatistics();
+      applyFilters();
+    });
+  }
+  
+  function updateStatistics() {
+    const total = allDIData.length;
+    const submitted = allDIData.filter(item => (item.status || '').toUpperCase() === 'SUBMITTED').length;
+    const dispatched = allDIData.filter(item => (item.status || '').toUpperCase() === 'DISPATCHED').length;
+    const arrived = allDIData.filter(item => (item.status || '').toUpperCase() === 'ARRIVED').length;
+    const cancelled = allDIData.filter(item => (item.status || '').toUpperCase() === 'CANCELLED').length;
     
     document.getElementById('totalDI').textContent = total;
-    document.getElementById('diajukanDI').textContent = diajukan;
-    document.getElementById('diprosesDI').textContent = diproses;
-    document.getElementById('dikirimDI').textContent = dikirim;
-    document.getElementById('sampaiDI').textContent = sampai;
-    document.getElementById('dibatalkanDI').textContent = dibatalkan;
+    document.getElementById('submittedDI').textContent = submitted;
+    document.getElementById('dispatchedDI').textContent = dispatched;
+    document.getElementById('arrivedDI').textContent = arrived;
+    document.getElementById('cancelledDI').textContent = cancelled;
   }
-
-  function applyCurrentFilter() {
-    if (currentStatusFilter === 'all') {
-      filteredData = [...allData];
-    } else {
-      filteredData = allData.filter(item => {
-        const status = item.status?.toUpperCase() || 'DIAJUKAN';
-        return status === currentStatusFilter;
+  
+  function applyFilters() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    // Filter by status
+    let filtered = currentFilter === 'all' ? [...allDIData] : 
+                   allDIData.filter(item => (item.status || '').toUpperCase() === currentFilter);
+    
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(item => {
+        return (item.nomor_di || '').toLowerCase().includes(searchTerm) ||
+               (item.spk_id || '').toLowerCase().includes(searchTerm) ||
+               (item.po_kontrak_nomor || '').toLowerCase().includes(searchTerm) ||
+               (item.pelanggan || '').toLowerCase().includes(searchTerm) ||
+               (item.spk_pic || '').toLowerCase().includes(searchTerm) ||
+               (item.lokasi || '').toLowerCase().includes(searchTerm);
       });
     }
+    
+    filteredDIData = filtered;
+    currentPage = 1; // Reset to first page
+    renderDITable();
+    updatePagination();
   }
-
-  // Filter cards click handlers
-  document.querySelectorAll('.filter-card[data-filter]').forEach(card => {
+  
+  function renderDITable() {
+    const startIndex = (currentPage - 1) * entriesPerPage;
+    const endIndex = startIndex + entriesPerPage;
+    const dataToShow = filteredDIData.slice(startIndex, endIndex);
+    
+    tb.innerHTML = '';
+    dataToShow.forEach(r=>{
+      const tr = document.createElement('tr');
+      const badge = (s)=>{ const m={SUBMITTED:'secondary',DISPATCHED:'info',ARRIVED:'success',CANCELLED:'danger'}; const c=m[(s||'').toUpperCase()]||'secondary'; return `<span class="badge bg-${c}">${s}</span>`; };
+      tr.innerHTML = `
+        <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
+        <td>${r.spk_id || '-'}</td>
+        <td>${r.po_kontrak_nomor||'-'}</td>
+        <td>${r.pelanggan||'-'}</td>
+        <td>${r.spk_pic||'-'}</td>
+        <td>${r.spk_kontak||'-'}</td>
+        <td>${r.lokasi||'-'}</td>
+        <td>${r.tanggal_kirim||'-'}</td>
+        <td>${badge(r.status)}</td>`;
+      tb.appendChild(tr);
+    });
+    
+    // Update table info
+    const totalEntries = filteredDIData.length;
+    const start = totalEntries === 0 ? 0 : startIndex + 1;
+    const end = Math.min(endIndex, totalEntries);
+    document.getElementById('tableInfo').textContent = 
+      `Showing ${start} to ${end} of ${totalEntries} entries`;
+  }
+  
+  function updatePagination() {
+    const totalPages = Math.ceil(filteredDIData.length / entriesPerPage);
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    
+    // Previous button
+    const prevLi = document.createElement('li');
+    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+    prevLi.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + (currentPage - 1) + ')">Previous</a>';
+    pagination.appendChild(prevLi);
+    
+    // Page numbers
+    for (let i = 1; i <= totalPages; i++) {
+      const li = document.createElement('li');
+      li.className = `page-item ${currentPage === i ? 'active' : ''}`;
+      li.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + i + ')">' + i + '</a>';
+      pagination.appendChild(li);
+    }
+    
+    // Next button
+    const nextLi = document.createElement('li');
+    nextLi.className = `page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`;
+    nextLi.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + (currentPage + 1) + ')">Next</a>';
+    pagination.appendChild(nextLi);
+  }
+  
+  window.changePage = function(page) {
+    const totalPages = Math.ceil(filteredDIData.length / entriesPerPage);
+    if (page >= 1 && page <= totalPages) {
+      currentPage = page;
+      renderDITable();
+      updatePagination();
+    }
+  }
+  
+  // Event listeners
+  document.getElementById('entriesPerPage').addEventListener('change', function() {
+    entriesPerPage = parseInt(this.value);
+    currentPage = 1;
+    renderDITable();
+    updatePagination();
+  });
+  
+  document.getElementById('searchInput').addEventListener('input', function() {
+    applyFilters();
+  });
+  
+  // Filter card click listeners
+  document.querySelectorAll('.filter-card').forEach(card => {
     card.addEventListener('click', function() {
       const filter = this.dataset.filter;
-      currentStatusFilter = filter;
+      currentFilter = filter;
       
       // Update active card
-      document.querySelectorAll('.filter-card[data-filter]').forEach(c => c.classList.remove('active'));
+      document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
       this.classList.add('active');
       
-      // Apply filter and refresh table
-      applyCurrentFilter();
-      table.clear().rows.add(filteredData).draw();
+      applyFilters();
     });
   });
-
-  // Set default active filter
-  document.querySelector('[data-filter="all"]').classList.add('active');
+  
+  loadDI();
 
   window.openDiDetail = (id) => {
     const modal = new bootstrap.Modal(document.getElementById('diDetailModal'));
@@ -238,7 +354,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (j && j.success){
           bootstrap.Modal.getInstance(document.getElementById('diCreateModal')).hide();
           e.target.reset();
-          table.ajax.reload(); // Reload DataTable instead of custom loadDI
+          loadDI();
           if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI dibuat: ' + (j.nomor||''), 'success');
           else if (typeof showNotification==='function') showNotification('DI dibuat: ' + (j.nomor||''), 'success');
           else alert('DI dibuat: ' + (j.nomor||''));

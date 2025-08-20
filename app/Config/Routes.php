@@ -6,6 +6,7 @@ use CodeIgniter\Router\RouteCollection;
  * @var RouteCollection $routes
  */
 $routes->get('/', 'Home::index');
+$routes->get('test', 'Test::index');
 
 //        // Permission Management
 //     $routes->group('permissions', static function ($routes) {
@@ -172,7 +173,24 @@ $routes->group('marketing',  static function ($routes) {
         $routes->post('update/(:num)', 'Kontrak::update/$1');
         $routes->post('delete/(:num)', 'Kontrak::delete/$1');
         $routes->get('detail/(:num)', 'Kontrak::detail/$1');
+        $routes->get('get/(:num)', 'Kontrak::get/$1');
         $routes->get('units/(:num)', 'Kontrak::getContractUnits/$1');
+        
+        // Spesifikasi management
+        $routes->get('spesifikasi/(:num)', 'Kontrak::getKontrakSpesifikasi/$1');
+        $routes->post('add-spesifikasi', 'Kontrak::addSpesifikasi');
+        $routes->post('update-spesifikasi/(:num)', 'Kontrak::updateSpesifikasi/$1');
+        $routes->post('delete-spesifikasi/(:num)', 'Kontrak::deleteSpesifikasi/$1');
+        $routes->get('available-units/(:num)', 'Kontrak::getAvailableUnits/$1');
+        $routes->post('assign-units', 'Kontrak::assignUnitsToSpesifikasi');
+        
+        // Debug endpoint (development only)
+        $routes->get('debug-test-insert', 'Kontrak::debugTestInsert');
+        
+        // For SPK workflow
+        $routes->get('get-active-contracts', 'Marketing::getActiveContracts');
+        $routes->get('get/(:num)', 'Marketing::getKontrak/$1');
+        $routes->get('find-by-spesifikasi/(:num)', 'Marketing::findBySpesifikasi/$1');
     });
     // SPK Marketing
     $routes->get('spk', 'Marketing::spk');
