@@ -88,16 +88,15 @@ $placeholder = ($status === 'SUBMITTED');
                                 <td class="text-center align-top">2.</td>
                                 <td class="align-top"><strong>Equipment :</strong>
                                     <div class="mt-2">
-                                        <div>- Tipe (Jenis)</div>
-                                        <div>- Merk Unit</div>
-                                        <div>- Valve</div>
-                                        <div>- Baterai (Jenis)</div>
-                                        <div>- Attachment (Tipe)</div>
-                                        <div>- Roda</div>
+                                        <div>- Total Unit</div>
+                                        <div>- Merk & Jenis Unit</div>
+                                        <div>- Baterai & Charger</div>
                                         <div>- Departemen</div>
                                         <div>- Kapasitas</div>
+                                        <div>- Attachment</div>
+                                        <div>- Roda & Ban</div>
                                         <div>- Mast</div>
-                                        <div>- Ban</div>
+                                        <div>- Valve</div>
                                     </div>
                                 </td>
                                 <td class="align-top">
@@ -110,26 +109,90 @@ $placeholder = ($status === 'SUBMITTED');
                                         echo '<!-- DEBUG USER FIELDS: created_by=' . ($spk['created_by'] ?? 'null') . ', created_by_name=' . ($spk['created_by_name'] ?? 'null') . ', marketing_name=' . ($spk['marketing_name'] ?? 'null') . ' -->';
                                         echo '<!-- DEBUG SESSION: user_name=' . (session()->get('user_name') ?? 'null') . ', username=' . (session()->get('username') ?? 'null') . ', nama=' . (session()->get('nama') ?? 'null') . ' -->';
                                         echo '<!-- DEBUG SPESIFIKASI KEYS: ' . implode(', ', array_keys($s)) . ' -->';
+                                        
+                                        // Add debug for battery and charger info
+                                        echo '<!-- DEBUG BATTERY MODEL: ' . ($s['baterai_model'] ?? 'null') . ' -->';
+                                        echo '<!-- DEBUG BATTERY TYPE: ' . ($s['jenis_baterai'] ?? 'null') . ' -->';
+                                        echo '<!-- DEBUG CHARGER MODEL: ' . ($s['charger_model'] ?? 'null') . ' -->';
+                                        if (isset($unit)) {
+                                            echo '<!-- DEBUG UNIT BATTERY: ' . ($unit['baterai_model'] ?? 'null') . ' -->';
+                                            echo '<!-- DEBUG UNIT CHARGER: ' . ($unit['charger_model'] ?? 'null') . ' -->';
+                                        }
                                     ?>
                                     <div class="mt-2">
                                         <br />
-                                        <div class="val"><?= esc($s['jenis_unit'] ?? ($unit['jenis_unit'] ?? '..............................')) ?></div>
-                                        <div class="val"><?= esc($s['merk_unit'] ?? ($unit['merk_unit'] ?? '..............................')) ?></div>
-                                        <div class="val"><?= esc($s['valve_id_name'] ?? $s['valve_id'] ?? '..............................') ?></div>
-                                        <div class="val"><?= esc($s['jenis_baterai'] ?? ($unit['jenis_baterai'] ?? '..............................')) ?></div>
+                                        <div class="val"><?= esc($s['jumlah_unit'] ?? ($unit['jumlah_unit'] ?? $spk['jumlah_unit'] ?? '..............................')) ?></div>
+                                        <div class="val">
+                                            <?php
+                                            // Debug: show all possible merk and jenis fields
+                                            echo '<!-- DEBUG ALL UNIT INFO FIELDS: ';
+                                            echo 's.merk_unit=' . ($s['merk_unit'] ?? 'null') . ', ';
+                                            echo 's.jenis_unit=' . ($s['jenis_unit'] ?? 'null') . ', ';
+                                            echo 's.tipe_jenis=' . ($s['tipe_jenis'] ?? 'null') . ', ';
+                                            echo 's.model_unit=' . ($s['model_unit'] ?? 'null');
+                                            if (isset($unit)) {
+                                                echo ', unit.merk_unit=' . ($unit['merk_unit'] ?? 'null') . ', ';
+                                                echo 'unit.jenis_unit=' . ($unit['jenis_unit'] ?? 'null') . ', ';
+                                                echo 'unit.tipe_jenis=' . ($unit['tipe_jenis'] ?? 'null') . ', ';
+                                                echo 'unit.model_unit=' . ($unit['model_unit'] ?? 'null');
+                                            }
+                                            echo ' -->';
+                                            
+                                            // Combine merk and jenis unit info
+                                            $merkUnit = $s['merk_unit'] ?? ($unit['merk_unit'] ?? '');
+                                            $jenisUnit = $s['jenis_unit'] ?? ($unit['jenis_unit'] ?? '');
+                                            $tipeUnit = $s['tipe_jenis'] ?? ($unit['tipe_jenis'] ?? '');
+                                            $modelUnit = $s['model_unit'] ?? ($unit['model_unit'] ?? '');
+                                            
+                                            $brandTypeInfo = [];
+                                            if (!empty($merkUnit)) $brandTypeInfo[] = $merkUnit;
+                                            if (!empty($modelUnit)) $brandTypeInfo[] = $modelUnit;
+                                            if (!empty($jenisUnit) && !in_array($jenisUnit, $brandTypeInfo)) $brandTypeInfo[] = $jenisUnit;
+                                            if (!empty($tipeUnit) && !in_array($tipeUnit, $brandTypeInfo)) $brandTypeInfo[] = $tipeUnit;
+                                            
+                                            echo !empty($brandTypeInfo) ? esc(implode(' ', $brandTypeInfo)) : '..............................';
+                                            ?>
+                                        </div>
+                                        <div class="val"><?= esc(($s['jenis_baterai'] ?? '') . (!empty($s['jenis_baterai']) && !empty($s['charger_model']) ? ' & ' : '') . ($s['charger_model'] ?? '') ?: '..............................') ?></div>
+                                        <div class="val"><?= esc($s['departemen_id_name'] ?? $s['departemen_name'] ?? $s['departemen_id'] ?? '..............................') ?></div>
+                                        <div class="val"><?= esc($s['kapasitas_id_name'] ?? $s['kapasitas_name'] ?? $s['kapasitas_id'] ?? '..............................') ?></div>
                                         <div class="val"><?= esc($s['attachment_tipe'] ?? ($s['selected']['attachment']['tipe'] ?? '..............................')) ?></div>
-                                        <div class="val"><?= esc($s['roda_id_name'] ?? $s['roda_id'] ?? '..............................') ?></div>
-                                        <div class="val"><?= esc($s['departemen_id_name'] ?? $s['departemen_id'] ?? '..............................') ?></div>
-                                        <div class="val"><?= esc($s['kapasitas_id_name'] ?? $s['kapasitas_id'] ?? '..............................') ?></div>
+                                        <div class="val"><?= esc(($s['roda_id_name'] ?? '') . (!empty($s['roda_id_name']) && !empty($s['ban_id_name']) ? ' & ' : '') . ($s['ban_id_name'] ?? '') ?: '..............................') ?></div>
                                         <div class="val"><?= esc($s['mast_id_name'] ?? $s['mast_id'] ?? '..............................') ?></div>
-                                        <div class="val"><?= esc($s['ban_id_name'] ?? $s['ban_id'] ?? '..............................') ?></div>
+                                        <div class="val"><?= esc($s['valve_id_name'] ?? $s['valve_id'] ?? '..............................') ?></div>
                                     </div>
                                 </td>
                             </tr>
                             <tr>
                                 <td class="text-center align-middle">3.</td>
                                 <td class="align-middle"><strong>Aksesoris</strong></td>
-                                <td class="val"><?= esc((!empty($s['aksesoris']) && is_array($s['aksesoris'])) ? implode(', ', $s['aksesoris']) : '..............................') ?></td>
+                                <td class="val"><?php
+                                    // Multiple ways the accessories might be stored
+                                    $aksText = '..............................';
+                                    
+                                    // Try parsing from different possible sources
+                                    if (!empty($s['aksesoris'])) {
+                                        if (is_array($s['aksesoris'])) {
+                                            $aksText = implode(', ', $s['aksesoris']);
+                                        } else if (is_string($s['aksesoris'])) {
+                                            // Try to parse JSON string
+                                            try {
+                                                $aksArray = json_decode($s['aksesoris'], true);
+                                                if (is_array($aksArray) && !empty($aksArray)) {
+                                                    $aksText = implode(', ', $aksArray);
+                                                } else {
+                                                    $aksText = $s['aksesoris']; // Use as-is if not an array
+                                                }
+                                            } catch (Exception $e) {
+                                                $aksText = $s['aksesoris']; // Use as-is if parsing fails
+                                            }
+                                        }
+                                    } else if (!empty($spk['persiapan_aksesoris_tersedia'])) {
+                                        $aksText = $spk['persiapan_aksesoris_tersedia'];
+                                    }
+                                    
+                                    echo esc($aksText);
+                                ?></td>
                             </tr>
                             <tr>
                                 <td class="text-center align-top">4.</td>
@@ -157,43 +220,124 @@ $placeholder = ($status === 'SUBMITTED');
                     </table>
 
                     <div class="mb-2 fw-bold">Prepared Detail :</div>
-                    <?php
-                        $unit = $s['selected']['unit'] ?? null; 
-                        $attachment = $s['selected']['attachment'] ?? null;
+                    <?php $preparedList = $s['prepared_units_detail'] ?? []; ?>
+                    <?php if (is_array($preparedList) && count($preparedList) > 1): ?>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th style="width:4%" class="text-center">No</th>
+                                    <th style="width:26%">Unit</th>
+                                    <th style="width:20%">Serial</th>
+                                    <th style="width:20%">Merk/Model</th>
+                                    <th style="width:15%">Attachment</th>
+                                    <th style="width:15%">Mekanik</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($preparedList as $i => $rowPrepared): ?>
+                                <tr>
+                                    <td class="text-center align-top"><?= $i+1 ?>.</td>
+                                    <td class="align-top">
+                                        <div class="val"><?= esc($rowPrepared['unit_label'] ?: ('#'.$rowPrepared['unit_id'])) ?></div>
+                                    </td>
+                                    <td class="align-top val"><?= esc($rowPrepared['serial_number'] ?? '') ?></td>
+                                    <td class="align-top val"><?= esc(trim(($rowPrepared['merk_unit'] ?? '').' '.($rowPrepared['model_unit'] ?? ''))) ?></td>
+                                    <td class="align-top val"><?= esc($rowPrepared['attachment_label'] ?? '') ?></td>
+                                    <td class="align-top">
+                                        <div class="val"><?= esc($rowPrepared['mekanik'] ?? '') ?></div>
+                                        <?php if (!empty($rowPrepared['catatan'])): ?><div class="muted">Catatan: <?= esc($rowPrepared['catatan']) ?></div><?php endif; ?>
+                                        <?php if (!empty($rowPrepared['timestamp'])): ?><div class="muted">Waktu: <?= esc($rowPrepared['timestamp']) ?></div><?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php else: ?>
+                        <?php
+                            $unit = $s['selected']['unit'] ?? null; 
+                            $attachment = $s['selected']['attachment'] ?? null;
 
-                        $summaryLeft = [
-                            ['ID Unit', $unit['no_unit'] ?? ''],
-                            ['Merk', $unit['merk_unit'] ?? ''],
-                            ['Jenis Unit', $unit['jenis_unit'] ?? $s['jenis_unit'] ?? ''],
-                            ['Kapasitas', $unit['kapasitas_name'] ?? $s['kapasitas_id_name'] ?? ''],
-                            ['SN Attachment', $attachment['sn_attachment_formatted'] ?? ''],
-                            ['SN Baterai', $unit['sn_baterai_formatted'] ?? ''],
-                            ['Valve', $s['valve_id_name'] ?? ''],
-                            ['Aksesoris', (!empty($spk['persiapan_aksesoris_tersedia']) ? $spk['persiapan_aksesoris_tersedia'] : (is_array($s['aksesoris'] ?? null) ? implode(', ', $s['aksesoris']) : ($s['aksesoris'] ?? '')))],
-                        ];
-                        $summaryRight = [
-                            ['Serial Number', $unit['serial_number'] ?? ''],
-                            ['Model', $unit['model_unit'] ?? ''],
-                            ['Tipe Unit', $unit['tipe_jenis'] ?? $s['tipe_jenis'] ?? ''],
-                            ['Mast', $s['mast_id_name'] ?? ''],
-                            ['SN Mast', $unit['sn_mast_formatted'] ?? ''],
-                            ['SN Charger', $unit['sn_charger_formatted'] ?? ''],
-                            ['Roda', $s['roda_id_name'] ?? ''],
-                            ['Ban', $s['ban_id_name'] ?? ''],
-                        ];
-                    ?>
-                    <table class="table grid-2">
-                        <tbody>
-                            <?php for($i=0;$i<count($summaryLeft);$i++): ?>
-                            <tr>
-                                <td class="label"><?= esc($summaryLeft[$i][0]) ?></td>
-                                <td class="val"><?= esc($placeholder ? '..............................' : ($summaryLeft[$i][1] ?: '')) ?></td>
-                                <td class="label"><?= esc($summaryRight[$i][0]) ?></td>
-                                <td class="val"><?= esc($placeholder ? '..............................' : ($summaryRight[$i][1] ?: '')) ?></td>
-                            </tr>
-                            <?php endfor; ?>
-                        </tbody>
-                    </table>
+                            $summaryLeft = [
+                                ['ID Unit', $unit['no_unit'] ?? ''],
+                                ['Merk', $unit['merk_unit'] ?? ''],
+                                ['Jenis Unit', $unit['jenis_unit'] ?? $s['jenis_unit'] ?? ''],
+                                ['Kapasitas', $unit['kapasitas_name'] ?? $s['kapasitas_id_name'] ?? ''],
+                                ['SN Attachment', $attachment['sn_attachment_formatted'] ?? ''],
+                                ['SN Baterai', $unit['sn_baterai_formatted'] ?? ''],
+                                ['Valve', $s['valve_id_name'] ?? ''],
+                            ];
+                            $summaryRight = [
+                                ['Serial Number', $unit['serial_number'] ?? ''],
+                                ['Model', $unit['model_unit'] ?? ''],
+                                ['Tipe Unit', $unit['tipe_jenis'] ?? $s['tipe_jenis'] ?? ''],
+                                ['Mast', $s['mast_id_name'] ?? ''],
+                                ['SN Mast', $unit['sn_mast_formatted'] ?? ''],
+                                ['SN Charger', $unit['sn_charger_formatted'] ?? ''],
+                                ['Roda & Ban', ($s['roda_id_name'] ?? '') . (!empty($s['roda_id_name']) && !empty($s['ban_id_name']) ? ' & ' : '') . ($s['ban_id_name'] ?? '')],
+                            ];
+                        ?>
+                        <table class="table grid-2">
+                            <tbody>
+                                <?php 
+                                    $rows = max(count($summaryLeft), count($summaryRight));
+                                    for ($i = 0; $i < $rows; $i++): 
+                                        $left = $summaryLeft[$i] ?? ['', ''];
+                                        $right = $summaryRight[$i] ?? ['', ''];
+                                ?>
+                                <tr>
+                                    <td class="label"><?= esc($left[0]) ?></td>
+                                    <td class="val"><?php 
+                                        if ($placeholder) {
+                                            echo esc('..............................');
+                                        } else {
+                                            $value = $left[1];
+                                            if (is_callable($value)) {
+                                                echo esc($value() ?: '');
+                                            } else {
+                                                echo esc($value ?: '');
+                                            }
+                                        }
+                                    ?></td>
+                                    <td class="label"><?= esc($right[0]) ?></td>
+                                    <td class="val"><?= esc($placeholder ? '..............................' : ($right[1] ?: '')) ?></td>
+                                </tr>
+                                <?php endfor; ?>
+                                <!-- Aksesoris row spans across both left and right columns -->
+                                <tr>
+                                    <td class="label">Aksesoris</td>
+                                    <td class="val" colspan="3">
+                                        <?php 
+                                            if ($placeholder) {
+                                                echo esc('..............................');
+                                            } else {
+                                                // Multiple ways the accessories might be stored
+                                                $aksText = '';
+                                                if (!empty($s['aksesoris'])) {
+                                                    if (is_array($s['aksesoris'])) {
+                                                        $aksText = implode(', ', $s['aksesoris']);
+                                                    } else if (is_string($s['aksesoris'])) {
+                                                        try {
+                                                            $aksArray = json_decode($s['aksesoris'], true);
+                                                            if (is_array($aksArray) && !empty($aksArray)) {
+                                                                $aksText = implode(', ', $aksArray);
+                                                            } else {
+                                                                $aksText = $s['aksesoris'];
+                                                            }
+                                                        } catch (Exception $e) {
+                                                            $aksText = $s['aksesoris'];
+                                                        }
+                                                    }
+                                                } else if (!empty($spk['persiapan_aksesoris_tersedia'])) {
+                                                    $aksText = $spk['persiapan_aksesoris_tersedia'];
+                                                }
+                                                echo esc($aksText ?: '');
+                                            }
+                                        ?>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
 
                     <div class="small text-muted mb-3">
                         <strong>Catatan:</strong> 

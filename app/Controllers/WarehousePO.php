@@ -12,6 +12,9 @@ use App\Models\InventorySparepartModel;
 use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
 use App\Models\VerificationAuditLogModel;
+use CodeIgniter\HTTP\RequestInterface;
+use CodeIgniter\HTTP\ResponseInterface;
+use Psr\Log\LoggerInterface;
 
 
 class WarehousePO extends BaseController
@@ -26,16 +29,19 @@ class WarehousePO extends BaseController
     protected $inventoryAttachmentModel;
     protected $verificationAuditLogModel;
 
-    public function __construct()
+    // Replace the constructor with initController
+    public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
     {
+        parent::initController($request, $response, $logger);
+
         $this->pounitsmodel = new POUnitsModel(); //MALIK
         $this->purchasemodel = new PurchasingModel(); //MALIK
         $this->poAttachmentModel = new POAttachmentModel();//ADIT
         $this->poSparepartItemModel = new POSparepartItemModel(); // adit
         $this->inventorySparepartModel = new InventorySparepartModel(); 
         $this->inventoryUnitModel = new InventoryUnitModel();
-        $this->inventoryAttachmentModel = new InventoryAttachmentModel();
-    $this->verificationAuditLogModel = new VerificationAuditLogModel();
+        $this->inventoryAttachmentModel = new InventoryAttachmentModel(); // pastikan ada
+        $this->verificationAuditLogModel = new VerificationAuditLogModel();
     }
 
     /**
@@ -51,7 +57,8 @@ class WarehousePO extends BaseController
                 '/warehouse' => 'Warehouse & Assets',
                 '/warehouse/purchase-orders' => 'PO Verification'
             ],
-            'po_unit_stats' => $this->pounitsmodel->where("status_verfikasi", "Belum Dicek")->get()->getResultArray(),
+            // Fixed column name: status_verifikasi
+            'po_unit_stats' => $this->pounitsmodel->where("status_verifikasi", "Belum Dicek")->get()->getResultArray(),
             // 'po_attachment_stats' => $this->poAttachmentModel->getPOStats(),
             // 'po_sparepart_stats' => $this->poSparepartModel->getPOStats(),
             // 'verification_summary' => $this->getVerificationSummary()
@@ -376,99 +383,157 @@ class WarehousePO extends BaseController
     {
         if ($this->request->isAJAX()) {
             $id_item = $this->request->getPost('id_item');
-            $po_id = $this->request->getPost('po_id');
-            $status = $this->request->getPost('status');
+            $po_id   = $this->request->getPost('po_id');
+            $status  = trim((string)$this->request->getPost('status'));
             $catatan = $this->request->getPost('catatan_verifikasi');
 
-            $dataToUpdate = [
-                'status_verifikasi' => $status,
-                'catatan_verifikasi' => $catatan,
-                'serial_number' => $this->request->getPost('serial_number'),
-                'serial_number_charger' => $this->request->getPost('serial_number_charger'),
-            ];
+            // Ambil nilai dari form
+            $snAttachment = trim((string)$this->request->getPost('serial_number'));            // SN Attachment atau SN Baterai
+            $snCharger    = trim((string)$this->request->getPost('serial_number_charger'));
+            $lokasi       = trim((string)$this->request->getPost('lokasi')) ?: 'POS 1';
 
-            // Mandatory SN check for status Sesuai (attachment or battery SN required depending on item type)
-            if ($status === 'Sesuai' && empty($this->request->getPost('serial_number'))) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Serial number wajib diisi untuk status Sesuai.']);
-            }
             $db = \Config\Database::connect();
             $db->transBegin();
-            $original = $this->poAttachmentModel->find($id_item);
-            try {
-                if ($this->poAttachmentModel->update($id_item, $dataToUpdate)) {
-                    
-                    // Jika verifikasi "Sesuai", masukkan ke tabel inventory_attachment
-                    if ($status === 'Sesuai') {
-                        // Ambil detail attachment yang baru diverifikasi
-                        $verifiedAttachment = $this->poAttachmentModel->find($id_item);
 
-                        if ($verifiedAttachment) {
-                            // Siapkan data untuk dimasukkan ke tabel inventory_attachment
-                            $inventoryData = [
-                                'po_id'             => $verifiedAttachment['po_id'] ?? null,
-                                'attachment_id'     => $verifiedAttachment['attachment_id'] ?? null,
-                                'sn_attachment'     => $this->request->getPost('serial_number') ?: null,
-                                'charger_id'        => $verifiedAttachment['charger_id'] ?? null,
-                                'sn_charger'        => $this->request->getPost('serial_number_charger') ?: null,
-                                'kondisi_fisik'     => 'Baik', // Default kondisi
-                                'kelengkapan'       => 'Lengkap', // Default kelengkapan
-                                'lokasi_penyimpanan' => 'POS 1', // Lokasi default
-                                'status_unit'       => 7, // Status: 7 = STOCK ASET
-                                'tanggal_masuk'     => date('Y-m-d H:i:s'),
-                                'catatan_inventory' => 'Dari verifikasi PO: ' . ($catatan ?: 'Attachment sesuai dan siap digunakan')
+            $original = $this->poAttachmentModel->find($id_item);
+            if (!$original) {
+                return $this->response->setJSON(['success' => false, 'message' => 'PO Item tidak ditemukan.']);
+            }
+
+            $itemType = trim((string)($original['item_type'] ?? '')); // 'Attachment' | 'Battery'
+            $statusNorm = strtolower($status);
+
+            // Validasi SN saat status = "Sesuai"
+            if ($statusNorm === 'sesuai') {
+                if ($itemType === 'Attachment') {
+                    if (empty($original['attachment_id'])) {
+                        return $this->response->setJSON(['success'=>false,'message'=>'Model Attachment belum terdaftar di master.']);
+                    }
+                    if (!$snAttachment) {
+                        return $this->response->setJSON(['success'=>false,'message'=>'Serial number Attachment wajib diisi.']);
+                    }
+                } elseif ($itemType === 'Battery') {
+                    if (empty($original['baterai_id']) && empty($original['charger_id'])) {
+                        return $this->response->setJSON(['success'=>false,'message'=>'PO item Battery tidak memiliki baterai/charger model.']);
+                    }
+                    if (!empty($original['baterai_id']) && !$snAttachment) {
+                        return $this->response->setJSON(['success'=>false,'message'=>'Serial number Baterai wajib diisi.']);
+                    }
+                    if (!empty($original['charger_id']) && !$snCharger) {
+                        return $this->response->setJSON(['success'=>false,'message'=>'Serial number Charger wajib diisi.']);
+                    }
+                }
+            }
+
+            // Update po_item
+            $dataToUpdate = [
+                'status_verifikasi'      => $status,
+                'catatan_verifikasi'     => $catatan,
+                'serial_number'          => $snAttachment ?: ($original['serial_number'] ?? null),
+                'serial_number_charger'  => $snCharger   ?: ($original['serial_number_charger'] ?? null),
+            ];
+
+            try {
+                if (!$this->poAttachmentModel->update($id_item, array_filter($dataToUpdate, fn($v)=>$v!==null && $v!==''))) {
+                    $db->transRollback();
+                    return $this->response->setJSON(['success'=>false,'message'=>'Gagal update PO item.']);
+                }
+
+                // Insert stok fisik hanya jika 'Sesuai'
+                if ($statusNorm === 'sesuai') {
+                    $verified = $this->poAttachmentModel->find($id_item);
+
+                    $rows = [];
+                    if ($itemType === 'Attachment') {
+                        $rows[] = [
+                            'po_id'               => (int)$verified['po_id'],
+                            'attachment_id'       => (int)$verified['attachment_id'],
+                            'sn_attachment'       => $snAttachment ?: $verified['serial_number'],
+                            'id_inventory_unit'   => null,
+                            'status_unit'         => 7,
+                            'lokasi_penyimpanan'  => $lokasi,
+                            'kondisi_fisik'       => 'Baik',
+                            'kelengkapan'         => 'Lengkap',
+                            'tanggal_masuk'       => date('Y-m-d H:i:s'),
+                            'catatan_inventory'   => 'Dari verifikasi PO: '.($catatan ?: 'Sesuai'),
+                        ];
+                    } elseif ($itemType === 'Battery') {
+                        if (!empty($verified['baterai_id'])) {
+                            $rows[] = [
+                                'po_id'               => (int)$verified['po_id'],
+                                'baterai_id'          => (int)$verified['baterai_id'],
+                                'sn_baterai'          => $snAttachment ?: $verified['serial_number'],
+                                'id_inventory_unit'   => null,
+                                'status_unit'         => 7,
+                                'lokasi_penyimpanan'  => $lokasi,
+                                'kondisi_fisik'       => 'Baik',
+                                'kelengkapan'         => 'Lengkap',
+                                'tanggal_masuk'       => date('Y-m-d H:i:s'),
+                                'catatan_inventory'   => 'Dari verifikasi PO (Battery): '.($catatan ?: 'Sesuai'),
                             ];
-                            
-                            // Hapus nilai null untuk menghindari error database
-                            $inventoryData = array_filter($inventoryData, function($value) {
-                                return $value !== null && $value !== '';
-                            });
-                            
-                            // Log untuk debugging
-                            log_message('debug', '[WarehousePO] Attempting to insert to inventory_attachment: ' . json_encode($inventoryData));
-                            
-                            // Insert ke tabel inventory_attachment
-                            if (!$this->inventoryAttachmentModel->insert($inventoryData)) {
-                                // Log error jika insert gagal
-                                $errors = $this->inventoryAttachmentModel->errors();
-                                log_message('error', '[WarehousePO] Failed to insert to inventory_attachment: ' . json_encode($errors));
-                                log_message('error', '[WarehousePO] Attempted data: ' . json_encode($inventoryData));
-                                $db->transRollback();
-                                return $this->response->setJSON(['success' => false, 'message' => 'Gagal memasukkan data ke inventory: ' . implode(', ', $errors)]);
-                            } else {
-                                log_message('info', '[WarehousePO] Successfully inserted attachment ' . $id_item . ' to inventory_attachment');
-                                // Optional deletion of original row not performed (traceability)
-                            }
+                        }
+                        if (!empty($verified['charger_id'])) {
+                            $rows[] = [
+                                'po_id'               => (int)$verified['po_id'],
+                                'charger_id'          => (int)$verified['charger_id'],
+                                'sn_charger'          => $snCharger ?: $verified['serial_number_charger'],
+                                'id_inventory_unit'   => null,
+                                'status_unit'         => 7,
+                                'lokasi_penyimpanan'  => $lokasi,
+                                'kondisi_fisik'       => 'Baik',
+                                'kelengkapan'         => 'Lengkap',
+                                'tanggal_masuk'       => date('Y-m-d H:i:s'),
+                                'catatan_inventory'   => 'Dari verifikasi PO (Charger): '.($catatan ?: 'Sesuai'),
+                            ];
                         }
                     }
 
-                    // Setelah berhasil update, perbarui status PO utama
-                    $this->updateOverallPOStatus($po_id);
-                    $this->verificationAuditLogModel->log([
-                        'po_type' => 'attachment',
-                        'source_id' => $id_item,
-                        'po_id' => $po_id,
-                        'action' => 'verify',
-                        'status_before' => $original['status_verifikasi'] ?? null,
-                        'status_after' => $status,
-                        'user_id' => session()->get('user_id'),
-                        'notes' => $catatan,
-                        'payload' => json_encode($dataToUpdate)
-                    ]);
-                    $db->transCommit();
-                    return $this->response->setJSON(['success' => true, 'message' => 'Verifikasi berhasil dan data telah masuk ke inventory.']);
-                } else {
-                    $db->transRollback();
-                    return $this->response->setJSON(['success' => false, 'message' => 'Gagal update database.']);
+                    if (!$rows) {
+                        $db->transRollback();
+                        return $this->response->setJSON(['success'=>false,'message'=>'Tidak ada item fisik yang bisa dibuat.']);
+                    }
+
+                    // Simpan, dan tampilkan error validasi/DB jika gagal
+                    // Hindari insertBatch karena kolom baris bisa berbeda (baterai vs charger)
+                    // Normalisasi kunci agar konsisten, lalu insert satu per satu
+                    $baseDefaults = [
+                        'attachment_id'      => null,
+                        'sn_attachment'      => null,
+                        'baterai_id'         => null,
+                        'sn_baterai'         => null,
+                        'charger_id'         => null,
+                        'sn_charger'         => null,
+                        'id_inventory_unit'  => null,
+                        'status_unit'        => 7,
+                        'lokasi_penyimpanan' => $lokasi,
+                        'kondisi_fisik'      => 'Baik',
+                        'kelengkapan'        => 'Lengkap',
+                    ];
+
+                    foreach ($rows as $idx => $r) {
+                        $payload = array_merge($baseDefaults, $r);
+                        if (!$this->inventoryAttachmentModel->insert($payload)) {
+                            $errors = $this->inventoryAttachmentModel->errors();
+                            $dberr  = $db->error();
+                            $db->transRollback();
+                            return $this->response->setJSON([
+                                'success'      => false,
+                                'message'      => 'Gagal insert inventory pada baris '.($idx+1),
+                                'model_errors' => $errors,
+                                'db_error'     => $dberr,
+                                'payload'      => $payload,
+                            ]);
+                        }
+                    }
                 }
-            } catch (\Exception $e) {
-                // Log error untuk debugging
-                log_message('error', '[WarehousePO] Exception in verifyPoAttachment: ' . $e->getMessage());
-                log_message('error', '[WarehousePO] Stack trace: ' . $e->getTraceAsString());
+
+                $db->transCommit();
+                return $this->response->setJSON(['success'=>true,'message'=>'Verifikasi berhasil, stok dibuat.']);
+
+            } catch (\Throwable $e) {
                 if ($db->transStatus()) { $db->transRollback(); }
-                return $this->response->setJSON([
-                    'success' => false, 
-                    'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-                ]);
+                log_message('error', '[WarehousePO] verifyPoAttachment error: '.$e->getMessage());
+                return $this->response->setJSON(['success'=>false,'message'=>'Error: '.$e->getMessage()]);
             }
         }
         return redirect()->to('/');
@@ -786,8 +851,8 @@ class WarehousePO extends BaseController
         // Format data for DataTable with verification focus
         $formattedData = [];
         foreach ($data as $item) {
-            $statusIcon = $this->poAttachmentModel->getStatusIcon($item['status_verification']);
-            $statusBadge = $this->poAttachmentModel->getStatusBadgeClass($item['status_verification']);
+            $statusIcon = $this->poAttachmentModel->getStatusIcon($item['status_verifikasi']);
+            $statusBadge = $this->poAttachmentModel->getStatusBadgeClass($item['status_verifikasi']);
             
             $formattedData[] = [
                 'no_po' => $item['no_po'],
@@ -796,10 +861,10 @@ class WarehousePO extends BaseController
                 'model_barang' => $item['model_barang'] ?? '-',
                 'jumlah' => $item['jumlah'],
                 'status' => '<i class="' . $statusIcon . '"></i> <span class="badge badge-' . $statusBadge . '">' . 
-                           $this->poAttachmentModel->getVerificationStatusOptions()[$item['status_verification']] . '</span>',
+                           $this->poAttachmentModel->getVerificationStatusOptions()[$item['status_verifikasi']] . '</span>',
                 'verified_by' => $item['verified_by'] ? 'User #' . $item['verified_by'] : '-',
                 'verification_date' => $item['verification_date'] ? date('d/m/Y H:i', strtotime($item['verification_date'])) : '-',
-                'actions' => $this->generateVerificationActions('attachment', $item['id_po_attachment'], $item['status_verification'])
+                'actions' => $this->generateVerificationActions('attachment', $item['id_po_attachment'], $item['status_verifikasi'])
             ];
         }
 
@@ -1029,4 +1094,4 @@ class WarehousePO extends BaseController
         
         return $totalPOs > 0 ? round(($completedPOs / $totalPOs) * 100, 2) : 0;
     }
-} 
+}

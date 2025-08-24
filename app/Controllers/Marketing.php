@@ -353,6 +353,9 @@ class Marketing extends Controller
                 $enriched['model_unit'] = $u['model_unit'] ?? $enriched['model_unit'] ?? '';
                 $enriched['kapasitas_id_name'] = $u['kapasitas_name'] ?? $enriched['kapasitas_id_name'] ?? '';
                 $enriched['departemen_id_name'] = $u['departemen_name'] ?? $enriched['departemen_id_name'] ?? '';
+                // Add battery and charger info to enriched data
+                $enriched['baterai_model'] = $u['baterai_model'] ?? $enriched['baterai_model'] ?? '';
+                $enriched['charger_model'] = $u['charger_model'] ?? $enriched['charger_model'] ?? '';
             }
         }
         
@@ -379,6 +382,65 @@ class Marketing extends Controller
                 
                 // Override spesifikasi with attachment data
                 $enriched['attachment_tipe'] = $a['tipe'] ?? $enriched['attachment_tipe'] ?? '';
+            }
+        }
+        
+        // Get kontrak_spesifikasi data if available
+        if (!empty($row['kontrak_spesifikasi_id'])) {
+            $kontrak_spec = $this->db->table('kontrak_spesifikasi')
+                ->where('id', $row['kontrak_spesifikasi_id'])
+                ->get()
+                ->getRowArray();
+                
+            if ($kontrak_spec) {
+                // Add specification code from kontrak_spesifikasi
+                $enriched['spek_kode'] = $kontrak_spec['spek_kode'] ?? '';
+                
+                // Add kapasitas from kontrak_spesifikasi
+                if (isset($kontrak_spec['kapasitas_id'])) {
+                    $enriched['kapasitas_id'] = $kontrak_spec['kapasitas_id'];
+                    // Get kapasitas name
+                    $kapasitas = $this->db->table('kapasitas')
+                        ->select('kapasitas_unit')
+                        ->where('id_kapasitas', $kontrak_spec['kapasitas_id'])
+                        ->get()
+                        ->getRowArray();
+                    if ($kapasitas) {
+                        $enriched['kapasitas_id_name'] = $kapasitas['kapasitas_unit'];
+                    }
+                }
+                
+                // Add battery and charger info from kontrak_spesifikasi
+                if (isset($kontrak_spec['jenis_baterai'])) {
+                    $enriched['jenis_baterai'] = $kontrak_spec['jenis_baterai'];
+                }
+                if (isset($kontrak_spec['charger_id'])) {
+                    // Try to get the charger name from the charger table if there's a relation
+                    $charger = $this->db->table('charger')
+                        ->select('tipe_charger')
+                        ->where('id_charger', $kontrak_spec['charger_id'])
+                        ->get()
+                        ->getRowArray();
+                    if ($charger) {
+                        $enriched['charger_model'] = $charger['tipe_charger'];
+                    } else {
+                        $enriched['charger_model'] = 'Charger-' . $kontrak_spec['charger_id']; // Fallback
+                    }
+                }
+                
+                // Process accessories if available
+                if (isset($kontrak_spec['aksesoris']) && is_string($kontrak_spec['aksesoris'])) {
+                    try {
+                        $decoded_aksesoris = json_decode($kontrak_spec['aksesoris'], true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $enriched['aksesoris'] = $decoded_aksesoris;
+                        } else {
+                            $enriched['aksesoris'] = $kontrak_spec['aksesoris'];
+                        }
+                    } catch (\Exception $e) {
+                        $enriched['aksesoris'] = $kontrak_spec['aksesoris'];
+                    }
+                }
             }
         }
         
@@ -527,7 +589,34 @@ class Marketing extends Controller
                 }
             }
         }
-        return $this->response->setJSON(['success'=>true,'data'=>$row,'spesifikasi'=>$enriched,'csrf_hash'=>csrf_hash()]);
+        // Get kontrak_spesifikasi data if available
+        $kontrak_spec = null;
+        if (!empty($row['kontrak_spesifikasi_id'])) {
+            $kontrak_spec = $this->db->table('kontrak_spesifikasi')
+                ->where('id', $row['kontrak_spesifikasi_id'])
+                ->get()
+                ->getRowArray();
+                
+            // Process aksesoris if it's stored as JSON
+            if ($kontrak_spec && isset($kontrak_spec['aksesoris']) && is_string($kontrak_spec['aksesoris'])) {
+                try {
+                    $decoded_aksesoris = json_decode($kontrak_spec['aksesoris'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $kontrak_spec['aksesoris'] = $decoded_aksesoris;
+                    }
+                } catch (\Exception $e) {
+                    // Keep as string if parsing fails
+                }
+            }
+        }
+        
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => $row,
+            'spesifikasi' => $enriched,
+            'kontrak_spec' => $kontrak_spec,
+            'csrf_hash' => csrf_hash()
+        ]);
     }
 
     // Provide kontrak options (Pending) for searchable dropdown

@@ -247,7 +247,7 @@ class Service extends BaseController
             }
         }
         
-        // Legacy: Load from spesifikasi selected if no approval workflow data
+    // Legacy: Load from spesifikasi selected if no approval workflow data
         if (!empty($spec['selected']) && is_array($spec['selected'])) {
             $sel = $spec['selected'];
             if (empty($enriched['selected']['unit']) && !empty($sel['unit_id'])) {
@@ -298,7 +298,92 @@ class Service extends BaseController
                 }
             }
         }
-        return $this->response->setJSON(['success'=>true,'data'=>$row,'spesifikasi'=>$enriched,'csrf_hash'=>csrf_hash()]);
+    // Also load kontrak_spesifikasi record (parity with Marketing controller)
+        $kontrak_spec = null;
+        if (!empty($row['kontrak_spesifikasi_id'])) {
+            $kontrak_spec = $this->db->table('kontrak_spesifikasi')
+                ->where('id', $row['kontrak_spesifikasi_id'])
+                ->get()
+                ->getRowArray();
+
+            // Decode aksesoris JSON if stored as string
+            if ($kontrak_spec && isset($kontrak_spec['aksesoris']) && is_string($kontrak_spec['aksesoris'])) {
+                try {
+                    $decoded_aks = json_decode($kontrak_spec['aksesoris'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $kontrak_spec['aksesoris'] = $decoded_aks;
+                    }
+                } catch (\Exception $e) {
+                    // keep original string on failure
+                }
+            }
+        }
+
+        // Attach prepared_units progress if any
+        $preparedUnits = [];
+        if (!empty($enriched['prepared_units']) && is_array($enriched['prepared_units'])) {
+            $preparedUnits = $enriched['prepared_units'];
+        } elseif (!empty($spec['prepared_units']) && is_array($spec['prepared_units'])) {
+            $preparedUnits = $spec['prepared_units'];
+        }
+
+        // Enrich prepared_units into prepared_units_detail for distinct display in Service detail
+        if (!empty($preparedUnits)) {
+            $preparedDetails = [];
+            foreach ($preparedUnits as $pu) {
+                $uInfo = null; $aInfo = null; $unitLabel=''; $attLabel='';
+                if (!empty($pu['unit_id'])) {
+                    $uInfo = $this->db->table('inventory_unit iu')
+                        ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.lokasi_unit, mu.merk_unit, mu.model_unit, tu.tipe as tipe_jenis')
+                        ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
+                        ->join('tipe_unit tu','tu.id_tipe_unit = iu.tipe_unit_id','left')
+                        ->where('iu.id_inventory_unit', $pu['unit_id'])
+                        ->get()->getRowArray();
+                    if ($uInfo) {
+                        $unitLabel = trim(($uInfo['no_unit'] ?: '-') . ' - ' . ($uInfo['merk_unit'] ?: '-') . ' ' . ($uInfo['model_unit'] ?: '') . ' @ ' . ($uInfo['lokasi_unit'] ?: '-'));
+                    }
+                }
+                if (!empty($pu['attachment_id'])) {
+                    $aInfo = $this->db->table('inventory_attachment ia')
+                        ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan, att.tipe, att.merk, att.model')
+                        ->join('attachment att','att.id_attachment = ia.attachment_id','left')
+                        ->where('ia.id_inventory_attachment', $pu['attachment_id'])
+                        ->get()->getRowArray();
+                    if ($aInfo) {
+                        $attLabel = trim(($aInfo['tipe'] ?: '-') . ' ' . ($aInfo['merk'] ?: '') . ' ' . ($aInfo['model'] ?: ''));
+                        $suf = [];
+                        if (!empty($aInfo['sn_attachment'])) $suf[] = 'SN: '.$aInfo['sn_attachment'];
+                        if (!empty($aInfo['lokasi_penyimpanan'])) $suf[] = '@ '.$aInfo['lokasi_penyimpanan'];
+                        if ($suf) $attLabel .= ' ['.implode(', ', $suf).']';
+                    }
+                }
+                $preparedDetails[] = [
+                    'unit_id' => $pu['unit_id'] ?? null,
+                    'unit_label' => $unitLabel,
+                    'no_unit' => $uInfo['no_unit'] ?? '',
+                    'serial_number' => $uInfo['serial_number'] ?? '',
+                    'merk_unit' => $uInfo['merk_unit'] ?? '',
+                    'model_unit' => $uInfo['model_unit'] ?? '',
+                    'tipe_jenis' => $uInfo['tipe_jenis'] ?? '',
+                    'attachment_id' => $pu['attachment_id'] ?? null,
+                    'attachment_label' => $attLabel,
+                    'mekanik' => $pu['mekanik'] ?? '',
+                    'aksesoris_tersedia' => $pu['aksesoris_tersedia'] ?? '',
+                    'catatan' => $pu['catatan'] ?? '',
+                    'timestamp' => $pu['timestamp'] ?? ''
+                ];
+            }
+            $enriched['prepared_units_detail'] = $preparedDetails;
+        }
+
+        return $this->response->setJSON([
+            'success'=>true,
+            'data'=>$row,
+            'spesifikasi'=>$enriched,
+            'kontrak_spec'=>$kontrak_spec,
+            'prepared_units'=>$preparedUnits,
+            'csrf_hash'=>csrf_hash()
+        ]);
     }
 
     public function spkConfirmReady($id)
@@ -439,9 +524,60 @@ class Service extends BaseController
             if (!$catatan) {
                 return $this->response->setJSON(['success'=>false,'message'=>'Catatan PDI harus diisi']);
             }
+
+            // Load current SPK to accumulate prepared units for multi-unit SPK
+            $current = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
+            $spec = [];
+            if (!empty($current['spesifikasi'])) {
+                $dec = json_decode($current['spesifikasi'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) $spec = $dec;
+            }
+            $prepared = isset($spec['prepared_units']) && is_array($spec['prepared_units']) ? $spec['prepared_units'] : [];
+
+            // Append current cycle result
+            $prepared[] = [
+                'unit_id' => $current['persiapan_unit_id'] ?? null,
+                'attachment_id' => $current['fabrikasi_attachment_id'] ?? null,
+                'aksesoris_tersedia' => $current['persiapan_aksesoris_tersedia'] ?? null,
+                'mekanik' => $mekanik,
+                'catatan' => $catatan,
+                'timestamp' => date('Y-m-d H:i:s')
+            ];
+            $spec['prepared_units'] = $prepared;
+
+            // Determine status: READY only when all units prepared
+            $totalUnits = (int)($current['jumlah_unit'] ?? 1);
+            $isComplete = count($prepared) >= max(1, $totalUnits);
+
+            // Save updated spec JSON
+            $updateData['spesifikasi'] = json_encode($spec);
             $updateData['pdi_catatan'] = $catatan;
-            // PDI completion changes status to READY
-            $updateData['status'] = 'READY';
+            $updateData['status'] = $isComplete ? 'READY' : 'IN_PROGRESS';
+
+            if (!$isComplete) {
+                // Reset stage fields to allow next unit cycle
+                $updateData = array_merge($updateData, [
+                    'persiapan_unit_id' => null,
+                    'persiapan_unit_mekanik' => null,
+                    'persiapan_unit_estimasi_mulai' => null,
+                    'persiapan_unit_estimasi_selesai' => null,
+                    'persiapan_unit_tanggal_approve' => null,
+                    'persiapan_aksesoris_tersedia' => null,
+                    'fabrikasi_attachment_id' => null,
+                    'fabrikasi_mekanik' => null,
+                    'fabrikasi_estimasi_mulai' => null,
+                    'fabrikasi_estimasi_selesai' => null,
+                    'fabrikasi_tanggal_approve' => null,
+                    'painting_mekanik' => null,
+                    'painting_estimasi_mulai' => null,
+                    'painting_estimasi_selesai' => null,
+                    'painting_tanggal_approve' => null,
+                    'pdi_mekanik' => null,
+                    'pdi_estimasi_mulai' => null,
+                    'pdi_estimasi_selesai' => null,
+                    'pdi_tanggal_approve' => null
+                ]);
+            }
         }
 
         $this->db->table('spk')->where('id', $id)->update($updateData);
@@ -508,7 +644,7 @@ class Service extends BaseController
             }
         }
         
-        // Load unit data from approval workflow if available
+    // Load unit data from approval workflow if available
         // Handle both Aset (stored as no_unit) and Non Aset (stored as id_inventory_unit)
         if (!empty($row['persiapan_unit_id']) && $row['persiapan_unit_id'] != '0') {
             // Prioritaskan cari dengan id_inventory_unit
@@ -590,6 +726,55 @@ class Service extends BaseController
             }
         }
         
+        // Enrich prepared_units list for multi-unit SPK
+        if (!empty($spec['prepared_units']) && is_array($spec['prepared_units'])) {
+            $preparedDetails = [];
+            foreach ($spec['prepared_units'] as $idx => $pu) {
+                $uInfo = null; $aInfo = null; $unitLabel=''; $attLabel='';
+                if (!empty($pu['unit_id'])) {
+                    $uInfo = $this->db->table('inventory_unit iu')
+                        ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.lokasi_unit, mu.merk_unit, mu.model_unit, tu.tipe as tipe_jenis')
+                        ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
+                        ->join('tipe_unit tu','tu.id_tipe_unit = iu.tipe_unit_id','left')
+                        ->where('iu.id_inventory_unit', $pu['unit_id'])
+                        ->get()->getRowArray();
+                    if ($uInfo) {
+                        $unitLabel = trim(($uInfo['no_unit'] ?: '-') . ' - ' . ($uInfo['merk_unit'] ?: '-') . ' ' . ($uInfo['model_unit'] ?: '') . ' @ ' . ($uInfo['lokasi_unit'] ?: '-'));
+                    }
+                }
+                if (!empty($pu['attachment_id'])) {
+                    $aInfo = $this->db->table('inventory_attachment ia')
+                        ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan, att.tipe, att.merk, att.model')
+                        ->join('attachment att','att.id_attachment = ia.attachment_id','left')
+                        ->where('ia.id_inventory_attachment', $pu['attachment_id'])
+                        ->get()->getRowArray();
+                    if ($aInfo) {
+                        $attLabel = trim(($aInfo['tipe'] ?: '-') . ' ' . ($aInfo['merk'] ?: '') . ' ' . ($aInfo['model'] ?: ''));
+                        $suf = [];
+                        if (!empty($aInfo['sn_attachment'])) $suf[] = 'SN: '.$aInfo['sn_attachment'];
+                        if (!empty($aInfo['lokasi_penyimpanan'])) $suf[] = '@ '.$aInfo['lokasi_penyimpanan'];
+                        if ($suf) $attLabel .= ' ['.implode(', ', $suf).']';
+                    }
+                }
+                $preparedDetails[] = [
+                    'unit_id' => $pu['unit_id'] ?? null,
+                    'unit_label' => $unitLabel,
+                    'no_unit' => $uInfo['no_unit'] ?? '',
+                    'serial_number' => $uInfo['serial_number'] ?? '',
+                    'merk_unit' => $uInfo['merk_unit'] ?? '',
+                    'model_unit' => $uInfo['model_unit'] ?? '',
+                    'tipe_jenis' => $uInfo['tipe_jenis'] ?? '',
+                    'attachment_id' => $pu['attachment_id'] ?? null,
+                    'attachment_label' => $attLabel,
+                    'mekanik' => $pu['mekanik'] ?? '',
+                    'aksesoris_tersedia' => $pu['aksesoris_tersedia'] ?? '',
+                    'catatan' => $pu['catatan'] ?? '',
+                    'timestamp' => $pu['timestamp'] ?? ''
+                ];
+            }
+            $enriched['prepared_units_detail'] = $preparedDetails;
+        }
+        
         // Load attachment data from approval workflow if available  
         if (!empty($row['fabrikasi_attachment_id'])) {
             $a = $this->db->table('inventory_attachment ia')
@@ -663,7 +848,7 @@ class Service extends BaseController
                 }
             }
         }
-        return view('marketing/print_spk', ['spk'=>$row, 'spesifikasi'=>$enriched]);
+    return view('marketing/print_spk', ['spk'=>$row, 'spesifikasi'=>$enriched]);
     }
 
     /** Simple list for unit picking (Only STOCK units: status 7 & 8) */
@@ -1825,4 +2010,102 @@ class Service extends BaseController
             ]);
         }
     }
-} 
+
+    public function approveFabrikasi()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['message'=>'Bad request']);
+        }
+
+        $spkId   = (int) $this->request->getPost('spk_id');
+        $unitId  = (int) $this->request->getPost('unit_id'); // dari persiapan
+        $invAttId = (int) $this->request->getPost('attachment_inventory_id'); // wajib kalau ada attachment
+        $invChgId = (int) $this->request->getPost('charger_inventory_id');    // wajib jika departemen ELECTRIC
+        $mekanik  = (string) $this->request->getPost('mekanik');
+
+        $db = db_connect();
+        $spk = $db->table('spk')->where('id',$spkId)->get()->getRowArray();
+        if (!$spk) return $this->response->setStatusCode(404)->setJSON(['message'=>'SPK tidak ditemukan']);
+
+        $spec = json_decode($spk['spesifikasi'] ?? '{}', true) ?: [];
+        $departemenId = (int) ($spec['departemen_id'] ?? 0);
+
+        $model = new InventoryAttachmentModel();
+
+        // Assign attachment fisik (jika dipilih)
+        if ($invAttId) {
+            $userId = (int) (session('user_id') ?? 0);
+            $ok = $model->assignToUnit($invAttId, $unitId, $userId, "Fabrikasi SPK #$spkId");
+            if (!$ok) return $this->response->setStatusCode(500)->setJSON(['message'=>'Gagal assign attachment']);
+        }
+
+        // Jika departemen electric dan user pilih charger (inventory dengan charger_id)
+        if ($departemenId === 2 && $invChgId) {
+            $userId = (int) (session('user_id') ?? 0);
+            $ok = $model->assignToUnit($invChgId, $unitId, $userId, "Fabrikasi (charger) SPK #$spkId");
+            if (!$ok) return $this->response->setStatusCode(500)->setJSON(['message'=>'Gagal assign charger']);
+        }
+
+        // Simpan jejak pilihan fabrikasi terakhir ke JSON (akan dipush ke prepared_units saat PDI)
+        $spec['fabrikasi_last'] = [
+            'unit_id'                  => $unitId,
+            'attachment_inventory_id'  => $invAttId ?: null,
+            'charger_inventory_id'     => ($departemenId === 2 ? ($invChgId ?: null) : null),
+            'mekanik'                  => $mekanik,
+            'timestamp'                => date('Y-m-d H:i:s'),
+        ];
+
+        $db->table('spk')->where('id',$spkId)->update([
+            'fabrikasi_mekanik'        => $mekanik ?: null,
+            'fabrikasi_tanggal_approve'=> date('Y-m-d H:i:s'),
+            'spesifikasi'              => json_encode($spec, JSON_UNESCAPED_UNICODE),
+            // status tetap IN_PROGRESS
+        ]);
+
+        return $this->response->setJSON(['success'=>true]);
+    }
+
+    public function approvePdi()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['message'=>'Bad request']);
+        }
+        $spkId   = (int) $this->request->getPost('spk_id');
+        $catatan = (string) $this->request->getPost('catatan');
+
+        $db   = db_connect();
+        $spk  = $db->table('spk')->where('id',$spkId)->get()->getRowArray();
+        if (!$spk) return $this->response->setStatusCode(404)->setJSON(['message'=>'SPK tidak ditemukan']);
+
+        $spec = json_decode($spk['spesifikasi'] ?? '{}', true) ?: [];
+        $last = $spec['fabrikasi_last'] ?? null;
+        if (!$last || empty($last['unit_id'])) {
+            return $this->response->setStatusCode(400)->setJSON(['message'=>'Data fabrikasi belum lengkap']);
+        }
+
+        $prepared = $spec['prepared_units'] ?? [];
+        $prepared[] = [
+            'unit_id'                 => (string)$last['unit_id'],
+            'attachment_inventory_id' => $last['attachment_inventory_id'] ?? null,
+            'charger_inventory_id'    => $last['charger_inventory_id'] ?? null,
+            'mekanik'                 => $last['mekanik'] ?? null,
+            'catatan'                 => $catatan ?: null,
+            'timestamp'               => date('Y-m-d H:i:s'),
+        ];
+        $spec['prepared_units'] = $prepared;
+        unset($spec['fabrikasi_last']); // reset untuk siklus berikutnya
+
+        // hitung progress → READY bila terpenuhi
+        $total    = (int) ($spk['jumlah_unit'] ?? 1);
+        $isReady  = (count($prepared) >= max(1,$total));
+
+        $db->table('spk')->where('id',$spkId)->update([
+            'pdi_tanggal_approve' => date('Y-m-d H:i:s'),
+            'pdi_catatan'         => $catatan ?: null,
+            'status'              => $isReady ? 'READY' : 'IN_PROGRESS',
+            'spesifikasi'         => json_encode($spec, JSON_UNESCAPED_UNICODE),
+        ]);
+
+        return $this->response->setJSON(['success'=>true, 'ready'=>$isReady]);
+    }
+}

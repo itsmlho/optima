@@ -972,92 +972,203 @@
     function openDetail(id){
         const pdfBtn = document.getElementById('btnPrintPdf');
         if (pdfBtn) { pdfBtn.href = `<?= base_url('marketing/spk/print/') ?>${id}`; }
-         const body = document.getElementById('spkDetailBody');
-         body.innerHTML = '<p class="text-muted">Memuat...</p>';
-        fetch(`<?= base_url('marketing/spk/detail/') ?>${id}`).then(r=>r.json()).then(j=>{
-            if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; return; }
-            const d = j.data||{}; const s = j.spesifikasi||{};
-            const aks = Array.isArray(s.aksesoris)?s.aksesoris:[];
+        const body = document.getElementById('spkDetailBody');
+        body.innerHTML = '<p class="text-muted">Memuat...</p>';
+        
+        fetch(`<?= base_url('marketing/spk/detail/') ?>${id}`)
+            .then(r => {
+                if (!r.ok) {
+                    throw new Error(`HTTP error! Status: ${r.status}`);
+                }
+                return r.json();
+            })
+            .then(j => {
+                if (!j.success) { 
+                    body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; 
+                    return; 
+                }
+            // Main data comes from j.data (the spk table data)
+            const d = j.data || {};
+            
+            // Check if kontrak_spesifikasi_id exists in the main data
+            const kontrakSpecId = d.kontrak_spesifikasi_id || null;
+            
+            // Specification data comes from j.spesifikasi (enriched data from the controller)
+            const s = j.spesifikasi || {};
+            
+            // Get specification code from the provided spek_kode
+            let specDisplay = '-';
+            // Try to get specification code from different potential sources
+            if (j.kontrak_spec && j.kontrak_spec.spek_kode) {
+                specDisplay = j.kontrak_spec.spek_kode;
+            } else if (s && s.spek_kode) {
+                specDisplay = s.spek_kode;
+            }
+            
+            // Process accessories from the spesifikasi JSON object
+            let aksText = '-';
+            // First try to get accessories from kontrak_spec if available
+            if (j.kontrak_spec && j.kontrak_spec.aksesoris) {
+                const aks = j.kontrak_spec.aksesoris;
+                if (Array.isArray(aks) && aks.length > 0) {
+                    aksText = aks.join(', ');
+                } else if (typeof aks === 'string') {
+                    try {
+                        const parsed = JSON.parse(aks);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            aksText = parsed.join(', ');
+                        } else {
+                            aksText = aks;
+                        }
+                    } catch(e) {
+                        aksText = aks;
+                    }
+                }
+            // Fall back to spesifikasi.aksesoris
+            } else if (s && s.aksesoris) {
+                if (Array.isArray(s.aksesoris) && s.aksesoris.length > 0) {
+                    aksText = s.aksesoris.join(', ');
+                } else if (typeof s.aksesoris === 'string' && s.aksesoris.trim()) {
+                    try {
+                        const parsed = JSON.parse(s.aksesoris);
+                        if (Array.isArray(parsed) && parsed.length > 0) {
+                            aksText = parsed.join(', ');
+                        } else {
+                            aksText = s.aksesoris;
+                        }
+                    } catch(e) {
+                        aksText = s.aksesoris;
+                    }
+                }
+            }
+            // Selected unit and attachment from controller response
             const u = s.selected && s.selected.unit ? s.selected.unit : null;
             const a = s.selected && s.selected.attachment ? s.selected.attachment : null;
-            const unit = u ? `${u.no_unit||'-'} - ${u.merk_unit||'-'} ${u.model_unit||''} @ ${u.lokasi_unit||'-'}${u.serial_number?` [SN: ${u.serial_number}]`:''}` : null;
-            const snList = u ? [
-            u.serial_number ? `Unit: ${u.serial_number}` : null,
-            u.sn_mast ? `Mast: ${u.sn_mast}` : null,
-            u.sn_mesin ? `Mesin: ${u.sn_mesin}` : null,
-            u.sn_baterai ? `Baterai: ${u.sn_baterai}` : null,
-            u.sn_charger ? `Charger: ${u.sn_charger}` : null,
-        ].filter(Boolean) : [];
-        const att  = a ? `${a.tipe||'-'} ${a.merk||''} ${a.model||''}${a.sn_attachment?` [SN: ${a.sn_attachment}]`:''}${a.lokasi_penyimpanan?` @ ${a.lokasi_penyimpanan}`:''}` : null;
-            body.innerHTML = `
-                <div class="row g-2">
-                    <div class="col-6"><strong>Jenis SPK:</strong> ${d.jenis_spk||'-'}</div>
-                    <div class="col-6"><strong>No SPK:</strong> ${d.nomor_spk}</div>
-                    <div class="col-6"><strong>Kontrak/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
-                    <div class="col-6"><strong>Pelanggan:</strong> ${d.pelanggan||'-'}</div>
-                    <div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
-                    <div class="col-6"><strong>Delivery Plan:</strong> ${d.delivery_plan||'-'}</div>
-                    <div class="col-6"><strong>Pic:</strong> ${d.pic||'-'}</div>
-                    <div class="col-6"><strong>Kontak:</strong> ${d.kontak||'-'}</div>
-                    <div class="col-12"><hr></div>
-                    <div class="col-6"><strong>Tipe (Jenis):</strong> ${s.tipe_jenis||'-'}</div>
-                    <div class="col-6"><strong>Merk Unit:</strong> ${s.merk_unit||'-'}</div>
-                    <div class="col-6"><strong>Valve:</strong> ${s.valve_id_name||s.valve_id||'-'}</div>
-                    <div class="col-6"><strong>Baterai (Jenis):</strong> ${s.jenis_baterai||'-'}</div>
-                    <div class="col-6"><strong>Attachment (Tipe):</strong> ${s.attachment_tipe||'-'}</div>
-                    <div class="col-6"><strong>Roda:</strong> ${s.roda_id_name||s.roda_id||'-'}</div>
-                    <div class="col-6"><strong>Departemen:</strong> ${s.departemen_id_name||s.departemen_id||'-'}</div>
-                    <div class="col-6"><strong>Kapasitas:</strong> ${s.kapasitas_id_name||s.kapasitas_id||'-'}</div>
-                    <div class="col-6"><strong>Mast:</strong> ${s.mast_id_name||s.mast_id||'-'}</div>
-                    <div class="col-6"><strong>Ban:</strong> ${s.ban_id_name||s.ban_id||'-'}</div>
-                    <div class="col-12"><strong>Aksesoris:</strong> ${aks.join(', ')||'-'}</div>
-                    <div class="col-12"><hr></div>
-            <div class="col-12"><strong>Item Terpilih:</strong></div>
-					<div class="col-12" id="svcUnitDetailBlock">${(s.selected && s.selected.unit)?'<div class="text-muted">Memuat detail unit...</div>':'<div class="text-muted">Unit: -</div>'}</div>
-					${(s.selected && s.selected.attachment) ? (()=>{ const a=s.selected.attachment; return `<div class=\"col-12\"><div><strong>Attachment:</strong> ${a.tipe||'-'} ${a.merk||''} ${a.model||''}${a.sn_attachment?` [SN: ${a.sn_attachment}]`:''}${a.lokasi_penyimpanan?` @ ${a.lokasi_penyimpanan}`:''}</div></div>`; })() : ''}
-				</div>`;
-			// Load full unit detail if selected
+            
+            try {
+                body.innerHTML = `
+                    <div class="row g-2">
+                        <div class="col-6"><strong>Jenis SPK:</strong> ${d.jenis_spk||'-'}</div>
+                        <div class="col-6"><strong>No SPK:</strong> ${d.nomor_spk||'-'}</div>
+                        <div class="col-6"><strong>Kontrak/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
+                        <div class="col-6"><strong>Pelanggan:</strong> ${d.pelanggan||'-'}</div>
+                        <div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
+                        <div class="col-6"><strong>Delivery Plan:</strong> ${d.delivery_plan||'-'}</div>
+                        <div class="col-6"><strong>Pic:</strong> ${d.pic||'-'}</div>
+                        <div class="col-6"><strong>Kontak:</strong> ${d.kontak||'-'}</div>
+                        <div class="col-12"><hr></div>
+                        <div class="col-12"><strong>Informasi Unit:</strong></div>
+                        <div class="col-6"><strong>Spesifikasi:</strong> ${specDisplay}</div>
+                        <div class="col-6"><strong>Total Unit:</strong> ${d.jumlah_unit || 0}</div>
+                        <div class="col-6"><strong>Tipe (Jenis):</strong> ${s.tipe_jenis||'-'}</div>
+                        <div class="col-6"><strong>Merk Unit:</strong> ${s.merk_unit||'-'}</div>
+                        <div class="col-6"><strong>Valve:</strong> ${s.valve_id_name||'-'}</div>
+                        <div class="col-6"><strong>Baterai (Jenis):</strong> ${s.jenis_baterai||'-'}</div>
+                        <div class="col-6"><strong>Charger:</strong> ${s.charger_id_name||'-'}</div>
+                        <div class="col-6"><strong>Attachment (Tipe):</strong> ${s.attachment_tipe||'-'}</div>
+                        <div class="col-6"><strong>Roda:</strong> ${s.roda_id_name||'-'}</div>
+                        <div class="col-6"><strong>Departemen:</strong> ${s.departemen_id_name||'-'}</div>
+                        <div class="col-6"><strong>Kapasitas:</strong> ${s.kapasitas_id_name||'-'}</div>
+                        <div class="col-6"><strong>Mast:</strong> ${s.mast_id_name||'-'}</div>
+                        <div class="col-6"><strong>Ban:</strong> ${s.ban_id_name||'-'}</div>
+                        <div class="col-12"><strong>Aksesoris:</strong> ${aksText}</div>
+                        <div class="col-12"><hr></div>
+                        <div class="col-12"><strong>Item Terpilih:</strong></div>
+                        <div class="col-12" id="svcUnitDetailBlock">
+                            ${u ? '<div class="text-muted">Memuat detail unit...</div>' : '<div class="text-muted">Unit: -</div>'}
+                        </div>
+                        ${a ? 
+                          `<div class="col-12">
+                            <div><strong>Attachment:</strong> 
+                              ${a.tipe||'-'} ${a.merk||''} ${a.model||''}
+                              ${a.sn_attachment ? ` [SN: ${a.sn_attachment}]` : ''}
+                              ${a.lokasi_penyimpanan ? ` @ ${a.lokasi_penyimpanan}` : ''}
+                            </div>
+                           </div>` 
+                          : ''}
+                    </div>`;
+            } catch(error) {
+                body.innerHTML = `<div class="alert alert-danger">Error rendering SPK detail: ${error.message}</div>`;
+                console.error('Error rendering SPK detail:', error);
+                return;
+            }
+            
+            // Load full unit detail if selected
 			if (s.selected && s.selected.unit && s.selected.unit.id) {
 				const esc = (str)=>{ if(str===null||str===undefined||str==='') return '-'; return String(str).replaceAll('<','&lt;').replaceAll('>','&gt;'); };
-				fetch(`<?= base_url('warehouse/inventory/get-unit-full-detail/') ?>${s.selected.unit.id}`).then(r=>r.json()).then(resp=>{
-					const host = document.getElementById('svcUnitDetailBlock');
-					if(!host) return;
-					if(!(resp && resp.success && resp.data)){ host.innerHTML = '<div class="text-danger">Gagal memuat detail unit</div>'; return; }
-					const data = resp.data;
-					host.innerHTML = `
-					<div class="row g-2">
-                        <div class="col-6"><strong>ID Unit</strong>: ${esc(data.id_inventory_unit)}</div>
-                        <div class="col-6"><strong>Serial Number</strong>: ${esc(data.serial_number_po)}</div>
-                        <div class="col-6"><strong>Merk</strong>: ${esc(data.merk_unit)}</div>
-                        <div class="col-6"><strong>Model</strong>: ${esc(data.model_unit)}</div>
-                        <div class="col-6"><strong>Jenis Unit</strong>: ${esc(data.nama_departemen)}</div>
-                        <div class="col-6"><strong>Tipe Unit</strong>: ${esc(data.nama_tipe_unit)}</div>
-                        <div class="col-6"><strong>Tahun</strong>: ${esc(data.tahun_po)}</div>
-                        <div class="col-6"><strong>Kapasitas</strong>: ${esc(data.kapasitas_unit)}</div>
-                        <div class="col-6"><strong>Tanggal Masuk</strong>: ${esc(data.tanggal_masuk)}</div>
+				fetch(`<?= base_url('warehouse/inventory/get-unit-full-detail/') ?>${s.selected.unit.id}`)
+				    .then(r => {
+				        if (!r.ok) {
+				            throw new Error(`Error loading unit details: ${r.status} ${r.statusText}`);
+				        }
+				        return r.json();
+				    })
+				    .then(resp => {
+					    const host = document.getElementById('svcUnitDetailBlock');
+					    if(!host) return;
+					    if(!(resp && resp.success && resp.data)){ 
+					        host.innerHTML = '<div class="text-danger">Gagal memuat detail unit</div>'; 
+					        return; 
+					    }
+					    const data = resp.data;
+					    host.innerHTML = `
+					    <div class="row g-2">
+                            <div class="col-6"><strong>ID Unit</strong>: ${esc(data.id_inventory_unit)}</div>
+                            <div class="col-6"><strong>Serial Number</strong>: ${esc(data.serial_number_po)}</div>
+                            <div class="col-6"><strong>Merk</strong>: ${esc(data.merk_unit)}</div>
+                            <div class="col-6"><strong>Model</strong>: ${esc(data.model_unit)}</div>
+                            <div class="col-6"><strong>Jenis Unit</strong>: ${esc(data.nama_departemen)}</div>
+                            <div class="col-6"><strong>Tipe Unit</strong>: ${esc(data.nama_tipe_unit)}</div>
+                            <div class="col-6"><strong>Tahun</strong>: ${esc(data.tahun_po)}</div>
+                            <div class="col-6"><strong>Kapasitas</strong>: ${esc(data.kapasitas_unit)}</div>
+                            <div class="col-6"><strong>Tanggal Masuk</strong>: ${esc(data.tanggal_masuk)}</div>
+                            <div class="col-12"><hr></div>
+                            <div class="col-6"><strong>Attachment</strong>: ${esc(data.attachment_tipe || '-')}</div>
+                            <div class="col-6"><strong>SN Attachment</strong>: ${esc(data.sn_attachment_po)}</div>
+                            <div class="col-6"><strong>Mast</strong>: ${esc(data.tipe_mast)}</div>
+                            <div class="col-6"><strong>SN Mast</strong>: ${esc(data.sn_mast_po)}</div>
+                            <div class="col-6"><strong>Mesin</strong>: ${esc((data.merk_mesin||'-') + ' ' + (data.model_mesin||''))}</div>
+                            <div class="col-6"><strong>SN Mesin</strong>: ${esc(data.sn_mesin_po)}</div>
+                            <div class="col-6"><strong>Baterai</strong>: ${esc(data.tipe_baterai)}</div>
+                            <div class="col-6"><strong>SN Baterai</strong>: ${esc(data.sn_baterai_po)}</div>
+                            <div class="col-6"><strong>Charger</strong>: ${esc(data.tipe_charger)}</div>
+                            <div class="col-6"><strong>SN Charger</strong>: ${esc(data.sn_charger_po)}</div>
+                            <div class="col-6"><strong>Ban</strong>: ${esc(data.tipe_ban)}</div>
+                            <div class="col-6"><strong>Roda</strong>: ${esc(data.tipe_roda)}</div>
+                            <div class="col-6"><strong>Valve</strong>: ${esc(data.jumlah_valve)}</div>
+                            <div class="col-6"><strong>Aksesoris</strong>: ${esc(data.aksesoris_unit)}</div>
+                        </div>
                         <div class="col-12"><hr></div>
-                        <div class="col-6"><strong>Attachment</strong>: ${esc(data.attachment_tipe || '-')}</div>
-                        <div class="col-6"><strong>SN Attachment</strong>: ${esc(data.sn_attachment_po)}</div>
-                        <div class="col-6"><strong>Mast</strong>: ${esc(data.tipe_mast)}</div>
-                        <div class="col-6"><strong>SN Mast</strong>: ${esc(data.sn_mast_po)}</div>
-                        <div class="col-6"><strong>Mesin</strong>: ${esc((data.merk_mesin||'-') + ' ' + (data.model_mesin||''))}</div>
-                        <div class="col-6"><strong>SN Mesin</strong>: ${esc(data.sn_mesin_po)}</div>
-                        <div class="col-6"><strong>Baterai</strong>: ${esc(data.tipe_baterai)}</div>
-                        <div class="col-6"><strong>SN Baterai</strong>: ${esc(data.sn_baterai_po)}</div>
-                        <div class="col-6"><strong>Charger</strong>: ${esc(data.tipe_charger)}</div>
-                        <div class="col-6"><strong>SN Charger</strong>: ${esc(data.sn_charger_po)}</div>
-                        <div class="col-6"><strong>Ban</strong>: ${esc(data.tipe_ban)}</div>
-                        <div class="col-6"><strong>Roda</strong>: ${esc(data.tipe_roda)}</div>
-                        <div class="col-6"><strong>Valve</strong>: ${esc(data.jumlah_valve)}</div>
-                        <div class="col-6"><strong>Aksesoris</strong>: ${esc(data.aksesoris_unit)}</div>
-                    </div>
-                    <div class="col-12"><hr></div>
-                    <div class="col-12"><strong>Catatan:</strong> ${esc(data.catatan_unit)}</div>
-                    <div class="col-12"><hr></div>
-                    </div>`;
-				});
+                        <div class="col-12"><strong>Catatan:</strong> ${esc(data.catatan_unit)}</div>
+                        `;
+				    })
+				    .catch(error => {
+				        const host = document.getElementById('svcUnitDetailBlock');
+				        if (host) {
+				            host.innerHTML = `<div class="alert alert-danger">Error loading unit details: ${error.message}</div>`;
+				        }
+				        console.error('Error loading unit details:', error);
+				    });
 			}
-            new bootstrap.Modal(document.getElementById('spkDetailModal')).show();
+            
+            // Show the modal after data is loaded
+            const modal = document.getElementById('spkDetailModal');
+            if (modal) {
+                new bootstrap.Modal(modal).show();
+            } else {
+                console.error('SPK detail modal element not found');
+            }
+        }).catch(error => {
+            body.innerHTML = `<div class="alert alert-danger">Error loading SPK details: ${error.message}</div>`;
+            console.error('Error loading SPK details:', error);
+            body.innerHTML = `<div class="alert alert-danger">Error loading SPK data: ${error.message}</div>`;
+            console.error('SPK fetch error:', error);
+            
+            // Show the modal even on error
+            const modal = document.getElementById('spkDetailModal');
+            if (modal) {
+                new bootstrap.Modal(modal).show();
+            }
         });
     }
     </script>

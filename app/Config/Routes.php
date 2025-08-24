@@ -650,6 +650,11 @@ $routes->get('service/spk/pdf/(:num)', 'Service::spkPdf/$1');
 $routes->get('marketing/spk/print/(:num)', 'Marketing::spkPrint/$1');
 $routes->get('service/spk/print/(:num)', 'Service::spkPrint/$1');
 
+$routes->group('warehouse/inventory', static function($r){
+    $r->get('available-attachments', 'Warehouse\InventoryApi::availableAttachments');
+    $r->get('available-chargers', 'Warehouse\InventoryApi::availableChargers');
+});
+
 
 
 

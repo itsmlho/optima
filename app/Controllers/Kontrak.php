@@ -114,22 +114,37 @@ class Kontrak extends BaseController
     {
         // Validasi input
         $rules = [
-            'contract_number' => 'required|is_unique[kontrak.no_kontrak]',
+            'contract_number' => 'required|trim|is_unique[kontrak.no_kontrak]',
             'client_name'     => 'required',
             'start_date'      => 'required|valid_date',
             'end_date'        => 'required|valid_date'
         ];
 
         if (!$this->validate($rules)) {
+            $errors = $this->validator->getErrors();
+            $existingId = null;
+            if (!empty($errors['contract_number'])) {
+                $no = trim((string)$this->request->getPost('contract_number'));
+                if ($no !== '') {
+                    $existing = $this->kontrakModel->where('no_kontrak', $no)->first();
+                    if ($existing) {
+                        $existingId = is_array($existing) ? ($existing['id'] ?? null) : ($existing->id ?? null);
+                    }
+                }
+            }
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Validasi gagal: ' . implode(', ', $this->validator->getErrors())
+                'message' => 'Validasi gagal.',
+                'errors'  => $errors,
+                'duplicate' => $existingId ? true : false,
+                'existing_id' => $existingId,
+                'csrf_hash' => csrf_hash(),
             ]);
         }
 
         // Mapping data dari form ke database
         $data = [
-            'no_kontrak'        => $this->request->getPost('contract_number'),
+            'no_kontrak'        => trim((string)$this->request->getPost('contract_number')),
             'no_po_marketing'   => $this->request->getPost('po_number'),
             'pelanggan'         => $this->request->getPost('client_name'),
             'pic'               => $this->request->getPost('pic') ?: null,
@@ -151,14 +166,16 @@ class Kontrak extends BaseController
                 'message' => 'Kontrak baru berhasil disimpan.',
                 'data' => [
                     'id' => $insertId,
-                    'no_kontrak' => $newContract->no_kontrak,
-                    'pelanggan' => $newContract->pelanggan
-                ]
+                    'no_kontrak' => is_array($newContract) ? ($newContract['no_kontrak'] ?? null) : ($newContract->no_kontrak ?? null),
+                    'pelanggan' => is_array($newContract) ? ($newContract['pelanggan'] ?? null) : ($newContract->pelanggan ?? null)
+                ],
+                'csrf_hash' => csrf_hash(),
             ]);
         } else {
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Gagal menyimpan data ke database: ' . implode(', ', $this->kontrakModel->errors())
+                'message' => 'Gagal menyimpan data ke database: ' . implode(', ', $this->kontrakModel->errors()),
+                'csrf_hash' => csrf_hash(),
             ]);
         }
     }
@@ -179,7 +196,9 @@ class Kontrak extends BaseController
         if (!$this->validate($rules)) {
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Validasi gagal: ' . implode(', ', $this->validator->getErrors())
+                'message' => 'Validasi gagal.',
+                'errors'  => $this->validator->getErrors(),
+                'csrf_hash' => csrf_hash(),
             ]);
         }
 
@@ -189,7 +208,7 @@ class Kontrak extends BaseController
             'pelanggan'         => $this->request->getPost('client_name'),
             'pic'               => $this->request->getPost('pic') ?: null,
             'kontak'            => $this->request->getPost('kontak') ?: null,
-            'lokasi'            => $this->request->getPost('project_name'),
+            'lokasi'            => $this->request->getPost('lokasi'),
             'nilai_total'       => $this->request->getPost('contract_value') ?: 0,
             'total_units'       => $this->request->getPost('total_units') ?: 0,
             'tanggal_mulai'     => $this->request->getPost('start_date'),
@@ -200,12 +219,14 @@ class Kontrak extends BaseController
         if ($this->kontrakModel->update($id, $data)) {
             return $this->response->setJSON([
                 'success' => true, 
-                'message' => 'Kontrak berhasil diperbarui.'
+                'message' => 'Kontrak berhasil diperbarui.',
+                'csrf_hash' => csrf_hash(),
             ]);
         } else {
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Gagal memperbarui data: ' . implode(', ', $this->kontrakModel->errors())
+                'message' => 'Gagal memperbarui data: ' . implode(', ', $this->kontrakModel->errors()),
+                'csrf_hash' => csrf_hash(),
             ]);
         }
     }

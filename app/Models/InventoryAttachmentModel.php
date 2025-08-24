@@ -14,17 +14,11 @@ class InventoryAttachmentModel extends Model
     protected $protectFields = true;
     protected $allowedFields = [
         'po_id',
-        'attachment_id',
-        'sn_attachment',
-        'charger_id',
-        'sn_charger',
-        'kondisi_fisik',
-        'kelengkapan',
-        'catatan_fisik',
-        'lokasi_penyimpanan',
-        'status_unit',
-        'tanggal_masuk',
-        'catatan_inventory'
+        'attachment_id','sn_attachment',
+        'baterai_id','sn_baterai',
+        'charger_id','sn_charger',
+        'id_inventory_unit','status_unit','lokasi_penyimpanan',
+        'kondisi_fisik','kelengkapan','tanggal_masuk','catatan_inventory',
     ];
 
     // Dates
@@ -36,18 +30,21 @@ class InventoryAttachmentModel extends Model
 
     // Validation
     protected $validationRules = [
-        'po_id' => 'required|integer',
-        'attachment_id' => 'required|integer',
-        'sn_attachment' => 'permit_empty|max_length[255]',
-        'charger_id' => 'permit_empty|integer',
-        'sn_charger' => 'permit_empty|max_length[255]',
-        'kondisi_fisik' => 'permit_empty|in_list[Baik,Rusak Ringan,Rusak Berat]',
-        'kelengkapan' => 'permit_empty|in_list[Lengkap,Tidak Lengkap]',
-        'catatan_fisik' => 'permit_empty',
-        'lokasi_penyimpanan' => 'permit_empty|max_length[255]',
-        'status_unit' => 'permit_empty|integer',
-        'tanggal_masuk' => 'permit_empty|valid_date',
-        'catatan_inventory' => 'permit_empty'
+    'po_id'            => 'required|integer',
+    'id_inventory_unit'=> 'permit_empty|integer',
+    'attachment_id'    => 'permit_empty|integer',
+    'sn_attachment'    => 'permit_empty|max_length[255]',
+    'baterai_id'       => 'permit_empty|integer',
+    'sn_baterai'       => 'permit_empty|max_length[255]',
+    'charger_id'       => 'permit_empty|integer',
+    'sn_charger'       => 'permit_empty|max_length[255]',
+    'kondisi_fisik'    => 'permit_empty',
+    'kelengkapan'      => 'permit_empty',
+    'catatan_fisik'    => 'permit_empty',
+    'lokasi_penyimpanan'=> 'permit_empty|max_length[255]',
+    'status_unit'      => 'permit_empty|integer',
+    'tanggal_masuk'    => 'permit_empty|valid_date',
+    'catatan_inventory'=> 'permit_empty'
     ];
 
     protected $validationMessages = [
@@ -362,4 +359,66 @@ class InventoryAttachmentModel extends Model
         $query = $builder->get();
         return $query->getRowArray();
     }
-} 
+
+    public function assignToUnit(int $invAttachmentId, int $unitId, ?int $userId = null, ?string $note = null): bool
+    {
+        $db = $this->db;
+        return $db->transException(true)->transStart()
+            && $this->update($invAttachmentId, [
+                'id_inventory_unit' => $unitId,
+                'status_unit' => 3, // RENTAL
+                'lokasi_penyimpanan' => null,
+            ])
+            && $db->table('inventory_item_unit_log')->insert([
+                'id_inventory_attachment' => $invAttachmentId,
+                'id_inventory_unit'      => $unitId,
+                'action'                 => 'assign',
+                'user_id'                => $userId,
+                'note'                   => $note,
+            ])
+            && $db->transComplete();
+    }
+
+    public function removeFromUnit(int $invAttachmentId, ?string $lokasi = null, ?int $userId = null, ?string $note = null): bool
+    {
+        $db = $this->db;
+        // ambil unit lama untuk log
+        $row = $this->select('id_inventory_unit')->find($invAttachmentId);
+        $oldUnit = $row['id_inventory_unit'] ?? null;
+
+        return $db->transException(true)->transStart()
+            && $this->update($invAttachmentId, [
+                'id_inventory_unit' => null,
+                'status_unit'       => 7, // STOCK ASET
+                'lokasi_penyimpanan'=> $lokasi,
+            ])
+            && ($oldUnit ? $db->table('inventory_item_unit_log')->insert([
+                'id_inventory_attachment' => $invAttachmentId,
+                'id_inventory_unit'      => $oldUnit,
+                'action'                 => 'remove',
+                'user_id'                => $userId,
+                'note'                   => $note,
+            ]) : true)
+            && $db->transComplete();
+    }
+
+    public function getAvailableForAttachment(int $attachmentId): array
+    {
+        return $this->where([
+            'attachment_id' => $attachmentId,
+            'status_unit'   => 7,
+        ])->where('id_inventory_unit', null)
+          ->orderBy('tanggal_masuk','ASC')
+          ->findAll(100);
+    }
+
+    public function getAvailableChargers(): array
+    {
+        // Ambil inventory yang punya charger_id, masih stock
+        return $this->where('charger_id IS NOT NULL', null, false)
+            ->where('status_unit', 7)
+            ->where('id_inventory_unit', null)
+            ->orderBy('tanggal_masuk','ASC')
+            ->findAll(100);
+    }
+}

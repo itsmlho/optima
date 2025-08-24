@@ -104,11 +104,12 @@
                     </div>
                 </div>
                 <div class="modal-footer">
+                    <input type="hidden" name="submit_action" id="submitAction" value="save_and_spec">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="button" id="btnSaveAndSpec" class="btn btn-primary">
                         <i class="fas fa-save me-2"></i>Simpan & Lanjut ke Spesifikasi
                     </button>
-                    <button type="submit" class="btn btn-primary">Simpan Kontrak</button>
+                    <button type="button" id="btnSaveOnly" class="btn btn-outline-primary">Simpan Kontrak</button>
                 </div>
             </form>
         </div>
@@ -273,24 +274,48 @@ $(document).ready(function() {
     // Set default active filter (all)
     $('[data-filter="all"]').addClass('active');
 
+    // Primary action buttons
+    $('#btnSaveAndSpec').on('click', function() {
+        $('#submitAction').val('save_and_spec');
+        $('#addContractForm').trigger('submit');
+    });
+    $('#btnSaveOnly').on('click', function() {
+        $('#submitAction').val('save_only');
+        $('#addContractForm').trigger('submit');
+    });
+
     $('#addContractForm').on('submit', function(e) {
         e.preventDefault();
         
         const contractId = $(this).data('contract-id');
         const isEdit = contractId ? true : false;
+        const action = $('#submitAction').val();
         const url = isEdit ? 
             `<?= base_url('marketing/kontrak/update/') ?>${contractId}` : 
             '<?= base_url('marketing/kontrak/store') ?>';
         
-        $.ajax({
+        // Disable buttons to prevent double submit
+        const $btnSaveAndSpec = $('#btnSaveAndSpec');
+        const $btnSaveOnly = $('#btnSaveOnly');
+        if (!$btnSaveAndSpec.data('orig-html')) $btnSaveAndSpec.data('orig-html', $btnSaveAndSpec.html());
+        if (!$btnSaveOnly.data('orig-html')) $btnSaveOnly.data('orig-html', $btnSaveOnly.html());
+        if (action === 'save_only') {
+            $btnSaveOnly.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...');
+            $btnSaveAndSpec.prop('disabled', true);
+        } else {
+            $btnSaveAndSpec.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span>Menyimpan...');
+            $btnSaveOnly.prop('disabled', true);
+        }
+
+    $.ajax({
             url: url,
             method: 'POST',
             data: $(this).serialize() + '&<?= csrf_token() ?>=' + '<?= csrf_hash() ?>',
             dataType: 'json',
-            success: function(response) {
-                $('#addContractModal').modal('hide');
+        success: function(response) {
                 if (response.success) {
-                    if (isEdit) {
+            $('#addContractModal').modal('hide');
+            if (isEdit) {
                         // Jika edit, reload table dan show success message
                         OptimaPro.showNotification(response.message, 'success');
                         contractsTable.ajax.reload();
@@ -301,33 +326,59 @@ $(document).ready(function() {
                         $('#addContractForm').attr('action', 'store');
                         $('#addContractModal .modal-title').text('Tambah Kontrak Baru');
                     } else {
-                        // Jika create baru, tanyakan apakah mau langsung menambah spesifikasi
+                        // Create baru: arahkan sesuai submit_action
                         OptimaPro.showNotification(response.message, 'success');
                         contractsTable.ajax.reload();
-                        
+                        const goToSpec = ($('#submitAction').val() === 'save_and_spec');
+                        const newId = response.data && response.data.id ? response.data.id : null;
                         // Reset form
                         $('#addContractForm')[0].reset();
-                        
-                        // Show confirmation dialog untuk add spesifikasi
-                        setTimeout(() => {
-                            if (confirm('Kontrak berhasil dibuat! Apakah Anda ingin menambahkan spesifikasi unit sekarang?')) {
-                                if (response.data && response.data.id) {
-                                    openContractDetail(response.data.id);
-                                    // Open spesifikasi tab automatically
-                                    setTimeout(() => {
-                                        const spekTab = document.querySelector('#contractDetailTabs button[data-bs-target="#spesifikasi"]');
-                                        if (spekTab) spekTab.click();
-                                    }, 500);
-                                }
-                            }
-                        }, 500);
+                        if (goToSpec && newId) {
+                            // Buka modal detail kontrak dan tab spesifikasi
+                            openContractDetail(newId);
+                            setTimeout(() => {
+                                const spekTab = document.querySelector('#contractDetailTabs button[data-bs-target="#spesifikasi-content"]');
+                                if (spekTab) spekTab.click();
+                            }, 400);
+                        }
                     }
                 } else {
-                    OptimaPro.showNotification(response.message || 'Terjadi kesalahan.', 'danger');
+                    // Duplicate contract handling
+                    if (response.duplicate && response.existing_id) {
+                        OptimaPro.showConfirmDialog({
+                            title: 'No. Kontrak sudah ada',
+                            message: 'Buka kontrak yang sudah ada dan lanjutkan dari sana?'
+                        }).then(res => {
+                            if (res.isConfirmed) {
+                                openContractDetail(response.existing_id);
+                                setTimeout(() => {
+                                    const spekTab = document.querySelector('#contractDetailTabs button[data-bs-target="#spesifikasi-content"]');
+                                    if (spekTab) spekTab.click();
+                                }, 400);
+                            }
+                        });
+                        return;
+                    }
+
+                    let msg = response.message || 'Terjadi kesalahan.';
+                    if (response.errors && typeof response.errors === 'object') {
+                        msg = 'Validasi gagal: ' + Object.values(response.errors).join(', ');
+                    }
+                    OptimaPro.showNotification(msg, 'danger');
                 }
             },
-            error: function() {
-                OptimaPro.showNotification('Tidak dapat terhubung ke server.', 'danger');
+            error: function(xhr, status, error) {
+                let msg = 'Tidak dapat terhubung ke server.';
+                if (xhr && xhr.responseText) {
+                    try { const r = JSON.parse(xhr.responseText); if (r.message) msg = r.message; } catch(e) {}
+                }
+                OptimaPro.showNotification(msg, 'danger');
+            }
+            ,
+            complete: function() {
+                // Re-enable buttons and restore labels
+                $btnSaveAndSpec.prop('disabled', false).html($btnSaveAndSpec.data('orig-html'));
+                $btnSaveOnly.prop('disabled', false).html($btnSaveOnly.data('orig-html'));
             }
         });
     });
@@ -678,7 +729,7 @@ function loadContractSpesifikasi(kontrakId) {
                     const progressClass = progress === 100 ? 'success' : progress > 0 ? 'warning' : 'secondary';
                 
                 html += `
-                    <div class="card mb-3">
+                    <div class="card mb-3" data-spek-id="${spek.id}" data-jumlah-dibutuhkan="${spek.jumlah_dibutuhkan}" data-jumlah-tersedia="${spek.jumlah_tersedia}">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">
                                 <span class="badge bg-primary me-2">${spek.spek_kode}</span>
@@ -749,7 +800,7 @@ function loadContractSpesifikasi(kontrakId) {
                             
                             ${spek.jumlah_tersedia < spek.jumlah_dibutuhkan ? `
                                 <div class="mt-2">
-                                    <button class="btn btn-sm btn-primary" onclick="createSPKForSpec(${spek.id})">
+                                    <button class="btn btn-sm btn-primary" onclick="openSpkModalFromKontrak(${spek.id})">
                                         <i class="fas fa-file-alt me-1"></i>Buat SPK
                                     </button>
                                     <small class="text-muted d-block mt-1">
@@ -788,6 +839,144 @@ function loadContractSpesifikasi(kontrakId) {
             container.innerHTML = '<div class="text-danger">Gagal memuat spesifikasi: ' + error.message + '</div>';
         });
 }
+
+// Single modal for creating SPK from kontrak detail
+document.addEventListener('DOMContentLoaded', function() {
+    if (!document.getElementById('spkFromKontrakModal')) {
+        const modalHtml = `
+<div class="modal fade" id="spkFromKontrakModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Buat SPK</h6>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="spkFromKontrakForm">
+                <div class="modal-body">
+                    <input type="hidden" name="kontrak_id" id="spkKontrakId">
+                    <input type="hidden" name="kontrak_spesifikasi_id" id="spkSpesifikasiId">
+                    <div class="mb-3">
+                        <label class="form-label">Jenis SPK</label>
+                        <select class="form-select" name="jenis_spk" required>
+                            <option value="UNIT" selected>SPK Unit</option>
+                            <option value="ATTACHMENT">SPK Attachment</option>
+                            <option value="TUKAR">SPK Tukar</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Delivery Plan</label>
+                        <input type="date" class="form-control" name="delivery_plan" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Jumlah Unit <small class="text-muted" id="jumlahUnitHint"></small></label>
+                        <input type="number" class="form-control" name="jumlah_unit" id="spkJumlahUnit" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Catatan</label>
+                        <textarea class="form-control" name="catatan" rows="3" placeholder="Keterangan tambahan untuk SPK ini (opsional)"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Batal</button>
+                    <button class="btn btn-primary" type="submit">Buat SPK</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>`;
+
+        const wrapper = document.createElement('div');
+        wrapper.innerHTML = modalHtml;
+        document.body.appendChild(wrapper);
+
+        // Expose global opener so per-spec buttons can call it
+        window.openSpkModalFromKontrak = function(spekId) {
+            const kontrakId = window.currentKontrakId || document.getElementById('currentKontrakId')?.value;
+            if (!kontrakId) {
+                OptimaPro.showNotification('Kontrak belum dipilih. Buka detail kontrak terlebih dahulu.', 'error');
+                return;
+            }
+            document.getElementById('spkKontrakId').value = kontrakId;
+            document.getElementById('spkSpesifikasiId').value = spekId;
+            // Reset other fields
+            document.querySelector('#spkFromKontrakForm [name="jenis_spk"]').value = 'UNIT';
+            document.querySelector('#spkFromKontrakForm [name="delivery_plan"]').value = '';
+            document.querySelector('#spkFromKontrakForm [name="jumlah_unit"]').value = '';
+            document.querySelector('#spkFromKontrakForm [name="catatan"]').value = '';
+            // Compute available units from current spesifikasi list in DOM if present
+            try {
+                let available = 0;
+                const card = document.querySelector(`[data-spek-id="${spekId}"]`);
+                if (card) {
+                    const need = Number(card.getAttribute('data-jumlah-dibutuhkan') || '0');
+                    const have = Number(card.getAttribute('data-jumlah-tersedia') || '0');
+                    available = Math.max(0, need - have);
+                }
+                const jumlahInput = document.getElementById('spkJumlahUnit');
+                const hint = document.getElementById('jumlahUnitHint');
+                const formEl = document.getElementById('spkFromKontrakForm');
+                if (jumlahInput) {
+                    if (available > 0) {
+                        jumlahInput.setAttribute('max', String(available));
+                        jumlahInput.setAttribute('placeholder', 'Maks ' + available);
+                    } else {
+                        jumlahInput.removeAttribute('max');
+                        jumlahInput.removeAttribute('placeholder');
+                    }
+                }
+                if (hint) {
+                    hint.textContent = available > 0 ? `(maks ${available})` : '';
+                }
+                if (formEl) {
+                    formEl.dataset.availableUnits = String(available);
+                }
+            } catch(e) { console.warn('Failed to set available units hint', e); }
+            const modal = new bootstrap.Modal(document.getElementById('spkFromKontrakModal'));
+            modal.show();
+        };
+
+        // Attach submit handler
+        const spkForm = document.getElementById('spkFromKontrakForm');
+        if (spkForm) {
+            spkForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(spkForm);
+                // Add CSRF
+                formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+                if (!formData.get('delivery_plan') || !formData.get('jumlah_unit')) {
+                    OptimaPro.showNotification('Lengkapi semua field wajib.', 'error');
+                    return;
+                }
+                // Client-side limit based on available units
+                const available = Number(spkForm.dataset.availableUnits || '0');
+                const jumlah = Number(formData.get('jumlah_unit'));
+                if (available > 0 && jumlah > available) {
+                    OptimaPro.showNotification('Jumlah unit melebihi yang dibutuhkan. Maksimal: ' + available, 'error');
+                    return;
+                }
+                fetch('<?= base_url('marketing/spk/create') ?>', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(res => {
+                    if (res.success) {
+                        OptimaPro.showNotification('SPK berhasil dibuat!', 'success');
+                        const modalEl = document.getElementById('spkFromKontrakModal');
+                        bootstrap.Modal.getInstance(modalEl)?.hide();
+                        if (window.currentKontrakId) loadContractSpesifikasi(window.currentKontrakId);
+                    } else {
+                        OptimaPro.showNotification(res.message || 'Gagal membuat SPK.', 'error');
+                    }
+                })
+                .catch(err => {
+                    OptimaPro.showNotification('Gagal membuat SPK: ' + err, 'error');
+                });
+            });
+        }
+    }
+});
 
 function editContract(contractId) {
     // Load data kontrak untuk edit
@@ -1144,7 +1333,15 @@ function deleteSpesifikasi(spekId) {
 // Create SPK for specific specification
 function createSPKForSpec(spekId) {
     // Redirect to SPK creation page with pre-selected spesifikasi
-    window.location.href = `/marketing/spk/create?spesifikasi_id=${spekId}`;
+    // Use runtime JS values: window.currentKontrakId should be set when viewing a contract
+    const kontrakId = window.currentKontrakId || document.getElementById('currentKontrakId')?.value;
+    if (!kontrakId) {
+        console.error('createSPKForSpec: kontrak id not available');
+        OptimaPro.showNotification('Kontrak belum dipilih. Buka detail kontrak terlebih dahulu.', 'error');
+        return;
+    }
+    const base = '<?= rtrim(base_url(), "\/") ?>';
+    window.location.href = `${base}/marketing/spk?kontrak_id=${encodeURIComponent(kontrakId)}&spesifikasi_id=${encodeURIComponent(spekId)}`;
 }
 </script>
 <!-- Contract Detail Modal with Multi-Specification Support -->

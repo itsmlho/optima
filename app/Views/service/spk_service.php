@@ -37,78 +37,78 @@
 }
 
 .filter-card.active {
-  background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
-  color: white;
-  border-color: #0d6efd;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+	transform: translateY(-3px);
+	box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+	border: 2px solid #fff;
 }
 
 .filter-card.active .text-muted {
   color: rgba(255,255,255,0.8) !important;
 }
-</style>
 
-<div class="container-fluid py-3">
+/* Match marketing/spk.php card aesthetics */
+.card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
+.table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
+</style>
   <!-- Statistics Cards -->
-  <div class="row mb-4">
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="all">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-primary" id="totalSPK">0</h5>
-          <small class="text-muted">Total SPK</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="SUBMITTED">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-secondary" id="submittedSPK">0</h5>
-          <small class="text-muted">Submitted</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="IN_PROGRESS">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-info" id="inProgressSPK">0</h5>
-          <small class="text-muted">In Progress</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="READY">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-success" id="readySPK">0</h5>
-          <small class="text-muted">Ready</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="COMPLETED">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-primary" id="completedSPK">0</h5>
-          <small class="text-muted">Completed</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="CANCELLED">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-danger" id="cancelledSPK">0</h5>
-          <small class="text-muted">Cancelled</small>
-        </div>
-      </div>
-    </div>
-  </div>
+	<div class="row g-4 mb-4">
+		<div class="col-xl-2 col-md-4">
+			<div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all">
+				<div class="card-body py-3">
+					<h2 class="fw-bold mb-1" id="totalSPK">0</h2>
+					<h6 class="card-title text-uppercase small mb-0">Total SPK</h6>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-2 col-md-4">
+			<div class="card card-stats bg-secondary text-white h-100 filter-card" data-filter="SUBMITTED">
+				<div class="card-body py-3">
+					<h2 class="fw-bold mb-1" id="submittedSPK">0</h2>
+					<h6 class="card-title text-uppercase small mb-0">Submitted</h6>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-2 col-md-4">
+			<div class="card card-stats bg-info text-white h-100 filter-card" data-filter="IN_PROGRESS">
+				<div class="card-body py-3">
+					<h2 class="fw-bold mb-1" id="inProgressSPK">0</h2>
+					<h6 class="card-title text-uppercase small mb-0">In Progress</h6>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-2 col-md-4">
+			<div class="card card-stats bg-success text-white h-100 filter-card" data-filter="READY">
+				<div class="card-body py-3">
+					<h2 class="fw-bold mb-1" id="readySPK">0</h2>
+					<h6 class="card-title text-uppercase small mb-0">Ready</h6>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-2 col-md-4">
+			<div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="COMPLETED">
+				<div class="card-body py-3">
+					<h2 class="fw-bold mb-1" id="completedSPK">0</h2>
+					<h6 class="card-title text-uppercase small mb-0">Completed</h6>
+				</div>
+			</div>
+		</div>
+		<div class="col-xl-2 col-md-4">
+			<div class="card card-stats bg-danger text-white h-100 filter-card" data-filter="CANCELLED">
+				<div class="card-body py-3">
+					<h2 class="fw-bold mb-1" id="cancelledSPK">0</h2>
+					<h6 class="card-title text-uppercase small mb-0">Cancelled</h6>
+				</div>
+			</div>
+		</div>
+	</div>
 
 	<div class="card">
 		<div class="card-body">
-			<!-- DataTable-style controls -->
-			<div class="row mb-3">
-				<div class="col-md-6 d-flex align-items-center">
-					<label class="me-2">Show</label>
-					<select class="form-select form-select-sm me-2" id="entriesPerPage" style="width: auto;">
+			<!-- Controls aligned like marketing/spk.php -->
+			<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+				<div class="d-flex align-items-center gap-2">
+					<span>Show</span>
+					<select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
 						<option value="10">10</option>
 						<option value="25">25</option>
 						<option value="50">50</option>
@@ -116,11 +116,9 @@
 					</select>
 					<span>entries</span>
 				</div>
-				<div class="col-md-6">
-					<div class="input-group input-group-sm">
-						<span class="input-group-text">Search:</span>
-						<input type="text" class="form-control" id="searchInput" placeholder="Cari No. SPK, Pelanggan, PIC...">
-					</div>
+				<div class="d-flex align-items-center gap-2">
+					<span>Search:</span>
+					<input type="text" class="form-control form-control-sm" id="searchInput" placeholder="" style="width: 200px;">
 				</div>
 			</div>
 
@@ -497,10 +495,12 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (paintingDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Painting</span>');
 				if (pdiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ PDI</span>');
 				
+				// For multi-unit SPK, do not show assignment button; items are accumulated per-cycle
+				const showAssign = (d.jumlah_unit||1) === 1 && pdiDone;
 				actionButtons = `
 					<a class="btn btn-outline-secondary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener">Print PDF</a>
 					${approvalButtons.join(' ')}
-					${pdiDone ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
+					${showAssign ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
 				`;
 			} else if (status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED') {
 				actionButtons = `<a class="btn btn-outline-secondary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener">Print PDF</a>`;
@@ -524,27 +524,101 @@ document.addEventListener('DOMContentLoaded', () => {
 				pdi_catatan: d.pdi_catatan,
 			};
 
+			// Build accessories text robustly (array or JSON string)
+			let aksText = '-';
+			if (j.kontrak_spec && j.kontrak_spec.aksesoris) {
+				const aks = j.kontrak_spec.aksesoris;
+				if (Array.isArray(aks) && aks.length) aksText = aks.join(', ');
+				else if (typeof aks === 'string') {
+					try { const parsed = JSON.parse(aks); aksText = Array.isArray(parsed) && parsed.length ? parsed.join(', ') : (aks.trim() || '-'); }
+					catch(e){ aksText = aks.trim() || '-'; }
+				}
+			} else if (s && s.aksesoris) {
+				if (Array.isArray(s.aksesoris) && s.aksesoris.length) aksText = s.aksesoris.join(', ');
+				else if (typeof s.aksesoris === 'string') {
+					try { const parsed = JSON.parse(s.aksesoris); aksText = Array.isArray(parsed) && parsed.length ? parsed.join(', ') : (s.aksesoris.trim() || '-'); }
+					catch(e){ aksText = (s.aksesoris||'').trim() || '-'; }
+				}
+			}
+
+			const prepared = Array.isArray(j.prepared_units) ? j.prepared_units : [];
+			const totalUnits = parseInt(d.jumlah_unit||1);
+			const preparedCount = prepared.length;
+
+			// Prefer prepared_units_detail for distinct per-unit display
+			const preparedDetails = (j.spesifikasi && Array.isArray(j.spesifikasi.prepared_units_detail)) ? j.spesifikasi.prepared_units_detail : [];
+			let itemsHtml = '';
+			if (preparedDetails.length > 0) {
+				itemsHtml = preparedDetails.map((it, idx) => `
+					<div class="col-12"><strong>Item yang dipilih: (${idx+1}):</strong></div>
+					<div class="col-12 svcUnitDetailBlock">
+						<div><strong>Unit:</strong> ${it.unit_label || '-'}</div>
+						<div><strong>Serial Number:</strong> ${it.serial_number || '-'}</div>
+						<div><strong>Tipe Unit:</strong> ${it.tipe_jenis || '-'}</div>
+						<div><strong>Merk/Model:</strong> ${(it.merk_unit || '-') + ' ' + (it.model_unit || '')}</div>
+						${ it.attachment_label ? `<div><strong>Attachment:</strong> ${it.attachment_label}</div>` : ''}
+						${ it.catatan ? `<div><strong>Catatan:</strong> ${it.catatan}</div>` : ''}
+						${ it.mekanik ? `<div><strong>Mekanik:</strong> ${it.mekanik}</div>` : ''}
+						${ it.timestamp ? `<div class=\"text-muted\"><small>Waktu: ${it.timestamp}</small></div>` : ''}
+						<div class="col-12"><hr></div>
+					</div>
+				`).join('');
+			} else {
+				// Fallback to duplicate the selected unit detail per jumlah_unit
+				function renderItemBlock(i, total) {
+					return `
+						<div class="col-12"><strong>Item Terpilih${total > 1 ? ' ('+i+')' : ''}:</strong></div>
+						<div class="col-12 svcUnitDetailBlock">
+							${(s.selected && s.selected.unit) ? `
+								<div><strong>Unit:</strong> ${s.selected.unit.label || `${s.selected.unit.no_unit || '-'} | ${s.selected.unit.merk_unit || '-'} | ${s.selected.unit.model_unit || '-'} | ${s.selected.unit.jenis_unit || '-'}`}</div>
+								<div><strong>Serial Number:</strong> ${s.selected.unit.serial_number || '-'}</div>
+								<div><strong>Tipe Unit:</strong> ${s.selected.unit.tipe_jenis || '-'}</div>
+								<div><strong>Kapasitas:</strong> ${s.selected.unit.kapasitas_name || '-'}</div>
+								<div><strong>Mast:</strong> ${s.selected.unit.mast || s.selected.unit.mast_model || '-'}</div>
+								<div><strong>Roda:</strong> ${s.selected.unit.roda || '-'}</div>
+								<div><strong>Ban:</strong> ${s.selected.unit.ban || '-'}</div>
+								<div><strong>Valve:</strong> ${s.selected.unit.valve || '-'}</div>
+							` : (s.selected && s.selected.unit && s.selected.unit.label ? `<div><strong>Unit:</strong> ${s.selected.unit.label}</div>` : '<div class=\"text-muted\">Unit: -</div>')}
+							${ (s.selected && s.selected.attachment) ? `
+								<div><strong>Attachment:</strong> ${s.selected.attachment.tipe || '-'} | ${s.selected.attachment.merk || '-'} | ${s.selected.attachment.model || '-'}${s.selected.attachment.sn_attachment ? ` [SN: ${s.selected.attachment.sn_attachment}]` : ''}${s.selected.attachment.lokasi_penyimpanan ? ` @ ${s.selected.attachment.lokasi_penyimpanan}` : ''}</div>
+							` : ''}
+								<div><strong>Catatan:</strong> ${s.selected.catatan || '-'}</div>
+								<div class="col-12"><hr></div>
+						</div>
+					`;
+				}
+				for (let i = 1; i <= totalUnits; i++) { itemsHtml += renderItemBlock(i, totalUnits); }
+			}
+
 			body.innerHTML = `
 				<div class="row g-2">
-					<div class="col-6"><strong>No SPK:</strong> ${d.nomor_spk}</div>
+					<div class="col-12"><h5 class="mb-2">Detail #${d.nomor_spk}</h5></div>
 					<div class="col-6"><strong>Jenis SPK:</strong> <span class="badge bg-dark">${d.jenis_spk||'UNIT'}</span></div>
+					<div class="col-6"><strong>No SPK:</strong> ${d.nomor_spk}</div>
 					<div class="col-6"><strong>Kontrak/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
-					<div class="col-6"><strong>Pelanggan:</strong> ${d.pelanggan||'-'}</div>
+					<div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>
+					<div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
+					<div class="col-6"><strong>Delivery Plan:</strong> ${d.delivery_plan||'-'}</div>
 					<div class="col-6"><strong>PIC:</strong> ${d.pic||'-'}</div>
 					<div class="col-6"><strong>Kontak:</strong> ${d.kontak||'-'}</div>
-					<div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
 					<div class="col-12"><hr></div>
-                    <div class="col-6"><strong>Departemen:</strong> ${s.departemen_id_name||s.departemen_id||'-'}</div>
-					<div class="col-6"><strong>Tipe (Jenis):</strong> ${s.tipe_jenis||'-'}</div>
+					<div class="col-12"><h6 class="mb-2">Spesifikasi yang diminta</h6></div>
+					<div class="col-6"><strong>Total Unit:</strong> ${d.jumlah_unit || 0}</div>
+					${totalUnits>1 ? `<div class="col-12">
+						<div class="progress" style="height:14px"><div class="progress-bar" role="progressbar" style="width:${Math.min(100, Math.round((preparedCount/totalUnits)*100))}%">${preparedCount}/${totalUnits} disiapkan</div></div>
+					</div>`:''}
+					<div class="col-6"><strong>Tipe Unit:</strong> ${s.tipe_jenis||'-'}</div>
 					<div class="col-6"><strong>Merk Unit:</strong> ${s.merk_unit||'-'}</div>
 					<div class="col-6"><strong>Valve:</strong> ${s.valve_id_name||s.valve_id||'-'}</div>
-					<div class="col-6"><strong>Baterai (Jenis):</strong> ${s.jenis_baterai||'-'}</div>
+					<div class="col-6"><strong>Baterai:</strong> ${s.jenis_baterai||'-'}</div>
+					<div class="col-6"><strong>Charger:</strong> ${s.charger_id_name||'-'}</div>
 					<div class="col-6"><strong>Attachment (Tipe):</strong> ${s.attachment_tipe||'-'}</div>
 					<div class="col-6"><strong>Roda:</strong> ${s.roda_id_name||s.roda_id||'-'}</div>
+                    <div class="col-6"><strong>Departemen:</strong> ${s.departemen_id_name||s.departemen_id||'-'}</div>
 					<div class="col-6"><strong>Kapasitas:</strong> ${s.kapasitas_id_name||s.kapasitas_id||'-'}</div>
 					<div class="col-6"><strong>Mast:</strong> ${s.mast_id_name||s.mast_id||'-'}</div>
 					<div class="col-6"><strong>Ban:</strong> ${s.ban_id_name||s.ban_id||'-'}</div>
-					<div class="col-12"><strong>Aksesoris:</strong> ${(Array.isArray(s.aksesoris)?s.aksesoris:[]).join(', ') || '-'}</div>
+					<div class="col-12"><strong>Aksesoris:</strong> ${aksText}</div>
 					
 					${status === 'IN_PROGRESS' || status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED' ? `
 					<div class="col-12"><hr></div>
@@ -604,22 +678,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					` : ''}
 					
 					<div class="col-12"><hr></div>
-					<div class="col-12"><strong>Item Terpilih:</strong></div>
-					<div class="col-12" id="svcUnitDetailBlock">
-						${(s.selected && s.selected.unit) ? `
-							<div><strong>Unit:</strong> ${s.selected.unit.label || `${s.selected.unit.no_unit || '-'} | ${s.selected.unit.merk_unit || '-'} | ${s.selected.unit.model_unit || '-'} | ${s.selected.unit.jenis_unit || '-'}`}</div>
-							<div><strong>Serial Number:</strong> ${s.selected.unit.serial_number || '-'}</div>
-							<div><strong>Tipe Unit:</strong> ${s.selected.unit.tipe_jenis || '-'}</div>
-							<div><strong>Kapasitas:</strong> ${s.selected.unit.kapasitas_name || '-'}</div>
-							<div><strong>Mast:</strong> ${s.selected.unit.mast || s.selected.unit.mast_model || '-'}</div>
-							<div><strong>Roda:</strong> ${s.selected.unit.roda || '-'}</div>
-							<div><strong>Ban:</strong> ${s.selected.unit.ban || '-'}</div>
-							<div><strong>Valve:</strong> ${s.selected.unit.valve || '-'}</div>
-						` : (s.selected && s.selected.unit && s.selected.unit.label ? `<div><strong>Unit:</strong> ${s.selected.unit.label}</div>` : '<div class="text-muted">Unit: -</div>')}
-						${(s.selected && s.selected.attachment) ? `
-							<div><strong>Attachment:</strong> ${s.selected.attachment.tipe || '-'} | ${s.selected.attachment.merk || '-'} | ${s.selected.attachment.model || '-'}${s.selected.attachment.sn_attachment ? ` [SN: ${s.selected.attachment.sn_attachment}]` : ''}${s.selected.attachment.lokasi_penyimpanan ? ` @ ${s.selected.attachment.lokasi_penyimpanan}` : ''}</div>
-						` : ''}
-					</div>
+					${itemsHtml}
 				</div>`;
 			// Detail print unit sudah diambil dari marketing/print_spk.php
 			
@@ -721,7 +780,22 @@ document.addEventListener('DOMContentLoaded', () => {
 			fetch(`<?= base_url('service/spk/detail/') ?>${spkId}`).then(r=>r.json()).then(j=>{
 				if (j.success) {
 					const spesifikasi = j.spesifikasi || {};
-					const aksesoris = spesifikasi.aksesoris || [];
+					// Prefer aksesoris from kontrak_spec for consistency with Marketing
+					let aksesoris = [];
+					if (j.kontrak_spec && j.kontrak_spec.aksesoris) {
+						const aks = j.kontrak_spec.aksesoris;
+						if (Array.isArray(aks)) aksesoris = aks;
+						else if (typeof aks === 'string' && aks.trim()) {
+							try { const parsed = JSON.parse(aks); if (Array.isArray(parsed)) aksesoris = parsed; else aksesoris = [aks.trim()]; }
+							catch(e){ aksesoris = [aks.trim()]; }
+						}
+					} else if (spesifikasi.aksesoris) {
+						if (Array.isArray(spesifikasi.aksesoris)) aksesoris = spesifikasi.aksesoris;
+						else if (typeof spesifikasi.aksesoris === 'string' && spesifikasi.aksesoris.trim()) {
+							try { const parsed = JSON.parse(spesifikasi.aksesoris); if (Array.isArray(parsed)) aksesoris = parsed; else aksesoris = [spesifikasi.aksesoris.trim()]; }
+							catch(e){ aksesoris = [spesifikasi.aksesoris.trim()]; }
+						}
+					}
 					
 					let aksesorisCheckboxes = '';
 					if (Array.isArray(aksesoris) && aksesoris.length > 0) {
@@ -996,7 +1070,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 	
 	function setupAttachmentSearch() {
-		const attSearch = document.getElementById('approvalAttSearch');
+			const attSearch = document.getElementById('approvalAttSearch');
 		if (attSearch) {
 			attSearch.addEventListener('input', function(){
 				const q = this.value.trim();
@@ -1048,6 +1122,73 @@ document.addEventListener('DOMContentLoaded', () => {
 		});
 	});
 });
+</script>
+
+<script>
+async function openFabrikasiModal(detail) {
+  const depId = Number((detail.spec?.departemen_id)||0);
+  const attId = Number((detail.spec?.attachment_model_id)||0) || Number((detail.spec?.attachment_id)||0);
+  // fetch attachments available
+  const att = attId ? await fetch(`<?= base_url('warehouse/inventory/available-attachments') ?>?attachment_id=${attId}`).then(r=>r.json()) : [];
+  const chg = depId===2 ? await fetch(`<?= base_url('warehouse/inventory/available-chargers') ?>`).then(r=>r.json()) : [];
+
+  const attOptions = att.map(r=>`<option value="${r.id_inventory_attachment}">SN: ${r.sn_attachment||'-'} • PO:${r.po_id} • Loc:${r.lokasi_penyimpanan||'-'}</option>`).join('');
+  const chgOptions = chg.map(r=>`<option value="${r.id_inventory_attachment}">SN Charger: ${r.sn_charger||'-'} • PO:${r.po_id}</option>`).join('');
+
+  const html = `
+    <form id="fabForm">
+      <input type="hidden" name="spk_id" value="${detail.id}">
+      <input type="hidden" name="unit_id" value="${detail.persiapan_unit_id||''}">
+      <div class="mb-2">
+        <label class="form-label">Attachment (inventory)</label>
+        <select class="form-select" name="attachment_inventory_id" required>
+          <option value="">-- pilih --</option>${attOptions}
+        </select>
+      </div>
+      ${depId===2 ? `
+      <div class="mb-2">
+        <label class="form-label">Charger (inventory)</label>
+        <select class="form-select" name="charger_inventory_id" required>
+          <option value="">-- pilih --</option>${chgOptions}
+        </select>
+      </div>`:''}
+      <div class="mb-2">
+        <label class="form-label">Mekanik</label>
+        <input class="form-control" name="mekanik" required>
+      </div>
+    </form>
+  `;
+  // tampilkan modal sendiri (sesuaikan komponen yang ada)
+  const modal = new bootstrap.Modal(document.createElement('div'));
+  modal._element.classList.add('modal', 'fade');
+  modal._element.innerHTML = `
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Fabrikasi - SPK #${detail.nomor_spk}</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          ${html}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-primary" onclick="submitFabrikasi()">Simpan & Approve Fabrikasi</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal._element);
+  modal.show();
+  
+  window.submitFabrikasi = async ()=>{
+    const fd = new FormData(document.getElementById('fabForm'));
+    const res = await fetch('<?= base_url('service/spk/approve-fabrikasi') ?>', {method:'POST', body: fd, headers: {'X-Requested-With':'XMLHttpRequest'}});
+    const j = await res.json();
+    if (!res.ok || !j.success) { alert(j.message || 'Gagal'); return; }
+    location.reload();
+  };
+}
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
