@@ -30,39 +30,45 @@ $placeholder = ($status === 'SUBMITTED');
             margin: 5px 0; 
         }
         .sig-name { font-weight: bold; color: #111; }
-        .title { font-size: 16px; font-weight: bold; text-align:center; margin-bottom:2px; }
-        .subtitle { font-size: 15px; text-align:center; color:#555; margin-bottom:8px; }
+        .title { font-size: 16px; font-weight: bold; margin:0; }
+        .subtitle { font-size: 15px; color:#555; margin:0; }
         .k-box { height: 16px; width: 16px; border:1px solid #999; display:inline-block; margin-right:2px; }
         .dotted { color:#333; }
         .label { color:#374151; }
         .val   { color:#111827; font-weight: 600; }
         .grid-2 td { width: 25%; }
         .no-border td { border:none !important; }
-        .logo { max-height: 50px; }
+        .logo { max-height: 46px; }
+        .header { display:grid; grid-template-columns:auto 1fr auto; align-items:center; column-gap:10px; }
+        .header-center { text-align:center; }
+        .header-meta { font-size:10px; color:#6b7280; text-align:right; }
+        /* Extra print-friendly blocks for multiple units */
+        .unit-card { border:1px solid #9aa1a7; padding:8px; margin-bottom:10px; }
+        .unit-title { background:#f8fafc; font-weight:bold; padding:4px 6px; border-bottom:1px solid #9aa1a7; margin:-8px -8px 8px; }
     </style>
 </head>
 <body onload="window.print()" onafterprint="window.close()">
 
 <div class="container-fluid">
-    <div class="row align-items-center mb-2">
-        <div class="col-6 d-flex align-items-center">
-            <img src="<?= base_url('assets/images/company-logo.svg') ?>" class="logo me-2" alt="logo"/>
-                    </div>
-                        <div class="col-6 text-end small text-muted">
-                            <?php if (!empty($spk['created_at'])): ?>Created at: <?= esc($spk['created_at']) ?><br><?php endif; ?>
-                            <?php if (!empty($spk['updated_at'])): ?>Updated at: <?= esc($spk['updated_at']) ?><?php endif; ?>
-                        </div>
-                    </div>
-
-                    <div class="title">PT. SARANA MITRA LUAS</div>
-                    <div class="subtitle">SPK ( Persiapan Unit )</div>
+    <div class="header mb-2">
+        <img src="<?= base_url('assets/images/company-logo.svg') ?>" class="logo" alt="logo"/>
+        <div class="header-center">
+            <div class="title">PT. SARANA MITRA LUAS</div>
+            <div class="subtitle">SPK ( Persiapan Unit )</div>
+            <br/>
+        </div>
+        <div class="header-meta">
+            <?php if (!empty($spk['created_at'])): ?>Created: <?= esc($spk['created_at']) ?><br><?php endif; ?>
+            <?php if (!empty($spk['updated_at'])): ?>Updated: <?= esc($spk['updated_at']) ?><?php endif; ?>
+        </div>
+    </div>
 
                     <div class="row mb-1">
                         <div class="col-6"><span class="label">No SPK:</span> <span class="val"><?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? '-') ?></span></div>
                         <div class="col-6"><span class="label">Kontrak/PO:</span> <span class="val"><?= esc($spk['po_kontrak_nomor'] ?? $spk['kontrak_no'] ?? '-') ?></span></div>
                     </div>
                     <div class="row mb-1">
-                        <div class="col-6"><span class="label">Pelanggan:</span> <span class="val"><?= esc($spk['pelanggan'] ?? $spk['customer_name'] ?? '-') ?></span></div>
+                        <div class="col-6"><span class="label">Nama Perusahaan:</span> <span class="val"><?= esc($spk['pelanggan'] ?? $spk['customer_name'] ?? '-') ?></span></div>
                         <div class="col-6"><span class="label">Lokasi:</span> <span class="val"><?= esc($spk['lokasi'] ?? '-') ?></span></div>
                     </div>
                     <div class="row mb-2">
@@ -73,12 +79,12 @@ $placeholder = ($status === 'SUBMITTED');
                     <table class="table">
                         <thead>
                             <tr>
-                                <th class="text-center" style="width:5%">No.</th>
-                                <th style="width:45%">Unit</th>
-                                <th style="width:50%">Keterangan</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                                 <th class="text-center" style="width:5%">No.</th>
+                                 <th style="width:35%">Unit</th>
+                                 <th style="width:65%">Keterangan</th>
+                             </tr>
+                         </thead>
+                         <tbody>
                             <tr>
                                 <td class="text-center align-middle">1.</td>
                                 <td class="align-middle"><strong>Delivery Plan :</strong></td>
@@ -219,39 +225,94 @@ $placeholder = ($status === 'SUBMITTED');
                         </tbody>
                     </table>
 
-                    <div class="mb-2 fw-bold">Prepared Detail :</div>
+                    <div class="mb-2 fw-bold">Detail Unit yang Disiapkan :</div>
                     <?php $preparedList = $s['prepared_units_detail'] ?? []; ?>
-                    <?php if (is_array($preparedList) && count($preparedList) > 1): ?>
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th style="width:4%" class="text-center">No</th>
-                                    <th style="width:26%">Unit</th>
-                                    <th style="width:20%">Serial</th>
-                                    <th style="width:20%">Merk/Model</th>
-                                    <th style="width:15%">Attachment</th>
-                                    <th style="width:15%">Mekanik</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php foreach ($preparedList as $i => $rowPrepared): ?>
-                                <tr>
-                                    <td class="text-center align-top"><?= $i+1 ?>.</td>
-                                    <td class="align-top">
-                                        <div class="val"><?= esc($rowPrepared['unit_label'] ?: ('#'.$rowPrepared['unit_id'])) ?></div>
-                                    </td>
-                                    <td class="align-top val"><?= esc($rowPrepared['serial_number'] ?? '') ?></td>
-                                    <td class="align-top val"><?= esc(trim(($rowPrepared['merk_unit'] ?? '').' '.($rowPrepared['model_unit'] ?? ''))) ?></td>
-                                    <td class="align-top val"><?= esc($rowPrepared['attachment_label'] ?? '') ?></td>
-                                    <td class="align-top">
-                                        <div class="val"><?= esc($rowPrepared['mekanik'] ?? '') ?></div>
-                                        <?php if (!empty($rowPrepared['catatan'])): ?><div class="muted">Catatan: <?= esc($rowPrepared['catatan']) ?></div><?php endif; ?>
-                                        <?php if (!empty($rowPrepared['timestamp'])): ?><div class="muted">Waktu: <?= esc($rowPrepared['timestamp']) ?></div><?php endif; ?>
-                                    </td>
-                                </tr>
-                                <?php endforeach; ?>
-                            </tbody>
-                        </table>
+                    <?php if (is_array($preparedList) && count($preparedList) >= 1): ?>
+                        <?php foreach ($preparedList as $i => $rowPrepared): ?>
+                            <div class="unit-card">
+                                <div class="unit-title">Unit <?= ($i + 1) ?><?= isset($rowPrepared['unit_label']) ? ' - '.esc($rowPrepared['unit_label']) : '' ?></div>
+                                <?php
+                                    // Build left/right summaries similar to single-unit block, with graceful fallbacks
+                                    $summaryLeft = [
+                                        ['ID Unit', $rowPrepared['unit_label'] ?? (isset($rowPrepared['unit_id']) ? '#'.$rowPrepared['unit_id'] : '')],
+                                        ['Merk', $rowPrepared['merk_unit'] ?? ''],
+                                        ['Jenis Unit', $rowPrepared['jenis_unit'] ?? ($s['jenis_unit'] ?? '')],
+                                        ['Kapasitas', $rowPrepared['kapasitas_name'] ?? ($s['kapasitas_id_name'] ?? '')],
+                                        ['SN Attachment', $rowPrepared['sn_attachment_formatted'] ?? ($rowPrepared['attachment_sn'] ?? '')],
+                                        ['SN Baterai', $rowPrepared['sn_baterai_formatted'] ?? ($rowPrepared['baterai_sn'] ?? '')],
+                                        ['Valve', $rowPrepared['valve_id_name'] ?? ($s['valve_id_name'] ?? '')],
+                                    ];
+                                    $summaryRight = [
+                                        ['Serial Number', $rowPrepared['serial_number'] ?? ''],
+                                        ['Model', $rowPrepared['model_unit'] ?? ''],
+                                        ['Tipe Unit', $rowPrepared['tipe_jenis'] ?? ($s['tipe_jenis'] ?? '')],
+                                        ['Mast', $rowPrepared['mast_id_name'] ?? ($s['mast_id_name'] ?? '')],
+                                        ['SN Mast', $rowPrepared['sn_mast_formatted'] ?? ($rowPrepared['mast_sn'] ?? '')],
+                                        ['SN Charger', $rowPrepared['sn_charger_formatted'] ?? ($rowPrepared['charger_sn'] ?? '')],
+                                        ['Roda & Ban', trim(
+                                            ($rowPrepared['roda_id_name'] ?? $s['roda_id_name'] ?? '') .
+                                            ((!empty($rowPrepared['roda_id_name'] ?? $s['roda_id_name'] ?? '') && !empty($rowPrepared['ban_id_name'] ?? $s['ban_id_name'] ?? '')) ? ' & ' : '') .
+                                            ($rowPrepared['ban_id_name'] ?? $s['ban_id_name'] ?? '')
+                                        )],
+                                    ];
+                                ?>
+                                <table class="table grid-2">
+                                    <tbody>
+                                        <?php 
+                                            $rows = max(count($summaryLeft), count($summaryRight));
+                                            for ($ri = 0; $ri < $rows; $ri++): 
+                                                $left = $summaryLeft[$ri] ?? ['', ''];
+                                                $right = $summaryRight[$ri] ?? ['', ''];
+                                        ?>
+                                        <tr>
+                                            <td class="label"><?= esc($left[0]) ?></td>
+                                            <td class="val"><?= esc($left[1] ?: '') ?></td>
+                                            <td class="label"><?= esc($right[0]) ?></td>
+                                            <td class="val"><?= esc($right[1] ?: '') ?></td>
+                                        </tr>
+                                        <?php endfor; ?>
+                                        <tr>
+                                            <td class="label">Aksesoris</td>
+                                            <td class="val" colspan="3">
+                                                <?php
+                                                    // Prefer per-row accessories if provided; fallback to global SPK/spec
+                                                    $aksText = '';
+                                                    if (!empty($rowPrepared['aksesoris'])) {
+                                                        if (is_array($rowPrepared['aksesoris'])) {
+                                                            $aksText = implode(', ', $rowPrepared['aksesoris']);
+                                                        } else {
+                                                            $aksText = (string) $rowPrepared['aksesoris'];
+                                                        }
+                                                    } elseif (!empty($s['aksesoris'])) {
+                                                        if (is_array($s['aksesoris'])) {
+                                                            $aksText = implode(', ', $s['aksesoris']);
+                                                        } else {
+                                                            $try = json_decode((string)$s['aksesoris'], true);
+                                                            $aksText = is_array($try) ? implode(', ', $try) : (string)$s['aksesoris'];
+                                                        }
+                                                    } elseif (!empty($spk['persiapan_aksesoris_tersedia'])) {
+                                                        $aksText = (string) $spk['persiapan_aksesoris_tersedia'];
+                                                    }
+                                                    echo esc($aksText);
+                                                ?>
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td class="label">Mekanik</td>
+                                            <td class="val"><?= esc($rowPrepared['mekanik'] ?? '') ?></td>
+                                            <td class="label">Waktu</td>
+                                            <td class="val"><?= esc($rowPrepared['timestamp'] ?? '') ?></td>
+                                        </tr>
+                                        <?php if (!empty($rowPrepared['catatan'])): ?>
+                                        <tr>
+                                            <td class="label">Catatan</td>
+                                            <td class="val" colspan="3"><?= esc($rowPrepared['catatan']) ?></td>
+                                        </tr>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        <?php endforeach; ?>
                     <?php else: ?>
                         <?php
                             $unit = $s['selected']['unit'] ?? null; 
