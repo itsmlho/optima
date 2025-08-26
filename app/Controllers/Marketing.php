@@ -272,6 +272,61 @@ class Marketing extends Controller
             }
         }
         
+        // Build prepared_units_detail (match Service controller behavior)
+        $preparedUnits = [];
+        if (!empty($enriched['prepared_units']) && is_array($enriched['prepared_units'])) {
+            $preparedUnits = $enriched['prepared_units'];
+        } elseif (!empty($spec['prepared_units']) && is_array($spec['prepared_units'])) {
+            $preparedUnits = $spec['prepared_units'];
+        }
+        if (!empty($preparedUnits)) {
+            $preparedDetails = [];
+            foreach ($preparedUnits as $pu) {
+                $uInfo = null; $aInfo = null; $unitLabel=''; $attLabel='';
+                if (!empty($pu['unit_id'])) {
+                    $uInfo = $this->db->table('inventory_unit iu')
+                        ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.lokasi_unit, mu.merk_unit, mu.model_unit, tu.tipe as tipe_jenis')
+                        ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
+                        ->join('tipe_unit tu','tu.id_tipe_unit = iu.tipe_unit_id','left')
+                        ->where('iu.id_inventory_unit', $pu['unit_id'])
+                        ->get()->getRowArray();
+                    if ($uInfo) {
+                        $unitLabel = trim(($uInfo['no_unit'] ?: '-') . ' - ' . ($uInfo['merk_unit'] ?: '-') . ' ' . ($uInfo['model_unit'] ?: '') . ' @ ' . ($uInfo['lokasi_unit'] ?: '-'));
+                    }
+                }
+                if (!empty($pu['attachment_id'])) {
+                    $aInfo = $this->db->table('inventory_attachment ia')
+                        ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan, att.tipe, att.merk, att.model')
+                        ->join('attachment att','att.id_attachment = ia.attachment_id','left')
+                        ->where('ia.id_inventory_attachment', $pu['attachment_id'])
+                        ->get()->getRowArray();
+                    if ($aInfo) {
+                        $attLabel = trim(($aInfo['tipe'] ?: '-') . ' ' . ($aInfo['merk'] ?: '') . ' ' . ($aInfo['model'] ?: ''));
+                        $suf = [];
+                        if (!empty($aInfo['sn_attachment'])) $suf[] = 'SN: '.$aInfo['sn_attachment'];
+                        if (!empty($aInfo['lokasi_penyimpanan'])) $suf[] = '@ '.$aInfo['lokasi_penyimpanan'];
+                        if ($suf) $attLabel .= ' ['.implode(', ', $suf).']';
+                    }
+                }
+                $preparedDetails[] = [
+                    'unit_id' => $pu['unit_id'] ?? null,
+                    'unit_label' => $unitLabel,
+                    'no_unit' => $uInfo['no_unit'] ?? '',
+                    'serial_number' => $uInfo['serial_number'] ?? '',
+                    'merk_unit' => $uInfo['merk_unit'] ?? '',
+                    'model_unit' => $uInfo['model_unit'] ?? '',
+                    'tipe_jenis' => $uInfo['tipe_jenis'] ?? '',
+                    'attachment_id' => $pu['attachment_id'] ?? null,
+                    'attachment_label' => $attLabel,
+                    'mekanik' => $pu['mekanik'] ?? '',
+                    'aksesoris_tersedia' => $pu['aksesoris_tersedia'] ?? '',
+                    'catatan' => $pu['catatan'] ?? '',
+                    'timestamp' => $pu['timestamp'] ?? ''
+                ];
+            }
+            $enriched['prepared_units_detail'] = $preparedDetails;
+        }
+
         // Load unit data from approval workflow if available
         // Handle both Aset (stored as no_unit) and Non Aset (stored as id_inventory_unit)
         if (!empty($row['persiapan_unit_id']) && $row['persiapan_unit_id'] != '0') {
@@ -589,6 +644,57 @@ class Marketing extends Controller
                 }
             }
         }
+
+        // Also expose prepared_units and enrich them as prepared_units_detail for multi-unit READY SPK
+        $preparedUnits = [];
+        if (!empty($spec['prepared_units']) && is_array($spec['prepared_units'])) {
+            $preparedUnits = $spec['prepared_units'];
+            $preparedDetails = [];
+            foreach ($preparedUnits as $pu) {
+                $uInfo = null; $aInfo = null; $unitLabel=''; $attLabel='';
+                if (!empty($pu['unit_id'])) {
+                    $uInfo = $this->db->table('inventory_unit iu')
+                        ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.lokasi_unit, mu.merk_unit, mu.model_unit, tu.tipe as tipe_jenis')
+                        ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
+                        ->join('tipe_unit tu','tu.id_tipe_unit = iu.tipe_unit_id','left')
+                        ->where('iu.id_inventory_unit', $pu['unit_id'])
+                        ->get()->getRowArray();
+                    if ($uInfo) {
+                        $unitLabel = trim(($uInfo['no_unit'] ?: '-') . ' - ' . ($uInfo['merk_unit'] ?: '-') . ' ' . ($uInfo['model_unit'] ?: '') . ' @ ' . ($uInfo['lokasi_unit'] ?: '-'));
+                    }
+                }
+                if (!empty($pu['attachment_id'])) {
+                    $aInfo = $this->db->table('inventory_attachment ia')
+                        ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan, att.tipe, att.merk, att.model')
+                        ->join('attachment att','att.id_attachment = ia.attachment_id','left')
+                        ->where('ia.id_inventory_attachment', $pu['attachment_id'])
+                        ->get()->getRowArray();
+                    if ($aInfo) {
+                        $attLabel = trim(($aInfo['tipe'] ?: '-') . ' ' . ($aInfo['merk'] ?: '') . ' ' . ($aInfo['model'] ?: ''));
+                        $suf = [];
+                        if (!empty($aInfo['sn_attachment'])) $suf[] = 'SN: '.$aInfo['sn_attachment'];
+                        if (!empty($aInfo['lokasi_penyimpanan'])) $suf[] = '@ '.$aInfo['lokasi_penyimpanan'];
+                        if ($suf) $attLabel .= ' ['.implode(', ', $suf).']';
+                }
+                }
+                $preparedDetails[] = [
+                    'unit_id' => $pu['unit_id'] ?? null,
+                    'unit_label' => $unitLabel,
+                    'no_unit' => $uInfo['no_unit'] ?? '',
+                    'serial_number' => $uInfo['serial_number'] ?? '',
+                    'merk_unit' => $uInfo['merk_unit'] ?? '',
+                    'model_unit' => $uInfo['model_unit'] ?? '',
+                    'tipe_jenis' => $uInfo['tipe_jenis'] ?? '',
+                    'attachment_id' => $pu['attachment_id'] ?? null,
+                    'attachment_label' => $attLabel,
+                    'mekanik' => $pu['mekanik'] ?? '',
+                    'aksesoris_tersedia' => $pu['aksesoris_tersedia'] ?? '',
+                    'catatan' => $pu['catatan'] ?? '',
+                    'timestamp' => $pu['timestamp'] ?? ''
+                ];
+            }
+            $enriched['prepared_units_detail'] = $preparedDetails;
+        }
         // Get kontrak_spesifikasi data if available
         $kontrak_spec = null;
         if (!empty($row['kontrak_spesifikasi_id'])) {
@@ -614,6 +720,7 @@ class Marketing extends Controller
             'success' => true,
             'data' => $row,
             'spesifikasi' => $enriched,
+            'prepared_units' => $preparedUnits,
             'kontrak_spec' => $kontrak_spec,
             'csrf_hash' => csrf_hash()
         ]);
@@ -1174,7 +1281,13 @@ class Marketing extends Controller
         $pelanggan = $this->request->getPost('pelanggan') ?: '';
         $lokasi = $this->request->getPost('lokasi') ?: null;
 
-        $selected = ['unit_id'=>null,'inventory_attachment_id'=>null];
+    // units selected for this DI (allow multiple)
+    $unitIds = $this->request->getPost('unit_ids');
+    if (is_string($unitIds)) { $unitIds = [$unitIds]; }
+    if (!is_array($unitIds)) { $unitIds = []; }
+    $unitIds = array_values(array_unique(array_filter(array_map('intval', $unitIds))));
+
+    $selected = ['unit_id'=>null,'inventory_attachment_id'=>null];
         if ($spkId > 0) {
             // Ensure SPK is READY (Service has assigned items)
             $spk = $this->db->table('spk')->where('id',$spkId)->get()->getRowArray();
@@ -1212,39 +1325,64 @@ class Marketing extends Controller
         $this->db->transStart();
         $this->diModel->insert($payload);
         $diId = (int)$this->diModel->getInsertID();
-        // Insert delivery items from SPK selection
-        if (!empty($selected['unit_id'])) {
-            $this->diItemModel->insert([
-                'di_id' => $diId,
-                'item_type' => 'UNIT',
-                'unit_id' => (int)$selected['unit_id'],
-                'attachment_id' => null,
-                'keterangan' => null,
-            ]);
-        }
-        if (!empty($selected['inventory_attachment_id'])) {
-            // Map inventory_attachment to attachment_id if needed: resolve attachment_id by joining inventory_attachment
-            $inv = $this->db->table('inventory_attachment')->select('attachment_id')->where('id_inventory_attachment', (int)$selected['inventory_attachment_id'])->get()->getRowArray();
-            $attId = $inv['attachment_id'] ?? null;
-            $this->diItemModel->insert([
-                'di_id' => $diId,
-                'item_type' => 'ATTACHMENT',
-                'unit_id' => null,
-                'attachment_id' => $attId,
-                'keterangan' => null,
-            ]);
-        }
-        // Mark related SPK as COMPLETED (so Marketing can't create DI again) and log history
-        if ($spkId > 0) {
-            if (method_exists($this->spkModel,'setStatusWithHistory')) {
-                $this->spkModel->setStatusWithHistory($spkId, 'COMPLETED', session('user_id') ?: 1, 'DI dibuat oleh Marketing');
-            } else {
-                $this->db->table('spk')->where('id',$spkId)->update([
-                    'status' => 'COMPLETED',
-                    'diperbarui_pada' => date('Y-m-d H:i:s'),
+        // Insert delivery items: prefer explicit unit_ids from form (multiple),
+        // fallback to selected items from SPK if none provided.
+        if (!empty($unitIds)) {
+            foreach ($unitIds as $uid) {
+                $this->diItemModel->insert([
+                    'di_id' => $diId,
+                    'item_type' => 'UNIT',
+                    'unit_id' => (int)$uid,
+                    'attachment_id' => null,
+                    'keterangan' => null,
+                ]);
+            }
+        } else {
+            if (!empty($selected['unit_id'])) {
+                $this->diItemModel->insert([
+                    'di_id' => $diId,
+                    'item_type' => 'UNIT',
+                    'unit_id' => (int)$selected['unit_id'],
+                    'attachment_id' => null,
+                    'keterangan' => null,
+                ]);
+            }
+            if (!empty($selected['inventory_attachment_id'])) {
+                // Map inventory_attachment to attachment_id if needed
+                $inv = $this->db->table('inventory_attachment')->select('attachment_id')->where('id_inventory_attachment', (int)$selected['inventory_attachment_id'])->get()->getRowArray();
+                $attId = $inv['attachment_id'] ?? null;
+                $this->diItemModel->insert([
+                    'di_id' => $diId,
+                    'item_type' => 'ATTACHMENT',
+                    'unit_id' => null,
+                    'attachment_id' => $attId,
+                    'keterangan' => null,
                 ]);
             }
         }
+        
+        // Update SPK status to IN_PROGRESS when DI is created
+        if ($spkId > 0) {
+            $this->db->table('spk')->where('id', $spkId)->update([
+                'status' => 'IN_PROGRESS',
+                'diperbarui_pada' => date('Y-m-d H:i:s')
+            ]);
+            
+            // Log status history
+            try {
+                $this->db->table('spk_status_history')->insert([
+                    'spk_id' => $spkId,
+                    'status_from' => 'READY',
+                    'status_to' => 'IN_PROGRESS',
+                    'changed_by' => session('user_id') ?: 1,
+                    'note' => 'DI created: ' . $payload['nomor_di'],
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            } catch (\Exception $e) {
+                // Continue if history logging fails (best effort)
+            }
+        }
+        
         $this->db->transComplete();
         if ($this->db->transStatus() === false) {
             return $this->response->setStatusCode(500)->setJSON(['success'=>false,'message'=>'Gagal membuat DI','csrf_hash'=>csrf_hash()]);

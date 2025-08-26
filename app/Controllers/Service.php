@@ -455,18 +455,53 @@ class Service extends BaseController
             $aksesoris_tersedia = $this->request->getPost('aksesoris_tersedia'); // JSON array of checked accessories
             $update_no_unit = $this->request->getPost('update_no_unit');
             $no_unit_action = $this->request->getPost('no_unit_action');
+            $battery_inventory_id = $this->request->getPost('battery_inventory_id');
+            $charger_inventory_id = $this->request->getPost('charger_inventory_id');
 
             if (!$unit_id) {
                 return $this->response->setJSON(['success'=>false,'message'=>'Unit harus dipilih']);
             }
 
-            // Get unit with status information
+            // Get unit with status and department information
             $unit = $this->db->table('inventory_unit')
-                ->select('no_unit, status_unit_id')
+                ->select('no_unit, status_unit_id, departemen_id')
                 ->where('id_inventory_unit', $unit_id)
                 ->get()->getRowArray();
             if (!$unit) {
                 return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak ditemukan']);
+            }
+
+            // Check Electric department requirement (id=2)
+            if ($unit['departemen_id'] == 2) {
+                if (!$battery_inventory_id || !$charger_inventory_id) {
+                    return $this->response->setJSON(['success'=>false,'message'=>'Unit Electric memerlukan Battery dan Charger']);
+                }
+                
+                // Validate battery and charger are available
+                $batteryAvailable = $this->db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $battery_inventory_id)
+                    ->where('status_unit', 7)
+                    ->where('id_inventory_unit', null)
+                    ->where('baterai_id IS NOT NULL', null, false)
+                    ->countAllResults();
+                    
+                $chargerAvailable = $this->db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $charger_inventory_id)
+                    ->where('status_unit', 7)
+                    ->where('id_inventory_unit', null)
+                    ->where('charger_id IS NOT NULL', null, false)
+                    ->countAllResults();
+                    
+                if (!$batteryAvailable) {
+                    return $this->response->setJSON(['success'=>false,'message'=>'Battery yang dipilih tidak tersedia']);
+                }
+                if (!$chargerAvailable) {
+                    return $this->response->setJSON(['success'=>false,'message'=>'Charger yang dipilih tidak tersedia']);
+                }
+                
+                // Store Electric department selections
+                $updateData['persiapan_battery_id'] = $battery_inventory_id;
+                $updateData['persiapan_charger_id'] = $charger_inventory_id;
             }
 
             // Hanya Non Aset (status 8) yang boleh generate/update no_unit
@@ -860,6 +895,7 @@ class Service extends BaseController
         
         $qb = $this->serviceBaseQuery($allowed)
             ->select('iu.id_inventory_unit as id, iu.no_unit, mu.merk_unit, mu.model_unit, iu.lokasi_unit, iu.status_unit_id')
+            ->select('d.nama_departemen, iu.departemen_id')
             ->whereIn('iu.status_unit_id', [7, 8]) // Only STOCK ASET (7) and STOCK NON ASET (8)
             ->orderBy('iu.no_unit','ASC')
             ->limit(50);
@@ -879,14 +915,25 @@ class Service extends BaseController
             $needsNoUnit = ($r['status_unit_id'] == 7 && (empty($r['no_unit']) || $r['no_unit'] == 0));
             $noUnitDisplay = $r['no_unit'] ?: ($r['status_unit_id'] == 8 ? '[Non Aset]' : '[Akan di-generate]');
             
+            // Format department display for the label
+            $deptDisplay = '';
+            if (!empty($r['nama_departemen'])) {
+                $deptDisplay = ' - (' . $r['nama_departemen'] . ')';
+            }
+            
+            // Create label with department: [Non Aset] - (departemen) or 3 - (departemen)
+            $labelBase = $noUnitDisplay . $deptDisplay;
+            
             return [
                 'id' => (int)$r['id'],
-                'label' => trim($noUnitDisplay." - ".($r['merk_unit']?:'-')." ".($r['model_unit']?:'')." @ ".($r['lokasi_unit']?:'-')),
+                'label' => trim($labelBase." - ".($r['merk_unit']?:'-')." ".($r['model_unit']?:'')." @ ".($r['lokasi_unit']?:'-')),
                 'no_unit' => $r['no_unit'],
                 'merk_unit' => $r['merk_unit'],
                 'model_unit' => $r['model_unit'],
                 'lokasi_unit' => $r['lokasi_unit'],
                 'status_unit_id' => $r['status_unit_id'],
+                'departemen_id' => $r['departemen_id'],
+                'departemen_name' => $r['nama_departemen'],
                 'needs_no_unit' => $needsNoUnit
             ];
         }, $rows);

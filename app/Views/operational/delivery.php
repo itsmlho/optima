@@ -1,7 +1,10 @@
 <?= $this->extend('layouts/base') ?>
-<?= $this->section('content') ?>
 
+<?= $this->section('css') ?>
 <style>
+.card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
+.table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
+.modal-header { background: linear-gradient(135deg, #e9ecef 0%, #e9ecef 100%); color: white; border-radius: 15px 15px 0 0; }
 .filter-card {
   cursor: pointer;
   transition: all 0.3s ease;
@@ -9,8 +12,8 @@
 }
 
 .filter-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
   border-color: #0d6efd;
 }
 
@@ -18,75 +21,91 @@
   background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
   color: white;
   border-color: #0d6efd;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  border: 2px solid #fff;
 }
 
 .filter-card.active .text-muted {
   color: rgba(255,255,255,0.8) !important;
 }
 </style>
+<?= $this->endSection() ?>
 
-<div class="container-fluid py-3">
-  <!-- Statistics Cards -->
-  <div class="row mb-4">
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="all">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-primary" id="totalDI">0</h5>
-          <small class="text-muted">Total DI</small>
+<?= $this->section('content') ?>
+
+
+<!-- Statistics Cards - Modern Dashboard Style -->
+<div class="row g-4 mb-4">
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor:pointer;">
+      <div class="card-body d-flex align-items-center">
+        <div class="flex-grow-1">
+          <h2 class="fw-bold mb-1" id="totalDI">0</h2>
+          <h6 class="card-title text-uppercase small mb-0">TOTAL DI</h6>
         </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="DIAJUKAN">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-secondary" id="diajukanDI">0</h5>
-          <small class="text-muted">Diajukan</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="DIPROSES">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-info" id="diprosesDI">0</h5>
-          <small class="text-muted">Diproses</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="DIKIRIM">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-warning" id="dikirimDI">0</h5>
-          <small class="text-muted">Dikirim</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="SAMPAI">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-success" id="sampaiDI">0</h5>
-          <small class="text-muted">Sampai</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="DIBATALKAN">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-danger" id="dibatalkanDI">0</h5>
-          <small class="text-muted">Dibatalkan</small>
+        <div class="ms-3">
+          <i class="fas fa-clipboard-list fa-2x opacity-75"></i>
         </div>
       </div>
     </div>
   </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="SUBMITTED" style="cursor:pointer;">
+      <div class="card-body d-flex align-items-center">
+        <div class="flex-grow-1">
+          <h2 class="fw-bold mb-1" id="submittedDI">0</h2>
+          <h6 class="card-title text-uppercase small mb-0">PENDING</h6>
+          <small class="opacity-75">Submitted</small>
+        </div>
+        <div class="ms-3">
+          <i class="fas fa-clock fa-2x opacity-75"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-stats bg-info text-white h-100 filter-card" data-filter="INPROGRESS" style="cursor:pointer;">
+      <div class="card-body d-flex align-items-center">
+        <div class="flex-grow-1">
+          <h2 class="fw-bold mb-1" id="inprogressDI">0</h2>
+          <h6 class="card-title text-uppercase small mb-0">IN PROGRESS</h6>
+          <small class="opacity-75">Processed + Shipped</small>
+        </div>
+        <div class="ms-3">
+          <i class="fas fa-shipping-fast fa-2x opacity-75"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-stats bg-success text-white h-100 filter-card" data-filter="DELIVERED" style="cursor:pointer;">
+      <div class="card-body d-flex align-items-center">
+        <div class="flex-grow-1">
+          <h2 class="fw-bold mb-1" id="deliveredDI">0</h2>
+          <h6 class="card-title text-uppercase small mb-0">COMPLETED</h6>
+          <small class="opacity-75">Delivered</small>
+        </div>
+        <div class="ms-3">
+          <i class="fas fa-check-circle fa-2x opacity-75"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <div class="card">
+  <div class="card table-card mb-3">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+      <h5 class="h5 mb-0 text-gray-800">Daftar Delivery Instruction (DI)</h5>
+      <div class="d-flex gap-2 align-items-center">
+        <!-- No create button for operational - they process existing DIs -->
+      </div>
+    </div>
     <div class="card-body">
-      <!-- DataTable-style controls -->
-      <div class="row mb-3">
-        <div class="col-md-6 d-flex align-items-center">
-          <label class="me-2">Show</label>
-          <select class="form-select form-select-sm me-2" id="entriesPerPage" style="width: auto;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <span>Show</span>
+          <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
             <option value="10">10</option>
             <option value="25">25</option>
             <option value="50">50</option>
@@ -94,11 +113,9 @@
           </select>
           <span>entries</span>
         </div>
-        <div class="col-md-6">
-          <div class="input-group input-group-sm">
-            <span class="input-group-text">Search:</span>
-            <input type="text" class="form-control" id="searchInput" placeholder="Cari No. DI, PO, Pelanggan, Lokasi...">
-          </div>
+        <div class="d-flex align-items-center gap-2">
+          <span>Search:</span>
+          <input type="text" class="form-control form-control-sm" id="diSearch" placeholder="" style="width: 200px;">
         </div>
       </div>
 
@@ -120,16 +137,12 @@
         </table>
       </div>
 
-      <!-- Pagination -->
-      <div class="row mt-3">
-        <div class="col-md-6">
-          <div id="tableInfo" class="text-muted"></div>
-        </div>
-        <div class="col-md-6">
-          <nav>
-            <ul class="pagination pagination-sm justify-content-end mb-0" id="pagination"></ul>
-          </nav>
-        </div>
+      <!-- Pagination and Info -->
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <div id="diTableInfo">Showing 0 to 0 of 0 entries</div>
+        <nav>
+          <ul class="pagination pagination-sm mb-0" id="diPagination"></ul>
+        </nav>
       </div>
     </div>
   </div>
@@ -159,28 +172,54 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   function updateStatistics() {
     const total = allDIData.length;
-    const diajukan = allDIData.filter(item => (!item.status || item.status === 'DIAJUKAN')).length;
-    const diproses = allDIData.filter(item => (item.status || '').toUpperCase() === 'DIPROSES').length;
-    const dikirim = allDIData.filter(item => (item.status || '').toUpperCase() === 'DIKIRIM').length;
-    const sampai = allDIData.filter(item => (item.status || '').toUpperCase() === 'SAMPAI').length;
-    const dibatalkan = allDIData.filter(item => (item.status || '').toUpperCase() === 'DIBATALKAN').length;
+    // Map Indonesian status to English and count accordingly
+    const submitted = allDIData.filter(item => {
+      const status = (item.status || '').toUpperCase();
+      return !item.status || status === 'DIAJUKAN' || status === 'SUBMITTED';
+    }).length;
+    const inprogress = allDIData.filter(item => {
+      const status = (item.status || '').toUpperCase();
+      return status === 'DIPROSES' || status === 'PROCESSED' || 
+             status === 'DIKIRIM' || status === 'DISPATCHED' || status === 'SHIPPED';
+    }).length;
+    const delivered = allDIData.filter(item => {
+      const status = (item.status || '').toUpperCase();
+      return status === 'SAMPAI' || status === 'ARRIVED' || status === 'DELIVERED';
+    }).length;
     
     document.getElementById('totalDI').textContent = total;
-    document.getElementById('diajukanDI').textContent = diajukan;
-    document.getElementById('diprosesDI').textContent = diproses;
-    document.getElementById('dikirimDI').textContent = dikirim;
-    document.getElementById('sampaiDI').textContent = sampai;
-    document.getElementById('dibatalkanDI').textContent = dibatalkan;
+    document.getElementById('submittedDI').textContent = submitted;
+    document.getElementById('inprogressDI').textContent = inprogress;
+    document.getElementById('deliveredDI').textContent = delivered;
   }
   
   function applyFilters() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchTerm = document.getElementById('diSearch').value.toLowerCase();
     
-    // Filter by status
-    let filtered = currentFilter === 'all' ? [...allDIData] : 
-                   currentFilter === 'DIAJUKAN' ? 
-                   allDIData.filter(item => !item.status || item.status === 'DIAJUKAN') :
-                   allDIData.filter(item => (item.status || '').toUpperCase() === currentFilter);
+    // Filter by status - map between Indonesian and English status terms
+    let filtered;
+    if (currentFilter === 'all') {
+      filtered = [...allDIData];
+    } else if (currentFilter === 'SUBMITTED') {
+      filtered = allDIData.filter(item => {
+        const status = (item.status || '').toUpperCase();
+        return !item.status || status === 'DIAJUKAN' || status === 'SUBMITTED';
+      });
+    } else if (currentFilter === 'INPROGRESS') {
+      filtered = allDIData.filter(item => {
+        const status = (item.status || '').toUpperCase();
+        return status === 'DIPROSES' || status === 'PROCESSED' || 
+               status === 'DIKIRIM' || status === 'DISPATCHED' || status === 'SHIPPED';
+      });
+    } else if (currentFilter === 'DELIVERED') {
+      filtered = allDIData.filter(item => {
+        const status = (item.status || '').toUpperCase();
+        return status === 'SAMPAI' || status === 'ARRIVED' || status === 'DELIVERED';
+      });
+    } else {
+      // Legacy filter - exact match
+      filtered = allDIData.filter(item => (item.status || '').toUpperCase() === currentFilter);
+    }
     
     // Filter by search term
     if (searchTerm) {
@@ -207,7 +246,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
     tb.innerHTML = '';
     dataToShow.forEach(r=>{
       const tr = document.createElement('tr');
-      const badge = (s)=>{ const m={DIAJUKAN:'secondary',DIPROSES:'info',DIKIRIM:'warning',SAMPAI:'success',DIBATALKAN:'danger'}; const c=m[(s||'').toUpperCase()]||'secondary'; return `<span class="badge bg-${c}">${s}</span>`; };
+      // Convert Indonesian status to English for display and set badge colors
+      const getStatusDisplay = (status) => {
+        const statusUpper = (status || '').toUpperCase();
+        const statusMap = {
+          'DIAJUKAN': { text: 'Submitted', color: 'secondary' },
+          'SUBMITTED': { text: 'Submitted', color: 'secondary' },
+          'DIPROSES': { text: 'Processed', color: 'info' },
+          'PROCESSED': { text: 'Processed', color: 'info' },
+          'DIKIRIM': { text: 'Shipped', color: 'warning' },
+          'DISPATCHED': { text: 'Shipped', color: 'warning' },
+          'SHIPPED': { text: 'Shipped', color: 'warning' },
+          'SAMPAI': { text: 'Delivered', color: 'success' },
+          'ARRIVED': { text: 'Delivered', color: 'success' },
+          'DELIVERED': { text: 'Delivered', color: 'success' },
+          'DIBATALKAN': { text: 'Canceled', color: 'danger' },
+          'CANCELED': { text: 'Canceled', color: 'danger' }
+        };
+        const mapped = statusMap[statusUpper] || { text: status || 'Submitted', color: 'secondary' };
+        return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+      };
       
       // Conditional action button based on status - approval workflow style
       let aksiBtn = '';
@@ -253,7 +311,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <td>${r.lokasi||'-'}</td>
         <td>${r.items_label||'-'}</td>
         <td>${r.tanggal_kirim||'-'}</td>
-        <td>${badge(r.status)}</td>
+        <td>${getStatusDisplay(r.status)}</td>
         <td>${aksiBtn}</td>`;
 
       tb.appendChild(tr);
@@ -263,13 +321,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const totalEntries = filteredDIData.length;
     const start = totalEntries === 0 ? 0 : ((currentPage - 1) * entriesPerPage) + 1;
     const end = Math.min(currentPage * entriesPerPage, totalEntries);
-    document.getElementById('tableInfo').textContent = 
+    document.getElementById('diTableInfo').textContent = 
       `Showing ${start} to ${end} of ${totalEntries} entries`;
   }
   
   function updatePagination() {
     const totalPages = Math.ceil(filteredDIData.length / entriesPerPage);
-    const pagination = document.getElementById('pagination');
+    const pagination = document.getElementById('diPagination');
     pagination.innerHTML = '';
     
     // Previous button
@@ -310,7 +368,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     updatePagination();
   });
   
-  document.getElementById('searchInput').addEventListener('input', function() {
+  document.getElementById('diSearch').addEventListener('input', function() {
     applyFilters();
   });
   
@@ -360,8 +418,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
           container.innerHTML = `
             <hr>
             <div class="alert alert-info">
-              <strong><i class="fas fa-info-circle"></i> Konfirmasi Data Pengiriman</strong><br>
-              Pastikan data di bawah ini sudah benar sebelum melanjutkan ke tahap berikutnya.
+              <strong><i class="fas fa-info-circle"></i> Perencanaan Data Pengiriman</strong><br>
+              Lengkapi semua data pengiriman untuk tahap perencanaan.
             </div>
             <div class="row g-3">
               <div class="col-6">
@@ -380,6 +438,36 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 <label class="form-label">Lokasi Pengiriman</label>
                 <input type="text" class="form-control-plaintext" readonly value="${di.lokasi || '-'}">
               </div>
+              <div class="col-12"><hr></div>
+              <div class="col-12"><h6 class="text-primary">Data Operasional Pengiriman</h6></div>
+              <div class="col-6 mb-3">
+                <label class="form-label">Tanggal Kirim <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" name="tanggal_kirim" required>
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">Estimasi Sampai <span class="text-danger">*</span></label>
+                <input type="date" class="form-control" name="estimasi_sampai" required>
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">Nama Supir <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="nama_supir" required placeholder="Nama lengkap supir">
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">No HP Supir <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="no_hp_supir" required placeholder="08xxxxxxxxxx">
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">No SIM <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="no_sim_supir" required placeholder="Nomor SIM supir">
+              </div>
+              <div class="col-6 mb-3">
+                <label class="form-label">Kendaraan <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="kendaraan" required placeholder="Jenis/merk kendaraan">
+              </div>
+              <div class="col-12 mb-3">
+                <label class="form-label">No Polisi Kendaraan <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="no_polisi_kendaraan" required placeholder="Nomor polisi kendaraan">
+              </div>
               <div class="col-12">
                 <label class="form-label">Catatan Perencanaan</label>
                 <textarea class="form-control" name="catatan_perencanaan" rows="3" 
@@ -396,44 +484,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
       container.innerHTML = `
         <hr>
         <div class="alert alert-warning">
-          <strong><i class="fas fa-truck"></i> Data Operasional Pengiriman</strong><br>
-          Lengkapi data supir dan kendaraan yang akan mengirim barang.
+          <strong><i class="fas fa-truck"></i> Konfirmasi Keberangkatan</strong><br>
+          Konfirmasi bahwa pengiriman telah dimulai dan tambahkan catatan jika diperlukan.
         </div>
-        <div class="row g-3">
-          <div class="col-6 mb-3">
-            <label class="form-label">Tanggal Kirim <span class="text-danger">*</span></label>
-            <input type="date" class="form-control" name="tanggal_kirim" required>
-          </div>
-          <div class="col-6 mb-3">
-            <label class="form-label">Estimasi Sampai <span class="text-danger">*</span></label>
-            <input type="date" class="form-control" name="estimasi_sampai" required>
-          </div>
-          <div class="col-6 mb-3">
-            <label class="form-label">Nama Supir <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="nama_supir" required placeholder="Nama lengkap supir">
-          </div>
-          <div class="col-6 mb-3">
-            <label class="form-label">No HP Supir <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="no_hp_supir" required placeholder="08xxxxxxxxxx">
-          </div>
-          <div class="col-6 mb-3">
-            <label class="form-label">No SIM <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="no_sim_supir" required placeholder="Nomor SIM supir">
-          </div>
-          <div class="col-6 mb-3">
-            <label class="form-label">Kendaraan <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="kendaraan" required placeholder="Jenis/merk kendaraan">
-          </div>
-          <div class="col-12 mb-3">
-            <label class="form-label">No Polisi Kendaraan <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" name="no_polisi_kendaraan" required placeholder="Nomor polisi kendaraan">
-          </div>
-          <div class="col-12">
-            <label class="form-label">Catatan Keberangkatan</label>
-            <textarea class="form-control" name="catatan_berangkat" rows="3" 
-                      placeholder="Masukkan catatan keberangkatan, kondisi barang, dll..."></textarea>
-            <div class="form-text">Catatan ini akan menjadi dokumentasi saat barang diberangkatkan.</div>
-          </div>
+        <div class="alert alert-info">
+          <strong>Info:</strong> Data operasional pengiriman sudah ditetapkan pada tahap perencanaan.
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Catatan Keberangkatan</label>
+          <textarea class="form-control" name="catatan_berangkat" rows="4" 
+                    placeholder="Masukkan catatan keberangkatan, kondisi barang saat berangkat, atau informasi tambahan lainnya..."></textarea>
+          <div class="form-text">Catatan ini akan menjadi dokumentasi saat barang diberangkatkan dari lokasi asal.</div>
         </div>
       `;
       
@@ -480,6 +541,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const fd = new FormData(this);
     fd.append('stage', currentApprovalStage);
     
+    // Debug: Log all form data
+    console.log('Form data being sent:');
+    for (let [key, value] of fd.entries()) {
+      console.log(key, value);
+    }
+    
     fetch(`<?= base_url('operational/delivery/approve-stage/') ?>${currentDiId}`, {
       method: 'POST',
       headers: {'X-Requested-With': 'XMLHttpRequest'},
@@ -490,12 +557,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
       return r.json();
     }).then(j=>{
+      console.log('Server response:', j); // Debug log
       if (j && j.success) {
         bootstrap.Modal.getInstance(document.getElementById('approvalStageModal')).hide();
         // Reload table to update buttons
         load();
         notify(j.message || 'Approval berhasil disimpan', 'success');
       } else {
+        console.error('Server error:', j); // Debug log
         notify(j.message || 'Gagal menyimpan approval', 'error');
       }
     }).catch(error=>{
@@ -616,12 +685,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <ol class="list-group list-group-numbered">
             <li class="list-group-item">
               <strong>Perencanaan Pengiriman</strong><br>
-              Catatan: ${d.catatan||'-'}
-            </li>
-            <li class="list-group-item">
-              <strong>Berangkat</strong><br>
               <div class="row g-2">
-                <div class="col-md-6">Tanggal Kirim: ${d.perencanaan_tanggal_approve||'-'}</div>
+                <div class="col-md-6">Tanggal Kirim: ${d.tanggal_kirim||'-'}</div>
                 <div class="col-md-6">Estimasi Sampai: ${d.estimasi_sampai||'-'}</div>
                 <div class="col-md-6">Nama Supir: ${d.nama_supir||'-'}</div>
                 <div class="col-md-6">No HP Supir: ${d.no_hp_supir||'-'}</div>
@@ -629,10 +694,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 <div class="col-md-6">Kendaraan: ${d.kendaraan||'-'}</div>
                 <div class="col-md-6">No Polisi: ${d.no_polisi_kendaraan||'-'}</div>
               </div>
+              Catatan: ${d.catatan_perencanaan||d.catatan||'-'}
+            </li>
+            <li class="list-group-item">
+              <strong>Berangkat</strong><br>
+              Tanggal Approval: ${d.berangkat_tanggal_approve||'-'}<br>
               Catatan: ${d.catatan_berangkat||'-'}
             </li>
             <li class="list-group-item">
               <strong>Sampai</strong><br>
+              Tanggal Approval: ${d.sampai_tanggal_approve||'-'}<br>
               Catatan: ${d.catatan_sampai||'-'}
             </li>
           </ol>

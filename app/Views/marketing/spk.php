@@ -22,9 +22,9 @@
     <!-- Statistics Cards -->
     <div class="row g-4 mb-4">
         <div class="col-xl-3 col-md-6"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-total-spk">0</h2><h6 class="card-title text-uppercase small">Total SPK</h6></div></div></div>
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="READY" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-ready">0</h2><h6 class="card-title text-uppercase small">Ready</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="READY" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-ready">0</h2><h6 class="card-title text-uppercase small">Ready</h6></div></div></div>
         <div class="col-xl-3 col-md-6"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-in-progress">0</h2><h6 class="card-title text-uppercase small">In Progress</h6></div></div></div>
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="COMPLETED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-completed">0</h2><h6 class="card-title text-uppercase small">Completed</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="COMPLETED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-completed">0</h2><h6 class="card-title text-uppercase small">Completed</h6></div></div></div>
     </div>
 
     <div class="card table-card mb-3">
@@ -55,7 +55,7 @@
             
             <div class="table-responsive">
                 <table class="table table-sm mb-0" id="spkList">
-                    <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Aksi</th></tr></thead>
+                    <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Total Unit</th><th>Aksi</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -197,6 +197,17 @@
                             <label class="form-label">Item Terpilih (dari Service)</label>
                             <div class="alert alert-light border" id="diSelectedSummary">
                                 <span class="text-muted">Belum ada ringkasan.</span>
+                            </div>
+                            <div id="diUnitsPick" class="mt-2" style="display:none">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <strong>Pilih Unit yang akan dikirim</strong>
+                                    <div class="btn-group btn-group-sm">
+                                        <button type="button" class="btn btn-outline-secondary" id="btnSelectAllUnits">Pilih Semua</button>
+                                        <button type="button" class="btn btn-outline-secondary" id="btnClearUnits">Bersihkan</button>
+                                    </div>
+                                </div>
+                                <div id="diUnitsList" class="border rounded p-2" style="max-height:200px; overflow:auto"></div>
+                                <div class="form-text">Centang unit yang ingin dimasukkan ke DI ini.</div>
                             </div>
                         </div>
                         <div class="row g-2">
@@ -396,6 +407,7 @@
               `<td>${r.pic||'-'}</td>`+
               `<td>${r.kontak||'-'}</td>`+
               `<td>${statusBadge('SPK', r.status)}</td>`+
+              `<td>${r.jumlah_unit||'-'}</td>`+
               `<td>${aksiBtn}</td>`;
             tb.appendChild(tr);
         });
@@ -413,22 +425,39 @@
                 if (diPicEl) diPicEl.value = data.pic || '';
                 const diKontakEl = document.getElementById('diKontak');
                 if (diKontakEl) diKontakEl.value = data.kontak || '';
-                // Load selected items summary
+                // Load selected items summary or prepared units list
                 const sum = document.getElementById('diSelectedSummary');
+                const pickWrap = document.getElementById('diUnitsPick');
+                const list = document.getElementById('diUnitsList');
                 if (sum) { sum.innerHTML = '<span class="text-muted">Memuat item terpilih...</span>'; }
+                if (pickWrap) { pickWrap.style.display = 'none'; list.innerHTML = ''; }
                 fetch(`<?= base_url('marketing/spk/detail/') ?>${data.id}`).then(r=>r.json()).then(j=>{
-                    if (sum) {
-                        if (j && j.success) {
-                            const s = j.spesifikasi || {};
-                            const u = s.selected && s.selected.unit ? s.selected.unit : null;
-                            const a = s.selected && s.selected.attachment ? s.selected.attachment : null;
-                            const unit = u ? `${u.no_unit||'-'} - ${u.merk_unit||'-'} ${u.model_unit||''} @ ${u.lokasi_unit||'-'}${u.serial_number?` [SN: ${u.serial_number}]`:''}` : null;
-                            const att  = a ? `${a.tipe||'-'} ${a.merk||''} ${a.model||''}${a.sn_attachment?` [SN: ${a.sn_attachment}]`:''}${a.lokasi_penyimpanan?` @ ${a.lokasi_penyimpanan}`:''}` : null;
-                            const html = `<ul class=\"mb-0\">${unit?`<li>Unit: ${unit}</li>`:''}${att?`<li>Attachment: ${att}</li>`:''}</ul>`;
-                            sum.innerHTML = (unit || att) ? html : '<span class="text-muted">Belum ada item yang ditetapkan Service.</span>';
-                        } else {
-                            sum.innerHTML = '<span class="text-danger">Gagal memuat ringkasan item.</span>';
-                        }
+                    if (!(j && j.success)) { if(sum) sum.innerHTML = '<span class="text-danger">Gagal memuat ringkasan item.</span>'; return; }
+                    const s = j.spesifikasi || {};
+                    // If prepared_units_detail exists (multi-unit), render selectable list
+                    const details = Array.isArray(s.prepared_units_detail) ? s.prepared_units_detail : [];
+                    if (details.length > 0 && pickWrap && list) {
+                        pickWrap.style.display = 'block';
+                        list.innerHTML = details.map((it,idx)=>{
+                            const label = (it.unit_label || `${it.no_unit||'-'} - ${it.merk_unit||'-'} ${it.model_unit||''}`);
+                            const sn = it.serial_number ? ` [SN: ${it.serial_number}]` : '';
+                            return `<div class=\"form-check\"><input class=\"form-check-input di-unit-check\" type=\"checkbox\" value=\"${it.unit_id}\" id=\"di_unit_${it.unit_id}\" checked><label class=\"form-check-label\" for=\"di_unit_${it.unit_id}\">${idx+1}. ${label}${sn}</label></div>`;
+                        }).join('');
+                        // Summary
+                        if (sum) sum.innerHTML = `<span class=\"text-success\">${details.length} unit disiapkan oleh Service. Silakan pilih yang akan dikirim.</span>`;
+                        // Select all / clear
+                        const btnAll = document.getElementById('btnSelectAllUnits');
+                        const btnClr = document.getElementById('btnClearUnits');
+                        if (btnAll) btnAll.onclick = ()=>{ document.querySelectorAll('.di-unit-check').forEach(ch=>ch.checked=true); };
+                        if (btnClr) btnClr.onclick = ()=>{ document.querySelectorAll('.di-unit-check').forEach(ch=>ch.checked=false); };
+                    } else {
+                        // Fallback to legacy single selected summary
+                        const u = s.selected && s.selected.unit ? s.selected.unit : null;
+                        const a = s.selected && s.selected.attachment ? s.selected.attachment : null;
+                        const unit = u ? `${u.no_unit||'-'} - ${u.merk_unit||'-'} ${u.model_unit||''} @ ${u.lokasi_unit||'-'}${u.serial_number?` [SN: ${u.serial_number}]`:''}` : null;
+                        const att  = a ? `${a.tipe||'-'} ${a.merk||''} ${a.model||''}${a.sn_attachment?` [SN: ${a.sn_attachment}]`:''}${a.lokasi_penyimpanan?` @ ${a.lokasi_penyimpanan}`:''}` : null;
+                        const html = `<ul class=\"mb-0\">${unit?`<li>Unit: ${unit}</li>`:''}${att?`<li>Attachment: ${att}</li>`:''}</ul>`;
+                        if (sum) sum.innerHTML = (unit || att) ? html : '<span class="text-muted">Belum ada item yang ditetapkan Service.</span>';
                     }
                 });
                 const modal = new bootstrap.Modal(document.getElementById('diModal'));
@@ -483,8 +512,8 @@
                     <td><span class="badge bg-dark">${fmt(r.total_spk)}</span></td>
                     <td><span class="badge bg-secondary">${fmt(r.submitted)}</span></td>
                     <td><span class="badge bg-info">${fmt(r.in_progress)}</span></td>
-                    <td><span class="badge bg-success">${fmt(r.ready)}</span></td>
-                    <td><span class="badge bg-primary">${fmt(r.delivered)}</span></td>
+                    <td><span class="badge bg-warning">${fmt(r.ready)}</span></td>
+                    <td><span class="badge bg-success">${fmt(r.delivered)}</span></td>
                     <td><span class="badge bg-danger">${fmt(r.cancelled)}</span></td>
                     <td>${r.last_update||'-'}</td>`;
                 tb.appendChild(tr);
@@ -932,6 +961,16 @@
         document.getElementById('diForm').addEventListener('submit', (e)=>{
             e.preventDefault();
             const fd = new FormData(e.target);
+            // If unit checkboxes exist, append unit_ids[]
+            const checks = document.querySelectorAll('.di-unit-check');
+            if (checks && checks.length) {
+                const picked = Array.from(checks).filter(ch=>ch.checked).map(ch=>ch.value);
+                if (picked.length === 0) {
+                    alert('Pilih minimal satu unit untuk DI ini.');
+                    return;
+                }
+                picked.forEach(v=> fd.append('unit_ids[]', v));
+            }
             // spk_id already set; backend enforces COMPLETED status
             fetch('<?= base_url('marketing/di/create') ?>',{method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
                 .then(r=>r.json()).then(j=>{

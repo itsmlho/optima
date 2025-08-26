@@ -435,10 +435,19 @@ $(document).ready(function() {
         // Get form data with proper serialization
         const formData = $(this).serialize() + '&<?= csrf_token() ?>=' + '<?= csrf_hash() ?>';
         
-
+        // Debug: Log form data to check if kapasitas_id is included
+        console.log('Form data being sent:', formData);
+        console.log('Kapasitas value:', $('#spekKapasitas').val());
+        
+        // Check if this is edit mode
+        const spekId = $('#spekEditId').val();
+        const isEdit = spekId && spekId !== '';
+        const url = isEdit ? 
+            `<?= base_url('marketing/kontrak/update-spesifikasi/') ?>${spekId}` : 
+            '<?= base_url('marketing/kontrak/add-spesifikasi') ?>';
         
         $.ajax({
-            url: '<?= base_url('marketing/kontrak/add-spesifikasi') ?>',
+            url: url,
             method: 'POST',
             data: formData,
             dataType: 'json',
@@ -1107,6 +1116,20 @@ function openAddSpesifikasiModal() {
     $('#addSpesifikasiForm')[0].reset();
     $('#spekKontrakId').val(contractId);
     
+    // Clear specific fields that might not be cleared by reset()
+    $('#spekModelUnit').val('');
+    $('#spekAttachmentMerk').val('');
+    
+    // Uncheck all accessories
+    $('input[name="aksesoris[]"]').prop('checked', false);
+    
+    // Remove edit mode hidden field if exists
+    $('#spekEditId').remove();
+    
+    // Reset modal title and button text
+    $('#addSpesifikasiModal .modal-title').text('Tambah Spesifikasi Unit');
+    $('#submitSpesifikasiBtn').text('Simpan Spesifikasi');
+    
     console.log('Kontrak ID set to form:', $('#spekKontrakId').val()); // Debug
     
     // Reset dropdown states
@@ -1194,7 +1217,8 @@ function setupCascadingDropdowns() {
     // Departemen change - affects tipe_unit, baterai, charger
     $('#spekDepartemen').on('change', function() {
         const departemenId = this.value;
-        const departemenText = this.options[this.selectedIndex].text;
+        const selectedOption = this.options[this.selectedIndex];
+        const departemenText = selectedOption ? selectedOption.text : '';
         
         // Clear dependent dropdowns
         $('#spekTipeUnit').html('<option value="">-- Pilih Tipe Unit --</option>');
@@ -1255,7 +1279,8 @@ function setupCascadingDropdowns() {
     // Tipe Unit change - affects jenis unit
     $('#spekTipeUnit').on('change', function() {
         const tipeUnitId = this.value;
-        const tipeUnitName = this.options[this.selectedIndex].text;
+        const selectedOption = this.options[this.selectedIndex];
+        const tipeUnitName = selectedOption ? selectedOption.text : '';
         
         // Clear jenis unit
         $('#spekJenisUnit').html('<option value="">-- Pilih Jenis Unit --</option>');
@@ -1299,33 +1324,214 @@ function fillSelectOptions(selector, items, nameField = 'name') {
 
 // Debug functions removed - no longer needed
 
+// Edit spesifikasi
+function editSpesifikasi(spekId) {
+    const contractId = window.currentKontrakId;
+    if (!contractId) {
+        OptimaPro.showNotification('ID kontrak tidak ditemukan. Silakan buka detail kontrak terlebih dahulu.', 'error');
+        return;
+    }
+    
+    // Fetch spesifikasi data for editing
+    fetch(`<?= base_url('marketing/kontrak/spesifikasi-detail/') ?>${spekId}`)
+        .then(response => response.json())
+        .then(j => {
+            if (!j.success) {
+                OptimaPro.showNotification('Gagal memuat data spesifikasi: ' + j.message, 'error');
+                return;
+            }
+            
+            const spek = j.data || {};
+            
+            // Populate form with existing data
+            $('#spekKontrakId').val(spek.kontrak_id);
+            $('input[name="jumlah_dibutuhkan"]').val(spek.jumlah_dibutuhkan);
+            $('input[name="catatan_spek"]').val(spek.catatan_spek);
+            $('input[name="harga_per_unit_bulanan"]').val(spek.harga_per_unit_bulanan);
+            $('input[name="harga_per_unit_harian"]').val(spek.harga_per_unit_harian);
+            
+            // Set hidden field for edit mode
+            if (!$('#spekEditId').length) {
+                $('#addSpesifikasiForm').prepend('<input type="hidden" name="spek_id" id="spekEditId">');
+            }
+            $('#spekEditId').val(spekId);
+            
+            // Load dropdowns first, then set values
+            loadSpesifikasiDropdowns();
+            
+            // Set dropdown values after a short delay to ensure options are loaded
+            setTimeout(() => {
+                // Set departemen first without triggering change to avoid clearing other dropdowns
+                if (spek.departemen_id) $('#spekDepartemen').val(spek.departemen_id);
+                
+                // Load all required dropdown data for this spesifikasi
+                const loadPromises = [];
+                
+                // Load tipe_unit options
+                if (spek.departemen_id) {
+                    loadPromises.push(
+                        fetch(`<?= base_url('marketing/spk/spec-options') ?>?type=tipe_unit`)
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    fillSelectOptions('#spekTipeUnit', data.data || []);
+                                    if (spek.tipe_unit_id) $('#spekTipeUnit').val(spek.tipe_unit_id);
+                                }
+                            })
+                    );
+                }
+                
+                // Load jenis_unit options
+                if (spek.tipe_unit_id) {
+                    // Get tipe unit name from current data
+                    const tipeUnitText = spek.tipe_unit_nama || spek.tipe_unit || '';
+                    if (tipeUnitText) {
+                        loadPromises.push(
+                            fetch(`<?= base_url('marketing/spk/spec-options') ?>?type=jenis_unit&parent_tipe=${encodeURIComponent(tipeUnitText)}`)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (data.success) {
+                                        fillSelectOptions('#spekJenisUnit', data.data || []);
+                                        if (spek.tipe_jenis) $('#spekJenisUnit').val(spek.tipe_jenis);
+                                    }
+                                })
+                        );
+                    }
+                }
+                
+                // Wait for all dropdowns to load, then set values
+                Promise.all(loadPromises).then(() => {
+                    // Set other dropdown values
+                    if (spek.kapasitas_id) $('#spekKapasitas').val(spek.kapasitas_id);
+                    if (spek.merk_unit) $('#spekMerkUnit').val(spek.merk_unit);
+                    if (spek.jenis_baterai) $('#spekJenisBaterai').val(spek.jenis_baterai);
+                    if (spek.attachment_tipe) $('#spekAttachmentTipe').val(spek.attachment_tipe);
+                    if (spek.charger_id) $('#spekCharger').val(spek.charger_id);
+                    if (spek.mast_id) $('#spekMast').val(spek.mast_id);
+                    if (spek.ban_id) $('#spekBan').val(spek.ban_id);
+                    if (spek.roda_id) $('#spekRoda').val(spek.roda_id);
+                    if (spek.valve_id) $('#spekValve').val(spek.valve_id);
+                    if (spek.model_unit) $('#spekModelUnit').val(spek.model_unit);
+                    if (spek.attachment_merk) $('#spekAttachmentMerk').val(spek.attachment_merk);
+                });
+                
+                // Handle accessories checkboxes
+                // First uncheck all checkboxes
+                $('input[name="aksesoris[]"]').prop('checked', false);
+                
+                // Then check the selected ones
+                if (spek.aksesoris) {
+                    let aksesoris;
+                    try {
+                        aksesoris = typeof spek.aksesoris === 'string' ? JSON.parse(spek.aksesoris) : spek.aksesoris;
+                    } catch (e) {
+                        console.warn('Failed to parse aksesoris JSON:', spek.aksesoris);
+                        aksesoris = [];
+                    }
+                    
+                    if (Array.isArray(aksesoris)) {
+                        aksesoris.forEach(function(acc) {
+                            $(`input[name="aksesoris[]"][value="${acc}"]`).prop('checked', true);
+                        });
+                    }
+                }
+            }, 500);
+            
+            // Change modal title and button text
+            $('#addSpesifikasiModal .modal-title').text('Edit Spesifikasi Unit');
+            $('#submitSpesifikasiBtn').text('Update Spesifikasi');
+            
+            // Show modal
+            $('#addSpesifikasiModal').modal('show');
+        })
+        .catch(error => {
+            console.error('Error loading spesifikasi detail:', error);
+            OptimaPro.showNotification('Gagal memuat data spesifikasi: ' + error.message, 'error');
+        });
+}
+
 // Delete spesifikasi
 function deleteSpesifikasi(spekId) {
-    OptimaPro.showConfirmDialog({
-        title: 'Konfirmasi Hapus',
-        message: 'Apakah Anda yakin ingin menghapus spesifikasi ini?'
-    }).then(result => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: `<?= base_url('marketing/kontrak/delete-spesifikasi/') ?>${spekId}`,
-                method: 'POST',
-                data: { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        OptimaPro.showNotification(response.message, 'success');
-                        
-                        // Reload spesifikasi tab
-                        const contractId = window.currentKontrakId;
-                        loadContractSpesifikasi(contractId);
-                    } else {
-                        OptimaPro.showNotification(response.message, 'error');
-                    }
-                },
-                error: function() {
-                    OptimaPro.showNotification('Gagal menghapus spesifikasi.', 'error');
+    console.log('deleteSpesifikasi called with spekId:', spekId);
+    
+    if (!spekId) {
+        OptimaPro.showNotification('ID spesifikasi tidak valid', 'error');
+        return;
+    }
+    
+    // Use native confirm for now
+    if (!confirm('Apakah Anda yakin ingin menghapus spesifikasi ini?')) {
+        return;
+    }
+    
+    const url = `<?= base_url('marketing/kontrak/delete-spesifikasi/') ?>${spekId}`;
+    console.log('Delete URL:', url);
+    
+    // Get fresh CSRF token
+    const csrfName = '<?= csrf_token() ?>';
+    const csrfHash = $('meta[name="csrf-token"]').attr('content') || '<?= csrf_hash() ?>';
+    
+    const formData = {};
+    formData[csrfName] = csrfHash;
+    
+    $.ajax({
+        url: url,
+        method: 'POST',
+        data: formData,
+        dataType: 'json',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        beforeSend: function() {
+            console.log('Sending delete request with data:', formData);
+        },
+        success: function(response) {
+            console.log('Delete response:', response);
+            
+            // Update CSRF token if provided
+            if (response.csrf_hash) {
+                $('meta[name="csrf-token"]').attr('content', response.csrf_hash);
+            }
+            
+            if (response.success) {
+                OptimaPro.showNotification(response.message, 'success');
+                
+                // Reload spesifikasi tab
+                const contractId = window.currentKontrakId;
+                if (contractId) {
+                    loadContractSpesifikasi(contractId);
+                } else {
+                    console.warn('No contract ID found for reload');
                 }
-            });
+            } else {
+                OptimaPro.showNotification(response.message || 'Gagal menghapus spesifikasi', 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Delete AJAX error:', {xhr, status, error});
+            console.error('Response text:', xhr.responseText);
+            console.error('Status code:', xhr.status);
+            
+            let errorMessage = 'Terjadi kesalahan pada sistem';
+            
+            if (xhr.status === 403) {
+                errorMessage = 'CSRF token tidak valid. Silakan refresh halaman dan coba lagi.';
+            } else if (xhr.status === 404) {
+                errorMessage = 'Endpoint tidak ditemukan.';
+            } else if (xhr.status === 500) {
+                errorMessage = 'Terjadi kesalahan server internal.';
+            } else {
+                try {
+                    const errorResponse = JSON.parse(xhr.responseText);
+                    if (errorResponse.message) {
+                        errorMessage = errorResponse.message;
+                    }
+                } catch (e) {
+                    console.warn('Could not parse error response as JSON');
+                }
+            }
+            
+            OptimaPro.showNotification(errorMessage, 'error');
         }
     });
 }
@@ -1411,7 +1617,6 @@ function createSPKForSpec(spekId) {
                 </div>
             </div>
             <div class="modal-footer">
-                <a class="btn btn-outline-secondary" id="btnPrintContract" href="#" target="_blank" rel="noopener">Print PDF</a>
                 <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
             </div>
         </div>
@@ -1473,7 +1678,7 @@ function createSPKForSpec(spekId) {
                         
                         <div class="col-md-4">
                             <label class="form-label">Kapasitas</label>
-                            <select class="form-select" name="kapasitas" id="spekKapasitas">
+                            <select class="form-select" name="kapasitas_id" id="spekKapasitas">
                                 <option value="">-- Pilih Kapasitas --</option>
                             </select>
                         </div>

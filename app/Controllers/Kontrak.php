@@ -484,6 +484,10 @@ class Kontrak extends BaseController
                 'aksesoris' => $this->request->getPost('aksesoris') ? json_encode($this->request->getPost('aksesoris')) : null
             ];
             
+            // Debug specific kapasitas_id field
+            log_message('info', 'Kapasitas ID from POST: ' . ($this->request->getPost('kapasitas_id') ?: 'NULL'));
+            log_message('info', 'Kapasitas ID in data array: ' . ($data['kapasitas_id'] ?: 'NULL'));
+            
             // Debug data yang akan diinsert
             log_message('info', 'Data to insert: ' . json_encode($data));
 
@@ -597,11 +601,57 @@ class Kontrak extends BaseController
     }
 
     /**
+     * Get specification detail for editing
+     */
+    public function spesifikasiDetail($spesifikasiId)
+    {
+        try {
+            $builder = $this->db->table('kontrak_spesifikasi ks');
+            $builder->select('ks.*, tu.tipe as tipe_unit_nama');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = ks.tipe_unit_id', 'left');
+            $builder->where('ks.id', $spesifikasiId);
+            
+            $spesifikasi = $builder->get()->getRowArray();
+            
+            if (!$spesifikasi) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Spesifikasi tidak ditemukan'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $spesifikasi,
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::spesifikasiDetail Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error getting specification detail: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Delete specification
      */
     public function deleteSpesifikasi($spesifikasiId)
     {
         try {
+            // Validate request method
+            if (!$this->request->isAJAX()) {
+                return $this->response->setStatusCode(400)->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid request method'
+                ]);
+            }
+
+            // Log the incoming request for debugging
+            log_message('debug', 'Delete spesifikasi request for ID: ' . $spesifikasiId);
+
             $spesifikasi = $this->kontrakSpesifikasiModel->find($spesifikasiId);
             if (!$spesifikasi) {
                 return $this->response->setJSON([
@@ -622,21 +672,29 @@ class Kontrak extends BaseController
                 ]);
             }
 
-            if ($this->kontrakSpesifikasiModel->delete($spesifikasiId)) {
+            // Attempt to delete
+            $deleteResult = $this->kontrakSpesifikasiModel->delete($spesifikasiId);
+            log_message('debug', 'Delete result: ' . ($deleteResult ? 'success' : 'failed'));
+
+            if ($deleteResult) {
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => 'Spesifikasi berhasil dihapus'
+                    'message' => 'Spesifikasi berhasil dihapus',
+                    'csrf_hash' => csrf_hash()
                 ]);
             } else {
+                $errors = $this->kontrakSpesifikasiModel->errors();
+                log_message('error', 'Delete spesifikasi failed with errors: ' . json_encode($errors));
+                
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal menghapus spesifikasi'
+                    'message' => 'Gagal menghapus spesifikasi: ' . (is_array($errors) ? implode(', ', $errors) : 'Unknown error')
                 ]);
             }
 
         } catch (\Exception $e) {
-            log_message('error', 'Kontrak::deleteSpesifikasi Error: ' . $e->getMessage());
-            return $this->response->setJSON([
+            log_message('error', 'Kontrak::deleteSpesifikasi Error: ' . $e->getMessage() . ' | File: ' . $e->getFile() . ' | Line: ' . $e->getLine());
+            return $this->response->setStatusCode(500)->setJSON([
                 'success' => false,
                 'message' => 'Error deleting specification: ' . $e->getMessage()
             ]);

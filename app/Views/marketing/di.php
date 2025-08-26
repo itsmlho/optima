@@ -1,89 +1,104 @@
 <?= $this->extend('layouts/base') ?>
+
+<?= $this->section('css') ?>
+<style>
+  /* Match marketing/spk.php */
+  .card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
+  .table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
+  .modal-header { background: linear-gradient(135deg, #e9ecef 0%, #e9ecef 100%); color: white; border-radius: 15px 15px 0 0; }
+  .filter-card.active { 
+    transform: translateY(-3px); 
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
+    border: 2px solid #fff; 
+  }
+  .filter-card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
+  }
+  /* Unit selection list */
+  .unit-list { max-height: 260px; overflow: auto; border: 1px solid #e5e7eb; border-radius: .5rem; padding:.5rem; }
+  .unit-item { display:flex; align-items:flex-start; gap:.5rem; padding:.25rem .25rem; border-bottom:1px dashed #e5e7eb; }
+  .unit-item:last-child{ border-bottom: none; }
+  .unit-note { font-size:.8rem; color:#6b7280; }
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 
-<style>
-.filter-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #dee2e6;
-}
 
-.filter-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  border-color: #0d6efd;
-}
-
-.filter-card.active {
-  background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
-  color: white;
-  border-color: #0d6efd;
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(13,110,253,0.3);
-}
-
-.filter-card.active .text-muted {
-  color: rgba(255,255,255,0.8) !important;
-}
-</style>
-
-<div class="container-fluid py-3">
-  <!-- Statistics Cards -->
-  <div class="row mb-4">
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="all">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-primary" id="totalDI">0</h5>
-          <small class="text-muted">Total DI</small>
+<!-- Statistics Cards - Modern Dashboard Style -->
+<div class="row g-4 mb-4">
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor:pointer;">
+      <div class="card-body d-flex align-items-center">
+        <div class="flex-grow-1">
+          <h2 class="fw-bold mb-1" id="totalDI">0</h2>
+          <h6 class="card-title text-uppercase small mb-0">TOTAL DI</h6>
+        </div>
+        <div class="ms-3">
+          <i class="fas fa-clipboard-list fa-2x opacity-75"></i>
         </div>
       </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="SUBMITTED">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-secondary" id="submittedDI">0</h5>
-          <small class="text-muted">Submitted</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="DISPATCHED">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-info" id="dispatchedDI">0</h5>
-          <small class="text-muted">Dispatched</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="ARRIVED">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-success" id="arrivedDI">0</h5>
-          <small class="text-muted">Arrived</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2">
-      <div class="card filter-card text-center" data-filter="CANCELLED">
-        <div class="card-body py-3">
-          <h5 class="mb-1 text-danger" id="cancelledDI">0</h5>
-          <small class="text-muted">Cancelled</small>
-        </div>
-      </div>
-    </div>
-    <div class="col-md-2 d-flex align-items-center">
-      <button class="btn btn-primary btn-sm w-100" data-bs-toggle="modal" data-bs-target="#diCreateModal">
-        <i class="fas fa-plus"></i> Buat DI
-      </button>
     </div>
   </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="SUBMITTED" style="cursor:pointer;">
+      <div class="card-body d-flex align-items-center">
+        <div class="flex-grow-1">
+          <h2 class="fw-bold mb-1" id="submittedDI">0</h2>
+          <h6 class="card-title text-uppercase small mb-0">PENDING</h6>
+          <small class="opacity-75">Submitted</small>
+        </div>
+        <div class="ms-3">
+          <i class="fas fa-clock fa-2x opacity-75"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-stats bg-info text-white h-100 filter-card" data-filter="INPROGRESS" style="cursor:pointer;">
+      <div class="card-body d-flex align-items-center">
+        <div class="flex-grow-1">
+          <h2 class="fw-bold mb-1" id="inprogressDI">0</h2>
+          <h6 class="card-title text-uppercase small mb-0">IN PROGRESS</h6>
+          <small class="opacity-75">Processed + Shipped</small>
+        </div>
+        <div class="ms-3">
+          <i class="fas fa-shipping-fast fa-2x opacity-75"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-3 col-md-6">
+    <div class="card card-stats bg-success text-white h-100 filter-card" data-filter="DELIVERED" style="cursor:pointer;">
+      <div class="card-body d-flex align-items-center">
+        <div class="flex-grow-1">
+          <h2 class="fw-bold mb-1" id="deliveredDI">0</h2>
+          <h6 class="card-title text-uppercase small mb-0">COMPLETED</h6>
+          <small class="opacity-75">Delivered</small>
+        </div>
+        <div class="ms-3">
+          <i class="fas fa-check-circle fa-2x opacity-75"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
-  <div class="card">
+  <div class="card table-card mb-3">
+    <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+      <h5 class="h5 mb-0 text-gray-800">Daftar Delivery Instruction (DI)</h5>
+      <div class="d-flex gap-2 align-items-center">
+        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#diCreateModal">
+          <i class="fas fa-plus"></i> Buat DI
+        </button>
+      </div>
+    </div>
     <div class="card-body">
-      <!-- DataTable-style controls -->
-      <div class="row mb-3">
-        <div class="col-md-6 d-flex align-items-center">
-          <label class="me-2">Show</label>
-          <select class="form-select form-select-sm me-2" id="entriesPerPage" style="width: auto;">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+          <span>Show</span>
+          <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
             <option value="10">10</option>
             <option value="25">25</option>
             <option value="50">50</option>
@@ -91,11 +106,9 @@
           </select>
           <span>entries</span>
         </div>
-        <div class="col-md-6">
-          <div class="input-group input-group-sm">
-            <span class="input-group-text">Search:</span>
-            <input type="text" class="form-control" id="searchInput" placeholder="Cari No. DI, SPK, PO, Pelanggan...">
-          </div>
+        <div class="d-flex align-items-center gap-2">
+          <span>Search:</span>
+          <input type="text" class="form-control form-control-sm" id="diSearch" placeholder="" style="width: 200px;">
         </div>
       </div>
 
@@ -118,20 +131,15 @@
         </table>
       </div>
 
-      <!-- Pagination -->
-      <div class="row mt-3">
-        <div class="col-md-6">
-          <div id="tableInfo" class="text-muted"></div>
-        </div>
-        <div class="col-md-6">
-          <nav>
-            <ul class="pagination pagination-sm justify-content-end mb-0" id="pagination"></ul>
-          </nav>
-        </div>
+      <!-- Pagination and Info -->
+      <div class="d-flex justify-content-between align-items-center mt-3">
+        <div id="diTableInfo">Showing 0 to 0 of 0 entries</div>
+        <nav>
+          <ul class="pagination pagination-sm mb-0" id="diPagination"></ul>
+        </nav>
       </div>
     </div>
   </div>
-
 
   <!-- Create DI Modal (from READY SPK) -->
   <div class="modal fade" id="diCreateModal" tabindex="-1">
@@ -142,9 +150,21 @@
           <div class="modal-body">
             <div class="mb-2">
               <label class="form-label">Pilih SPK (READY)</label>
-              <input type="text" class="form-control" id="spkSearch" placeholder="Cari No. SPK / PO / Pelanggan">
+              <input type="text" class="form-control" id="modalSpkSearch" placeholder="Cari No. SPK / PO / Pelanggan">
               <select class="form-select mt-2" id="spkPick" name="spk_id" required></select>
               <div class="form-text">Hanya SPK dengan status READY yang bisa dibuat DI.</div>
+            </div>
+            <div id="diUnitsSection" style="display:none;" class="mb-3">
+              <label class="form-label">Pilih Unit yang akan dikirim</label>
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <div class="small text-muted">Terpilih: <span id="selCount">0</span> <span class="unit-label">unit</span></div>
+                <div>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnSelectAll">Pilih Semua</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearAll">Bersihkan</button>
+                </div>
+              </div>
+              <div id="diUnitList" class="unit-list"><div class="text-muted small">Memuat unit dari SPK...</div></div>
+              <div class="form-text">Jika SPK memiliki 3 unit, Anda dapat memilih berapa unit yang akan dikirim pada DI ini.</div>
             </div>
             <div class="row g-2">
               <div class="col-6"><label class="form-label">Tanggal Kirim</label><input type="date" class="form-control" name="tanggal_kirim"></div>
@@ -157,6 +177,7 @@
     </div>
   </div>
 </div>
+
 <script>
 // Global variables
 let allDIData = [];
@@ -178,24 +199,55 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   function updateStatistics() {
     const total = allDIData.length;
-    const submitted = allDIData.filter(item => (item.status || '').toUpperCase() === 'SUBMITTED').length;
-    const dispatched = allDIData.filter(item => (item.status || '').toUpperCase() === 'DISPATCHED').length;
-    const arrived = allDIData.filter(item => (item.status || '').toUpperCase() === 'ARRIVED').length;
-    const cancelled = allDIData.filter(item => (item.status || '').toUpperCase() === 'CANCELLED').length;
+    // Map Indonesian status to English and count accordingly
+    const submitted = allDIData.filter(item => {
+      const status = (item.status || '').toUpperCase();
+      return !item.status || status === 'DIAJUKAN' || status === 'SUBMITTED';
+    }).length;
+    const inprogress = allDIData.filter(item => {
+      const status = (item.status || '').toUpperCase();
+      return status === 'DIPROSES' || status === 'PROCESSED' || 
+             status === 'DIKIRIM' || status === 'DISPATCHED' || status === 'SHIPPED';
+    }).length;
+    const delivered = allDIData.filter(item => {
+      const status = (item.status || '').toUpperCase();
+      return status === 'SAMPAI' || status === 'ARRIVED' || status === 'DELIVERED';
+    }).length;
     
     document.getElementById('totalDI').textContent = total;
     document.getElementById('submittedDI').textContent = submitted;
-    document.getElementById('dispatchedDI').textContent = dispatched;
-    document.getElementById('arrivedDI').textContent = arrived;
-    document.getElementById('cancelledDI').textContent = cancelled;
+    document.getElementById('inprogressDI').textContent = inprogress;
+    document.getElementById('deliveredDI').textContent = delivered;
   }
   
   function applyFilters() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    const searchTerm = document.getElementById('diSearch').value.toLowerCase();
     
-    // Filter by status
-    let filtered = currentFilter === 'all' ? [...allDIData] : 
-                   allDIData.filter(item => (item.status || '').toUpperCase() === currentFilter);
+    // Filter by status - map between Indonesian and English status terms with grouping
+    let filtered;
+    if (currentFilter === 'all') {
+      filtered = [...allDIData];
+    } else if (currentFilter === 'SUBMITTED') {
+      filtered = allDIData.filter(item => {
+        const status = (item.status || '').toUpperCase();
+        return !item.status || status === 'DIAJUKAN' || status === 'SUBMITTED';
+      });
+    } else if (currentFilter === 'INPROGRESS') {
+      // Group Processed + Shipped as "In Progress"
+      filtered = allDIData.filter(item => {
+        const status = (item.status || '').toUpperCase();
+        return status === 'DIPROSES' || status === 'PROCESSED' ||
+               status === 'DIKIRIM' || status === 'DISPATCHED' || status === 'SHIPPED';
+      });
+    } else if (currentFilter === 'DELIVERED') {
+      filtered = allDIData.filter(item => {
+        const status = (item.status || '').toUpperCase();
+        return status === 'SAMPAI' || status === 'ARRIVED' || status === 'DELIVERED';
+      });
+    } else {
+      // Legacy filter - exact match for backward compatibility
+      filtered = allDIData.filter(item => (item.status || '').toUpperCase() === currentFilter);
+    }
     
     // Filter by search term
     if (searchTerm) {
@@ -223,7 +275,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
     tb.innerHTML = '';
     dataToShow.forEach(r=>{
       const tr = document.createElement('tr');
-      const badge = (s)=>{ const m={SUBMITTED:'secondary',DISPATCHED:'info',ARRIVED:'success',CANCELLED:'danger'}; const c=m[(s||'').toUpperCase()]||'secondary'; return `<span class="badge bg-${c}">${s}</span>`; };
+      // Convert Indonesian status to English for display and set badge colors
+      const getStatusDisplay = (status) => {
+        const statusUpper = (status || '').toUpperCase();
+        const statusMap = {
+          'DIAJUKAN': { text: 'Submitted', color: 'secondary' },
+          'SUBMITTED': { text: 'Submitted', color: 'secondary' },
+          'DIPROSES': { text: 'Processed', color: 'info' },
+          'PROCESSED': { text: 'Processed', color: 'info' },
+          'DIKIRIM': { text: 'Shipped', color: 'warning' },
+          'DISPATCHED': { text: 'Shipped', color: 'warning' },
+          'SHIPPED': { text: 'Shipped', color: 'warning' },
+          'SAMPAI': { text: 'Delivered', color: 'success' },
+          'ARRIVED': { text: 'Delivered', color: 'success' },
+          'DELIVERED': { text: 'Delivered', color: 'success' },
+          'DIBATALKAN': { text: 'Canceled', color: 'danger' },
+          'CANCELED': { text: 'Canceled', color: 'danger' }
+        };
+        const mapped = statusMap[statusUpper] || { text: status || 'Submitted', color: 'secondary' };
+        return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+      };
+      
       tr.innerHTML = `
         <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
         <td>${r.spk_id || '-'}</td>
@@ -233,7 +305,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <td>${r.spk_kontak||'-'}</td>
         <td>${r.lokasi||'-'}</td>
         <td>${r.tanggal_kirim||'-'}</td>
-        <td>${badge(r.status)}</td>`;
+        <td>${getStatusDisplay(r.status)}</td>`;
       tb.appendChild(tr);
     });
     
@@ -241,13 +313,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const totalEntries = filteredDIData.length;
     const start = totalEntries === 0 ? 0 : startIndex + 1;
     const end = Math.min(endIndex, totalEntries);
-    document.getElementById('tableInfo').textContent = 
+    document.getElementById('diTableInfo').textContent = 
       `Showing ${start} to ${end} of ${totalEntries} entries`;
   }
   
   function updatePagination() {
     const totalPages = Math.ceil(filteredDIData.length / entriesPerPage);
-    const pagination = document.getElementById('pagination');
+    const pagination = document.getElementById('diPagination');
     pagination.innerHTML = '';
     
     // Previous button
@@ -288,7 +360,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     updatePagination();
   });
   
-  document.getElementById('searchInput').addEventListener('input', function() {
+  document.getElementById('diSearch').addEventListener('input', function() {
     applyFilters();
   });
   
@@ -344,11 +416,52 @@ document.addEventListener('DOMContentLoaded', ()=>{
     });
   }
   loadReadySpk('');
-  document.getElementById('spkSearch').addEventListener('input', e=> loadReadySpk(e.target.value.trim()));
+  document.getElementById('modalSpkSearch').addEventListener('input', e=> loadReadySpk(e.target.value.trim()));
+  // When a SPK is picked, load prepared units for selection
+  document.getElementById('spkPick').addEventListener('change', (e)=>{
+    const id = e.target.value;
+    const section = document.getElementById('diUnitsSection');
+    const list = document.getElementById('diUnitList');
+    const selCount = document.getElementById('selCount');
+    if (!id) { section.style.display='none'; list.innerHTML=''; return; }
+    section.style.display='block';
+    list.innerHTML = '<div class="text-muted small">Memuat unit dari SPK...</div>';
+    fetch(`<?= base_url('marketing/spk/detail/') ?>${id}`).then(r=>r.json()).then(j=>{
+      const details = (j && j.spesifikasi && Array.isArray(j.spesifikasi.prepared_units_detail)) ? j.spesifikasi.prepared_units_detail : [];
+      if (!details.length){ list.innerHTML = '<div class="text-danger small">Belum ada unit yang disiapkan pada SPK ini.</div>'; selCount.textContent = '0'; return; }
+      list.innerHTML = '';
+      details.forEach((it, idx)=>{
+        const wrap = document.createElement('div');
+        wrap.className = 'unit-item';
+        const idSafe = `unit_${it.unit_id||('idx'+idx)}`;
+        wrap.innerHTML = `
+          <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${it.unit_id}" checked>
+          <label for="${idSafe}" class="form-check-label">
+            <div><strong>${it.unit_label||('Unit #' + (idx+1))}</strong></div>
+            <div class="unit-note">SN: ${it.serial_number||'-'}${it.attachment_label?` &nbsp; • &nbsp; ${it.attachment_label}`:''}</div>
+          </label>`;
+        list.appendChild(wrap);
+      });
+      const updateSel = ()=>{ const n = list.querySelectorAll('.unit-check:checked').length; selCount.textContent = String(n); };
+      list.querySelectorAll('.unit-check').forEach(cb=> cb.addEventListener('change', updateSel));
+      updateSel();
+      document.getElementById('btnSelectAll').onclick = ()=>{ list.querySelectorAll('.unit-check').forEach(cb=> cb.checked=true); selCount.textContent = String(list.querySelectorAll('.unit-check:checked').length); };
+      document.getElementById('btnClearAll').onclick = ()=>{ list.querySelectorAll('.unit-check').forEach(cb=> cb.checked=false); selCount.textContent = '0'; };
+    });
+  });
 
   document.getElementById('diCreateForm').addEventListener('submit', (e)=>{
     e.preventDefault();
     const fd = new FormData(e.target);
+    // Ensure at least one unit selected if section is visible
+    const list = document.getElementById('diUnitList');
+    if (document.getElementById('diUnitsSection').style.display !== 'none'){
+      const selected = list ? Array.from(list.querySelectorAll('.unit-check:checked')) : [];
+      if (!selected.length){
+        alert('Pilih minimal satu unit untuk DI ini.');
+        return;
+      }
+    }
     fetch('<?= base_url('marketing/di/create') ?>',{method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body: fd})
       .then(r=>r.json()).then(j=>{
         if (j && j.success){

@@ -238,9 +238,10 @@ $placeholder = ($status === 'SUBMITTED');
                                         ['Merk', $rowPrepared['merk_unit'] ?? ''],
                                         ['Jenis Unit', $rowPrepared['jenis_unit'] ?? ($s['jenis_unit'] ?? '')],
                                         ['Kapasitas', $rowPrepared['kapasitas_name'] ?? ($s['kapasitas_id_name'] ?? '')],
-                                        ['SN Attachment', $rowPrepared['sn_attachment_formatted'] ?? ($rowPrepared['attachment_sn'] ?? '')],
-                                        ['SN Baterai', $rowPrepared['sn_baterai_formatted'] ?? ($rowPrepared['baterai_sn'] ?? '')],
+                                        ['Attachment', $rowPrepared['sn_attachment_formatted'] ?? ($rowPrepared['attachment_sn'] ?? '')],
+                                        ['Baterai', $rowPrepared['sn_baterai_formatted'] ?? ($rowPrepared['baterai_sn'] ?? '')],
                                         ['Valve', $rowPrepared['valve_id_name'] ?? ($s['valve_id_name'] ?? '')],
+                                        ['Charger', $rowPrepared['sn_charger_formatted'] ?? ($rowPrepared['charger_sn'] ?? '')]
                                     ];
                                     $summaryRight = [
                                         ['Serial Number', $rowPrepared['serial_number'] ?? ''],
@@ -323,8 +324,8 @@ $placeholder = ($status === 'SUBMITTED');
                                 ['Merk', $unit['merk_unit'] ?? ''],
                                 ['Jenis Unit', $unit['jenis_unit'] ?? $s['jenis_unit'] ?? ''],
                                 ['Kapasitas', $unit['kapasitas_name'] ?? $s['kapasitas_id_name'] ?? ''],
-                                ['SN Attachment', $attachment['sn_attachment_formatted'] ?? ''],
-                                ['SN Baterai', $unit['sn_baterai_formatted'] ?? ''],
+                                ['Attachment', $attachment['sn_attachment_formatted'] ?? ''],
+                                ['Baterai', $unit['sn_baterai_formatted'] ?? ''],
                                 ['Valve', $s['valve_id_name'] ?? ''],
                             ];
                             $summaryRight = [

@@ -179,6 +179,7 @@ $routes->group('marketing',  static function ($routes) {
         // Spesifikasi management
         $routes->get('spesifikasi/(:num)', 'Kontrak::getKontrakSpesifikasi/$1');
         $routes->post('add-spesifikasi', 'Kontrak::addSpesifikasi');
+        $routes->get('spesifikasi-detail/(:num)', 'Kontrak::spesifikasiDetail/$1');
         $routes->post('update-spesifikasi/(:num)', 'Kontrak::updateSpesifikasi/$1');
         $routes->post('delete-spesifikasi/(:num)', 'Kontrak::deleteSpesifikasi/$1');
         $routes->get('available-units/(:num)', 'Kontrak::getAvailableUnits/$1');

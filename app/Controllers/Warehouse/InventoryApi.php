@@ -21,4 +21,11 @@ class InventoryApi extends BaseController
         $rows = $m->getAvailableChargers();
         return $this->response->setJSON($rows);
     }
+
+    public function availableBatteries()
+    {
+        $m = new InventoryAttachmentModel();
+        $rows = $m->getAvailableBatteries();
+        return $this->response->setJSON($rows);
+    }
 }

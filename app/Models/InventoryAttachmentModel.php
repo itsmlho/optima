@@ -421,4 +421,14 @@ class InventoryAttachmentModel extends Model
             ->orderBy('tanggal_masuk','ASC')
             ->findAll(100);
     }
+
+    public function getAvailableBatteries(): array
+    {
+        // Ambil inventory yang punya baterai_id, masih stock
+        return $this->where('baterai_id IS NOT NULL', null, false)
+            ->where('status_unit', 7)
+            ->where('id_inventory_unit', null)
+            ->orderBy('tanggal_masuk','ASC')
+            ->findAll(100);
+    }
 }

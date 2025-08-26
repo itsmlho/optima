@@ -1,156 +1,96 @@
 <?= $this->extend('layouts/base') ?>
+
+<?= $this->section('css') ?>
+<style>
+    .card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
+    .table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
+    .modal-header { background: linear-gradient(135deg, #e9ecef 0%, #e9ecef 100%); color: white; border-radius: 15px 15px 0 0; }
+    .filter-card.active { 
+        transform: translateY(-3px); 
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
+        border: 2px solid #fff; 
+    }
+    .filter-card:hover { 
+        transform: translateY(-5px); 
+        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
+    }
+    
+    .swal-wide {
+        width: 600px !important;
+    }
+    .swal2-html-container .form-check {
+        text-align: left;
+    }
+    .swal2-html-container .form-check-label {
+        margin-left: 0.5rem;
+    }
+    /* Pastikan SweetAlert2 di atas modal */
+    .swal2-container {
+        z-index: 2000 !important;
+    }
+    .modal-backdrop.sweetalert-active {
+        z-index: 1000 !important;
+        pointer-events: none !important;
+    }
+    /* Pastikan modal Bootstrap tidak menghalangi pointer saat SweetAlert2 aktif */
+    .modal.sweetalert-disable {
+        pointer-events: none !important;
+    }
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 
-<style>
-.swal-wide {
-	width: 600px !important;
-}
-.swal2-html-container .form-check {
-	text-align: left;
-}
-.swal2-html-container .form-check-label {
-	margin-left: 0.5rem;
-}
-/* Pastikan SweetAlert2 di atas modal */
-.swal2-container {
-	z-index: 2000 !important;
-}
-.modal-backdrop.sweetalert-active {
-	z-index: 1000 !important;
-	pointer-events: none !important;
-}
-/* Pastikan modal Bootstrap tidak menghalangi pointer saat SweetAlert2 aktif */
-.modal.sweetalert-disable {
-	pointer-events: none !important;
-}
+    <!-- Statistics Cards -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-total-spk">0</h2><h6 class="card-title text-uppercase small">Total SPK</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="READY" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-ready">0</h2><h6 class="card-title text-uppercase small">Ready</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-in-progress">0</h2><h6 class="card-title text-uppercase small">In Progress</h6></div></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="COMPLETED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-completed">0</h2><h6 class="card-title text-uppercase small">Completed</h6></div></div></div>
+    </div>
 
-.filter-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #dee2e6;
-}
-
-.filter-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-  border-color: #0d6efd;
-}
-
-.filter-card.active {
-	transform: translateY(-3px);
-	box-shadow: 0 8px 30px rgba(0,0,0,0.2);
-	border: 2px solid #fff;
-}
-
-.filter-card.active .text-muted {
-  color: rgba(255,255,255,0.8) !important;
-}
-
-/* Match marketing/spk.php card aesthetics */
-.card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
-.table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
-</style>
-  <!-- Statistics Cards -->
-	<div class="row g-4 mb-4">
-		<div class="col-xl-2 col-md-4">
-			<div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all">
-				<div class="card-body py-3">
-					<h2 class="fw-bold mb-1" id="totalSPK">0</h2>
-					<h6 class="card-title text-uppercase small mb-0">Total SPK</h6>
-				</div>
-			</div>
-		</div>
-		<div class="col-xl-2 col-md-4">
-			<div class="card card-stats bg-secondary text-white h-100 filter-card" data-filter="SUBMITTED">
-				<div class="card-body py-3">
-					<h2 class="fw-bold mb-1" id="submittedSPK">0</h2>
-					<h6 class="card-title text-uppercase small mb-0">Submitted</h6>
-				</div>
-			</div>
-		</div>
-		<div class="col-xl-2 col-md-4">
-			<div class="card card-stats bg-info text-white h-100 filter-card" data-filter="IN_PROGRESS">
-				<div class="card-body py-3">
-					<h2 class="fw-bold mb-1" id="inProgressSPK">0</h2>
-					<h6 class="card-title text-uppercase small mb-0">In Progress</h6>
-				</div>
-			</div>
-		</div>
-		<div class="col-xl-2 col-md-4">
-			<div class="card card-stats bg-success text-white h-100 filter-card" data-filter="READY">
-				<div class="card-body py-3">
-					<h2 class="fw-bold mb-1" id="readySPK">0</h2>
-					<h6 class="card-title text-uppercase small mb-0">Ready</h6>
-				</div>
-			</div>
-		</div>
-		<div class="col-xl-2 col-md-4">
-			<div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="COMPLETED">
-				<div class="card-body py-3">
-					<h2 class="fw-bold mb-1" id="completedSPK">0</h2>
-					<h6 class="card-title text-uppercase small mb-0">Completed</h6>
-				</div>
-			</div>
-		</div>
-		<div class="col-xl-2 col-md-4">
-			<div class="card card-stats bg-danger text-white h-100 filter-card" data-filter="CANCELLED">
-				<div class="card-body py-3">
-					<h2 class="fw-bold mb-1" id="cancelledSPK">0</h2>
-					<h6 class="card-title text-uppercase small mb-0">Cancelled</h6>
-				</div>
-			</div>
-		</div>
-	</div>
-
-	<div class="card">
-		<div class="card-body">
-			<!-- Controls aligned like marketing/spk.php -->
-			<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-				<div class="d-flex align-items-center gap-2">
-					<span>Show</span>
-					<select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
-						<option value="10">10</option>
-						<option value="25">25</option>
-						<option value="50">50</option>
-						<option value="100">100</option>
-					</select>
-					<span>entries</span>
-				</div>
-				<div class="d-flex align-items-center gap-2">
-					<span>Search:</span>
-					<input type="text" class="form-control form-control-sm" id="searchInput" placeholder="" style="width: 200px;">
-				</div>
-			</div>
-
-			<div class="table-responsive">
-				<table class="table table-sm mb-0" id="spkTable">
-					<thead>
-						<tr>
-							<th>No. SPK</th>
-							<th>Pelanggan</th>
-							<th>PIC</th>
-							<th>Kontak</th>
-							<th>Delivery Plan</th>
-							<th>Status</th>
-							<th>Aksi</th>
-						</tr>
-					</thead>
-					<tbody></tbody>
-				</table>
-			</div>
-
-			<!-- Pagination -->
-			<div class="row mt-3">
-				<div class="col-md-6">
-					<div id="tableInfo" class="text-muted"></div>
-				</div>
-				<div class="col-md-6">
-					<nav>
-						<ul class="pagination pagination-sm justify-content-end mb-0" id="pagination"></ul>
-					</nav>
-				</div>
-			</div>
-		</div>
+    <div class="card table-card mb-3">
+        <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
+            <h5 class="h5 mb-0 text-gray-800">Daftar SPK Service</h5>
+        </div>
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-2">
+                    <span>Show</span>
+                    <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                    <span>entries</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span>Search:</span>
+                    <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="" style="width: 200px;">
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-sm mb-0" id="spkList">
+                    <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Total Unit</th><th>Aksi</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination and Info -->
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <div id="spkTableInfo">
+                    Showing 0 to 0 of 0 entries
+                </div>
+                <nav>
+                    <ul class="pagination pagination-sm mb-0" id="spkPagination">
+                        <!-- Pagination will be generated by JavaScript -->
+                    </ul>
+                </nav>
+            </div>
+        </div>
+    </div>
 	</div>
 
 	<!-- Assign Items Modal (Unit + Attachment) -->
@@ -262,7 +202,7 @@ function notify(msg, type='success'){
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-	const tbody = document.querySelector('#spkTable tbody');
+	const tbody = document.querySelector('#spkList tbody');
 	
 	const load = () => fetch('<?= base_url('service/spk/list') ?>').then(r=>r.json()).then(j=>{
 		allSPKData = j.data || [];
@@ -278,16 +218,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		const completed = allSPKData.filter(item => (item.status || '').toUpperCase() === 'COMPLETED' || (item.status || '').toUpperCase() === 'DELIVERED').length;
 		const cancelled = allSPKData.filter(item => (item.status || '').toUpperCase() === 'CANCELLED').length;
 		
-		document.getElementById('totalSPK').textContent = total;
-		document.getElementById('submittedSPK').textContent = submitted;
-		document.getElementById('inProgressSPK').textContent = inProgress;
-		document.getElementById('readySPK').textContent = ready;
-		document.getElementById('completedSPK').textContent = completed;
-		document.getElementById('cancelledSPK').textContent = cancelled;
+		document.getElementById('stat-total-spk').textContent = total;
+		document.getElementById('stat-in-progress').textContent = inProgress;
+		document.getElementById('stat-ready').textContent = ready;
+		document.getElementById('stat-completed').textContent = completed;
 	}
 	
 	function applyFilters() {
-		const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+		const searchTerm = document.getElementById('spkSearch').value.toLowerCase();
 		
 		// Filter by status
 		let filtered = currentFilter === 'all' ? [...allSPKData] : 
@@ -320,9 +258,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		tbody.innerHTML = '';
 		dataToShow.forEach(r=>{
 			const tr = document.createElement('tr');
-			const badge = (s)=>{ const m={SUBMITTED:'secondary',IN_PROGRESS:'info',READY:'success',DELIVERED:'primary',COMPLETED:'primary',CANCELLED:'danger'}; const c=m[(s||'').toUpperCase()]||'secondary'; return `<span class="badge bg-${c}">${s}</span>`; };
 			
-			// Conditional action button based on status
+			// Map status to Bootstrap badge classes
+			function statusBadge(entity, status){
+				const s = (status||'').toUpperCase();
+				const mapSPK = { SUBMITTED:'secondary', IN_PROGRESS:'info', READY:'success', DELIVERED:'primary', COMPLETED:'primary', CANCELLED:'danger' };
+				const mapDI  = { SUBMITTED:'secondary', DISPATCHED:'info', ARRIVED:'success', CANCELLED:'danger' };
+				const cls = (entity==='DI'?mapDI[s]:mapSPK[s]) || 'secondary';
+				return `<span class="badge bg-${cls}">${status}</span>`;
+			}
+			
+			// Show approval stage buttons directly in table like operational/delivery.php
 			let actionBtn = '';
 			if (r.status === 'SUBMITTED') {
 				actionBtn = '<span class="text-muted">Menunggu diproses</span>';
@@ -351,7 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				// Add small completed badges
 				const completedBadges = [];
-				if (persiapanDone) completedBadges.push('<small class="badge bg-success me-1">✓ P.Unit</small>');
+				if (persiapanDone) completedBadges.push('<small class="badge bg-success me-1">✓ Persiapan Unit</small>');
 				if (fabrikasiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Fabrikasi</small>');
 				if (paintingDone) completedBadges.push('<small class="badge bg-success me-1">✓ Painting</small>');
 				if (pdiDone) completedBadges.push('<small class="badge bg-success me-1">✓ PDI</small>');
@@ -359,18 +305,21 @@ document.addEventListener('DOMContentLoaded', () => {
 				actionBtn = approvalButtons.join(' ') + (completedBadges.length > 0 ? '<br>' + completedBadges.join('') : '');
 			} else if (r.status === 'READY') {
 				actionBtn = '<span class="text-success">Siap untuk delivery</span>';
+			} else if (r.status === 'COMPLETED' || r.status === 'DELIVERED') {
+				actionBtn = '<span class="text-success">Completed</span>';
 			} else {
 				actionBtn = '<span class="text-muted">-</span>';
 			}
 			
-			tr.innerHTML = `
-				<td><a href="#" onclick="viewDetail(${r.id});return false;">${r.nomor_spk}</a></td>
-				<td>${r.pelanggan||'-'}</td>
-				<td>${r.pic||'-'}</td>
-				<td>${r.kontak||'-'}</td>
-				<td>${r.delivery_plan||'-'}</td>
-				<td>${badge(r.status)}</td>
-				<td>${actionBtn}</td>`;
+			tr.innerHTML = `<td><a href="#" onclick=\"openDetail(${r.id});return false;\">${r.nomor_spk}</a></td>`+
+			  `<td><span class=\"badge bg-dark\">${r.jenis_spk||'UNIT'}</span></td>`+
+			  `<td>${r.po_kontrak_nomor||'-'}</td>`+
+			  `<td>${r.pelanggan||'-'}</td>`+
+			  `<td>${r.pic||'-'}</td>`+
+			  `<td>${r.kontak||'-'}</td>`+
+			  `<td>${statusBadge('SPK', r.status)}</td>`+
+			  `<td>${r.jumlah_unit||'-'}</td>`+
+			  `<td>${actionBtn}</td>`;
 			tbody.appendChild(tr);
 		});
 		
@@ -378,13 +327,13 @@ document.addEventListener('DOMContentLoaded', () => {
 		const totalEntries = filteredSPKData.length;
 		const start = totalEntries === 0 ? 0 : ((currentPage - 1) * entriesPerPage) + 1;
 		const end = Math.min(currentPage * entriesPerPage, totalEntries);
-		document.getElementById('tableInfo').textContent = 
+		document.getElementById('spkTableInfo').textContent = 
 			`Showing ${start} to ${end} of ${totalEntries} entries`;
 	}
 	
 	function updatePagination() {
 		const totalPages = Math.ceil(filteredSPKData.length / entriesPerPage);
-		const pagination = document.getElementById('pagination');
+		const pagination = document.getElementById('spkPagination');
 		pagination.innerHTML = '';
 		
 		// Previous button
@@ -425,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		updatePagination();
 	});
 	
-	document.getElementById('searchInput').addEventListener('input', function() {
+	document.getElementById('spkSearch').addEventListener('input', function() {
 		applyFilters();
 	});
 	
@@ -451,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	let currentSpkId = null;
-	window.viewDetail = (id) => {
+	window.openDetail = (id) => {
 		currentSpkId = id;
 		const body = document.getElementById('spkDetailBody');
 		body.innerHTML = '<p class="text-muted">Memuat...</p>';
@@ -582,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							${ (s.selected && s.selected.attachment) ? `
 								<div><strong>Attachment:</strong> ${s.selected.attachment.tipe || '-'} | ${s.selected.attachment.merk || '-'} | ${s.selected.attachment.model || '-'}${s.selected.attachment.sn_attachment ? ` [SN: ${s.selected.attachment.sn_attachment}]` : ''}${s.selected.attachment.lokasi_penyimpanan ? ` @ ${s.selected.attachment.lokasi_penyimpanan}` : ''}</div>
 							` : ''}
-								<div><strong>Catatan:</strong> ${s.selected.catatan || '-'}</div>
+								<div><strong>Catatan:</strong> ${(s.selected && s.selected.catatan) ? s.selected.catatan : '-'}</div>
 								<div class="col-12"><hr></div>
 						</div>
 					`;
@@ -757,17 +706,18 @@ document.addEventListener('DOMContentLoaded', () => {
 	
 	// Approval Stage Modal Functions
 	let currentApprovalStage = '';
+	let currentApprovalSpkId = null;
 	
 	window.openApprovalModal = (stage, stageTitle, spkId) => {
 		currentApprovalStage = stage;
-		currentSpkId = spkId || currentSpkId; // Use passed spkId or fallback to currentSpkId
+		currentApprovalSpkId = spkId || currentSpkId; // Use passed spkId or fallback to currentSpkId
 		document.getElementById('approvalStageTitle').textContent = stageTitle;
 		document.getElementById('approvalMekanik').value = '';
 		document.getElementById('approvalEstimasiMulai').value = '';
 		document.getElementById('approvalEstimasiSelesai').value = '';
 		
 		// Load stage-specific content
-		loadStageSpecificContent(stage, spkId);
+		loadStageSpecificContent(stage, currentApprovalSpkId);
 		
 		new bootstrap.Modal(document.getElementById('approvalStageModal')).show();
 	}
@@ -817,6 +767,25 @@ document.addEventListener('DOMContentLoaded', () => {
 							<select class="form-select mt-2" id="approvalUnitPick" name="unit_id" required></select>
 							<div class="form-text">Ketik untuk mencari, lalu pilih dari daftar.</div>
 						</div>
+						<div id="electricFields" class="mb-3" style="display: none;">
+							<div class="alert alert-info">
+								<i class="fas fa-battery-full me-2"></i>Unit Electric memerlukan pemilihan Battery dan Charger
+							</div>
+							<div class="row">
+								<div class="col-md-6">
+									<label class="form-label">Pilih Battery <span class="text-danger">*</span></label>
+									<select class="form-select" id="batteryPick" name="battery_id">
+										<option value="">- Pilih Battery -</option>
+									</select>
+								</div>
+								<div class="col-md-6">
+									<label class="form-label">Pilih Charger <span class="text-danger">*</span></label>
+									<select class="form-select" id="chargerPick" name="charger_id">
+										<option value="">- Pilih Charger -</option>
+									</select>
+								</div>
+							</div>
+						</div>
 						<div class="mb-3">
 							<label class="form-label">Konfirmasi Aksesoris Tersedia</label>
 							<div class="border p-3 rounded bg-light">
@@ -826,8 +795,8 @@ document.addEventListener('DOMContentLoaded', () => {
 						</div>
 					`;
 					
-					// Setup unit search
-					setupUnitSearch();
+					// Setup unit search with Electric department detection
+					setupUnitSearchWithElectric();
 				}
 			});
 			
@@ -862,20 +831,31 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 	
-	function setupUnitSearch() {
+	function setupUnitSearchWithElectric() {
 		const searchBox = document.getElementById('approvalUnitSearch');
 		if (searchBox) {
+			// Load initial units
+			const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
+			fetch(url).then(r=>r.json()).then(j=>{
+				const sel = document.getElementById('approvalUnitPick');
+				if (sel) {
+					sel.innerHTML = '<option value="">- Pilih Unit -</option>' + (j.data||[]).map(x=>`<option value="${x.id}" data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}">${x.label}</option>`).join('');
+				}
+			});
+			
 			searchBox.addEventListener('input', function(){
 				const q = this.value.trim();
 				const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
 				if (q) url.searchParams.set('q', q);
 				fetch(url).then(r=>r.json()).then(j=>{
 					const sel = document.getElementById('approvalUnitPick');
-					sel.innerHTML = '<option value="">- Pilih Unit -</option>' + (j.data||[]).map(x=>`<option value="${x.id}" data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}">${x.label}</option>`).join('');
+					if (sel) {
+						sel.innerHTML = '<option value="">- Pilih Unit -</option>' + (j.data||[]).map(x=>`<option value="${x.id}" data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}">${x.label}</option>`).join('');
+					}
 				});
 			});
 			
-			// Add change event for unit selection validation
+			// Add change event for unit selection validation and Electric department detection
 			const unitPick = document.getElementById('approvalUnitPick');
 			if (unitPick) {
 				unitPick.addEventListener('change', function(){
@@ -884,6 +864,26 @@ document.addEventListener('DOMContentLoaded', () => {
 						const noUnit = selectedOption.getAttribute('data-no-unit');
 						const needsNoUnit = selectedOption.getAttribute('data-needs-no-unit');
 						const statusUnit = selectedOption.getAttribute('data-status-unit');
+						const departemenId = selectedOption.getAttribute('data-departemen-id');
+						const departemenName = selectedOption.getAttribute('data-departemen');
+						
+						// Check if Electric department (id=2)
+						const isElectric = departemenId === '2';
+						const electricFields = document.getElementById('electricFields');
+						
+						if (isElectric && electricFields) {
+							electricFields.style.display = 'block';
+							// Load battery and charger options for Electric department
+							loadElectricOptions();
+							// Make battery and charger required
+							document.getElementById('batteryPick').setAttribute('required', '');
+							document.getElementById('chargerPick').setAttribute('required', '');
+						} else if (electricFields) {
+							electricFields.style.display = 'none';
+							// Remove requirements for non-Electric departments
+							document.getElementById('batteryPick').removeAttribute('required');
+							document.getElementById('chargerPick').removeAttribute('required');
+						}
 						
 						// Show no_unit confirmation only for STOCK NON ASET (status 8) that doesn't have no_unit
 						if (statusUnit === '8' && (needsNoUnit === 'true' || !noUnit || noUnit === '' || noUnit === '0')) {
@@ -900,6 +900,32 @@ document.addEventListener('DOMContentLoaded', () => {
 				});
 			}
 		}
+	}
+	
+	function loadElectricOptions() {
+		// Load available batteries (inventory_attachment with baterai_id)
+		fetch('<?= base_url('warehouse/inventory/available-batteries') ?>')
+			.then(r => r.json())
+			.then(data => {
+				const batterySelect = document.getElementById('batteryPick');
+				if (batterySelect && Array.isArray(data)) {
+					batterySelect.innerHTML = '<option value="">- Pilih Battery -</option>' + 
+						data.map(item => `<option value="${item.id_inventory_attachment}">SN Baterai: ${item.sn_baterai||'-'} • PO:${item.po_id} • Loc:${item.lokasi_penyimpanan||'-'}</option>`).join('');
+				}
+			})
+			.catch(err => console.log('Error loading batteries:', err));
+			
+		// Load available chargers
+		fetch('<?= base_url('warehouse/inventory/available-chargers') ?>')
+			.then(r => r.json())
+			.then(data => {
+				const chargerSelect = document.getElementById('chargerPick');
+				if (chargerSelect && Array.isArray(data)) {
+					chargerSelect.innerHTML = '<option value="">- Pilih Charger -</option>' + 
+						data.map(item => `<option value="${item.id_inventory_attachment}">SN Charger: ${item.sn_charger||'-'} • PO:${item.po_id}</option>`).join('');
+				}
+			})
+			.catch(err => console.log('Error loading chargers:', err));
 	}
 	
 	function showNoUnitConfirmation(unitId, unitLabel, statusUnit) {
@@ -1070,15 +1096,26 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 	
 	function setupAttachmentSearch() {
-			const attSearch = document.getElementById('approvalAttSearch');
+		const attSearch = document.getElementById('approvalAttSearch');
 		if (attSearch) {
+			// Load initial attachments
+			const url = new URL('<?= base_url('service/data-attachment/simple') ?>', window.location.origin);
+			fetch(url).then(r=>r.json()).then(j=>{
+				const sel = document.getElementById('approvalAttPick');
+				if (sel) {
+					sel.innerHTML = '<option value="">- (Opsional) -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
+				}
+			});
+			
 			attSearch.addEventListener('input', function(){
 				const q = this.value.trim();
 				const url = new URL('<?= base_url('service/data-attachment/simple') ?>', window.location.origin);
 				if (q) url.searchParams.set('q', q);
 				fetch(url).then(r=>r.json()).then(j=>{
 					const sel = document.getElementById('approvalAttPick');
-					sel.innerHTML = '<option value="">- (Opsional) -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
+					if (sel) {
+						sel.innerHTML = '<option value="">- (Opsional) -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
+					}
 				});
 			});
 		}
@@ -1097,6 +1134,21 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 			fd.append('aksesoris_tersedia', JSON.stringify(checkedAksesoris));
 			
+			// Handle Electric department battery and charger selection
+			const electricFields = document.getElementById('electricFields');
+			if (electricFields && electricFields.style.display !== 'none') {
+				const batteryId = document.getElementById('batteryPick').value;
+				const chargerId = document.getElementById('chargerPick').value;
+				
+				if (!batteryId || !chargerId) {
+					alert('Untuk unit Electric, Battery dan Charger wajib dipilih!');
+					return;
+				}
+				
+				fd.append('battery_inventory_id', batteryId);
+				fd.append('charger_inventory_id', chargerId);
+			}
+			
 			// Handle pending no_unit update if exists
 			if (window.pendingNoUnitUpdate) {
 				fd.append('update_no_unit', 'true');
@@ -1106,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			}
 		}
 		
-		fetch(`<?= base_url('service/spk/approve-stage/') ?>${currentSpkId}`, {
+		fetch(`<?= base_url('service/spk/approve-stage/') ?>${currentApprovalSpkId}`, {
 			method: 'POST',
 			headers: {'X-Requested-With': 'XMLHttpRequest'},
 			body: fd

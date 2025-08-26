@@ -164,12 +164,7 @@ class Operational extends Controller
 
         // Stage-specific fields
         if ($stage === 'perencanaan') {
-            // Perencanaan hanya menyimpan catatan konfirmasi
-            $catatanPerencanaan = $this->request->getPost('catatan_perencanaan');
-            if ($catatanPerencanaan) $updateData['catatan'] = $catatanPerencanaan;
-
-        } elseif ($stage === 'berangkat') {
-            // Berangkat menyimpan semua data operasional
+            // Perencanaan menyimpan semua data operasional pengiriman
             $tanggalKirim = $this->request->getPost('tanggal_kirim');
             $estimasiSampai = $this->request->getPost('estimasi_sampai');
             $namaSupir = $this->request->getPost('nama_supir');
@@ -177,7 +172,7 @@ class Operational extends Controller
             $noSimSupir = $this->request->getPost('no_sim_supir');
             $kendaraan = $this->request->getPost('kendaraan');
             $nopolKendaraan = $this->request->getPost('no_polisi_kendaraan');
-            $catatanBerangkat = $this->request->getPost('catatan_berangkat');
+            $catatanPerencanaan = $this->request->getPost('catatan_perencanaan');
 
             if ($tanggalKirim) $updateData['tanggal_kirim'] = $tanggalKirim;
             if ($estimasiSampai) $updateData['estimasi_sampai'] = $estimasiSampai;
@@ -186,6 +181,11 @@ class Operational extends Controller
             if ($noSimSupir) $updateData['no_sim_supir'] = $noSimSupir;
             if ($kendaraan) $updateData['kendaraan'] = $kendaraan;
             if ($nopolKendaraan) $updateData['no_polisi_kendaraan'] = $nopolKendaraan;
+            if ($catatanPerencanaan) $updateData['catatan'] = $catatanPerencanaan;
+
+        } elseif ($stage === 'berangkat') {
+            // Berangkat hanya menyimpan catatan keberangkatan
+            $catatanBerangkat = $this->request->getPost('catatan_berangkat');
             if ($catatanBerangkat) $updateData['catatan_berangkat'] = $catatanBerangkat;
 
         } elseif ($stage === 'sampai') {
@@ -208,6 +208,29 @@ class Operational extends Controller
                 'success' => false,
                 'message' => 'Gagal menyimpan data: ' . $e->getMessage()
             ]);
+        }
+
+        // If status becomes SAMPAI (Delivered), update SPK status to COMPLETED
+        if ($stage === 'sampai' && !empty($di['spk_id'])) {
+            $this->db->table('spk')->where('id', $di['spk_id'])->update([
+                'status' => 'COMPLETED',
+                'diperbarui_pada' => date('Y-m-d H:i:s')
+            ]);
+            
+            // Log status history
+            try {
+                $this->db->table('spk_status_history')->insert([
+                    'spk_id' => $di['spk_id'],
+                    'status_from' => 'IN_PROGRESS',
+                    'status_to' => 'COMPLETED',
+                    'changed_by' => session('user_id') ?: 1,
+                    'note' => 'DI delivered: ' . $di['nomor_di'],
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            } catch (\Exception $e) {
+                // Continue if history logging fails (best effort)
+                log_message('error', 'Failed to log SPK status history: ' . $e->getMessage());
+            }
         }
 
         // If status becomes SAMPAI, activate associated kontrak
