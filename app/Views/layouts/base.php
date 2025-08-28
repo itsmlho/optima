@@ -50,6 +50,7 @@
     
     <!-- Custom CSS -->
     <link href="<?= base_url('assets/css/optima-pro.css') ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/sidebar-enhanced.css') ?>" rel="stylesheet">
     
     <!-- Page Specific CSS -->
     <?= $this->renderSection('css') ?>
@@ -263,59 +264,73 @@
             border-left-color: #36b9cc !important;
         }
         
-        /* Sidebar Scrollable */
+        /* Sidebar Structure */
         .sidebar {
             height: 100vh;
-            overflow-y: auto;
-            overflow-x: hidden;
+            overflow: hidden;
             position: fixed;
             top: 0;
             left: 0;
             width: 280px;
             z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Allow search results to overflow sidebar */
+        .sidebar:has(.search-results) {
+            overflow-x: visible;
+        }
+        
+        .sidebar-brand {
+            flex-shrink: 0;
+            padding: 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .sidebar-search {
+            flex-shrink: 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         .sidebar-nav {
-            padding: 1rem 0;
-            height: calc(100vh - 80px);
+            flex: 1;
             overflow-y: auto;
             overflow-x: hidden;
+            padding: 1rem 0 0 0;
         }
         
-        /* Custom scrollbar */
-        .sidebar::-webkit-scrollbar,
+        .sidebar-user-status {
+            flex-shrink: 0;
+        }
+        
+        /* Custom scrollbar for navigation only */
         .sidebar-nav::-webkit-scrollbar {
             width: 6px;
         }
         
-        .sidebar::-webkit-scrollbar-track,
         .sidebar-nav::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.1);
         }
         
-        .sidebar::-webkit-scrollbar-thumb,
         .sidebar-nav::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.3);
             border-radius: 3px;
         }
         
-        .sidebar::-webkit-scrollbar-thumb:hover,
         .sidebar-nav::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.5);
         }
         
         /* Dark mode scrollbar */
-        [data-bs-theme="light"] .sidebar::-webkit-scrollbar-track,
         [data-bs-theme="light"] .sidebar-nav::-webkit-scrollbar-track {
             background: #f1f1f1;
         }
         
-        [data-bs-theme="light"] .sidebar::-webkit-scrollbar-thumb,
         [data-bs-theme="light"] .sidebar-nav::-webkit-scrollbar-thumb {
             background: #c1c1c1;
         }
         
-        [data-bs-theme="light"] .sidebar::-webkit-scrollbar-thumb:hover,
         [data-bs-theme="light"] .sidebar-nav::-webkit-scrollbar-thumb:hover {
             background: #0061f2;
         }
@@ -554,481 +569,8 @@
         </div>
     </div>
 
-    <!-- Sidebar -->
-    <nav class="sidebar" id="sidebar">
-        <a href="<?= base_url('/') ?>" class="sidebar-brand" style="text-decoration: none; color: inherit;">
-            <div class="sidebar-brand-icon">
-                <img src="<?= base_url('assets/images/logo-optima.ico') ?>" alt="OPTIMA" class="optima-logo">
-            </div>
-            <div class="sidebar-brand-text">OPTIMA</div>
-        </a>
-        <div class="sidebar-nav">
-            <ul class="nav flex-column">
-                <!-- Dashboard -->
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#dashboardSubmenu">
-                        <i class="fas fa-tachometer-alt"></i>
-                        <span class="nav-link-text">Dashboard</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="dashboardSubmenu" aria-labelledby="dashboardHeading">
-                        <div class="nav-submenu ms-3">
-                                <a class="nav-link nav-submenu-item" href="<?= base_url('/dashboard/service') ?>">
-                                    <i class="fas fa-tools"></i>
-                                    Service
-                                </a>
-                                <a class="nav-link nav-submenu-item" href="<?= base_url('/dashboard/rolling') ?>">
-                                    <i class="fas fa-truck-moving"></i>
-                                    Operational
-                                </a>
-                                <a class="nav-link nav-submenu-item" href="<?= base_url('/dashboard/marketing') ?>">
-                                    <i class="fas fa-chart-line"></i>
-                                    Marketing
-                                </a>
-                                <a class="nav-link nav-submenu-item" href="<?= base_url('/dashboard/warehouse') ?>">
-                                    <i class="fas fa-warehouse"></i>
-                                    Warehouse & Assets
-                                </a>
-                                <a class="nav-link nav-submenu-item" href="<?= base_url('/purchasing') ?>">
-                                    <i class="fas fa-tachometer-alt"></i>
-                                    Purchasing
-                                </a>
-                                <a class="nav-link nav-submenu-item" href="<?= base_url('/dashboard/accounting') ?>">
-                                    <i class="fas fa-calculator"></i>
-                                    Accounting
-                                </a>
-                                <a class="nav-link nav-submenu-item" href="<?= base_url('/dashboard/perizinan') ?>">
-                                    <i class="fa-solid fa-file-contract"></i>
-                                    Perizinan
-                                </a>
-                        </div>
-                    </div>
-                </li>
-
-                <!-- Marketing Division -->
-                <?php if (can_access('marketing.access')): ?>
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#marketingSubmenu">
-                        <i class="fas fa-chart-line"></i>
-                        <span class="nav-link-text">Marketing</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="marketingSubmenu">
-                        <div class="nav-submenu ms-3">
-                            <?php if (can_access('marketing.penawaran.create')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/marketing/penawaran') ?>">
-                                <i class="fas fa-file-invoice"></i>
-                                Buat Penawaran
-                            </a>
-                            <?php endif; ?>
-                            <?php if (can_access('marketing.kontrak.manage')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/marketing/kontrak') ?>">
-                                <i class="fas fa-handshake"></i>
-                                Kontrak & PO
-                            </a>
-                            <?php if (can_access('marketing.spk.manage')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/marketing/spk') ?>">
-                                <i class="fas fa-handshake"></i>
-                                Surat Perintah Kerja (SPK)
-                            </a>
-                            <?php endif; ?>
-                            <?php if (can_access('marketing.di.manage')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/marketing/di') ?>">
-                                <i class="fas fa-handshake"></i>
-                                Delivery Instructions (DI)
-                            </a>
-                            <?php endif; ?>
-                            <?php if (can_access('marketing.list_unit.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/marketing/list-unit') ?>">
-                                <i class="fas fa-list"></i>
-                                List Unit
-                            </a>
-                            <?php endif; ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/marketing/available-units') ?>">
-                                <i class="fas fa-check-circle"></i>
-                                Unit Tersedia
-                            </a>
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </li>
-                <?php endif; ?>
-                
-                <!-- Service Division -->
-                <?php if (can_access('service.access')): ?>
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#serviceSubmenu">
-                        <i class="fas fa-tools"></i>
-                        <span class="nav-link-text">Service</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="serviceSubmenu">
-                        <div class="nav-submenu ms-3">
-                            <!-- Work Orders -->
-                            <?php if (can_access('service.work_orders.view')): ?>
-                            <a class="nav-link collapsed nav-submenu-item" href="#" data-bs-toggle="collapse" data-bs-target="#workOrdersSubmenu">
-                                <i class="fas fa-clipboard-list"></i>
-                                Work Orders
-                                <i class="fas fa-chevron-down ms-auto"></i>
-                            </a>
-                            <div class="collapse" id="workOrdersSubmenu">
-                                <div class="nav-submenu-nested ms-3">
-                                    <?php if (can_access('service.work_orders.view')): ?>
-                                    <a class="nav-link nav-submenu-nested-item" href="<?= base_url('/service/work-orders') ?>">
-                                        <i class="fas fa-circle"></i>
-                                        Work Order
-                                    </a>
-                                    <?php endif; ?>
-                                    <a class="nav-link nav-submenu-nested-item" href="<?= base_url('/service/work-orders/history') ?>">
-                                        <i class="fas fa-circle"></i>
-                                        History
-                                    </a>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-                            
-                            <!-- PMPS -->
-                            <?php if (can_access('service.pmps.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/service/pmps') ?>">
-                                <i class="fas fa-calendar-check"></i>
-                                PMPS
-                            </a>
-                            <?php endif; ?>
-
-                            <!--Inventory -->
-                            <?php if (can_access('service.inventory.view')): ?>
-                            <a class="nav-link collapsed nav-submenu-item" href="#" data-bs-toggle="collapse" data-bs-target="#serviceInventorySubmenu">
-                                <i class="fas fa-clipboard-list"></i>
-                                Inventory
-                                <i class="fas fa-chevron-down ms-auto"></i>
-                            </a>
-                            <div class="collapse" id="serviceInventorySubmenu">
-                                <div class="nav-submenu-nested ms-3">
-                                    <?php if (can_access('service.unit_inventory.view')): ?>
-                                    <a class="nav-link nav-submenu-nested-item" href="<?= base_url('/service/unit-inventory') ?>">
-                                        <i class="fas fa-circle"></i>
-                                        Unit Inventory
-                                    </a>
-                                    <?php endif; ?>
-                                    <a class="nav-link nav-submenu-nested-item" href="<?= base_url('/service/attachment-inventory') ?>">
-                                        <i class="fas fa-circle"></i>
-                                        Attachment Inventory
-                                    </a>
-                                </div>
-                            </div>
-                            <?php endif; ?>
-
-                            <!--SPK -->
-                            <?php if (can_access('service.spk.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/service/spk_service') ?>">
-                                <i class="fas fa-clipboard-list"></i>
-                                SPK
-                            </a>
-                            <?php endif; ?>
-                            
-                            <!-- PDI -->
-                            <?php if (can_access('service.pdi.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/service/pdi') ?>">
-                                <i class="fas fa-truck"></i>
-                                Pre-Delivery Inspection
-                            </a>
-                            <?php endif; ?>
-
-                            <!-- Data Unit -->
-                            <?php if (can_access('service.data_unit.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/service/data-unit') ?>">
-                                <i class="fas fa-truck"></i>
-                                Data Unit
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </li>
-                <?php endif; ?>
-                
-
-                <!-- Operational Division -->
-                <?php if (can_access('operational.access')): ?>
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#unitRollingSubmenu">
-                        <i class="fas fa-truck-moving"></i>
-                        <span class="nav-link-text">Operational</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="unitRollingSubmenu">
-                        <div class="nav-submenu ms-3">
-                            <?php if (can_access('operational.delivery_instructions.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/operational/delivery') ?>">
-                                <i class="fas fa-database"></i>
-                                Delivery Instructions
-                            </a>
-                            <?php endif; ?>
-                            <?php if (can_access('operational.tracking.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/operational/tracking') ?>">
-                                <i class="fas fa-route"></i>
-                                Tracking
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </li>
-                <?php endif; ?>
-
-
-                <!-- Warehouse & Assets Division -->
-                <?php if (can_access('warehouse.access')): ?>
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#warehouseSubmenu">
-                        <i class="fas fa-warehouse"></i>
-                        <span class="nav-link-text">Warehouse & Assets</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="warehouseSubmenu">
-                        <div class="nav-submenu ms-3">
-                            <?php if (can_access('warehouse.assets.manage')): ?>
-                            <!-- <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/unit-assets') ?>">
-                                <i class="fas fa-truck"></i>
-                                Unit Assets
-                            </a> -->
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/inventory/invent_unit') ?>">
-                                <i class="fas fa-truck"></i>
-                                Unit
-                            </a>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/inventory/invent_attachment') ?>">
-                                <i class="fas fa-paperclip"></i>
-                                Attachment & Battery
-                            </a>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/inventory/invent_sparepart') ?>">
-                                <i class="fas fa-tools"></i>
-                                Sparepart
-                            </a>
-                            <?php endif; ?>
-                            <!-- <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/sparepart') ?>">
-                                <i class="fas fa-cog"></i>
-                                Data Sparepart
-                            </a> -->
-
-                            
-                            <!-- Purchase Order Verification Submenu -->
-                            <a class="nav-link nav-submenu-item collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#poVerificationSubmenu">
-                                <i class="fas fa-clipboard-check"></i>
-                                <span class="nav-link-text">PO Verification</span>
-                                <i class="fas fa-chevron-down ms-auto"></i>
-                            </a>   
-                            <div class="collapse" id="poVerificationSubmenu">
-                                <div class="nav-submenu ms-4"> <!-- Indentasi lebih dalam -->
-                                    <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/purchase-orders/po-unit') ?>">
-                                        <i class="fas fa-truck-loading"></i>
-                                        PO Unit
-                                    </a>
-                                    <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/purchase-orders/po-attachment') ?>">
-                                        <i class="fas fa-battery-full"></i>
-                                        PO Attachment & Battery
-                                    </a>
-                                    <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/purchase-orders/po-sparepart') ?>">
-                                        <i class="fas fa-tools"></i>
-                                        PO Sparepart
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </li>
-                <?php endif; ?>
-
-                <!-- Purchasing Division -->
-                <?php if (can_access('purchasing.access')): ?>
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#purchasingSubmenu">
-                        <i class="fas fa-shopping-cart"></i>
-                        <span class="nav-link-text">Purchasing Division</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="purchasingSubmenu">
-                        <div class="nav-submenu ms-3">
-                        
-                            <div class="nav-submenu-divider my-2"></div>
-                            <!-- <h6 class="nav-submenu-heading">Purchase Orders</h6> -->
-                            <?php if (can_access('purchasing.manage')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/purchasing/form-po') ?>">
-                                <i class="fas fa-truck"></i>
-                                Buat PO
-                            </a>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/purchasing/po-unit') ?>">
-                                <i class="fas fa-truck"></i>
-                                PO Unit
-                            </a>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/purchasing/po-attachment') ?>">
-                                <i class="fas fa-battery-full"></i>
-                                PO Attachment & Battery
-                            </a>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/purchasing/po-sparepart') ?>">
-                                <i class="fas fa-cogs"></i>
-                                PO Sparepart
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </li>
-                <?php endif; ?>
-                
-                <!-- Perizinan -->
-                <?php if (can_access('perizinan.access')): ?>
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#perizinanSubmenu">
-                        <i class="fa-solid fa-file-contract"></i>
-                        <span class="nav-link-text">Perizinan</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="perizinanSubmenu">
-                        <div class="nav-submenu ms-3">
-                        
-                            <div class="nav-submenu-divider my-2"></div>
-                            <?php if (can_access('perizinan.manage')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/perizinan/form-silo') ?>">
-                                <i class="fa-solid fa-shield-halved"></i>
-                                SILO (Surat Izin Layak Operasi)
-                            </a>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/perizinan/form-emisi') ?>">
-                                <i class="fa-solid fa-shield-halved"></i>
-                                EMISI (Surat Izin Emisi Gas Buang)
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </li>
-                <?php endif; ?>
-                
-                <!-- Accounting -->
-                <?php if (can_access('accounting.access')): ?>
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#accountingSubmenu">
-                        <i class="fas fa-calculator"></i>
-                        <span class="nav-link-text">Accounting</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="accountingSubmenu">
-                        <div class="nav-submenu ms-3">
-                            <!-- <?php if (can_access('finance.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/finance') ?>">
-                                <i class="fas fa-chart-line"></i>
-                                Keuangan
-                            </a>
-                            <?php endif; ?> -->
-
-                            <?php if (can_access('invoices.view')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/finance/invoices') ?>">
-                                <i class="fas fa-file-invoice"></i>
-                                Invoice Management
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </li>
-                <?php endif; ?>
-
-                <!-- Divider -->
-                <li class="nav-item">
-                    <hr class="sidebar-divider my-3">
-                </li>
-                
-                <!-- Administration -->
-                <?php if (can_access('admin.access')): ?>
-                <li class="nav-item">
-                    <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#adminSubmenu">
-                        <i class="fas fa-user-shield"></i>
-                        <span class="nav-link-text">Administration</span>
-                        <i class="fas fa-chevron-down ms-auto"></i>
-                    </a>
-                    <div class="collapse" id="adminSubmenu">
-                        <div class="nav-submenu ms-3">
-                            <?php if (can_access('admin.user_management')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/admin/advanced-users') ?>">
-                                <i class="fas fa-users-cog"></i>
-                                User Management
-                            </a>
-                            <?php endif; ?>                        
-                            
-                            <?php if (can_access('admin.role_management')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/admin/roles') ?>">
-                                <i class="fas fa-user-tag"></i>
-                                Role Management
-                            </a>
-                            <?php endif; ?>
-                            
-                            <?php if (can_access('admin.permission_management')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/admin/permissions') ?>">
-                                <i class="fas fa-key"></i>
-                                Permission Management
-                            </a>
-                            <?php endif; ?>
-                            
-                            <?php if (can_access('admin.system_settings')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/admin') ?>">
-                                <i class="fas fa-cog"></i>
-                                System Settings
-                            </a>
-                            <?php endif; ?>
-                            
-                            <?php if (can_access('admin.configuration')): ?>
-                            <a class="nav-link nav-submenu-item" href="<?= base_url('/settings') ?>">
-                                <i class="fas fa-sliders-h"></i>
-                                Configuration
-                            </a>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-                </li>
-                <?php endif; ?>
-                <!-- End Administration -->
-                
-                <!-- Tracking Delivery -->
-                <li class="nav-item">
-                    <a class="nav-link" href="<?= base_url('/operational/tracking') ?>">
-                        <i class="fas fa-truck"></i>
-                        <span class="nav-link-text">Tracking Delivery</span>
-                    </a>
-                </li>
-
-                <!-- Tracking Work Orders -->
-                <li class="nav-item">
-                    <a class="nav-link <?= strpos(service('router')->getMatchedRoute()[0], 'tracking') !== false ? 'active' : '' ?>" href="<?= base_url('/tracking-wo') ?>">
-                        <i class="fas fa-truck"></i>
-                        <span class="nav-link-text">Tracking Work Orders</span>
-                    </a>
-                </li>
-
-            
-
-                <!-- Rental Management -->
-                <!-- <li class="nav-item">
-                    <a class="nav-link <?= strpos(service('router')->getMatchedRoute()[0], 'rentals') !== false ? 'active' : '' ?>" href="<?= base_url('/rentals') ?>">
-                        <i class="fas fa-handshake"></i>
-                        <span class="nav-link-text">Rental Management</span>
-                    </a>
-                </li> -->
-                
-                <!-- Pelanggan -->
-                <!-- <li class="nav-item">
-                    <a class="nav-link <?= strpos(service('router')->getMatchedRoute()[0], 'customers') !== false ? 'active' : '' ?>" href="<?= base_url('/customers') ?>">
-                        <i class="fas fa-users"></i>
-                        <span class="nav-link-text">Pelanggan</span>
-                    </a>
-                </li> -->
-
-                
-                <!-- Laporan -->
-                <!-- <li class="nav-item">
-                    <a class="nav-link <?= strpos(service('router')->getMatchedRoute()[0], 'reports') !== false ? 'active' : '' ?>" href="<?= base_url('/reports') ?>">
-                        <i class="fas fa-file-alt"></i>
-                        <span class="nav-link-text">Laporan</span>
-                    </a>
-                </li> -->
-            </ul>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
+    <!-- Enhanced Sidebar -->
+    <?= $this->include('layouts/sidebar_new') ?>    <!-- Main Content -->
     <main class="main-content" id="mainContent">
         <!-- Content Header -->
         <header class="content-header">
@@ -1056,16 +598,6 @@
                 </div>
                 
                 <div class="d-flex align-items-center">
-                    <!-- Search Box -->
-                    <div class="me-3 d-none d-md-block">
-                        <div class="input-group">
-                            <input type="text" class="form-control search-box" placeholder="Cari..." data-target=".searchable">
-                            <span class="input-group-text">
-                                <i class="fas fa-search"></i>
-                            </span>
-                        </div>
-                    </div>
-                    
                     <!-- Notifications -->
                     <div class="dropdown me-3">
                         <button class="btn btn-outline-secondary position-relative" type="button" data-bs-toggle="dropdown">
@@ -1108,15 +640,14 @@
                     
                     <!-- User Profile -->
                     <div class="dropdown">
-                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?>">
                             <?php if (session()->get('avatar')): ?>
-                                <img src="<?= session()->get('avatar') ?>" alt="Avatar" class="rounded-circle me-2" width="24" height="24" style="object-fit: cover;">
+                                <img src="<?= session()->get('avatar') ?>" alt="Avatar" class="rounded-circle" width="24" height="24" style="object-fit: cover;">
                             <?php else: ?>
-                                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center me-2" style="width: 24px; height: 24px;">
+                                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
                                     <i class="fas fa-user text-white" style="font-size: 12px;"></i>
                                 </div>
                             <?php endif; ?>
-                            <?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?>
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
                             <li><h6 class="dropdown-header">Halo, <?= session()->get('first_name') ?>!</h6></li>
@@ -1243,6 +774,7 @@
     
     <!-- OPTIMA Pro JavaScript -->
     <script src="<?= base_url('assets/js/optima-pro.js') ?>"></script>
+    <script src="<?= base_url('assets/js/sidebar-enhanced.js') ?>"></script>
 
     
     <!-- Global JavaScript Variables -->

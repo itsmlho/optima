@@ -404,31 +404,41 @@ class InventoryAttachmentModel extends Model
 
     public function getAvailableForAttachment(int $attachmentId): array
     {
-        return $this->where([
-            'attachment_id' => $attachmentId,
-            'status_unit'   => 7,
-        ])->where('id_inventory_unit', null)
-          ->orderBy('tanggal_masuk','ASC')
-          ->findAll(100);
+        return $this->select('inventory_attachment.*, a.tipe, a.merk, a.model')
+            ->join('attachment a', 'a.id_attachment = inventory_attachment.attachment_id', 'left')
+            ->where([
+                'inventory_attachment.attachment_id' => $attachmentId,
+                'inventory_attachment.tipe_item'     => 'attachment',
+                'inventory_attachment.status_unit'   => 7,
+            ])->where('inventory_attachment.id_inventory_unit', null)
+              ->where('inventory_attachment.attachment_id IS NOT NULL')
+              ->orderBy('inventory_attachment.tanggal_masuk','ASC')
+              ->findAll(100);
     }
 
     public function getAvailableChargers(): array
     {
-        // Ambil inventory yang punya charger_id, masih stock
-        return $this->where('charger_id IS NOT NULL', null, false)
-            ->where('status_unit', 7)
-            ->where('id_inventory_unit', null)
-            ->orderBy('tanggal_masuk','ASC')
+        // Ambil inventory yang punya charger_id dan tipe_item = 'charger', masih stock
+        return $this->select('inventory_attachment.*, c.merk_charger, c.tipe_charger')
+            ->join('charger c', 'c.id_charger = inventory_attachment.charger_id', 'left')
+            ->where('inventory_attachment.tipe_item', 'charger')
+            ->where('inventory_attachment.status_unit', 7)
+            ->where('inventory_attachment.id_inventory_unit', null)
+            ->where('inventory_attachment.charger_id IS NOT NULL')
+            ->orderBy('inventory_attachment.tanggal_masuk','ASC')
             ->findAll(100);
     }
 
     public function getAvailableBatteries(): array
     {
-        // Ambil inventory yang punya baterai_id, masih stock
-        return $this->where('baterai_id IS NOT NULL', null, false)
-            ->where('status_unit', 7)
-            ->where('id_inventory_unit', null)
-            ->orderBy('tanggal_masuk','ASC')
+        // Ambil inventory yang punya baterai_id dan tipe_item = 'battery', masih stock
+        return $this->select('inventory_attachment.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+            ->join('baterai b', 'b.id = inventory_attachment.baterai_id', 'left')
+            ->where('inventory_attachment.tipe_item', 'battery')
+            ->where('inventory_attachment.status_unit', 7)
+            ->where('inventory_attachment.id_inventory_unit', null)
+            ->where('inventory_attachment.baterai_id IS NOT NULL')
+            ->orderBy('inventory_attachment.tanggal_masuk','ASC')
             ->findAll(100);
     }
 }

@@ -175,16 +175,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     // Map Indonesian status to English and count accordingly
     const submitted = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return !item.status || status === 'DIAJUKAN' || status === 'SUBMITTED';
+      return !item.status || status === 'SUBMITTED';
     }).length;
     const inprogress = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return status === 'DIPROSES' || status === 'PROCESSED' || 
-             status === 'DIKIRIM' || status === 'DISPATCHED' || status === 'SHIPPED';
+      return status === 'PROCESSED' || 
+             status === 'SHIPPED';
     }).length;
     const delivered = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return status === 'SAMPAI' || status === 'ARRIVED' || status === 'DELIVERED';
+      return status === 'DELIVERED';
     }).length;
     
     document.getElementById('totalDI').textContent = total;
@@ -203,18 +203,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
     } else if (currentFilter === 'SUBMITTED') {
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return !item.status || status === 'DIAJUKAN' || status === 'SUBMITTED';
+        return !item.status || status === 'SUBMITTED';
       });
     } else if (currentFilter === 'INPROGRESS') {
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return status === 'DIPROSES' || status === 'PROCESSED' || 
-               status === 'DIKIRIM' || status === 'DISPATCHED' || status === 'SHIPPED';
+        return status === 'PROCESSED' || 
+               status === 'SHIPPED';
       });
     } else if (currentFilter === 'DELIVERED') {
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return status === 'SAMPAI' || status === 'ARRIVED' || status === 'DELIVERED';
+        return status === 'DELIVERED';
       });
     } else {
       // Legacy filter - exact match
@@ -250,18 +250,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const getStatusDisplay = (status) => {
         const statusUpper = (status || '').toUpperCase();
         const statusMap = {
-          'DIAJUKAN': { text: 'Submitted', color: 'secondary' },
           'SUBMITTED': { text: 'Submitted', color: 'secondary' },
-          'DIPROSES': { text: 'Processed', color: 'info' },
           'PROCESSED': { text: 'Processed', color: 'info' },
-          'DIKIRIM': { text: 'Shipped', color: 'warning' },
-          'DISPATCHED': { text: 'Shipped', color: 'warning' },
           'SHIPPED': { text: 'Shipped', color: 'warning' },
-          'SAMPAI': { text: 'Delivered', color: 'success' },
-          'ARRIVED': { text: 'Delivered', color: 'success' },
           'DELIVERED': { text: 'Delivered', color: 'success' },
-          'DIBATALKAN': { text: 'Canceled', color: 'danger' },
-          'CANCELED': { text: 'Canceled', color: 'danger' }
+          'CANCELLED': { text: 'Cancelled', color: 'danger' }
         };
         const mapped = statusMap[statusUpper] || { text: status || 'Submitted', color: 'secondary' };
         return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
@@ -269,9 +262,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       // Conditional action button based on status - approval workflow style
       let aksiBtn = '';
-      if (!r.status || r.status === 'DIAJUKAN') {
+      if (!r.status || r.status === 'SUBMITTED') {
         aksiBtn = '<span class="text-muted">Menunggu diproses</span>';
-      } else if (r.status === 'DIPROSES') {
+      } else if (r.status === 'PROCESSED') {
         // Show approval stage buttons directly in table
         const perencanaanDone = r.perencanaan_tanggal_approve ? true : false;
         const berangkatDone = r.berangkat_tanggal_approve ? true : false;
@@ -298,7 +291,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (sampaiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Sampai</small>');
         
         aksiBtn = approvalButtons.join(' ') + (completedBadges.length > 0 ? '<br>' + completedBadges.join('') : '');
-      } else if (r.status === 'SAMPAI') {
+      } else if (r.status === 'DELIVERED') {
         aksiBtn = '<span class="text-success">Completed</span>';
       } else {
         aksiBtn = '<span class="text-muted">-</span>';
@@ -588,16 +581,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
     fetch('<?= base_url('operational/delivery/detail/') ?>'+id).then(r=>r.json()).then(j=>{
       if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; modal.show(); return; }
       const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[];
-      const status = d.status || 'DIAJUKAN';
+      const status = d.status || 'SUBMITTED';
       const itemsHtml = items.length ? '<ul>'+items.map(i=>`<li>${i.item_type}: ${i.label}</li>`).join('')+'</ul>' : '<div class="text-muted">-</div>';
       
       // Update action buttons based on status
       const actionDiv = document.getElementById('modalActionButtons');
       let actionButtons = '';
       
-      if (status === 'DIAJUKAN') {
+      if (status === 'SUBMITTED') {
         actionButtons = '<button class="btn btn-success btn-sm" id="btnProsesDI">Proses DI</button>';
-      } else if (status === 'DIPROSES') {
+      } else if (status === 'PROCESSED') {
         // Show approval stage buttons based on completion status
         let approvalButtons = [];
         
@@ -621,12 +614,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (sampaiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Sampai</span>');
         
         actionButtons = approvalButtons.join(' ');
-      } else if (status === 'SAMPAI') {
+      } else if (status === 'DELIVERED') {
         actionButtons = `<span class="badge bg-success">Completed</span>`;
       }
       
-      // Add PDF SPK button if SPK exists (for all statuses except DIAJUKAN)
-      if (status !== 'DIAJUKAN' && spk && spk.id) {
+      // Add PDF SPK button if SPK exists (for all statuses except SUBMITTED)
+      if (status !== 'SUBMITTED' && spk && spk.id) {
         const pdfButton = `<a class="btn btn-outline-info btn-sm" href="<?= base_url('service/spk/print/') ?>${spk.id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> PDF SPK</a>`;
         actionButtons = actionButtons ? `${actionButtons} ${pdfButton}` : pdfButton;
       }
@@ -649,7 +642,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <div class="col-12"><strong>SPK Terkait:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
           <div class="col-12"><strong>Items:</strong><br>${itemsHtml}</div>
           
-          ${status === 'DIPROSES' || status === 'SAMPAI' ? `
+          ${status === 'PROCESSED' || status === 'DELIVERED' ? `
           <div class="col-12"><hr></div>
           <div class="col-12"><h6 class="mb-2">📋 Status Delivery Workflow</h6></div>
           
@@ -718,7 +711,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (prosesDIBtn) {
           prosesDIBtn.addEventListener('click', () => {
             const formData = new FormData();
-            formData.append('status', 'DIPROSES');
+            formData.append('status', 'PROCESSED');
             
             fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {
               method: 'POST',
@@ -726,7 +719,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               body: formData
             }).then(r=>r.json()).then(result=>{
               if (result && result.success) {
-                notify('DI berhasil diproses. Status menjadi DIPROSES.', 'success');
+                notify('DI berhasil diproses. Status menjadi PROCESSED.', 'success');
                 bootstrap.Modal.getInstance(document.getElementById('diDetailModal')).hide();
                 load(); // Reload table
               } else {

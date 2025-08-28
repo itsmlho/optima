@@ -10,7 +10,11 @@ class DeliveryItemModel extends Model
     protected $primaryKey = 'id';
     protected $returnType = 'array';
     protected $allowedFields = [
-        'di_id','item_type','unit_id','attachment_id','qty','keterangan'
+        'di_id','item_type','unit_id','attachment_id','keterangan'
     ];
+    
+    // Explicitly disable automatic timestamps
     protected $useTimestamps = false;
+    protected $createdField = '';  // Disable automatic created_at
+    protected $updatedField = '';  // Disable automatic updated_at
 }

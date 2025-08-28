@@ -15,7 +15,11 @@ class DeliveryInstructionModel extends Model
         'berangkat_tanggal_approve','catatan_berangkat',
         'sampai_tanggal_approve','catatan_sampai'
     ];
+    
+    // Explicitly disable automatic timestamps since our table uses custom field names
     protected $useTimestamps = false;
+    protected $createdField = '';  // Disable automatic created_at
+    protected $updatedField = '';  // Disable automatic updated_at
 
     /** Generate next DI number with prefix DI/YYYYMM/NNN */
     public function generateNextNumber(): string

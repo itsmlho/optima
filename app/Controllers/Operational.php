@@ -74,8 +74,8 @@ class Operational extends Controller
             return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
         }
         $status = $this->request->getPost('status');
-        // Support Indonesian status values
-        $allowed = ['DIAJUKAN','DIPROSES','DIKIRIM','SAMPAI','DIBATALKAN'];
+    // Allowed DI statuses (English enum values)
+    $allowed = ['SUBMITTED','PROCESSED','SHIPPED','DELIVERED','CANCELLED'];
         if (!in_array($status, $allowed, true)) {
             return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Status tidak valid. Status yang diizinkan: ' . implode(', ', $allowed)]);
         }
@@ -83,9 +83,9 @@ class Operational extends Controller
             'status'=>$status,
             'diperbarui_pada'=>date('Y-m-d H:i:s')
         ]);
-        // If SAMPAI (arrived), activate kontrak associated to this DI (best-effort)
+    // If DELIVERED (arrived), activate kontrak associated to this DI (best-effort)
         $di = $this->diModel->find((int)$id);
-        if ($di && $status === 'SAMPAI' && !empty($di['po_kontrak_nomor'])) {
+    if ($di && $status === 'DELIVERED' && !empty($di['po_kontrak_nomor'])) {
             $this->db->table('kontrak')
                 ->groupStart()
                     ->where('no_kontrak', $di['po_kontrak_nomor'])
@@ -192,8 +192,8 @@ class Operational extends Controller
             $catatanSampai = $this->request->getPost('catatan_sampai');
             if ($catatanSampai) $updateData['catatan_sampai'] = $catatanSampai;
             
-            // After sampai approval, update status to SAMPAI
-            $updateData['status'] = 'SAMPAI';
+            // After sampai approval, update status to DELIVERED
+            $updateData['status'] = 'DELIVERED';
         }
 
         // Log for debugging
@@ -210,8 +210,8 @@ class Operational extends Controller
             ]);
         }
 
-        // If status becomes SAMPAI (Delivered), update SPK status to COMPLETED
-        if ($stage === 'sampai' && !empty($di['spk_id'])) {
+    // If status becomes DELIVERED, update SPK status to COMPLETED
+    if ($stage === 'sampai' && !empty($di['spk_id'])) {
             $this->db->table('spk')->where('id', $di['spk_id'])->update([
                 'status' => 'COMPLETED',
                 'diperbarui_pada' => date('Y-m-d H:i:s')
@@ -233,8 +233,8 @@ class Operational extends Controller
             }
         }
 
-        // If status becomes SAMPAI, activate associated kontrak
-        if ($stage === 'sampai' && !empty($di['po_kontrak_nomor'])) {
+    // If status becomes DELIVERED, activate associated kontrak
+    if ($stage === 'sampai' && !empty($di['po_kontrak_nomor'])) {
             $this->db->table('kontrak')
                 ->groupStart()
                     ->where('no_kontrak', $di['po_kontrak_nomor'])

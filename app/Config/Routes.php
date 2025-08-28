@@ -8,91 +8,6 @@ use CodeIgniter\Router\RouteCollection;
 $routes->get('/', 'Home::index');
 $routes->get('test', 'Test::index');
 
-//        // Permission Management
-//     $routes->group('permissions', static function ($routes) {
-//         $routes->get('/', 'Admin\PermissionController::index');
-//         $routes->get('list', 'Admin\PermissionController::list');
-//         $routes->post('getDataTable', 'Admin\PermissionController::getDataTable');
-//         $routes->post('store', 'Admin\PermissionController::store');
-//         $routes->get('show/(:num)', 'Admin\PermissionController::show/$1');
-//         $routes->get('getDetail/(:num)', 'Admin\PermissionController::getDetail/$1');
-//         $routes->post('update/(:num)', 'Admin\PermissionController::update/$1');
-//         $routes->post('delete/(:num)', 'Admin\PermissionController::delete/$1');
-//         $routes->delete('delete/(:num)', 'Admin\PermissionController::delete/$1');
-//         $routes->get('usage/(:num)', 'Admin\PermissionController::usage/$1');
-//     });
-    
-    
-//     // Role Management
-//     $routes->group('roles', static function ($routes) {
-//         $routes->get('/', 'Admin\RoleController::index');
-//         $routes->post('getDataTable', 'Admin\RoleController::getDataTable');
-//         $routes->post('store', 'Admin\RoleController::store');
-//         $routes->get('show/(:num)', 'Admin\RoleController::show/$1');
-//         $routes->get('getRoleDetail/(:num)', 'Admin\RoleController::getRoleDetail/$1');
-//         $routes->post('update/(:num)', 'Admin\RoleController::update/$1');
-//         $routes->post('delete/(:num)', 'Admin\RoleController::delete/$1');
-//         $routes->delete('delete/(:num)', 'Admin\RoleController::delete/$1');
-//     });
-
-// // Authentication Routes
-// $routes->group('auth', static function ($routes) {
-//     $routes->get('/', 'Auth::index');
-//     $routes->get('login', 'Auth::login');
-//     $routes->post('attempt-login', 'Auth::attemptLogin');
-//     $routes->get('register', 'Auth::register');
-//     $routes->post('attempt-register', 'Auth::attemptRegister');
-//     $routes->get('forgot-password', 'Auth::forgotPassword');
-//     $routes->post('send-reset-link', 'Auth::sendResetLink');
-//     $routes->get('reset-password/(:any)', 'Auth::resetPassword/$1');
-//     $routes->post('update-password', 'Auth::updatePassword');
-//     $routes->get('logout', 'Auth::logout');
-//     $routes->get('profile', 'Auth::profile');
-//     $routes->post('update-profile', 'Auth::updateProfile');
-//     $routes->post('change-password', 'Auth::changePassword');
-// });
-
-// // // Quick login for development
-// // $routes->get('/quick-login', function() {
-// //     quick_login_as_superadmin();
-// //     return redirect()->to('/admin/advanced-users')->with('success', 'Logged in as Super Admin - User Management')        // Permission Management
-//     $routes->group('permissions', static function ($routes) {
-//         $routes->get('/', 'Admin\PermissionController::index');
-//         $routes->get('list', 'Admin\PermissionController::list');
-//         $routes->post('getDataTable', 'Admin\PermissionController::getDataTable');
-//         $routes->post('store', 'Admin\PermissionController::store');
-//         $routes->get('show/(:num)', 'Admin\PermissionController::show/$1');
-//         $routes->get('getDetail/(:num)', 'Admin\PermissionController::getDetail/$1');
-//         $routes->post('update/(:num)', 'Admin\PermissionController::update/$1');
-//         $routes->post('delete/(:num)', 'Admin\PermissionController::delete/$1');
-//         $routes->delete('delete/(:num)', 'Admin\PermissionController::delete/$1');
-//         $routes->get('usage/(:num)', 'Admin\PermissionController::usage/$1');
-//     });
-    
-//     // Role Management
-//     $routes->group('roles', static function ($routes) {
-//         $routes->get('/', 'Admin\RoleController::index');
-//         $routes->post('getDataTable', 'Admin\RoleController::getDataTable');
-//         $routes->post('store', 'Admin\RoleController::store');
-//         $routes->get('show/(:num)', 'Admin\RoleController::show/$1');
-//         $routes->get('getRoleDetail/(:num)', 'Admin\RoleController::getRoleDetail/$1');
-//         $routes->post('update/(:num)', 'Admin\RoleController::update/$1');
-//         $routes->post('delete/(:num)', 'Admin\RoleController::delete/$1');
-//         $routes->delete('delete/(:num)', 'Admin\RoleController::delete/$1');
-//     });
-    
-//     // Role Management
-//     $routes->group('roles', static function ($routes) {
-//         $routes->get('/', 'Admin\RoleController::index');
-//         $routes->post('getDataTable', 'Admin\RoleController::getDataTable');
-//         $routes->post('store', 'Admin\RoleController::store');
-//         $routes->get('show/(:num)', 'Admin\RoleController::show/$1');
-//         $routes->get('getRoleDetail/(:num)', 'Admin\RoleController::getRoleDetail/$1');
-//         $routes->post('update/(:num)', 'Admin\RoleController::update/$1');
-//         $routes->post('delete/(:num)', 'Admin\RoleController::delete/$1');
-//         $routes->delete('delete/(:num)', 'Admin\RoleController::delete/$1');
-//     });
-
 // Authentication Routes
 $routes->group('auth', static function ($routes) {
     $routes->get('/', 'Auth::index');
@@ -247,6 +162,8 @@ $routes->group('service', static function ($routes) {
     $routes->get('data-attachment/simple', 'Service::dataAttachmentSimple');
     // Check if no_unit already exists
     $routes->post('check-no-unit-exists', 'Service::checkNoUnitExists');
+    // Smart Component Management - Unit component data endpoint
+    $routes->get('unit-component-data/(:num)', 'Service::unitComponentData/$1');
     // Assign selected items (unit+attachment) to SPK and mark READY
     $routes->post('spk/assign-items', 'Service::spkAssignItems');
     $routes->get('spk/pdf/(:num)', 'Service::spkPdf/$1');
@@ -654,6 +571,7 @@ $routes->get('service/spk/print/(:num)', 'Service::spkPrint/$1');
 $routes->group('warehouse/inventory', static function($r){
     $r->get('available-attachments', 'Warehouse\InventoryApi::availableAttachments');
     $r->get('available-chargers', 'Warehouse\InventoryApi::availableChargers');
+    $r->get('available-batteries', 'Warehouse\InventoryApi::availableBatteries');
 });
 
 

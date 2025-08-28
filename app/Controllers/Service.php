@@ -101,7 +101,8 @@ class Service extends BaseController
             'title' => 'SPK Service | OPTIMA',
             'page_title' => 'SPK dari Marketing',
         ];
-        return view('service/spk_service', $data);
+    // Use single view (modular content merged into spk_service.php)
+    return view('service/spk_service', $data);
     }
 
     public function spkList()
@@ -457,6 +458,13 @@ class Service extends BaseController
             $no_unit_action = $this->request->getPost('no_unit_action');
             $battery_inventory_id = $this->request->getPost('battery_inventory_id');
             $charger_inventory_id = $this->request->getPost('charger_inventory_id');
+            
+            // Enhanced component management data
+            $enhanced_component_data = $this->request->getPost('enhanced_component_data');
+            $component_data = null;
+            if ($enhanced_component_data) {
+                $component_data = json_decode($enhanced_component_data, true);
+            }
 
             if (!$unit_id) {
                 return $this->response->setJSON(['success'=>false,'message'=>'Unit harus dipilih']);
@@ -464,44 +472,95 @@ class Service extends BaseController
 
             // Get unit with status and department information
             $unit = $this->db->table('inventory_unit')
-                ->select('no_unit, status_unit_id, departemen_id')
+                ->select('no_unit, status_unit_id, departemen_id, model_attachment_id, sn_attachment, model_baterai_id, sn_baterai, model_charger_id, sn_charger')
                 ->where('id_inventory_unit', $unit_id)
                 ->get()->getRowArray();
             if (!$unit) {
                 return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak ditemukan']);
             }
 
+            // Load current spesifikasi JSON to update it
+            $current = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
+            $spec = [];
+            if (!empty($current['spesifikasi'])) {
+                $dec = json_decode($current['spesifikasi'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) $spec = $dec;
+            }
+
             // Check Electric department requirement (id=2)
             if ($unit['departemen_id'] == 2) {
-                if (!$battery_inventory_id || !$charger_inventory_id) {
+                $finalBatteryId = null;
+                $finalChargerId = null;
+                
+                // Handle enhanced component management for battery
+                if ($component_data && isset($component_data['components']['battery'])) {
+                    $batteryComponent = $component_data['components']['battery'];
+                    
+                    if ($batteryComponent['action'] === 'keep' && $batteryComponent['keep_existing'] === true) {
+                        // Keep existing battery - no action needed
+                        $finalBatteryId = $unit['model_baterai_id'];
+                        $spec['persiapan_battery_action'] = 'keep_existing';
+                        $spec['persiapan_battery_id'] = $finalBatteryId;
+                    } else if ($batteryComponent['action'] === 'replace' && $batteryComponent['new_inventory_attachment_id']) {
+                        // Replace existing battery
+                        $finalBatteryId = $batteryComponent['new_inventory_attachment_id'];
+                        $spec['persiapan_battery_action'] = 'replace';
+                        $spec['persiapan_battery_old_id'] = $unit['model_baterai_id'];
+                        $spec['persiapan_battery_id'] = $finalBatteryId;
+                    } else if ($batteryComponent['action'] === 'assign' && $batteryComponent['new_inventory_attachment_id']) {
+                        // Assign new battery to unit that doesn't have one
+                        $finalBatteryId = $batteryComponent['new_inventory_attachment_id'];
+                        $spec['persiapan_battery_action'] = 'assign';
+                        $spec['persiapan_battery_id'] = $finalBatteryId;
+                    }
+                } else {
+                    // Fallback to legacy behavior
+                    if (!$battery_inventory_id) {
+                        return $this->response->setJSON(['success'=>false,'message'=>'Unit Electric memerlukan Battery']);
+                    }
+                    $finalBatteryId = $battery_inventory_id;
+                    $spec['persiapan_battery_action'] = 'legacy';
+                    $spec['persiapan_battery_id'] = $finalBatteryId;
+                }
+                
+                // Handle enhanced component management for charger
+                if ($component_data && isset($component_data['components']['charger'])) {
+                    $chargerComponent = $component_data['components']['charger'];
+                    
+                    if ($chargerComponent['action'] === 'keep' && $chargerComponent['keep_existing'] === true) {
+                        // Keep existing charger - no action needed
+                        $finalChargerId = $unit['model_charger_id'];
+                        $spec['persiapan_charger_action'] = 'keep_existing';
+                        $spec['persiapan_charger_id'] = $finalChargerId;
+                    } else if ($chargerComponent['action'] === 'replace' && $chargerComponent['new_inventory_attachment_id']) {
+                        // Replace existing charger
+                        $finalChargerId = $chargerComponent['new_inventory_attachment_id'];
+                        $spec['persiapan_charger_action'] = 'replace';
+                        $spec['persiapan_charger_old_id'] = $unit['model_charger_id'];
+                        $spec['persiapan_charger_id'] = $finalChargerId;
+                    } else if ($chargerComponent['action'] === 'assign' && $chargerComponent['new_inventory_attachment_id']) {
+                        // Assign new charger to unit that doesn't have one
+                        $finalChargerId = $chargerComponent['new_inventory_attachment_id'];
+                        $spec['persiapan_charger_action'] = 'assign';
+                        $spec['persiapan_charger_id'] = $finalChargerId;
+                    }
+                } else {
+                    // Fallback to legacy behavior
+                    if (!$charger_inventory_id) {
+                        return $this->response->setJSON(['success'=>false,'message'=>'Unit Electric memerlukan Charger']);
+                    }
+                    $finalChargerId = $charger_inventory_id;
+                    $spec['persiapan_charger_action'] = 'legacy';
+                    $spec['persiapan_charger_id'] = $finalChargerId;
+                }
+                
+                // Validate that we have both components
+                if (!$finalBatteryId || !$finalChargerId) {
                     return $this->response->setJSON(['success'=>false,'message'=>'Unit Electric memerlukan Battery dan Charger']);
                 }
                 
-                // Validate battery and charger are available
-                $batteryAvailable = $this->db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $battery_inventory_id)
-                    ->where('status_unit', 7)
-                    ->where('id_inventory_unit', null)
-                    ->where('baterai_id IS NOT NULL', null, false)
-                    ->countAllResults();
-                    
-                $chargerAvailable = $this->db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $charger_inventory_id)
-                    ->where('status_unit', 7)
-                    ->where('id_inventory_unit', null)
-                    ->where('charger_id IS NOT NULL', null, false)
-                    ->countAllResults();
-                    
-                if (!$batteryAvailable) {
-                    return $this->response->setJSON(['success'=>false,'message'=>'Battery yang dipilih tidak tersedia']);
-                }
-                if (!$chargerAvailable) {
-                    return $this->response->setJSON(['success'=>false,'message'=>'Charger yang dipilih tidak tersedia']);
-                }
-                
-                // Store Electric department selections
-                $updateData['persiapan_battery_id'] = $battery_inventory_id;
-                $updateData['persiapan_charger_id'] = $charger_inventory_id;
+                // Process component inventory updates
+                $this->processComponentInventoryUpdates($unit_id, $component_data, $unit);
             }
 
             // Hanya Non Aset (status 8) yang boleh generate/update no_unit
@@ -547,13 +606,28 @@ class Service extends BaseController
                 $updateData['persiapan_unit_id'] = $unit_id;
             }
             $updateData['persiapan_aksesoris_tersedia'] = $aksesoris_tersedia;
+            
+            // Save updated spesifikasi JSON
+            $updateData['spesifikasi'] = json_encode($spec, JSON_UNESCAPED_UNICODE);
         }
         elseif ($stage === 'fabrikasi') {
             $attachment_id = $this->request->getPost('attachment_id');
-            if ($attachment_id) {
-                $updateData['fabrikasi_attachment_id'] = $attachment_id;
+            
+            // Load current spesifikasi JSON to update it
+            $current = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
+            $spec = [];
+            if (!empty($current['spesifikasi'])) {
+                $dec = json_decode($current['spesifikasi'], true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) $spec = $dec;
             }
-
+            
+            if ($attachment_id) {
+                // Store attachment selection in JSON spesifikasi
+                $spec['fabrikasi_attachment_id'] = $attachment_id;
+            }
+            
+            // Save updated spesifikasi JSON
+            $updateData['spesifikasi'] = json_encode($spec, JSON_UNESCAPED_UNICODE);
         } elseif ($stage === 'pdi') {
             $catatan = $this->request->getPost('catatan');
             if (!$catatan) {
@@ -569,10 +643,12 @@ class Service extends BaseController
             }
             $prepared = isset($spec['prepared_units']) && is_array($spec['prepared_units']) ? $spec['prepared_units'] : [];
 
-            // Append current cycle result
+            // Append current cycle result - include battery/charger/attachment IDs from JSON spesifikasi
             $prepared[] = [
                 'unit_id' => $current['persiapan_unit_id'] ?? null,
-                'attachment_id' => $current['fabrikasi_attachment_id'] ?? null,
+                'battery_inventory_id' => $spec['persiapan_battery_id'] ?? null,
+                'charger_inventory_id' => $spec['persiapan_charger_id'] ?? null,
+                'attachment_inventory_id' => $spec['fabrikasi_attachment_id'] ?? null,
                 'aksesoris_tersedia' => $current['persiapan_aksesoris_tersedia'] ?? null,
                 'mekanik' => $mekanik,
                 'catatan' => $catatan,
@@ -585,7 +661,7 @@ class Service extends BaseController
             $isComplete = count($prepared) >= max(1, $totalUnits);
 
             // Save updated spec JSON
-            $updateData['spesifikasi'] = json_encode($spec);
+            $updateData['spesifikasi'] = json_encode($spec, JSON_UNESCAPED_UNICODE);
             $updateData['pdi_catatan'] = $catatan;
             $updateData['status'] = $isComplete ? 'READY' : 'IN_PROGRESS';
 
@@ -664,6 +740,50 @@ class Service extends BaseController
             if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) $spec = $dec;
         }
         $enriched = $spec;
+        
+        // Load kontrak_spesifikasi data (for Equipment section - data permintaan marketing)
+        $kontrak_spec = null;
+        if (!empty($row['kontrak_spesifikasi_id'])) {
+            $kontrak_spec = $this->db->table('kontrak_spesifikasi ks')
+                ->select('ks.*')
+                ->select('tu.jenis as kontrak_jenis_unit, tu.tipe as kontrak_tipe_unit')
+                ->select('k.kapasitas_unit as kontrak_kapasitas_name')
+                ->select('d.nama_departemen as kontrak_departemen_name')
+                ->select('tm.tipe_mast as kontrak_mast_name')
+                ->select('jr.tipe_roda as kontrak_roda_name')
+                ->select('tb.tipe_ban as kontrak_ban_name')
+                ->select('v.jumlah_valve as kontrak_valve_name')
+                ->select('chr.merk_charger as kontrak_merk_charger, chr.tipe_charger as kontrak_tipe_charger')
+                ->join('tipe_unit tu', 'tu.id_tipe_unit = ks.tipe_unit_id', 'left')
+                ->join('kapasitas k', 'k.id_kapasitas = ks.kapasitas_id', 'left')
+                ->join('departemen d', 'd.id_departemen = ks.departemen_id', 'left')
+                ->join('tipe_mast tm', 'tm.id_mast = ks.mast_id', 'left')
+                ->join('jenis_roda jr', 'jr.id_roda = ks.roda_id', 'left')
+                ->join('tipe_ban tb', 'tb.id_ban = ks.ban_id', 'left')
+                ->join('valve v', 'v.id_valve = ks.valve_id', 'left')
+                ->join('charger chr', 'chr.id_charger = ks.charger_id', 'left')
+                ->where('ks.id', $row['kontrak_spesifikasi_id'])
+                ->get()
+                ->getRowArray();
+
+            // Decode aksesoris JSON if stored as string
+            if ($kontrak_spec && isset($kontrak_spec['aksesoris']) && is_string($kontrak_spec['aksesoris'])) {
+                try {
+                    $decoded_aks = json_decode($kontrak_spec['aksesoris'], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $kontrak_spec['aksesoris'] = $decoded_aks;
+                    }
+                } catch (\Exception $e) {
+                    // keep original string on failure
+                }
+            }
+            
+            // Format charger info if available
+            if (!empty($kontrak_spec['kontrak_merk_charger']) || !empty($kontrak_spec['kontrak_tipe_charger'])) {
+                $kontrak_spec['kontrak_charger_model'] = trim(($kontrak_spec['kontrak_merk_charger'] ?? '') . ' ' . ($kontrak_spec['kontrak_tipe_charger'] ?? ''));
+            }
+        }
+        
         $mapQueries = [
             'departemen_id' => ['table'=>'departemen','id'=>'id_departemen','name'=>'nama_departemen'],
             'kapasitas_id'  => ['table'=>'kapasitas','id'=>'id_kapasitas','name'=>'kapasitas_unit'],
@@ -765,7 +885,10 @@ class Service extends BaseController
         if (!empty($spec['prepared_units']) && is_array($spec['prepared_units'])) {
             $preparedDetails = [];
             foreach ($spec['prepared_units'] as $idx => $pu) {
-                $uInfo = null; $aInfo = null; $unitLabel=''; $attLabel='';
+                $uInfo = null; $aInfo = null; $bInfo = null; $cInfo = null;
+                $unitLabel=''; $attLabel=''; $batLabel=''; $chrLabel='';
+                
+                // Load unit info
                 if (!empty($pu['unit_id'])) {
                     $uInfo = $this->db->table('inventory_unit iu')
                         ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.lokasi_unit, mu.merk_unit, mu.model_unit, tu.tipe as tipe_jenis')
@@ -777,11 +900,14 @@ class Service extends BaseController
                         $unitLabel = trim(($uInfo['no_unit'] ?: '-') . ' - ' . ($uInfo['merk_unit'] ?: '-') . ' ' . ($uInfo['model_unit'] ?: '') . ' @ ' . ($uInfo['lokasi_unit'] ?: '-'));
                     }
                 }
-                if (!empty($pu['attachment_id'])) {
+                
+                // Load attachment info
+                if (!empty($pu['attachment_inventory_id'])) {
                     $aInfo = $this->db->table('inventory_attachment ia')
                         ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan, att.tipe, att.merk, att.model')
                         ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                        ->where('ia.id_inventory_attachment', $pu['attachment_id'])
+                        ->where('ia.id_inventory_attachment', $pu['attachment_inventory_id'])
+                        ->where('ia.tipe_item', 'attachment')
                         ->get()->getRowArray();
                     if ($aInfo) {
                         $attLabel = trim(($aInfo['tipe'] ?: '-') . ' ' . ($aInfo['merk'] ?: '') . ' ' . ($aInfo['model'] ?: ''));
@@ -791,6 +917,41 @@ class Service extends BaseController
                         if ($suf) $attLabel .= ' ['.implode(', ', $suf).']';
                     }
                 }
+                
+                // Load battery info
+                if (!empty($pu['battery_inventory_id'])) {
+                    $bInfo = $this->db->table('inventory_attachment ia')
+                        ->select('ia.id_inventory_attachment, ia.sn_baterai, ia.lokasi_penyimpanan, bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai')
+                        ->join('baterai bat','bat.id = ia.baterai_id','left')
+                        ->where('ia.id_inventory_attachment', $pu['battery_inventory_id'])
+                        ->where('ia.tipe_item', 'battery')
+                        ->get()->getRowArray();
+                    if ($bInfo) {
+                        $batLabel = trim(($bInfo['merk_baterai'] ?: '-') . ' ' . ($bInfo['tipe_baterai'] ?: '') . ' ' . ($bInfo['jenis_baterai'] ?: ''));
+                        $suf = [];
+                        if (!empty($bInfo['sn_baterai'])) $suf[] = 'SN: '.$bInfo['sn_baterai'];
+                        if (!empty($bInfo['lokasi_penyimpanan'])) $suf[] = '@ '.$bInfo['lokasi_penyimpanan'];
+                        if ($suf) $batLabel .= ' ['.implode(', ', $suf).']';
+                    }
+                }
+                
+                // Load charger info  
+                if (!empty($pu['charger_inventory_id'])) {
+                    $cInfo = $this->db->table('inventory_attachment ia')
+                        ->select('ia.id_inventory_attachment, ia.sn_charger, ia.lokasi_penyimpanan, chr.merk_charger, chr.tipe_charger')
+                        ->join('charger chr','chr.id_charger = ia.charger_id','left')
+                        ->where('ia.id_inventory_attachment', $pu['charger_inventory_id'])
+                        ->where('ia.tipe_item', 'charger')
+                        ->get()->getRowArray();
+                    if ($cInfo) {
+                        $chrLabel = trim(($cInfo['merk_charger'] ?: '-') . ' ' . ($cInfo['tipe_charger'] ?: ''));
+                        $suf = [];
+                        if (!empty($cInfo['sn_charger'])) $suf[] = 'SN: '.$cInfo['sn_charger'];
+                        if (!empty($cInfo['lokasi_penyimpanan'])) $suf[] = '@ '.$cInfo['lokasi_penyimpanan'];
+                        if ($suf) $chrLabel .= ' ['.implode(', ', $suf).']';
+                    }
+                }
+                
                 $preparedDetails[] = [
                     'unit_id' => $pu['unit_id'] ?? null,
                     'unit_label' => $unitLabel,
@@ -799,8 +960,21 @@ class Service extends BaseController
                     'merk_unit' => $uInfo['merk_unit'] ?? '',
                     'model_unit' => $uInfo['model_unit'] ?? '',
                     'tipe_jenis' => $uInfo['tipe_jenis'] ?? '',
-                    'attachment_id' => $pu['attachment_id'] ?? null,
+                    'attachment_inventory_id' => $pu['attachment_inventory_id'] ?? null,
                     'attachment_label' => $attLabel,
+                    'sn_attachment_formatted' => !empty($aInfo['sn_attachment']) ? 
+                        trim(($aInfo['tipe'] ?? '') . ' ' . ($aInfo['merk'] ?? '') . ' ' . ($aInfo['model'] ?? '')) . ' (SN: ' . $aInfo['sn_attachment'] . ')' : 
+                        trim(($aInfo['tipe'] ?? '') . ' ' . ($aInfo['merk'] ?? '') . ' ' . ($aInfo['model'] ?? '')),
+                    'battery_inventory_id' => $pu['battery_inventory_id'] ?? null,
+                    'battery_label' => $batLabel,
+                    'sn_baterai_formatted' => !empty($bInfo['sn_baterai']) ? 
+                        trim(($bInfo['merk_baterai'] ?? '') . ' ' . ($bInfo['tipe_baterai'] ?? '') . ' ' . ($bInfo['jenis_baterai'] ?? '')) . ' (SN: ' . $bInfo['sn_baterai'] . ')' : 
+                        trim(($bInfo['merk_baterai'] ?? '') . ' ' . ($bInfo['tipe_baterai'] ?? '') . ' ' . ($bInfo['jenis_baterai'] ?? '')),
+                    'charger_inventory_id' => $pu['charger_inventory_id'] ?? null,
+                    'charger_label' => $chrLabel,
+                    'sn_charger_formatted' => !empty($cInfo['sn_charger']) ? 
+                        trim(($cInfo['merk_charger'] ?? '') . ' ' . ($cInfo['tipe_charger'] ?? '')) . ' (SN: ' . $cInfo['sn_charger'] . ')' : 
+                        trim(($cInfo['merk_charger'] ?? '') . ' ' . ($cInfo['tipe_charger'] ?? '')),
                     'mekanik' => $pu['mekanik'] ?? '',
                     'aksesoris_tersedia' => $pu['aksesoris_tersedia'] ?? '',
                     'catatan' => $pu['catatan'] ?? '',
@@ -833,6 +1007,91 @@ class Service extends BaseController
                 
                 // Override spesifikasi with attachment data
                 $enriched['attachment_tipe'] = $a['tipe'] ?? $enriched['attachment_tipe'] ?? '';
+            }
+        }
+        
+        // Load battery and charger data from JSON spesifikasi (Electric department)
+        if (!empty($spec['persiapan_battery_id'])) {
+            $b = $this->db->table('inventory_attachment ia')
+                ->select('ia.id_inventory_attachment, ia.sn_baterai, ia.lokasi_penyimpanan')
+                ->select('bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai')
+                ->join('baterai bat','bat.id = ia.baterai_id','left')
+                ->where('ia.id_inventory_attachment', $spec['persiapan_battery_id'])
+                ->where('ia.tipe_item', 'battery')
+                ->get()->getRowArray();
+                
+            if ($b) {
+                $enriched['selected']['battery'] = [
+                    'id' => (int)$b['id_inventory_attachment'],
+                    'merk_baterai' => $b['merk_baterai'] ?? null,
+                    'tipe_baterai' => $b['tipe_baterai'] ?? null,
+                    'jenis_baterai' => $b['jenis_baterai'] ?? null,
+                    'sn_baterai' => $b['sn_baterai'] ?? null,
+                    'lokasi_penyimpanan' => $b['lokasi_penyimpanan'] ?? null,
+                    // Format: Merk Tipe Jenis (SN)
+                    'sn_baterai_formatted' => !empty($b['sn_baterai']) ? 
+                        trim(($b['merk_baterai'] ?? '') . ' ' . ($b['tipe_baterai'] ?? '') . ' ' . ($b['jenis_baterai'] ?? '')) . ' (SN: ' . $b['sn_baterai'] . ')' : 
+                        trim(($b['merk_baterai'] ?? '') . ' ' . ($b['tipe_baterai'] ?? '') . ' ' . ($b['jenis_baterai'] ?? '')),
+                ];
+                
+                // Override spesifikasi with battery data
+                $enriched['jenis_baterai'] = trim(($b['merk_baterai'] ?? '') . ' ' . ($b['tipe_baterai'] ?? '') . ' ' . ($b['jenis_baterai'] ?? ''));
+            }
+        }
+        
+        if (!empty($spec['persiapan_charger_id'])) {
+            $c = $this->db->table('inventory_attachment ia')
+                ->select('ia.id_inventory_attachment, ia.sn_charger, ia.lokasi_penyimpanan')
+                ->select('chr.merk_charger, chr.tipe_charger')
+                ->join('charger chr','chr.id_charger = ia.charger_id','left')
+                ->where('ia.id_inventory_attachment', $spec['persiapan_charger_id'])
+                ->where('ia.tipe_item', 'charger')
+                ->get()->getRowArray();
+                
+            if ($c) {
+                $enriched['selected']['charger'] = [
+                    'id' => (int)$c['id_inventory_attachment'],
+                    'merk_charger' => $c['merk_charger'] ?? null,
+                    'tipe_charger' => $c['tipe_charger'] ?? null,
+                    'sn_charger' => $c['sn_charger'] ?? null,
+                    'lokasi_penyimpanan' => $c['lokasi_penyimpanan'] ?? null,
+                    // Format: Merk Tipe (SN)
+                    'sn_charger_formatted' => !empty($c['sn_charger']) ? 
+                        trim(($c['merk_charger'] ?? '') . ' ' . ($c['tipe_charger'] ?? '')) . ' (SN: ' . $c['sn_charger'] . ')' : 
+                        trim(($c['merk_charger'] ?? '') . ' ' . ($c['tipe_charger'] ?? '')),
+                ];
+                
+                // Override spesifikasi with charger data
+                $enriched['charger_model'] = trim(($c['merk_charger'] ?? '') . ' ' . ($c['tipe_charger'] ?? ''));
+            }
+        }
+        
+        // Load attachment data from JSON spesifikasi if not loaded from fabrikasi_attachment_id
+        if (empty($enriched['selected']['attachment']) && !empty($spec['fabrikasi_attachment_id'])) {
+            $a = $this->db->table('inventory_attachment ia')
+                ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan')
+                ->select('att.tipe, att.merk, att.model')
+                ->join('attachment att','att.id_attachment = ia.attachment_id','left')
+                ->where('ia.id_inventory_attachment', $spec['fabrikasi_attachment_id'])
+                ->where('ia.tipe_item', 'attachment')
+                ->get()->getRowArray();
+                
+            if ($a) {
+                $enriched['selected']['attachment'] = [
+                    'id' => (int)$a['id_inventory_attachment'],
+                    'tipe' => $a['tipe'] ?? null,
+                    'merk' => $a['merk'] ?? null,
+                    'model' => $a['model'] ?? null,
+                    'sn_attachment' => $a['sn_attachment'] ?? null,
+                    'lokasi_penyimpanan' => $a['lokasi_penyimpanan'] ?? null,
+                    // Format: Tipe Merk Model (SN)
+                    'sn_attachment_formatted' => !empty($a['sn_attachment']) ? 
+                        trim(($a['tipe'] ?? '') . ' ' . ($a['merk'] ?? '') . ' ' . ($a['model'] ?? '')) . ' (SN: ' . $a['sn_attachment'] . ')' : 
+                        trim(($a['tipe'] ?? '') . ' ' . ($a['merk'] ?? '') . ' ' . ($a['model'] ?? '')),
+                ];
+                
+                // Override spesifikasi with attachment data
+                $enriched['attachment_tipe'] = trim(($a['tipe'] ?? '') . ' ' . ($a['merk'] ?? '') . ' ' . ($a['model'] ?? ''));
             }
         }
         
@@ -883,7 +1142,7 @@ class Service extends BaseController
                 }
             }
         }
-    return view('marketing/print_spk', ['spk'=>$row, 'spesifikasi'=>$enriched]);
+    return view('marketing/print_spk', ['spk'=>$row, 'spesifikasi'=>$enriched, 'kontrak_spesifikasi'=>$kontrak_spec]);
     }
 
     /** Simple list for unit picking (Only STOCK units: status 7 & 8) */
@@ -940,13 +1199,14 @@ class Service extends BaseController
         return $this->response->setJSON(['success'=>true,'data'=>$data,'csrf_hash'=>csrf_hash()]);
     }
 
-    /** Simple list for attachment picking from inventory (statuses: 7/8) */
+    /** Simple list for attachment picking from inventory (statuses: 7/8) - only tipe_item = 'attachment' */
     public function dataAttachmentSimple()
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
         $qb = $this->db->table('inventory_attachment ia')
             ->select('ia.id_inventory_attachment as id, a.tipe, a.merk, a.model, ia.sn_attachment, ia.lokasi_penyimpanan, ia.status_unit')
             ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
+            ->where('ia.tipe_item', 'attachment')  // Only attachment items
             ->whereIn('ia.status_unit', [7,8])
             ->orderBy('ia.id_inventory_attachment','DESC')
             ->limit(50);
@@ -2110,6 +2370,295 @@ class Service extends BaseController
         ]);
 
         return $this->response->setJSON(['success'=>true]);
+    }
+    
+    /**
+     * Get unit component data for smart component selection
+     * Endpoint: /service/unit-component-data/{unit_id}
+     */
+    public function unitComponentData($unitId = null)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['message' => 'Bad request']);
+        }
+        
+        if (!$unitId) {
+            return $this->response->setStatusCode(400)->setJSON([
+                'success' => false,
+                'message' => 'Unit ID is required'
+            ]);
+        }
+        
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get unit data with component information
+            $unit = $db->table('inventory_unit')
+                ->select('
+                    id_inventory_unit,
+                    no_unit,
+                    serial_number,
+                    departemen_id,
+                    model_attachment_id,
+                    sn_attachment,
+                    model_baterai_id,
+                    sn_baterai,
+                    model_charger_id,
+                    sn_charger,
+                    status_unit_id
+                ')
+                ->where('id_inventory_unit', $unitId)
+                ->get()
+                ->getRowArray();
+                
+            if (!$unit) {
+                return $this->response->setStatusCode(404)->setJSON([
+                    'success' => false,
+                    'message' => 'Unit not found'
+                ]);
+            }
+            
+            // Get additional component details if they exist
+            $componentDetails = [];
+            
+            // Get attachment details
+            if ($unit['model_attachment_id']) {
+                $attachment = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, tipe, merk, model, sn_attachment, lokasi_penyimpanan')
+                    ->where('id_inventory_attachment', $unit['model_attachment_id'])
+                    ->get()
+                    ->getRowArray();
+                
+                if ($attachment) {
+                    $componentDetails['attachment'] = $attachment;
+                    // Add model name untuk compatibility dengan frontend
+                    $unit['model_attachment_name'] = trim(($attachment['tipe'] ?? '') . ' ' . ($attachment['merk'] ?? '') . ' ' . ($attachment['model'] ?? ''));
+                }
+            }
+            
+            // Get battery details (from inventory_attachment with baterai data)
+            if ($unit['model_baterai_id']) {
+                $battery = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, merk_baterai, tipe_baterai, jenis_baterai, sn_baterai, lokasi_penyimpanan')
+                    ->where('id_inventory_attachment', $unit['model_baterai_id'])
+                    ->get()
+                    ->getRowArray();
+                
+                if ($battery) {
+                    $componentDetails['battery'] = $battery;
+                    // Add model name untuk compatibility dengan frontend
+                    $unit['model_baterai_name'] = trim(($battery['merk_baterai'] ?? '') . ' ' . ($battery['tipe_baterai'] ?? '') . ' ' . ($battery['jenis_baterai'] ?? ''));
+                }
+            }
+            
+            // Get charger details (from inventory_attachment with charger data)
+            if ($unit['model_charger_id']) {
+                $charger = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, merk_charger, tipe_charger, sn_charger, lokasi_penyimpanan')
+                    ->where('id_inventory_attachment', $unit['model_charger_id'])
+                    ->get()
+                    ->getRowArray();
+                
+                if ($charger) {
+                    $componentDetails['charger'] = $charger;
+                    // Add model name untuk compatibility dengan frontend
+                    $unit['model_charger_name'] = trim(($charger['merk_charger'] ?? '') . ' ' . ($charger['tipe_charger'] ?? ''));
+                }
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'unit' => $unit,
+                'component_details' => $componentDetails,
+                'message' => 'Unit component data retrieved successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error in unitComponentData: ' . $e->getMessage());
+            
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Internal server error',
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Process component inventory updates untuk handle replace/assign actions
+     */
+    private function processComponentInventoryUpdates($unitId, $componentData, $unitInfo)
+    {
+        if (!$componentData || !isset($componentData['components'])) {
+            return;
+        }
+        
+        $db = \Config\Database::connect();
+        
+        // Process battery component
+        if (isset($componentData['components']['battery'])) {
+            $battery = $componentData['components']['battery'];
+            
+            if ($battery['action'] === 'replace' && $battery['new_inventory_attachment_id'] && $battery['existing_model_id']) {
+                // Return old battery to inventory
+                $db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $battery['existing_model_id'])
+                    ->update([
+                        'status_unit' => 7, // Available
+                        'id_inventory_unit' => null
+                    ]);
+                    
+                // Assign new battery from inventory
+                $db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
+                    ->update([
+                        'status_unit' => 8, // In use
+                        'id_inventory_unit' => $unitId
+                    ]);
+                    
+                // Update unit record with new battery
+                $newBatteryData = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, sn_baterai')
+                    ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
+                    ->get()
+                    ->getRowArray();
+                    
+                if ($newBatteryData) {
+                    $db->table('inventory_unit')
+                        ->where('id_inventory_unit', $unitId)
+                        ->update([
+                            'model_baterai_id' => $newBatteryData['id_inventory_attachment'],
+                            'sn_baterai' => $newBatteryData['sn_baterai']
+                        ]);
+                }
+                
+            } else if ($battery['action'] === 'assign' && $battery['new_inventory_attachment_id']) {
+                // Assign battery to unit that doesn't have one
+                $db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
+                    ->update([
+                        'status_unit' => 8, // In use
+                        'id_inventory_unit' => $unitId
+                    ]);
+                    
+                // Update unit record with new battery
+                $newBatteryData = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, sn_baterai')
+                    ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
+                    ->get()
+                    ->getRowArray();
+                    
+                if ($newBatteryData) {
+                    $db->table('inventory_unit')
+                        ->where('id_inventory_unit', $unitId)
+                        ->update([
+                            'model_baterai_id' => $newBatteryData['id_inventory_attachment'],
+                            'sn_baterai' => $newBatteryData['sn_baterai']
+                        ]);
+                }
+            }
+        }
+        
+        // Process charger component
+        if (isset($componentData['components']['charger'])) {
+            $charger = $componentData['components']['charger'];
+            
+            if ($charger['action'] === 'replace' && $charger['new_inventory_attachment_id'] && $charger['existing_model_id']) {
+                // Return old charger to inventory
+                $db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $charger['existing_model_id'])
+                    ->update([
+                        'status_unit' => 7, // Available
+                        'id_inventory_unit' => null
+                    ]);
+                    
+                // Assign new charger from inventory
+                $db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
+                    ->update([
+                        'status_unit' => 8, // In use
+                        'id_inventory_unit' => $unitId
+                    ]);
+                    
+                // Update unit record with new charger
+                $newChargerData = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, sn_charger')
+                    ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
+                    ->get()
+                    ->getRowArray();
+                    
+                if ($newChargerData) {
+                    $db->table('inventory_unit')
+                        ->where('id_inventory_unit', $unitId)
+                        ->update([
+                            'model_charger_id' => $newChargerData['id_inventory_attachment'],
+                            'sn_charger' => $newChargerData['sn_charger']
+                        ]);
+                }
+                
+            } else if ($charger['action'] === 'assign' && $charger['new_inventory_attachment_id']) {
+                // Assign charger to unit that doesn't have one
+                $db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
+                    ->update([
+                        'status_unit' => 8, // In use
+                        'id_inventory_unit' => $unitId
+                    ]);
+                    
+                // Update unit record with new charger
+                $newChargerData = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, sn_charger')
+                    ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
+                    ->get()
+                    ->getRowArray();
+                    
+                if ($newChargerData) {
+                    $db->table('inventory_unit')
+                        ->where('id_inventory_unit', $unitId)
+                        ->update([
+                            'model_charger_id' => $newChargerData['id_inventory_attachment'],
+                            'sn_charger' => $newChargerData['sn_charger']
+                        ]);
+                }
+            }
+        }
+        
+        // Log component transactions for audit trail
+        $this->logComponentTransactions($unitId, $componentData);
+    }
+    
+    /**
+     * Log component transactions untuk audit trail
+     */
+    private function logComponentTransactions($unitId, $componentData)
+    {
+        $db = \Config\Database::connect();
+        
+        foreach (['battery', 'charger'] as $componentType) {
+            if (isset($componentData['components'][$componentType])) {
+                $component = $componentData['components'][$componentType];
+                
+                if (in_array($component['action'], ['replace', 'assign'])) {
+                    $logData = [
+                        'unit_id' => $unitId,
+                        'component_type' => $componentType,
+                        'action' => $component['action'],
+                        'old_attachment_id' => $component['existing_model_id'] ?? null,
+                        'new_attachment_id' => $component['new_inventory_attachment_id'] ?? null,
+                        'timestamp' => date('Y-m-d H:i:s'),
+                        'user_id' => session('user_id') ?? null
+                    ];
+                    
+                    // Insert to component transaction log table (create if needed)
+                    try {
+                        $db->table('spk_component_transactions')->insert($logData);
+                    } catch (\Exception $e) {
+                        // Table might not exist, log to error instead
+                        log_message('info', 'Component transaction: ' . json_encode($logData));
+                    }
+                }
+            }
+        }
     }
 
     public function approvePdi()

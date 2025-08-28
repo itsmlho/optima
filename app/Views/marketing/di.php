@@ -42,12 +42,12 @@
     </div>
   </div>
   <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="SUBMITTED" style="cursor:pointer;">
+    <div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="DIAJUKAN" style="cursor:pointer;">
       <div class="card-body d-flex align-items-center">
         <div class="flex-grow-1">
           <h2 class="fw-bold mb-1" id="submittedDI">0</h2>
           <h6 class="card-title text-uppercase small mb-0">PENDING</h6>
-          <small class="opacity-75">Submitted</small>
+          <small class="opacity-75">Diajukan</small>
         </div>
         <div class="ms-3">
           <i class="fas fa-clock fa-2x opacity-75"></i>
@@ -70,12 +70,12 @@
     </div>
   </div>
   <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-success text-white h-100 filter-card" data-filter="DELIVERED" style="cursor:pointer;">
+    <div class="card card-stats bg-success text-white h-100 filter-card" data-filter="SAMPAI" style="cursor:pointer;">
       <div class="card-body d-flex align-items-center">
         <div class="flex-grow-1">
           <h2 class="fw-bold mb-1" id="deliveredDI">0</h2>
           <h6 class="card-title text-uppercase small mb-0">COMPLETED</h6>
-          <small class="opacity-75">Delivered</small>
+          <small class="opacity-75">Sampai</small>
         </div>
         <div class="ms-3">
           <i class="fas fa-check-circle fa-2x opacity-75"></i>
@@ -199,19 +199,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   function updateStatistics() {
     const total = allDIData.length;
-    // Map Indonesian status to English and count accordingly
+    // Count by English status values from database (not Indonesian)
     const submitted = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return !item.status || status === 'DIAJUKAN' || status === 'SUBMITTED';
+      return !item.status || status === 'SUBMITTED';
     }).length;
     const inprogress = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return status === 'DIPROSES' || status === 'PROCESSED' || 
-             status === 'DIKIRIM' || status === 'DISPATCHED' || status === 'SHIPPED';
+      return status === 'PROCESSED' || 
+             status === 'SHIPPED';
     }).length;
     const delivered = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return status === 'SAMPAI' || status === 'ARRIVED' || status === 'DELIVERED';
+      return status === 'DELIVERED';
     }).length;
     
     document.getElementById('totalDI').textContent = total;
@@ -223,26 +223,26 @@ document.addEventListener('DOMContentLoaded', ()=>{
   function applyFilters() {
     const searchTerm = document.getElementById('diSearch').value.toLowerCase();
     
-    // Filter by status - map between Indonesian and English status terms with grouping
+    // Filter by status using Indonesian status values from database
     let filtered;
     if (currentFilter === 'all') {
       filtered = [...allDIData];
-    } else if (currentFilter === 'SUBMITTED') {
+    } else if (currentFilter === 'DIAJUKAN') {
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return !item.status || status === 'DIAJUKAN' || status === 'SUBMITTED';
+        return !item.status || status === 'DIAJUKAN';
       });
     } else if (currentFilter === 'INPROGRESS') {
-      // Group Processed + Shipped as "In Progress"
+      // Group Diproses + Dikirim as "In Progress"
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return status === 'DIPROSES' || status === 'PROCESSED' ||
-               status === 'DIKIRIM' || status === 'DISPATCHED' || status === 'SHIPPED';
+        return status === 'DIPROSES' ||
+               status === 'DIKIRIM';
       });
-    } else if (currentFilter === 'DELIVERED') {
+    } else if (currentFilter === 'SAMPAI') {
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return status === 'SAMPAI' || status === 'ARRIVED' || status === 'DELIVERED';
+        return status === 'SAMPAI';
       });
     } else {
       // Legacy filter - exact match for backward compatibility
@@ -275,24 +275,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
     tb.innerHTML = '';
     dataToShow.forEach(r=>{
       const tr = document.createElement('tr');
-      // Convert Indonesian status to English for display and set badge colors
+      // Display Indonesian status values with appropriate badge colors
       const getStatusDisplay = (status) => {
         const statusUpper = (status || '').toUpperCase();
         const statusMap = {
-          'DIAJUKAN': { text: 'Submitted', color: 'secondary' },
-          'SUBMITTED': { text: 'Submitted', color: 'secondary' },
-          'DIPROSES': { text: 'Processed', color: 'info' },
-          'PROCESSED': { text: 'Processed', color: 'info' },
-          'DIKIRIM': { text: 'Shipped', color: 'warning' },
-          'DISPATCHED': { text: 'Shipped', color: 'warning' },
-          'SHIPPED': { text: 'Shipped', color: 'warning' },
-          'SAMPAI': { text: 'Delivered', color: 'success' },
-          'ARRIVED': { text: 'Delivered', color: 'success' },
-          'DELIVERED': { text: 'Delivered', color: 'success' },
-          'DIBATALKAN': { text: 'Canceled', color: 'danger' },
-          'CANCELED': { text: 'Canceled', color: 'danger' }
+          'DIAJUKAN': { text: 'Diajukan', color: 'secondary' },
+          'DIPROSES': { text: 'Diproses', color: 'info' },
+          'DIKIRIM': { text: 'Dikirim', color: 'warning' },
+          'SAMPAI': { text: 'Sampai', color: 'success' },
+          'DIBATALKAN': { text: 'Dibatalkan', color: 'danger' }
         };
-        const mapped = statusMap[statusUpper] || { text: status || 'Submitted', color: 'secondary' };
+        const mapped = statusMap[statusUpper] || { text: status || 'Diajukan', color: 'secondary' };
         return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
       };
       
@@ -434,6 +427,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const wrap = document.createElement('div');
         wrap.className = 'unit-item';
         const idSafe = `unit_${it.unit_id||('idx'+idx)}`;
+        // Debug log the unit ID value
+        console.log(`Unit in form: ID=${it.unit_id}, Label=${it.unit_label||('Unit #' + (idx+1))}`);
+        
         wrap.innerHTML = `
           <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${it.unit_id}" checked>
           <label for="${idSafe}" class="form-check-label">
@@ -462,8 +458,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
         return;
       }
     }
+    
+    // Debug: Log form data before sending
+    console.log('DI Create Form Data:');
+    for (let [key, value] of fd.entries()) {
+      console.log(`  ${key}: ${value}`);
+    }
+    
     fetch('<?= base_url('marketing/di/create') ?>',{method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body: fd})
       .then(r=>r.json()).then(j=>{
+        console.log('DI Create Response:', j);  // Debug log
         if (j && j.success){
           bootstrap.Modal.getInstance(document.getElementById('diCreateModal')).hide();
           e.target.reset();
@@ -472,11 +476,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
           else if (typeof showNotification==='function') showNotification('DI dibuat: ' + (j.nomor||''), 'success');
           else alert('DI dibuat: ' + (j.nomor||''));
         } else {
-          const msg = j.message || 'Gagal membuat DI';
-          if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification(msg, 'error');
-          else if (typeof showNotification==='function') showNotification(msg, 'error');
-          else alert(msg);
+          // Format full debug error info if available
+          const debugInfo = j.debug ? `\nDebug Info:\n${JSON.stringify(j.debug, null, 2)}` : '';
+          const msg = (j.message || 'Gagal membuat DI') + debugInfo;
+          
+          console.error('DI Create Error:', j);  // Debug log
+          
+          // Show more detailed error in alert for debugging
+          alert(msg);
+          
+          // Also show in UI notification if available
+          if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification(j.message || 'Gagal membuat DI', 'error');
+          else if (typeof showNotification==='function') showNotification(j.message || 'Gagal membuat DI', 'error');
         }
+      }).catch(error => {
+        console.error('DI Create Fetch Error:', error);  // Debug log
+        alert('Network error: ' + error.message);
       });
   });
 });

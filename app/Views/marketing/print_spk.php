@@ -1,6 +1,7 @@
 <?php
 $spk = $spk ?? [];
 $s   = $spesifikasi ?? [];
+$k   = $kontrak_spesifikasi ?? []; // Data kontrak untuk Equipment section
 $status = strtoupper((string)($spk['status'] ?? $spk['status_spk'] ?? ''));
 $placeholder = ($status === 'SUBMITTED');
 ?>
@@ -107,49 +108,49 @@ $placeholder = ($status === 'SUBMITTED');
                                 </td>
                                 <td class="align-top">
                                     <?php 
-                                        $unit = $s['selected']['unit'] ?? null; 
                                         // Debug: show data structure in HTML comments
                                         echo '<!-- DEBUG STATUS: ' . $status . ' -->';
                                         echo '<!-- DEBUG PLACEHOLDER: ' . ($placeholder ? 'true' : 'false') . ' -->';
                                         echo '<!-- DEBUG SPK KEYS: ' . implode(', ', array_keys($spk)) . ' -->';
-                                        echo '<!-- DEBUG USER FIELDS: created_by=' . ($spk['created_by'] ?? 'null') . ', created_by_name=' . ($spk['created_by_name'] ?? 'null') . ', marketing_name=' . ($spk['marketing_name'] ?? 'null') . ' -->';
-                                        echo '<!-- DEBUG SESSION: user_name=' . (session()->get('user_name') ?? 'null') . ', username=' . (session()->get('username') ?? 'null') . ', nama=' . (session()->get('nama') ?? 'null') . ' -->';
+                                        echo '<!-- DEBUG KONTRAK KEYS: ' . implode(', ', array_keys($k)) . ' -->';
                                         echo '<!-- DEBUG SPESIFIKASI KEYS: ' . implode(', ', array_keys($s)) . ' -->';
                                         
-                                        // Add debug for battery and charger info
-                                        echo '<!-- DEBUG BATTERY MODEL: ' . ($s['baterai_model'] ?? 'null') . ' -->';
-                                        echo '<!-- DEBUG BATTERY TYPE: ' . ($s['jenis_baterai'] ?? 'null') . ' -->';
-                                        echo '<!-- DEBUG CHARGER MODEL: ' . ($s['charger_model'] ?? 'null') . ' -->';
-                                        if (isset($unit)) {
-                                            echo '<!-- DEBUG UNIT BATTERY: ' . ($unit['baterai_model'] ?? 'null') . ' -->';
-                                            echo '<!-- DEBUG UNIT CHARGER: ' . ($unit['charger_model'] ?? 'null') . ' -->';
+                                        // Use kontrak data for Equipment section (data permintaan marketing)
+                                        $jumlahUnit = $k['jumlah_dibutuhkan'] ?? $spk['jumlah_unit'] ?? '';
+                                        $merkUnit = $k['merk_unit'] ?? '';
+                                        $modelUnit = $k['model_unit'] ?? '';
+                                        $jenisUnit = $k['kontrak_jenis_unit'] ?? '';
+                                        $tipeUnit = $k['kontrak_tipe_unit'] ?? $k['tipe_jenis'] ?? '';
+                                        $kapasitasName = $k['kontrak_kapasitas_name'] ?? '';
+                                        $departemenName = $k['kontrak_departemen_name'] ?? '';
+                                        $mastName = $k['kontrak_mast_name'] ?? '';
+                                        $rodaName = $k['kontrak_roda_name'] ?? '';
+                                        $banName = $k['kontrak_ban_name'] ?? '';
+                                        $valveName = $k['kontrak_valve_name'] ?? '';
+                                        
+                                        // Attachment dari kontrak (bukan dari spesifikasi SPK)
+                                        $attachmentType = $k['attachment_tipe'] ?? '';
+                                        
+                                        // Battery dan Charger dari kontrak
+                                        $batteryType = $k['jenis_baterai'] ?? '';
+                                        $chargerType = $k['kontrak_charger_model'] ?? '';
+                                        
+                                        // Aksesoris dari kontrak
+                                        $aksesorisKontrak = '';
+                                        if (!empty($k['aksesoris'])) {
+                                            if (is_array($k['aksesoris'])) {
+                                                $aksesorisKontrak = implode(', ', $k['aksesoris']);
+                                            } else {
+                                                $aksesorisKontrak = (string)$k['aksesoris'];
+                                            }
                                         }
                                     ?>
                                     <div class="mt-2">
                                         <br />
-                                        <div class="val"><?= esc($s['jumlah_unit'] ?? ($unit['jumlah_unit'] ?? $spk['jumlah_unit'] ?? '..............................')) ?></div>
+                                        <div class="val"><?= esc($jumlahUnit ?: '..............................') ?></div>
                                         <div class="val">
                                             <?php
-                                            // Debug: show all possible merk and jenis fields
-                                            echo '<!-- DEBUG ALL UNIT INFO FIELDS: ';
-                                            echo 's.merk_unit=' . ($s['merk_unit'] ?? 'null') . ', ';
-                                            echo 's.jenis_unit=' . ($s['jenis_unit'] ?? 'null') . ', ';
-                                            echo 's.tipe_jenis=' . ($s['tipe_jenis'] ?? 'null') . ', ';
-                                            echo 's.model_unit=' . ($s['model_unit'] ?? 'null');
-                                            if (isset($unit)) {
-                                                echo ', unit.merk_unit=' . ($unit['merk_unit'] ?? 'null') . ', ';
-                                                echo 'unit.jenis_unit=' . ($unit['jenis_unit'] ?? 'null') . ', ';
-                                                echo 'unit.tipe_jenis=' . ($unit['tipe_jenis'] ?? 'null') . ', ';
-                                                echo 'unit.model_unit=' . ($unit['model_unit'] ?? 'null');
-                                            }
-                                            echo ' -->';
-                                            
-                                            // Combine merk and jenis unit info
-                                            $merkUnit = $s['merk_unit'] ?? ($unit['merk_unit'] ?? '');
-                                            $jenisUnit = $s['jenis_unit'] ?? ($unit['jenis_unit'] ?? '');
-                                            $tipeUnit = $s['tipe_jenis'] ?? ($unit['tipe_jenis'] ?? '');
-                                            $modelUnit = $s['model_unit'] ?? ($unit['model_unit'] ?? '');
-                                            
+                                            // Combine merk and jenis unit info from kontrak
                                             $brandTypeInfo = [];
                                             if (!empty($merkUnit)) $brandTypeInfo[] = $merkUnit;
                                             if (!empty($modelUnit)) $brandTypeInfo[] = $modelUnit;
@@ -159,13 +160,20 @@ $placeholder = ($status === 'SUBMITTED');
                                             echo !empty($brandTypeInfo) ? esc(implode(' ', $brandTypeInfo)) : '..............................';
                                             ?>
                                         </div>
-                                        <div class="val"><?= esc(($s['jenis_baterai'] ?? '') . (!empty($s['jenis_baterai']) && !empty($s['charger_model']) ? ' & ' : '') . ($s['charger_model'] ?? '') ?: '..............................') ?></div>
-                                        <div class="val"><?= esc($s['departemen_id_name'] ?? $s['departemen_name'] ?? $s['departemen_id'] ?? '..............................') ?></div>
-                                        <div class="val"><?= esc($s['kapasitas_id_name'] ?? $s['kapasitas_name'] ?? $s['kapasitas_id'] ?? '..............................') ?></div>
-                                        <div class="val"><?= esc($s['attachment_tipe'] ?? ($s['selected']['attachment']['tipe'] ?? '..............................')) ?></div>
-                                        <div class="val"><?= esc(($s['roda_id_name'] ?? '') . (!empty($s['roda_id_name']) && !empty($s['ban_id_name']) ? ' & ' : '') . ($s['ban_id_name'] ?? '') ?: '..............................') ?></div>
-                                        <div class="val"><?= esc($s['mast_id_name'] ?? $s['mast_id'] ?? '..............................') ?></div>
-                                        <div class="val"><?= esc($s['valve_id_name'] ?? $s['valve_id'] ?? '..............................') ?></div>
+                                        <div class="val"><?php
+                                            // Combine battery and charger info from kontrak
+                                            $combinedInfo = [];
+                                            if (!empty($batteryType)) $combinedInfo[] = $batteryType;
+                                            if (!empty($chargerType)) $combinedInfo[] = $chargerType;
+                                            
+                                            echo !empty($combinedInfo) ? esc(implode(' & ', $combinedInfo)) : '..............................';
+                                        ?></div>
+                                        <div class="val"><?= esc($departemenName ?: '..............................') ?></div>
+                                        <div class="val"><?= esc($kapasitasName ?: '..............................') ?></div>
+                                        <div class="val"><?= esc($attachmentType ?: '..............................') ?></div>
+                                        <div class="val"><?= esc(($rodaName && $banName) ? $rodaName . ' & ' . $banName : ($rodaName ?: ($banName ?: '..............................'))) ?></div>
+                                        <div class="val"><?= esc($mastName ?: '..............................') ?></div>
+                                        <div class="val"><?= esc($valveName ?: '..............................') ?></div>
                                     </div>
                                 </td>
                             </tr>
@@ -173,27 +181,43 @@ $placeholder = ($status === 'SUBMITTED');
                                 <td class="text-center align-middle">3.</td>
                                 <td class="align-middle"><strong>Aksesoris</strong></td>
                                 <td class="val"><?php
-                                    // Multiple ways the accessories might be stored
+                                    // Use aksesoris from kontrak (data permintaan marketing)
                                     $aksText = '..............................';
                                     
-                                    // Try parsing from different possible sources
-                                    if (!empty($s['aksesoris'])) {
+                                    // Prioritaskan aksesoris dari kontrak_spesifikasi
+                                    if (!empty($k['aksesoris'])) {
+                                        if (is_array($k['aksesoris'])) {
+                                            $aksText = implode(', ', $k['aksesoris']);
+                                        } else if (is_string($k['aksesoris'])) {
+                                            // Try to parse JSON string
+                                            try {
+                                                $aksArray = json_decode($k['aksesoris'], true);
+                                                if (is_array($aksArray) && !empty($aksArray)) {
+                                                    $aksText = implode(', ', $aksArray);
+                                                } else {
+                                                    $aksText = $k['aksesoris']; // Use as-is if not an array
+                                                }
+                                            } catch (Exception $e) {
+                                                $aksText = $k['aksesoris']; // Use as-is if parsing fails
+                                            }
+                                        }
+                                    } elseif (!empty($s['aksesoris'])) {
+                                        // Fallback ke spesifikasi jika kontrak tidak ada
                                         if (is_array($s['aksesoris'])) {
                                             $aksText = implode(', ', $s['aksesoris']);
                                         } else if (is_string($s['aksesoris'])) {
-                                            // Try to parse JSON string
                                             try {
                                                 $aksArray = json_decode($s['aksesoris'], true);
                                                 if (is_array($aksArray) && !empty($aksArray)) {
                                                     $aksText = implode(', ', $aksArray);
                                                 } else {
-                                                    $aksText = $s['aksesoris']; // Use as-is if not an array
+                                                    $aksText = $s['aksesoris'];
                                                 }
                                             } catch (Exception $e) {
-                                                $aksText = $s['aksesoris']; // Use as-is if parsing fails
+                                                $aksText = $s['aksesoris'];
                                             }
                                         }
-                                    } else if (!empty($spk['persiapan_aksesoris_tersedia'])) {
+                                    } elseif (!empty($spk['persiapan_aksesoris_tersedia'])) {
                                         $aksText = $spk['persiapan_aksesoris_tersedia'];
                                     }
                                     
@@ -235,21 +259,18 @@ $placeholder = ($status === 'SUBMITTED');
                                     // Build left/right summaries similar to single-unit block, with graceful fallbacks
                                     $summaryLeft = [
                                         ['ID Unit', $rowPrepared['unit_label'] ?? (isset($rowPrepared['unit_id']) ? '#'.$rowPrepared['unit_id'] : '')],
-                                        ['Merk', $rowPrepared['merk_unit'] ?? ''],
                                         ['Jenis Unit', $rowPrepared['jenis_unit'] ?? ($s['jenis_unit'] ?? '')],
-                                        ['Kapasitas', $rowPrepared['kapasitas_name'] ?? ($s['kapasitas_id_name'] ?? '')],
+                                        ['Departemen', $rowPrepared['departemen_name'] ?? ($s['departemen_id'] ?? '')],
                                         ['Attachment', $rowPrepared['sn_attachment_formatted'] ?? ($rowPrepared['attachment_sn'] ?? '')],
                                         ['Baterai', $rowPrepared['sn_baterai_formatted'] ?? ($rowPrepared['baterai_sn'] ?? '')],
                                         ['Valve', $rowPrepared['valve_id_name'] ?? ($s['valve_id_name'] ?? '')],
-                                        ['Charger', $rowPrepared['sn_charger_formatted'] ?? ($rowPrepared['charger_sn'] ?? '')]
                                     ];
                                     $summaryRight = [
                                         ['Serial Number', $rowPrepared['serial_number'] ?? ''],
-                                        ['Model', $rowPrepared['model_unit'] ?? ''],
                                         ['Tipe Unit', $rowPrepared['tipe_jenis'] ?? ($s['tipe_jenis'] ?? '')],
+                                        ['Kapasitas', $rowPrepared['kapasitas_name'] ?? ($s['kapasitas_id_name'] ?? '')],
                                         ['Mast', $rowPrepared['mast_id_name'] ?? ($s['mast_id_name'] ?? '')],
-                                        ['SN Mast', $rowPrepared['sn_mast_formatted'] ?? ($rowPrepared['mast_sn'] ?? '')],
-                                        ['SN Charger', $rowPrepared['sn_charger_formatted'] ?? ($rowPrepared['charger_sn'] ?? '')],
+                                        ['Charger', $rowPrepared['sn_charger_formatted'] ?? ($rowPrepared['charger_sn'] ?? '')],
                                         ['Roda & Ban', trim(
                                             ($rowPrepared['roda_id_name'] ?? $s['roda_id_name'] ?? '') .
                                             ((!empty($rowPrepared['roda_id_name'] ?? $s['roda_id_name'] ?? '') && !empty($rowPrepared['ban_id_name'] ?? $s['ban_id_name'] ?? '')) ? ' & ' : '') .
@@ -321,22 +342,21 @@ $placeholder = ($status === 'SUBMITTED');
 
                             $summaryLeft = [
                                 ['ID Unit', $unit['no_unit'] ?? ''],
-                                ['Merk', $unit['merk_unit'] ?? ''],
                                 ['Jenis Unit', $unit['jenis_unit'] ?? $s['jenis_unit'] ?? ''],
                                 ['Kapasitas', $unit['kapasitas_name'] ?? $s['kapasitas_id_name'] ?? ''],
-                                ['Attachment', $attachment['sn_attachment_formatted'] ?? ''],
-                                ['Baterai', $unit['sn_baterai_formatted'] ?? ''],
+                                ['Attachment', $s['selected']['attachment']['sn_attachment_formatted'] ?? ''],
+                                ['Baterai', $s['selected']['battery']['sn_baterai_formatted'] ?? ''],
                                 ['Valve', $s['valve_id_name'] ?? ''],
                             ];
                             $summaryRight = [
                                 ['Serial Number', $unit['serial_number'] ?? ''],
-                                ['Model', $unit['model_unit'] ?? ''],
                                 ['Tipe Unit', $unit['tipe_jenis'] ?? $s['tipe_jenis'] ?? ''],
                                 ['Mast', $s['mast_id_name'] ?? ''],
-                                ['SN Mast', $unit['sn_mast_formatted'] ?? ''],
-                                ['SN Charger', $unit['sn_charger_formatted'] ?? ''],
+                                ['Charger', $s['selected']['charger']['sn_charger_formatted'] ?? ''],
                                 ['Roda & Ban', ($s['roda_id_name'] ?? '') . (!empty($s['roda_id_name']) && !empty($s['ban_id_name']) ? ' & ' : '') . ($s['ban_id_name'] ?? '')],
                             ];
+
+                            
                         ?>
                         <table class="table grid-2">
                             <tbody>
@@ -400,15 +420,6 @@ $placeholder = ($status === 'SUBMITTED');
                             </tbody>
                         </table>
                     <?php endif; ?>
-
-                    <div class="small text-muted mb-3">
-                        <strong>Catatan:</strong> 
-                        <?php if (!empty($spk['pdi_catatan'])): ?>
-                            <span class="text-dark"><?= esc($spk['pdi_catatan']) ?></span>
-                        <?php else: ?>
-                            ..........................
-                        <?php endif; ?>
-                    </div>
 
                     <div class="row mt-2">
                         <div class="col sig">

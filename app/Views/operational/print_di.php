@@ -3,7 +3,7 @@ $di = $di ?? [];
 $spk = $spk ?? [];
 $s = $spesifikasi ?? [];
 $status = strtoupper((string)($di['status'] ?? ''));
-$placeholder = ($status === 'DIAJUKAN' || $status === 'SUBMITTED');
+$placeholder = ($status === 'SUBMITTED');
 ?>
 <!DOCTYPE html>
 <html lang="id">
