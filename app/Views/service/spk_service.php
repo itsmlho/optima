@@ -193,88 +193,6 @@ let currentFilter = 'all';
 let currentPage = 1;
 let entriesPerPage = 10;
 
-// Global mock data untuk unit component testing
-const mockUnitData = {
-	'16': { // Unit Electric dengan battery
-		id_inventory_unit: 16,
-		departemen_id: 2,
-		model_baterai_id: 3,
-		model_baterai_name: 'ADVANCE AGM-120',
-		sn_baterai: '111',
-		model_charger_id: null,
-		model_charger_name: null,
-		sn_charger: null,
-		model_attachment_id: null,
-		model_attachment_name: null,
-		sn_attachment: null
-	},
-	'17': { // Unit Electric dengan battery (ADVANCE AGM-120)
-		id_inventory_unit: 17,
-		departemen_id: 2,
-		model_baterai_id: 3,
-		model_baterai_name: 'ADVANCE AGM-120',
-		sn_baterai: '222',
-		model_charger_id: null,
-		model_charger_name: null,
-		sn_charger: null,
-		model_attachment_id: null,
-		model_attachment_name: null,
-		sn_attachment: null
-	},
-	'25': { // Unit Fabrikasi dengan attachment
-		id_inventory_unit: 25,
-		departemen_id: 3, // Fabrikasi
-		model_baterai_id: null,
-		model_baterai_name: null,
-		sn_baterai: null,
-		model_charger_id: null,
-		model_charger_name: null,
-		sn_charger: null,
-		model_attachment_id: 5,
-		model_attachment_name: 'HYDRAULIC HAMMER SET',
-		sn_attachment: 'ATT-2024-005'
-	},
-	'1': { 
-		id_inventory_unit: 1,
-		departemen_id: 2,
-		model_baterai_id: null,
-		model_baterai_name: null,
-		sn_baterai: null,
-		model_charger_id: 6,
-		model_charger_name: 'STANDARD CHARGER',
-		sn_charger: null,
-		model_attachment_id: null,
-		model_attachment_name: null,
-		sn_attachment: null
-	},
-	'2': { 
-		id_inventory_unit: 2,
-		departemen_id: 2,
-		model_baterai_id: null,
-		model_baterai_name: null,
-		sn_baterai: null,
-		model_charger_id: 6,
-		model_charger_name: 'STANDARD CHARGER',
-		sn_charger: null,
-		model_attachment_id: 2,
-		model_attachment_name: 'test',
-		sn_attachment: null
-	},
-	'3': { 
-		id_inventory_unit: 3,
-		departemen_id: 2,
-		model_baterai_id: 2,
-		model_baterai_name: 'test',
-		sn_baterai: 'test',
-		model_charger_id: 6,
-		model_charger_name: 'STANDARD CHARGER',
-		sn_charger: null,
-		model_attachment_id: 2,
-		model_attachment_name: 'test',
-		sn_attachment: null
-	}
-};
-
 // Unified notifier (fallbacks)
 function notify(msg, type='success'){
 	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
@@ -1066,9 +984,8 @@ document.addEventListener('DOMContentLoaded', () => {
 						if (apiData && apiData.success && apiData.unit) {
 							console.log('Using API data for unit', unitId);
 							unitData = apiData.unit;
-						} else if (mockUnitData[unitId]) {
-							console.log('Using mock data for unit', unitId);
-							unitData = mockUnitData[unitId];
+						} else {
+							console.log('No unit data available for unit', unitId);
 						}
 						
 						// If unit has ANY components, show smart component management
@@ -1109,31 +1026,12 @@ document.addEventListener('DOMContentLoaded', () => {
 					}).catch(error => {
 						console.error('Component detection failed:', error);
 						
-						// Fallback to mock data check
-						const unitData = mockUnitData[unitId];
-						if (unitData && (unitData.model_baterai_id || unitData.model_charger_id || unitData.model_attachment_id)) {
-							console.log('Using mock data after API error for unit', unitId);
-							
-							const requiredComponents = {
-								battery: isElectric || unitData.model_baterai_id,
-								charger: isElectric || unitData.model_charger_id,
-								attachment: isFabrikasi || unitData.model_attachment_id
-							};
-							
-							if (isElectric && electricFields) {
-								const componentUI = generateComponentSelectionUI(unitData, requiredComponents, unitIndex);
-								electricFields.innerHTML = componentUI;
-								electricFields.style.display = 'block';
-								loadElectricOptionsForAvailableSlots(unitData, `_${unitIndex}`);
-							}
-						} else {
-							// Standard fallback
-							if (isElectric && electricFields) {
-								electricFields.style.display = 'block';
-								loadElectricOptions();
-							} else if (electricFields) {
-								electricFields.style.display = 'none';
-							}
+						// Standard fallback when API fails
+						if (isElectric && electricFields) {
+							electricFields.style.display = 'block';
+							loadElectricOptions();
+						} else if (electricFields) {
+							electricFields.style.display = 'none';
 						}
 					});
 					
@@ -1192,93 +1090,51 @@ document.addEventListener('DOMContentLoaded', () => {
 						const unitId = selectedOption.value;
 						
 						// Check if Electric department (id=2)
-						const isElectric = departemenId === '2';
-						const electricFields = document.getElementById('electricFields');
-						
-						if (isElectric && electricFields) {
-							// Temporary mock data untuk testing (will be replaced with API call)
-							const mockUnitData = {
-								'16': { // Unit Electric dengan battery
-									id_inventory_unit: 16,
-									departemen_id: 2,
-									model_baterai_id: 3,
-									model_baterai_name: 'ADVANCE AGM-120', // Nama battery model
-									sn_baterai: '111',
-									model_charger_id: null,
-									model_charger_name: null,
-									sn_charger: null,
-									model_attachment_id: null,
-									model_attachment_name: null,
-									sn_attachment: null
-								},
-								'25': { // Unit Fabrikasi dengan attachment
-									id_inventory_unit: 25,
-									departemen_id: 3, // Fabrikasi
-									model_baterai_id: null,
-									model_baterai_name: null,
-									sn_baterai: null,
-									model_charger_id: null,
-									model_charger_name: null,
-									sn_charger: null,
-									model_attachment_id: 5,
-									model_attachment_name: 'HYDRAULIC HAMMER SET',
-									sn_attachment: 'ATT-2024-005'
-								}
-							};
-							
-							const unitData = mockUnitData[unitId];
-							
-							if (unitData) {
-								// Generate smart component selection UI
-								const componentUI = generateComponentSelectionUI(unitData, { battery: true, charger: true, attachment: false }, unitId);
+					const isElectric = departemenId === '2';
+					const electricFields = document.getElementById('electricFields');
+					
+					if (isElectric && electricFields) {
+						// Langsung gunakan API untuk mendapatkan data komponen unit
+						fetchUnitComponentData(unitId).then(apiData => {
+							if (apiData && apiData.success && apiData.unit) {
+								const componentUI = generateComponentSelectionUI(apiData.unit, { battery: true, charger: true, attachment: false }, unitId);
 								electricFields.innerHTML = componentUI;
 								electricFields.style.display = 'block';
-								
-								// Load available options untuk components yang perlu di-assign
-								loadElectricOptionsForAvailableSlots(unitData);
+								loadElectricOptionsForAvailableSlots(apiData.unit);
 							} else {
-								// Fallback untuk unit lain - try API atau original behavior
-								fetchUnitComponentData(unitId).then(apiData => {
-									if (apiData && apiData.success) {
-										const componentUI = generateComponentSelectionUI(apiData.unit, { battery: true, charger: true, attachment: false }, unitId);
-										electricFields.innerHTML = componentUI;
-										electricFields.style.display = 'block';
-										loadElectricOptionsForAvailableSlots(apiData.unit);
-									} else {
-										// Ultimate fallback
-										electricFields.style.display = 'block';
-										loadElectricOptions();
-									}
-								}).catch(error => {
-									console.error('API call failed, using fallback:', error);
-									electricFields.style.display = 'block';
-									loadElectricOptions();
-								});
+								// Fallback ke pilihan manual jika API gagal
+								electricFields.style.display = 'block';
+								loadElectricOptions();
 							}
-						} else if (electricFields) {
-							electricFields.style.display = 'none';
-						}
-						
-						// Handle Fabrikasi departments (id=3,4) - Attachment management
+						}).catch(error => {
+							console.error('API call failed, fallback manual:', error);
+							electricFields.style.display = 'block';
+							loadElectricOptions();
+						});
+					} else if (electricFields) {
+						electricFields.style.display = 'none';
+					}						// Handle Fabrikasi departments (id=3,4) - Attachment management
 						const isFabrikasi = ['3', '4'].includes(departemenId);
 						const fabrikasiFields = document.getElementById('fabrikasiFields');
 						
 						if (isFabrikasi && fabrikasiFields) {
-							const unitData = mockUnitData[unitId];
-							
-							if (unitData) {
-								// Generate smart attachment selection UI
-								const attachmentUI = generateComponentSelectionUI(unitData, { battery: false, charger: false, attachment: true }, unitId);
-								fabrikasiFields.innerHTML = attachmentUI;
-								fabrikasiFields.style.display = 'block';
-								
-								// Load available attachment options untuk slots yang perlu di-assign
-								loadFabrikasiOptionsForAvailableSlots(unitData);
-							} else {
-								// Fallback untuk unit lain
+							// Langsung gunakan API untuk data attachment
+							fetchUnitComponentData(unitId).then(apiData => {
+								if (apiData && apiData.success && apiData.unit && apiData.unit.model_attachment_id) {
+									const attachmentUI = generateComponentSelectionUI(apiData.unit, { battery: false, charger: false, attachment: true }, unitId);
+									fabrikasiFields.innerHTML = attachmentUI;
+									fabrikasiFields.style.display = 'block';
+									loadFabrikasiOptionsForAvailableSlots(apiData.unit);
+								} else {
+									// Fallback ke pilihan manual
+									fabrikasiFields.style.display = 'block';
+									loadFabrikasiOptions();
+								}
+							}).catch(error => {
+								console.error('Fabrikasi API call failed:', error);
 								fabrikasiFields.style.display = 'block';
 								loadFabrikasiOptions();
-							}
+							});
 						} else if (fabrikasiFields) {
 							fabrikasiFields.style.display = 'none';
 						}
@@ -1534,10 +1390,33 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 			fd.append('aksesoris_tersedia', JSON.stringify(checkedAksesoris));
 			
+			// Verifikasi data unit yang dipilih
+			const unitId = document.getElementById('approvalUnitPick')?.value;
+			const existingBattery = document.getElementById('existingBatteryModelId')?.value;
+			const batteryAction = document.getElementById('batteryAction')?.value;
+			const useExistingChecked = document.getElementById('useExistingBattery')?.checked;
+			
+			console.log('Form Submission Debug:', {
+				unitId,
+				existingBattery,
+				batteryAction,
+				useExistingChecked,
+				currentApprovalStage
+			});
+			
 			// Handle Enhanced Component Management untuk Multiple Units
 			const enhancedComponentData = collectEnhancedComponentDataMultiUnit();
 			if (enhancedComponentData && enhancedComponentData.length > 0) {
-				fd.append('enhanced_component_data', JSON.stringify(enhancedComponentData));
+				// Ambil data unit pertama jika hanya ada satu unit
+				let dataToSend = enhancedComponentData;
+				if (enhancedComponentData.length === 1) {
+					dataToSend = enhancedComponentData[0]; // Send the single object instead of array
+				}
+				
+				const componentDataJson = JSON.stringify(dataToSend);
+				console.log('Enhanced Component Data to submit:', enhancedComponentData);
+				console.log('JSON data being sent:', componentDataJson);
+				fd.append('enhanced_component_data', componentDataJson);
 				
 				// Validate each unit's component requirements
 				let validationErrors = [];
@@ -1662,8 +1541,10 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchUnitComponentData(unitId) {
 	try {
 		console.log('Fetching unit component data for unit:', unitId);
+		const apiUrl = `<?= base_url('service/unit-component-data') ?>/${unitId}`;
+		console.log('API URL:', apiUrl);
 		
-		const response = await fetch(`<?= base_url('service/unit-component-data') ?>/${unitId}`, {
+		const response = await fetch(apiUrl, {
 			method: 'GET',
 			headers: {
 				'X-Requested-With': 'XMLHttpRequest',
@@ -1672,6 +1553,7 @@ async function fetchUnitComponentData(unitId) {
 		});
 		
 		console.log('API Response status:', response.status);
+		console.log('API Response headers:', [...response.headers.entries()]);
 		
 		if (!response.ok) {
 			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -1714,28 +1596,29 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 			model_id: unitData.model_baterai_id,
 			model_name: unitData.model_baterai_name,
 			sn: unitData.sn_baterai,
-			exists: unitData.model_baterai_id && unitData.model_baterai_id !== '0' && unitData.model_baterai_id !== null
+			exists: (unitData.model_baterai_id && unitData.model_baterai_id !== '0' && unitData.model_baterai_id !== null) || unitData.has_battery === true
 		},
 		charger: {
 			model_id: unitData.model_charger_id,
 			model_name: unitData.model_charger_name,
 			sn: unitData.sn_charger,
-			exists: unitData.model_charger_id && unitData.model_charger_id !== '0' && unitData.model_charger_id !== null
+			exists: (unitData.model_charger_id && unitData.model_charger_id !== '0' && unitData.model_charger_id !== null) || unitData.has_charger === true
 		},
 		attachment: {
 			model_id: unitData.model_attachment_id,
 			model_name: unitData.model_attachment_name,
 			sn: unitData.sn_attachment,
-			exists: unitData.model_attachment_id && unitData.model_attachment_id !== '0' && unitData.model_attachment_id !== null
+			exists: (unitData.model_attachment_id && unitData.model_attachment_id !== '0' && unitData.model_attachment_id !== null) || unitData.has_attachment === true
 		}
 	};
 
 	console.log('Existing components detected:', existing);
 
 	html += `<div class="mb-3">
-		<div class="text-muted small mb-2">
+		<div class="alert alert-info p-2 small mb-2">
 			<i class="fas fa-info-circle me-1"></i>
-			Sistem mendeteksi komponen yang sudah ada di unit ini
+			<strong>Komponen Terdeteksi!</strong> Unit ini sudah memiliki komponen yang terpasang.
+			<div class="small mt-1">Pilih apakah ingin menggunakan komponen yang sudah ada atau ganti dengan yang baru.</div>
 		</div>
 	</div>`;
 
@@ -1748,16 +1631,29 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 			// Unit already has battery - provide options
 			html += `
 				<div class="border rounded p-3 bg-light mb-3">
-					<div class="mb-2">
-						<strong>Unit sudah memiliki battery</strong><br>
-						<small class="text-muted">${existing.battery.model_name || `Model ID: ${existing.battery.model_id}`} | SN: ${existing.battery.sn || 'Tidak tersedia'}</small>
+					<div class="mb-3">
+						<div class="d-flex align-items-center mb-2">
+							<span class="badge bg-success me-2">✓</span>
+							<strong>Unit sudah memiliki battery</strong>
+						</div>
+						<div class="alert alert-secondary p-2 small">
+							<strong>Model:</strong> ${existing.battery.model_name || `Model ID: ${existing.battery.model_id}`}<br>
+							<strong>Serial Number:</strong> ${existing.battery.sn || 'Tidak tersedia'}<br>
+							<strong>ID Model:</strong> ${existing.battery.model_id || 'Tidak tersedia'}
+						</div>
+						
+						<!-- Hidden fields to store existing battery data -->
+						<input type="hidden" id="existingBatteryModelId${suffix}" value="${existing.battery.model_id || ''}" />
+						<input type="hidden" id="existingBatterySn${suffix}" value="${existing.battery.sn || ''}" />
+						<input type="hidden" id="keepExistingBattery${suffix}" value="true" />
 					</div>
 					
 					<div class="d-flex flex-column gap-2">
 						<div class="form-check">
-							<input class="form-check-input" type="checkbox" id="useExistingBattery${suffix}" onchange="toggleBatteryOptions('existing', this.checked, '${suffix}')">
+							<input class="form-check-input" type="checkbox" id="useExistingBattery${suffix}" onchange="toggleBatteryOptions('existing', this.checked, '${suffix}')" checked>
 							<label class="form-check-label" for="useExistingBattery${suffix}">
 								<strong>Gunakan battery yang sudah ada</strong>
+								<small class="d-block text-muted">Tetap menggunakan battery yang terpasang di unit</small>
 							</label>
 						</div>
 						
@@ -1765,6 +1661,7 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 							<input class="form-check-input" type="checkbox" id="replaceBattery${suffix}" onchange="toggleBatteryOptions('replace', this.checked, '${suffix}')">
 							<label class="form-check-label" for="replaceBattery${suffix}">
 								<strong>Ganti dengan battery baru</strong>
+								<small class="d-block text-muted">Pilih battery baru dari inventory</small>
 							</label>
 						</div>
 					</div>
@@ -1780,7 +1677,7 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 				
 				<input type="hidden" id="existingBatteryModelId${suffix}" value="${existing.battery.model_id}">
 				<input type="hidden" id="existingBatterySn${suffix}" value="${existing.battery.sn || ''}">
-				<input type="hidden" id="batteryAction${suffix}" value="">
+				<input type="hidden" id="batteryAction${suffix}" value="use_existing">
 			`;
 		} else {
 			// Unit needs battery
@@ -2048,23 +1945,50 @@ function toggleBatteryOptions(type, isChecked, suffix = '') {
 	const replaceCheckbox = document.getElementById(`replaceBattery${suffix}`);
 	const selectionSection = document.getElementById(`batterySelectionSection${suffix}`);
 	const actionInput = document.getElementById(`batteryAction${suffix}`);
+	const existingModelId = document.getElementById(`existingBatteryModelId${suffix}`)?.value;
+	const keepExistingInput = document.getElementById(`keepExistingBattery${suffix}`);
+	
+	console.log(`toggleBatteryOptions called: type=${type}, isChecked=${isChecked}, suffix=${suffix}`);
+	console.log(`Current state: existingModelId=${existingModelId}, actionValue=${actionInput?.value}, keepExisting=${keepExistingInput?.value}`);
+	
+	// Verify all UI elements are found
+	if (!useExistingCheckbox || !replaceCheckbox || !actionInput) {
+		console.warn(`Some battery UI elements not found for suffix ${suffix}`);
+	}
 	
 	if (type === 'existing') {
 		if (isChecked) {
 			// User chose to use existing - uncheck replace and hide selection
 			replaceCheckbox.checked = false;
-			selectionSection.style.display = 'none';
+			if (selectionSection) selectionSection.style.display = 'none';
 			actionInput.value = 'use_existing';
+			
+			// Set the keepExisting value to true
+			if (keepExistingInput) keepExistingInput.value = 'true';
+			
+			// Ensure the select is not required if using existing
+			const batteryPick = document.getElementById(`batteryPick${suffix}`);
+			if (batteryPick) {
+				batteryPick.removeAttribute('required');
+				batteryPick.value = ''; // Clear any selection
+			}
+			
+			console.log(`Use existing battery selected: actionInput.value = ${actionInput.value}, existingModelId = ${existingModelId}, keepExisting = ${keepExistingInput?.value}`);
 		} else {
 			// User unchecked existing
 			actionInput.value = '';
+			console.log(`Use existing battery unselected: actionInput.value = ${actionInput.value}`);
 		}
 	} else if (type === 'replace') {
 		if (isChecked) {
 			// User chose to replace - uncheck existing and show selection
 			useExistingCheckbox.checked = false;
-			selectionSection.style.display = 'block';
+			if (selectionSection) selectionSection.style.display = 'block';
 			actionInput.value = 'replace';
+			
+			// Set the keepExisting value to false
+			const keepExistingInput = document.getElementById(`keepExistingBattery${suffix}`);
+			if (keepExistingInput) keepExistingInput.value = 'false';
 			
 			// Load available batteries
 			const batteryPick = document.getElementById(`batteryPick${suffix}`);
@@ -2077,9 +2001,14 @@ function toggleBatteryOptions(type, isChecked, suffix = '') {
 								const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
 								return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_baterai||'-'}</option>`;
 							}).join('');
+						
+						// Make the select required since we're replacing
+						batteryPick.setAttribute('required', 'required');
 					}
 				})
 				.catch(err => console.log('Error loading batteries:', err));
+				
+			console.log(`Replace battery selected: actionInput.value = ${actionInput.value}, keepExisting = ${keepExistingInput?.value}`);
 		} else {
 			// User unchecked replace
 			selectionSection.style.display = 'none';
@@ -2190,13 +2119,25 @@ function collectEnhancedComponentDataMultiUnit() {
 	
 	// Find all unit selection fields
 	const unitPicks = document.querySelectorAll('select[name="unit_id[]"]');
+	console.log(`Found ${unitPicks.length} units to process for enhanced component data`);
 	
 	unitPicks.forEach((unitPick, index) => {
 		if (unitPick.value) {
 			const suffix = unitPick.id.replace('approvalUnitPick', '');
+			console.log(`Processing unit #${index+1} with ID=${unitPick.value} and suffix=${suffix}`);
+			
+			// Get department info for better debugging
+			const selectedOption = unitPick.options[unitPick.selectedIndex];
+			const departemenId = selectedOption?.getAttribute('data-departemen-id');
+			const departemenName = selectedOption?.getAttribute('data-departemen');
+			console.log(`Unit department: ${departemenName} (ID: ${departemenId})`);
+			
 			const unitData = collectSingleUnitComponentData(suffix, unitPick.value);
 			if (unitData) {
+				console.log(`Collected component data for unit ID ${unitPick.value}:`, unitData);
 				allUnitsData.push(unitData);
+			} else {
+				console.warn(`Failed to collect component data for unit ID ${unitPick.value}`);
 			}
 		}
 	});
@@ -2208,29 +2149,39 @@ function collectEnhancedComponentDataMultiUnit() {
  * Collect component data untuk single unit dengan suffix
  */
 function collectSingleUnitComponentData(suffix, unitId) {
+	const existingBatteryModelId = document.getElementById(`existingBatteryModelId${suffix}`)?.value;
+	const batteryActionValue = document.getElementById(`batteryAction${suffix}`)?.value;
+	const useExistingBatteryChecked = document.getElementById(`useExistingBattery${suffix}`)?.checked;
+	
+	console.log(`collectSingleUnitComponentData for unitId=${unitId}, suffix=${suffix}`);
+	console.log(`existingBatteryModelId=${existingBatteryModelId}, batteryAction=${batteryActionValue}, useExistingBatteryChecked=${useExistingBatteryChecked}`);
+	
 	const data = {
 		unit_id: unitId,
 		components: {
 			battery: {
-				action: 'keep', // keep, replace, assign
-				existing_model_id: document.getElementById(`existingBatteryModelId${suffix}`)?.value,
+				action: useExistingBatteryChecked ? 'keep' : 'replace', // keep, replace, assign
+				existing_model_id: existingBatteryModelId,
 				existing_sn: document.getElementById(`existingBatterySn${suffix}`)?.value,
 				new_inventory_attachment_id: null,
-				keep_existing: document.getElementById(`keepExistingBattery${suffix}`)?.value === 'true'
+				keep_existing: useExistingBatteryChecked || document.getElementById(`keepExistingBattery${suffix}`)?.value === 'true',
+				battery_detected: !!existingBatteryModelId // Flag to show backend we detected a battery
 			},
 			charger: {
 				action: 'keep',
 				existing_model_id: document.getElementById(`existingChargerModelId${suffix}`)?.value,
 				existing_sn: document.getElementById(`existingChargerSn${suffix}`)?.value,
 				new_inventory_attachment_id: null,
-				keep_existing: document.getElementById(`keepExistingCharger${suffix}`)?.value === 'true'
+				keep_existing: document.getElementById(`keepExistingCharger${suffix}`)?.value === 'true',
+				charger_detected: !!document.getElementById(`existingChargerModelId${suffix}`)?.value
 			},
 			attachment: {
 				action: 'keep',
 				existing_model_id: document.getElementById(`existingAttachmentModelId${suffix}`)?.value,
 				existing_sn: document.getElementById(`existingAttachmentSn${suffix}`)?.value,
 				new_inventory_attachment_id: null,
-				keep_existing: document.getElementById(`keepExistingAttachment${suffix}`)?.value === 'true'
+				keep_existing: document.getElementById(`keepExistingAttachment${suffix}`)?.value === 'true',
+				attachment_detected: !!document.getElementById(`existingAttachmentModelId${suffix}`)?.value
 			}
 		}
 	};
@@ -2239,6 +2190,12 @@ function collectSingleUnitComponentData(suffix, unitId) {
 	const batteryPick = document.getElementById(`batteryPick${suffix}`);
 	const batteryAction = document.getElementById(`batteryAction${suffix}`)?.value;
 	
+	console.log(`Processing battery for unit ${unitId}:`, {
+		batteryAction,
+		existingBatteryModelId: data.components.battery.existing_model_id,
+		batteryPick: batteryPick?.value
+	});
+	
 	if (data.components.battery.existing_model_id) {
 		// Unit has existing battery
 		if (batteryAction === 'replace' && batteryPick?.value) {
@@ -2246,13 +2203,22 @@ function collectSingleUnitComponentData(suffix, unitId) {
 			data.components.battery.action = 'replace';
 			data.components.battery.new_inventory_attachment_id = batteryPick.value;
 			data.components.battery.keep_existing = false;
-		} else if (batteryAction === 'use_existing') {
-			// User explicitly chose to use existing battery
-			data.components.battery.action = 'keep';
+			console.log(`Unit ${unitId}: Replacing battery with ${batteryPick.value}`);
+		} else if (batteryAction === 'use_existing' || document.getElementById(`useExistingBattery${suffix}`)?.checked) {
+			// User explicitly chose to use existing battery OR the "use existing" checkbox is checked (default)
+			data.components.battery.action = 'use_existing'; // Change from 'keep' to 'use_existing' for clarity
 			data.components.battery.keep_existing = true;
+			console.log(`Unit ${unitId}: Using existing battery ${data.components.battery.existing_model_id}`);
 		} else {
-			// No explicit choice - default to keep existing
-			data.components.battery.action = 'keep';
+			// Default to keep existing if no other option selected
+			data.components.battery.action = 'use_existing'; // Change from 'keep' to 'use_existing' for clarity
+			data.components.battery.keep_existing = true;
+			console.log(`Unit ${unitId}: Default behavior - keeping existing battery ${data.components.battery.existing_model_id}`);
+		}
+		
+		// Force set to keep_existing if no other valid options selected
+		if (!data.components.battery.new_inventory_attachment_id && data.components.battery.existing_model_id) {
+			data.components.battery.action = 'use_existing'; // Change from 'keep' to 'use_existing' for clarity
 			data.components.battery.keep_existing = true;
 		}
 	} else {
@@ -2263,10 +2229,19 @@ function collectSingleUnitComponentData(suffix, unitId) {
 			data.components.battery.keep_existing = false;
 		}
 	}
+	
+	// Add debug logging for battery data being collected
+	console.log(`Final battery data for unit ${unitId}:`, data.components.battery);
 
 	// Determine charger action using new explicit approach  
 	const chargerPick = document.getElementById(`chargerPick${suffix}`);
 	const chargerAction = document.getElementById(`chargerAction${suffix}`)?.value;
+	
+	console.log(`Processing charger for unit ${unitId}:`, {
+		chargerAction,
+		existingChargerModelId: data.components.charger.existing_model_id,
+		chargerPick: chargerPick?.value
+	});
 	
 	if (data.components.charger.existing_model_id) {
 		// Unit has existing charger
@@ -2275,14 +2250,17 @@ function collectSingleUnitComponentData(suffix, unitId) {
 			data.components.charger.action = 'replace';
 			data.components.charger.new_inventory_attachment_id = chargerPick.value;
 			data.components.charger.keep_existing = false;
-		} else if (chargerAction === 'use_existing') {
-			// User explicitly chose to use existing charger
-			data.components.charger.action = 'keep';
+			console.log(`Unit ${unitId}: Replacing charger with ${chargerPick.value}`);
+		} else if (chargerAction === 'use_existing' || document.getElementById(`useExistingCharger${suffix}`)?.checked) {
+			// User explicitly chose to use existing charger OR the "use existing" checkbox is checked (default)
+			data.components.charger.action = 'use_existing'; // Change from 'keep' to 'use_existing' for clarity
 			data.components.charger.keep_existing = true;
+			console.log(`Unit ${unitId}: Using existing charger ${data.components.charger.existing_model_id}`);
 		} else {
 			// No explicit choice - default to keep existing
-			data.components.charger.action = 'keep';
+			data.components.charger.action = 'use_existing'; // Change from 'keep' to 'use_existing' for clarity
 			data.components.charger.keep_existing = true;
+			console.log(`Unit ${unitId}: Default behavior - keeping existing charger ${data.components.charger.existing_model_id}`);
 		}
 	} else {
 		// Unit doesn't have charger - must assign new one
@@ -2467,9 +2445,8 @@ window.addEventListener('error', function(e) {
 	console.log('Stack:', e.error.stack);
 });
 
-// Additional debug untuk mockUnitData
-console.log('Global mockUnitData available:', typeof mockUnitData);
-console.log('mockUnitData keys:', Object.keys(mockUnitData || {}));
+// Debug untuk API data fetching
+console.log('SPK Service: Component management initialized');
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
