@@ -132,6 +132,8 @@ class KontrakSpesifikasiModel extends Model
             ->get()
             ->getResultArray();
         
+        log_message('debug', 'KontrakSpesifikasiModel::getByKontrakId - Query result for kontrak ' . $kontrakId . ': ' . json_encode($result));
+        
         // Parse JSON aksesoris field for each record
         foreach ($result as &$row) {
             if (!empty($row['aksesoris'])) {
@@ -310,12 +312,17 @@ class KontrakSpesifikasiModel extends Model
      */
     public function getNextSpekKode($kontrakId)
     {
+        log_message('info', 'getNextSpekKode called for kontrakId: ' . $kontrakId);
+        
         $lastSpec = $this->select('spek_kode')
             ->where('kontrak_id', $kontrakId)
             ->orderBy('spek_kode', 'DESC')
             ->first();
         
+        log_message('info', 'getNextSpekKode - lastSpec result: ' . json_encode($lastSpec));
+        
         if (!$lastSpec) {
+            log_message('info', 'getNextSpekKode - no existing specs, returning SPEC-001');
             return 'SPEC-001';
         }
         
@@ -323,7 +330,10 @@ class KontrakSpesifikasiModel extends Model
         $lastNumber = (int) substr($lastSpec['spek_kode'], -3);
         $nextNumber = $lastNumber + 1;
         
-        return 'SPEC-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        $nextCode = 'SPEC-' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+        log_message('info', 'getNextSpekKode - lastNumber: ' . $lastNumber . ', nextNumber: ' . $nextNumber . ', nextCode: ' . $nextCode);
+        
+        return $nextCode;
     }
 
     /**
@@ -373,15 +383,29 @@ class KontrakSpesifikasiModel extends Model
     }
 
     /**
-     * Override insert method for better debugging
+     * Get the insert ID
      */
+    public function getInsertID()
+    {
+        return $this->insertID;
+    }
     public function insert($data = null, bool $returnID = true)
     {
-        log_message('info', 'KontrakSpesifikasiModel::insert - Attempting to insert: ' . json_encode($data));
+        log_message('info', 'KontrakSpesifikasiModel::insert - Starting insert process');
+        log_message('info', 'KontrakSpesifikasiModel::insert - Data to insert: ' . json_encode($data));
+        
+        // Ensure foreign key checks are enabled
+        $this->db->query('SET FOREIGN_KEY_CHECKS = 1');
+        log_message('info', 'KontrakSpesifikasiModel::insert - Foreign key checks enabled');
+        
+        // Check current foreign key check status
+        $fkCheckResult = $this->db->query('SELECT @@FOREIGN_KEY_CHECKS as fk_check')->getRow();
+        log_message('info', 'KontrakSpesifikasiModel::insert - Foreign key check status: ' . ($fkCheckResult ? $fkCheckResult->fk_check : 'NULL'));
         
         // Validate foreign keys before insert
         if (isset($data['kontrak_id'])) {
             $kontrakExists = $this->db->table('kontrak')->where('id', $data['kontrak_id'])->countAllResults();
+            log_message('info', 'KontrakSpesifikasiModel::insert - Kontrak validation: kontrak_id=' . $data['kontrak_id'] . ', exists=' . $kontrakExists);
             if ($kontrakExists == 0) {
                 log_message('error', 'Foreign key constraint: kontrak_id ' . $data['kontrak_id'] . ' does not exist');
                 $this->errors[] = 'Kontrak dengan ID ' . $data['kontrak_id'] . ' tidak ditemukan';
@@ -390,12 +414,27 @@ class KontrakSpesifikasiModel extends Model
         }
         
         try {
+            log_message('info', 'KontrakSpesifikasiModel::insert - Calling parent::insert');
             $result = parent::insert($data, $returnID);
-            log_message('info', 'KontrakSpesifikasiModel::insert - Result: ' . json_encode($result));
+            log_message('info', 'KontrakSpesifikasiModel::insert - Parent insert result: ' . json_encode($result));
+            log_message('info', 'KontrakSpesifikasiModel::insert - Model insertID: ' . $this->insertID);
+            log_message('info', 'KontrakSpesifikasiModel::insert - DB insertID: ' . $this->db->insertID());
+            
+            if ($result === false) {
+                $dbError = $this->db->error();
+                log_message('error', 'KontrakSpesifikasiModel::insert - Insert failed, database error: ' . json_encode($dbError));
+                log_message('error', 'KontrakSpesifikasiModel::insert - Last query: ' . $this->db->getLastQuery());
+            }
+            
             return $result;
         } catch (\Exception $e) {
-            log_message('error', 'KontrakSpesifikasiModel::insert - Exception: ' . $e->getMessage());
+            log_message('error', 'KontrakSpesifikasiModel::insert - Exception caught: ' . $e->getMessage());
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            
+            // Get database error after exception
+            $dbError = $this->db->error();
+            log_message('error', 'KontrakSpesifikasiModel::insert - Database error after exception: ' . json_encode($dbError));
+            
             return false;
         }
     }

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Unit Filter</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Test Unit Filtering</h2>
+    <input type="text" id="search" placeholder="Search units..." style="padding: 8px; width: 300px;">
+    <button onclick="loadUnits()">Load Units</button>
+    <div id="results" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; max-height: 400px; overflow-y: auto;"></div>
+
+    <script>
+        function loadUnits() {
+            const search = document.getElementById('search').value;
+            
+            fetch(`/optima1/public/service/data-unit/simple?q=${encodeURIComponent(search)}`)
+                .then(response => response.json())
+                .then(data => {
+                    const resultsDiv = document.getElementById('results');
+                    
+                    if (data.success && data.data && data.data.length > 0) {
+                        let html = '<h3>Found ' + data.data.length + ' units:</h3><ul>';
+                        
+                        data.data.forEach(unit => {
+                            const statusText = getStatusText(unit.status_unit_id);
+                            html += `
+                                <li style="margin-bottom: 10px; padding: 5px; border-bottom: 1px solid #eee;">
+                                    <strong>ID:</strong> ${unit.id} |
+                                    <strong>No Unit:</strong> ${unit.no_unit || '[No Unit]'} |
+                                    <strong>Merk:</strong> ${unit.merk_unit || '-'} |
+                                    <strong>Model:</strong> ${unit.model_unit || '-'} |
+                                    <strong>Lokasi:</strong> ${unit.lokasi_unit || '-'} |
+                                    <strong>Status:</strong> ${statusText} (${unit.status_unit_id}) |
+                                    <strong>Dept:</strong> ${unit.departemen_name || '-'}
+                                    <br><em>Label:</em> ${unit.label}
+                                </li>
+                            `;
+                        });
+                        html += '</ul>';
+                        resultsDiv.innerHTML = html;
+                    } else {
+                        resultsDiv.innerHTML = '<p>No units found or error occurred.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('results').innerHTML = '<p style="color: red;">Error loading units: ' + error.message + '</p>';
+                });
+        }
+        
+        function getStatusText(statusId) {
+            switch(statusId) {
+                case 6: return 'BOOKING';
+                case 7: return 'STOCK ASET';
+                case 8: return 'STOCK NON ASET';
+                default: return 'Unknown';
+            }
+        }
+        
+        // Load units on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUnits();
+        });
+    </script>
+</body>
+</html>

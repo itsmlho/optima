@@ -32,6 +32,7 @@
             <h5 class="h5 mb-0 text-gray-800">Daftar SPK</h5>
             <div class="d-flex gap-2 align-items-center">
                 <a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/tracking') ?>">Tracking</a>
+                <button class="btn btn-warning btn-sm" id="cleanupSpkZeroBtn" title="Hapus SPK dengan ID = 0">🧹 Cleanup SPK ID=0</button>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#spkModal">Buat SPK</button>
             </div>
         </div>
@@ -562,6 +563,37 @@
         });
     }
     
+    // Add cleanup SPK ID=0 functionality
+    const cleanupBtn = document.getElementById('cleanupSpkZeroBtn');
+    if (cleanupBtn) {
+        cleanupBtn.addEventListener('click', () => {
+            if (confirm('Apakah Anda yakin ingin menghapus semua SPK dengan ID = 0? Tindakan ini tidak dapat dibatalkan.')) {
+                fetch('<?= base_url('marketing/spk/cleanup-zero') ?>', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Cleanup berhasil!\nDitemukan: ${data.found_records} record\nDihapus: ${data.deleted_records} SPK + ${data.deleted_history} status history`);
+                        loadSpk(); // Reload the SPK list
+                        loadMonitoring(); // Reload monitoring data
+                    } else {
+                        alert('Cleanup gagal: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Cleanup error:', error);
+                    alert('Terjadi kesalahan saat cleanup: ' + error.message);
+                });
+            }
+        });
+    }
+    
     // Set default active filter (all)
     document.querySelector('[data-filter="all"]').classList.add('active');
     
@@ -723,7 +755,7 @@
         
         // Load contract information
         function loadKontrakInfo(kontrakId) {
-            fetch(`<?= base_url('marketing/kontrak/get/') ?>${kontrakId}`, {
+            fetch(`<?= base_url('marketing/kontrak/get-kontrak/') ?>${kontrakId}`, {
                 method: 'GET',
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
@@ -763,19 +795,29 @@
             })
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Specification data received:', data);
                     let options = '<option value="">-- Pilih Spesifikasi --</option>';
                     if (data.success && data.data) {
+                        console.log('Processing ' + data.data.length + ' specifications');
                         data.data.forEach(spek => {
+                            console.log('Processing spec:', spek);
                             const available = spek.jumlah_dibutuhkan - spek.jumlah_tersedia;
-                            if (available > 0) {
-                                // Safely encode spec data to avoid JSON parsing issues
-                                const spekDataEncoded = btoa(encodeURIComponent(JSON.stringify(spek)));
-                                options += `<option value="${spek.id}" data-available="${available}" data-spek-encoded="${spekDataEncoded}">${spek.spek_kode} - ${available} unit perlu diproses</option>`;
-                            }
+                            console.log('Available units:', available, 'dibutuhkan:', spek.jumlah_dibutuhkan, 'tersedia:', spek.jumlah_tersedia);
+                            
+                            // Show all specifications, not just those with available units
+                            const spekDataEncoded = btoa(encodeURIComponent(JSON.stringify(spek)));
+                            options += `<option value="${spek.id}" data-available="${available}" data-spek-encoded="${spekDataEncoded}">${spek.spek_kode} - ${spek.jumlah_dibutuhkan} dibutuhkan, ${spek.jumlah_tersedia} tersedia (${available > 0 ? available : 0} available)</option>`;
                         });
+                        console.log('Generated options:', options);
+                    } else {
+                        console.log('No specification data or success=false:', data);
+                        options = '<option value="">No specifications found</option>';
                     }
                     if (spesifikasiSelect) {
                         spesifikasiSelect.innerHTML = options;
+                        console.log('Set spesifikasiSelect innerHTML');
+                    } else {
+                        console.error('spesifikasiSelect element not found');
                     }
                 })
                 .catch(error => {

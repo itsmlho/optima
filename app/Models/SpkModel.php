@@ -30,13 +30,42 @@ class SpkModel extends Model
     public function generateNextNumber(): string
     {
         $prefix = 'SPK/'.date('Ym').'/';
-        $row = $this->db->table($this->table)->like('nomor_spk', $prefix)->orderBy('id','DESC')->get()->getRowArray();
-        $seq = 1;
-        if ($row && isset($row['nomor_spk'])) {
-            $parts = explode('/', $row['nomor_spk']);
-            $seq = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
+        
+        // Use database lock to prevent race conditions
+        $this->db->query('LOCK TABLES spk WRITE');
+        
+        try {
+            $row = $this->db->table($this->table)->like('nomor_spk', $prefix)->orderBy('id','DESC')->get()->getRowArray();
+            $seq = 1;
+            if ($row && isset($row['nomor_spk'])) {
+                $parts = explode('/', $row['nomor_spk']);
+                $seq = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
+            }
+            
+            $newNumber = $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
+            
+            // Double-check that this number doesn't already exist
+            $exists = $this->db->table($this->table)->where('nomor_spk', $newNumber)->countAllResults();
+            if ($exists > 0) {
+                // If it exists, increment and try again (up to 100 attempts)
+                $attempts = 0;
+                while ($exists > 0 && $attempts < 100) {
+                    $seq++;
+                    $newNumber = $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
+                    $exists = $this->db->table($this->table)->where('nomor_spk', $newNumber)->countAllResults();
+                    $attempts++;
+                }
+                
+                if ($exists > 0) {
+                    // If we still can't find a unique number, add timestamp
+                    $newNumber = $prefix . date('His') . str_pad((string)$seq, 2, '0', STR_PAD_LEFT);
+                }
+            }
+            
+            return $newNumber;
+        } finally {
+            $this->db->query('UNLOCK TABLES');
         }
-        return $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
     }
 
     /** Update status and record history (best-effort). Requires SpkStatusHistoryModel table available. */

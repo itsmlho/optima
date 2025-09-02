@@ -76,6 +76,16 @@
         <div class="accordion" id="trackingAccordion"></div>
       </div>
     </div>
+
+    <!-- Audit Trail Section -->
+    <div class="card shadow-sm border-0">
+      <div class="card-header">
+        <h6 class="mb-0"><i class="fas fa-history me-2"></i>Audit Trail & Activity Log</h6>
+      </div>
+      <div class="card-body">
+        <div id="auditTrailContent" class="table-responsive"></div>
+      </div>
+    </div>
   </div>
 
   <!-- No Results or Loading -->
@@ -363,6 +373,47 @@
   border: 1px solid #e9ecef !important;
 }
 
+/* Audit Trail Styles */
+.audit-trail-table {
+  font-size: 14px;
+}
+
+.audit-trail-table th {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  font-weight: 600;
+  color: #495057;
+}
+
+.audit-trail-table td {
+  vertical-align: middle;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.activity-type-badge {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.activity-type-created { background: #d1ecf1; color: #0c5460; }
+.activity-type-updated { background: #d4edda; color: #155724; }
+.activity-type-status { background: #fff3cd; color: #856404; }
+.activity-type-location { background: #f8d7da; color: #721c24; }
+.activity-type-price { background: #e2e3e5; color: #383d41; }
+
+.user-info {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.timestamp-info {
+  font-size: 11px;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
 /* Clean Card Headers */
 .bg-gradient-primary { 
   background: #495057 !important; 
@@ -521,6 +572,9 @@ document.addEventListener('DOMContentLoaded', function() {
     renderSummary(data);
     renderTimeline(data);
     renderAccordion(data);
+    
+    // Load audit trail for units involved
+    loadAuditTrail(data);
 
     // Re-initialize popovers after rendering new elements
     const newPopoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
@@ -841,6 +895,111 @@ document.addEventListener('DOMContentLoaded', function() {
     const steps = getStepsConfig(data);
     const completedSteps = steps.filter(step => step.actualDate && step.actualDate !== '-').length;
     return Math.round((completedSteps / steps.length) * 100);
+  }
+
+  // Load audit trail for tracking data
+  function loadAuditTrail(data) {
+    const auditDiv = document.getElementById('auditTrailContent');
+    auditDiv.innerHTML = '<div class="text-center"><div class="loading-spinner me-2"></div>Loading audit trail...</div>';
+    
+    // Collect unit IDs from tracking data
+    let unitIds = [];
+    
+    // From SPK units
+    if (data.spk && data.spk.units) {
+      unitIds = unitIds.concat(data.spk.units.map(unit => unit.unit_id).filter(Boolean));
+    }
+    
+    // From DI units
+    if (data.di && data.di.units) {
+      unitIds = unitIds.concat(data.di.units.map(unit => unit.unit_id).filter(Boolean));
+    }
+    
+    // Remove duplicates
+    unitIds = [...new Set(unitIds)];
+    
+    if (unitIds.length === 0) {
+      auditDiv.innerHTML = '<div class="text-center text-muted">No unit data available for audit trail</div>';
+      return;
+    }
+    
+    // Fetch audit trail data
+    fetch(`<?= base_url('operational/audit-trail') ?>`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json', 
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({ unit_ids: unitIds })
+    })
+    .then(response => response.json())
+    .then(auditData => {
+      if (auditData.success && auditData.data && auditData.data.length > 0) {
+        renderAuditTrail(auditData.data);
+      } else {
+        auditDiv.innerHTML = '<div class="text-center text-muted">No audit trail data found</div>';
+      }
+    })
+    .catch(error => {
+      console.error('Error loading audit trail:', error);
+      auditDiv.innerHTML = '<div class="text-center text-danger">Error loading audit trail data</div>';
+    });
+  }
+  
+  function renderAuditTrail(auditData) {
+    const auditDiv = document.getElementById('auditTrailContent');
+    
+    let html = `
+      <table class="table table-sm audit-trail-table">
+        <thead>
+          <tr>
+            <th>Unit</th>
+            <th>Activity</th>
+            <th>Description</th>
+            <th>User</th>
+            <th>Date & Time</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    auditData.forEach(log => {
+      const activityClass = getActivityTypeClass(log.activity_type);
+      const formattedDate = formatDateTime(log.created_at);
+      
+      html += `
+        <tr>
+          <td><strong>Unit ${log.unit_id}</strong></td>
+          <td>
+            <span class="activity-type-badge ${activityClass}">
+              ${log.activity_type.replace('_', ' ')}
+            </span>
+          </td>
+          <td>${log.activity_description}</td>
+          <td>
+            <div>${log.user_name}</div>
+            <div class="user-info">${log.user_role}</div>
+          </td>
+          <td class="timestamp-info">${formattedDate}</td>
+        </tr>
+      `;
+    });
+    
+    html += '</tbody></table>';
+    auditDiv.innerHTML = html;
+  }
+  
+  function getActivityTypeClass(activityType) {
+    const typeClasses = {
+      'CREATED': 'activity-type-created',
+      'UPDATED': 'activity-type-updated', 
+      'STATUS_CHANGED': 'activity-type-status',
+      'LOCATION_CHANGED': 'activity-type-location',
+      'PRICE_CHANGED': 'activity-type-price',
+      'KONTRAK_ASSIGNED': 'activity-type-updated',
+      'SPK_ASSIGNED': 'activity-type-updated'
+    };
+    return typeClasses[activityType] || 'activity-type-updated';
   }
 });
 </script>

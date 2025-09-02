@@ -418,12 +418,12 @@ class InventoryAttachmentModel extends Model
 
     public function getAvailableChargers(): array
     {
-        // Ambil inventory yang punya charger_id dan tipe_item = 'charger', masih stock
+        // Ambil inventory yang punya charger_id dan tipe_item = 'charger', masih stock (ASET/NON ASET)
         return $this->select('inventory_attachment.*, c.merk_charger, c.tipe_charger')
             ->join('charger c', 'c.id_charger = inventory_attachment.charger_id', 'left')
             ->where('inventory_attachment.tipe_item', 'charger')
-            ->where('inventory_attachment.status_unit', 7)
-            ->where('inventory_attachment.id_inventory_unit', null)
+            ->whereIn('inventory_attachment.status_unit', [7, 8]) // 7=STOCK ASET, 8=STOCK NON ASET
+            ->where('(inventory_attachment.id_inventory_unit IS NULL OR inventory_attachment.id_inventory_unit = 0)')
             ->where('inventory_attachment.charger_id IS NOT NULL')
             ->orderBy('inventory_attachment.tanggal_masuk','ASC')
             ->findAll(100);
@@ -431,14 +431,68 @@ class InventoryAttachmentModel extends Model
 
     public function getAvailableBatteries(): array
     {
-        // Ambil inventory yang punya baterai_id dan tipe_item = 'battery', masih stock
+        // Ambil inventory yang punya baterai_id dan tipe_item = 'battery', masih stock (ASET/NON ASET)
         return $this->select('inventory_attachment.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
             ->join('baterai b', 'b.id = inventory_attachment.baterai_id', 'left')
             ->where('inventory_attachment.tipe_item', 'battery')
-            ->where('inventory_attachment.status_unit', 7)
-            ->where('inventory_attachment.id_inventory_unit', null)
+            ->whereIn('inventory_attachment.status_unit', [7, 8]) // 7=STOCK ASET, 8=STOCK NON ASET
+            ->where('(inventory_attachment.id_inventory_unit IS NULL OR inventory_attachment.id_inventory_unit = 0)')
             ->where('inventory_attachment.baterai_id IS NOT NULL')
             ->orderBy('inventory_attachment.tanggal_masuk','ASC')
             ->findAll(100);
+    }
+
+    /**
+     * Get unit's current battery info
+     */
+    public function getUnitBattery($unitId): ?array
+    {
+        return $this->select('inventory_attachment.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+            ->join('baterai b', 'b.id = inventory_attachment.baterai_id', 'left')
+            ->where('inventory_attachment.tipe_item', 'battery')
+            ->where('inventory_attachment.id_inventory_unit', $unitId)
+            ->where('inventory_attachment.baterai_id IS NOT NULL')
+            ->first();
+    }
+
+    /**
+     * Get unit's current charger info
+     */
+    public function getUnitCharger($unitId): ?array
+    {
+        return $this->select('inventory_attachment.*, c.merk_charger, c.tipe_charger')
+            ->join('charger c', 'c.id_charger = inventory_attachment.charger_id', 'left')
+            ->where('inventory_attachment.tipe_item', 'charger')
+            ->where('inventory_attachment.id_inventory_unit', $unitId)
+            ->where('inventory_attachment.charger_id IS NOT NULL')
+            ->first();
+    }
+
+    /**
+     * Detach battery/charger from unit and return to stock
+     */
+    public function detachFromUnit($attachmentId): bool
+    {
+        return $this->update($attachmentId, [
+            'id_inventory_unit' => null,
+            'status_unit' => 7, // Return to STOCK ASET
+            'lokasi_penyimpanan' => 'WAREHOUSE',
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+    }
+
+    /**
+     * Attach battery/charger to unit
+     */
+    public function attachToUnit($attachmentId, $unitId, $unitNumber = null): bool
+    {
+        $locationNote = $unitNumber ? "Terpasang pada unit {$unitNumber}" : "Terpasang pada unit ID {$unitId}";
+        
+        return $this->update($attachmentId, [
+            'id_inventory_unit' => $unitId,
+            'status_unit' => 3, // IN USE/ASSIGNED
+            'lokasi_penyimpanan' => $locationNote,
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
     }
 }

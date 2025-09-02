@@ -1240,9 +1240,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			.catch(err => console.log('Error loading batteries:', err));
 	}
 	
-	// Make sure functions are accessible globally
-	window.loadBatteryOptionsIndividual = loadBatteryOptionsIndividual;
-	
 	function loadChargerOptionsIndividual(suffix = '') {
 		const chargerPickId = suffix ? `chargerPick${suffix}` : 'chargerPick';
 		fetch('<?= base_url('warehouse/inventory/available-chargers') ?>')
@@ -1259,9 +1256,6 @@ document.addEventListener('DOMContentLoaded', () => {
 			})
 			.catch(err => console.log('Error loading chargers:', err));
 	}
-	
-	// Make sure functions are accessible globally
-	window.loadChargerOptionsIndividual = loadChargerOptionsIndividual;
 	
 	function loadAttachmentOptionsIndividual(suffix = '') {
 		const attachmentPickId = suffix ? `attachmentPick${suffix}` : 'attachmentPick';
@@ -1799,6 +1793,380 @@ function toggleBatteryOptions(type, isChecked, suffix = '') {
 }
 
 /**
+		html += '<div class="mb-3">';
+		html += '<label class="form-label">Battery</label>';
+		
+		if (existing.battery.exists) {
+			// Unit already has battery - provide options
+			html += `
+				<div class="border rounded p-3 bg-light mb-3">
+					<div class="mb-3">
+						<div class="d-flex align-items-center mb-2">
+							<span class="badge bg-success me-2">✓</span>
+							<strong>Unit sudah memiliki battery</strong>
+						</div>
+						<div class="alert alert-secondary p-2 small">
+							<strong>Model:</strong> ${existing.battery.model_name || `Model ID: ${existing.battery.model_id}`}<br>
+							<strong>Serial Number:</strong> ${existing.battery.sn || 'Tidak tersedia'}<br>
+							<strong>ID Model:</strong> ${existing.battery.model_id || 'Tidak tersedia'}
+						</div>
+						
+						<!-- Hidden fields to store existing battery data -->
+						<input type="hidden" id="existingBatterySn${suffix}" value="${existing.battery.sn || ''}" />
+						<input type="hidden" id="keepExistingBattery${suffix}" value="true" />
+					</div>
+					
+					<div class="d-flex flex-column gap-2">
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="useExistingBattery${suffix}" onchange="toggleBatteryOptions('existing', this.checked, '${suffix}')" checked>
+							<label class="form-check-label" for="useExistingBattery${suffix}">
+								<strong>Gunakan battery yang sudah ada</strong>
+								<small class="d-block text-muted">Tetap menggunakan battery yang terpasang di unit</small>
+							</label>
+						</div>
+						
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="replaceBattery${suffix}" onchange="toggleBatteryOptions('replace', this.checked, '${suffix}')">
+							<label class="form-check-label" for="replaceBattery${suffix}">
+								<strong>Ganti dengan battery baru</strong>
+								<small class="d-block text-muted">Pilih battery baru dari inventory</small>
+							</label>
+						</div>
+					</div>
+				</div>
+				
+				<div id="batterySelectionSection${suffix}" style="display: none;" class="mt-2">
+					<label class="form-label">Pilih Battery Pengganti</label>
+					<select class="form-select" id="batteryPick${suffix}" name="battery_id${suffix}">
+						<option value="">- Pilih Battery Baru -</option>
+					</select>
+					<small class="text-muted">Battery lama akan dikembalikan ke inventory</small>
+				</div>
+				
+				<input type="hidden" id="existingBatteryModelId${suffix}" value="${existing.battery.model_id}">
+				<input type="hidden" id="existingBatterySn${suffix}" value="${existing.battery.sn || ''}">
+				<input type="hidden" id="batteryAction${suffix}" value="use_existing">
+			`;
+		} else {
+			// Unit needs battery
+			html += `
+				<div class="border rounded p-2 bg-warning bg-opacity-10 mb-2">
+					<small>Unit Electric memerlukan battery</small>
+				</div>
+				<select class="form-select" id="batteryPick${suffix}" name="battery_id${suffix}" required>
+					<option value="">- Pilih Battery -</option>
+				</select>
+				<input type="hidden" id="keepExistingBattery${suffix}" value="false">
+			`;
+		}
+		html += '</div>';
+	}
+
+	// Electric Department - Charger Section  
+	if (requiredComponents.charger) {
+		html += '<div class="mb-3">';
+		html += '<label class="form-label">Charger</label>';
+		
+		if (existing.charger.exists) {
+			// Unit already has charger
+			html += `
+				<div class="border rounded p-3 bg-light mb-3">
+					<div class="mb-2">
+						<strong>Unit sudah memiliki charger</strong><br>
+						<small class="text-muted">${existing.charger.model_name || `Model ID: ${existing.charger.model_id}`} | SN: ${existing.charger.sn || 'Tidak tersedia'}</small>
+					</div>
+					
+					<div class="d-flex flex-column gap-2">
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="useExistingCharger${suffix}" onchange="toggleChargerOptions('existing', this.checked, '${suffix}')" checked>
+							<label class="form-check-label" for="useExistingCharger${suffix}">
+								<strong>Gunakan charger yang sudah ada</strong>
+								<small class="d-block text-muted">Tetap menggunakan charger yang terpasang di unit</small>
+							</label>
+						</div>
+						
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="replaceCharger${suffix}" onchange="toggleChargerOptions('replace', this.checked, '${suffix}')">
+							<label class="form-check-label" for="replaceCharger${suffix}">
+								<strong>Ganti dengan charger baru</strong>
+								<small class="d-block text-muted">Pilih charger baru dari inventory</small>
+							</label>
+						</div>
+					</div>
+				</div>
+				
+				<div id="chargerSelectionSection${suffix}" style="display: none;" class="mt-2">
+					<label class="form-label">Pilih Charger Pengganti</label>
+					<select class="form-select" id="chargerPick${suffix}" name="charger_id${suffix}">
+						<option value="">- Pilih Charger Baru -</option>
+					</select>
+					<small class="text-muted">Charger lama akan dikembalikan ke inventory</small>
+				</div>
+				
+				<input type="hidden" id="existingChargerModelId${suffix}" value="${existing.charger.model_id}">
+				<input type="hidden" id="existingChargerSn${suffix}" value="${existing.charger.sn || ''}">
+				<input type="hidden" id="chargerAction${suffix}" value="use_existing">
+				
+				<input type="hidden" id="keepExistingCharger${suffix}" value="true">
+			`;
+		} else {
+			// Unit needs charger
+			html += `
+				<div class="border rounded p-2 bg-warning bg-opacity-10 mb-2">
+					<small>Unit Electric memerlukan charger</small>
+				</div>
+				<select class="form-select" id="chargerPick${suffix}" name="charger_id${suffix}" required>
+					<option value="">- Pilih Charger -</option>
+				</select>
+				<input type="hidden" id="keepExistingCharger${suffix}" value="false">
+			`;
+		}
+		html += '</div>';
+	}
+
+	// Fabrikasi Department - Attachment Section  
+	if (requiredComponents.attachment) {
+		html += '<div class="mb-3">';
+		html += '<label class="form-label">Attachment</label>';
+		
+		if (existing.attachment.exists) {
+			// Unit already has attachment
+			html += `
+				<div class="border rounded p-3 bg-light">
+					<div class="mb-2">
+						<strong>Unit sudah memiliki attachment</strong><br>
+						<small class="text-muted">${existing.attachment.model_name || `Model ID: ${existing.attachment.model_id}`} | SN: ${existing.attachment.sn || 'Tidak tersedia'}</small>
+					</div>
+					
+					<div class="d-flex flex-column gap-2">
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="useExistingAttachment${suffix}" onchange="toggleAttachmentOptions('existing', this.checked, '${suffix}')" checked>
+							<label class="form-check-label" for="useExistingAttachment${suffix}">
+								<strong>Gunakan attachment yang sudah ada</strong>
+								<small class="d-block text-muted">Tetap menggunakan attachment yang terpasang di unit</small>
+							</label>
+						</div>
+						
+						<div class="form-check">
+							<input class="form-check-input" type="checkbox" id="replaceAttachment${suffix}" onchange="toggleAttachmentOptions('replace', this.checked, '${suffix}')">
+							<label class="form-check-label" for="replaceAttachment${suffix}">
+								<strong>Ganti dengan attachment baru</strong>
+								<small class="d-block text-muted">Pilih attachment baru dari inventory</small>
+							</label>
+						</div>
+					</div>
+				</div>
+				
+				<div id="attachmentSelectionSection${suffix}" style="display: none;" class="mt-2">
+					<label class="form-label">Pilih Attachment Pengganti</label>
+					<select class="form-select" id="attachmentPick${suffix}" name="attachment_id${suffix}">
+						<option value="">- Pilih Attachment Baru -</option>
+					</select>
+					<small class="text-muted">Attachment lama akan dikembalikan ke inventory</small>
+				</div>
+				
+				<input type="hidden" id="existingAttachmentModelId${suffix}" value="${existing.attachment.model_id}">
+				<input type="hidden" id="existingAttachmentSn${suffix}" value="${existing.attachment.sn || ''}">
+				<input type="hidden" id="attachmentAction${suffix}" value="use_existing">
+				
+				<input type="hidden" id="keepExistingAttachment${suffix}" value="true">
+			`;
+		} else {
+			// Unit needs attachment
+			html += `
+				<div class="border rounded p-2 bg-warning bg-opacity-10 mb-2">
+					<small>Unit Fabrikasi memerlukan attachment</small>
+				</div>
+				<select class="form-select" id="attachmentPick${suffix}" name="attachment_id${suffix}" required>
+					<option value="">- Pilih Attachment -</option>
+				</select>
+				<input type="hidden" id="keepExistingAttachment${suffix}" value="false">
+			`;
+		}
+		html += '</div>';
+	}
+
+	return html;
+}
+
+/**
+ * Handle fabrikasi components (for departments that need attachments)
+ */
+function handleFabrikasiComponents(unitData, departemenId) {
+	// Check if this is a fabrikasi department (adjust based on your dept IDs)
+	const isFabrikasi = ['3', '4'].includes(departemenId);
+	
+	if (isFabrikasi) {
+		const existing = {
+			attachment: {
+				model_id: unitData.model_attachment_id,
+				sn: unitData.sn_attachment,
+				exists: unitData.model_attachment_id && unitData.model_attachment_id !== '0'
+			}
+		};
+		
+		// You can add attachment handling logic here if needed
+		console.log('Fabrikasi department detected, existing attachment:', existing.attachment);
+	}
+}
+
+/**
+ * Toggle functions for component replacement
+ */
+function toggleBatterySelection(isReplacing, suffix = '') {
+	const sectionId = suffix ? `batterySelectionSection${suffix}` : 'batterySelectionSection';
+	const pickId = suffix ? `batteryPick${suffix}` : 'batteryPick';
+	const keepId = suffix ? `keepExistingBattery${suffix}` : 'keepExistingBattery';
+	
+	const section = document.getElementById(sectionId);
+	const batteryPick = document.getElementById(pickId);
+	const keepExisting = document.getElementById(keepId);
+	
+	if (isReplacing) {
+		// User chose to replace - uncheck existing and show selection
+		const existingCheckbox = document.getElementById(`useExistingBattery${suffix}`);
+		if (existingCheckbox) existingCheckbox.checked = false;
+		section.style.display = 'block';
+		batteryPick.setAttribute('required', '');
+		keepExisting.value = 'false';
+		// Load available batteries directly
+		fetch('<?= base_url('warehouse/inventory/available-batteries') ?>')
+			.then(r => r.json())
+			.then(data => {
+				if (batteryPick && Array.isArray(data)) {
+					batteryPick.innerHTML = '<option value="">- Pilih Battery -</option>' + 
+						data.map(item => {
+							const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
+							return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_baterai||'-'}</option>`;
+						}).join('');
+				}
+			})
+			.catch(err => console.log('Error loading batteries:', err));
+	} else {
+		section.style.display = 'none';
+		batteryPick.removeAttribute('required');
+		batteryPick.value = '';
+		keepExisting.value = 'true';
+	}
+}
+
+function toggleChargerSelection(isReplacing, suffix = '') {
+	const sectionId = suffix ? `chargerSelectionSection${suffix}` : 'chargerSelectionSection';
+	const pickId = suffix ? `chargerPick${suffix}` : 'chargerPick';
+	const keepId = suffix ? `keepExistingCharger${suffix}` : 'keepExistingCharger';
+	
+	const section = document.getElementById(sectionId);
+	const chargerPick = document.getElementById(pickId);
+	const keepExisting = document.getElementById(keepId);
+	
+	if (isReplacing) {
+		// User chose to replace - uncheck existing and show selection
+		const existingCheckbox = document.getElementById(`useExistingCharger${suffix}`);
+		if (existingCheckbox) existingCheckbox.checked = false;
+		section.style.display = 'block';
+		chargerPick.setAttribute('required', '');
+		keepExisting.value = 'false';
+		// Load charger options directly
+		fetch('<?= base_url('warehouse/inventory/available-chargers') ?>')
+			.then(r => r.json())
+			.then(data => {
+				if (chargerPick && Array.isArray(data)) {
+					chargerPick.innerHTML = '<option value="">- Pilih Charger -</option>' + 
+						data.map(item => {
+							const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
+							return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_charger||'-'}</option>`;
+						}).join('');
+				}
+			})
+			.catch(err => console.log('Error loading chargers:', err));
+	} else {
+		section.style.display = 'none';
+		chargerPick.removeAttribute('required');
+		chargerPick.value = '';
+		keepExisting.value = 'true';
+	}
+}
+
+function toggleAttachmentSelection(isReplacing, suffix = '') {
+	const sectionId = suffix ? `attachmentSelectionSection${suffix}` : 'attachmentSelectionSection';
+	const pickId = suffix ? `attachmentPick${suffix}` : 'attachmentPick';
+	const keepId = suffix ? `keepExistingAttachment${suffix}` : 'keepExistingAttachment';
+	
+	const section = document.getElementById(sectionId);
+	const attachmentPick = document.getElementById(pickId);
+	const keepExisting = document.getElementById(keepId);
+	
+	if (isReplacing) {
+		// User chose to replace - uncheck existing and show selection
+		const existingCheckbox = document.getElementById(`useExistingAttachment${suffix}`);
+		if (existingCheckbox) existingCheckbox.checked = false;
+		section.style.display = 'block';
+		attachmentPick.setAttribute('required', '');
+		keepExisting.value = 'false';
+		// Load attachment options directly
+		fetch('<?= base_url('warehouse/inventory/available-attachments') ?>')
+			.then(r => r.json())
+			.then(data => {
+				if (attachmentPick && Array.isArray(data)) {
+					attachmentPick.innerHTML = '<option value="">- Pilih Attachment -</option>' + 
+						data.map(item => {
+							return `<option value="${item.id_inventory_attachment}">${item.nama_barang} • SN: ${item.sn_attachment||'-'}</option>`;
+						}).join('');
+				}
+			})
+			.catch(err => console.log('Error loading attachments:', err));
+	} else {
+		section.style.display = 'none';
+		attachmentPick.removeAttribute('required');
+		attachmentPick.value = '';
+	}
+}
+
+/**
+ * Handle battery options toggle - new explicit checkbox approach
+ */
+function toggleBatteryOptions(type, isChecked, suffix = '') {
+	const useExistingCheckbox = document.getElementById(`useExistingBattery${suffix}`);
+	const replaceCheckbox = document.getElementById(`replaceBattery${suffix}`);
+	const selectionSection = document.getElementById(`batterySelectionSection${suffix}`);
+	const actionInput = document.getElementById(`batteryAction${suffix}`);
+	const existingModelId = document.getElementById(`existingBatteryModelId${suffix}`)?.value;
+	const keepExistingInput = document.getElementById(`keepExistingBattery${suffix}`);
+	
+	console.log(`toggleBatteryOptions called: type=${type}, isChecked=${isChecked}, suffix=${suffix}`);
+	console.log(`Current state: existingModelId=${existingModelId}, actionValue=${actionInput?.value}, keepExisting=${keepExistingInput?.value}`);
+	
+	// Verify all UI elements are found
+	if (!useExistingCheckbox || !replaceCheckbox || !actionInput) {
+		console.warn(`Some battery UI elements not found for suffix ${suffix}`);
+	}
+	
+	if (type === 'existing') {
+		if (isChecked) {
+			// User chose to use existing - uncheck replace and hide selection
+			replaceCheckbox.checked = false;
+			if (selectionSection) selectionSection.style.display = 'none';
+			actionInput.value = 'use_existing';
+			
+			// Set the keepExisting value to true
+			if (keepExistingInput) keepExistingInput.value = 'true';
+			
+			// Ensure the select is not required if using existing
+			const batteryPick = document.getElementById(`batteryPick${suffix}`);
+			if (batteryPick) {
+				batteryPick.removeAttribute('required');
+				batteryPick.value = ''; // Clear any selection
+			}
+			
+			console.log(`Use existing battery selected: actionInput.value = ${actionInput.value}, existingModelId = ${existingModelId}, keepExisting = ${keepExistingInput?.value}`);
+		} else {
+			// User unchecked existing
+			actionInput.value = '';
+			console.log(`Use existing battery unselected: actionInput.value = ${actionInput.value}`);
+		}
+	} else if (type === 'replace') {
+		if (isChecked) {
+			// User chose to replace - uncheck existing and show selection
 			useExistingCheckbox.checked = false;
 			if (selectionSection) selectionSection.style.display = 'block';
 			actionInput.value = 'replace';

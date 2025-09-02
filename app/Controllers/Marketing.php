@@ -870,27 +870,30 @@ class Marketing extends Controller
     {
         $q = trim($this->request->getGet('q') ?? '');
         $status = trim($this->request->getGet('status') ?? 'Pending');
-    $builder = $this->kontrakModel->select('id, no_kontrak, no_po_marketing, pelanggan, lokasi');
-        if ($status !== '' && strtolower($status) !== 'all') {
-            $builder->where('status', $status);
-        }
+        $builder = $this->kontrakModel
+            ->select('kontrak.id, kontrak.no_kontrak, kontrak.no_po_marketing, kontrak.pelanggan, kontrak.lokasi')
+            ->join('kontrak_spesifikasi ks', 'ks.kontrak_id = kontrak.id', 'inner')
+            ->whereIn('kontrak.status', ['Aktif', 'Pending'])
+            ->groupBy('kontrak.id, kontrak.no_kontrak, kontrak.no_po_marketing, kontrak.pelanggan, kontrak.lokasi');
+        
         if ($q !== '') {
             $builder->groupStart()
-                ->like('no_kontrak', $q)
-                ->orLike('no_po_marketing', $q)
-                ->orLike('pelanggan', $q)
+                ->like('kontrak.no_kontrak', $q)
+                ->orLike('kontrak.no_po_marketing', $q)
+                ->orLike('kontrak.pelanggan', $q)
             ->groupEnd();
         }
-        $rows = $builder->orderBy('id','DESC')->limit(20)->get()->getResultArray();
+        $rows = $builder->orderBy('kontrak.dibuat_pada', 'DESC')->limit(20)->get()->getResultArray();
+        
         // map to simple text for display if needed
-    $options = array_map(function($r){
+        $options = array_map(function($r){
             $label = trim(($r['no_kontrak'] ?: '') . ' ' . ($r['no_po_marketing'] ? '(' . $r['no_po_marketing'] . ')' : '') . ' - ' . ($r['pelanggan'] ?: '-'));
             return [
                 'id' => (int)$r['id'],
                 'no_kontrak' => $r['no_kontrak'],
                 'no_po_marketing' => $r['no_po_marketing'],
                 'pelanggan' => $r['pelanggan'],
-        'lokasi' => $r['lokasi'],
+                'lokasi' => $r['lokasi'],
                 'label' => $label
             ];
         }, $rows);
@@ -1004,13 +1007,23 @@ class Marketing extends Controller
         $this->db->transBegin();
 
         try {
-            // Check if this is new workflow with kontrak_spesifikasi_id
+            // Log all received POST data for debugging
+            log_message('info', 'Marketing::spkCreate - Received POST data: ' . json_encode($this->request->getPost()));
+            
+            // Check if this is new workflow with kontrak_spesifikasi_id or kontrak_id
             $kontrakSpesifikasiId = $this->request->getPost('kontrak_spesifikasi_id');
+            $kontrakId = $this->request->getPost('kontrak_id');
             $jumlahUnit = (int)($this->request->getPost('jumlah_unit') ?: 1);
 
-            if ($kontrakSpesifikasiId) {
+            log_message('info', 'Marketing::spkCreate - kontrak_spesifikasi_id: ' . $kontrakSpesifikasiId);
+            log_message('info', 'Marketing::spkCreate - kontrak_id: ' . $kontrakId);
+            log_message('info', 'Marketing::spkCreate - jumlah_unit: ' . $jumlahUnit);
+
+            if ($kontrakSpesifikasiId && $kontrakSpesifikasiId > 0) {
                 // New workflow: Create SPK based on contract specification
+                log_message('info', 'Marketing::spkCreate - Using specification workflow for kontrak_spesifikasi_id: ' . $kontrakSpesifikasiId);
                 $spesifikasi = $this->kontrakSpesifikasiModel->find($kontrakSpesifikasiId);
+                log_message('info', 'Marketing::spkCreate - Found spesifikasi: ' . json_encode($spesifikasi));
                 if (!$spesifikasi) {
                     throw new \Exception('Spesifikasi kontrak tidak ditemukan.');
                 }
@@ -1065,6 +1078,70 @@ class Marketing extends Controller
                     'dibuat_pada' => date('Y-m-d H:i:s')
                 ];
 
+            } elseif ($kontrakId && $kontrakId > 0) {
+                // Fallback: Create SPK based on contract ID only (when no specification is selected or kontrak_spesifikasi_id is 0)
+                log_message('info', 'Marketing::spkCreate - Using kontrak_id fallback workflow for kontrak: ' . $kontrakId);
+                $kontrak = $this->kontrakModel->find($kontrakId);
+                log_message('info', 'Marketing::spkCreate - Found kontrak: ' . json_encode($kontrak));
+                if (!$kontrak) {
+                    throw new \Exception('Kontrak tidak ditemukan.');
+                }
+
+                // Get first available specification for this contract, or create basic spec
+                $spesifikasiList = $this->kontrakSpesifikasiModel->getByKontrakId($kontrakId);
+                log_message('info', 'Marketing::spkCreate - Found ' . count($spesifikasiList) . ' specifications for kontrak ' . $kontrakId);
+                
+                $firstSpecId = null;
+                if (!empty($spesifikasiList)) {
+                    log_message('info', 'Marketing::spkCreate - First spec sample: ' . json_encode($spesifikasiList[0]));
+                }
+                $spec = [];
+                
+                if (!empty($spesifikasiList)) {
+                    // Use the first specification as template
+                    $firstSpec = $spesifikasiList[0];
+                    log_message('info', 'Marketing::spkCreate - Using first spec as template: ' . json_encode($firstSpec));
+                    $firstSpecId = $firstSpec['id']; // Store the ID for kontrak_spesifikasi_id
+                    $spec = [
+                        'departemen_id' => $firstSpec['departemen_id'] ?? null,
+                        'tipe_unit_id' => $firstSpec['tipe_unit_id'] ?? null,
+                        'tipe_jenis' => $firstSpec['tipe_jenis'] ?? null,
+                        'merk_unit' => $firstSpec['merk_unit'] ?? null,
+                        'model_unit' => $firstSpec['model_unit'] ?? null,
+                        'kapasitas_id' => $firstSpec['kapasitas_id'] ?? null,
+                        'attachment_tipe' => $firstSpec['attachment_tipe'] ?? null,
+                        'attachment_merk' => $firstSpec['attachment_merk'] ?? null,
+                        'jenis_baterai' => $firstSpec['jenis_baterai'] ?? null,
+                        'charger_id' => $firstSpec['charger_id'] ?? null,
+                        'mast_id' => $firstSpec['mast_id'] ?? null,
+                        'ban_id' => $firstSpec['ban_id'] ?? null,
+                        'roda_id' => $firstSpec['roda_id'] ?? null,
+                        'valve_id' => $firstSpec['valve_id'] ?? null,
+                        'aksesoris' => []
+                    ];
+                } else {
+                    log_message('info', 'Marketing::spkCreate - No specifications found for kontrak ' . $kontrakId . ', using empty spec');
+                }
+
+                $payload = [
+                    'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
+                    'jenis_spk' => 'UNIT',
+                    'kontrak_id' => $kontrak['id'],
+                    'kontrak_spesifikasi_id' => $firstSpecId, // Use the first spec ID if available
+                    'jumlah_unit' => $jumlahUnit,
+                    'po_kontrak_nomor' => $kontrak['no_kontrak'],
+                    'pelanggan' => $this->request->getPost('pelanggan') ?: $kontrak['pelanggan'],
+                    'pic' => $this->request->getPost('pic') ?: $kontrak['pic'],
+                    'kontak' => $this->request->getPost('kontak') ?: $kontrak['kontak'],
+                    'lokasi' => $this->request->getPost('lokasi') ?: $kontrak['lokasi'],
+                    'delivery_plan' => $this->request->getPost('delivery_plan') ?: null,
+                    'spesifikasi' => json_encode($spec),
+                    'catatan' => $this->request->getPost('catatan') ?: null,
+                    'status' => 'SUBMITTED',
+                    'dibuat_oleh' => session('user_id') ?: 1,
+                    'dibuat_pada' => date('Y-m-d H:i:s')
+                ];
+
             } else {
                 // Legacy workflow: manual specification input
                 $spec = $this->request->getPost('spesifikasi') ?? [];
@@ -1096,19 +1173,155 @@ class Marketing extends Controller
                 ];
             }
 
-            $this->spkModel->insert($payload);
-
+            // Insert SPK with robust success detection
+            log_message('info', 'Marketing::spkCreate - About to insert SPK');
+            log_message('info', 'Marketing::spkCreate - Payload: ' . json_encode($payload));
+            
+            // Check if SPK number already exists before insert
+            $existingSpk = $this->db->table('spk')->where('nomor_spk', $payload['nomor_spk'])->get()->getRow();
+            if ($existingSpk) {
+                log_message('error', 'Marketing::spkCreate - SPK number already exists: ' . $payload['nomor_spk'] . ' with ID: ' . $existingSpk->id);
+                $this->db->transRollback();
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Nomor SPK sudah digunakan. Silakan refresh halaman dan coba lagi.',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+            
+            $insertResult = $this->spkModel->insert($payload);
+            log_message('info', 'Marketing::spkCreate - Insert result: ' . json_encode($insertResult));
+            
+            // Commit transaction immediately after insert
             $this->db->transCommit();
+            log_message('info', 'Marketing::spkCreate - Transaction committed');
+            
+            // Get the insert ID AFTER committing the transaction
+            $insertedId = $this->spkModel->getInsertID();
+            log_message('info', 'Marketing::spkCreate - getInsertID() result: ' . $insertedId);
+            log_message('info', 'Marketing::spkCreate - getInsertID() type: ' . gettype($insertedId));
+            
+            // Also try getting the last insert ID from the database connection
+            $dbInsertId = $this->db->insertID();
+            log_message('info', 'Marketing::spkCreate - db->insertID() result: ' . $dbInsertId);
+            
+            // Test database connection after commit
+            $testQuery = $this->db->table('spk')->countAll();
+            log_message('info', 'Marketing::spkCreate - Database connection test after commit: ' . $testQuery . ' records found');
+            
+            // Verify the inserted record using the insert ID
+            if ($insertedId && $insertedId > 0) {
+                $spkId = $insertedId;
+                log_message('info', 'Marketing::spkCreate - Using getInsertID() result: ' . $spkId);
+                
+                // Double-check by querying the database
+                $verifyQuery = $this->db->table('spk')->where('id', $spkId)->get();
+                if ($verifyQuery->getNumRows() > 0) {
+                    $verified = $verifyQuery->getRow();
+                    log_message('info', 'Marketing::spkCreate - Verification successful: ID=' . $verified->id . ', nomor_spk=' . $verified->nomor_spk);
+                } else {
+                    log_message('error', 'Marketing::spkCreate - Verification failed: Could not find record with ID=' . $spkId);
+                }
+            } else {
+                // Fallback: try to find by nomor_spk
+                log_message('info', 'Marketing::spkCreate - getInsertID() failed, trying fallback search by nomor_spk=' . $payload['nomor_spk']);
+                $query = $this->db->table('spk')
+                    ->where('nomor_spk', $payload['nomor_spk'])
+                    ->get();
+                
+                log_message('info', 'Marketing::spkCreate - Fallback query executed, num_rows: ' . $query->getNumRows());
+                
+                if ($query->getNumRows() > 0) {
+                    $inserted = $query->getRow();
+                    $spkId = $inserted->id;
+                    log_message('info', 'Marketing::spkCreate - Fallback successful, found ID: ' . $spkId);
+                } else {
+                    log_message('error', 'Marketing::spkCreate - Fallback failed: Could not find inserted SPK record');
+                    $spkId = null;
+                }
+            }
 
-            // Notify Service team
-            $this->sendSpkNotification($payload['nomor_spk']);
+            if ($spkId) {
+                log_message('info', 'Marketing::spkCreate - SPK berhasil dibuat dengan ID: ' . $spkId);
+                
+                // Verify the data was actually inserted
+                $insertedSpk = $this->spkModel->find($spkId);
+                log_message('info', 'Marketing::spkCreate - Verification - Inserted SPK data: ' . json_encode($insertedSpk));
+                
+                // Notify Service team
+                $this->sendSpkNotification($payload['nomor_spk']);
 
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'SPK berhasil dibuat',
-                'nomor' => $payload['nomor_spk'],
-                'csrf_hash' => csrf_hash()
-            ]);
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'SPK berhasil dibuat',
+                    'nomor' => $payload['nomor_spk'],
+                    'spk_id' => $spkId,
+                    'inserted_data' => $insertedSpk,
+                    'csrf_hash' => csrf_hash()
+                ]);
+            } else {
+                // Get detailed error information
+                $errors = $this->spkModel->errors();
+                $dbError = $this->db->error();
+                
+                // Try to get more detailed error info
+                $lastQuery = $this->db->getLastQuery();
+                $errorCode = $dbError['code'] ?? 0;
+                $errorMessage = $dbError['message'] ?? '';
+                
+                log_message('error', 'Marketing::spkCreate - Insert result: ' . json_encode($insertResult));
+                log_message('error', 'Marketing::spkCreate - Could not find inserted SPK record');
+                log_message('error', 'Marketing::spkCreate - Model validation errors: ' . json_encode($errors));
+                log_message('error', 'Marketing::spkCreate - Database error: ' . json_encode($dbError));
+                log_message('error', 'Marketing::spkCreate - Last query: ' . $lastQuery);
+                log_message('error', 'Marketing::spkCreate - Payload data: ' . json_encode($payload));
+                
+                // Check if there are any SPK records at all
+                $totalSpk = $this->db->table('spk')->countAll();
+                log_message('error', 'Marketing::spkCreate - Total SPK records in database: ' . $totalSpk);
+                
+                // Check if the SPK number already exists
+                $existingSpk = $this->db->table('spk')->where('nomor_spk', $payload['nomor_spk'])->get()->getRow();
+                if ($existingSpk) {
+                    log_message('error', 'Marketing::spkCreate - SPK number already exists: ' . json_encode($existingSpk));
+                }
+                
+                // Construct a more informative error message
+                $errorMsg = 'Gagal membuat SPK.';
+                
+                if (!empty($errors)) {
+                    $errorMsg .= ' Validation errors: ' . implode(', ', $errors);
+                } elseif (!empty($errorMessage)) {
+                    $errorMsg .= ' Database error: ' . $errorMessage;
+                } elseif ($errorCode > 0) {
+                    $errorMsg .= ' Database error code: ' . $errorCode;
+                } elseif ($insertResult === false) {
+                    $errorMsg .= ' Insert failed.';
+                } else {
+                    $errorMsg .= ' Could not verify SPK was saved.';
+                }
+                
+                // Rollback transaction since verification failed
+                $this->db->transRollback();
+                log_message('error', 'Marketing::spkCreate - Transaction rolled back due to verification failure');
+                
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => $errorMsg,
+                    'validation_errors' => $errors,
+                    'db_error' => $dbError,
+                    'debug_info' => [
+                        'last_query' => $lastQuery,
+                        'db_error_code' => $errorCode,
+                        'db_error_message' => $errorMessage,
+                        'insert_result' => $insertResult,
+                        'searched_nomor_spk' => $payload['nomor_spk'],
+                        'total_spk_records' => $totalSpk,
+                        'existing_spk' => $existingSpk ? 'YES' : 'NO'
+                    ],
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
 
         } catch (\Exception $e) {
             $this->db->transRollback();
@@ -2497,6 +2710,66 @@ class Marketing extends Controller
                 'success' => false,
                 'message' => 'Gagal mencari kontrak',
                 'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    /**
+     * Cleanup SPK records with ID = 0
+     */
+    public function cleanupSpkZero()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            // Check for SPK records with ID = 0
+            $spkZeroRecords = $this->db->table('spk')->where('id', 0)->get()->getResultArray();
+
+            $result = [
+                'success' => true,
+                'message' => 'Cleanup completed',
+                'found_records' => count($spkZeroRecords),
+                'deleted_records' => 0,
+                'deleted_history' => 0,
+                'records' => []
+            ];
+
+            if (count($spkZeroRecords) > 0) {
+                // Store record details for response
+                foreach ($spkZeroRecords as $record) {
+                    $result['records'][] = [
+                        'id' => $record['id'],
+                        'nomor_spk' => $record['nomor_spk'],
+                        'status' => $record['status'],
+                        'dibuat_pada' => $record['dibuat_pada']
+                    ];
+                }
+
+                // Delete SPK records with ID = 0
+                $deleted = $this->db->table('spk')->where('id', 0)->delete();
+                $result['deleted_records'] = $deleted;
+
+                // Delete related status history records
+                $statusHistoryRecords = $this->db->table('spk_status_history')->where('spk_id', 0)->get()->getResultArray();
+                if (count($statusHistoryRecords) > 0) {
+                    $deletedHistory = $this->db->table('spk_status_history')->where('spk_id', 0)->delete();
+                    $result['deleted_history'] = $deletedHistory;
+                }
+
+                log_message('info', 'Marketing::cleanupSpkZero - Deleted ' . $deleted . ' SPK records with ID = 0 and ' . $result['deleted_history'] . ' status history records');
+            } else {
+                $result['message'] = 'No SPK records with ID = 0 found';
+            }
+
+            return $this->response->setJSON($result);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::cleanupSpkZero - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error during cleanup: ' . $e->getMessage()
             ]);
         }
     }

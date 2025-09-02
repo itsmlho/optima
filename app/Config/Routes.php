@@ -94,7 +94,7 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('units/(:num)', 'Kontrak::getContractUnits/$1');
         
         // Spesifikasi management
-        $routes->get('spesifikasi/(:num)', 'Kontrak::getKontrakSpesifikasi/$1');
+        $routes->get('spesifikasi/(:num)', 'Kontrak::spesifikasi/$1');
         $routes->post('add-spesifikasi', 'Kontrak::addSpesifikasi');
         $routes->get('spesifikasi-detail/(:num)', 'Kontrak::spesifikasiDetail/$1');
         $routes->post('update-spesifikasi/(:num)', 'Kontrak::updateSpesifikasi/$1');
@@ -107,7 +107,7 @@ $routes->group('marketing',  static function ($routes) {
         
         // For SPK workflow
         $routes->get('get-active-contracts', 'Marketing::getActiveContracts');
-        $routes->get('get/(:num)', 'Marketing::getKontrak/$1');
+        $routes->get('get-kontrak/(:num)', 'Marketing::getKontrak/$1');
         $routes->get('find-by-spesifikasi/(:num)', 'Marketing::findBySpesifikasi/$1');
     });
     // SPK Marketing
@@ -119,6 +119,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('spk/detail/(:num)', 'Marketing::spkDetail/$1');
     $routes->post('spk/create', 'Marketing::spkCreate');
     $routes->post('spk/update-status/(:num)', 'Marketing::spkUpdateStatus/$1');
+    $routes->post('spk/cleanup-zero', 'Marketing::cleanupSpkZero');
     // DI (Delivery Instruction) - Marketing creates
     $routes->post('di/create', 'Marketing::diCreate');
     // Marketing DI page & APIs
@@ -181,6 +182,7 @@ $routes->group('operational', static function ($routes) {
     $routes->post('delivery/approve-stage/(:num)', 'Operational::diApproveStage/$1');
     $routes->get('tracking', 'Operational::tracking');
     $routes->post('tracking-search', 'Operational::trackingSearch');
+    $routes->post('audit-trail', 'Operational::auditTrail');
 });
 
 // Warehouse Routes
@@ -574,6 +576,8 @@ $routes->group('warehouse/inventory', static function($r){
     $r->get('available-attachments', 'Warehouse\InventoryApi::availableAttachments');
     $r->get('available-chargers', 'Warehouse\InventoryApi::availableChargers');
     $r->get('available-batteries', 'Warehouse\InventoryApi::availableBatteries');
+    $r->get('unit-components', 'Warehouse\InventoryApi::getUnitComponents');
+    $r->post('replace-component', 'Warehouse\InventoryApi::replaceComponent');
 });
 
 

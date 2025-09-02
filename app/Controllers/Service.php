@@ -35,26 +35,26 @@ class Service extends BaseController
             'attachment' => null
         ];
 
-        // Get battery info
+        // Get battery info - include both available (7) and in use (8) for the unit
         $battery = $this->db->table('inventory_attachment ia')
             ->select('ia.id_inventory_attachment, ia.baterai_id, ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
             ->join('baterai b', 'ia.baterai_id = b.id', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'battery')
-            ->where('ia.status_unit', 8) // In use
+            ->whereIn('ia.status_unit', [7, 8]) // Available or In use for this unit
             ->get()->getRowArray();
 
         if ($battery) {
             $components['battery'] = $battery;
         }
 
-        // Get charger info
+        // Get charger info - include both available (7) and in use (8) for the unit
         $charger = $this->db->table('inventory_attachment ia')
             ->select('ia.id_inventory_attachment, ia.charger_id, ia.sn_charger, c.merk_charger, c.tipe_charger')
             ->join('charger c', 'ia.charger_id = c.id_charger', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'charger')
-            ->where('ia.status_unit', 8) // In use
+            ->whereIn('ia.status_unit', [7, 8]) // Available or In use for this unit
             ->get()->getRowArray();
 
         if ($charger) {
@@ -536,7 +536,22 @@ class Service extends BaseController
         // Handle stage-specific data
         if ($stage === 'persiapan_unit') {
             $unit_id = $this->request->getPost('unit_id');
+            // Handle case where unit_id comes as array from browser form
+            if (is_array($unit_id)) {
+                $unit_id = !empty($unit_id) ? $unit_id[0] : null;
+            }
+            
             $aksesoris_tersedia = $this->request->getPost('aksesoris_tersedia'); // JSON array of checked accessories
+            // Handle case where aksesoris_tersedia comes as array from browser form
+            if (is_array($aksesoris_tersedia)) {
+                // If it's array of arrays, take the first one, otherwise encode the array
+                if (!empty($aksesoris_tersedia) && is_array($aksesoris_tersedia[0])) {
+                    $aksesoris_tersedia = json_encode($aksesoris_tersedia[0]);
+                } else {
+                    $aksesoris_tersedia = json_encode($aksesoris_tersedia);
+                }
+            }
+            
             $update_no_unit = $this->request->getPost('update_no_unit');
             $no_unit_action = $this->request->getPost('no_unit_action');
             $battery_inventory_id = $this->request->getPost('battery_inventory_id');
@@ -546,11 +561,34 @@ class Service extends BaseController
             $enhanced_component_data = $this->request->getPost('enhanced_component_data');
             $component_data = null;
             if ($enhanced_component_data) {
-                $component_data = json_decode($enhanced_component_data, true);
+                $decoded_component_data = json_decode($enhanced_component_data, true);
                 // Debug: Log the received component data
                 log_message('debug', 'Enhanced component data received: ' . $enhanced_component_data);
-                log_message('debug', 'Decoded component data: ' . print_r($component_data, true));
-                log_message('debug', 'Unit ID from POST: ' . $unit_id . ', Unit ID from component data: ' . (is_array($component_data) && isset($component_data['unit_id']) ? $component_data['unit_id'] : 'null'));
+                
+                if ($decoded_component_data) {
+                    log_message('debug', 'Decoded component data type: ' . gettype($decoded_component_data));
+                    
+                    // Handle both array of objects and single object
+                    if (is_array($decoded_component_data)) {
+                        // Check if it's array of objects (multiple units) or single object (one unit)
+                        if (isset($decoded_component_data['unit_id'])) {
+                            // Single object case
+                            if ($decoded_component_data['unit_id'] == $unit_id) {
+                                $component_data = $decoded_component_data;
+                            }
+                        } else {
+                            // Array of objects case
+                            foreach ($decoded_component_data as $unit_component_data) {
+                                if (isset($unit_component_data['unit_id']) && $unit_component_data['unit_id'] == $unit_id) {
+                                    $component_data = $unit_component_data;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                log_message('debug', 'Unit ID from POST: ' . (is_array($unit_id) ? json_encode($unit_id) : $unit_id) . ', Component data found: ' . ($component_data ? 'yes' : 'no'));
             }
 
             if (!$unit_id) {
@@ -593,11 +631,16 @@ class Service extends BaseController
                     $batteryComponent = $component_data['components']['battery'];
                     
                     if (($batteryComponent['action'] === 'keep' || $batteryComponent['action'] === 'use_existing') && $batteryComponent['keep_existing'] === true) {
-                        // Keep existing battery - no action needed
-                        $finalBatteryId = $unit['model_baterai_id'];
-                        $spec['persiapan_battery_action'] = 'keep_existing';
-                        $spec['persiapan_battery_id'] = $finalBatteryId;
-                        log_message('debug', 'Keeping existing battery: ' . $finalBatteryId);
+                        // Keep existing battery - check if unit actually has one
+                        if ($unit['model_baterai_id']) {
+                            $finalBatteryId = $unit['model_baterai_id'];
+                            $spec['persiapan_battery_action'] = 'keep_existing';
+                            $spec['persiapan_battery_id'] = $finalBatteryId;
+                            log_message('debug', 'Keeping existing battery: ' . $finalBatteryId);
+                        } else {
+                            // Unit doesn't have existing battery, this is an error state
+                            return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak memiliki battery existing untuk di-keep']);
+                        }
                     } else if ($batteryComponent['action'] === 'replace' && $batteryComponent['new_inventory_attachment_id']) {
                         // Replace existing battery
                         $finalBatteryId = $batteryComponent['new_inventory_attachment_id'];
@@ -668,6 +711,7 @@ class Service extends BaseController
                 }
                 
                 // Process component inventory updates
+                log_message('debug', 'Calling processComponentInventoryUpdates with unit_id: ' . $unit_id . ', component_data type: ' . gettype($component_data) . ', has components: ' . (isset($component_data['components']) ? 'yes' : 'no'));
                 $this->processComponentInventoryUpdates($unit_id, $component_data, $unit);
             }
 
@@ -713,7 +757,9 @@ class Service extends BaseController
                 // Untuk status 7 (Aset), tidak perlu generate/update no_unit
                 $updateData['persiapan_unit_id'] = $unit_id;
             }
-            $updateData['persiapan_aksesoris_tersedia'] = $aksesoris_tersedia;
+            
+            // Properly encode array data to JSON to prevent "Array to string conversion" error
+            $updateData['persiapan_aksesoris_tersedia'] = is_array($aksesoris_tersedia) ? json_encode($aksesoris_tersedia, JSON_UNESCAPED_UNICODE) : $aksesoris_tersedia;
             
             // Save updated spesifikasi JSON
             $updateData['spesifikasi'] = json_encode($spec, JSON_UNESCAPED_UNICODE);
@@ -1253,7 +1299,7 @@ class Service extends BaseController
     return view('marketing/print_spk', ['spk'=>$row, 'spesifikasi'=>$enriched, 'kontrak_spesifikasi'=>$kontrak_spec]);
     }
 
-    /** Simple list for unit picking (Only STOCK units: status 7 & 8) */
+    /** Simple list for unit picking (BOOKING and STOCK units: status 6, 7 & 8) */
     public function dataUnitSimple()
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
@@ -1263,7 +1309,7 @@ class Service extends BaseController
         $qb = $this->serviceBaseQuery($allowed)
             ->select('iu.id_inventory_unit as id, iu.no_unit, mu.merk_unit, mu.model_unit, iu.lokasi_unit, iu.status_unit_id')
             ->select('d.nama_departemen, iu.departemen_id')
-            ->whereIn('iu.status_unit_id', [7, 8]) // Only STOCK ASET (7) and STOCK NON ASET (8)
+            ->whereIn('iu.status_unit_id', [6, 7, 8]) // BOOKING (6), STOCK ASET (7) and STOCK NON ASET (8)
             ->orderBy('iu.no_unit','ASC')
             ->limit(50);
         

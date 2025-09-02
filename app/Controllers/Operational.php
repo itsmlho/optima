@@ -675,4 +675,71 @@ class Operational extends Controller
             throw $e;
         }
     }
+
+    /**
+     * Get audit trail data for units
+     */
+    public function auditTrail()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $input = json_decode($this->request->getBody(), true);
+            $unitIds = $input['unit_ids'] ?? [];
+
+            if (empty($unitIds) || !is_array($unitIds)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit IDs required']);
+            }
+
+            // Sanitize unit IDs
+            $unitIds = array_filter(array_map('intval', $unitIds));
+
+            if (empty($unitIds)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Valid unit IDs required']);
+            }
+
+            // Fetch audit trail data
+            $auditData = $this->db->table('unit_activity_log')
+                ->select('unit_id, activity_type, activity_description, user_name, user_role, created_at')
+                ->whereIn('unit_id', $unitIds)
+                ->orderBy('created_at', 'DESC')
+                ->limit(50) // Limit to recent 50 activities
+                ->get()
+                ->getResultArray();
+
+            // Also get workflow tracking data
+            $workflowData = $this->db->table('rental_workflow_tracking')
+                ->select('unit_id, workflow_stage as activity_type, stage_description as activity_description, user_name, user_role, stage_start_date as created_at')
+                ->whereIn('unit_id', $unitIds)
+                ->orderBy('stage_start_date', 'DESC')
+                ->limit(20)
+                ->get()
+                ->getResultArray();
+
+            // Combine and sort all data
+            $allData = array_merge($auditData, $workflowData);
+            
+            // Sort by date descending
+            usort($allData, function($a, $b) {
+                return strtotime($b['created_at']) - strtotime($a['created_at']);
+            });
+
+            // Limit to latest 30 entries
+            $allData = array_slice($allData, 0, 30);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $allData
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'auditTrail error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false, 
+                'message' => 'Internal server error'
+            ]);
+        }
+    }
 }

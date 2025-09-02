@@ -841,6 +841,10 @@ function loadContractInfo(id) {
             }
             
             const d = j.data || {};
+            
+            // Store contract data globally for SPK creation
+            window.currentContractData = d;
+            
             body.innerHTML = `
                 <div class="row g-3">
                     <div class="col-md-6"><strong>No. Kontrak:</strong> ${d.no_kontrak || '-'}</div>
@@ -1110,6 +1114,22 @@ document.addEventListener('DOMContentLoaded', function() {
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Pelanggan</label>
+                        <input type="text" class="form-control" name="pelanggan" id="spkPelanggan" readonly required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">PIC</label>
+                        <input type="text" class="form-control" name="pic" id="spkPic" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Kontak</label>
+                        <input type="text" class="form-control" name="kontak" id="spkKontak" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Lokasi</label>
+                        <input type="text" class="form-control" name="lokasi" id="spkLokasi" readonly>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Delivery Plan</label>
                         <input type="date" class="form-control" name="delivery_plan" required>
                     </div>
@@ -1137,13 +1157,30 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Expose global opener so per-spec buttons can call it
         window.openSpkModalFromKontrak = function(spekId) {
+            console.log('openSpkModalFromKontrak called with spekId:', spekId);
             const kontrakId = window.currentKontrakId || document.getElementById('currentKontrakId')?.value;
+            console.log('Current kontrakId:', kontrakId);
             if (!kontrakId) {
                 safeShowNotification('Kontrak belum dipilih. Buka detail kontrak terlebih dahulu.', 'error');
                 return;
             }
             document.getElementById('spkKontrakId').value = kontrakId;
             document.getElementById('spkSpesifikasiId').value = spekId;
+            console.log('Set form values - kontrakId:', kontrakId, 'spekId:', spekId);
+            
+            // Populate fields from contract data
+            if (window.currentContractData) {
+                const pelangganField = document.getElementById('spkPelanggan');
+                const picField = document.getElementById('spkPic');
+                const kontakField = document.getElementById('spkKontak');
+                const lokasiField = document.getElementById('spkLokasi');
+                
+                if (pelangganField) pelangganField.value = window.currentContractData.pelanggan || '';
+                if (picField) picField.value = window.currentContractData.pic || '';
+                if (kontakField) kontakField.value = window.currentContractData.kontak || '';
+                if (lokasiField) lokasiField.value = window.currentContractData.lokasi || '';
+            }
+            
             // Reset other fields
             document.querySelector('#spkFromKontrakForm [name="jenis_spk"]').value = 'UNIT';
             document.querySelector('#spkFromKontrakForm [name="delivery_plan"]').value = '';
@@ -1189,10 +1226,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 const formData = new FormData(spkForm);
                 // Add CSRF
                 formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
+                
+                // Validate required fields
+                const kontrakId = formData.get('kontrak_id');
+                const kontrakSpesifikasiId = formData.get('kontrak_spesifikasi_id');
+                console.log('Validation - kontrak_id:', kontrakId, 'kontrak_spesifikasi_id:', kontrakSpesifikasiId);
+                
+                if (!kontrakId) {
+                    safeShowNotification('Data kontrak tidak tersedia. Pastikan halaman sudah dimuat dengan benar.', 'error');
+                    return;
+                }
+                
+                // kontrak_spesifikasi_id can be 0 or null when creating SPK from contract without specific spec
+                if (!kontrakSpesifikasiId && kontrakSpesifikasiId !== '0' && kontrakSpesifikasiId !== 0) {
+                    console.log('kontrak_spesifikasi_id is empty, but kontrak_id is provided - this is OK');
+                }
+                if (!formData.get('pelanggan')) {
+                    safeShowNotification('Data pelanggan tidak tersedia. Pastikan detail kontrak sudah dimuat.', 'error');
+                    return;
+                }
                 if (!formData.get('delivery_plan') || !formData.get('jumlah_unit')) {
                     safeShowNotification('Lengkapi semua field wajib.', 'error');
                     return;
                 }
+                
                 // Client-side limit based on available units
                 const available = Number(spkForm.dataset.availableUnits || '0');
                 const jumlah = Number(formData.get('jumlah_unit'));
@@ -1200,13 +1257,24 @@ document.addEventListener('DOMContentLoaded', function() {
                     safeShowNotification('Jumlah unit melebihi yang dibutuhkan. Maksimal: ' + available, 'error');
                     return;
                 }
+                
+                // Log form data for debugging
+                console.log('SPK Form Data:');
+                for (let [key, value] of formData.entries()) {
+                    console.log(key + ': ' + value);
+                }
+                
                 fetch('<?= base_url('marketing/spk/create') ?>', {
                     method: 'POST',
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                     body: formData
                 })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('SPK Create Response Status:', response.status);
+                    return response.json();
+                })
                 .then(res => {
+                    console.log('SPK Create Response:', res);
                     if (res.success) {
                         safeShowNotification('SPK berhasil dibuat!', 'success');
                         const modalEl = document.getElementById('spkFromKontrakModal');

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SPK Creation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-container { max-width: 600px; margin: 0 auto; }
+        .form-group { margin: 15px 0; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input, select, textarea { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; color: #721c24; }
+        .response-data { background: #f8f9fa; padding: 10px; border-radius: 4px; margin-top: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Test SPK Creation</h1>
+        <p>Form untuk test apakah SPK creation sudah berfungsi dengan baik setelah perbaikan database.</p>
+        
+        <form id="spkForm">
+            <div class="form-group">
+                <label for="pelanggan">Pelanggan:</label>
+                <input type="text" id="pelanggan" name="pelanggan" value="Test Customer Database Fix" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="lokasi_pekerjaan">Lokasi Pekerjaan:</label>
+                <input type="text" id="lokasi_pekerjaan" name="lokasi_pekerjaan" value="Jakarta Testing Site" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="tipe_pekerjaan">Tipe Pekerjaan:</label>
+                <select id="tipe_pekerjaan" name="tipe_pekerjaan" required>
+                    <option value="SERVICE">Service</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="INSTALLATION">Installation</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="deskripsi_pekerjaan">Deskripsi Pekerjaan:</label>
+                <textarea id="deskripsi_pekerjaan" name="deskripsi_pekerjaan" rows="3" required>Test deskripsi pekerjaan untuk memastikan database sudah berfungsi dengan baik</textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="prioritas">Prioritas:</label>
+                <select id="prioritas" name="prioritas" required>
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM" selected>Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="URGENT">Urgent</option>
+                </select>
+            </div>
+            
+            <button type="submit">Create SPK Test</button>
+        </form>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        document.getElementById('spkForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '<p>Creating SPK...</p>';
+            
+            const formData = new FormData(this);
+            const data = Object.fromEntries(formData.entries());
+            
+            try {
+                // Get CSRF token first
+                const csrfResponse = await fetch('/optima1/api/csrf-token');
+                const csrfData = await csrfResponse.json();
+                
+                if (!csrfData.success) {
+                    throw new Error('Failed to get CSRF token');
+                }
+                
+                // Create SPK
+                const response = await fetch('/optima1/api/spk/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': csrfData.csrf_token
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    resultDiv.innerHTML = `
+                        <div class="result success">
+                            <h3>✅ SPK Created Successfully!</h3>
+                            <p><strong>SPK ID:</strong> ${result.data.id}</p>
+                            <p><strong>Nomor SPK:</strong> ${result.data.nomor_spk}</p>
+                            <p><strong>Status:</strong> ${result.data.status}</p>
+                            <div class="response-data">
+                                <strong>Full Response:</strong><br>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="result error">
+                            <h3>❌ SPK Creation Failed</h3>
+                            <p><strong>Error:</strong> ${result.message || 'Unknown error'}</p>
+                            <div class="response-data">
+                                <strong>Full Response:</strong><br>
+                                <pre>${JSON.stringify(result, null, 2)}</pre>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="result error">
+                        <h3>❌ Network Error</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
