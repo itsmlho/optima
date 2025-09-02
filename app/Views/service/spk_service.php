@@ -1090,30 +1090,32 @@ document.addEventListener('DOMContentLoaded', () => {
 						const unitId = selectedOption.value;
 						
 						// Check if Electric department (id=2)
-					const isElectric = departemenId === '2';
-					const electricFields = document.getElementById('electricFields');
-					
-					if (isElectric && electricFields) {
-						// Langsung gunakan API untuk mendapatkan data komponen unit
-						fetchUnitComponentData(unitId).then(apiData => {
-							if (apiData && apiData.success && apiData.unit) {
-								const componentUI = generateComponentSelectionUI(apiData.unit, { battery: true, charger: true, attachment: false }, unitId);
-								electricFields.innerHTML = componentUI;
-								electricFields.style.display = 'block';
-								loadElectricOptionsForAvailableSlots(apiData.unit);
-							} else {
-								// Fallback ke pilihan manual jika API gagal
+						const isElectric = departemenId === '2';
+						const electricFields = document.getElementById('electricFields');
+						
+						if (isElectric && electricFields) {
+							// Langsung gunakan API untuk mendapatkan data komponen unit
+							fetchUnitComponentData(unitId).then(apiData => {
+								if (apiData && apiData.success && apiData.unit) {
+									const componentUI = generateComponentSelectionUI(apiData.unit, { battery: true, charger: true, attachment: false }, unitId);
+									electricFields.innerHTML = componentUI;
+									electricFields.style.display = 'block';
+									loadElectricOptionsForAvailableSlots(apiData.unit);
+								} else {
+									// Fallback ke pilihan manual jika API gagal
+									electricFields.style.display = 'block';
+									loadElectricOptions();
+								}
+							}).catch(error => {
+								console.error('API call failed, fallback manual:', error);
 								electricFields.style.display = 'block';
 								loadElectricOptions();
-							}
-						}).catch(error => {
-							console.error('API call failed, fallback manual:', error);
-							electricFields.style.display = 'block';
-							loadElectricOptions();
-						});
-					} else if (electricFields) {
-						electricFields.style.display = 'none';
-					}						// Handle Fabrikasi departments (id=3,4) - Attachment management
+							});
+						} else if (electricFields) {
+							electricFields.style.display = 'none';
+						}
+						
+						// Handle Fabrikasi departments (id=3,4) - Attachment management
 						const isFabrikasi = ['3', '4'].includes(departemenId);
 						const fabrikasiFields = document.getElementById('fabrikasiFields');
 						
@@ -1418,6 +1420,23 @@ document.addEventListener('DOMContentLoaded', () => {
 				console.log('JSON data being sent:', componentDataJson);
 				fd.append('enhanced_component_data', componentDataJson);
 				
+				// Also set legacy fields as fallback for Electric units
+				if (enhancedComponentData.length === 1) {
+					const unitData = enhancedComponentData[0];
+					const batteryComponent = unitData.components?.battery;
+					const chargerComponent = unitData.components?.charger;
+					
+					// Set legacy battery_inventory_id
+					if (batteryComponent?.new_inventory_attachment_id) {
+						fd.append('battery_inventory_id', batteryComponent.new_inventory_attachment_id);
+					}
+					
+					// Set legacy charger_inventory_id
+					if (chargerComponent?.new_inventory_attachment_id) {
+						fd.append('charger_inventory_id', chargerComponent.new_inventory_attachment_id);
+					}
+				}
+				
 				// Validate each unit's component requirements
 				let validationErrors = [];
 				
@@ -1541,7 +1560,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchUnitComponentData(unitId) {
 	try {
 		console.log('Fetching unit component data for unit:', unitId);
-		const apiUrl = `<?= base_url('service/unit-component-data') ?>/${unitId}`;
+		const apiUrl = `http://localhost/optima1/public/index.php/service/unit-component-data/${unitId}`;
 		console.log('API URL:', apiUrl);
 		
 		const response = await fetch(apiUrl, {
@@ -1594,21 +1613,21 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 	const existing = {
 		battery: {
 			model_id: unitData.model_baterai_id,
-			model_name: unitData.model_baterai_name,
+			model_name: unitData.model_baterai_name || unitData.baterai_name,
 			sn: unitData.sn_baterai,
-			exists: (unitData.model_baterai_id && unitData.model_baterai_id !== '0' && unitData.model_baterai_id !== null) || unitData.has_battery === true
+			exists: !!(unitData.model_baterai_id || unitData.has_battery || unitData.baterai_id)
 		},
 		charger: {
 			model_id: unitData.model_charger_id,
-			model_name: unitData.model_charger_name,
+			model_name: unitData.model_charger_name || unitData.charger_name,
 			sn: unitData.sn_charger,
-			exists: (unitData.model_charger_id && unitData.model_charger_id !== '0' && unitData.model_charger_id !== null) || unitData.has_charger === true
+			exists: !!(unitData.model_charger_id || unitData.has_charger || unitData.charger_id)
 		},
 		attachment: {
 			model_id: unitData.model_attachment_id,
-			model_name: unitData.model_attachment_name,
+			model_name: unitData.model_attachment_name || unitData.attachment_name,
 			sn: unitData.sn_attachment,
-			exists: (unitData.model_attachment_id && unitData.model_attachment_id !== '0' && unitData.model_attachment_id !== null) || unitData.has_attachment === true
+			exists: !!(unitData.model_attachment_id || unitData.has_attachment || unitData.attachment_id)
 		}
 	};
 
@@ -1643,7 +1662,6 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 						</div>
 						
 						<!-- Hidden fields to store existing battery data -->
-						<input type="hidden" id="existingBatteryModelId${suffix}" value="${existing.battery.model_id || ''}" />
 						<input type="hidden" id="existingBatterySn${suffix}" value="${existing.battery.sn || ''}" />
 						<input type="hidden" id="keepExistingBattery${suffix}" value="true" />
 					</div>
@@ -1710,9 +1728,10 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 					
 					<div class="d-flex flex-column gap-2">
 						<div class="form-check">
-							<input class="form-check-input" type="checkbox" id="useExistingCharger${suffix}" onchange="toggleChargerOptions('existing', this.checked, '${suffix}')">
+							<input class="form-check-input" type="checkbox" id="useExistingCharger${suffix}" onchange="toggleChargerOptions('existing', this.checked, '${suffix}')" checked>
 							<label class="form-check-label" for="useExistingCharger${suffix}">
 								<strong>Gunakan charger yang sudah ada</strong>
+								<small class="d-block text-muted">Tetap menggunakan charger yang terpasang di unit</small>
 							</label>
 						</div>
 						
@@ -1720,6 +1739,7 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 							<input class="form-check-input" type="checkbox" id="replaceCharger${suffix}" onchange="toggleChargerOptions('replace', this.checked, '${suffix}')">
 							<label class="form-check-label" for="replaceCharger${suffix}">
 								<strong>Ganti dengan charger baru</strong>
+								<small class="d-block text-muted">Pilih charger baru dari inventory</small>
 							</label>
 						</div>
 					</div>
@@ -1735,7 +1755,9 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 				
 				<input type="hidden" id="existingChargerModelId${suffix}" value="${existing.charger.model_id}">
 				<input type="hidden" id="existingChargerSn${suffix}" value="${existing.charger.sn || ''}">
-				<input type="hidden" id="chargerAction${suffix}" value="">
+				<input type="hidden" id="chargerAction${suffix}" value="use_existing">
+				
+				<input type="hidden" id="keepExistingCharger${suffix}" value="true">
 			`;
 		} else {
 			// Unit needs charger
@@ -1768,9 +1790,10 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 					
 					<div class="d-flex flex-column gap-2">
 						<div class="form-check">
-							<input class="form-check-input" type="checkbox" id="useExistingAttachment${suffix}" onchange="toggleAttachmentOptions('existing', this.checked, '${suffix}')">
+							<input class="form-check-input" type="checkbox" id="useExistingAttachment${suffix}" onchange="toggleAttachmentOptions('existing', this.checked, '${suffix}')" checked>
 							<label class="form-check-label" for="useExistingAttachment${suffix}">
 								<strong>Gunakan attachment yang sudah ada</strong>
+								<small class="d-block text-muted">Tetap menggunakan attachment yang terpasang di unit</small>
 							</label>
 						</div>
 						
@@ -1778,6 +1801,7 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 							<input class="form-check-input" type="checkbox" id="replaceAttachment${suffix}" onchange="toggleAttachmentOptions('replace', this.checked, '${suffix}')">
 							<label class="form-check-label" for="replaceAttachment${suffix}">
 								<strong>Ganti dengan attachment baru</strong>
+								<small class="d-block text-muted">Pilih attachment baru dari inventory</small>
 							</label>
 						</div>
 					</div>
@@ -1793,7 +1817,9 @@ function generateComponentSelectionUI(unitData, requiredComponents, unitIndex = 
 				
 				<input type="hidden" id="existingAttachmentModelId${suffix}" value="${existing.attachment.model_id}">
 				<input type="hidden" id="existingAttachmentSn${suffix}" value="${existing.attachment.sn || ''}">
-				<input type="hidden" id="attachmentAction${suffix}" value="">
+				<input type="hidden" id="attachmentAction${suffix}" value="use_existing">
+				
+				<input type="hidden" id="keepExistingAttachment${suffix}" value="true">
 			`;
 		} else {
 			// Unit needs attachment
@@ -1847,6 +1873,9 @@ function toggleBatterySelection(isReplacing, suffix = '') {
 	const keepExisting = document.getElementById(keepId);
 	
 	if (isReplacing) {
+		// User chose to replace - uncheck existing and show selection
+		const existingCheckbox = document.getElementById(`useExistingBattery${suffix}`);
+		if (existingCheckbox) existingCheckbox.checked = false;
 		section.style.display = 'block';
 		batteryPick.setAttribute('required', '');
 		keepExisting.value = 'false';
@@ -1881,6 +1910,9 @@ function toggleChargerSelection(isReplacing, suffix = '') {
 	const keepExisting = document.getElementById(keepId);
 	
 	if (isReplacing) {
+		// User chose to replace - uncheck existing and show selection
+		const existingCheckbox = document.getElementById(`useExistingCharger${suffix}`);
+		if (existingCheckbox) existingCheckbox.checked = false;
 		section.style.display = 'block';
 		chargerPick.setAttribute('required', '');
 		keepExisting.value = 'false';
@@ -1915,6 +1947,9 @@ function toggleAttachmentSelection(isReplacing, suffix = '') {
 	const keepExisting = document.getElementById(keepId);
 	
 	if (isReplacing) {
+		// User chose to replace - uncheck existing and show selection
+		const existingCheckbox = document.getElementById(`useExistingAttachment${suffix}`);
+		if (existingCheckbox) existingCheckbox.checked = false;
 		section.style.display = 'block';
 		attachmentPick.setAttribute('required', '');
 		keepExisting.value = 'false';
@@ -1990,7 +2025,7 @@ function toggleBatteryOptions(type, isChecked, suffix = '') {
 			const keepExistingInput = document.getElementById(`keepExistingBattery${suffix}`);
 			if (keepExistingInput) keepExistingInput.value = 'false';
 			
-			// Load available batteries
+			// Load available batteries directly
 			const batteryPick = document.getElementById(`batteryPick${suffix}`);
 			fetch('<?= base_url('warehouse/inventory/available-batteries') ?>')
 				.then(r => r.json())
@@ -2007,8 +2042,6 @@ function toggleBatteryOptions(type, isChecked, suffix = '') {
 					}
 				})
 				.catch(err => console.log('Error loading batteries:', err));
-				
-			console.log(`Replace battery selected: actionInput.value = ${actionInput.value}, keepExisting = ${keepExistingInput?.value}`);
 		} else {
 			// User unchecked replace
 			selectionSection.style.display = 'none';
@@ -2025,25 +2058,45 @@ function toggleChargerOptions(type, isChecked, suffix = '') {
 	const replaceCheckbox = document.getElementById(`replaceCharger${suffix}`);
 	const selectionSection = document.getElementById(`chargerSelectionSection${suffix}`);
 	const actionInput = document.getElementById(`chargerAction${suffix}`);
+	const existingModelId = document.getElementById(`existingChargerModelId${suffix}`)?.value;
+	const keepExistingInput = document.getElementById(`keepExistingCharger${suffix}`);
+	
+	console.log(`toggleChargerOptions called: type=${type}, isChecked=${isChecked}, suffix=${suffix}`);
 	
 	if (type === 'existing') {
 		if (isChecked) {
 			// User chose to use existing - uncheck replace and hide selection
 			replaceCheckbox.checked = false;
-			selectionSection.style.display = 'none';
+			if (selectionSection) selectionSection.style.display = 'none';
 			actionInput.value = 'use_existing';
+			
+			// Set the keepExisting value to true
+			if (keepExistingInput) keepExistingInput.value = 'true';
+			
+			// Ensure the select is not required if using existing
+			const chargerPick = document.getElementById(`chargerPick${suffix}`);
+			if (chargerPick) {
+				chargerPick.removeAttribute('required');
+				chargerPick.value = ''; // Clear any selection
+			}
+			
+			console.log(`Use existing charger selected: actionInput.value = ${actionInput.value}, existingModelId = ${existingModelId}, keepExisting = ${keepExistingInput?.value}`);
 		} else {
 			// User unchecked existing
 			actionInput.value = '';
+			console.log(`Use existing charger unselected: actionInput.value = ${actionInput.value}`);
 		}
 	} else if (type === 'replace') {
 		if (isChecked) {
 			// User chose to replace - uncheck existing and show selection
 			useExistingCheckbox.checked = false;
-			selectionSection.style.display = 'block';
+			if (selectionSection) selectionSection.style.display = 'block';
 			actionInput.value = 'replace';
 			
-			// Load available chargers
+			// Set the keepExisting value to false
+			if (keepExistingInput) keepExistingInput.value = 'false';
+			
+			// Load available chargers directly
 			const chargerPick = document.getElementById(`chargerPick${suffix}`);
 			fetch('<?= base_url('warehouse/inventory/available-chargers') ?>')
 				.then(r => r.json())
@@ -2051,8 +2104,12 @@ function toggleChargerOptions(type, isChecked, suffix = '') {
 					if (chargerPick && Array.isArray(data)) {
 						chargerPick.innerHTML = '<option value="">- Pilih Charger Baru -</option>' + 
 							data.map(item => {
-								return `<option value="${item.id_inventory_attachment}">${item.nama_barang} • SN: ${item.sn_charger||'-'}</option>`;
+								const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
+								return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_charger||'-'}</option>`;
 							}).join('');
+						
+						// Make the select required since we're replacing
+						chargerPick.setAttribute('required', 'required');
 					}
 				})
 				.catch(err => console.log('Error loading chargers:', err));
@@ -2072,25 +2129,45 @@ function toggleAttachmentOptions(type, isChecked, suffix = '') {
 	const replaceCheckbox = document.getElementById(`replaceAttachment${suffix}`);
 	const selectionSection = document.getElementById(`attachmentSelectionSection${suffix}`);
 	const actionInput = document.getElementById(`attachmentAction${suffix}`);
+	const existingModelId = document.getElementById(`existingAttachmentModelId${suffix}`)?.value;
+	const keepExistingInput = document.getElementById(`keepExistingAttachment${suffix}`);
+	
+	console.log(`toggleAttachmentOptions called: type=${type}, isChecked=${isChecked}, suffix=${suffix}`);
 	
 	if (type === 'existing') {
 		if (isChecked) {
 			// User chose to use existing - uncheck replace and hide selection
 			replaceCheckbox.checked = false;
-			selectionSection.style.display = 'none';
+			if (selectionSection) selectionSection.style.display = 'none';
 			actionInput.value = 'use_existing';
+			
+			// Set the keepExisting value to true
+			if (keepExistingInput) keepExistingInput.value = 'true';
+			
+			// Ensure the select is not required if using existing
+			const attachmentPick = document.getElementById(`attachmentPick${suffix}`);
+			if (attachmentPick) {
+				attachmentPick.removeAttribute('required');
+				attachmentPick.value = ''; // Clear any selection
+			}
+			
+			console.log(`Use existing attachment selected: actionInput.value = ${actionInput.value}, existingModelId = ${existingModelId}, keepExisting = ${keepExistingInput?.value}`);
 		} else {
 			// User unchecked existing
 			actionInput.value = '';
+			console.log(`Use existing attachment unselected: actionInput.value = ${actionInput.value}`);
 		}
 	} else if (type === 'replace') {
 		if (isChecked) {
 			// User chose to replace - uncheck existing and show selection
 			useExistingCheckbox.checked = false;
-			selectionSection.style.display = 'block';
+			if (selectionSection) selectionSection.style.display = 'block';
 			actionInput.value = 'replace';
 			
-			// Load available attachments
+			// Set the keepExisting value to false
+			if (keepExistingInput) keepExistingInput.value = 'false';
+			
+			// Load available attachments directly
 			const attachmentPick = document.getElementById(`attachmentPick${suffix}`);
 			fetch('<?= base_url('warehouse/inventory/available-attachments') ?>')
 				.then(r => r.json())
@@ -2098,8 +2175,12 @@ function toggleAttachmentOptions(type, isChecked, suffix = '') {
 					if (attachmentPick && Array.isArray(data)) {
 						attachmentPick.innerHTML = '<option value="">- Pilih Attachment Baru -</option>' + 
 							data.map(item => {
-								return `<option value="${item.id_inventory_attachment}">${item.nama_barang} • SN: ${item.sn_attachment||'-'}</option>`;
+								const name = `${item.tipe||'-'} ${item.merk||'-'} ${item.model||''}`.trim();
+								return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_attachment||'-'}</option>`;
 							}).join('');
+						
+						// Make the select required since we're replacing
+						attachmentPick.setAttribute('required', 'required');
 					}
 				})
 				.catch(err => console.log('Error loading attachments:', err));

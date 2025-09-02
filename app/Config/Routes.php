@@ -83,6 +83,8 @@ $routes->group('marketing',  static function ($routes) {
     $routes->group('kontrak', static function ($routes) {
         $routes->get('/', 'Kontrak::index'); 
         $routes->post('getDataTable', 'Kontrak::getDataTable');
+        $routes->get('generate-number', 'Kontrak::generateNumber');
+        $routes->post('check-duplicate', 'Kontrak::checkDuplicate');
         $routes->post('store', 'Kontrak::store');
         $routes->get('edit/(:num)', 'Kontrak::edit/$1');
         $routes->post('update/(:num)', 'Kontrak::update/$1');

@@ -106,28 +106,110 @@ class Operational extends Controller
         if (!empty($di['spk_id'])) {
             $spk = $this->db->table('spk')->where('id',(int)$di['spk_id'])->get()->getRowArray();
         }
-        $items = $this->diItemModel
-            ->select('delivery_items.*, iu.no_unit, mu.merk_unit, mu.model_unit, a2.tipe as att_tipe, a2.merk as att_merk, a2.model as att_model')
-            ->join('inventory_unit iu','iu.id_inventory_unit = delivery_items.unit_id','left')
-            ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
-            ->join('attachment a2', 'a2.id_attachment = delivery_items.attachment_id', 'left')
-            ->where('delivery_items.di_id',(int)$id)
-            ->findAll();
-        foreach ($items as &$it) {
-            if ($it['item_type'] === 'UNIT') {
-                $it['label'] = trim(($it['no_unit'] ?: '-') . ' - ' . ($it['merk_unit'] ?: '') . ' ' . ($it['model_unit'] ?: ''));
-            } elseif ($it['item_type'] === 'ATTACHMENT') {
-                $it['label'] = trim(($it['att_tipe'] ?: 'Attachment') . ' ' . ($it['att_merk'] ?: '') . ' ' . ($it['att_model'] ?: ''));
-            } else {
-                $it['label'] = 'Item';
+
+        // Get all delivery items with detailed information from inventory_unit only
+        $rawItems = $this->db->query("
+            SELECT
+                di.*,
+                iu.no_unit, mu.merk_unit, mu.model_unit,
+                iu.departemen_id,
+                CASE
+                    WHEN iu.departemen_id = 2 THEN 'Electric'
+                    ELSE 'Diesel'
+                END as jenis_power,
+                iu.sn_baterai,
+                iu.sn_charger,
+                iu.sn_attachment
+            FROM delivery_items di
+            LEFT JOIN inventory_unit iu ON iu.id_inventory_unit = di.unit_id
+            LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+            WHERE di.di_id = ?
+            AND di.item_type = 'UNIT'
+        ", [(int)$id])->getResultArray();
+
+        // Group items by unit with complete information from inventory_unit
+        $groupedItems = [];
+
+        foreach ($rawItems as $item) {
+            $unitId = $item['unit_id'];
+            if (!isset($groupedItems[$unitId])) {
+                $groupedItems[$unitId] = [
+                    'unit_info' => [
+                        'id' => $unitId,
+                        'no_unit' => $item['no_unit'] ?: '-',
+                        'merk_unit' => $item['merk_unit'] ?: '',
+                        'model_unit' => $item['model_unit'] ?: '',
+                        'jenis_power' => $item['jenis_power'] ?: 'Diesel',
+                        'label' => trim(($item['no_unit'] ?: '-') . ' - ' . ($item['merk_unit'] ?: '') . ' ' . ($item['model_unit'] ?: ''))
+                    ],
+                    'battery' => null,
+                    'charger' => null,
+                    'attachments' => []
+                ];
+
+                // Add battery info from inventory_unit if exists
+                if (!empty($item['sn_baterai'])) {
+                    $groupedItems[$unitId]['battery'] = [
+                        'merk' => 'Battery',
+                        'tipe' => '',
+                        'jenis' => '',
+                        'sn' => $item['sn_baterai'],
+                        'label' => 'BATTERY (' . $item['sn_baterai'] . ')'
+                    ];
+                }
+
+                // Add charger info from inventory_unit if exists
+                if (!empty($item['sn_charger'])) {
+                    $groupedItems[$unitId]['charger'] = [
+                        'merk' => 'Charger',
+                        'tipe' => '',
+                        'sn' => $item['sn_charger'],
+                        'label' => 'CHARGER (' . $item['sn_charger'] . ')'
+                    ];
+                }
+
+                // Add attachment info from inventory_unit if exists
+                if (!empty($item['sn_attachment'])) {
+                    $groupedItems[$unitId]['attachments'][] = [
+                        'tipe' => 'Attachment',
+                        'merk' => 'Attachment',
+                        'model' => '',
+                        'sn' => $item['sn_attachment'],
+                        'label' => 'ATTACHMENT (' . $item['sn_attachment'] . ')'
+                    ];
+                }
             }
         }
-        unset($it);
+
+        // Update jenis_power based on departemen_id from inventory_unit
+        foreach ($groupedItems as $unitId => &$unitData) {
+            // jenis_power is already set in the query based on departemen_id
+            // departemen_id = 2 means Electric, others are Diesel
+        }
+
+        // Get any additional attachments that are not unit-specific
+        $attachments = $this->db->query("
+            SELECT
+                di.*,
+                a.tipe, a.merk, a.model,
+                ia.sn_attachment,
+                CONCAT(COALESCE(a.tipe, ''), ' ', COALESCE(a.merk, 'Unknown'), ' ', COALESCE(a.model, ''), COALESCE(CONCAT(' (', ia.sn_attachment, ')'), '')) as label
+            FROM delivery_items di
+            LEFT JOIN attachment a ON a.id_attachment = di.attachment_id
+            LEFT JOIN inventory_attachment ia ON ia.attachment_id = di.attachment_id AND ia.tipe_item = 'attachment'
+            WHERE di.di_id = ?
+            AND di.item_type = 'ATTACHMENT'
+        ", [(int)$id])->getResultArray();
+
+        // Convert grouped items to array format
+        $structuredItems = array_values($groupedItems);
+
         return $this->response->setJSON([
             'success'=>true,
             'data'=>$di,
             'spk'=>$spk,
-            'items'=>$items,
+            'items'=>$structuredItems,
+            'attachments'=>$attachments,
             'csrf_hash'=>csrf_hash()
         ]);
     }

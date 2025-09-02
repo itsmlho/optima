@@ -1200,8 +1200,6 @@
         }).catch(error => {
             body.innerHTML = `<div class="alert alert-danger">Error loading SPK details: ${error.message}</div>`;
             console.error('Error loading SPK details:', error);
-            body.innerHTML = `<div class="alert alert-danger">Error loading SPK data: ${error.message}</div>`;
-            console.error('SPK fetch error:', error);
             
             // Show the modal even on error
             const modal = document.getElementById('spkDetailModal');

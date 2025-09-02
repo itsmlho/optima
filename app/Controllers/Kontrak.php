@@ -108,41 +108,102 @@ class Kontrak extends BaseController
     }
 
     /**
-     * Menyimpan kontrak baru dari modal.
+     * Generate contract number
      */
-    public function store()
+    public function generateNumber()
     {
-        // Validasi input
-        $rules = [
-            'contract_number' => 'required|trim|is_unique[kontrak.no_kontrak]',
-            'client_name'     => 'required',
-            'start_date'      => 'required|valid_date',
-            'end_date'        => 'required|valid_date'
-        ];
-
-        if (!$this->validate($rules)) {
-            $errors = $this->validator->getErrors();
-            $existingId = null;
-            if (!empty($errors['contract_number'])) {
-                $no = trim((string)$this->request->getPost('contract_number'));
-                if ($no !== '') {
-                    $existing = $this->kontrakModel->where('no_kontrak', $no)->first();
-                    if ($existing) {
-                        $existingId = is_array($existing) ? ($existing['id'] ?? null) : ($existing->id ?? null);
-                    }
+        try {
+            // Get the latest contract number for current year
+            $currentYear = date('Y');
+            $prefix = 'KTR/' . $currentYear . '/';
+            
+            $latest = $this->kontrakModel
+                ->like('no_kontrak', $prefix, 'after')
+                ->orderBy('id', 'DESC')
+                ->first();
+            
+            $sequence = 1;
+            if ($latest && isset($latest['no_kontrak'])) {
+                // Extract sequence number from the latest contract
+                $parts = explode('/', $latest['no_kontrak']);
+                if (count($parts) >= 3) {
+                    $sequence = (int)$parts[2] + 1;
                 }
             }
+            
+            $newNumber = $prefix . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+            
             return $this->response->setJSON([
-                'success' => false, 
-                'message' => 'Validasi gagal.',
-                'errors'  => $errors,
-                'duplicate' => $existingId ? true : false,
-                'existing_id' => $existingId,
-                'csrf_hash' => csrf_hash(),
+                'success' => true,
+                'data' => ['contract_number' => $newNumber],
+                'csrf_hash' => csrf_hash()
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error generating contract number: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal generate nomor kontrak',
+                'csrf_hash' => csrf_hash()
             ]);
         }
+    }
 
-        // Mapping data dari form ke database
+    /**
+     * Check for duplicate contract number
+     */
+    public function checkDuplicate()
+    {
+        try {
+            $contractNumber = trim($this->request->getPost('contract_number') ?? '');
+            $excludeId = $this->request->getPost('exclude_id');
+            
+            if (empty($contractNumber)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Nomor kontrak harus diisi',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+            
+            $query = $this->kontrakModel->where('no_kontrak', $contractNumber);
+            
+            if ($excludeId) {
+                $query->where('id !=', $excludeId);
+            }
+            
+            $existing = $query->first();
+            
+            if ($existing) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'duplicate' => true,
+                    'existing_id' => is_array($existing) ? ($existing['id'] ?? null) : ($existing->id ?? null),
+                    'message' => 'Nomor kontrak sudah digunakan',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'duplicate' => false,
+                'message' => 'Nomor kontrak tersedia',
+                'csrf_hash' => csrf_hash()
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error checking duplicate contract: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memeriksa duplikasi nomor kontrak',
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    public function store()
+    {
+        // Validasi input menggunakan model validation
         $data = [
             'no_kontrak'        => trim((string)$this->request->getPost('contract_number')),
             'no_po_marketing'   => $this->request->getPost('po_number'),
@@ -159,25 +220,55 @@ class Kontrak extends BaseController
             'dibuat_oleh'       => session()->get('user_id') ?? 1, // Default user ID jika session kosong
         ];
 
-                    if ($insertId = $this->kontrakModel->insert($data)) {
-            $newContract = $this->kontrakModel->find($insertId);
+        // Validate using KontrakModel
+        if (!$this->kontrakModel->validate($data)) {
+            $errors = $this->kontrakModel->errors();
+            $existingId = null;
+
+            // Check if it's a duplicate contract number
+            if (!empty($errors['no_kontrak']) && strpos($errors['no_kontrak'], 'sudah digunakan') !== false) {
+                $contractNumber = trim((string)$this->request->getPost('contract_number'));
+                if ($contractNumber !== '') {
+                    $existing = $this->kontrakModel->where('no_kontrak', $contractNumber)->first();
+                    if ($existing) {
+                        $existingId = is_array($existing) ? ($existing['id'] ?? null) : ($existing->id ?? null);
+                    }
+                }
+            }
+
             return $this->response->setJSON([
-                'success' => true, 
-                'message' => 'Kontrak baru berhasil disimpan.',
-                'data' => [
-                    'id' => $insertId,
-                    'no_kontrak' => is_array($newContract) ? ($newContract['no_kontrak'] ?? null) : ($newContract->no_kontrak ?? null),
-                    'pelanggan' => is_array($newContract) ? ($newContract['pelanggan'] ?? null) : ($newContract->pelanggan ?? null)
-                ],
-                'csrf_hash' => csrf_hash(),
-            ]);
-        } else {
-            return $this->response->setJSON([
-                'success' => false, 
-                'message' => 'Gagal menyimpan data ke database: ' . implode(', ', $this->kontrakModel->errors()),
-                'csrf_hash' => csrf_hash(),
+                'success' => false,
+                'message' => 'Validasi gagal.',
+                'errors' => $errors,
+                'duplicate' => $existingId ? true : false,
+                'existing_id' => $existingId,
+                'csrf_hash' => csrf_hash()
             ]);
         }
+
+        // Insert the data
+        $insertResult = $this->kontrakModel->insert($data);
+        
+        if (!$insertResult) {
+            $errors = $this->kontrakModel->errors();
+            $dbError = $this->db->error();
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal menyimpan data ke database: ' . (is_array($errors) ? implode(', ', $errors) : 'Unknown error') . 
+                           ($dbError && isset($dbError['message']) ? ' | DB Error: ' . $dbError['message'] : ''),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+
+        $newId = $this->kontrakModel->getInsertID();
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Kontrak berhasil ditambahkan',
+            'data' => ['id' => $newId],
+            'csrf_hash' => csrf_hash()
+        ]);
     }
 
     /**
@@ -186,7 +277,7 @@ class Kontrak extends BaseController
     public function update($id)
     {
         $rules = [
-            'contract_number' => "required|is_unique[kontrak.no_kontrak,id,{$id}]",
+            'contract_number' => "required|is_unique[kontrak.no_kontrak,id,$id]",
             'client_name'     => 'required',
             'start_date'      => 'required|valid_date',
             'end_date'        => 'required|valid_date',
@@ -236,15 +327,75 @@ class Kontrak extends BaseController
      */
     public function delete($id)
     {
-        if ($this->kontrakModel->delete($id)) {
-            return $this->response->setJSON([
-                'success' => true, 
-                'message' => 'Kontrak berhasil dihapus.'
-            ]);
-        } else {
+        log_message('debug', '=== Kontrak::delete START ===');
+        log_message('debug', 'Kontrak::delete called with ID: ' . $id);
+        log_message('debug', 'Kontrak::delete - Raw ID: ' . var_export($id, true));
+        log_message('debug', 'Kontrak::delete - Request method: ' . $this->request->getMethod());
+        log_message('debug', 'Kontrak::delete - POST data: ' . json_encode($this->request->getPost()));
+        
+        // Validate ID
+        if (!$id || $id == '0' || $id == 0) {
+            log_message('error', 'Kontrak::delete - Invalid ID: ' . $id);
+            log_message('debug', '=== Kontrak::delete END (invalid ID) ===');
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Gagal menghapus kontrak.'
+                'message' => 'ID kontrak tidak valid.'
+            ]);
+        }
+
+        // Check if contract exists
+        $contract = $this->kontrakModel->find($id);
+        if (!$contract) {
+            log_message('error', 'Kontrak::delete - Contract not found with ID: ' . $id);
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'Kontrak tidak ditemukan.'
+            ]);
+        }
+
+        // Check if contract has related records that might cause issues
+        $db = \Config\Database::connect();
+        
+        // Check for related kontrak_spesifikasi records
+        $spekCount = $db->table('kontrak_spesifikasi')->where('kontrak_id', $id)->countAllResults();
+        log_message('debug', 'Kontrak::delete - Contract has ' . $spekCount . ' spesifikasi records');
+        
+        // Check for related inventory_unit records
+        $unitCount = $db->table('inventory_unit')->where('kontrak_id', $id)->countAllResults();
+        log_message('debug', 'Kontrak::delete - Contract has ' . $unitCount . ' inventory_unit records');
+        
+        log_message('debug', 'Kontrak::delete - Attempting to delete contract: ' . $contract['no_kontrak']);
+        
+        try {
+            // Use database transaction for safety
+            $db->transStart();
+            
+            $result = $this->kontrakModel->delete($id);
+            log_message('debug', 'Kontrak::delete - Delete result: ' . ($result ? 'true' : 'false'));
+            
+            if ($result) {
+                $db->transComplete();
+                log_message('debug', 'Kontrak::delete - Successfully deleted contract ID: ' . $id);
+                return $this->response->setJSON([
+                    'success' => true, 
+                    'message' => 'Kontrak berhasil dihapus.'
+                ]);
+            } else {
+                $db->transRollback();
+                log_message('error', 'Kontrak::delete - Delete returned false for contract ID: ' . $id);
+                return $this->response->setJSON([
+                    'success' => false, 
+                    'message' => 'Gagal menghapus kontrak.'
+                ]);
+            }
+        } catch (\Exception $e) {
+            $db->transRollback();
+            log_message('error', 'Kontrak::delete - Exception: ' . $e->getMessage());
+            log_message('error', 'Kontrak::delete - Exception trace: ' . $e->getTraceAsString());
+            log_message('debug', '=== Kontrak::delete END (exception) ===');
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'Error: ' . $e->getMessage()
             ]);
         }
     }
@@ -254,6 +405,14 @@ class Kontrak extends BaseController
      */
     public function detail($id)
     {
+        // Validate ID
+        if (!$id || $id == '0' || $id == 0) {
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'ID kontrak tidak valid.'
+            ]);
+        }
+
         $contract = $this->kontrakModel->find($id);
         if ($contract) {
             return $this->response->setJSON([
@@ -273,6 +432,14 @@ class Kontrak extends BaseController
      */
     public function edit($id)
     {
+        // Validate ID
+        if (!$id || $id == '0' || $id == 0) {
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'ID kontrak tidak valid.'
+            ]);
+        }
+
         $contract = $this->kontrakModel->find($id);
         if (!$contract) {
             return redirect()->to('marketing/contracts')->with('error', 'Kontrak tidak ditemukan.');

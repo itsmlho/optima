@@ -85,7 +85,15 @@
                         </small>
                     </div>
                     <div class="row">
-                        <div class="col-md-6 mb-3"><label class="form-label">No. Kontrak*</label><input type="text" class="form-control" name="contract_number" required></div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">No. Kontrak*</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="contract_number" required>
+                                <button class="btn btn-outline-secondary" type="button" id="generateContractNumber" title="Generate Nomor Kontrak">
+                                    <i class="fas fa-magic"></i>
+                                </button>
+                            </div>
+                        </div>
                         <div class="col-md-6 mb-3"><label class="form-label">No. PO Klien</label><input type="text" class="form-control" name="po_number"></div>
                         <div class="col-md-6 mb-3"><label class="form-label">Nama Perusahaan*</label><input type="text" class="form-control" name="client_name" required></div>
                         <div class="col-md-6 mb-3"><label class="form-label">Nama PIC</label><input type="text" class="form-control" name="pic"></div>
@@ -124,8 +132,10 @@
 <script>
 // Fallback untuk OptimaPro jika belum dimuat
 if (typeof OptimaPro === 'undefined') {
+    console.log('OptimaPro not found, using fallback');
     window.OptimaPro = {
         showNotification: function(message, type, duration = 5000) {
+            console.log(`OptimaPro.showNotification: [${type}] ${message}`);
             const alertClass = type === 'success' ? 'alert-success' : 
                               type === 'error' || type === 'danger' ? 'alert-danger' : 
                               type === 'warning' ? 'alert-warning' : 'alert-info';
@@ -142,6 +152,7 @@ if (typeof OptimaPro === 'undefined') {
             setTimeout(() => $('.alert').fadeOut(), duration);
         },
         showConfirmDialog: function({title, message}) {
+            console.log(`OptimaPro.showConfirmDialog: ${title} - ${message}`);
             return new Promise(resolve => {
                 if (confirm(`${title}\n${message}`)) {
                     resolve({ isConfirmed: true });
@@ -154,6 +165,9 @@ if (typeof OptimaPro === 'undefined') {
             return new Intl.NumberFormat('id-ID').format(amount || 0);
         }
     };
+    console.log('OptimaPro fallback loaded successfully');
+} else {
+    console.log('OptimaPro already loaded');
 }
 
 // Helper function for number formatting
@@ -165,9 +179,45 @@ function formatNumber(num) {
         return (num || 0).toString();
     }
 }
+
+// Safe OptimaPro wrapper functions
+function safeShowNotification(message, type = 'info', duration = 5000) {
+    if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+        OptimaPro.showNotification(message, type, duration);
+    } else {
+        // Fallback to alert or console
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        if (type === 'error' || type === 'danger') {
+            alert(`Error: ${message}`);
+        }
+    }
+}
+
+function safeShowConfirmDialog({title, message}) {
+    if (window.OptimaPro && typeof OptimaPro.showConfirmDialog === 'function') {
+        return OptimaPro.showConfirmDialog({title, message});
+    } else {
+        // Fallback to native confirm
+        return new Promise(resolve => {
+            if (confirm(`${title}\n\n${message}`)) {
+                resolve({ isConfirmed: true });
+            } else {
+                resolve({ isConfirmed: false });
+            }
+        });
+    }
+}
 $(document).ready(function() {
-    console.log('Initializing DataTable...');
+    console.log('Document ready - initializing DataTable...');
+    console.log('Base URL:', '<?= base_url() ?>');
     console.log('AJAX URL:', '<?= base_url('marketing/kontrak/getDataTable') ?>');
+    console.log('jQuery version:', $.fn.jquery);
+    console.log('DataTables available:', typeof $.fn.DataTable !== 'undefined');
+    
+    // Check if table element exists
+    const tableElement = $('#contractsTable');
+    console.log('Table element found:', tableElement.length > 0);
+    console.log('Table element:', tableElement);
     
     // Global variable for current filter
     let currentKontrakFilter = 'all';
@@ -180,11 +230,19 @@ $(document).ready(function() {
         $('.filter-card').removeClass('active');
         $(`[data-filter="${filter}"]`).addClass('active');
         
-        // Reload DataTable with new filter
-        contractsTable.ajax.reload();
+        // Safely reload DataTable with new filter
+        if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
+            window.contractsTable.ajax.reload();
+        } else {
+            console.warn('window.contractsTable is undefined in applyKontrakFilter, trying direct access');
+            $('#contractsTable').DataTable().ajax.reload();
+        }
     }
     
-    const contractsTable = $('#contractsTable').DataTable({
+    // Initialize DataTable with error handling
+    let contractsTable;
+    try {
+        contractsTable = $('#contractsTable').DataTable({
         processing: true,
         serverSide: true,
         ajax: {
@@ -208,7 +266,7 @@ $(document).ready(function() {
                 // Check for errors
                 if (json.error) {
                     console.error('Server Error:', json.error);
-                    OptimaPro.showNotification('Server Error: ' + json.error, 'danger');
+                    safeShowNotification('Server Error: ' + json.error, 'danger');
                     return [];
                 }
                 
@@ -225,7 +283,7 @@ $(document).ready(function() {
             error: function(xhr, error, thrown) {
                 console.error('DataTable AJAX Error:', xhr, error, thrown);
                 console.log('Response Text:', xhr.responseText);
-                OptimaPro.showNotification('Error loading data: ' + error, 'danger');
+                safeShowNotification('Error loading data: ' + error, 'danger');
             }
         },
         columns: [
@@ -264,6 +322,22 @@ $(document).ready(function() {
             } catch(e){ console.warn('Failed to attach contract links', e); }
         }
     });
+    
+    console.log('DataTable initialized successfully');
+    
+    // Make contractsTable globally accessible
+    window.contractsTable = contractsTable;
+    
+    } catch (error) {
+        console.error('Failed to initialize DataTable:', error);
+        // Fallback: show error message in table
+        $('#contractsTable tbody').html('<tr><td colspan="6" class="text-center text-danger">Error: Failed to load DataTable. Check console for details.</td></tr>');
+        // Create a dummy contractsTable object to prevent errors
+        contractsTable = {
+            ajax: { reload: function() { console.log('Dummy reload called'); } }
+        };
+        window.contractsTable = contractsTable;
+    }
 
     // Add filter card click listeners
     $('.filter-card').on('click', function() {
@@ -273,6 +347,139 @@ $(document).ready(function() {
     
     // Set default active filter (all)
     $('[data-filter="all"]').addClass('active');
+    console.log('Testing AJAX connection...');
+    console.log('Base URL:', '<?= base_url() ?>');
+    console.log('Full AJAX URL:', '<?= base_url('marketing/kontrak/getDataTable') ?>');
+    console.log('CSRF Token:', '<?= csrf_token() ?>');
+    console.log('CSRF Hash:', '<?= csrf_hash() ?>');
+    
+    $.ajax({
+        url: '<?= base_url('marketing/kontrak/getDataTable') ?>',
+        type: 'POST',
+        data: {
+            draw: 1,
+            start: 0,
+            length: 10,
+            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+        },
+        success: function(response) {
+            console.log('AJAX test successful:', response);
+            if (response.data && response.data.length > 0) {
+                console.log('Data found:', response.data.length, 'records');
+                console.log('Sample record:', response.data[0]);
+            } else {
+                console.log('No data returned from server');
+                console.log('Full response:', response);
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('AJAX test failed:', xhr, status, error);
+            console.log('Status:', status);
+            console.log('Error:', error);
+            console.log('Response:', xhr.responseText);
+            console.log('Status code:', xhr.status);
+        }
+    });
+
+    // Add contract number generation
+    function generateContractNumber() {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        return `KTR/${year}/${month}/`;
+    }
+
+    // Auto-fill contract number when modal opens
+    $('#addContractModal').on('show.bs.modal', function() {
+        const contractNumberField = $('input[name="contract_number"]');
+        if (!contractNumberField.val()) {
+            // Generate base contract number
+            const baseNumber = generateContractNumber();
+            contractNumberField.val(baseNumber);
+            
+            // Fetch next available number
+            fetch('<?= base_url('marketing/kontrak/generate-number') ?>')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        contractNumberField.val(data.contract_number);
+                    }
+                })
+                .catch(err => console.log('Could not auto-generate contract number:', err));
+        }
+    });
+
+    // Check for duplicate contract number before submitting
+    function checkContractNumberDuplicate(contractNumber) {
+        return fetch('<?= base_url('marketing/kontrak/check-duplicate') ?>', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                contract_number: contractNumber,
+                '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            return data.duplicate || false;
+        })
+        .catch(err => {
+            console.error('Error checking duplicate:', err);
+            return false;
+        });
+    }
+
+    // Validate contract number on blur
+    $('input[name="contract_number"]').on('blur', function() {
+        const contractNumber = $(this).val().trim();
+        if (contractNumber) {
+            checkContractNumberDuplicate(contractNumber).then(isDuplicate => {
+                if (isDuplicate) {
+                    $(this).addClass('is-invalid');
+                    if (!$(this).next('.invalid-feedback').length) {
+                        $(this).after('<div class="invalid-feedback">Nomor kontrak sudah digunakan. Gunakan tombol generate untuk nomor baru.</div>');
+                    }
+                } else {
+                    $(this).removeClass('is-invalid');
+                    $(this).next('.invalid-feedback').remove();
+                }
+            });
+        }
+    });
+
+    // Handle generate contract number button
+    $('#generateContractNumber').on('click', function() {
+        const button = $(this);
+        const icon = button.find('i');
+        const originalIcon = icon.attr('class');
+        
+        // Show loading state
+        icon.attr('class', 'fas fa-spinner fa-spin');
+        button.prop('disabled', true);
+        
+        fetch('<?= base_url('marketing/kontrak/generate-number') ?>')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    $('input[name="contract_number"]').val(data.contract_number);
+                    safeShowNotification('Nomor kontrak berhasil di-generate', 'success');
+                } else {
+                    safeShowNotification('Gagal generate nomor kontrak: ' + (data.message || 'Unknown error'), 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Error generating contract number:', err);
+                safeShowNotification('Gagal generate nomor kontrak', 'error');
+            })
+            .finally(() => {
+                // Restore original state
+                icon.attr('class', originalIcon);
+                button.prop('disabled', false);
+            });
+    });
 
     // Primary action buttons
     $('#btnSaveAndSpec').on('click', function() {
@@ -317,8 +524,13 @@ $(document).ready(function() {
             $('#addContractModal').modal('hide');
             if (isEdit) {
                         // Jika edit, reload table dan show success message
-                        OptimaPro.showNotification(response.message, 'success');
-                        contractsTable.ajax.reload();
+                        safeShowNotification(response.message, 'success');
+                        // Safely reload DataTable
+                        if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
+                            window.contractsTable.ajax.reload();
+                        } else {
+                            $('#contractsTable').DataTable().ajax.reload();
+                        }
                         
                         // Reset form after success
                         $('#addContractForm')[0].reset();
@@ -327,8 +539,13 @@ $(document).ready(function() {
                         $('#addContractModal .modal-title').text('Tambah Kontrak Baru');
                     } else {
                         // Create baru: arahkan sesuai submit_action
-                        OptimaPro.showNotification(response.message, 'success');
-                        contractsTable.ajax.reload();
+                        safeShowNotification(response.message, 'success');
+                        // Safely reload DataTable
+                        if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
+                            window.contractsTable.ajax.reload();
+                        } else {
+                            $('#contractsTable').DataTable().ajax.reload();
+                        }
                         const goToSpec = ($('#submitAction').val() === 'save_and_spec');
                         const newId = response.data && response.data.id ? response.data.id : null;
                         // Reset form
@@ -345,9 +562,10 @@ $(document).ready(function() {
                 } else {
                     // Duplicate contract handling
                     if (response.duplicate && response.existing_id) {
-                        OptimaPro.showConfirmDialog({
-                            title: 'No. Kontrak sudah ada',
-                            message: 'Buka kontrak yang sudah ada dan lanjutkan dari sana?'
+                        const contractNumber = $('input[name="contract_number"]').val();
+                        safeShowConfirmDialog({
+                            title: 'Nomor Kontrak Sudah Ada',
+                            message: `Nomor kontrak "${contractNumber}" sudah digunakan. Klik "Generate Baru" untuk nomor baru, atau "Lihat Kontrak" untuk membuka kontrak yang sudah ada.`
                         }).then(res => {
                             if (res.isConfirmed) {
                                 openContractDetail(response.existing_id);
@@ -357,6 +575,14 @@ $(document).ready(function() {
                                 }, 400);
                             }
                         });
+                        
+                        // Also show a secondary option to generate new number
+                        setTimeout(() => {
+                            if (confirm('Apakah Anda ingin generate nomor kontrak baru?')) {
+                                $('#generateContractNumber').click();
+                            }
+                        }, 1000);
+                        
                         return;
                     }
 
@@ -364,7 +590,7 @@ $(document).ready(function() {
                     if (response.errors && typeof response.errors === 'object') {
                         msg = 'Validasi gagal: ' + Object.values(response.errors).join(', ');
                     }
-                    OptimaPro.showNotification(msg, 'danger');
+                    safeShowNotification(msg, 'danger');
                 }
             },
             error: function(xhr, status, error) {
@@ -372,9 +598,8 @@ $(document).ready(function() {
                 if (xhr && xhr.responseText) {
                     try { const r = JSON.parse(xhr.responseText); if (r.message) msg = r.message; } catch(e) {}
                 }
-                OptimaPro.showNotification(msg, 'danger');
-            }
-            ,
+                safeShowNotification(msg, 'danger');
+            },
             complete: function() {
                 // Re-enable buttons and restore labels
                 $btnSaveAndSpec.prop('disabled', false).html($btnSaveAndSpec.data('orig-html'));
@@ -408,27 +633,27 @@ $(document).ready(function() {
         // Frontend validation check
     
         if (!kontrakId) {
-            OptimaPro.showNotification('Kontrak ID tidak ditemukan. Silakan buka detail kontrak terlebih dahulu.', 'error');
+            safeShowNotification('Kontrak ID tidak ditemukan. Silakan buka detail kontrak terlebih dahulu.', 'error');
             return;
         }
         
         if (!jumlahDibutuhkan || jumlahDibutuhkan <= 0) {
-            OptimaPro.showNotification('Jumlah unit dibutuhkan harus diisi dengan nilai lebih dari 0.', 'error');
+            safeShowNotification('Jumlah unit dibutuhkan harus diisi dengan nilai lebih dari 0.', 'error');
             return;
         }
         
         if (!departemenId) {
-            OptimaPro.showNotification('Departemen harus dipilih.', 'error');
+            safeShowNotification('Departemen harus dipilih.', 'error');
             return;
         }
         
         if (!tipeUnitId) {
-            OptimaPro.showNotification('Tipe Unit harus dipilih.', 'error');
+            safeShowNotification('Tipe Unit harus dipilih.', 'error');
             return;
         }
         
         if (!jenisUnit) {
-            OptimaPro.showNotification('Jenis Unit harus dipilih.', 'error');
+            safeShowNotification('Jenis Unit harus dipilih.', 'error');
             return;
         }
         
@@ -454,7 +679,7 @@ $(document).ready(function() {
 
             success: function(response) {
                 if (response.success) {
-                    OptimaPro.showNotification(response.message, 'success');
+                    safeShowNotification(response.message, 'success');
                     $('#addSpesifikasiModal').modal('hide');
                     
                     // Reset form
@@ -482,7 +707,7 @@ $(document).ready(function() {
                         errorMsg += '\nDatabase error: ' + response.db_error.message;
                     }
                     
-                    OptimaPro.showNotification(errorMsg, 'error');
+                    safeShowNotification(errorMsg, 'error');
                 }
             },
             error: function(xhr, status, error) {
@@ -504,7 +729,7 @@ $(document).ready(function() {
                     }
                 }
                 
-                OptimaPro.showNotification(errorMessage, 'error');
+                safeShowNotification(errorMessage, 'error');
             }
         });
     }); // End spesifikasi form handler
@@ -514,6 +739,12 @@ $(document).ready(function() {
 });
 
 function viewContractUnits(contractId) {
+    // Validate contract ID
+    if (!contractId || contractId == '0' || contractId == 0) {
+        safeShowNotification('ID kontrak tidak valid.', 'error');
+        return;
+    }
+    
     // Arahkan ke halaman list_unit.php dengan membawa ID kontrak
     window.location.href = `<?= base_url('marketing/list-unit/') ?>${contractId}`;
 }
@@ -521,6 +752,12 @@ function viewContractUnits(contractId) {
 // Open contract detail modal with multi-specification support
 function openContractDetail(id){
     console.log('Opening contract detail for ID:', id);
+    
+    // Validate contract ID
+    if (!id || id == '0' || id == 0) {
+        safeShowNotification('ID kontrak tidak valid.', 'error');
+        return;
+    }
     
     const pdfBtn = document.getElementById('btnPrintContract');
     if (pdfBtn) { pdfBtn.href = `<?= base_url('marketing/kontrak/print/') ?>${id}`; }
@@ -902,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', function() {
         window.openSpkModalFromKontrak = function(spekId) {
             const kontrakId = window.currentKontrakId || document.getElementById('currentKontrakId')?.value;
             if (!kontrakId) {
-                OptimaPro.showNotification('Kontrak belum dipilih. Buka detail kontrak terlebih dahulu.', 'error');
+                safeShowNotification('Kontrak belum dipilih. Buka detail kontrak terlebih dahulu.', 'error');
                 return;
             }
             document.getElementById('spkKontrakId').value = kontrakId;
@@ -953,14 +1190,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Add CSRF
                 formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
                 if (!formData.get('delivery_plan') || !formData.get('jumlah_unit')) {
-                    OptimaPro.showNotification('Lengkapi semua field wajib.', 'error');
+                    safeShowNotification('Lengkapi semua field wajib.', 'error');
                     return;
                 }
                 // Client-side limit based on available units
                 const available = Number(spkForm.dataset.availableUnits || '0');
                 const jumlah = Number(formData.get('jumlah_unit'));
                 if (available > 0 && jumlah > available) {
-                    OptimaPro.showNotification('Jumlah unit melebihi yang dibutuhkan. Maksimal: ' + available, 'error');
+                    safeShowNotification('Jumlah unit melebihi yang dibutuhkan. Maksimal: ' + available, 'error');
                     return;
                 }
                 fetch('<?= base_url('marketing/spk/create') ?>', {
@@ -971,16 +1208,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(res => {
                     if (res.success) {
-                        OptimaPro.showNotification('SPK berhasil dibuat!', 'success');
+                        safeShowNotification('SPK berhasil dibuat!', 'success');
                         const modalEl = document.getElementById('spkFromKontrakModal');
                         bootstrap.Modal.getInstance(modalEl)?.hide();
                         if (window.currentKontrakId) loadContractSpesifikasi(window.currentKontrakId);
                     } else {
-                        OptimaPro.showNotification(res.message || 'Gagal membuat SPK.', 'error');
+                        safeShowNotification(res.message || 'Gagal membuat SPK.', 'error');
                     }
                 })
                 .catch(err => {
-                    OptimaPro.showNotification('Gagal membuat SPK: ' + err, 'error');
+                    safeShowNotification('Gagal membuat SPK: ' + err, 'error');
                 });
             });
         }
@@ -988,6 +1225,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function editContract(contractId) {
+    // Validate contract ID
+    if (!contractId || contractId == '0' || contractId == 0) {
+        safeShowNotification('ID kontrak tidak valid.', 'error');
+        return;
+    }
+    
     // Load data kontrak untuk edit
     $.ajax({
         url: `<?= base_url('marketing/kontrak/detail/') ?>${contractId}`,
@@ -1015,38 +1258,72 @@ function editContract(contractId) {
                 $('#addContractModal .modal-title').text('Edit Kontrak');
                 $('#addContractModal').modal('show');
             } else {
-                OptimaPro.showNotification(response.message, 'error');
+                safeShowNotification(response.message, 'error');
             }
         },
         error: function() {
-            OptimaPro.showNotification('Gagal memuat data kontrak.', 'error');
+            safeShowNotification('Gagal memuat data kontrak.', 'error');
         }
     });
 }
 
 function deleteContract(contractId) {
-    OptimaPro.showConfirmDialog({
-        title: 'Konfirmasi Hapus',
-        message: 'Apakah Anda yakin ingin menghapus kontrak ini?'
-    }).then(result => {
-        if (result.isConfirmed) {
-            $.ajax({
-                url: `<?= base_url('marketing/kontrak/delete/') ?>${contractId}`,
-                method: 'POST',
-                data: { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        OptimaPro.showNotification(response.message, 'success');
-                        contractsTable.ajax.reload();
-                    } else {
-                        OptimaPro.showNotification(response.message, 'error');
-                    }
-                },
-                error: function() {
-                    OptimaPro.showNotification('Gagal menghapus kontrak.', 'error');
+    // Validate contract ID
+    if (!contractId || contractId == '0' || contractId == 0) {
+        safeShowNotification('ID kontrak tidak valid.', 'error');
+        return;
+    }
+    
+    // Use simple confirm dialog for testing
+    if (confirm('Konfirmasi Hapus\n\nApakah Anda yakin ingin menghapus kontrak ini?')) {
+        performDelete(contractId);
+    }
+}
+
+function performDelete(contractId) {
+    console.log('Attempting to delete contract with ID:', contractId);
+    console.log('CSRF Token:', '<?= csrf_token() ?>');
+    console.log('CSRF Hash:', '<?= csrf_hash() ?>');
+    
+    $.ajax({
+        url: `<?= base_url('marketing/kontrak/delete/') ?>${contractId}`,
+        method: 'POST',
+        data: { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' },
+        dataType: 'json',
+        success: function(response) {
+            console.log('Delete response:', response);
+            if (response.success) {
+                safeShowNotification(response.message, 'success');
+                // Safely reload DataTable
+                if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
+                    window.contractsTable.ajax.reload();
+                } else {
+                    console.warn('window.contractsTable is undefined, trying direct DataTable access');
+                    $('#contractsTable').DataTable().ajax.reload();
                 }
-            });
+            } else {
+                safeShowNotification(response.message, 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Delete AJAX error:', xhr, status, error);
+            console.log('Status code:', xhr.status);
+            console.log('Response headers:', xhr.getAllResponseHeaders());
+            console.log('Response text:', xhr.responseText);
+            
+            // Try to parse error response
+            try {
+                const errorData = JSON.parse(xhr.responseText);
+                console.log('Parsed error response:', errorData);
+                if (errorData.message) {
+                    safeShowNotification('Error: ' + errorData.message, 'error');
+                } else {
+                    safeShowNotification('Gagal menghapus kontrak.', 'error');
+                }
+            } catch (e) {
+                console.log('Could not parse error response');
+                safeShowNotification('Gagal menghapus kontrak.', 'error');
+            }
         }
     });
 }
@@ -1106,7 +1383,7 @@ function loadContractUnits(contractId) {
 function openAddSpesifikasiModal() {
     const contractId = window.currentKontrakId;
     if (!contractId) {
-        OptimaPro.showNotification('ID kontrak tidak ditemukan. Silakan buka detail kontrak terlebih dahulu.', 'error');
+        safeShowNotification('ID kontrak tidak ditemukan. Silakan buka detail kontrak terlebih dahulu.', 'error');
         return;
     }
     
@@ -1328,7 +1605,7 @@ function fillSelectOptions(selector, items, nameField = 'name') {
 function editSpesifikasi(spekId) {
     const contractId = window.currentKontrakId;
     if (!contractId) {
-        OptimaPro.showNotification('ID kontrak tidak ditemukan. Silakan buka detail kontrak terlebih dahulu.', 'error');
+        safeShowNotification('ID kontrak tidak ditemukan. Silakan buka detail kontrak terlebih dahulu.', 'error');
         return;
     }
     
@@ -1337,7 +1614,7 @@ function editSpesifikasi(spekId) {
         .then(response => response.json())
         .then(j => {
             if (!j.success) {
-                OptimaPro.showNotification('Gagal memuat data spesifikasi: ' + j.message, 'error');
+                safeShowNotification('Gagal memuat data spesifikasi: ' + j.message, 'error');
                 return;
             }
             
@@ -1446,7 +1723,7 @@ function editSpesifikasi(spekId) {
         })
         .catch(error => {
             console.error('Error loading spesifikasi detail:', error);
-            OptimaPro.showNotification('Gagal memuat data spesifikasi: ' + error.message, 'error');
+            safeShowNotification('Gagal memuat data spesifikasi: ' + error.message, 'error');
         });
 }
 
@@ -1455,7 +1732,7 @@ function deleteSpesifikasi(spekId) {
     console.log('deleteSpesifikasi called with spekId:', spekId);
     
     if (!spekId) {
-        OptimaPro.showNotification('ID spesifikasi tidak valid', 'error');
+        safeShowNotification('ID spesifikasi tidak valid', 'error');
         return;
     }
     
@@ -1494,7 +1771,7 @@ function deleteSpesifikasi(spekId) {
             }
             
             if (response.success) {
-                OptimaPro.showNotification(response.message, 'success');
+                safeShowNotification(response.message, 'success');
                 
                 // Reload spesifikasi tab
                 const contractId = window.currentKontrakId;
@@ -1504,7 +1781,7 @@ function deleteSpesifikasi(spekId) {
                     console.warn('No contract ID found for reload');
                 }
             } else {
-                OptimaPro.showNotification(response.message || 'Gagal menghapus spesifikasi', 'error');
+                safeShowNotification(response.message || 'Gagal menghapus spesifikasi', 'error');
             }
         },
         error: function(xhr, status, error) {
@@ -1531,7 +1808,7 @@ function deleteSpesifikasi(spekId) {
                 }
             }
             
-            OptimaPro.showNotification(errorMessage, 'error');
+            safeShowNotification(errorMessage, 'error');
         }
     });
 }
@@ -1543,7 +1820,7 @@ function createSPKForSpec(spekId) {
     const kontrakId = window.currentKontrakId || document.getElementById('currentKontrakId')?.value;
     if (!kontrakId) {
         console.error('createSPKForSpec: kontrak id not available');
-        OptimaPro.showNotification('Kontrak belum dipilih. Buka detail kontrak terlebih dahulu.', 'error');
+        safeShowNotification('Kontrak belum dipilih. Buka detail kontrak terlebih dahulu.', 'error');
         return;
     }
     const base = '<?= rtrim(base_url(), "\/") ?>';

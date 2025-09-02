@@ -582,7 +582,53 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; modal.show(); return; }
       const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[];
       const status = d.status || 'SUBMITTED';
-      const itemsHtml = items.length ? '<ul>'+items.map(i=>`<li>${i.item_type}: ${i.label}</li>`).join('')+'</ul>' : '<div class="text-muted">-</div>';
+      // Display items in structured format
+      let itemsHtml = '';
+      if (j.items && j.items.length > 0) {
+        j.items.forEach((unitData, index) => {
+          const unitNum = index + 1;
+          itemsHtml += `<div class="col-12"><hr></div>`;
+          itemsHtml += `<div class="col-12"><strong>Unit ${unitNum}:</strong> ${unitData.unit_info.label}</div>`;
+          
+          // Display battery and charger if electric
+          if (unitData.unit_info.jenis_power && unitData.unit_info.jenis_power.toLowerCase().includes('electric')) {
+            itemsHtml += `<div class="col-12"><strong>Items:</strong><ul class="mb-2">`;
+            
+            if (unitData.battery) {
+              itemsHtml += `<li><strong>BATTERY</strong> - ${unitData.battery.label}</li>`;
+            }
+            
+            if (unitData.charger) {
+              itemsHtml += `<li><strong>CHARGER</strong> - ${unitData.charger.label}</li>`;
+            }
+            
+            itemsHtml += `</ul></div>`;
+          }
+          
+          // Display unit-specific attachments
+          if (unitData.attachments && unitData.attachments.length > 0) {
+            itemsHtml += `<div class="col-12"><strong>Attachments:</strong><ul class="mb-2">`;
+            unitData.attachments.forEach(attachment => {
+              itemsHtml += `<li>${attachment.label}</li>`;
+            });
+            itemsHtml += `</ul></div>`;
+          }
+        });
+      }
+      
+      // Display general attachments (not unit-specific)
+      if (j.attachments && j.attachments.length > 0) {
+        itemsHtml += `<div class="col-12"><hr></div>`;
+        itemsHtml += `<div class="col-12"><strong>General Attachments:</strong><ul class="mb-0">`;
+        j.attachments.forEach(attachment => {
+          itemsHtml += `<li>${attachment.label}</li>`;
+        });
+        itemsHtml += `</ul></div>`;
+      }
+      
+      if (!itemsHtml) {
+        itemsHtml = '<div class="text-muted">No items found</div>';
+      }
       
       // Update action buttons based on status
       const actionDiv = document.getElementById('modalActionButtons');

@@ -424,17 +424,31 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (!details.length){ list.innerHTML = '<div class="text-danger small">Belum ada unit yang disiapkan pada SPK ini.</div>'; selCount.textContent = '0'; return; }
       list.innerHTML = '';
       details.forEach((it, idx)=>{
+        // Skip null/undefined items
+        if (!it || typeof it !== 'object') {
+          console.warn('Skipping invalid unit item:', it);
+          return;
+        }
+        
         const wrap = document.createElement('div');
         wrap.className = 'unit-item';
-        const idSafe = `unit_${it.unit_id||('idx'+idx)}`;
+        const unitId = it.unit_id || ('idx'+idx);
+        const idSafe = `unit_${unitId}`;
+        
         // Debug log the unit ID value
         console.log(`Unit in form: ID=${it.unit_id}, Label=${it.unit_label||('Unit #' + (idx+1))}`);
         
+        // Build attachment label safely
+        let attachmentText = '';
+        if (it.attachment_label && typeof it.attachment_label === 'string') {
+          attachmentText = ` &nbsp; • &nbsp; ${it.attachment_label}`;
+        }
+        
         wrap.innerHTML = `
-          <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${it.unit_id}" checked>
+          <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${unitId}" checked>
           <label for="${idSafe}" class="form-check-label">
-            <div><strong>${it.unit_label||('Unit #' + (idx+1))}</strong></div>
-            <div class="unit-note">SN: ${it.serial_number||'-'}${it.attachment_label?` &nbsp; • &nbsp; ${it.attachment_label}`:''}</div>
+            <div><strong>${it.unit_label || ('Unit #' + (idx+1))}</strong></div>
+            <div class="unit-note">SN: ${it.serial_number || '-'}${attachmentText}</div>
           </label>`;
         list.appendChild(wrap);
       });

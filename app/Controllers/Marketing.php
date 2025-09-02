@@ -859,6 +859,7 @@ class Marketing extends Controller
             'data' => $row,
             'spesifikasi' => $enriched,
             'prepared_units' => $preparedUnits,
+            'prepared_units_detail' => $enriched['prepared_units_detail'] ?? [],
             'kontrak_spec' => $kontrak_spec,
             'csrf_hash' => csrf_hash()
         ]);
@@ -1488,6 +1489,10 @@ class Marketing extends Controller
             return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'PO/Kontrak wajib diisi']);
         }
 
+        if (empty($pelanggan)) {
+            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Nama pelanggan wajib diisi']);
+        }
+
         $payload = [
             'nomor_di' => method_exists($this->diModel,'generateNextNumber') ? $this->diModel->generateNextNumber() : $this->generateDiNumber(),
             'spk_id' => $spkId ?: null,
@@ -1506,7 +1511,8 @@ class Marketing extends Controller
         if ($catatan) {
             $payload['catatan'] = $catatan;
         }
-        $this->db->transStart();
+        // Start manual transaction
+        $this->db->transBegin();
         
         // Try the insert and catch any errors
         try {
@@ -1527,11 +1533,26 @@ class Marketing extends Controller
                     $msg = 'Database error: ' . $dbError['message'];
                     error_log('DI Insert DB Error: ' . print_r($dbError, true));
                 } else {
-                    $msg = 'Unknown error during insert';
+                    // Try to get more detailed error information
+                    $lastQuery = $this->db->getLastQuery();
+                    error_log('DI Insert - Last Query: ' . ($lastQuery ? $lastQuery : 'No query available'));
+                    $msg = 'Insert failed with no specific error message';
                 }
                 throw new \Exception($msg);
             }
-            $diId = (int)$this->diModel->getInsertID();
+            
+            // Get the inserted DI ID - use the returned value from insert() if it's the ID, otherwise use getInsertID()
+            $diId = $insertResult;
+            if (!is_numeric($diId) || $diId <= 0) {
+                $diId = (int)$this->diModel->getInsertID();
+            }
+            
+            // Double-check that we have a valid DI ID
+            if (!$diId || $diId <= 0) {
+                error_log('DI Create - Failed to get valid DI ID after insert');
+                throw new \Exception('Failed to retrieve DI ID after insertion');
+            }
+            
             error_log("DI Insert successful with ID: $diId");
         } catch (\Exception $e) {
             $dbError = $this->db->error();
@@ -1617,44 +1638,28 @@ class Marketing extends Controller
                     if (json_last_error() === JSON_ERROR_NONE && is_array($spec)) {
                         $attachmentInventoryIds = [];
                         
-                        // Collect attachment inventory IDs from prepared_units
+                        // Only collect attachments from selected units in prepared_units
                         if (isset($spec['prepared_units']) && is_array($spec['prepared_units'])) {
                             foreach ($spec['prepared_units'] as $preparedUnit) {
-                                if (isset($preparedUnit['attachment_inventory_id']) && is_numeric($preparedUnit['attachment_inventory_id'])) {
-                                    $attachmentInventoryIds[] = (int)$preparedUnit['attachment_inventory_id'];
-                                }
-                                if (isset($preparedUnit['battery_inventory_id']) && is_numeric($preparedUnit['battery_inventory_id'])) {
-                                    $attachmentInventoryIds[] = (int)$preparedUnit['battery_inventory_id'];
-                                }
-                                if (isset($preparedUnit['charger_inventory_id']) && is_numeric($preparedUnit['charger_inventory_id'])) {
-                                    $attachmentInventoryIds[] = (int)$preparedUnit['charger_inventory_id'];
+                                // Only include attachments if this unit is selected for the DI
+                                if (isset($preparedUnit['unit_id']) && in_array((int)$preparedUnit['unit_id'], $unitIds)) {
+                                    if (isset($preparedUnit['attachment_inventory_id']) && is_numeric($preparedUnit['attachment_inventory_id'])) {
+                                        $attachmentInventoryIds[] = (int)$preparedUnit['attachment_inventory_id'];
+                                    }
+                                    if (isset($preparedUnit['battery_inventory_id']) && is_numeric($preparedUnit['battery_inventory_id'])) {
+                                        $attachmentInventoryIds[] = (int)$preparedUnit['battery_inventory_id'];
+                                    }
+                                    if (isset($preparedUnit['charger_inventory_id']) && is_numeric($preparedUnit['charger_inventory_id'])) {
+                                        $attachmentInventoryIds[] = (int)$preparedUnit['charger_inventory_id'];
+                                    }
                                 }
                             }
-                        }
-                        
-                        // Also check main spec level for charger_id and fabrikasi_attachment_id
-                        if (isset($spec['charger_id']) && is_numeric($spec['charger_id'])) {
-                            // charger_id in SPK refers to inventory_attachment ID, not charger_id field
-                            $chargerInvId = (int)$spec['charger_id'];
-                            // Verify it's actually a charger type
-                            $chargerInv = $this->db->table('inventory_attachment')
-                                ->select('id_inventory_attachment, tipe_item')
-                                ->where('id_inventory_attachment', $chargerInvId)
-                                ->where('tipe_item', 'charger')
-                                ->get()->getRowArray();
-                            if ($chargerInv) {
-                                $attachmentInventoryIds[] = $chargerInvId;
-                            }
-                        }
-                        
-                        if (isset($spec['fabrikasi_attachment_id']) && is_numeric($spec['fabrikasi_attachment_id'])) {
-                            $attachmentInventoryIds[] = (int)$spec['fabrikasi_attachment_id'];
                         }
                         
                         // Remove duplicates
                         $attachmentInventoryIds = array_unique($attachmentInventoryIds);
                         
-                        // Insert each attachment
+                        // Insert each attachment for selected units only
                         foreach ($attachmentInventoryIds as $attachmentInvId) {
                             // Get attachment details including tipe_item
                             $inv = $this->db->table('inventory_attachment')
@@ -1670,15 +1675,15 @@ class Marketing extends Controller
                                 switch ($inv['tipe_item']) {
                                     case 'attachment':
                                         $targetId = $inv['attachment_id'];
-                                        $keterangan = 'Attachment from SPK';
+                                        $keterangan = 'Attachment for selected unit';
                                         break;
                                     case 'battery':
                                         $targetId = $inv['baterai_id'];
-                                        $keterangan = 'Battery from SPK';
+                                        $keterangan = 'Battery for selected unit';
                                         break;
                                     case 'charger':
                                         $targetId = $inv['charger_id'];
-                                        $keterangan = 'Charger from SPK';
+                                        $keterangan = 'Charger for selected unit';
                                         break;
                                 }
                                 
@@ -1689,14 +1694,13 @@ class Marketing extends Controller
                                         'attachment_id' => $targetId,
                                         'keterangan' => $keterangan
                                     ];
-                                    // unit_id is null for attachments, so we skip it
                                     
                                     $itemResult = $this->diItemModel->insert($attachmentPayload);
                                     if (!$itemResult) {
                                         $errors = $this->diItemModel->errors();
-                                        throw new \Exception("Failed to insert {$inv['tipe_item']} from SPK: " . implode(', ', $errors));
+                                        throw new \Exception("Failed to insert {$inv['tipe_item']} for selected unit: " . implode(', ', $errors));
                                     }
-                                    error_log("DI Create - Added {$inv['tipe_item']} from SPK: attachment_id=$targetId");
+                                    error_log("DI Create - Added {$inv['tipe_item']} for selected unit: attachment_id=$targetId");
                                 }
                             }
                         }
@@ -1799,9 +1803,10 @@ class Marketing extends Controller
             error_log('Error getting table info: ' . $e->getMessage());
         }
         
-        $this->db->transComplete();
+        // Check transaction status and commit or rollback
         if ($this->db->transStatus() === false) {
-            // Get the last database error for debugging
+            // Transaction failed, rollback and return error
+            $this->db->transRollback();
             $dbError = $this->db->error();
             error_log('DI Creation DB Error: ' . print_r($dbError, true));
             error_log('DI Creation Payload: ' . print_r($payload, true));
@@ -1815,17 +1820,25 @@ class Marketing extends Controller
             
             return $this->response->setStatusCode(500)->setJSON([
                 'success'=>false,
-                'message'=>'Gagal membuat DI: ' . ($dbError['message'] ?? 'Database error'),
-                'debug'=>[
-                    'error'=>$dbError,
-                    'payload'=>$payload,
-                    'unit_ids'=>$unitIds,
-                    'last_query'=>$lastQuery
+                'message'=>'Gagal membuat DI: Transaction failed',
+                'debug' => [
+                    'db_error' => $dbError,
+                    'last_query' => $lastQuery,
+                    'payload' => $payload,
                 ],
                 'csrf_hash'=>csrf_hash()
             ]);
+        } else {
+            // Transaction successful, commit it
+            $this->db->transCommit();
+            
+            return $this->response->setJSON([
+                'success'=>true,
+                'message'=>'DI dibuat',
+                'nomor'=>$payload['nomor_di'],
+                'csrf_hash'=>csrf_hash()
+            ]);
         }
-        return $this->response->setJSON(['success'=>true,'message'=>'DI dibuat','nomor'=>$payload['nomor_di'],'csrf_hash'=>csrf_hash()]);
     }
 
     // ===== KONTRAK METHODS =====
@@ -1998,6 +2011,104 @@ class Marketing extends Controller
         }
     }
 
+    /**
+     * Generate unique contract number (private)
+     */
+    private function generateContractNumberPrivate()
+    {
+        $year = date('Y');
+        $month = date('m');
+
+        // Find the highest contract number for current year/month
+        $prefix = "KTR/{$year}/{$month}/";
+        $existing = $this->db->table('kontrak')
+            ->select('no_kontrak')
+            ->like('no_kontrak', $prefix, 'after')
+            ->orderBy('no_kontrak', 'DESC')
+            ->get()
+            ->getRowArray();
+
+        $nextNumber = 1;
+        if ($existing) {
+            // Extract number from existing contract (e.g., "KTR/2025/08/005" -> 5)
+            $parts = explode('/', $existing['no_kontrak']);
+            if (count($parts) >= 4) {
+                $lastPart = end($parts);
+                if (is_numeric($lastPart)) {
+                    $nextNumber = (int)$lastPart + 1;
+                }
+            }
+        }
+
+        return $prefix . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Check if contract number already exists
+     */
+    public function checkContractNumberDuplicate()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $contractNumber = trim((string)$this->request->getPost('contract_number'));
+            
+            if (!$contractNumber) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'duplicate' => false,
+                    'message' => 'Contract number is required',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            $existing = $this->kontrakModel->where('no_kontrak', $contractNumber)->first();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'duplicate' => $existing ? true : false,
+                'existing_id' => $existing ? ($existing['id'] ?? $existing->id) : null,
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Error checking contract number: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    /**
+     * Generate next available contract number
+     */
+    public function generateContractNumber()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $contractNumber = $this->generateContractNumberPrivate();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'contract_number' => $contractNumber,
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Throwable $e) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Gagal generate nomor kontrak: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
     public function storeKontrak()
     {
         if (!$this->request->isAJAX()) {
@@ -2005,8 +2116,9 @@ class Marketing extends Controller
         }
 
         try {
+            // Use KontrakModel for proper validation
             $data = [
-                'no_kontrak' => $this->request->getPost('contract_number'),
+                'no_kontrak' => trim((string)$this->request->getPost('contract_number')),
                 'no_po_marketing' => $this->request->getPost('po_number'),
                 'pelanggan' => $this->request->getPost('client_name'),
                 'lokasi' => $this->request->getPost('project_name'),
@@ -2014,14 +2126,40 @@ class Marketing extends Controller
                 'tanggal_berakhir' => $this->request->getPost('end_date'),
                 'status' => $this->request->getPost('status'),
                 'dibuat_oleh' => 1, // TODO: Get from session
-                'dibuat_pada' => date('Y-m-d H:i:s')
             ];
 
-            $this->db->table('kontrak')->insert($data);
+            // Validate using KontrakModel
+            if (!$this->kontrakModel->save($data)) {
+                $errors = $this->kontrakModel->errors();
+                $existingId = null;
+
+                // Check if it's a duplicate contract number
+                if (!empty($errors['no_kontrak']) && strpos($errors['no_kontrak'], 'sudah digunakan') !== false) {
+                    $contractNumber = trim((string)$this->request->getPost('contract_number'));
+                    if ($contractNumber !== '') {
+                        $existing = $this->kontrakModel->where('no_kontrak', $contractNumber)->first();
+                        if ($existing) {
+                            $existingId = is_array($existing) ? ($existing['id'] ?? null) : ($existing->id ?? null);
+                        }
+                    }
+                }
+
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Validasi gagal.',
+                    'errors' => $errors,
+                    'duplicate' => $existingId ? true : false,
+                    'existing_id' => $existingId,
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            $newId = $this->kontrakModel->getInsertID();
 
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Kontrak berhasil ditambahkan',
+                'data' => ['id' => $newId],
                 'csrf_hash' => csrf_hash()
             ]);
 

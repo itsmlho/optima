@@ -37,7 +37,7 @@ class KontrakModel extends Model
 
     // Validation
     protected $validationRules = [
-        'no_kontrak' => 'required|max_length[100]|is_unique[kontrak.no_kontrak,id,{id}]',
+        'no_kontrak' => 'required|max_length[100]|is_unique[kontrak.no_kontrak]',
         'pelanggan' => 'required|max_length[255]',
         'tanggal_mulai' => 'required|valid_date',
         'tanggal_berakhir' => 'required|valid_date',
@@ -96,6 +96,10 @@ class KontrakModel extends Model
     {
         $builder = $this->db->table($this->table);
         
+        // Filter out invalid IDs (0 or null)
+        $builder->where('id >', 0);
+        $builder->where('id IS NOT NULL', null, false);
+        
         // Search functionality for counting
         if (!empty($search)) {
             $builder->groupStart()
@@ -114,6 +118,10 @@ class KontrakModel extends Model
         
         // Explicitly select all columns we need
         $builder->select('id, no_kontrak, no_po_marketing, pelanggan, pic, kontak, lokasi, nilai_total, total_units, tanggal_mulai, tanggal_berakhir, status, dibuat_pada, diperbarui_pada');
+        
+        // Filter out invalid IDs (0 or null)
+        $builder->where('id >', 0);
+        $builder->where('id IS NOT NULL', null, false);
         
         // Apply search again for data query
         if (!empty($search)) {
@@ -152,8 +160,15 @@ class KontrakModel extends Model
     }
 
     /**
-     * DataTables server-side processing method
+     * Override countAll to exclude invalid IDs
      */
+    public function countAll(bool $reset = true, bool $test = false): int
+    {
+        $builder = $this->db->table($this->table);
+        $builder->where('id >', 0);
+        $builder->where('id IS NOT NULL', null, false);
+        return $builder->countAllResults();
+    }
     public function getDataTable($request)
     {
         $start = $request->getPost('start') ?? 0;
