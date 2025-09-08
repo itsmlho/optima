@@ -218,54 +218,131 @@ class KontrakSpesifikasiModel extends Model
     }
 
     /**
-     * Assign units to specification
+     * Assign units to specification with complete workflow data transfer
      */
     public function assignUnits($spesifikasiId, $unitIds, $hargaBulanan = null, $hargaHarian = null)
     {
+        // Load helper for logging
+        helper('activity_log');
+        
         $spek = $this->find($spesifikasiId);
         if (!$spek) return false;
 
         $db = \Config\Database::connect();
         $db->transStart();
 
-        foreach ($unitIds as $unitId) {
-            $updateData = [
-                'kontrak_id' => $spek->kontrak_id,
-                'kontrak_spesifikasi_id' => $spesifikasiId,
-                'status_unit_id' => 3 // RENTAL
-            ];
+        // Get kontrak data for additional workflow information
+        $kontrak = $db->table('kontrak')->where('id', $spek['kontrak_id'])->get()->getRowArray();
 
-            if ($hargaBulanan !== null) {
-                $updateData['harga_sewa_bulanan'] = $hargaBulanan;
-            }
-            if ($hargaHarian !== null) {
-                $updateData['harga_sewa_harian'] = $hargaHarian;
-            }
+        foreach ($unitIds as $unitId) {
+            // Get old unit data for logging
+            $oldUnitData = $db->table('inventory_unit')
+                             ->where('id_inventory_unit', $unitId)
+                             ->get()->getRowArray();
+
+            // Use harga from spesifikasi if not explicitly provided
+            $finalHargaBulanan = $hargaBulanan ?? $spek['harga_per_unit_bulanan'];
+            $finalHargaHarian = $hargaHarian ?? $spek['harga_per_unit_harian'];
+
+            $updateData = [
+                'kontrak_id' => $spek['kontrak_id'],
+                'kontrak_spesifikasi_id' => $spesifikasiId,
+                'status_unit_id' => 3, // RENTAL
+                'harga_sewa_bulanan' => $finalHargaBulanan,
+                'harga_sewa_harian' => $finalHargaHarian,
+                'lokasi_pelanggan' => $kontrak['pelanggan'] ?? null
+            ];
 
             $db->table('inventory_unit')
                 ->where('id_inventory_unit', $unitId)
                 ->update($updateData);
+
+            // Log the unit assignment
+            log_assign('inventory_unit', $unitId, 
+                format_activity_description('ASSIGN', 'inventory_unit', [
+                    'nomor' => $kontrak['no_po_marketing'] ?? 'N/A',
+                    'pelanggan' => $kontrak['pelanggan'] ?? 'N/A',
+                    'harga' => $finalHargaBulanan
+                ]), [
+                    'workflow_stage' => 'KONTRAK',
+                    'related_kontrak_id' => $spek['kontrak_id'],
+                    'data' => [
+                        'spesifikasi_id' => $spesifikasiId,
+                        'old_status' => $oldUnitData['status_unit_id'] ?? null,
+                        'new_status' => 3,
+                        'harga_bulanan' => $finalHargaBulanan,
+                        'harga_harian' => $finalHargaHarian
+                    ]
+                ]
+            );
         }
+
+        // Update spesifikasi jumlah_tersedia
+        $assignedCount = count($unitIds);
+        $currentTersedia = $spek['jumlah_tersedia'] ?? 0;
+        $this->update($spesifikasiId, [
+            'jumlah_tersedia' => $currentTersedia + $assignedCount
+        ]);
+
+        // Log spesifikasi update
+        log_update('kontrak_spesifikasi', $spesifikasiId,
+            ['jumlah_tersedia' => $currentTersedia],
+            ['jumlah_tersedia' => $currentTersedia + $assignedCount], [
+                'description' => "Spesifikasi {$spek['spek_kode']} diperbarui: {$assignedCount} unit di-assign",
+                'workflow_stage' => 'KONTRAK',
+                'related_kontrak_id' => $spek['kontrak_id']
+            ]
+        );
 
         $db->transComplete();
         return $db->transStatus();
     }
 
     /**
-     * Unassign units from specification
+     * Unassign units from specification with complete workflow cleanup
      */
     public function unassignUnits($unitIds)
     {
         $db = \Config\Database::connect();
-        return $db->table('inventory_unit')
+        $db->transStart();
+        
+        // Get affected spesifikasi for count update
+        $affectedSpeks = $db->table('inventory_unit')
+            ->select('kontrak_spesifikasi_id')
+            ->whereIn('id_inventory_unit', $unitIds)
+            ->where('kontrak_spesifikasi_id IS NOT NULL')
+            ->get()->getResultArray();
+
+        // Reset units to stock status
+        $updated = $db->table('inventory_unit')
             ->whereIn('id_inventory_unit', $unitIds)
             ->update([
                 'kontrak_id' => null,
                 'kontrak_spesifikasi_id' => null,
                 'status_unit_id' => 7, // STOCK
+                'workflow_status' => 'draft',
                 'harga_sewa_bulanan' => null,
-                'harga_sewa_harian' => null
+                'harga_sewa_harian' => null,
+                'lokasi_pelanggan' => null,
+                'aksesoris_spk' => null,
+                'spk_id' => null,
+                'di_id' => null
             ]);
+
+        // Update spesifikasi counts
+        foreach ($affectedSpeks as $spek) {
+            if ($spek['kontrak_spesifikasi_id']) {
+                $currentSpec = $this->find($spek['kontrak_spesifikasi_id']);
+                if ($currentSpec) {
+                    $this->update($spek['kontrak_spesifikasi_id'], [
+                        'jumlah_tersedia' => max(0, ($currentSpec['jumlah_tersedia'] ?? 0) - 1)
+                    ]);
+                }
+            }
+        }
+
+        $db->transComplete();
+        return $db->transStatus();
     }
 
     /**

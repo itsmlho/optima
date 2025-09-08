@@ -45,6 +45,19 @@ class Marketing extends Controller
         return view('marketing/unit_tersedia');
     }
 
+    // Test method for debugging template system
+    public function testTemplate()
+    {
+        $data = [
+            'title' => 'Test Template',
+            'breadcrumbs' => [
+                'marketing' => 'Marketing',
+                'marketing/test' => 'Test'
+            ]
+        ];
+        return view('test_template', $data);
+    }
+
     // Legacy route support (unit-tersedia) jika masih dipakai
     public function unitTersedia()
     {
@@ -57,6 +70,10 @@ class Marketing extends Controller
         try {
             $id = (int)$id;
             if ($id <= 0) return $this->response->setJSON(['success'=>false,'message'=>'ID tidak valid']);
+            
+            $db = \Config\Database::connect();
+            
+            // Get main unit data
             $sql = 'SELECT 
                     iu.id_inventory_unit,
                     iu.no_unit,
@@ -75,50 +92,117 @@ class Marketing extends Controller
                     iu.sn_mast as sn_mast_po,
                     iu.model_mesin_id as mesin_id,
                     iu.sn_mesin as sn_mesin_po,
-                    iu.model_baterai_id as baterai_id,
-                    iu.sn_baterai as sn_baterai_po,
                     iu.ban_id,
                     iu.roda_id,
                     iu.valve_id,
+                    iu.kontrak_id,
                     COALESCE(mu.model_unit, "Unknown") as model_unit,
                     COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as nama_tipe_unit,
                     COALESCE(su.status_unit, "Unknown") as status_unit_name,
                     COALESCE(d.nama_departemen, "Unknown") as nama_departemen,
                     COALESCE(k.kapasitas_unit, 0) as kapasitas_unit,
-                    COALESCE(tm.tipe_mast, "-") as tipe_mast,
-                    COALESCE(m.merk_mesin, "-") as merk_mesin,
-                    COALESCE(m.model_mesin, "-") as model_mesin,
-                    COALESCE(b.tipe_baterai, "-") as tipe_baterai,
-                    COALESCE(b.merk_baterai, "-") as merk_baterai,
-                    COALESCE(tb.tipe_ban, "-") as tipe_ban,
-                    COALESCE(jr.tipe_roda, "-") as tipe_roda,
-                    COALESCE(v.jumlah_valve, "-") as jumlah_valve,
-                    "Sesuai" as status_verifikasi,
-                    "Verifikasi berhasil" as catatan_verifikasi,
-                    "Baru" as status_penjualan
+                    COALESCE(mu_mast.model_unit, "Unknown") as model_mast,
+                    COALESCE(mu_mesin.model_unit, "Unknown") as model_mesin,
+                    COALESCE(ban.tipe_ban, "Unknown") as jenis_ban,
+                    COALESCE(roda.tipe_roda, "Unknown") as jenis_roda,
+                    COALESCE(valve.jumlah_valve, "Unknown") as jenis_valve
                 FROM inventory_unit iu
-                LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
-                LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
-                LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
-                LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
-                LEFT JOIN kapasitas k ON k.id_kapasitas = iu.kapasitas_unit_id
-                LEFT JOIN tipe_mast tm ON tm.id_mast = iu.model_mast_id
-                LEFT JOIN mesin m ON m.id = iu.model_mesin_id
-                LEFT JOIN baterai b ON b.id = iu.model_baterai_id
-                LEFT JOIN tipe_ban tb ON tb.id_ban = iu.ban_id
-                LEFT JOIN jenis_roda jr ON jr.id_roda = iu.roda_id
-                LEFT JOIN valve v ON v.id_valve = iu.valve_id
-                /* purchase_orders & suppliers join dihapus untuk marketing detail */
+                LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
+                LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
+                LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
+                LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
+                LEFT JOIN kapasitas k ON iu.kapasitas_unit_id = k.id_kapasitas
+                LEFT JOIN model_unit mu_mast ON iu.model_mast_id = mu_mast.id_model_unit
+                LEFT JOIN model_unit mu_mesin ON iu.model_mesin_id = mu_mesin.id_model_unit
+                LEFT JOIN tipe_ban ban ON iu.ban_id = ban.id_ban
+                LEFT JOIN jenis_roda roda ON iu.roda_id = roda.id_roda
+                LEFT JOIN valve ON iu.valve_id = valve.id_valve
                 WHERE iu.id_inventory_unit = ?';
-            $row = $this->db->query($sql, [$id])->getRowArray();
-            if(!$row) return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak ditemukan']);
-            return $this->response->setJSON(['success'=>true,'data'=>$row,'csrf_hash'=>csrf_hash()]);
-        } catch (\Throwable $e) {
-            return $this->response->setStatusCode(500)->setJSON([
-                'success'=>false,
-                'message'=>'Gagal mengambil detail lengkap: '.$e->getMessage(),
-                'csrf_hash'=>csrf_hash()
-            ]);
+            
+            $result = $db->query($sql, [$id]);
+            $unit = $result->getRowArray();
+            
+            if (!$unit) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan']);
+            }
+            
+            // Get attachment data (attachment, battery, charger)
+            $attachmentSql = 'SELECT 
+                    ia.tipe_item,
+                    ia.attachment_id,
+                    ia.sn_attachment,
+                    ia.baterai_id,
+                    ia.sn_baterai,
+                    ia.charger_id,
+                    ia.sn_charger,
+                    ia.kondisi_fisik,
+                    ia.kelengkapan,
+                    ia.catatan_fisik,
+                    ia.lokasi_penyimpanan,
+                    COALESCE(att.tipe, "") as attachment_name,
+                    COALESCE(att.merk, "") as attachment_merk,
+                    COALESCE(bat.jenis_baterai, "") as baterai_name,
+                    COALESCE(bat.merk_baterai, "") as baterai_merk,
+                    COALESCE(chr.tipe_charger, "") as charger_name,
+                    COALESCE(chr.merk_charger, "") as charger_merk
+                FROM inventory_attachment ia
+                LEFT JOIN attachment att ON ia.attachment_id = att.id_attachment
+                LEFT JOIN baterai bat ON ia.baterai_id = bat.id
+                LEFT JOIN charger chr ON ia.charger_id = chr.id_charger
+                WHERE ia.id_inventory_unit = ?
+                ORDER BY ia.tipe_item';
+                
+            $attachmentResult = $db->query($attachmentSql, [$id]);
+            $attachments = $attachmentResult->getResultArray();
+            
+            // Organize attachments by type
+            $unit['attachments'] = [];
+            $unit['batteries'] = [];
+            $unit['chargers'] = [];
+            
+            foreach ($attachments as $att) {
+                switch ($att['tipe_item']) {
+                    case 'attachment':
+                        $unit['attachments'][] = [
+                            'name' => $att['attachment_name'],
+                            'merk' => $att['attachment_merk'],
+                            'serial_number' => $att['sn_attachment'],
+                            'kondisi_fisik' => $att['kondisi_fisik'],
+                            'kelengkapan' => $att['kelengkapan'],
+                            'catatan_fisik' => $att['catatan_fisik'],
+                            'lokasi_penyimpanan' => $att['lokasi_penyimpanan']
+                        ];
+                        break;
+                    case 'battery':
+                        $unit['batteries'][] = [
+                            'name' => $att['baterai_name'],
+                            'merk' => $att['baterai_merk'],
+                            'serial_number' => $att['sn_baterai'],
+                            'kondisi_fisik' => $att['kondisi_fisik'],
+                            'kelengkapan' => $att['kelengkapan'],
+                            'catatan_fisik' => $att['catatan_fisik'],
+                            'lokasi_penyimpanan' => $att['lokasi_penyimpanan']
+                        ];
+                        break;
+                    case 'charger':
+                        $unit['chargers'][] = [
+                            'name' => $att['charger_name'],
+                            'merk' => $att['charger_merk'],
+                            'serial_number' => $att['sn_charger'],
+                            'kondisi_fisik' => $att['kondisi_fisik'],
+                            'kelengkapan' => $att['kelengkapan'],
+                            'catatan_fisik' => $att['catatan_fisik'],
+                            'lokasi_penyimpanan' => $att['lokasi_penyimpanan']
+                        ];
+                        break;
+                }
+            }
+            
+            return $this->response->setJSON(['success' => true, 'data' => $unit]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::unitDetail Error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Error retrieving unit detail: ' . $e->getMessage()]);
         }
     }
 
@@ -242,11 +326,64 @@ class Marketing extends Controller
         }
     }
 
+    /**
+     * Get unit components from inventory_attachment (single source of truth)
+     */
+    private function getUnitComponents($unitId)
+    {
+        $components = [
+            'battery' => null,
+            'charger' => null,
+            'attachment' => null
+        ];
+
+        // Get battery info - include both available (7) and in use (8) for the unit
+        $battery = $this->db->table('inventory_attachment ia')
+            ->select('ia.id_inventory_attachment, ia.baterai_id, ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+            ->join('baterai b', 'ia.baterai_id = b.id', 'left')
+            ->where('ia.id_inventory_unit', $unitId)
+            ->where('ia.tipe_item', 'battery')
+            ->whereIn('ia.status_unit', [7, 8]) // Available or In use for this unit
+            ->get()->getRowArray();
+
+        if ($battery) {
+            $components['battery'] = $battery;
+        }
+
+        // Get charger info - include both available (7) and in use (8) for the unit
+        $charger = $this->db->table('inventory_attachment ia')
+            ->select('ia.id_inventory_attachment, ia.charger_id, ia.sn_charger, c.merk_charger, c.tipe_charger')
+            ->join('charger c', 'ia.charger_id = c.id_charger', 'left')
+            ->where('ia.id_inventory_unit', $unitId)
+            ->where('ia.tipe_item', 'charger')
+            ->whereIn('ia.status_unit', [7, 8]) // Available or In use for this unit
+            ->get()->getRowArray();
+
+        if ($charger) {
+            $components['charger'] = $charger;
+        }
+
+        // Get attachment info
+        $attachment = $this->db->table('inventory_attachment ia')
+            ->select('ia.id_inventory_attachment, ia.attachment_id, ia.sn_attachment, a.tipe, a.merk, a.model')
+            ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
+            ->where('ia.id_inventory_unit', $unitId)
+            ->where('ia.tipe_item', 'attachment')
+            ->where('ia.status_unit', 8) // In use
+            ->get()->getRowArray();
+
+        if ($attachment) {
+            $components['attachment'] = $attachment;
+        }
+
+        return $components;
+    }
+
     /** Render HTML print view for browser printing (no PDF lib required) */
     public function spkPrint($id)
     {
         $id = (int)$id;
-        $row = $this->spkModel->find($id);
+        $row = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
         if (!$row) {
             return $this->response->setStatusCode(404)->setBody('SPK tidak ditemukan');
         }
@@ -445,17 +582,15 @@ class Marketing extends Controller
             // First try to find by no_unit (for Aset units)
             $u = $this->db->table('inventory_unit iu')
                     ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.tahun_unit, iu.lokasi_unit, iu.status_unit_id')
-                    ->select('iu.sn_mast, iu.sn_mesin, iu.sn_baterai, iu.sn_charger')
+                    ->select('iu.sn_mast, iu.sn_mesin')
                     ->select('mu.merk_unit, mu.model_unit')
                     ->select('tu.tipe as tipe_jenis, tu.jenis as jenis_unit')
-                    ->select('tm.tipe_mast as mast_model, m.model_mesin as mesin_model, b.tipe_baterai as baterai_model, chr.tipe_charger as charger_model')
+                    ->select('tm.tipe_mast as mast_model, m.model_mesin as mesin_model')
                     ->select('k.kapasitas_unit as kapasitas_name, d.nama_departemen as departemen_name, su.status_unit')
                     ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
                     ->join('tipe_unit tu','tu.id_tipe_unit = iu.tipe_unit_id','left')
                     ->join('tipe_mast tm','tm.id_mast = iu.model_mast_id','left')
                     ->join('mesin m','m.id = iu.model_mesin_id','left')
-                    ->join('baterai b','b.id = iu.model_baterai_id','left')
-                    ->join('charger chr','chr.id_charger = iu.model_charger_id','left')
                     ->join('kapasitas k','k.id_kapasitas = iu.kapasitas_unit_id','left')
                     ->join('departemen d','d.id_departemen = iu.departemen_id','left')
                     ->join('status_unit su','su.id_status = iu.status_unit_id','left')
@@ -466,17 +601,15 @@ class Marketing extends Controller
             if (!$u) {
                 $u = $this->db->table('inventory_unit iu')
                         ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.tahun_unit, iu.lokasi_unit, iu.status_unit_id')
-                        ->select('iu.sn_mast, iu.sn_mesin, iu.sn_baterai, iu.sn_charger')
+                        ->select('iu.sn_mast, iu.sn_mesin')
                         ->select('mu.merk_unit, mu.model_unit')
                         ->select('tu.tipe as tipe_jenis, tu.jenis as jenis_unit')
-                        ->select('tm.tipe_mast as mast_model, m.model_mesin as mesin_model, b.tipe_baterai as baterai_model, chr.tipe_charger as charger_model')
+                        ->select('tm.tipe_mast as mast_model, m.model_mesin as mesin_model')
                         ->select('k.kapasitas_unit as kapasitas_name, d.nama_departemen as departemen_name, su.status_unit')
                         ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
                         ->join('tipe_unit tu','tu.id_tipe_unit = iu.tipe_unit_id','left')
                         ->join('tipe_mast tm','tm.id_mast = iu.model_mast_id','left')
                         ->join('mesin m','m.id = iu.model_mesin_id','left')
-                        ->join('baterai b','b.id = iu.model_baterai_id','left')
-                        ->join('charger chr','chr.id_charger = iu.model_charger_id','left')
                         ->join('kapasitas k','k.id_kapasitas = iu.kapasitas_unit_id','left')
                         ->join('departemen d','d.id_departemen = iu.departemen_id','left')
                         ->join('status_unit su','su.id_status = iu.status_unit_id','left')
@@ -485,44 +618,76 @@ class Marketing extends Controller
             }
                 
             if ($u) {
-                    $enriched['selected']['unit'] = [
-                        'id' => (int)$u['id_inventory_unit'],
-                        'no_unit' => $u['no_unit'] ?? null,
-                        'serial_number' => $u['serial_number'] ?? null,
-                        'merk_unit' => $u['merk_unit'] ?? null,
-                        'model_unit' => $u['model_unit'] ?? null,
-                        'tipe_jenis' => $u['tipe_jenis'] ?? null,
-                        'jenis_unit' => $u['jenis_unit'] ?? null,
-                        'tahun_unit' => $u['tahun_unit'] ?? null,
-                        'lokasi_unit' => $u['lokasi_unit'] ?? null,
-                        'kapasitas_name' => $u['kapasitas_name'] ?? null,
-                        'departemen_name' => $u['departemen_name'] ?? null,
-                        'status_unit' => $u['status_unit'] ?? null,
-                        'status_unit_id' => $u['status_unit_id'] ?? null,
-                        // Format: Model (SN) atau hanya Model jika SN kosong
-                        'sn_mast_formatted' => !empty($u['sn_mast']) ? ($u['mast_model'] ?? 'Mast') . ' (' . $u['sn_mast'] . ')' : ($u['mast_model'] ?? ''),
-                        'sn_mesin_formatted' => !empty($u['sn_mesin']) ? ($u['mesin_model'] ?? 'Mesin') . ' (' . $u['sn_mesin'] . ')' : ($u['mesin_model'] ?? ''),
-                        'sn_baterai_formatted' => !empty($u['sn_baterai']) ? ($u['baterai_model'] ?? 'Baterai') . ' (' . $u['sn_baterai'] . ')' : ($u['baterai_model'] ?? ''),
-                        'sn_charger_formatted' => !empty($u['sn_charger']) ? ($u['charger_model'] ?? 'Charger') . ' (' . $u['sn_charger'] . ')' : ($u['charger_model'] ?? ''),
-                    ];
-                
-                    // Override spesifikasi with unit data  
-                    $enriched['tipe_jenis'] = $u['tipe_jenis'] ?? $enriched['tipe_jenis'] ?? '';
-                    $enriched['jenis_unit'] = $u['jenis_unit'] ?? $enriched['jenis_unit'] ?? '';
-                    $enriched['merk_unit'] = $u['merk_unit'] ?? $enriched['merk_unit'] ?? '';
-                    $enriched['model_unit'] = $u['model_unit'] ?? $enriched['model_unit'] ?? '';
-                    $enriched['kapasitas_id_name'] = $u['kapasitas_name'] ?? $enriched['kapasitas_id_name'] ?? '';
-                    $enriched['departemen_id_name'] = $u['departemen_name'] ?? $enriched['departemen_id_name'] ?? '';
-                
+                // Get unit components from inventory_attachment (single source of truth for serial numbers)
+                $unitComponents = $this->getUnitComponents($u['id_inventory_unit']);
+                $unitComponents = is_array($unitComponents) ? $unitComponents : [];
+
+                // Prepare battery data safely
+                $batterySN = '';
+                $batteryModel = '';
+                $batteryDisplay = '';
+                $batteryData = isset($unitComponents['battery']) && is_array($unitComponents['battery']) ? $unitComponents['battery'] : [];
+                if (!empty($batteryData)) {
+                    if (!empty($batteryData['sn_baterai'])) {
+                        $batterySN = $batteryData['sn_baterai'];
+                    }
+                    if (!empty($batteryData['tipe_baterai'])) {
+                        $batteryModel = $batteryData['tipe_baterai'];
+                        $batteryDisplay = $batteryModel;
+                        if (!empty($batterySN)) {
+                            $batteryDisplay = $batteryModel . ' (' . $batterySN . ')';
+                        }
+                    }
+                }
+
+                // Prepare charger data safely
+                $chargerSN = '';
+                $chargerModel = '';
+                $chargerDisplay = '';
+                $chargerData = isset($unitComponents['charger']) && is_array($unitComponents['charger']) ? $unitComponents['charger'] : [];
+                if (!empty($chargerData)) {
+                    if (!empty($chargerData['sn_charger'])) {
+                        $chargerSN = $chargerData['sn_charger'];
+                    }
+                    if (!empty($chargerData['tipe_charger'])) {
+                        $chargerModel = $chargerData['tipe_charger'];
+                        $chargerDisplay = $chargerModel;
+                        if (!empty($chargerSN)) {
+                            $chargerDisplay = $chargerModel . ' (' . $chargerSN . ')';
+                        }
+                    }
+                }
+
+                $enriched['selected']['unit'] = [
+                    'id' => (int)$u['id_inventory_unit'],
+                    'no_unit' => $u['no_unit'] ?? null,
+                    'serial_number' => $u['serial_number'] ?? null,
+                    'merk_unit' => $u['merk_unit'] ?? null,
+                    'model_unit' => $u['model_unit'] ?? null,
+                    'tipe_jenis' => $u['tipe_jenis'] ?? null,
+                    'jenis_unit' => $u['jenis_unit'] ?? null,
+                    'tahun_unit' => $u['tahun_unit'] ?? null,
+                    'lokasi_unit' => $u['lokasi_unit'] ?? null,
+                    'kapasitas_name' => $u['kapasitas_name'] ?? null,
+                    'departemen_name' => $u['departemen_name'] ?? null,
+                    'status_unit' => $u['status_unit'] ?? null,
+                    'status_unit_id' => $u['status_unit_id'] ?? null,
+                    // Format: Model (SN) atau hanya Model jika SN kosong
+                    'sn_mast_formatted' => !empty($u['sn_mast']) ? ($u['mast_model'] ?? 'Mast') . ' (' . $u['sn_mast'] . ')' : ($u['mast_model'] ?? ''),
+                    'sn_mesin_formatted' => !empty($u['sn_mesin']) ? ($u['mesin_model'] ?? 'Mesin') . ' (' . $u['sn_mesin'] . ')' : ($u['mesin_model'] ?? ''),
+                    'sn_baterai_formatted' => $batteryDisplay,
+                    'sn_charger_formatted' => $chargerDisplay,
+                ];
+            
                 // Override spesifikasi with unit data  
                 $enriched['tipe_jenis'] = $u['tipe_jenis'] ?? $enriched['tipe_jenis'] ?? '';
+                $enriched['jenis_unit'] = $u['jenis_unit'] ?? $enriched['jenis_unit'] ?? '';
                 $enriched['merk_unit'] = $u['merk_unit'] ?? $enriched['merk_unit'] ?? '';
                 $enriched['model_unit'] = $u['model_unit'] ?? $enriched['model_unit'] ?? '';
                 $enriched['kapasitas_id_name'] = $u['kapasitas_name'] ?? $enriched['kapasitas_id_name'] ?? '';
                 $enriched['departemen_id_name'] = $u['departemen_name'] ?? $enriched['departemen_id_name'] ?? '';
-                // Add battery and charger info to enriched data
-                $enriched['baterai_model'] = $u['baterai_model'] ?? $enriched['baterai_model'] ?? '';
-                $enriched['charger_model'] = $u['charger_model'] ?? $enriched['charger_model'] ?? '';
+                $enriched['baterai_model'] = $batteryModel;
+                $enriched['charger_model'] = $chargerModel;
             }
         }
         
@@ -925,10 +1090,61 @@ class Marketing extends Controller
     public function diList()
     {
         $rows = $this->diModel
-            ->select('delivery_instructions.*, spk.pic as spk_pic, spk.kontak as spk_kontak')
+            ->select('
+                delivery_instructions.*, 
+                spk.pic as spk_pic, 
+                spk.kontak as spk_kontak,
+                spk.nomor_spk,
+                jpk.nama as jenis_perintah,
+                tpk.nama as tujuan_perintah
+            ')
             ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
+            ->join('jenis_perintah_kerja jpk', 'jpk.id = delivery_instructions.jenis_perintah_kerja_id', 'left')
+            ->join('tujuan_perintah_kerja tpk', 'tpk.id = delivery_instructions.tujuan_perintah_kerja_id', 'left')
             ->orderBy('delivery_instructions.id','DESC')
             ->findAll();
+            
+        // Add items information for each DI
+        foreach ($rows as &$row) {
+            // Get items for this DI
+            $items = $this->diItemModel
+                ->select('
+                    delivery_items.*, 
+                    iu.no_unit, 
+                    mu.merk_unit, 
+                    mu.model_unit,
+                    a.tipe as att_tipe, 
+                    a.merk as att_merk, 
+                    a.model as att_model
+                ')
+                ->join('inventory_unit iu','iu.id_inventory_unit = delivery_items.unit_id','left')
+                ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
+                ->join('attachment a', 'a.id_attachment = delivery_items.attachment_id', 'left')
+                ->where('delivery_items.di_id', $row['id'])
+                ->findAll();
+                
+            // Format item labels
+            $itemLabels = [];
+            $unitCount = 0;
+            $attachmentCount = 0;
+            
+            foreach ($items as $item) {
+                if ($item['item_type'] === 'UNIT') {
+                    $label = trim(($item['no_unit'] ?: 'Unit') . ' - ' . ($item['merk_unit'] ?: '') . ' ' . ($item['model_unit'] ?: ''));
+                    $itemLabels[] = ['unit_label' => $label, 'type' => 'unit'];
+                    $unitCount++;
+                } elseif ($item['item_type'] === 'ATTACHMENT') {
+                    $label = trim(($item['att_tipe'] ?: 'Attachment') . ' ' . ($item['att_merk'] ?: '') . ' ' . ($item['att_model'] ?: ''));
+                    $itemLabels[] = ['attachment_label' => $label, 'type' => 'attachment'];
+                    $attachmentCount++;
+                }
+            }
+            
+            $row['items'] = $itemLabels;
+            $row['total_units'] = $unitCount;
+            $row['total_attachments'] = $attachmentCount;
+        }
+        
         return $this->response->setJSON(['data'=>$rows,'csrf_hash'=>csrf_hash()]);
     }
 
@@ -1649,6 +1865,10 @@ class Marketing extends Controller
         $tanggalKirim = $this->request->getPost('tanggal_kirim') ?: null;
         $catatan = $this->request->getPost('catatan') ?: null;
 
+        // Workflow fields
+        $jenisPerintahKerjaId = (int)($this->request->getPost('jenis_perintah_kerja_id') ?? 0);
+        $tujuanPerintahKerjaId = (int)($this->request->getPost('tujuan_perintah_kerja_id') ?? 0);
+
         $pelanggan = $this->request->getPost('pelanggan') ?: '';
         $lokasi = $this->request->getPost('lokasi') ?: null;
 
@@ -1706,6 +1926,15 @@ class Marketing extends Controller
             return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Nama pelanggan wajib diisi']);
         }
 
+        // Validate workflow fields
+        if ($jenisPerintahKerjaId <= 0) {
+            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Jenis Perintah Kerja harus dipilih']);
+        }
+
+        if ($tujuanPerintahKerjaId <= 0) {
+            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Tujuan Perintah Kerja harus dipilih']);
+        }
+
         $payload = [
             'nomor_di' => method_exists($this->diModel,'generateNextNumber') ? $this->diModel->generateNextNumber() : $this->generateDiNumber(),
             'spk_id' => $spkId ?: null,
@@ -1713,6 +1942,9 @@ class Marketing extends Controller
             'pelanggan' => $pelanggan,
             'lokasi' => $lokasi,
             'status' => 'SUBMITTED',  // Use English status to match current database enum
+            'jenis_perintah_kerja_id' => $jenisPerintahKerjaId,
+            'tujuan_perintah_kerja_id' => $tujuanPerintahKerjaId,
+            'status_eksekusi_workflow_id' => 1, // Default status eksekusi (PENDING atau sesuai workflow)
             'dibuat_oleh' => session('user_id') ?: 1,
             'dibuat_pada' => date('Y-m-d H:i:s'),
         ];
@@ -1730,6 +1962,11 @@ class Marketing extends Controller
         // Try the insert and catch any errors
         try {
             error_log('DI Create - About to insert payload: ' . json_encode($payload));
+            
+            // Add debugging before model insert
+            error_log('DI Create - diModel class: ' . get_class($this->diModel));
+            error_log('DI Create - diModel table: ' . $this->diModel->getTable());
+            
             $insertResult = $this->diModel->insert($payload);
             error_log('DI Create - Insert result: ' . ($insertResult ? 'SUCCESS' : 'FAILED'));
             
@@ -1788,6 +2025,8 @@ class Marketing extends Controller
         // Insert delivery items: prefer explicit unit_ids from form (multiple),
         // fallback to selected items from SPK if none provided.
         try {
+            error_log('DI Create - Starting delivery items processing...');
+            error_log('DI Create - diItemModel class: ' . get_class($this->diItemModel));
             error_log('DI Create - About to insert delivery items for unit_ids: ' . json_encode($unitIds));
             
             if (!empty($unitIds)) {
@@ -1816,6 +2055,17 @@ class Marketing extends Controller
                     
                     // Try direct DB insert first to see if model is the issue
                     try {
+                        error_log('DI Create - Attempting direct DB table access...');
+                        
+                        // Test if we can access the table structure first
+                        try {
+                            $fields = $this->db->getFieldData('delivery_items');
+                            error_log('DI Create - Table structure check passed. Fields: ' . count($fields));
+                        } catch (\Exception $structureEx) {
+                            error_log('DI Create - Table structure check failed: ' . $structureEx->getMessage());
+                            throw new \Exception('Cannot access delivery_items table structure: ' . $structureEx->getMessage());
+                        }
+                        
                         $directResult = $this->db->table('delivery_items')->insert($unitPayload);
                         error_log('DI Create - Direct DB insert result: ' . ($directResult ? 'SUCCESS' : 'FAILED'));
                         
@@ -1845,76 +2095,52 @@ class Marketing extends Controller
                     }
                 }
                 
-                // Also check for attachments from SPK prepared_units and main spec
-                if ($spkId > 0 && !empty($spk['spesifikasi'])) {
-                    $spec = json_decode($spk['spesifikasi'], true);
-                    if (json_last_error() === JSON_ERROR_NONE && is_array($spec)) {
-                        $attachmentInventoryIds = [];
+                // Add attachments (battery, charger, attachment) that belong to selected units
+                // Query directly from inventory_attachment based on selected unit IDs
+                if (!empty($unitIds)) {
+                    foreach ($unitIds as $unitId) {
+                        // Get all attachments (battery, charger, attachment) for this specific unit
+                        $unitAttachments = $this->db->table('inventory_attachment')
+                            ->select('id_inventory_attachment, tipe_item, attachment_id, baterai_id, charger_id, id_inventory_unit')
+                            ->where('id_inventory_unit', (int)$unitId)
+                            ->get()->getResultArray();
                         
-                        // Only collect attachments from selected units in prepared_units
-                        if (isset($spec['prepared_units']) && is_array($spec['prepared_units'])) {
-                            foreach ($spec['prepared_units'] as $preparedUnit) {
-                                // Only include attachments if this unit is selected for the DI
-                                if (isset($preparedUnit['unit_id']) && in_array((int)$preparedUnit['unit_id'], $unitIds)) {
-                                    if (isset($preparedUnit['attachment_inventory_id']) && is_numeric($preparedUnit['attachment_inventory_id'])) {
-                                        $attachmentInventoryIds[] = (int)$preparedUnit['attachment_inventory_id'];
-                                    }
-                                    if (isset($preparedUnit['battery_inventory_id']) && is_numeric($preparedUnit['battery_inventory_id'])) {
-                                        $attachmentInventoryIds[] = (int)$preparedUnit['battery_inventory_id'];
-                                    }
-                                    if (isset($preparedUnit['charger_inventory_id']) && is_numeric($preparedUnit['charger_inventory_id'])) {
-                                        $attachmentInventoryIds[] = (int)$preparedUnit['charger_inventory_id'];
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Remove duplicates
-                        $attachmentInventoryIds = array_unique($attachmentInventoryIds);
-                        
-                        // Insert each attachment for selected units only
-                        foreach ($attachmentInventoryIds as $attachmentInvId) {
-                            // Get attachment details including tipe_item
-                            $inv = $this->db->table('inventory_attachment')
-                                ->select('attachment_id, baterai_id, charger_id, tipe_item')
-                                ->where('id_inventory_attachment', $attachmentInvId)
-                                ->get()->getRowArray();
+                        foreach ($unitAttachments as $attachment) {
+                            $targetId = null;
+                            $keterangan = '';
                             
-                            if ($inv) {
-                                $targetId = null;
-                                $keterangan = '';
+                            // Determine which ID to use based on tipe_item
+                            switch ($attachment['tipe_item']) {
+                                case 'attachment':
+                                    $targetId = $attachment['attachment_id'];
+                                    $keterangan = 'Attachment for Unit ' . $unitId;
+                                    break;
+                                case 'battery':
+                                    $targetId = $attachment['baterai_id'];
+                                    $keterangan = 'Battery for Unit ' . $unitId;
+                                    break;
+                                case 'charger':
+                                    $targetId = $attachment['charger_id'];
+                                    $keterangan = 'Charger for Unit ' . $unitId;
+                                    break;
+                            }
+                            
+                            if ($targetId) {
+                                $attachmentPayload = [
+                                    'di_id' => $diId,
+                                    'item_type' => 'ATTACHMENT',
+                                    'attachment_id' => $targetId,
+                                    'parent_unit_id' => $unitId, // Link attachment to its unit
+                                    'keterangan' => $keterangan
+                                ];
                                 
-                                // Determine which ID to use based on tipe_item
-                                switch ($inv['tipe_item']) {
-                                    case 'attachment':
-                                        $targetId = $inv['attachment_id'];
-                                        $keterangan = 'Attachment for selected unit';
-                                        break;
-                                    case 'battery':
-                                        $targetId = $inv['baterai_id'];
-                                        $keterangan = 'Battery for selected unit';
-                                        break;
-                                    case 'charger':
-                                        $targetId = $inv['charger_id'];
-                                        $keterangan = 'Charger for selected unit';
-                                        break;
+                                $itemResult = $this->diItemModel->insert($attachmentPayload);
+                                if (!$itemResult) {
+                                    $errors = $this->diItemModel->errors();
+                                    throw new \Exception("Failed to insert {$attachment['tipe_item']} for unit $unitId: " . implode(', ', $errors));
                                 }
                                 
-                                if ($targetId) {
-                                    $attachmentPayload = [
-                                        'di_id' => $diId,
-                                        'item_type' => 'ATTACHMENT',
-                                        'attachment_id' => $targetId,
-                                        'keterangan' => $keterangan
-                                    ];
-                                    
-                                    $itemResult = $this->diItemModel->insert($attachmentPayload);
-                                    if (!$itemResult) {
-                                        $errors = $this->diItemModel->errors();
-                                        throw new \Exception("Failed to insert {$inv['tipe_item']} for selected unit: " . implode(', ', $errors));
-                                    }
-                                    error_log("DI Create - Added {$inv['tipe_item']} for selected unit: attachment_id=$targetId");
-                                }
+                                error_log("DI Create - Added {$attachment['tipe_item']} (ID: $targetId) for unit $unitId");
                             }
                         }
                     }
@@ -1969,33 +2195,48 @@ class Marketing extends Controller
         // Update SPK status to IN_PROGRESS when DI is created
         if ($spkId > 0) {
             try {
+                error_log("DI Create - About to update SPK status for spkId: $spkId");
                 $updateResult = $this->db->table('spk')->where('id', $spkId)->update([
                     'status' => 'IN_PROGRESS',
                     'diperbarui_pada' => date('Y-m-d H:i:s')
                 ]);
                 
                 if (!$updateResult) {
+                    error_log("DI Create - SPK status update failed");
                     throw new \Exception('Failed to update SPK status');
+                } else {
+                    error_log("DI Create - SPK status updated successfully");
                 }
                 
-                // Log status history
-                try {
-                    $this->db->query(
-                        "INSERT INTO spk_status_history (spk_id, status_from, status_to, changed_by, note, changed_at) VALUES (?, ?, ?, ?, ?, ?)",
-                        [$spkId, 'READY', 'IN_PROGRESS', session('user_id') ?: 1, 'DI created: ' . $payload['nomor_di'], date('Y-m-d H:i:s')]
-                    );
-                } catch (\Exception $e) {
-                    // Continue if history logging fails (best effort)
-                    error_log('SPK Status History Error: ' . $e->getMessage());
-                }
+                // Log status history - temporarily disabled due to consistent failures
+                // try {
+                //     error_log("DI Create - About to insert SPK status history");
+                //     // Use table builder instead of raw query for better error handling
+                //     $statusHistory = [
+                //         'spk_id' => $spkId,
+                //         'status_from' => 'READY',
+                //         'status_to' => 'IN_PROGRESS',
+                //         'changed_by' => session('user_id') ?: 1,
+                //         'note' => 'DI created: ' . $payload['nomor_di']
+                //     ];
+                //     
+                //     $historyResult = $this->db->table('spk_status_history')->insert($statusHistory);
+                //     if ($historyResult) {
+                //         error_log("DI Create - SPK status history inserted successfully");
+                //     } else {
+                //         $historyError = $this->db->error();
+                //         error_log("DI Create - SPK status history insert failed: " . print_r($historyError, true));
+                //         // Don't throw exception for history logging, it's not critical
+                //     }
+                // } catch (\Exception $e) {
+                //     // Continue if history logging fails (best effort)
+                //     error_log('SPK Status History Exception: ' . $e->getMessage());
+                // }
+                error_log("DI Create - SPK status history temporarily disabled due to failures");
             } catch (\Exception $e) {
                 error_log('SPK Status Update Exception: ' . $e->getMessage());
-                $this->db->transRollback();
-                return $this->response->setStatusCode(500)->setJSON([
-                    'success'=>false,
-                    'message'=>'Gagal update status SPK: ' . $e->getMessage(),
-                    'csrf_hash'=>csrf_hash()
-                ]);
+                // SPK status update failure should not fail the entire DI creation
+                // Log the error but continue with the transaction
             }
         }
         
@@ -2057,7 +2298,15 @@ class Marketing extends Controller
     // ===== KONTRAK METHODS =====
     public function kontrak()
     {
-        return view('marketing/kontrak');
+        $data = [
+            'title' => 'Manajemen Kontrak',
+            'breadcrumbs' => [
+                'marketing' => 'Marketing',
+                'marketing/kontrak' => 'Kontrak'
+            ]
+        ];
+        
+        return view('marketing/kontrak', $data);
     }
 
     // Get active contracts that have specifications for SPK creation
@@ -2318,6 +2567,46 @@ class Marketing extends Controller
                 'success' => false,
                 'message' => 'Gagal generate nomor kontrak: ' . $e->getMessage(),
                 'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    public function getData()
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get all kontrak data with joined information
+            $query = "
+                SELECT 
+                    k.id,
+                    k.no_kontrak,
+                    k.no_po_marketing,
+                    k.pelanggan,
+                    k.tanggal_mulai,
+                    k.tanggal_berakhir as tanggal_selesai,
+                    k.status,
+                    k.total_units,
+                    k.nilai_total,
+                    k.dibuat_pada as created_at,
+                    k.diperbarui_pada as updated_at
+                FROM kontrak k
+                ORDER BY k.id DESC
+            ";
+            
+            $result = $db->query($query);
+            $data = $result->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $data
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error in Marketing::getData(): ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal mengambil data kontrak: ' . $e->getMessage()
             ]);
         }
     }
@@ -2770,6 +3059,224 @@ class Marketing extends Controller
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error during cleanup: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * API untuk mendapatkan data jenis perintah kerja
+     */
+    public function getJenisPerintahKerja()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+        
+        try {
+            $data = $this->db->table('jenis_perintah_kerja')
+                ->where('aktif', 1)
+                ->orderBy('nama', 'ASC')
+                ->get()
+                ->getResultArray();
+                
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * API untuk mendapatkan tujuan perintah kerja berdasarkan jenis
+     */
+    public function getTujuanPerintahKerja()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+        
+        $jenisId = (int) $this->request->getGet('jenis_id');
+        if (!$jenisId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Jenis ID is required']);
+        }
+        
+        try {
+            $data = $this->db->table('tujuan_perintah_kerja')
+                ->where('jenis_perintah_id', $jenisId)
+                ->where('aktif', 1)
+                ->orderBy('nama', 'ASC')
+                ->get()
+                ->getResultArray();
+                
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Delete SPK
+     */
+    public function spkDelete($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            // Validate SPK ID
+            if (!$id || $id <= 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'ID SPK tidak valid.'
+                ]);
+            }
+
+            // Check if SPK exists
+            $spk = $this->spkModel->find($id);
+            if (!$spk) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'SPK tidak ditemukan.'
+                ]);
+            }
+
+            // Check if SPK can be deleted (only if status is SUBMITTED or DRAFT)
+            if (!in_array($spk['status'], ['SUBMITTED', 'DRAFT'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'SPK tidak dapat dihapus karena status sudah diproses.'
+                ]);
+            }
+
+            // Check for related DI records
+            $diCount = $this->db->table('delivery_instruction')
+                ->where('spk_id', $id)
+                ->countAllResults();
+
+            if ($diCount > 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'SPK tidak dapat dihapus karena sudah memiliki Delivery Instruction.'
+                ]);
+            }
+
+            // Start transaction
+            $this->db->transBegin();
+
+            // Delete SPK
+            $deleteResult = $this->spkModel->delete($id);
+
+            if ($deleteResult) {
+                $this->db->transComplete();
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'SPK berhasil dihapus.'
+                ]);
+            } else {
+                $this->db->transRollback();
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal menghapus SPK.'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            if ($this->db->transStatus()) {
+                $this->db->transRollback();
+            }
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Delete DI
+     */
+    public function diDelete($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            // Validate DI ID
+            if (!$id || $id <= 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'ID DI tidak valid.'
+                ]);
+            }
+
+            // Check if DI exists
+            $di = $this->diModel->find($id);
+            if (!$di) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'DI tidak ditemukan.'
+                ]);
+            }
+
+            // Check if DI can be deleted (only if status is SUBMITTED)
+            if ($di['status'] !== 'SUBMITTED') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'DI tidak dapat dihapus karena status sudah diproses.'
+                ]);
+            }
+
+            // Check for related delivery items
+            $itemCount = $this->db->table('delivery_item')
+                ->where('delivery_instruction_id', $id)
+                ->countAllResults();
+
+            if ($itemCount > 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'DI tidak dapat dihapus karena sudah memiliki item yang diproses.'
+                ]);
+            }
+
+            // Start transaction
+            $this->db->transBegin();
+
+            // Delete DI
+            $deleteResult = $this->diModel->delete($id);
+
+            if ($deleteResult) {
+                $this->db->transComplete();
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'DI berhasil dihapus.'
+                ]);
+            } else {
+                $this->db->transRollback();
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal menghapus DI.'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            if ($this->db->transStatus()) {
+                $this->db->transRollback();
+            }
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
             ]);
         }
     }

@@ -11,9 +11,10 @@ class DeliveryInstructionModel extends Model
     protected $returnType = 'array';
     protected $allowedFields = [
         'spk_id','nomor_di','po_kontrak_nomor','pelanggan','lokasi','tanggal_kirim','status','catatan','dibuat_oleh','dibuat_pada','diperbarui_pada',
+        'jenis_perintah_kerja_id','tujuan_perintah_kerja_id','status_eksekusi_workflow_id',
         'perencanaan_tanggal_approve','estimasi_sampai','nama_supir','no_hp_supir','no_sim_supir','kendaraan','no_polisi_kendaraan',
         'berangkat_tanggal_approve','catatan_berangkat',
-        'sampai_tanggal_approve','catatan_sampai'
+        'sampai_tanggal_approve','catatan_sampai','status_temp'
     ];
     
     // Explicitly disable automatic timestamps since our table uses custom field names

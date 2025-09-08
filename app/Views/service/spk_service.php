@@ -723,22 +723,23 @@ document.addEventListener('DOMContentLoaded', () => {
 	
 	// Generate unit form untuk multi-unit support
 	function generateUnitForm(unitIndex, totalUnits, isFirst = false) {
-		const suffix = `_${unitIndex}`;
-		const cardClass = isFirst ? 'border-primary' : 'border-secondary';
+		// Always use a simple suffix now that we're handling one unit at a time
+		const suffix = '';
+		const cardClass = 'border-primary';
 		
 		return `
 			<div class="card mb-3 ${cardClass}">
 				<div class="card-header">
 					<h6 class="mb-0">
 						<i class="fas fa-cogs me-2"></i>
-						Unit ${unitIndex}${totalUnits > 1 ? ` dari ${totalUnits}` : ''}
+						Unit ${unitIndex} dari ${totalUnits}
 					</h6>
 				</div>
 				<div class="card-body">
 					<div class="mb-3">
 						<label class="form-label">Pilih Unit <span class="text-danger">*</span></label>
 						<input type="text" class="form-control" id="approvalUnitSearch${suffix}" placeholder="Cari no unit / serial / merk / model" autocomplete="off">
-						<select class="form-select mt-2" id="approvalUnitPick${suffix}" name="unit_id[]" required></select>
+						<select class="form-select mt-2" id="approvalUnitPick${suffix}" name="unit_id" required></select>
 						<div class="form-text">Ketik untuk mencari, lalu pilih dari daftar.</div>
 					</div>
 					<div id="electricFields${suffix}" class="mb-3" style="display: none;">
@@ -751,13 +752,13 @@ document.addEventListener('DOMContentLoaded', () => {
 							<div class="row">
 								<div class="col-md-6">
 									<label class="form-label">Pilih Battery <span class="text-danger">*</span></label>
-									<select class="form-select" id="batteryPick${suffix}" name="battery_id[]">
+									<select class="form-select" id="batteryPick${suffix}" name="battery_id">
 										<option value="">- Pilih Battery -</option>
 									</select>
 								</div>
 								<div class="col-md-6">
 									<label class="form-label">Pilih Charger <span class="text-danger">*</span></label>
-									<select class="form-select" id="chargerPick${suffix}" name="charger_id[]">
+									<select class="form-select" id="chargerPick${suffix}" name="charger_id">
 										<option value="">- Pilih Charger -</option>
 									</select>
 								</div>
@@ -774,7 +775,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							<div class="row">
 								<div class="col-md-12">
 									<label class="form-label">Pilih Attachment <span class="text-danger">*</span></label>
-									<select class="form-select" id="attachmentPick${suffix}" name="attachment_id[]">
+									<select class="form-select" id="attachmentPick${suffix}" name="attachment_id">
 										<option value="">- Pilih Attachment -</option>
 									</select>
 								</div>
@@ -797,7 +798,14 @@ document.addEventListener('DOMContentLoaded', () => {
 					const spesifikasi = j.spesifikasi || {};
 					const totalUnits = parseInt(spkData.jumlah_unit || 1);
 					const preparedUnits = Array.isArray(j.prepared_units) ? j.prepared_units : [];
-					const remainingUnits = totalUnits - preparedUnits.length;
+					
+					console.log('Unit calculation:', {
+						totalUnits,
+						preparedUnitsLength: preparedUnits.length,
+						nextUnitIndex: preparedUnits.length + 1
+					});
+					
+					// Process one unit at a time instead of multiple
 					
 					// Prefer aksesoris from kontrak_spec for consistency with Marketing
 					let aksesoris = [];
@@ -828,28 +836,18 @@ document.addEventListener('DOMContentLoaded', () => {
 						aksesorisCheckboxes = '<p class="text-muted">Tidak ada aksesoris yang diminta</p>';
 					}
 					
-					// Generate multi-unit forms
-					let unitFormsHtml = '';
-					
-					if (totalUnits > 1) {
-						// Multi-unit SPK - generate form untuk setiap unit
-						for (let i = 1; i <= remainingUnits; i++) {
-							const unitIndex = preparedUnits.length + i;
-							unitFormsHtml += generateUnitForm(unitIndex, totalUnits, i === 1);
-						}
-					} else {
-						// Single unit SPK - generate single form
-						unitFormsHtml = generateUnitForm(1, 1, true);
-					}
+					// Always generate a single unit form
+					const nextUnitIndex = preparedUnits.length + 1;
+					const unitFormsHtml = generateUnitForm(nextUnitIndex, totalUnits, true);
 					
 					container.innerHTML = `
 						<hr>
 						<div class="mb-3">
 							<h6 class="text-primary">
 								<i class="fas fa-truck me-2"></i>
-								Persiapan Unit (${remainingUnits} dari ${totalUnits} unit)
+								Persiapan Unit ${nextUnitIndex} dari ${totalUnits}
 							</h6>
-							${preparedUnits.length > 0 ? `<div class="alert alert-success"><i class="fas fa-check me-2"></i>${preparedUnits.length} unit sudah dipersiapkan</div>` : ''}
+							${preparedUnits.length > 0 ? `<div class="alert alert-success"><i class="fas fa-check me-2"></i>${preparedUnits.length} unit sebelumnya sudah dipersiapkan</div>` : ''}
 						</div>
 						
 						${unitFormsHtml}
@@ -863,8 +861,10 @@ document.addEventListener('DOMContentLoaded', () => {
 						</div>
 					`;
 					
-					// Setup unit search for all unit forms
-					setupMultiUnitSearch(totalUnits, remainingUnits, preparedUnits.length);
+					// Setup unit search for the single unit form (with slight delay to ensure DOM is ready)
+					setTimeout(() => {
+						setupUnitSearch(nextUnitIndex);
+					}, 100);
 				}
 			});
 			
@@ -899,13 +899,12 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 	
-	function setupMultiUnitSearch(totalUnits, remainingUnits, preparedCount) {
-		// Setup search dan event handlers untuk setiap unit form
-		for (let i = 1; i <= remainingUnits; i++) {
-			const unitIndex = preparedCount + i;
-			const suffix = `_${unitIndex}`;
-			setupIndividualUnitSearch(suffix, unitIndex);
-		}
+	// We now process one unit at a time
+	
+	function setupUnitSearch(unitIndex) {
+		// For single unit processing, we don't need the complex suffix logic
+		const suffix = '';
+		setupIndividualUnitSearch(suffix, unitIndex);
 	}
 	
 	// Check if unit already selected in other unit forms
@@ -924,35 +923,72 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 	
 	function setupIndividualUnitSearch(suffix, unitIndex) {
+		console.log('Setting up unit search with suffix:', suffix, 'unitIndex:', unitIndex);
 		const searchBox = document.getElementById(`approvalUnitSearch${suffix}`);
 		const unitPick = document.getElementById(`approvalUnitPick${suffix}`);
 		
+		console.log('searchBox found:', !!searchBox, 'unitPick found:', !!unitPick);
+		
 		if (searchBox && unitPick) {
-			// Load initial units
+			// Remove existing event listeners first to prevent duplicates
+			console.log('Cloning unitPick to remove old event listeners...');
+			const newUnitPick = unitPick.cloneNode(true);
+			unitPick.parentNode.replaceChild(newUnitPick, unitPick);
+			console.log('Event listener cleaned and replaced for unitPick');
+			
+			console.log('Loading initial units...');
+			// Load initial units, exclude already assigned units in this SPK
 			const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
+			if (currentApprovalSpkId) {
+				url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
+			}
 			fetch(url).then(r=>r.json()).then(j=>{
-				unitPick.innerHTML = '<option value="">- Pilih Unit -</option>' + (j.data||[]).map(x=>`<option value="${x.id}" data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}">${x.label}</option>`).join('');
+				console.log('Units loaded:', j.data?.length || 0, 'units');
+				// Use fresh reference after cloning
+				const currentUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
+				if (currentUnitPick) {
+					// Generate options with disabled attribute for already assigned units
+					const options = (j.data||[]).map(x => {
+						const isAssigned = x.is_assigned_in_spk;
+						const disabled = isAssigned ? 'disabled' : '';
+						const assignedText = isAssigned ? ' (Sudah digunakan di SPK ini)' : '';
+						return `<option value="${x.id}" ${disabled} data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}">${x.label}${assignedText}</option>`;
+					}).join('');
+					currentUnitPick.innerHTML = '<option value="">- Pilih Unit -</option>' + options;
+				}
+			}).catch(err => {
+				console.error('Error loading units:', err);
 			});
 			
 			searchBox.addEventListener('input', function(){
 				const q = this.value.trim();
 				const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
 				if (q) url.searchParams.set('q', q);
+				if (currentApprovalSpkId) {
+					url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
+				}
 				fetch(url).then(r=>r.json()).then(j=>{
-					unitPick.innerHTML = '<option value="">- Pilih Unit -</option>' + (j.data||[]).map(x=>`<option value="${x.id}" data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}">${x.label}</option>`).join('');
+					const currentUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
+					if (currentUnitPick) {
+						// Generate options with disabled attribute for already assigned units
+						const options = (j.data||[]).map(x => {
+							const isAssigned = x.is_assigned_in_spk;
+							const disabled = isAssigned ? 'disabled' : '';
+							const assignedText = isAssigned ? ' (Sudah digunakan di SPK ini)' : '';
+							return `<option value="${x.id}" ${disabled} data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}">${x.label}${assignedText}</option>`;
+						}).join('');
+						currentUnitPick.innerHTML = '<option value="">- Pilih Unit -</option>' + options;
+					}
 				});
 			});
 			
-			// Add change event for unit selection validation and Electric department detection
-			unitPick.addEventListener('change', function(){
+			// Add change event listener to fresh element
+			const freshUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
+			if (freshUnitPick) {
+				freshUnitPick.addEventListener('change', function(){
 				const selectedOption = this.options[this.selectedIndex];
 				if (selectedOption && selectedOption.value) {
-					// Check if unit already selected in other forms
-					if (isUnitAlreadySelected(selectedOption.value, suffix)) {
-						alert('Unit ini sudah dipilih di form unit lain. Silakan pilih unit yang berbeda.');
-						this.value = '';
-						return;
-					}
+					// Since we process one unit at a time, no need to check for duplicates
 					
 					const noUnit = selectedOption.getAttribute('data-no-unit');
 					const needsNoUnit = selectedOption.getAttribute('data-needs-no-unit');
@@ -971,46 +1007,104 @@ document.addEventListener('DOMContentLoaded', () => {
 					const isElectric = departemenId === '2';
 					const electricFields = document.getElementById(`electricFields${suffix}`);
 					
-					// Check if Fabrikasi departments (id=3,4) - needs attachment
-					const isFabrikasi = ['3', '4'].includes(departemenId);
+					// Fabrikasi (attachment) berlaku untuk SEMUA unit, bukan hanya departemen tertentu
 					const fabrikasiFields = document.getElementById(`fabrikasiFields${suffix}`);
 					
 					// Smart detection: Try to fetch unit data regardless of department
 					// Some units might have components even if not in typical departments
+					
+					// Add guard to prevent duplicate processing
+					if (this.dataset.processing === 'true') {
+						console.log('Unit selection already being processed, skipping...');
+						return;
+					}
+					this.dataset.processing = 'true';
+					
 					fetchUnitComponentData(unitId).then(apiData => {
 						console.log('API Response for unit', unitId, ':', apiData);
 						
 						if (apiData && apiData.success) {
 							const hasBattery = apiData.battery !== null;
 							const hasCharger = apiData.charger !== null;
+							const hasAttachment = apiData.attachment !== null;
 							
-							console.log(`Unit ${unitId} component status: battery=${hasBattery}, charger=${hasCharger}`);
+							console.log(`Unit ${unitId} component status: battery=${hasBattery}, charger=${hasCharger}, attachment=${hasAttachment}`);
 							
-							// If unit has ANY components, show smart component management
-							if (hasBattery || hasCharger) {
-								console.log('Unit has existing components - enabling smart management');
-								
-								// Show component UI for Electric department or any unit with existing components
-								if ((isElectric || hasBattery || hasCharger) && electricFields) {
-									const componentUI = generateComponentSelectionUI(apiData, isElectric, suffix);
-									electricFields.innerHTML = componentUI;
-									electricFields.style.display = 'block';
+							// Handle Electric components (battery/charger) - smart detection
+							if (isElectric || hasBattery || hasCharger) {
+								if (electricFields) {
+									// Check if component UI already exists for this unit
+									const existingRenderKey = `component-ui-${unitId}-${suffix}`;
+									if (electricFields.querySelector(`[data-render-key="${existingRenderKey}"]`)) {
+										console.log('Component UI already rendered for unit', unitId, ', skipping duplicate render');
+										return;
+									}
+									
+									// PERBAIKAN: Untuk persiapan unit, hanya tampilkan battery dan charger
+									// Untuk unit electric, selalu tampilkan battery dan charger (baik yang sudah ada maupun yang perlu ditambah)
+									const componentOptions = {
+										battery: isElectric || hasBattery,  // Tampilkan jika electric department ATAU unit sudah punya battery
+										charger: isElectric || hasCharger,  // Tampilkan jika electric department ATAU unit sudah punya charger
+										attachment: false  // PERBAIKAN: Attachment tidak ditampilkan di Persiapan Unit, hanya di Fabrikasi
+									};
+									
+									console.log('Component options for unit', unitId, ':', componentOptions);
+		 							electricFields.innerHTML = '';
+		 							
+		 							// Check if already rendered to prevent duplicates
+		 							const renderKey = `component-ui-${unitId}-${suffix}`;
+		 							if (!electricFields.querySelector(`[data-render-key="${renderKey}"]`)) {
+		 								const componentUI = generateComponentSelectionUI(apiData, componentOptions, unitId, suffix, 'component');
+		 								electricFields.innerHTML = componentUI;
+		 							}
+		 							electricFields.style.display = 'block';
+								}
+							} else if (electricFields) {
+								electricFields.style.display = 'none';
+							}
+							
+							// PERBAIKAN: Handle Attachment hanya untuk stage FABRIKASI, bukan Persiapan Unit
+							// Di Persiapan Unit, attachment tidak perlu ditampilkan
+							if (currentApprovalStage === 'fabrikasi') {
+								// Handle Attachment untuk SEMUA unit (bukan hanya fabrikasi departments)
+								if (fabrikasiFields) {
+									if (hasAttachment) {
+										// Unit sudah memiliki attachment - berikan pilihan keep existing atau replace
+										// Only render attachment UI if component UI hasn't already been rendered
+										const existingComponentUI = electricFields?.querySelector('[data-render-key*="component-ui"]');
+										if (!existingComponentUI) {
+											const attachmentUI = generateComponentSelectionUI(apiData, { battery: false, charger: false, attachment: true }, unitId, suffix, 'attachment');
+											fabrikasiFields.innerHTML = attachmentUI;
+										} else {
+											// Component UI already rendered, just show attachment-only message
+											fabrikasiFields.innerHTML = `
+												<div class="alert alert-info">
+													<i class="fas fa-tools me-2"></i>Komponen dan attachment untuk unit ini sudah ditampilkan di atas.
+												</div>
+											`;
+										}
+									} else {
+										// Unit belum memiliki attachment - tampilkan pilihan attachment baru
+										fabrikasiFields.innerHTML = `
+											<div class="alert alert-info">
+												<i class="fas fa-tools me-2"></i>Unit ini belum memiliki Attachment. Pilih attachment yang akan dipasang.
+											</div>
+											<div class="row">
+												<div class="col-md-12">
+													<label class="form-label">Pilih Attachment</label>
+													<select class="form-select" id="attachmentPick${suffix}" name="attachment_id">
+														<option value="">- Pilih Attachment -</option>
+													</select>
+												</div>
+											</div>
+										`;
+										loadAttachmentOptionsIndividual(suffix);
+									}
+									fabrikasiFields.style.display = 'block';
 								}
 							} else {
-								// Unit has no existing components - show standard department-based logic
-								if (isElectric && electricFields) {
-									electricFields.style.display = 'block';
-									// Load basic dropdown options
-									loadBatteryOptionsIndividual(suffix);
-									loadChargerOptionsIndividual(suffix);
-								} else if (electricFields) {
-									electricFields.style.display = 'none';
-								}
-								
-								if (isFabrikasi && fabrikasiFields) {
-									fabrikasiFields.style.display = 'block';
-									loadAttachmentOptionsIndividual(suffix);
-								} else if (fabrikasiFields) {
+								// Jika bukan stage fabrikasi, sembunyikan fabrikasi fields
+								if (fabrikasiFields) {
 									fabrikasiFields.style.display = 'none';
 								}
 							}
@@ -1027,10 +1121,25 @@ document.addEventListener('DOMContentLoaded', () => {
 								electricFields.style.display = 'none';
 							}
 							
-							if (isFabrikasi && fabrikasiFields) {
+							// PERBAIKAN: Fabrikasi hanya berlaku untuk stage FABRIKASI
+							if (currentApprovalStage === 'fabrikasi' && fabrikasiFields) {
+								fabrikasiFields.innerHTML = `
+									<div class="alert alert-info">
+										<i class="fas fa-tools me-2"></i>Pilih attachment yang akan dipasang pada unit ini.
+									</div>
+									<div class="row">
+										<div class="col-md-12">
+											<label class="form-label">Pilih Attachment</label>
+											<select class="form-select" id="attachmentPick${suffix}" name="attachment_id">
+												<option value="">- Pilih Attachment -</option>
+											</select>
+										</div>
+									</div>
+								`;
 								fabrikasiFields.style.display = 'block';
 								loadAttachmentOptionsIndividual(suffix);
 							} else if (fabrikasiFields) {
+								// Jika bukan stage fabrikasi, sembunyikan fabrikasi fields
 								fabrikasiFields.style.display = 'none';
 							}
 						}
@@ -1047,12 +1156,30 @@ document.addEventListener('DOMContentLoaded', () => {
 							electricFields.style.display = 'none';
 						}
 						
-						if (isFabrikasi && fabrikasiFields) {
+						// PERBAIKAN: Fabrikasi fallback hanya untuk stage FABRIKASI
+						if (currentApprovalStage === 'fabrikasi' && fabrikasiFields) {
+							fabrikasiFields.innerHTML = `
+								<div class="alert alert-info">
+									<i class="fas fa-tools me-2"></i>Pilih attachment yang akan dipasang pada unit ini.
+								</div>
+								<div class="row">
+									<div class="col-md-12">
+										<label class="form-label">Pilih Attachment</label>
+										<select class="form-select" id="attachmentPick${suffix}" name="attachment_id">
+											<option value="">- Pilih Attachment -</option>
+										</select>
+									</div>
+								</div>
+							`;
 							fabrikasiFields.style.display = 'block';
 							loadAttachmentOptionsIndividual(suffix);
 						} else if (fabrikasiFields) {
+							// Jika bukan stage fabrikasi, sembunyikan fabrikasi fields
 							fabrikasiFields.style.display = 'none';
 						}
+					}).finally(() => {
+						// Reset processing flag
+						this.dataset.processing = 'false';
 					});
 					
 					// Note: Fabrikasi component management is now handled in universal detection above
@@ -1066,7 +1193,8 @@ document.addEventListener('DOMContentLoaded', () => {
 						console.log('Unit Aset selected:', selectedOption.text);
 					}
 				}
-			});
+				});
+			}
 		}
 	}
 	
@@ -1094,87 +1222,6 @@ document.addEventListener('DOMContentLoaded', () => {
 				});
 			});
 			
-			// Add change event for unit selection validation and Electric department detection
-			const unitPick = document.getElementById('approvalUnitPick');
-			if (unitPick) {
-				unitPick.addEventListener('change', function(){
-					const selectedOption = this.options[this.selectedIndex];
-					if (selectedOption && selectedOption.value) {
-						const noUnit = selectedOption.getAttribute('data-no-unit');
-						const needsNoUnit = selectedOption.getAttribute('data-needs-no-unit');
-						const statusUnit = selectedOption.getAttribute('data-status-unit');
-						const departemenId = selectedOption.getAttribute('data-departemen-id');
-						const departemenName = selectedOption.getAttribute('data-departemen');
-						
-						// Get unit component data untuk check existing attachments/battery/charger
-						const unitId = selectedOption.value;
-						
-						// Check if Electric department (id=2)
-						const isElectric = departemenId === '2';
-						const electricFields = document.getElementById('electricFields');
-						
-						if (isElectric && electricFields) {
-							// Langsung gunakan API untuk mendapatkan data komponen unit
-							fetchUnitComponentData(unitId).then(apiData => {
-								if (apiData && apiData.success && apiData.unit) {
-									const componentUI = generateComponentSelectionUI(apiData.unit, { battery: true, charger: true, attachment: false }, unitId);
-									electricFields.innerHTML = componentUI;
-									electricFields.style.display = 'block';
-									loadElectricOptionsForAvailableSlots(apiData.unit);
-								} else {
-									// Fallback ke pilihan manual jika API gagal
-									electricFields.style.display = 'block';
-									loadElectricOptions();
-								}
-							}).catch(error => {
-								console.error('API call failed, fallback manual:', error);
-								electricFields.style.display = 'block';
-								loadElectricOptions();
-							});
-						} else if (electricFields) {
-							electricFields.style.display = 'none';
-						}
-						
-						// Handle Fabrikasi departments (id=3,4) - Attachment management
-						const isFabrikasi = ['3', '4'].includes(departemenId);
-						const fabrikasiFields = document.getElementById('fabrikasiFields');
-						
-						if (isFabrikasi && fabrikasiFields) {
-							// Langsung gunakan API untuk data attachment
-							fetchUnitComponentData(unitId).then(apiData => {
-								if (apiData && apiData.success && apiData.unit && apiData.unit.model_attachment_id) {
-									const attachmentUI = generateComponentSelectionUI(apiData.unit, { battery: false, charger: false, attachment: true }, unitId);
-									fabrikasiFields.innerHTML = attachmentUI;
-									fabrikasiFields.style.display = 'block';
-									loadFabrikasiOptionsForAvailableSlots(apiData.unit);
-								} else {
-									// Fallback ke pilihan manual
-									fabrikasiFields.style.display = 'block';
-									loadFabrikasiOptions();
-								}
-							}).catch(error => {
-								console.error('Fabrikasi API call failed:', error);
-								fabrikasiFields.style.display = 'block';
-								loadFabrikasiOptions();
-							});
-						} else if (fabrikasiFields) {
-							fabrikasiFields.style.display = 'none';
-						}
-						
-						// Show no_unit confirmation only for STOCK NON ASET (status 8) that doesn't have no_unit
-						if (statusUnit === '8' && (needsNoUnit === 'true' || !noUnit || noUnit === '' || noUnit === '0')) {
-							// Unit Non Aset belum memiliki valid no_unit, show confirmation
-							showNoUnitConfirmation(selectedOption.value, selectedOption.text, statusUnit);
-						} else if (statusUnit === '7') {
-							// Unit Aset sudah memiliki no_unit, tidak perlu konfirmasi
-							console.log('Selected Aset unit - already has no_unit, no confirmation needed');
-						} else {
-							// Unit already has no_unit or doesn't need it
-							console.log('Selected unit already has no_unit or doesn\'t need it');
-						}
-					}
-				});
-			}
 		}
 	}
 	
@@ -1235,6 +1282,11 @@ document.addEventListener('DOMContentLoaded', () => {
 							const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
 							return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_baterai||'-'}</option>`;
 						}).join('');
+					
+					// Update availability indicators after loading options
+					setTimeout(() => {
+						updateDropdownAvailability(batterySelect, 'battery');
+					}, 100);
 				}
 			})
 			.catch(err => console.log('Error loading batteries:', err));
@@ -1255,6 +1307,11 @@ document.addEventListener('DOMContentLoaded', () => {
 							const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
 							return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_charger||'-'}</option>`;
 						}).join('');
+					
+					// Update availability indicators after loading options
+					setTimeout(() => {
+						updateDropdownAvailability(chargerSelect, 'charger');
+					}, 100);
 				}
 			})
 			.catch(err => console.log('Error loading chargers:', err));
@@ -1274,10 +1331,18 @@ document.addEventListener('DOMContentLoaded', () => {
 						data.map(item => {
 							return `<option value="${item.id_inventory_attachment}">${item.nama_barang} • SN: ${item.sn_attachment||'-'}</option>`;
 						}).join('');
+					
+					// Update availability indicators after loading options
+					setTimeout(() => {
+						updateDropdownAvailability(attachmentSelect, 'attachment');
+					}, 100);
 				}
 			})
 			.catch(err => console.log('Error loading attachments:', err));
 	}
+	
+	// Make sure attachment function is accessible globally
+	window.loadAttachmentOptionsIndividual = loadAttachmentOptionsIndividual;
 	
 	function loadFabrikasiOptionsForAvailableSlots(unitData, suffix = '') {
 		// Load options hanya untuk slots yang perlu assignment (null values)
@@ -1297,6 +1362,11 @@ document.addEventListener('DOMContentLoaded', () => {
 						data.map(item => {
 							return `<option value="${item.id_inventory_attachment}">${item.nama_barang} • SN: ${item.sn_attachment||'-'}</option>`;
 						}).join('');
+					
+					// Update availability indicators after loading options
+					setTimeout(() => {
+						updateDropdownAvailability(attachmentSelect, 'attachment');
+					}, 100);
 				}
 			})
 			.catch(err => console.log('Error loading attachments:', err));
@@ -1418,8 +1488,16 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 			fd.append('aksesoris_tersedia', JSON.stringify(checkedAksesoris));
 			
-			// Verifikasi data unit yang dipilih
+			// Get enhanced component data for the single unit
 			const unitId = document.getElementById('approvalUnitPick')?.value;
+			
+			if (unitId) {
+				const componentData = collectSingleUnitComponentData('', unitId);
+				console.log('Component data collected:', componentData);
+				fd.append('enhanced_component_data', JSON.stringify([componentData]));
+			}
+			
+			// Verifikasi data unit yang dipilih
 			const existingBattery = document.getElementById('existingBatteryModelId')?.value;
 			const batteryAction = document.getElementById('batteryAction')?.value;
 			const useExistingChecked = document.getElementById('useExistingBattery')?.checked;
@@ -1487,21 +1565,26 @@ document.addEventListener('DOMContentLoaded', () => {
 							departemenName
 						});
 						
-						// Battery validation: Must have existing OR new selection
+						// Battery validation: Must have existing (with use_existing action) OR new selection
 						const batteryHandled = (batteryComponent.existing_model_id && 
-						                       (batteryComponent.action === 'keep' || batteryComponent.action === 'use_existing')) || 
+						                       (batteryComponent.action === 'use_existing' || batteryComponent.keep_existing)) || 
 						                      batteryComponent.new_inventory_attachment_id;
 						
-						// Charger validation: Must have existing OR new selection  
-						const chargerHandled = (chargerComponent.existing_model_id && 
-						                       (chargerComponent.action === 'keep' || chargerComponent.action === 'use_existing')) || 
+						// Charger validation: Hanya wajib jika ada existing charger atau user memilih untuk assign charger baru
+						// Jika tidak ada existing charger dan action = 'skip', maka OK (opsional)
+						const chargerHandled = chargerComponent.action === 'skip' || // Charger di-skip = OK
+						                       !chargerComponent.existing_model_id || // Tidak ada existing charger = OK (opsional)
+						                       (chargerComponent.existing_model_id && 
+						                       (chargerComponent.action === 'use_existing' || chargerComponent.keep_existing)) || 
 						                       chargerComponent.new_inventory_attachment_id;
 						
 						console.log(`Debug Unit ${unitNumber} Validation:`, {
 							batteryHandled,
 							chargerHandled,
 							batteryAction: batteryComponent.action,
-							chargerAction: chargerComponent.action
+							chargerAction: chargerComponent.action,
+							batteryExistingId: batteryComponent.existing_model_id,
+							chargerExistingId: chargerComponent.existing_model_id
 						});
 						
 						if (!batteryHandled) {
@@ -1513,19 +1596,9 @@ document.addEventListener('DOMContentLoaded', () => {
 						}
 					}
 					
-					// Check Fabrikasi units (department id = 3, 4)
-					if (['3', '4'].includes(departemenId)) {
-						const attachmentComponent = unitData.components.attachment;
-						
-						// Attachment validation: Must have existing OR new selection
-						const attachmentHandled = (attachmentComponent.existing_model_id && 
-						                          (attachmentComponent.action === 'keep' || attachmentComponent.action === 'use_existing')) || 
-						                          attachmentComponent.new_inventory_attachment_id;
-						
-						if (!attachmentHandled) {
-							validationErrors.push(`Unit ${unitNumber} (${departemenName}): Attachment diperlukan - gunakan yang sudah terpasang atau pilih yang baru`);
-						}
-					}
+					// Check Attachment untuk SEMUA unit (opsional - tidak ada yang wajib)
+					// Note: Attachment sekarang bersifat universal untuk semua department
+					// Tidak ada validasi attachment yang wajib karena ini opsional
 				});
 				
 				// Show validation errors if any
@@ -1537,15 +1610,30 @@ document.addEventListener('DOMContentLoaded', () => {
 				// Fallback to legacy behavior for Electric departments
 				const electricFields = document.getElementById('electricFields');
 				if (electricFields && electricFields.style.display !== 'none') {
-					const batteryId = document.getElementById('batteryPick').value;
-					const chargerId = document.getElementById('chargerPick').value;
+					// Check if user chose to use existing components
+					const useExistingBattery = document.getElementById('useExistingBattery')?.checked;
+					const useExistingCharger = document.getElementById('useExistingCharger')?.checked;
+					const existingBatteryId = document.getElementById('existingBatteryModelId')?.value;
+					const existingChargerId = document.getElementById('existingChargerModelId')?.value;
 					
-					if (!batteryId || !chargerId) {
-						alert('Untuk unit Electric, Battery dan Charger wajib dipilih!');
+					const batteryId = document.getElementById('batteryPick')?.value;
+					const chargerId = document.getElementById('chargerPick')?.value;
+					
+					// Enhanced validation: Check if unit actually needs these components
+					const unitId = document.querySelector('select[name="unit_id"]')?.value;
+					
+					// Battery validation: existing + use existing checked OR new selection
+					const batteryValid = (useExistingBattery && existingBatteryId) || batteryId;
+					// Charger validation: only required if unit actually has charger capability
+					const chargerValid = (useExistingCharger && existingChargerId) || chargerId || !existingChargerId;
+					
+					// Only require battery for Electric units, charger is optional if unit doesn't support it
+					if (!batteryValid) {
+						alert('Untuk unit Electric, Battery wajib dipilih!\n\nPilih salah satu:\n- Gunakan battery existing (centang checkbox)\n- Pilih battery baru dari dropdown');
 						return;
 					}
 					
-					fd.append('battery_inventory_id', batteryId);
+					if (batteryId) fd.append('battery_inventory_id', batteryId);
 					fd.append('charger_inventory_id', chargerId);
 				}
 			}
@@ -1614,7 +1702,8 @@ async function fetchUnitComponentData(unitId) {
 			success: true, 
 			unit_id: data.unit_id,
 			battery: data.battery,
-			charger: data.charger
+			charger: data.charger,
+			attachment: data.attachment
 		};
 	} catch (error) {
 		console.error('Error fetching unit component data:', error);
@@ -1625,20 +1714,27 @@ async function fetchUnitComponentData(unitId) {
 /**
  * Generate smart component selection UI based on existing components
  * @param {Object} apiData - Response dari API unit components
- * @param {boolean} isElectric - Apakah unit dari departemen Electric
+ * @param {Object} options - Object untuk menentukan komponen mana yang ditampilkan {battery: true, charger: true, attachment: true}
+ * @param {string} unitId - ID unit untuk tracking
  * @param {string} suffix - Suffix untuk ID unik
  */
-function generateComponentSelectionUI(apiData, isElectric, suffix = '') {
+function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix = '', uiType = 'component') {
 	let html = '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Unit ini memiliki komponen terpasang. Pilih opsi yang diinginkan:</div>';
 	
 	console.log('generateComponentSelectionUI called with:', {
 		apiData,
-		isElectric,
-		suffix
+		options,
+		unitId,
+		suffix,
+		uiType
 	});
 	
+	// Add unique identifier to prevent duplicate renders with UI type specificity
+	const renderKey = `${uiType}-ui-${unitId}-${suffix}`;
+	html += `<div data-render-key="${renderKey}">`;
+	
 	// Handle Battery
-	if (apiData.battery || isElectric) {
+	if (apiData.battery || options.battery) {
 		html += '<div class="mb-3"><h6><i class="fas fa-battery-full me-2"></i>Battery Management</h6>';
 		
 		if (apiData.battery) {
@@ -1648,6 +1744,11 @@ function generateComponentSelectionUI(apiData, isElectric, suffix = '') {
 			const batterySn = battery.sn_baterai || '-';
 			
 			html += `
+				<!-- Hidden fields untuk data existing battery -->
+				<input type="hidden" id="existingBatteryModelId${suffix}" value="${battery.id_inventory_attachment || ''}">
+				<input type="hidden" id="existingBatterySn${suffix}" value="${batterySn}">
+				<input type="hidden" id="batteryAction${suffix}" value="use_existing">
+				
 				<div class="card bg-light mb-2">
 					<div class="card-body py-2">
 						<small><strong>Battery Terpasang:</strong> ${batteryName} • SN: ${batterySn}</small>
@@ -1673,18 +1774,18 @@ function generateComponentSelectionUI(apiData, isElectric, suffix = '') {
 				</div>
 				<div id="replaceBatteryOptions${suffix}" style="display: none;" class="mt-2">
 					<label class="form-label">Pilih Battery Pengganti <span class="text-danger">*</span></label>
-					<select class="form-select" id="batteryPick${suffix}" name="battery_id[]" data-old-battery-id="${battery.id_inventory_attachment}">
+					<select class="form-select" id="batteryPick${suffix}" name="battery_id" data-old-battery-id="${battery.id_inventory_attachment}">
 						<option value="">- Pilih Battery Baru -</option>
 					</select>
 				</div>`;
-		} else if (isElectric) {
-			// Electric department but no existing battery - need to assign new
+		} else if (options.battery) {
+			// Department requires battery but no existing battery - need to assign new
 			html += `
 				<div class="alert alert-warning py-2 mb-2">
-					<small><i class="fas fa-exclamation-triangle me-1"></i>Unit Electric memerlukan Battery</small>
+					<small><i class="fas fa-exclamation-triangle me-1"></i>Unit ini memerlukan Battery</small>
 				</div>
 				<label class="form-label">Pilih Battery <span class="text-danger">*</span></label>
-				<select class="form-select" id="batteryPick${suffix}" name="battery_id[]">
+				<select class="form-select" id="batteryPick${suffix}" name="battery_id">
 					<option value="">- Pilih Battery -</option>
 				</select>`;
 		}
@@ -1693,8 +1794,14 @@ function generateComponentSelectionUI(apiData, isElectric, suffix = '') {
 	}
 	
 	// Handle Charger
-	if (apiData.charger || isElectric) {
+	if (apiData.charger || options.charger) {
 		html += '<div class="mb-3"><h6><i class="fas fa-plug me-2"></i>Charger Management</h6>';
+		
+		console.log('DEBUG Charger section:', {
+			'apiData.charger': apiData.charger,
+			'options.charger': options.charger,
+			'apiData.battery': apiData.battery
+		});
 		
 		if (apiData.charger) {
 			// Unit already has charger - provide options
@@ -1703,6 +1810,11 @@ function generateComponentSelectionUI(apiData, isElectric, suffix = '') {
 			const chargerSn = charger.sn_charger || '-';
 			
 			html += `
+				<!-- Hidden fields untuk data existing charger -->
+				<input type="hidden" id="existingChargerModelId${suffix}" value="${charger.id_inventory_attachment || ''}">
+				<input type="hidden" id="existingChargerSn${suffix}" value="${chargerSn}">
+				<input type="hidden" id="chargerAction${suffix}" value="use_existing">
+				
 				<div class="card bg-light mb-2">
 					<div class="card-body py-2">
 						<small><strong>Charger Terpasang:</strong> ${chargerName} • SN: ${chargerSn}</small>
@@ -1728,24 +1840,26 @@ function generateComponentSelectionUI(apiData, isElectric, suffix = '') {
 				</div>
 				<div id="replaceChargerOptions${suffix}" style="display: none;" class="mt-2">
 					<label class="form-label">Pilih Charger Pengganti <span class="text-danger">*</span></label>
-					<select class="form-select" id="chargerPick${suffix}" name="charger_id[]" data-old-charger-id="${charger.id_inventory_attachment}">
+					<select class="form-select" id="chargerPick${suffix}" name="charger_id" data-old-charger-id="${charger.id_inventory_attachment}">
 						<option value="">- Pilih Charger Baru -</option>
 					</select>
 				</div>`;
-		} else if (isElectric) {
-			// Electric department but no existing charger - need to assign new
+		} else if (options.charger) {
+			// Department requires charger but no existing charger - need to assign new
 			html += `
 				<div class="alert alert-warning py-2 mb-2">
-					<small><i class="fas fa-exclamation-triangle me-1"></i>Unit Electric memerlukan Charger</small>
+					<small><i class="fas fa-exclamation-triangle me-1"></i>Unit ini memerlukan Charger</small>
 				</div>
 				<label class="form-label">Pilih Charger <span class="text-danger">*</span></label>
-				<select class="form-select" id="chargerPick${suffix}" name="charger_id[]">
+				<select class="form-select" id="chargerPick${suffix}" name="charger_id">
 					<option value="">- Pilih Charger -</option>
 				</select>`;
 		}
 		
 		html += '</div>';
 	}
+	
+	// Note: Attachment Management dipindahkan ke bagian Fabrikasi, tidak ada di Persiapan Unit
 	
 	// Load options for replacement dropdowns
 	setTimeout(() => {
@@ -1757,6 +1871,7 @@ function generateComponentSelectionUI(apiData, isElectric, suffix = '') {
 		}
 	}, 100);
 	
+	html += '</div>'; // Close data-render-key div
 	return html;
 }
 
@@ -1794,40 +1909,6 @@ function toggleBatteryOptions(type, isChecked, suffix = '') {
 		} else {
 			// Unchecked replace - hide options
 			if (replaceOptionsDiv) replaceOptionsDiv.style.display = 'none';
-		}
-	}
-}
-
-/**
-			useExistingCheckbox.checked = false;
-			if (selectionSection) selectionSection.style.display = 'block';
-			actionInput.value = 'replace';
-			
-			// Set the keepExisting value to false
-			const keepExistingInput = document.getElementById(`keepExistingBattery${suffix}`);
-			if (keepExistingInput) keepExistingInput.value = 'false';
-			
-			// Load available batteries directly
-			const batteryPick = document.getElementById(`batteryPick${suffix}`);
-			fetch('<?= base_url('warehouse/inventory/available-batteries') ?>')
-				.then(r => r.json())
-				.then(data => {
-					if (batteryPick && Array.isArray(data)) {
-						batteryPick.innerHTML = '<option value="">- Pilih Battery Baru -</option>' + 
-							data.map(item => {
-								const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
-								return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_baterai||'-'}</option>`;
-							}).join('');
-						
-						// Make the select required since we're replacing
-						batteryPick.setAttribute('required', 'required');
-					}
-				})
-				.catch(err => console.log('Error loading batteries:', err));
-		} else {
-			// User unchecked replace
-			selectionSection.style.display = 'none';
-			actionInput.value = '';
 		}
 	}
 }
@@ -1892,6 +1973,11 @@ function toggleChargerOptions(type, isChecked, suffix = '') {
 						
 						// Make the select required since we're replacing
 						chargerPick.setAttribute('required', 'required');
+						
+						// Update availability indicators after loading options
+						setTimeout(() => {
+							updateDropdownAvailability(chargerPick, 'charger');
+						}, 100);
 					}
 				})
 				.catch(err => console.log('Error loading chargers:', err));
@@ -1963,6 +2049,11 @@ function toggleAttachmentOptions(type, isChecked, suffix = '') {
 						
 						// Make the select required since we're replacing
 						attachmentPick.setAttribute('required', 'required');
+						
+						// Update availability indicators after loading options
+						setTimeout(() => {
+							updateDropdownAvailability(attachmentPick, 'attachment');
+						}, 100);
 					}
 				})
 				.catch(err => console.log('Error loading attachments:', err));
@@ -1980,8 +2071,13 @@ function toggleAttachmentOptions(type, isChecked, suffix = '') {
 function collectEnhancedComponentDataMultiUnit() {
 	const allUnitsData = [];
 	
-	// Find all unit selection fields
-	const unitPicks = document.querySelectorAll('select[name="unit_id[]"]');
+	// Find all unit selection fields - support both multi-unit dan single unit
+	let unitPicks = document.querySelectorAll('select[name="unit_id[]"]'); // Multi-unit (legacy)
+	if (unitPicks.length === 0) {
+		// Try single unit processing
+		unitPicks = document.querySelectorAll('select[name="unit_id"]'); // Single unit (new)
+	}
+	
 	console.log(`Found ${unitPicks.length} units to process for enhanced component data`);
 	
 	unitPicks.forEach((unitPick, index) => {
@@ -2012,30 +2108,38 @@ function collectEnhancedComponentDataMultiUnit() {
  * Collect component data untuk single unit dengan suffix
  */
 function collectSingleUnitComponentData(suffix, unitId) {
-	const existingBatteryModelId = document.getElementById(`existingBatteryModelId${suffix}`)?.value;
-	const batteryActionValue = document.getElementById(`batteryAction${suffix}`)?.value;
-	const useExistingBatteryChecked = document.getElementById(`useExistingBattery${suffix}`)?.checked;
+	console.log(`collectSingleUnitComponentData called with suffix='${suffix}', unitId=${unitId}`);
 	
-	console.log(`collectSingleUnitComponentData for unitId=${unitId}, suffix=${suffix}`);
-	console.log(`existingBatteryModelId=${existingBatteryModelId}, batteryAction=${batteryActionValue}, useExistingBatteryChecked=${useExistingBatteryChecked}`);
+	// Try both with and without suffix for backwards compatibility
+	const existingBatteryModelId = document.getElementById(`existingBatteryModelId${suffix}`)?.value || document.getElementById(`existingBatteryModelId`)?.value;
+	const batteryActionValue = document.getElementById(`batteryAction${suffix}`)?.value || document.getElementById(`batteryAction`)?.value;
+	const useExistingBatteryChecked = document.getElementById(`useExistingBattery${suffix}`)?.checked || document.getElementById(`useExistingBattery`)?.checked;
+	
+	console.log(`Battery data: existingModelId=${existingBatteryModelId}, action=${batteryActionValue}, useExisting=${useExistingBatteryChecked}`);
+	
+	// Similar approach for charger
+	const existingChargerModelId = document.getElementById(`existingChargerModelId${suffix}`)?.value || document.getElementById(`existingChargerModelId`)?.value;
+	const useExistingChargerChecked = document.getElementById(`useExistingCharger${suffix}`)?.checked || document.getElementById(`useExistingCharger`)?.checked;
+	
+	console.log(`Charger data: existingModelId=${existingChargerModelId}, useExisting=${useExistingChargerChecked}`);
 	
 	const data = {
 		unit_id: unitId,
 		components: {
 			battery: {
-				action: useExistingBatteryChecked ? 'keep' : 'replace', // keep, replace, assign
+				action: useExistingBatteryChecked ? 'use_existing' : 'replace', // use_existing, replace, assign
 				existing_model_id: existingBatteryModelId,
-				existing_sn: document.getElementById(`existingBatterySn${suffix}`)?.value,
+				existing_sn: document.getElementById(`existingBatterySn${suffix}`)?.value || document.getElementById(`existingBatterySn`)?.value,
 				new_inventory_attachment_id: null,
-				keep_existing: useExistingBatteryChecked || document.getElementById(`keepExistingBattery${suffix}`)?.value === 'true',
+				keep_existing: useExistingBatteryChecked,
 				battery_detected: !!existingBatteryModelId // Flag to show backend we detected a battery
 			},
 			charger: {
-				action: 'keep',
-				existing_model_id: document.getElementById(`existingChargerModelId${suffix}`)?.value,
-				existing_sn: document.getElementById(`existingChargerSn${suffix}`)?.value,
+				action: useExistingChargerChecked ? 'use_existing' : 'replace',
+				existing_model_id: existingChargerModelId,
+				existing_sn: document.getElementById(`existingChargerSn${suffix}`)?.value || document.getElementById(`existingChargerSn`)?.value,
 				new_inventory_attachment_id: null,
-				keep_existing: document.getElementById(`keepExistingCharger${suffix}`)?.value === 'true',
+				keep_existing: useExistingChargerChecked,
 				charger_detected: !!document.getElementById(`existingChargerModelId${suffix}`)?.value
 			},
 			attachment: {
@@ -2126,11 +2230,19 @@ function collectSingleUnitComponentData(suffix, unitId) {
 			console.log(`Unit ${unitId}: Default behavior - keeping existing charger ${data.components.charger.existing_model_id}`);
 		}
 	} else {
-		// Unit doesn't have charger - must assign new one
+		// Unit doesn't have existing charger - untuk unit Electric, charger tetap opsional
 		if (chargerPick?.value) {
+			// User memilih charger baru
 			data.components.charger.action = 'assign';
 			data.components.charger.new_inventory_attachment_id = chargerPick.value;
 			data.components.charger.keep_existing = false;
+			console.log(`Unit ${unitId}: Assigning new charger ${chargerPick.value}`);
+		} else {
+			// Tidak ada existing charger dan user tidak memilih charger baru = skip charger
+			data.components.charger.action = 'skip';
+			data.components.charger.new_inventory_attachment_id = null;
+			data.components.charger.keep_existing = false;
+			console.log(`Unit ${unitId}: No charger required - skipping charger assignment`);
 		}
 	}
 
@@ -2145,13 +2257,13 @@ function collectSingleUnitComponentData(suffix, unitId) {
 			data.components.attachment.action = 'replace';
 			data.components.attachment.new_inventory_attachment_id = attachmentPick.value;
 			data.components.attachment.keep_existing = false;
-		} else if (attachmentAction === 'use_existing') {
-			// User explicitly chose to use existing attachment
-			data.components.attachment.action = 'keep';
+		} else if (attachmentAction === 'use_existing' || document.getElementById(`useExistingAttachment${suffix}`)?.checked) {
+			// User explicitly chose to use existing attachment OR the "use existing" checkbox is checked (default)
+			data.components.attachment.action = 'use_existing';
 			data.components.attachment.keep_existing = true;
 		} else {
-			// No explicit choice - default to keep existing
-			data.components.attachment.action = 'keep';
+			// No explicit choice - default to use existing
+			data.components.attachment.action = 'use_existing';
 			data.components.attachment.keep_existing = true;
 		}
 	} else {
@@ -2310,6 +2422,145 @@ window.addEventListener('error', function(e) {
 
 // Debug untuk API data fetching
 console.log('SPK Service: Component management initialized');
+
+/**
+ * Validasi duplikasi untuk mencegah pemilihan attachment/battery/charger yang sama
+ * pada unit yang berbeda
+ */
+function validateDuplicateSelection(selectElement, type) {
+	const selectedValue = selectElement.value;
+	if (!selectedValue) return true; // Allow empty selection
+	
+	const currentFormId = selectElement.closest('.assignment-form')?.id || selectElement.closest('[id*="unitDetail"]')?.id;
+	let conflictingSuffix = null;
+	let conflictingUnitLabel = null;
+	
+	// Get all select elements of the same type across all forms
+	const allSelects = document.querySelectorAll(`select[name*="${type}_id"], select[id*="${type}Pick"]`);
+	
+	allSelects.forEach(otherSelect => {
+		// Skip if it's the same element
+		if (otherSelect === selectElement) return;
+		
+		// Check if other select has the same value
+		if (otherSelect.value === selectedValue) {
+			const otherFormId = otherSelect.closest('.assignment-form')?.id || otherSelect.closest('[id*="unitDetail"]')?.id;
+			
+			// If different forms/units, we have a conflict
+			if (otherFormId !== currentFormId) {
+				// Extract suffix to identify unit
+				const suffixMatch = otherFormId?.match(/unitDetail(\d+)/);
+				conflictingSuffix = suffixMatch ? suffixMatch[1] : 'lain';
+				
+				// Try to get unit label from the form
+				const unitContainer = otherSelect.closest('[id*="unitDetail"]');
+				const unitLabelElement = unitContainer?.querySelector('.unit-label, h6, .card-title');
+				conflictingUnitLabel = unitLabelElement?.textContent?.trim() || `Unit ${conflictingSuffix}`;
+			}
+		}
+	});
+	
+	if (conflictingSuffix) {
+		// Show alert and clear selection
+		const typeLabel = type === 'attachment' ? 'Attachment' : 
+		                 type === 'battery' ? 'Battery' : 'Charger';
+		
+		Swal.fire({
+			icon: 'warning',
+			title: 'Duplikasi Terdeteksi!',
+			html: `<p><strong>${typeLabel}</strong> yang dipilih sudah digunakan pada <strong>${conflictingUnitLabel}</strong>.</p>
+			       <p>Silakan pilih ${typeLabel.toLowerCase()} yang berbeda.</p>`,
+			confirmButtonText: 'OK',
+			confirmButtonColor: '#f39c12'
+		});
+		
+		// Clear the selection
+		selectElement.value = '';
+		return false;
+	}
+	
+	return true;
+}
+
+/**
+ * Update dropdown options dengan indikator item yang sudah dipilih
+ */
+function updateDropdownAvailability(selectElement, type) {
+	// Get all selected values of this type across all forms
+	const allSelects = document.querySelectorAll(`select[name*="${type}_id"], select[id*="${type}Pick"]`);
+	const selectedValues = [];
+	
+	allSelects.forEach(select => {
+		if (select.value && select !== selectElement) {
+			selectedValues.push(select.value);
+		}
+	});
+	
+	// Update options to show which items are already selected
+	const options = selectElement.querySelectorAll('option');
+	options.forEach(option => {
+		if (option.value && selectedValues.includes(option.value)) {
+			if (!option.textContent.includes('(Sudah dipilih)')) {
+				option.textContent += ' (Sudah dipilih)';
+				option.style.color = '#6c757d';
+				option.style.fontStyle = 'italic';
+			}
+		} else {
+			// Remove "(Sudah dipilih)" if it exists
+			option.textContent = option.textContent.replace(' (Sudah dipilih)', '');
+			option.style.color = '';
+			option.style.fontStyle = '';
+		}
+	});
+}
+
+/**
+ * Attach event listeners untuk validasi duplikasi
+ */
+function attachDuplicateValidationListeners() {
+	// Use event delegation for dynamically created selects
+	document.addEventListener('change', function(e) {
+		const target = e.target;
+		
+		// Check if it's an attachment/battery/charger select
+		if (target.matches('select[name*="attachment_id"], select[id*="attachmentPick"]')) {
+			if (!validateDuplicateSelection(target, 'attachment')) return;
+			updateAllDropdownAvailability('attachment');
+		}
+		else if (target.matches('select[name*="battery_id"], select[id*="batteryPick"]')) {
+			if (!validateDuplicateSelection(target, 'battery')) return;
+			updateAllDropdownAvailability('battery');
+		}
+		else if (target.matches('select[name*="charger_id"], select[id*="chargerPick"]')) {
+			if (!validateDuplicateSelection(target, 'charger')) return;
+			updateAllDropdownAvailability('charger');
+		}
+	});
+	
+	console.log('Duplicate validation listeners attached');
+}
+
+/**
+ * Update availability indicators for all dropdowns of a specific type
+ */
+function updateAllDropdownAvailability(type) {
+	const allSelects = document.querySelectorAll(`select[name*="${type}_id"], select[id*="${type}Pick"]`);
+	allSelects.forEach(select => {
+		updateDropdownAvailability(select, type);
+	});
+}
+
+// Initialize duplicate validation when document is ready
+document.addEventListener('DOMContentLoaded', function() {
+	attachDuplicateValidationListeners();
+});
+
+// Also initialize when SPK modal is opened
+$(document).on('shown.bs.modal', '#detailSPKModal', function() {
+	setTimeout(() => {
+		attachDuplicateValidationListeners();
+	}, 500);
+});
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

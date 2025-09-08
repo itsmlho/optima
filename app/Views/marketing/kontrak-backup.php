@@ -15,31 +15,11 @@
         box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
     }
     /* Modal z-index hierarchy */
-    #contractDetailModal { z-index: 1055 !important; }
-    #contractDetailModal .modal-backdrop { z-index: 1054 !important; }
-    #editContractModal { z-index: 1065 !important; }
-    #editContractModal .modal-backdrop { z-index: 1064 !important; }
-    #addSpesifikasiModal { z-index: 1070 !important; }
-    #addSpesifikasiModal .modal-backdrop { z-index: 1069 !important; }
-    #unitDetailModal { z-index: 1075 !important; }
-    #unitDetailModal .modal-backdrop { z-index: 1074 !important; }
-    
-    /* Pastikan modal dialog berada di atas backdrop */
-    .modal-dialog { z-index: 1056 !important; }
-    #editContractModal .modal-dialog { z-index: 1066 !important; }
-    #addSpesifikasiModal .modal-dialog { z-index: 1071 !important; }
-    #unitDetailModal .modal-dialog { z-index: 1076 !important; }
-    #unitDetailModal .modal-dialog { z-index: 1080 !important; }
-    
-    /* Unit table row hover effect */
-    .unit-row:hover {
-        background-color: #f8f9fa !important;
-        transform: translateY(-1px);
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        transition: all 0.2s ease;
-    }
+    #contractDetailModal { z-index: 1050; }
+    #contractDetailModal .modal-backdrop { z-index: 1049; }
+    #editContractModal { z-index: 1060; }
+    #editContractModal .modal-backdrop { z-index: 1059; }
 </style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
@@ -258,34 +238,6 @@
                     </button>
                 </div>
             </form>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Detail Unit -->
-<div class="modal fade" id="unitDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <h5 class="modal-title">Detail Unit</h5>
-                    <small class="text-muted" id="unitDetailSubtitle">Informasi lengkap unit</small>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="unitDetailContent">
-                    <div class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                        <p class="mt-2 text-muted">Memuat detail unit...</p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
-            </div>
         </div>
     </div>
 </div>
@@ -703,7 +655,7 @@ $(document).ready(function() {
         $('#addContractForm').trigger('submit');
     });
 
-    $('#addContractForm').off('submit').on('submit', function(e) {
+    $('#addContractForm').on('submit', function(e) {
         e.preventDefault();
         
         const contractId = $(this).data('contract-id');
@@ -732,44 +684,46 @@ $(document).ready(function() {
             data: $(this).serialize() + '&<?= csrf_token() ?>=' + '<?= csrf_hash() ?>',
             dataType: 'json',
         success: function(response) {
-            console.log('AJAX Success Response:', response);
-            if (response.success) {
-                $('#addContractModal').modal('hide');
-                
-                // Show success notification once
-                safeShowNotification(response.message, 'success');
-                
-                // Safely reload DataTable
-                if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
-                    window.contractsTable.ajax.reload();
-                } else {
-                    $('#contractsTable').DataTable().ajax.reload();
-                }
-                
-                if (isEdit) {
-                    // Reset form after success
-                    $('#addContractForm')[0].reset();
-                    $('#addContractForm').removeData('contract-id');
-                    $('#addContractForm').attr('action', 'store');
-                    $('#addContractModal .modal-title').text('Tambah Kontrak Baru');
-                } else {
-                    // Create baru: arahkan sesuai submit_action
-                    const goToSpec = ($('#submitAction').val() === 'save_and_spec');
-                    const newId = response.data && response.data.id ? response.data.id : null;
-                    
-                    // Reset form
-                    $('#addContractForm')[0].reset();
-                    
-                    if (goToSpec && newId) {
-                        // Buka modal detail kontrak dan tab spesifikasi
-                        openContractDetail(newId);
-                        setTimeout(() => {
-                            const spekTab = document.querySelector('#contractDetailTabs button[data-bs-target="#spesifikasi-content"]');
-                            if (spekTab) spekTab.click();
-                        }, 400);
+                if (response.success) {
+            $('#addContractModal').modal('hide');
+            if (isEdit) {
+                        // Jika edit, reload table dan show success message
+                        safeShowNotification(response.message, 'success');
+                        // Safely reload DataTable
+                        if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
+                            window.contractsTable.ajax.reload();
+                        } else {
+                            $('#contractsTable').DataTable().ajax.reload();
+                        }
+                        
+                        // Reset form after success
+                        $('#addContractForm')[0].reset();
+                        $('#addContractForm').removeData('contract-id');
+                        $('#addContractForm').attr('action', 'store');
+                        $('#addContractModal .modal-title').text('Tambah Kontrak Baru');
+                    } else {
+                        // Create baru: arahkan sesuai submit_action
+                        safeShowNotification(response.message, 'success');
+                        // Safely reload DataTable
+                        if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
+                            window.contractsTable.ajax.reload();
+                        } else {
+                            $('#contractsTable').DataTable().ajax.reload();
+                        }
+                        const goToSpec = ($('#submitAction').val() === 'save_and_spec');
+                        const newId = response.data && response.data.id ? response.data.id : null;
+                        // Reset form
+                        $('#addContractForm')[0].reset();
+                        if (goToSpec && newId) {
+                            // Buka modal detail kontrak dan tab spesifikasi
+                            openContractDetail(newId);
+                            setTimeout(() => {
+                                const spekTab = document.querySelector('#contractDetailTabs button[data-bs-target="#spesifikasi-content"]');
+                                if (spekTab) spekTab.click();
+                            }, 400);
+                        }
                     }
-                }
-            } else {
+                } else {
                     // Duplicate contract handling
                     if (response.duplicate && response.existing_id) {
                         const contractNumber = $('input[name="contract_number"]').val();
@@ -804,7 +758,6 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr, status, error) {
-                console.log('AJAX Error Response:', xhr, status, error);
                 let msg = 'Tidak dapat terhubung ke server.';
                 if (xhr && xhr.responseText) {
                     try { const r = JSON.parse(xhr.responseText); if (r.message) msg = r.message; } catch(e) {}
@@ -989,38 +942,14 @@ function openContractDetail(id){
     // Load basic contract info
     loadContractInfo(id);
     
-    // Show modal with proper configuration
-    const modalElement = document.getElementById('contractDetailModal');
-    const modal = new bootstrap.Modal(modalElement, {
-        backdrop: true,
-        keyboard: true,
-        focus: true
-    });
-    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('contractDetailModal'));
     console.log('Showing modal...');
-    
-    // Force proper z-index before showing
-    modalElement.style.zIndex = '1055';
-    
     modal.show();
     
-    // Fix backdrop z-index after modal is shown
-    modalElement.addEventListener('shown.bs.modal', function () {
+    // Setup tab event handler after modal is shown
+    modal._element.addEventListener('shown.bs.modal', function () {
         console.log('Modal shown, setting up tab event handlers...');
-        
-        // Find and fix backdrop z-index
-        const backdrop = document.querySelector('.modal-backdrop');
-        if (backdrop) {
-            backdrop.style.zIndex = '1054';
-            console.log('Backdrop z-index set to 1054');
-        }
-        
-        // Ensure modal dialog is above backdrop
-        const modalDialog = modalElement.querySelector('.modal-dialog');
-        if (modalDialog) {
-            modalDialog.style.zIndex = '1056';
-        }
-        
         setupTabEventHandlers();
         
         // Check if tab event handler is working after modal is shown
@@ -1176,7 +1105,34 @@ function loadContractSpesifikasi(kontrakId) {
                 return;
             }
             
-            let html = ``;
+            let html = `
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center py-2">
+                                <div class="fw-bold text-primary">${summary.total_spesifikasi || 0}</div>
+                                <small>Spesifikasi</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center py-2">
+                                <div class="fw-bold text-success">${summary.total_unit_dibutuhkan || 0}</div>
+                                <small>Total Unit</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center py-2">
+                                <div class="fw-bold text-warning">${formatNumber((summary.total_nilai_bulanan || 0) + (summary.total_nilai_harian || 0))}</div>
+                                <small>Total Nilai</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
             
             spesifikasi.forEach((spek, index) => {
                 console.log(`Processing spek ${index + 1}:`, spek.spek_kode);
@@ -1616,60 +1572,31 @@ function loadContractUnits(contractId) {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                const summary = response.summary || {};
-                
-                // Add summary cards
-                let unitsHtml = `
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center py-2">
-                                    <div class="fw-bold text-success">${summary.total_unit_dibutuhkan || 0}</div>
-                                    <small>Total Unit</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center py-2">
-                                    <div class="fw-bold text-warning">Rp ${formatNumber(summary.total_nilai_bulanan || 0)}</div>
-                                    <small>Total Nilai Bulanan</small>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="card bg-light">
-                                <div class="card-body text-center py-2">
-                                    <div class="fw-bold text-info">Rp ${formatNumber(summary.total_nilai_harian || 0)}</div>
-                                    <small>Total Nilai Harian</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
+                let unitsHtml = '';
                 if (response.data.length > 0) {
-                    unitsHtml += '<div class="table-responsive">';
+                    unitsHtml = '<div class="table-responsive">';
                     unitsHtml += '<table class="table table-sm table-striped">';
-                    unitsHtml += '<thead><tr><th>No Unit</th><th>Merk/Model</th><th>Kapasitas</th><th>Jenis Unit</th><th>Departemen</th><th>Harga Bulanan</th><th>Harga Harian</th><th>Status</th></tr></thead>';
+                    unitsHtml += '<thead><tr><th>No Unit</th><th>Spesifikasi</th><th>Merk/Model</th><th>Departemen</th><th>Status Sewa</th><th>Harga</th></tr></thead>';
                     unitsHtml += '<tbody>';
                     
                     response.data.forEach(unit => {
-                        unitsHtml += `<tr style="cursor: pointer;" onclick="showUnitDetail(${unit.id})" class="unit-row">
-                            <td>${unit.no_unit || '-'}</td>
-                            <td>${unit.merk || '-'} ${unit.model || ''}</td>
-                            <td>${unit.kapasitas || '-'}</td>
-                            <td>${unit.jenis_unit || '-'}</td>
-                            <td>${unit.departemen || '-'}</td>
-                            <td class="text-success fw-bold">Rp ${formatNumber(unit.harga_per_unit_bulanan || unit.harga_bulanan || 0)}</td>
-                            <td class="text-info fw-bold">Rp ${formatNumber(unit.harga_per_unit_harian || unit.harga_harian || 0)}</td>
-                            <td><span class="badge bg-success">${unit.status || 'TERSEDIA'}</span></td>
+                        const harga = unit.jenis_sewa === 'harian' ? 
+                            `Rp ${OptimaPro.formatCurrency(unit.harga_sewa_harian)}/hari` : 
+                            `Rp ${OptimaPro.formatCurrency(unit.harga_sewa_bulanan)}/bulan`;
+                        
+                        unitsHtml += `<tr>
+                            <td>${unit.nomor_unit}</td>
+                            <td>${unit.spek_kode || '-'}</td>
+                            <td>${unit.merk_unit || ''} ${unit.model_unit || ''}</td>
+                            <td>${unit.departemen_nama || '-'}</td>
+                            <td><span class="badge bg-success">Disewa</span></td>
+                            <td>${harga}</td>
                         </tr>`;
                     });
                     
                     unitsHtml += '</tbody></table></div>';
                 } else {
-                    unitsHtml += '<div class="alert alert-info">Belum ada unit yang di-assign ke kontrak ini.</div>';
+                    unitsHtml = '<div class="alert alert-info">Belum ada unit yang di-assign ke kontrak ini.</div>';
                 }
                 
                 $('#unitsList').html(unitsHtml);
@@ -1682,270 +1609,6 @@ function loadContractUnits(contractId) {
             $('#unitsList').html('<div class="alert alert-danger">Gagal memuat unit.</div>');
         }
     });
-}
-
-// Function to show unit detail modal
-function showUnitDetail(unitId) {
-    console.log('Showing unit detail for ID:', unitId);
-    
-    // Reset modal content
-    $('#unitDetailContent').html(`
-        <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <p class="mt-2 text-muted">Memuat detail unit...</p>
-        </div>
-    `);
-    
-    // Ensure proper z-index before showing modal
-    const unitModal = document.getElementById('unitDetailModal');
-    unitModal.style.zIndex = '1075';
-    
-    // Show modal with proper configuration
-    const modal = new bootstrap.Modal(unitModal, {
-        backdrop: true,
-        keyboard: true,
-        focus: true
-    });
-    
-    modal.show();
-    
-    // Fix backdrop z-index after modal is shown
-    unitModal.addEventListener('shown.bs.modal', function () {
-        const backdrop = document.querySelector('.modal-backdrop:last-child');
-        if (backdrop) {
-            backdrop.style.zIndex = '1074';
-        }
-        
-        const modalDialog = unitModal.querySelector('.modal-dialog');
-        if (modalDialog) {
-            modalDialog.style.zIndex = '1076';
-        }
-    }, { once: true });
-    
-    // Load unit detail
-    $.ajax({
-        url: `<?= base_url('marketing/unit-detail/') ?>${unitId}`,
-        method: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            if (response.success) {
-                const unit = response.data;
-                
-                // Update modal subtitle
-                $('#unitDetailSubtitle').text(`Unit ${unit.no_unit || 'N/A'} - ${unit.merk_unit || 'N/A'} ${unit.model_unit || ''}`);
-                
-                let detailHtml = `
-                    <div class="row g-4">
-                        <!-- Basic Information -->
-                        <div class="col-lg-6">
-                            <div class="card h-100">
-                                <div class="card-header bg-primary">
-                                    <h6 class="mb-0 text-black"><i class="fas fa-info-circle me-2"></i>Informasi Dasar</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row g-2">
-                                        <div class="col-6"><strong>No Unit:</strong></div>
-                                        <div class="col-6">${unit.no_unit || '-'}</div>
-                                        
-                                        <div class="col-6"><strong>Serial Number:</strong></div>
-                                        <div class="col-6">${unit.serial_number_po || '-'}</div>
-                                        
-                                        <div class="col-6"><strong>Merk:</strong></div>
-                                        <div class="col-6">${unit.merk_unit || '-'}</div>
-                                        
-                                        <div class="col-6"><strong>Model:</strong></div>
-                                        <div class="col-6">${unit.model_unit || '-'}</div>
-                                        
-                                        <div class="col-6"><strong>Tahun:</strong></div>
-                                        <div class="col-6">${unit.tahun_po || '-'}</div>
-                                        
-                                        <div class="col-6"><strong>Tipe Unit:</strong></div>
-                                        <div class="col-6">${unit.nama_tipe_unit || '-'}</div>
-                                        
-                                        <div class="col-6"><strong>Kapasitas:</strong></div>
-                                        <div class="col-6">${unit.kapasitas_unit || '-'}</div>
-                                        
-                                        <div class="col-6"><strong>Departemen:</strong></div>
-                                        <div class="col-6">${unit.nama_departemen || '-'}</div>
-                                        
-                                        <div class="col-6"><strong>Status:</strong></div>
-                                        <div class="col-6"><span class="badge bg-${getStatusBadgeClass(unit.status_unit_name)}">${unit.status_unit_name || '-'}</span></div>
-                                        
-                                        <div class="col-6"><strong>Lokasi:</strong></div>
-                                        <div class="col-6">${unit.lokasi_unit || '-'}</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Technical Specifications -->
-                        <div class="col-lg-6">
-                            <div class="card h-100">
-                                <div class="card-header bg-success">
-                                    <h6 class="mb-0 text-black"><i class="fas fa-cogs me-2"></i>Spesifikasi Teknis</h6>
-                                </div>
-                                <div class="card-body">
-                                    <div class="row g-2">`;
-                
-                // Mast Information
-                if (unit.mast_name || unit.sn_mast_po) {
-                    detailHtml += `
-                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2"><i class="fas fa-arrows-alt-v me-1"></i>Mast</h6></div>
-                        <div class="col-6"><strong>Model Mast:</strong></div>
-                        <div class="col-6">${unit.mast_name || '-'}</div>
-                        <div class="col-6"><strong>SN Mast:</strong></div>
-                        <div class="col-6">${unit.sn_mast_po || '-'}</div>`;
-                }
-                
-                // Engine Information
-                if (unit.mesin_name || unit.sn_mesin_po) {
-                    detailHtml += `
-                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-engine me-1"></i>Mesin</h6></div>
-                        <div class="col-6"><strong>Model Mesin:</strong></div>
-                        <div class="col-6">${unit.mesin_name || '-'}</div>
-                        <div class="col-6"><strong>SN Mesin:</strong></div>
-                        <div class="col-6">${unit.sn_mesin_po || '-'}</div>`;
-                }
-                
-                // Battery Information (for electric units)
-                if (unit.baterai_name || unit.sn_baterai_po) {
-                    detailHtml += `
-                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-battery-full me-1"></i>Baterai</h6></div>
-                        <div class="col-6"><strong>Model Baterai:</strong></div>
-                        <div class="col-6">${unit.baterai_name || '-'}</div>
-                        <div class="col-6"><strong>SN Baterai:</strong></div>
-                        <div class="col-6">${unit.sn_baterai_po || '-'}</div>`;
-                }
-                
-                // Attachments Information
-                if (unit.attachments && unit.attachments.length > 0) {
-                    detailHtml += `
-                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-puzzle-piece me-1"></i>Attachment</h6></div>`;
-                    unit.attachments.forEach((att, index) => {
-                        detailHtml += `
-                            <div class="col-6"><strong>${att.name || 'Attachment ' + (index + 1)}:</strong></div>
-                            <div class="col-6">${att.merk || '-'}</div>
-                            <div class="col-6"><strong>SN ${att.name || 'Att'}:</strong></div>
-                            <div class="col-6">${att.serial_number || '-'}</div>`;
-                    });
-                }
-                
-                // Batteries Information (for Electric Units)
-                if (unit.batteries && unit.batteries.length > 0) {
-                    detailHtml += `
-                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-battery-full me-1"></i>Baterai Tambahan</h6></div>`;
-                    unit.batteries.forEach((bat, index) => {
-                        detailHtml += `
-                            <div class="col-6"><strong>${bat.name || 'Baterai ' + (index + 1)}:</strong></div>
-                            <div class="col-6">${bat.merk || '-'}</div>
-                            <div class="col-6"><strong>SN ${bat.name || 'Bat'}:</strong></div>
-                            <div class="col-6">${bat.serial_number || '-'}</div>`;
-                    });
-                }
-                
-                // Chargers Information (for Electric Units)
-                if (unit.chargers && unit.chargers.length > 0) {
-                    detailHtml += `
-                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-plug me-1"></i>Charger</h6></div>`;
-                    unit.chargers.forEach((chr, index) => {
-                        detailHtml += `
-                            <div class="col-6"><strong>${chr.name || 'Charger ' + (index + 1)}:</strong></div>
-                            <div class="col-6">${chr.merk || '-'}</div>
-                            <div class="col-6"><strong>SN ${chr.name || 'Chr'}:</strong></div>
-                            <div class="col-6">${chr.serial_number || '-'}</div>`;
-                    });
-                }
-                
-                // Wheels and Parts
-                if (unit.ban_name || unit.roda_name || unit.valve_name) {
-                    detailHtml += `
-                        <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-circle me-1"></i>Ban & Roda</h6></div>`;
-                    if (unit.ban_name) {
-                        detailHtml += `
-                            <div class="col-6"><strong>Ban:</strong></div>
-                            <div class="col-6">${unit.ban_name}</div>`;
-                    }
-                    if (unit.roda_name) {
-                        detailHtml += `
-                            <div class="col-6"><strong>Roda:</strong></div>
-                            <div class="col-6">${unit.roda_name}</div>`;
-                    }
-                    if (unit.valve_name) {
-                        detailHtml += `
-                            <div class="col-6"><strong>Valve:</strong></div>
-                            <div class="col-6">${unit.valve_name}</div>`;
-                    }
-                }
-                
-                detailHtml += `
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>`;
-                
-                // Additional Notes
-                if (unit.keterangan) {
-                    detailHtml += `
-                        <div class="row mt-4">
-                            <div class="col-12">
-                                <div class="card">
-                                    <div class="card-header bg-secondary text-white">
-                                        <h6 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Keterangan</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p class="mb-0">${unit.keterangan}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>`;
-                }
-                
-                $('#unitDetailContent').html(detailHtml);
-                
-            } else {
-                $('#unitDetailContent').html(`
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Gagal memuat detail unit: ${response.message || 'Unknown error'}
-                    </div>
-                `);
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error loading unit detail:', error);
-            $('#unitDetailContent').html(`
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Gagal memuat detail unit. Silakan coba lagi.
-                </div>
-            `);
-        }
-    });
-}
-
-// Helper function for status badge class
-function getStatusBadgeClass(status) {
-    if (!status) return 'secondary';
-    const statusLower = status.toLowerCase();
-    switch(statusLower) {
-        case 'tersedia':
-        case 'available':
-            return 'success';
-        case 'rental':
-        case 'disewa':
-            return 'primary';
-        case 'maintenance':
-        case 'rusak':
-            return 'warning';
-        case 'hilang':
-        case 'lost':
-            return 'danger';
-        default:
-            return 'secondary';
-    }
 }
 
 // Open add spesifikasi modal
@@ -2397,8 +2060,8 @@ function createSPKForSpec(spekId) {
 }
 </script>
 <!-- Contract Detail Modal with Multi-Specification Support -->
-<div class="modal fade" id="contractDetailModal" tabindex="-1" style="z-index: 1055 !important;" data-bs-backdrop="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable" style="z-index: 1056 !important;">
+<div class="modal fade" id="contractDetailModal" tabindex="-1" style="z-index: 1050;">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h6 class="modal-title">Detail Kontrak</h6>
@@ -2413,13 +2076,13 @@ function createSPKForSpec(spekId) {
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="units-tab" data-bs-toggle="tab" data-bs-target="#units-content" type="button" role="tab">
-                            <i class="fas fa-truck me-1"></i>Data Unit (<span id="unitsCount">0</span>)
+                        <button class="nav-link" id="spesifikasi-tab" data-bs-toggle="tab" data-bs-target="#spesifikasi-content" type="button" role="tab">
+                            <i class="fas fa-cogs me-1"></i>Spesifikasi (<span id="spekCount">0</span>)
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="spesifikasi-tab" data-bs-toggle="tab" data-bs-target="#spesifikasi-content" type="button" role="tab">
-                            <i class="fas fa-cogs me-1"></i>Spesifikasi (<span id="spekCount">0</span>)
+                        <button class="nav-link" id="units-tab" data-bs-toggle="tab" data-bs-target="#units-content" type="button" role="tab">
+                            <i class="fas fa-truck me-1"></i>Unit Terkait (<span id="unitsCount">0</span>)
                         </button>
                     </li>
                 </ul>
@@ -2436,13 +2099,12 @@ function createSPKForSpec(spekId) {
                     <!-- Spesifikasi Tab -->
                     <div class="tab-pane fade" id="spesifikasi-content" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0">Request Spesifikasi Unit untuk dasar pembuatan SPK</h6>
+                            <h6 class="mb-0">Spesifikasi Unit</h6>
                             <button class="btn btn-primary btn-sm" onclick="openAddSpesifikasiModal()">
                                 <i class="fas fa-plus me-1"></i>Tambah Spesifikasi
                             </button>
                         </div>
-                        <br>
-
+                        
                         <div id="spesifikasiList">
                             <p class="text-muted">Memuat spesifikasi...</p>
                         </div>
@@ -2450,6 +2112,12 @@ function createSPKForSpec(spekId) {
 
                     <!-- Units Tab -->
                     <div class="tab-pane fade" id="units-content" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">Unit yang Terkait (via SPK)</h6>
+                            <a href="/marketing/spk" class="btn btn-primary btn-sm">
+                                <i class="fas fa-file-alt me-1"></i>Kelola SPK
+                            </a>
+                        </div>
                         
                         <div id="unitsList">
                             <p class="text-muted">Memuat unit...</p>
@@ -2744,17 +2412,6 @@ function createSPKForSpec(spekId) {
 // Event handler untuk tombol update kontrak
 $('#btnUpdateContract').on('click', function() {
     const form = $('#editContractForm');
-    const contractId = form.find('input[name="contract_id"]').val();
-    
-    // Debug logging
-    console.log('Contract ID for update:', contractId);
-    console.log('Form data:', Object.fromEntries(new FormData(form[0])));
-    
-    if (!contractId) {
-        safeShowNotification('ID kontrak tidak ditemukan. Silakan tutup modal dan coba lagi.', 'error');
-        return;
-    }
-    
     const formData = new FormData(form[0]);
 
     // Add CSRF token
@@ -2778,57 +2435,24 @@ $('#btnUpdateContract').on('click', function() {
 
     // Submit form
     $.ajax({
-        url: `<?= base_url('marketing/kontrak/update/') ?>${contractId}`,
+        url: `<?= base_url('marketing/kontrak/update/') ?>${formData.get('contract_id')}`,
         method: 'POST',
         data: formData,
         processData: false,
         contentType: false,
-        dataType: 'json',
         success: function(response) {
-            console.log('Update response:', response); // Debug log
-            
             if (response.success) {
                 safeShowNotification('Kontrak berhasil diperbarui!', 'success');
                 $('#editContractModal').modal('hide');
-                
-                // Reload kontrak data if function exists
-                if (typeof loadKontrakData === 'function') {
-                    loadKontrakData();
-                } else {
-                    // Fallback: reload page
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1000);
-                }
+                // Reload kontrak data
+                loadKontrakData();
             } else {
-                let errorMessage = response.message || 'Gagal memperbarui kontrak.';
-                
-                // Handle validation errors
-                if (response.errors) {
-                    const errorList = Object.values(response.errors).join('<br>');
-                    errorMessage = `Validasi gagal:<br>${errorList}`;
-                }
-                
-                safeShowNotification(errorMessage, 'error');
+                safeShowNotification(response.message || 'Gagal memperbarui kontrak.', 'error');
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error updating contract:', {xhr, status, error});
-            console.error('Response text:', xhr.responseText);
-            
-            let errorMessage = 'Terjadi kesalahan saat memperbarui kontrak.';
-            
-            // Try to parse error response
-            try {
-                const errorResponse = JSON.parse(xhr.responseText);
-                if (errorResponse.message) {
-                    errorMessage = errorResponse.message;
-                }
-            } catch (e) {
-                console.warn('Could not parse error response');
-            }
-            
-            safeShowNotification(errorMessage, 'error');
+            console.error('Error updating contract:', error);
+            safeShowNotification('Terjadi kesalahan saat memperbarui kontrak.', 'error');
         },
         complete: function() {
             // Reset button state
@@ -2839,5 +2463,3 @@ $('#btnUpdateContract').on('click', function() {
 </script>
 
 <?= $this->endSection() ?>
-<?= $this->endSection() ?>
-

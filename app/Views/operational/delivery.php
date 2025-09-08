@@ -124,13 +124,17 @@
           <thead>
             <tr>
               <th>No. DI</th>
+              <th>No. SPK</th>
               <th>PO/Kontrak</th>
               <th>Pelanggan</th>
               <th>Lokasi</th>
-              <th>Item</th>
-              <th>Tanggal Kirim</th>
-              <th>Status</th>
-              <th>Aksi</th>
+              <th>Total Units</th>
+              <th>Jenis Perintah</th>
+              <th>Tujuan Perintah</th>
+              <th>Req. Tanggal Kirim</th>
+              <th>Status Eksekusi</th>
+              <th>Supir/Kendaraan</th>
+              <th>Aksi Operasional</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -297,14 +301,71 @@ document.addEventListener('DOMContentLoaded', ()=>{
         aksiBtn = '<span class="text-muted">-</span>';
       }
       
+      // Function to format total units display for operational
+      const formatTotalUnits = (r) => {
+        const totalUnits = r.total_units || 0;
+        const totalAttachments = r.total_attachments || 0;
+        
+        if (totalUnits > 0) {
+          // Prioritas units jika ada
+          const unitText = totalUnits === 1 ? 'unit' : 'units';
+          return `<span class="badge bg-info">${totalUnits} ${unitText}</span>`;
+        } else if (totalAttachments > 0) {
+          // Fallback ke attachments jika tidak ada units
+          const attachmentText = totalAttachments === 1 ? 'attachment' : 'attachments';
+          return `<span class="badge bg-warning">${totalAttachments} ${attachmentText}</span>`;
+        } else {
+          return '<span class="text-muted">-</span>';
+        }
+      };
+      
+      // Format driver/vehicle info
+      const formatDriverVehicle = (r) => {
+        const driver = r.nama_supir || '-';
+        const vehicle = r.kendaraan && r.no_polisi_kendaraan ? 
+          `${r.kendaraan} (${r.no_polisi_kendaraan})` : 
+          (r.kendaraan || r.no_polisi_kendaraan || '-');
+        
+        if (driver === '-' && vehicle === '-') return '-';
+        return `<div class="small"><strong>Supir:</strong> ${driver}<br><strong>Kendaraan:</strong> ${vehicle}</div>`;
+      };
+      
+      // Operational status display (fokus pada status eksekusi workflow)
+      const getOperationalStatusDisplay = (r) => {
+        const status = r.status_temp || r.status;
+        const statusUpper = (status || '').toUpperCase();
+        const statusMap = {
+          'DIAJUKAN': { text: 'Menunggu Persetujuan', color: 'secondary' },
+          'DISETUJUI': { text: 'Disetujui', color: 'info' },
+          'PERSIAPAN_UNIT': { text: 'Persiapan Unit', color: 'warning' },
+          'SIAP_KIRIM': { text: 'Siap Kirim', color: 'primary' },
+          'DALAM_PERJALANAN': { text: 'Dalam Perjalanan', color: 'warning' },
+          'SAMPAI_LOKASI': { text: 'Sampai Lokasi', color: 'success' },
+          'SELESAI': { text: 'Selesai', color: 'success' },
+          'DIBATALKAN': { text: 'Dibatalkan', color: 'danger' },
+          // Fallback untuk status lama
+          'SUBMITTED': { text: 'Diajukan', color: 'secondary' },
+          'PROCESSED': { text: 'Diproses', color: 'info' },
+          'SHIPPED': { text: 'Dikirim', color: 'warning' },
+          'DELIVERED': { text: 'Terkirim', color: 'success' },
+          'CANCELLED': { text: 'Dibatalkan', color: 'danger' }
+        };
+        const mapped = statusMap[statusUpper] || { text: status || 'Diajukan', color: 'secondary' };
+        return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+      };
+      
       tr.innerHTML = `
         <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
+        <td>${r.spk_id || '-'}</td>
         <td>${r.po_kontrak_nomor||'-'}</td>
         <td>${r.pelanggan||'-'}</td>
         <td>${r.lokasi||'-'}</td>
-        <td>${r.items_label||'-'}</td>
+        <td class="small">${formatTotalUnits(r)}</td>
+        <td>${r.jenis_perintah || '-'}</td>
+        <td>${r.tujuan_perintah || '-'}</td>
         <td>${r.tanggal_kirim||'-'}</td>
-        <td>${getStatusDisplay(r.status)}</td>
+        <td>${getOperationalStatusDisplay(r)}</td>
+        <td class="small">${formatDriverVehicle(r)}</td>
         <td>${aksiBtn}</td>`;
 
       tb.appendChild(tr);
@@ -588,18 +649,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
         j.items.forEach((unitData, index) => {
           const unitNum = index + 1;
           itemsHtml += `<div class="col-12"><hr></div>`;
-          itemsHtml += `<div class="col-12"><strong>Unit ${unitNum}:</strong> ${unitData.unit_info.label}</div>`;
+          
+          // Format unit info with detailed data: no_unit.model_unit.kapasitas_unit_id.departemen_id
+          const unitInfo = unitData.unit_info || {};
+          const unitLabel = `${unitInfo.no_unit || '-'} • ${unitInfo.model_unit || '-'} • ${unitInfo.kapasitas_unit_nama || unitInfo.kapasitas_unit_id || '-'} • ${unitInfo.departemen_nama || unitInfo.departemen_id || '-'}`;
+          itemsHtml += `<div class="col-12"><strong>Unit ${unitNum}:</strong> ${unitLabel}</div>`;
           
           // Display battery and charger if electric
           if (unitData.unit_info.jenis_power && unitData.unit_info.jenis_power.toLowerCase().includes('electric')) {
             itemsHtml += `<div class="col-12"><strong>Items:</strong><ul class="mb-2">`;
             
             if (unitData.battery) {
-              itemsHtml += `<li><strong>BATTERY</strong> - ${unitData.battery.label}</li>`;
+              // Format battery with detailed info: merk_baterai.tipe_baterai.jenis_baterai
+              const battery = unitData.battery;
+              const batteryLabel = `${battery.merk_baterai || '-'} • ${battery.tipe_baterai || '-'} • ${battery.jenis_baterai || '-'}`;
+              itemsHtml += `<li><strong>BATTERY</strong> - ${batteryLabel}</li>`;
             }
             
             if (unitData.charger) {
-              itemsHtml += `<li><strong>CHARGER</strong> - ${unitData.charger.label}</li>`;
+              // Format charger with detailed info: merk_charger.tipe_charger
+              const charger = unitData.charger;
+              const chargerLabel = `${charger.merk_charger || '-'} • ${charger.tipe_charger || '-'}`;
+              itemsHtml += `<li><strong>CHARGER</strong> - ${chargerLabel}</li>`;
             }
             
             itemsHtml += `</ul></div>`;
@@ -609,7 +680,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
           if (unitData.attachments && unitData.attachments.length > 0) {
             itemsHtml += `<div class="col-12"><strong>Attachments:</strong><ul class="mb-2">`;
             unitData.attachments.forEach(attachment => {
-              itemsHtml += `<li>${attachment.label}</li>`;
+              // Format attachment with detailed info: tipe.merk.model
+              const attachmentLabel = `${attachment.tipe || '-'} • ${attachment.merk || '-'} • ${attachment.model || '-'}`;
+              itemsHtml += `<li>${attachmentLabel}</li>`;
             });
             itemsHtml += `</ul></div>`;
           }
@@ -621,7 +694,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
         itemsHtml += `<div class="col-12"><hr></div>`;
         itemsHtml += `<div class="col-12"><strong>General Attachments:</strong><ul class="mb-0">`;
         j.attachments.forEach(attachment => {
-          itemsHtml += `<li>${attachment.label}</li>`;
+          // Format attachment with detailed info: tipe.merk.model
+          const attachmentLabel = `${attachment.tipe || '-'} • ${attachment.merk || '-'} • ${attachment.model || '-'}`;
+          itemsHtml += `<li>${attachmentLabel}</li>`;
         });
         itemsHtml += `</ul></div>`;
       }

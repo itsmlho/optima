@@ -7,6 +7,7 @@ use CodeIgniter\Router\RouteCollection;
  */
 $routes->get('/', 'Home::index');
 $routes->get('test', 'Test::index');
+$routes->get('test-logging', 'TestLogging::index');
 
 // Authentication Routes
 $routes->group('auth', static function ($routes) {
@@ -119,14 +120,21 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('spk/detail/(:num)', 'Marketing::spkDetail/$1');
     $routes->post('spk/create', 'Marketing::spkCreate');
     $routes->post('spk/update-status/(:num)', 'Marketing::spkUpdateStatus/$1');
+    $routes->post('spk/delete/(:num)', 'Marketing::spkDelete/$1');
     $routes->post('spk/cleanup-zero', 'Marketing::cleanupSpkZero');
+    
     // DI (Delivery Instruction) - Marketing creates
     $routes->post('di/create', 'Marketing::diCreate');
+    $routes->post('di/delete/(:num)', 'Marketing::diDelete/$1');
     // Marketing DI page & APIs
     $routes->get('di', 'Marketing::di');
     $routes->get('di/list', 'Marketing::diList');
     $routes->get('di/detail/(:num)', 'Marketing::diDetail/$1');
     $routes->get('spk/ready-options', 'Marketing::spkReadyOptions');
+    
+    // Workflow API endpoints
+    $routes->get('get-jenis-perintah-kerja', 'Marketing::getJenisPerintahKerja');
+    $routes->get('get-tujuan-perintah-kerja', 'Marketing::getTujuanPerintahKerja');
     
     $routes->get('penawaran', 'Marketing::penawaran');
     // $routes->get('list-unit', 'Marketing::listUnit');
@@ -136,6 +144,15 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('available-units/data', 'Marketing::availableUnitsData');
     $routes->get('unit-detail/(:num)', 'Marketing::unitDetail/$1');
     $routes->get('spk/pdf/(:num)', 'Marketing::spkPdf/$1');
+    
+    // Kontrak routes in marketing
+    $routes->get('kontrak', 'Marketing::kontrak');
+    $routes->get('kontrak/getData', 'Marketing::getData');
+    $routes->post('kontrak/getDataTable', 'Marketing::getDataTable');
+    $routes->post('kontrak/store', 'Marketing::storeKontrak');
+    $routes->get('kontrak/detail/(:num)', 'Marketing::detailKontrak/$1');
+    $routes->post('kontrak/update/(:num)', 'Marketing::updateKontrak/$1');
+    $routes->post('kontrak/delete/(:num)', 'Marketing::deleteKontrak/$1');
 
 });
 
@@ -156,6 +173,7 @@ $routes->group('service', static function ($routes) {
     $routes->get('spk_service', 'Service::spkService');
     $routes->get('spk/list', 'Service::spkList');
     $routes->get('spk/detail/(:num)', 'Service::spkDetail/$1');
+    $routes->get('spk/print/(:num)', 'Service::spkPrint/$1');
     $routes->post('spk/update-status/(:num)', 'Service::spkUpdateStatus/$1');
     $routes->post('spk/approve-stage/(:num)', 'Service::spkApproveStage/$1');
     $routes->post('spk/confirm-ready/(:num)', 'Service::spkConfirmReady/$1');
@@ -178,6 +196,7 @@ $routes->group('operational', static function ($routes) {
     $routes->get('delivery/list', 'Operational::diList');
     $routes->get('delivery/detail/(:num)', 'Operational::diDetail/$1');
     $routes->get('delivery/print/(:num)', 'Operational::diPrint/$1');
+    $routes->get('delivery/print-multi/(:num)', 'Operational::diPrintMulti/$1');
     $routes->post('delivery/update-status/(:num)', 'Operational::diUpdateStatus/$1');
     $routes->post('delivery/approve-stage/(:num)', 'Operational::diApproveStage/$1');
     $routes->get('tracking', 'Operational::tracking');
@@ -377,6 +396,14 @@ $routes->group('admin', static function ($routes) {
     $routes->post('backup', 'Admin::systemBackup');
     $routes->post('restore', 'Admin::systemRestore');
     
+    // Activity Log Routes
+    $routes->get('activity-log', 'ActivityLog::index');
+    $routes->post('activity-log/data', 'ActivityLog::getData');
+    $routes->get('activity-log/details/(:num)', 'ActivityLog::details/$1');
+    $routes->get('activity-log/statistics', 'ActivityLog::statistics');
+    $routes->get('activity-log/export', 'ActivityLog::export');
+    $routes->post('activity-log/clean', 'ActivityLog::clean');
+    
     // User Management Routes - Redirect to Advanced User Management
     $routes->group('users', static function ($routes) {
         $routes->get('/', function() {
@@ -431,6 +458,27 @@ $routes->group('admin', static function ($routes) {
         $routes->get('positions/json', 'Admin\AdvancedUserManagement::getPositionsJson');
         $routes->get('permissions/json', 'Admin\AdvancedUserManagement::getPermissionsJson');
         $routes->get('export/users', 'Admin\AdvancedUserManagement::exportUsers');
+    });
+    
+    // Activity Log Routes
+    $routes->group('activity-log', static function ($routes) {
+        $routes->get('/', 'ActivityLog::index');
+        $routes->post('data', 'ActivityLog::getData');
+        $routes->get('details/(:num)', 'ActivityLog::details/$1');
+        $routes->get('statistics', 'ActivityLog::statistics');
+        $routes->get('export', 'ActivityLog::export');
+        $routes->post('clean', 'ActivityLog::clean');
+    });
+
+    // Activity Monitor Routes (Enhanced monitoring dashboard)
+    $routes->group('activity-monitor', static function ($routes) {
+        $routes->get('/', 'ActivityMonitor::index');
+        $routes->post('data', 'ActivityMonitor::getData');
+        $routes->get('statistics', 'ActivityMonitor::statistics');
+        $routes->get('recent', 'ActivityMonitor::recent');
+        $routes->get('details/(:num)', 'ActivityMonitor::details/$1');
+        $routes->get('export', 'ActivityMonitor::export');
+        $routes->get('health', 'ActivityMonitor::healthCheck');
     });
     
     
@@ -579,6 +627,16 @@ $routes->group('warehouse/inventory', static function($r){
     $r->get('unit-components', 'Warehouse\InventoryApi::getUnitComponents');
     $r->post('replace-component', 'Warehouse\InventoryApi::replaceComponent');
 });
+
+// Test Route for Activity Log
+$routes->get('test-activity-log', 'TestActivityLog::index');
+
+// Activity Log Viewer Routes - DISABLED (using ActivityLog controller instead)
+// $routes->group('admin', static function ($routes) {
+//     $routes->get('activity-log', 'ActivityLogViewer::index');
+//     $routes->post('activity-log/data', 'ActivityLogViewer::getData');
+//     $routes->get('activity-log/details/(:num)', 'ActivityLogViewer::getDetails/$1');
+// });
 
 
 

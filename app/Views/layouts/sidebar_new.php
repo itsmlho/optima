@@ -455,6 +455,17 @@
             </li>
             <?php endif; ?>
 
+            <!-- Activity Log -->
+            <?php if (can_access('admin.activity_log')): ?>
+            <li class="nav-item">
+                <a class="nav-link" href="<?= base_url('/admin/activity-log') ?>"
+                   data-search-terms="activity log aktivitas user audit trail">
+                    <i class="fas fa-history"></i>
+                    <span class="nav-link-text">Activity Log</span>
+                </a>
+            </li>
+            <?php endif; ?>
+
             <!-- Configuration -->
             <?php if (can_access('admin.configuration')): ?>
             <li class="nav-item">

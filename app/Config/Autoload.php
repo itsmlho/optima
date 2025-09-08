@@ -92,6 +92,9 @@ class Autoload extends AutoloadConfig
         // 'permission',
         // 'advanced_permission',
         'auth',
-        'rbac'
+        'rbac',
+        'activity_log',
+        'comprehensive_activity_log',
+        'simple_activity_log'  // Helper baru untuk logging sederhana
     ];
 }

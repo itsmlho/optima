@@ -203,6 +203,9 @@ class Kontrak extends BaseController
 
     public function store()
     {
+        // Load simple logging helper
+        helper('simple_activity_log');
+        
         // Validasi input menggunakan model validation
         $data = [
             'no_kontrak'        => trim((string)$this->request->getPost('contract_number')),
@@ -236,6 +239,9 @@ class Kontrak extends BaseController
                 }
             }
 
+            // Log validation failure menggunakan simple logging
+            log_activity('CREATE', 'kontrak', 0, "GAGAL membuat kontrak {$data['no_po_marketing']} - Validasi error: " . implode(', ', array_keys($errors)), null, $data);
+
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Validasi gagal.',
@@ -252,16 +258,23 @@ class Kontrak extends BaseController
         if (!$insertResult) {
             $errors = $this->kontrakModel->errors();
             $dbError = $this->db->error();
+            $errorMessage = 'Gagal menyimpan data ke database: ' . (is_array($errors) ? implode(', ', $errors) : 'Unknown error') . 
+                           ($dbError && isset($dbError['message']) ? ' | DB Error: ' . $dbError['message'] : '');
+            
+            // Log database failure menggunakan simple logging
+            log_activity('CREATE', 'kontrak', 0, "GAGAL menyimpan kontrak {$data['no_po_marketing']} ke database - Error: {$errorMessage}", null, $data);
             
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Gagal menyimpan data ke database: ' . (is_array($errors) ? implode(', ', $errors) : 'Unknown error') . 
-                           ($dbError && isset($dbError['message']) ? ' | DB Error: ' . $dbError['message'] : ''),
+                'message' => $errorMessage,
                 'csrf_hash' => csrf_hash()
             ]);
         }
 
         $newId = $this->kontrakModel->getInsertID();
+
+        // Log successful creation menggunakan simple logging
+        log_create('kontrak', $newId, "Berhasil membuat kontrak baru: {$data['no_po_marketing']} untuk pelanggan {$data['pelanggan']}", $data);
 
         return $this->response->setJSON([
             'success' => true,
@@ -276,8 +289,13 @@ class Kontrak extends BaseController
      */
     public function update($id)
     {
+        // Debug logging untuk semua input
+        log_message('debug', "=== Kontrak Update START ===");
+        log_message('debug', "Contract ID from URL: $id");
+        log_message('debug', "POST data: " . json_encode($this->request->getPost()));
+        
+        // Validate required fields first
         $rules = [
-            'contract_number' => "required|is_unique[kontrak.no_kontrak,id,$id]",
             'client_name'     => 'required',
             'start_date'      => 'required|valid_date',
             'end_date'        => 'required|valid_date',
@@ -285,6 +303,7 @@ class Kontrak extends BaseController
         ];
 
         if (!$this->validate($rules)) {
+            log_message('debug', "Validation failed: " . json_encode($this->validator->getErrors()));
             return $this->response->setJSON([
                 'success' => false, 
                 'message' => 'Validasi gagal.',
@@ -293,8 +312,54 @@ class Kontrak extends BaseController
             ]);
         }
 
+        // Check for duplicate contract number (exclude current record)
+        $contractNumber = trim($this->request->getPost('contract_number'));
+        if (empty($contractNumber)) {
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'Nomor kontrak harus diisi.',
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+
+        // Debug logging
+        log_message('debug', "Update kontrak ID: $id, Contract Number: $contractNumber");
+        
+        // Cast ID to integer to ensure proper comparison
+        $contractId = (int) $id;
+        
+        // Debug: Let's see the exact query being executed
+        log_message('debug', "Searching for contracts with no_kontrak='$contractNumber' AND id != $contractId");
+        
+        $existing = $this->kontrakModel
+            ->where('no_kontrak', $contractNumber)
+            ->where('id !=', $contractId)
+            ->first();
+
+        log_message('debug', "Existing contract found: " . ($existing ? 'YES' : 'NO'));
+        if ($existing) {
+            log_message('debug', "Existing contract ID: " . (is_array($existing) ? $existing['id'] : $existing->id));
+        }
+
+        if ($existing) {
+            // Debug: Mari kita lihat apa isi dari existing record
+            $existingArray = is_array($existing) ? $existing : $existing->toArray();
+            log_message('debug', "Existing record: " . json_encode($existingArray));
+            
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => "Nomor kontrak '$contractNumber' sudah digunakan oleh kontrak lain (ID: " . (is_array($existing) ? $existing['id'] : $existing->id) . "). Current edit ID: $contractId",
+                'debug_info' => [
+                    'current_id' => $contractId,
+                    'existing_id' => is_array($existing) ? $existing['id'] : $existing->id,
+                    'contract_number' => $contractNumber
+                ],
+                'csrf_hash' => csrf_hash(),
+            ]);
+        }
+
         $data = [
-            'no_kontrak'        => $this->request->getPost('contract_number'),
+            'no_kontrak'        => $contractNumber,
             'no_po_marketing'   => $this->request->getPost('po_number'),
             'pelanggan'         => $this->request->getPost('client_name'),
             'pic'               => $this->request->getPost('pic') ?: null,
@@ -305,15 +370,22 @@ class Kontrak extends BaseController
             'tanggal_mulai'     => $this->request->getPost('start_date'),
             'tanggal_berakhir'  => $this->request->getPost('end_date'),
             'status'            => $this->request->getPost('status'),
+            'jenis_sewa'        => $this->request->getPost('jenis_sewa') ?: 'BULANAN',
+            'catatan'           => $this->request->getPost('catatan'),
         ];
 
-        if ($this->kontrakModel->update($id, $data)) {
+        // Disable model validation temporarily for update to avoid is_unique conflict
+        $this->kontrakModel->skipValidation(true);
+        
+        if ($this->kontrakModel->update($contractId, $data)) {
+            log_message('debug', "Kontrak updated successfully");
             return $this->response->setJSON([
                 'success' => true, 
                 'message' => 'Kontrak berhasil diperbarui.',
                 'csrf_hash' => csrf_hash(),
             ]);
         } else {
+            log_message('debug', "Kontrak update failed: " . json_encode($this->kontrakModel->errors()));
             return $this->response->setJSON([
                 'success' => false, 
                 'message' => 'Gagal memperbarui data: ' . implode(', ', $this->kontrakModel->errors()),
@@ -501,20 +573,27 @@ class Kontrak extends BaseController
                 ]);
             }
             
-            // Query dengan foreign key yang benar - simplified untuk debugging
+            // Query dengan JOIN untuk mendapatkan data yang lebih lengkap
             $query = "
                 SELECT 
                     iu.id_inventory_unit,
                     iu.no_unit,
-                    'N/A' as merk,
-                    'N/A' as model,
-                    'N/A' as kapasitas,
-                    'N/A' as jenis_unit,
-                    'N/A' as departemen,
-                    'TERSEDIA' as status,
+                    COALESCE(mu.merk_unit, 'N/A') as merk,
+                    COALESCE(mu.model_unit, 'N/A') as model,
+                    COALESCE(k.kapasitas_unit, 'N/A') as kapasitas,
+                    COALESCE(CONCAT(tu.tipe, ' ', tu.jenis), 'N/A') as jenis_unit,
+                    COALESCE(d.nama_departemen, 'N/A') as departemen,
+                    COALESCE(su.status_unit, 'TERSEDIA') as status,
                     iu.status_unit_id,
-                    iu.kontrak_id
+                    iu.kontrak_id,
+                    iu.harga_sewa_bulanan,
+                    iu.harga_sewa_harian
                 FROM inventory_unit iu
+                LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
+                LEFT JOIN kapasitas k ON iu.kapasitas_unit_id = k.id_kapasitas
+                LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
+                LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
+                LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
                 WHERE iu.kontrak_id = ?
                 ORDER BY iu.no_unit ASC
             ";
@@ -524,7 +603,16 @@ class Kontrak extends BaseController
             
             // Format response
             $formattedUnits = [];
+            $totalHargaBulanan = 0;
+            $totalHargaHarian = 0;
+            
             foreach ($units as $unit) {
+                $hargaBulanan = (float)($unit['harga_sewa_bulanan'] ?? 0);
+                $hargaHarian = (float)($unit['harga_sewa_harian'] ?? 0);
+                
+                $totalHargaBulanan += $hargaBulanan;
+                $totalHargaHarian += $hargaHarian;
+                
                 $formattedUnits[] = [
                     'id' => $unit['id_inventory_unit'],
                     'no_unit' => $unit['no_unit'] ?: '-',
@@ -533,13 +621,36 @@ class Kontrak extends BaseController
                     'kapasitas' => $unit['kapasitas'],
                     'jenis_unit' => $unit['jenis_unit'],
                     'departemen' => $unit['departemen'],
-                    'status' => $unit['status']
+                    'status' => $unit['status'],
+                    'harga_per_unit_bulanan' => $hargaBulanan,
+                    'harga_per_unit_harian' => $hargaHarian
                 ];
             }
+            
+            // Get summary data from kontrak_spesifikasi
+            $summaryQuery = "
+                SELECT 
+                    COUNT(*) as total_spesifikasi,
+                    COALESCE(SUM(jumlah_dibutuhkan), 0) as total_unit_dibutuhkan,
+                    COALESCE(SUM(harga_per_unit_bulanan * jumlah_dibutuhkan), 0) as total_nilai_bulanan,
+                    COALESCE(SUM(harga_per_unit_harian * jumlah_dibutuhkan), 0) as total_nilai_harian
+                FROM kontrak_spesifikasi
+                WHERE kontrak_id = ?
+            ";
+            
+            $summaryResult = $this->db->query($summaryQuery, [$kontrakId]);
+            $summary = $summaryResult->getRowArray();
             
             return $this->response->setJSON([
                 'success' => true,
                 'data' => $formattedUnits,
+                'summary' => [
+                    'total_spesifikasi' => (int)($summary['total_spesifikasi'] ?? 0),
+                    'total_unit_dibutuhkan' => (int)($summary['total_unit_dibutuhkan'] ?? 0),
+                    'total_nilai_bulanan' => (float)($summary['total_nilai_bulanan'] ?? 0),
+                    'total_nilai_harian' => (float)($summary['total_nilai_harian'] ?? 0),
+                    'unit_tersedia' => count($formattedUnits)
+                ],
                 'total' => count($formattedUnits),
                 'kontrak_id' => $kontrakId,
                 'kontrak_number' => $kontrak['no_kontrak']
@@ -1166,7 +1277,7 @@ class Kontrak extends BaseController
     }
 
     /**
-     * Assign units to specification
+     * Assign units to specification with complete workflow data transfer
      */
     public function assignUnitsToSpesifikasi()
     {
@@ -1189,7 +1300,12 @@ class Kontrak extends BaseController
                 ]);
             }
 
-            $kontrak = $this->kontrakModel->find($spesifikasi->kontrak_id);
+            // Convert object to array if needed
+            if (is_object($spesifikasi)) {
+                $spesifikasi = $spesifikasi->toArray();
+            }
+
+            $kontrak = $this->kontrakModel->find($spesifikasi['kontrak_id']);
             if (!$kontrak) {
                 return $this->response->setJSON([
                     'success' => false,
@@ -1197,35 +1313,32 @@ class Kontrak extends BaseController
                 ]);
             }
 
-            $this->db->transStart();
-
-            $successCount = 0;
-            foreach ($unitIds as $unitId) {
-                $updateData = [
-                    'kontrak_id' => $spesifikasi->kontrak_id,
-                    'kontrak_spesifikasi_id' => $spesifikasiId,
-                    'status_unit_id' => 3, // RENTAL
-                    'harga_sewa_bulanan' => $spesifikasi->harga_per_unit_bulanan,
-                    'harga_sewa_harian' => $spesifikasi->harga_per_unit_harian
-                ];
-
-                if ($this->inventoryUnitModel->update($unitId, $updateData)) {
-                    $successCount++;
-                }
+            // Convert kontrak object to array if needed
+            if (is_object($kontrak)) {
+                $kontrak = $kontrak->toArray();
             }
 
-            $this->db->transComplete();
+            // Use the enhanced assignUnits method with automatic price transfer
+            $result = $this->kontrakSpesifikasiModel->assignUnits($spesifikasiId, $unitIds);
 
-            if ($this->db->transStatus() === false) {
+            if (!$result) {
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Gagal mengassign unit ke spesifikasi'
                 ]);
             }
 
+            $successCount = count($unitIds);
+
             return $this->response->setJSON([
                 'success' => true,
-                'message' => "{$successCount} unit berhasil di-assign ke spesifikasi {$spesifikasi->spek_kode}"
+                'message' => "{$successCount} unit berhasil di-assign ke spesifikasi {$spesifikasi['spek_kode']} dengan harga Rp " . number_format($spesifikasi['harga_per_unit_bulanan'], 0, ',', '.') . "/bulan",
+                'data' => [
+                    'assigned_count' => $successCount,
+                    'harga_bulanan' => $spesifikasi['harga_per_unit_bulanan'],
+                    'harga_harian' => $spesifikasi['harga_per_unit_harian'],
+                    'lokasi_pelanggan' => $kontrak['pelanggan']
+                ]
             ]);
 
         } catch (\Exception $e) {

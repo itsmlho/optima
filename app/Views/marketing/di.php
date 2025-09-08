@@ -42,12 +42,12 @@
     </div>
   </div>
   <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="DIAJUKAN" style="cursor:pointer;">
+    <div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="DIRENCANAKAN" style="cursor:pointer;">
       <div class="card-body d-flex align-items-center">
         <div class="flex-grow-1">
           <h2 class="fw-bold mb-1" id="submittedDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">PENDING</h6>
-          <small class="opacity-75">Diajukan</small>
+          <h6 class="card-title text-uppercase small mb-0">DIRENCANAKAN</h6>
+          <small class="opacity-75">Belum Dikerjakan</small>
         </div>
         <div class="ms-3">
           <i class="fas fa-clock fa-2x opacity-75"></i>
@@ -56,12 +56,12 @@
     </div>
   </div>
   <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-info text-white h-100 filter-card" data-filter="INPROGRESS" style="cursor:pointer;">
+    <div class="card card-stats bg-info text-white h-100 filter-card" data-filter="DALAM_PERJALANAN" style="cursor:pointer;">
       <div class="card-body d-flex align-items-center">
         <div class="flex-grow-1">
           <h2 class="fw-bold mb-1" id="inprogressDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">IN PROGRESS</h6>
-          <small class="opacity-75">Processed + Shipped</small>
+          <h6 class="card-title text-uppercase small mb-0">DALAM PERJALANAN</h6>
+          <small class="opacity-75">Tim di Lapangan</small>
         </div>
         <div class="ms-3">
           <i class="fas fa-shipping-fast fa-2x opacity-75"></i>
@@ -70,12 +70,12 @@
     </div>
   </div>
   <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-success text-white h-100 filter-card" data-filter="SAMPAI" style="cursor:pointer;">
+    <div class="card card-stats bg-success text-white h-100 filter-card" data-filter="SELESAI" style="cursor:pointer;">
       <div class="card-body d-flex align-items-center">
         <div class="flex-grow-1">
           <h2 class="fw-bold mb-1" id="deliveredDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">COMPLETED</h6>
-          <small class="opacity-75">Sampai</small>
+          <h6 class="card-title text-uppercase small mb-0">SELESAI</h6>
+          <small class="opacity-75">Tugas Completed</small>
         </div>
         <div class="ms-3">
           <i class="fas fa-check-circle fa-2x opacity-75"></i>
@@ -119,11 +119,12 @@
               <th>No. DI</th>
               <th>No. SPK</th>
               <th>PO/Kontrak</th>
-              <th>Nama Perusahaan</th>
-              <th>PIC</th>
-              <th>Kontak</th>
+              <th>Pelanggan</th>
               <th>Lokasi</th>
-              <th>Tanggal Kirim</th>
+              <th>Total Unit</th>
+              <th>Jenis Perintah</th>
+              <th>Tujuan Perintah</th>
+              <th>Req. Tanggal Kirim</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -154,6 +155,26 @@
               <select class="form-select mt-2" id="spkPick" name="spk_id" required></select>
               <div class="form-text">Hanya SPK dengan status READY yang bisa dibuat DI.</div>
             </div>
+            
+            <!-- FIELD WORKFLOW: Jenis Perintah, Tujuan Perintah -->
+            <div class="row g-2 mb-3">
+              <div class="col-md-6">
+                <label class="form-label">Jenis Perintah Kerja <span class="text-danger">*</span></label>
+                <select class="form-select" name="jenis_perintah_kerja_id" id="jenisPerintahSelect" required>
+                  <option value="">-- Pilih Jenis Perintah --</option>
+                  <!-- Options will be loaded dynamically -->
+                </select>
+                <div class="form-text">Tentukan aksi utama yang akan dilakukan</div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Tujuan Perintah <span class="text-danger">*</span></label>
+                <select class="form-select" name="tujuan_perintah_kerja_id" id="tujuanPerintahSelect" required disabled>
+                  <option value="">-- Pilih Jenis Perintah dulu --</option>
+                </select>
+                <div class="form-text">Alasan/konteks dari perintah kerja ini</div>
+              </div>
+            </div>
+            
             <div id="diUnitsSection" style="display:none;" class="mb-3">
               <label class="form-label">Pilih Unit yang akan dikirim</label>
               <div class="d-flex justify-content-between align-items-center mb-1">
@@ -185,9 +206,214 @@ let filteredDIData = [];
 let currentFilter = 'all';
 let currentPage = 1;
 let entriesPerPage = 10;
+let currentDiId = null; // Store current DI ID for edit/delete operations
 
 document.addEventListener('DOMContentLoaded', ()=>{
   const tb = document.querySelector('#diTable tbody');
+  
+  // =====================================================
+  // WORKFLOW BARU: DYNAMIC DROPDOWN SYSTEM FROM DATABASE
+  // =====================================================
+  
+  // Load workflow options from database
+  let jenisPerintahOptions = [];
+  let workflowMapping = {};
+  
+  // Load jenis perintah from API
+  async function loadJenisPerintahOptions() {
+    try {
+      const response = await fetch('<?= base_url('marketing/get-jenis-perintah-kerja') ?>', {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/json'
+        }
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        jenisPerintahOptions = result.data;
+        populateJenisPerintahDropdown();
+        console.log('Loaded', result.data.length, 'jenis perintah options');
+      } else {
+        console.error('Failed to load jenis perintah options:', result.message);
+      }
+    } catch (error) {
+      console.error('Error loading jenis perintah options:', error);
+    }
+  }
+  
+  // Populate jenis perintah dropdown
+  function populateJenisPerintahDropdown() {
+    const jenisSelect = document.getElementById('jenisPerintahSelect');
+    const editJenisSelect = document.getElementById('editJenisPerintah');
+    
+    if (jenisSelect) {
+      jenisSelect.innerHTML = '<option value="">-- Pilih Jenis Perintah Kerja --</option>';
+      jenisPerintahOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.id;
+        optionElement.textContent = `${option.kode} - ${option.nama}`;
+        optionElement.title = option.deskripsi;
+        jenisSelect.appendChild(optionElement);
+      });
+      console.log('Populated jenisPerintahSelect with', jenisPerintahOptions.length, 'options');
+    }
+    
+    if (editJenisSelect) {
+      editJenisSelect.innerHTML = '<option value="">-- Pilih Jenis Perintah Kerja --</option>';
+      jenisPerintahOptions.forEach(option => {
+        const optionElement = document.createElement('option');
+        optionElement.value = option.id;
+        optionElement.textContent = `${option.kode} - ${option.nama}`;
+        optionElement.title = option.deskripsi;
+        editJenisSelect.appendChild(optionElement);
+      });
+    }
+  }
+  
+  // Load tujuan perintah based on jenis
+  async function loadTujuanPerintahOptions(jenisId, targetSelectId) {
+    try {
+      const response = await fetch(`<?= base_url('marketing/get-tujuan-perintah-kerja') ?>?jenis_id=${jenisId}`, {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Content-Type': 'application/json'
+        }
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        const tujuanSelect = document.getElementById(targetSelectId);
+        if (tujuanSelect) {
+          tujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
+          tujuanSelect.disabled = false;
+          
+          result.data.forEach(option => {
+            const optionElement = document.createElement('option');
+            optionElement.value = option.id;
+            optionElement.textContent = `${option.kode} - ${option.nama}`;
+            optionElement.title = option.deskripsi;
+            tujuanSelect.appendChild(optionElement);
+          });
+        }
+      } else {
+        console.error('Failed to load tujuan perintah options:', result.message);
+      }
+    } catch (error) {
+      console.error('Error loading tujuan perintah options:', error);
+    }
+  }
+  
+  // Setup dynamic dropdown untuk form create
+  function setupWorkflowDropdowns() {
+    const jenisSelect = document.getElementById('jenisPerintahSelect');
+    const tujuanSelect = document.getElementById('tujuanPerintahSelect');
+    
+    if (!jenisSelect || !tujuanSelect) return;
+    
+    jenisSelect.addEventListener('change', function() {
+      const jenisValue = this.value;
+      
+      // Reset tujuan dropdown
+      tujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
+      tujuanSelect.disabled = true;
+      
+      if (jenisValue) {
+        // Load tujuan options from API
+        loadTujuanPerintahOptions(jenisValue, 'tujuanPerintahSelect');
+      }
+      
+      // Trigger validation
+      validateWorkflowForm();
+    });
+    
+    tujuanSelect.addEventListener('change', validateWorkflowForm);
+  }
+  
+  // Setup dropdown untuk edit form
+  function setupEditWorkflowDropdowns() {
+    const editJenisSelect = document.getElementById('editJenisPerintah');
+    const editTujuanSelect = document.getElementById('editTujuanPerintah');
+    
+    if (!editJenisSelect || !editTujuanSelect) return;
+    
+    editJenisSelect.addEventListener('change', function() {
+      const jenisValue = this.value;
+      
+      // Reset tujuan dropdown
+      editTujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
+      editTujuanSelect.disabled = true;
+      
+      if (jenisValue) {
+        // Load tujuan options from API
+        loadTujuanPerintahOptions(jenisValue, 'editTujuanPerintah');
+      }
+    });
+  }
+  
+  // Validasi form workflow
+  function validateWorkflowForm() {
+    const jenisSelect = document.getElementById('jenisPerintahSelect');
+    const tujuanSelect = document.getElementById('tujuanPerintahSelect');
+    const submitBtn = document.querySelector('#diCreateForm [type="submit"]');
+    
+    if (!jenisSelect || !tujuanSelect || !submitBtn) return;
+    
+    const jenisValid = jenisSelect.value !== '';
+    const tujuanValid = tujuanSelect.value !== '';
+    const isValid = jenisValid && tujuanValid;
+    
+    // Visual feedback
+    jenisSelect.classList.toggle('is-invalid', !jenisValid && jenisSelect.value !== '');
+    jenisSelect.classList.toggle('is-valid', jenisValid);
+    
+    tujuanSelect.classList.toggle('is-invalid', !tujuanValid && tujuanSelect.value !== '');
+    tujuanSelect.classList.toggle('is-valid', tujuanValid);
+    
+    // Enable/disable submit button
+    submitBtn.disabled = !isValid;
+  }
+  
+  // Initialize workflow dropdowns and load data
+  setupWorkflowDropdowns();
+  setupEditWorkflowDropdowns();
+  
+  // Load dropdown data when modal is shown
+  document.getElementById('diCreateModal').addEventListener('shown.bs.modal', function() {
+    console.log('DI Create Modal shown, loading dropdown data...');
+    loadJenisPerintahOptions();
+  });
+  
+  // Also load on page load as backup
+  loadJenisPerintahOptions();
+  
+  // Reset form saat modal ditutup
+  document.getElementById('diCreateModal').addEventListener('hidden.bs.modal', function() {
+    const form = document.getElementById('diCreateForm');
+    if (form) {
+      form.reset();
+      form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+        el.classList.remove('is-valid', 'is-invalid');
+      });
+      
+      // Reset tujuan dropdown
+      const tujuanSelect = document.getElementById('tujuanPerintahSelect');
+      if (tujuanSelect) {
+        tujuanSelect.innerHTML = '<option value="">-- Pilih Jenis Perintah dulu --</option>';
+        tujuanSelect.disabled = true;
+      }
+      
+      // Reset submit button
+      const submitBtn = form.querySelector('[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+    }
+  });
+  
+  // =====================================================
+  // END WORKFLOW BARU
+  // =====================================================
   
   function loadDI(){
     fetch('<?= base_url('marketing/di/list') ?>').then(r=>r.json()).then(j=>{
@@ -199,53 +425,63 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   function updateStatistics() {
     const total = allDIData.length;
-    // Count by English status values from database (not Indonesian)
-    const submitted = allDIData.filter(item => {
+    
+    // Update statistik menggunakan status utama (setelah optimasi)
+    const direncanakan = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return !item.status || status === 'SUBMITTED';
+      return status === 'DIAJUKAN' || status === 'SUBMITTED';
     }).length;
-    const inprogress = allDIData.filter(item => {
+    
+    const persiapanUnit = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return status === 'PROCESSED' || 
-             status === 'SHIPPED';
+      return status === 'DISETUJUI' || status === 'PERSIAPAN_UNIT' || status === 'SIAP_KIRIM';
     }).length;
-    const delivered = allDIData.filter(item => {
+    
+    const dalamPerjalanan = allDIData.filter(item => {
       const status = (item.status || '').toUpperCase();
-      return status === 'DELIVERED';
+      return status === 'DALAM_PERJALANAN' || status === 'SHIPPED';
+    }).length;
+    
+    const selesai = allDIData.filter(item => {
+      const status = (item.status || '').toUpperCase();
+      return status === 'SELESAI' || status === 'SAMPAI_LOKASI' || status === 'DELIVERED';
     }).length;
     
     document.getElementById('totalDI').textContent = total;
-    document.getElementById('submittedDI').textContent = submitted;
-    document.getElementById('inprogressDI').textContent = inprogress;
-    document.getElementById('deliveredDI').textContent = delivered;
+    document.getElementById('submittedDI').textContent = direncanakan;
+    document.getElementById('inprogressDI').textContent = dalamPerjalanan;
+    document.getElementById('deliveredDI').textContent = selesai;
   }
   
   function applyFilters() {
     const searchTerm = document.getElementById('diSearch').value.toLowerCase();
     
-    // Filter by status using Indonesian status values from database
+    // Filter berdasarkan status utama (setelah optimasi)
     let filtered;
     if (currentFilter === 'all') {
       filtered = [...allDIData];
-    } else if (currentFilter === 'DIAJUKAN') {
+    } else if (currentFilter === 'DIRENCANAKAN') {
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return !item.status || status === 'DIAJUKAN';
+        return status === 'DIAJUKAN' || status === 'SUBMITTED';
       });
-    } else if (currentFilter === 'INPROGRESS') {
-      // Group Diproses + Dikirim as "In Progress"
+    } else if (currentFilter === 'DALAM_PERJALANAN') {
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return status === 'DIPROSES' ||
-               status === 'DIKIRIM';
+        return status === 'DALAM_PERJALANAN' || status === 'SHIPPED';
       });
-    } else if (currentFilter === 'SAMPAI') {
+    } else if (currentFilter === 'SELESAI') {
       filtered = allDIData.filter(item => {
         const status = (item.status || '').toUpperCase();
-        return status === 'SAMPAI';
+        return status === 'SELESAI' || status === 'SAMPAI_LOKASI' || status === 'DELIVERED';
+      });
+    } else if (currentFilter === 'DIBATALKAN') {
+      filtered = allDIData.filter(item => {
+        const status = (item.status || '').toUpperCase();
+        return status === 'DIBATALKAN' || status === 'CANCELLED';
       });
     } else {
-      // Legacy filter - exact match for backward compatibility
+      // Exact match untuk filter status spesifik
       filtered = allDIData.filter(item => (item.status || '').toUpperCase() === currentFilter);
     }
     
@@ -256,6 +492,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
                (item.spk_id || '').toLowerCase().includes(searchTerm) ||
                (item.po_kontrak_nomor || '').toLowerCase().includes(searchTerm) ||
                (item.pelanggan || '').toLowerCase().includes(searchTerm) ||
+               (item.jenis_perintah || '').toLowerCase().includes(searchTerm) ||
+               (item.tujuan_perintah || '').toLowerCase().includes(searchTerm) ||
                (item.spk_pic || '').toLowerCase().includes(searchTerm) ||
                (item.lokasi || '').toLowerCase().includes(searchTerm);
       });
@@ -289,14 +527,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
         return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
       };
       
+      // Function to format total units display
+      const formatTotalUnits = (r) => {
+        // Prioritas: tampilkan unit jika ada, jika tidak ada unit maka tampilkan attachment
+        if (r.total_units && r.total_units > 0) {
+          return `<span class="badge bg-primary">${r.total_units} Unit</span>`;
+        } else if (r.total_attachments && r.total_attachments > 0) {
+          return `<span class="badge bg-warning">${r.total_attachments} Attachment</span>`;
+        } else {
+          return '<span class="badge bg-secondary">0</span>';
+        }
+      };
+      
       tr.innerHTML = `
         <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
         <td>${r.spk_id || '-'}</td>
         <td>${r.po_kontrak_nomor||'-'}</td>
         <td>${r.pelanggan||'-'}</td>
-        <td>${r.spk_pic||'-'}</td>
-        <td>${r.spk_kontak||'-'}</td>
         <td>${r.lokasi||'-'}</td>
+        <td><span class="text-muted small">${formatTotalUnits(r)}</span></td>
+        <td>${r.jenis_perintah || '-'}</td>
+        <td>${r.tujuan_perintah || '-'}</td>
         <td>${r.tanggal_kirim||'-'}</td>
         <td>${getStatusDisplay(r.status)}</td>`;
       tb.appendChild(tr);
@@ -374,6 +625,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   loadDI();
 
   window.openDiDetail = (id) => {
+    currentDiId = id; // Store current DI ID
     const modal = new bootstrap.Modal(document.getElementById('diDetailModal'));
     const body = document.getElementById('diDetailBody');
     body.innerHTML = '<p class="text-muted">Memuat...</p>';
@@ -388,9 +640,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <div class="col-6"><strong>PO/Kontrak:</strong> ${d.po_kontrak_nomor||'-'}</div>
           <div class="col-6"><strong>Tanggal Kirim:</strong> ${d.tanggal_kirim||'-'}</div>
           <div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>
-          <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>
-          <div class="col-6"><strong>Kontak:</strong> ${spk.kontak||'-'}</div>
+          <div class="col-6"><strong>PIC:</strong> ${d.pic||spk.pic||'-'}</div>
+          <div class="col-6"><strong>Kontak:</strong> ${d.kontak||spk.kontak||'-'}</div>
           <div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
+          <div class="col-6"><strong>Jenis Perintah:</strong> ${d.jenis_perintah||'-'}</div>
+          <div class="col-6"><strong>Tujuan Perintah:</strong> ${d.tujuan_perintah||'-'}</div>
           <div class="col-12"><hr></div>
           <div class="col-12"><strong>SPK Terkait:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
           <div class="col-12"><strong>Items:</strong><br>${itemsHtml}</div>
@@ -508,6 +762,152 @@ document.addEventListener('DOMContentLoaded', ()=>{
         alert('Network error: ' + error.message);
       });
   });
+  
+  // PERBAIKAN: Event listener untuk form edit DI
+  document.getElementById('diEditForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const diId = document.getElementById('editDiId').value;
+    
+    console.log('DI Edit Form Data:');
+    for (let [key, value] of fd.entries()) {
+      console.log(`  ${key}: ${value}`);
+    }
+    
+    fetch(`<?= base_url('marketing/di/update/') ?>${diId}`, {
+      method: 'PUT',
+      headers: {'X-Requested-With': 'XMLHttpRequest'},
+      body: fd
+    }).then(r => r.json()).then(j => {
+      console.log('DI Edit Response:', j);
+      if (j && j.success) {
+        bootstrap.Modal.getInstance(document.getElementById('diEditModal')).hide();
+        loadDI(); // Reload data
+        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI berhasil diperbarui', 'success');
+        else alert('DI berhasil diperbarui');
+      } else {
+        alert(j.message || 'Gagal memperbarui DI');
+      }
+    }).catch(error => {
+      console.error('DI Edit Error:', error);
+      alert('Network error: ' + error.message);
+    });
+  });
+  
+  // PERBAIKAN: Tambah function untuk edit dan delete DI
+  window.editDI = function(diId) {
+    // Load data DI yang akan diedit
+    fetch(`<?= base_url('marketing/di/detail/') ?>${diId}`)
+      .then(r => r.json()).then(j => {
+        if (j && j.success) {
+          const data = j.data || {};
+          
+          // Populate form edit
+          document.getElementById('editDiId').value = diId;
+          document.getElementById('editJenisPerintah').value = data.jenis_perintah || '';
+          document.getElementById('editTujuanPerintah').value = data.tujuan_perintah || '';
+          document.getElementById('editTanggalKirim').value = data.tanggal_kirim || '';
+          document.getElementById('editCatatan').value = data.catatan || '';
+          
+          // PERBAIKAN: Display status eksekusi dengan badge, bukan input
+          const statusEksekusi = data.status_eksekusi || 'READY';
+          const statusDisplay = document.getElementById('editStatusEksekusiDisplay');
+          const statusMap = {
+            'READY': { text: 'Ready', color: 'primary' },
+            'DISPATCHED': { text: 'Dispatched', color: 'warning' },
+            'DELIVERED': { text: 'Delivered', color: 'success' },
+            'CANCELLED': { text: 'Cancelled', color: 'danger' }
+          };
+          const mapped = statusMap[statusEksekusi] || { text: statusEksekusi, color: 'secondary' };
+          statusDisplay.className = `badge bg-${mapped.color}`;
+          statusDisplay.textContent = mapped.text;
+          
+          // Show modal
+          new bootstrap.Modal(document.getElementById('diEditModal')).show();
+        } else {
+          alert('Gagal memuat data DI untuk diedit');
+        }
+      }).catch(error => {
+        console.error('Edit DI Load Error:', error);
+        alert('Error loading DI data: ' + error.message);
+      });
+  };
+  
+  window.deleteDI = function(diId) {
+    if (!confirm('Apakah Anda yakin ingin menghapus DI ini?')) return;
+    
+    fetch(`<?= base_url('marketing/di/delete/') ?>${diId}`, {
+      method: 'POST',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': '<?= csrf_hash() ?>'
+      }
+    }).then(r => r.json()).then(j => {
+      if (j && j.success) {
+        loadDI(); // Reload data
+        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI berhasil dihapus', 'success');
+        else alert('DI berhasil dihapus');
+      } else {
+        alert(j.message || 'Gagal menghapus DI');
+      }
+    }).catch(error => {
+      console.error('Delete DI Error:', error);
+      alert('Network error: ' + error.message);
+    });
+  };
+  
+  // Edit DI from detail modal
+  window.editDiFromDetail = function() {
+    if (!currentDiId) {
+      alert('DI ID tidak ditemukan');
+      return;
+    }
+    
+    // Close detail modal first
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('diDetailModal'));
+    if (detailModal) detailModal.hide();
+    
+    // Call existing edit function
+    editDI(currentDiId);
+  };
+  
+  // Delete DI from detail modal with double confirmation
+  window.deleteDiFromDetail = function() {
+    if (!currentDiId) {
+      alert('DI ID tidak ditemukan');
+      return;
+    }
+    
+    // First confirmation
+    if (!confirm('Apakah Anda yakin ingin menghapus DI ini?')) {
+      return;
+    }
+    
+    // Second confirmation
+    if (!confirm('PERINGATAN: Tindakan ini tidak dapat dibatalkan!\n\nApakah Anda benar-benar yakin ingin menghapus DI ini?')) {
+      return;
+    }
+    
+    // Close detail modal first
+    const detailModal = bootstrap.Modal.getInstance(document.getElementById('diDetailModal'));
+    if (detailModal) detailModal.hide();
+    
+    // Call existing delete function
+    deleteDI(currentDiId);
+  };
+  
+  // Print DI from detail modal
+  window.printDiFromDetail = function() {
+    if (!currentDiId) {
+      alert('DI ID tidak ditemukan');
+      return;
+    }
+    
+    // Open print DI in new tab (not popup window)
+    const printUrl = `<?= base_url('operational/delivery/print/') ?>${currentDiId}`;
+    window.open(printUrl, '_blank');
+  };
 });
 </script>
 <!-- DI Detail Modal -->
@@ -516,8 +916,76 @@ document.addEventListener('DOMContentLoaded', ()=>{
     <div class="modal-content">
       <div class="modal-header"><h6 class="modal-title">Detail Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Memuat...</p></div></div>
-      <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button></div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" id="btnPrintDi" onclick="printDiFromDetail()">
+          <i class="fas fa-print"></i> Print PDF
+        </button>
+        <button class="btn btn-warning" id="btnEditDi" onclick="editDiFromDetail()">
+          <i class="fas fa-edit"></i> Edit
+        </button>
+        <button class="btn btn-danger" id="btnDeleteDi" onclick="deleteDiFromDetail()">
+          <i class="fas fa-trash"></i> Delete
+        </button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- Edit DI Modal -->
+<div class="modal fade" id="diEditModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h6 class="modal-title">Edit Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <form id="diEditForm">
+        <input type="hidden" id="editDiId" name="id">
+        <div class="modal-body">
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Jenis Perintah <span class="text-danger">*</span></label>
+              <select class="form-select" id="editJenisPerintah" name="jenis_perintah" required>
+                <option value="">- Pilih Jenis Perintah -</option>
+                <!-- Options will be loaded from API -->
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Tujuan Perintah <span class="text-danger">*</span></label>
+              <select class="form-select" id="editTujuanPerintah" name="tujuan_perintah" required disabled>
+                <option value="">- Pilih Jenis Perintah dulu -</option>
+                <!-- Options will be loaded from API based on jenis -->
+              </select>
+            </div>
+          </div>
+          
+          <!-- PERBAIKAN: Status Eksekusi sebagai display only, bukan input -->
+          <div class="mb-3">
+            <label class="form-label">Status Eksekusi</label>
+            <div class="card bg-light">
+              <div class="card-body py-2">
+                <span id="editStatusEksekusiDisplay" class="badge bg-primary">READY</span>
+                <small class="text-muted ms-2">Status diatur oleh sistem berdasarkan workflow</small>
+              </div>
+            </div>
+          </div>
+          
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">Tanggal Kirim</label>
+              <input type="date" class="form-control" id="editTanggalKirim" name="tanggal_kirim">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Catatan</label>
+              <input type="text" class="form-control" id="editCatatan" name="catatan" placeholder="Opsional">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button class="btn btn-primary" type="submit">Update DI</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <?= $this->endSection() ?>

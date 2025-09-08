@@ -14,6 +14,32 @@
         transform: translateY(-5px); 
         box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
     }
+    
+    /* DI Form Styling */
+    .form-label .text-danger {
+        font-size: 0.875em;
+    }
+    
+    .form-control.is-valid, .form-select.is-valid {
+        border-color: #198754;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='m2.3 6.73.98-.97-.97-.97 1.378-1.38.97.97 2.564-2.565 1.378 1.378-3.942 3.942L2.3 6.73z'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem 1rem;
+    }
+    
+    .form-control.is-invalid, .form-select.is-invalid {
+        border-color: #dc3545;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 0.4 0.4 0.4-0.4M5.8 7.4 6.2 7 6.6 7.4'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: right 0.75rem center;
+        background-size: 1rem 1rem;
+    }
+    
+    .btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
 </style>
 <?= $this->endSection() ?>
 
@@ -32,7 +58,6 @@
             <h5 class="h5 mb-0 text-gray-800">Daftar SPK</h5>
             <div class="d-flex gap-2 align-items-center">
                 <a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/tracking') ?>">Tracking</a>
-                <button class="btn btn-warning btn-sm" id="cleanupSpkZeroBtn" title="Hapus SPK dengan ID = 0">🧹 Cleanup SPK ID=0</button>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#spkModal">Buat SPK</button>
             </div>
         </div>
@@ -194,6 +219,26 @@
                         <div class="mb-2"><label class="form-label">Kontrak/PO</label><input class="form-control" id="diPoNo" readonly></div>
                         <div class="mb-2"><label class="form-label">Pelanggan</label><input class="form-control" id="diPelanggan" readonly></div>
                         <div class="mb-2"><label class="form-label">Lokasi</label><input class="form-control" id="diLokasi" readonly></div>
+                        
+                        <!-- WORKFLOW BARU: Jenis Perintah Kerja -->
+                        <div class="mb-2">
+                            <label class="form-label">Jenis Perintah Kerja <span class="text-danger">*</span></label>
+                            <select class="form-select" name="jenis_perintah_kerja_id" id="spkJenisPerintah" required>
+                                <option value="">-- Pilih Jenis Perintah --</option>
+                                <!-- Options will be loaded dynamically -->
+                            </select>
+                            <div class="form-text">Tentukan aksi utama yang akan dilakukan tim operasional</div>
+                        </div>
+                        
+                        <!-- WORKFLOW BARU: Tujuan Perintah -->
+                        <div class="mb-2">
+                            <label class="form-label">Tujuan Perintah <span class="text-danger">*</span></label>
+                            <select class="form-select" name="tujuan_perintah_kerja_id" id="spkTujuanPerintah" required disabled>
+                                <option value="">-- Pilih Jenis Perintah dulu --</option>
+                            </select>
+                            <div class="form-text">Alasan/konteks dari perintah kerja ini</div>
+                        </div>
+                        
                         <div class="mb-2">
                             <label class="form-label">Item Terpilih (dari Service)</label>
                             <div class="alert alert-light border" id="diSelectedSummary">
@@ -488,6 +533,7 @@
         url.searchParams.set('status', kontrakStatus);
         fetch(url).then(r=>r.json()).then(j=>{
             const dl = document.getElementById('kontrakOptions');
+            if (!dl) return; // Skip if kontrakOptions element doesn't exist
             dl.innerHTML = '';
             (j.data||[]).forEach(opt=>{
                 const o = document.createElement('option');
@@ -535,6 +581,9 @@
     loadKontrakOptions('');
     loadMonitoring();
     
+    // Initialize SPK workflow dropdowns
+    setupSpkWorkflowDropdowns();
+    
     // Add filter card click listeners
     document.querySelectorAll('.filter-card').forEach(card => {
         card.addEventListener('click', (e) => {
@@ -562,37 +611,7 @@
             applyFilters();
         });
     }
-    
-    // Add cleanup SPK ID=0 functionality
-    const cleanupBtn = document.getElementById('cleanupSpkZeroBtn');
-    if (cleanupBtn) {
-        cleanupBtn.addEventListener('click', () => {
-            if (confirm('Apakah Anda yakin ingin menghapus semua SPK dengan ID = 0? Tindakan ini tidak dapat dibatalkan.')) {
-                fetch('<?= base_url('marketing/spk/cleanup-zero') ?>', {
-                    method: 'POST',
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({})
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert(`Cleanup berhasil!\nDitemukan: ${data.found_records} record\nDihapus: ${data.deleted_records} SPK + ${data.deleted_history} status history`);
-                        loadSpk(); // Reload the SPK list
-                        loadMonitoring(); // Reload monitoring data
-                    } else {
-                        alert('Cleanup gagal: ' + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Cleanup error:', error);
-                    alert('Terjadi kesalahan saat cleanup: ' + error.message);
-                });
-            }
-        });
-    }
+
     
     // Set default active filter (all)
     document.querySelector('[data-filter="all"]').classList.add('active');
@@ -606,6 +625,7 @@
             loadKontrakOptions(v);
             // try to find matching option and autofill pelanggan & lokasi from dataset
             const dl = document.getElementById('kontrakOptions');
+            if (!dl) return; // Skip if kontrakOptions element doesn't exist
             const match = Array.from(dl.options).find(o => o.value === v);
             if (match) {
                 // We can't store custom data in datalist options cross-browser reliably; parse from label first
@@ -801,12 +821,12 @@
                         console.log('Processing ' + data.data.length + ' specifications');
                         data.data.forEach(spek => {
                             console.log('Processing spec:', spek);
-                            const available = spek.jumlah_dibutuhkan - spek.jumlah_tersedia;
-                            console.log('Available units:', available, 'dibutuhkan:', spek.jumlah_dibutuhkan, 'tersedia:', spek.jumlah_tersedia);
+                            const available = spek.jumlah_dibutuhkan;
+                            console.log('Available units:', available, 'dibutuhkan:', spek.jumlah_dibutuhkan);
                             
                             // Show all specifications, not just those with available units
                             const spekDataEncoded = btoa(encodeURIComponent(JSON.stringify(spek)));
-                            options += `<option value="${spek.id}" data-available="${available}" data-spek-encoded="${spekDataEncoded}">${spek.spek_kode} - ${spek.jumlah_dibutuhkan} dibutuhkan, ${spek.jumlah_tersedia} tersedia (${available > 0 ? available : 0} available)</option>`;
+                            options += `<option value="${spek.id}" data-available="${available}" data-spek-encoded="${spekDataEncoded}">${spek.spek_kode} - ${spek.jumlah_dibutuhkan} Unit (${available > 0 ? available : 0} available)</option>`;
                         });
                         console.log('Generated options:', options);
                     } else {
@@ -1003,6 +1023,21 @@
         document.getElementById('diForm').addEventListener('submit', (e)=>{
             e.preventDefault();
             const fd = new FormData(e.target);
+            
+            // Validate required fields (updated for workflow)
+            const jenisPerintah = fd.get('jenis_perintah_kerja_id');
+            const tujuanPerintah = fd.get('tujuan_perintah_kerja_id');
+            
+            if (!jenisPerintah || jenisPerintah.trim() === '') {
+                alert('Jenis Perintah Kerja harus dipilih.');
+                return;
+            }
+            
+            if (!tujuanPerintah || tujuanPerintah.trim() === '') {
+                alert('Tujuan Perintah harus dipilih.');
+                return;
+            }
+            
             // If unit checkboxes exist, append unit_ids[]
             const checks = document.querySelectorAll('.di-unit-check');
             if (checks && checks.length) {
@@ -1014,11 +1049,25 @@
                 picked.forEach(v=> fd.append('unit_ids[]', v));
             }
             // spk_id already set; backend enforces COMPLETED status
+            
+            // Debug: Log form data being sent
+            console.log('Form data being sent:');
+            for (let [key, value] of fd.entries()) {
+                console.log(key, ':', value);
+            }
+            
             fetch('<?= base_url('marketing/di/create') ?>',{method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
                 .then(r=>r.json()).then(j=>{
                     if (j && j.success) {
                         bootstrap.Modal.getInstance(document.getElementById('diModal')).hide();
-                        e.target.reset();
+                        
+                        // Reset form and validation states
+                        const form = e.target;
+                        form.reset();
+                        form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+                            el.classList.remove('is-valid', 'is-invalid');
+                        });
+                        
                         loadSpk();
                         loadMonitoring();
                         if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI dibuat: '+ (j.nomor||''), 'success');
@@ -1032,6 +1081,199 @@
                     }
                 });
         });
+        
+        // Add real-time validation for DI form (updated for workflow)
+        function validateDiForm() {
+            const jenisSelect = document.getElementById('spkJenisPerintah');
+            const tujuanSelect = document.getElementById('spkTujuanPerintah');
+            const submitBtn = document.querySelector('#diForm [type="submit"]');
+            
+            if (!jenisSelect || !tujuanSelect || !submitBtn) return;
+            
+            function checkValidity() {
+                const jenisValid = jenisSelect.value.trim() !== '';
+                const tujuanValid = tujuanSelect.value.trim() !== '';
+                const isValid = jenisValid && tujuanValid;
+                
+                // Update visual feedback
+                jenisSelect.classList.toggle('is-invalid', !jenisValid && jenisSelect.value !== '');
+                jenisSelect.classList.toggle('is-valid', jenisValid);
+                
+                tujuanSelect.classList.toggle('is-invalid', !tujuanValid && tujuanSelect.value !== '');
+                tujuanSelect.classList.toggle('is-valid', tujuanValid);
+                
+                // Enable/disable submit button
+                submitBtn.disabled = !isValid;
+            }
+            
+            jenisSelect.addEventListener('change', checkValidity);
+            tujuanSelect.addEventListener('change', checkValidity);
+            
+            // Initial check
+            checkValidity();
+        }
+        
+        // Initialize validation when modal is shown
+        document.getElementById('diModal').addEventListener('shown.bs.modal', validateDiForm);
+        
+        // Reset validation when modal is hidden
+        document.getElementById('diModal').addEventListener('hidden.bs.modal', function() {
+            const form = document.getElementById('diForm');
+            if (form) {
+                form.reset();
+                form.querySelectorAll('.is-valid, .is-invalid').forEach(el => {
+                    el.classList.remove('is-valid', 'is-invalid');
+                });
+                
+                // Reset submit button
+                const submitBtn = form.querySelector('[type="submit"]');
+                if (submitBtn) submitBtn.disabled = true;
+            }
+        });
+        
+        // =====================================================
+        // WORKFLOW BARU: DYNAMIC DROPDOWN SYSTEM FOR SPK DI - FROM DATABASE
+        // =====================================================
+        
+        // Variables to store workflow data
+        let spkJenisPerintahOptions = [];
+        
+        // Load jenis perintah from API for SPK modal
+        async function loadSpkJenisPerintahOptions() {
+            try {
+                const response = await fetch('<?= base_url('marketing/get-jenis-perintah-kerja') ?>', {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    spkJenisPerintahOptions = result.data;
+                    populateSpkJenisPerintahDropdown();
+                    console.log('Loaded', result.data.length, 'SPK jenis perintah options');
+                } else {
+                    console.error('Failed to load SPK jenis perintah options:', result.message);
+                }
+            } catch (error) {
+                console.error('Error loading SPK jenis perintah options:', error);
+            }
+        }
+        
+        // Populate jenis perintah dropdown for SPK modal
+        function populateSpkJenisPerintahDropdown() {
+            const jenisSelect = document.getElementById('spkJenisPerintah');
+            
+            if (jenisSelect) {
+                jenisSelect.innerHTML = '<option value="">-- Pilih Jenis Perintah --</option>';
+                spkJenisPerintahOptions.forEach(option => {
+                    const optionElement = document.createElement('option');
+                    optionElement.value = option.id;
+                    optionElement.textContent = `${option.kode} - ${option.nama}`;
+                    optionElement.title = option.deskripsi;
+                    jenisSelect.appendChild(optionElement);
+                });
+            }
+        }
+        
+        // Load tujuan perintah based on jenis for SPK modal
+        async function loadSpkTujuanPerintahOptions(jenisId) {
+            try {
+                const response = await fetch(`<?= base_url('marketing/get-tujuan-perintah-kerja') ?>?jenis_id=${jenisId}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const tujuanSelect = document.getElementById('spkTujuanPerintah');
+                    if (tujuanSelect) {
+                        tujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
+                        tujuanSelect.disabled = false;
+                        
+                        result.data.forEach(option => {
+                            const optionElement = document.createElement('option');
+                            optionElement.value = option.id;
+                            optionElement.textContent = `${option.kode} - ${option.nama}`;
+                            optionElement.title = option.deskripsi;
+                            tujuanSelect.appendChild(optionElement);
+                        });
+                    }
+                } else {
+                    console.error('Failed to load SPK tujuan perintah options:', result.message);
+                }
+            } catch (error) {
+                console.error('Error loading SPK tujuan perintah options:', error);
+            }
+        }
+        
+        // Setup SPK DI workflow dropdowns
+        function setupSpkWorkflowDropdowns() {
+            const jenisSelect = document.getElementById('spkJenisPerintah');
+            const tujuanSelect = document.getElementById('spkTujuanPerintah');
+            
+            if (!jenisSelect || !tujuanSelect) return;
+            
+            jenisSelect.addEventListener('change', function() {
+                const jenisId = this.value;
+                
+                // Reset tujuan dropdown
+                tujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
+                tujuanSelect.disabled = true;
+                
+                if (jenisId) {
+                    // Load tujuan options from API
+                    loadSpkTujuanPerintahOptions(jenisId);
+                }
+                
+                // Trigger validation
+                validateSpkDiForm();
+            });
+            
+            tujuanSelect.addEventListener('change', validateSpkDiForm);
+        }
+        
+        // Validasi form workflow untuk SPK DI
+        function validateSpkDiForm() {
+            const jenisSelect = document.getElementById('spkJenisPerintah');
+            const tujuanSelect = document.getElementById('spkTujuanPerintah');
+            const submitBtn = document.querySelector('#diForm [type="submit"]');
+            
+            if (!jenisSelect || !tujuanSelect || !submitBtn) return;
+            
+            const jenisValid = jenisSelect.value !== '';
+            const tujuanValid = tujuanSelect.value !== '';
+            const isValid = jenisValid && tujuanValid;
+            
+            // Visual feedback
+            jenisSelect.classList.toggle('is-invalid', !jenisValid && jenisSelect.value !== '');
+            jenisSelect.classList.toggle('is-valid', jenisValid);
+            
+            tujuanSelect.classList.toggle('is-invalid', !tujuanValid && tujuanSelect.value !== '');
+            tujuanSelect.classList.toggle('is-valid', tujuanValid);
+            
+            // Enable/disable submit button (combine with existing validation)
+            const originalDiValidation = document.querySelector('[name="jenis_perintah"]')?.value !== '' && 
+                                       document.querySelector('[name="tujuan_perintah"]')?.value !== '';
+            
+            submitBtn.disabled = !(isValid && originalDiValidation);
+        }
+        
+        // Initialize SPK workflow dropdowns when modal shown
+        document.getElementById('diModal').addEventListener('shown.bs.modal', function() {
+            setupSpkWorkflowDropdowns();
+            loadSpkJenisPerintahOptions(); // Load initial jenis perintah options
+            validateSpkDiForm();
+        });
+        
+        // =====================================================
+        // END WORKFLOW BARU FOR SPK
+        // =====================================================
     });
     </script>
     <!-- Detail SPK Modal -->
@@ -1044,13 +1286,23 @@
                 </div>
                 <div class="modal-footer">
                     <a class="btn btn-outline-secondary" id="btnPrintPdf" href="#" target="_blank" rel="noopener">Print PDF</a>
+                    <button class="btn btn-warning" id="btnEditSpk" onclick="editSpk()">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button class="btn btn-danger" id="btnDeleteSpk" onclick="deleteSpk()">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
                     <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
                 </div>
             </div>
         </div>
     </div>
     <script>
+    // Global variable to store current SPK ID for edit/delete operations
+    let currentSpkId = null;
+    
     function openDetail(id){
+        currentSpkId = id; // Store current SPK ID
         const pdfBtn = document.getElementById('btnPrintPdf');
         if (pdfBtn) { pdfBtn.href = `<?= base_url('marketing/spk/print/') ?>${id}`; }
         const body = document.getElementById('spkDetailBody');
@@ -1250,10 +1502,217 @@
             }
         });
     }
+    
+    // Edit SPK function
+    function editSpk() {
+        if (!currentSpkId) {
+            alert('SPK ID tidak ditemukan');
+            return;
+        }
+        
+        // Close detail modal first
+        const detailModal = bootstrap.Modal.getInstance(document.getElementById('spkDetailModal'));
+        if (detailModal) detailModal.hide();
+        
+        // Load SPK data for editing
+        fetch(`<?= base_url('marketing/spk/detail/') ?>${currentSpkId}`)
+            .then(r => r.json())
+            .then(j => {
+                if (j.success) {
+                    // Pre-populate edit form with current data
+                    populateEditForm(j.data);
+                    // Show edit modal
+                    new bootstrap.Modal(document.getElementById('spkEditModal')).show();
+                } else {
+                    alert('Gagal memuat data SPK untuk edit');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading SPK for edit:', error);
+                alert('Error loading SPK data');
+            });
+    }
+    
+    // Delete SPK function with double confirmation
+    function deleteSpk() {
+        if (!currentSpkId) {
+            alert('SPK ID tidak ditemukan');
+            return;
+        }
+        
+        // First confirmation
+        if (!confirm('Apakah Anda yakin ingin menghapus SPK ini?')) {
+            return;
+        }
+        
+        // Second confirmation
+        if (!confirm('PERINGATAN: Tindakan ini tidak dapat dibatalkan!\n\nApakah Anda benar-benar yakin ingin menghapus SPK ini?')) {
+            return;
+        }
+        
+        // Proceed with deletion
+        fetch(`<?= base_url('marketing/spk/delete/') ?>${currentSpkId}`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '<?= csrf_hash() ?>'
+            }
+        })
+        .then(r => r.json())
+        .then(j => {
+            if (j.success) {
+                // Close detail modal
+                const detailModal = bootstrap.Modal.getInstance(document.getElementById('spkDetailModal'));
+                if (detailModal) detailModal.hide();
+                
+                // Reload SPK list
+                loadSpk();
+                
+                alert('SPK berhasil dihapus');
+            } else {
+                alert(j.message || 'Gagal menghapus SPK');
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting SPK:', error);
+            alert('Error deleting SPK: ' + error.message);
+        });
+    }
+    
+    // Function to populate edit form
+    function populateEditForm(data) {
+        document.getElementById('editSpkId').value = data.id || '';
+        document.getElementById('editNomorSpk').value = data.nomor_spk || '';
+        document.getElementById('editJenisSpk').value = data.jenis_spk || 'UNIT';
+        document.getElementById('editPoKontrak').value = data.po_kontrak_nomor || '';
+        document.getElementById('editPelanggan').value = data.pelanggan || '';
+        document.getElementById('editPic').value = data.pic || '';
+        document.getElementById('editKontak').value = data.kontak || '';
+        document.getElementById('editLokasi').value = data.lokasi || '';
+        document.getElementById('editDeliveryPlan').value = data.delivery_plan || '';
+        document.getElementById('editStatus').value = data.status || 'SUBMITTED';
+        document.getElementById('editCatatan').value = data.catatan || '';
+    }
+    
+    // SPK Edit form submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const spkEditForm = document.getElementById('spkEditForm');
+        if (spkEditForm) {
+            spkEditForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const spkId = formData.get('id');
+                
+                fetch(`<?= base_url('marketing/spk/update/') ?>${spkId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                })
+                .then(r => r.json())
+                .then(j => {
+                    if (j.success) {
+                        // Close edit modal
+                        const editModal = bootstrap.Modal.getInstance(document.getElementById('spkEditModal'));
+                        if (editModal) editModal.hide();
+                        
+                        // Reload SPK list
+                        loadSpk();
+                        
+                        alert('SPK berhasil diperbarui');
+                    } else {
+                        alert(j.message || 'Gagal memperbarui SPK');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating SPK:', error);
+                    alert('Error updating SPK: ' + error.message);
+                });
+            });
+        }
+    });
     </script>
     <style>
     /* Ensure the SPK modal body scrolls when content is long */
     #spkModal .modal-body { max-height: 70vh; overflow-y: auto; }
     </style>
+
+    <!-- SPK Edit Modal -->
+    <div class="modal fade" id="spkEditModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">Edit SPK</h6>
+                    <button class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="spkEditForm">
+                    <input type="hidden" id="editSpkId" name="id">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Nomor SPK</label>
+                                <input type="text" class="form-control" id="editNomorSpk" name="nomor_spk" readonly>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Jenis SPK</label>
+                                <select class="form-select" id="editJenisSpk" name="jenis_spk">
+                                    <option value="UNIT">UNIT</option>
+                                    <option value="ATTACHMENT">ATTACHMENT</option>
+                                    <option value="TUKAR">TUKAR</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">PO Kontrak</label>
+                                <input type="text" class="form-control" id="editPoKontrak" name="po_kontrak_nomor">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Pelanggan</label>
+                                <input type="text" class="form-control" id="editPelanggan" name="pelanggan">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">PIC</label>
+                                <input type="text" class="form-control" id="editPic" name="pic">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Kontak</label>
+                                <input type="text" class="form-control" id="editKontak" name="kontak">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Lokasi</label>
+                                <input type="text" class="form-control" id="editLokasi" name="lokasi">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Delivery Plan</label>
+                                <input type="date" class="form-control" id="editDeliveryPlan" name="delivery_plan">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Status</label>
+                                <select class="form-select" id="editStatus" name="status">
+                                    <option value="DRAFT">DRAFT</option>
+                                    <option value="SUBMITTED">SUBMITTED</option>
+                                    <option value="IN_PROGRESS">IN PROGRESS</option>
+                                    <option value="READY">READY</option>
+                                    <option value="COMPLETED">COMPLETED</option>
+                                    <option value="DELIVERED">DELIVERED</option>
+                                    <option value="CANCELLED">CANCELLED</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Catatan</label>
+                                <textarea class="form-control" id="editCatatan" name="catatan" rows="3"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
 </div>
 <?= $this->endSection() ?>
