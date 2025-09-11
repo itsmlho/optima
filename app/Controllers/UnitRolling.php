@@ -3,9 +3,11 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Traits\ActivityLoggingTrait;
 
 class UnitRolling extends BaseController
 {
+    use ActivityLoggingTrait;
     public function index()
     {
         $data = [

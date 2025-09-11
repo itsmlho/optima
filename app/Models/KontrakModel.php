@@ -223,26 +223,31 @@ class KontrakModel extends Model
      */
     public function getContractStatistics()
     {
-        $builder = $this->db->table($this->table);
-        
-        $total = $builder->countAllResults(false);
-        
-        $active = $builder->where('status', 'Aktif')->countAllResults(false);
-        
-        $expiring = $builder->where('status', 'Aktif')
-                           ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
-                           ->where('tanggal_berakhir >=', date('Y-m-d'))
-                           ->countAllResults(false);
-        
-        $expired = $builder->where('status', 'Berakhir')
-                          ->orWhere('tanggal_berakhir <', date('Y-m-d'))
-                          ->countAllResults();
+        // Use separate builders to avoid condition carry-over
+        $total = $this->db->table($this->table)->countAllResults();
+
+        $active = $this->db->table($this->table)
+            ->where('status', 'Aktif')
+            ->countAllResults();
+
+        $expiring = $this->db->table($this->table)
+            ->where('status', 'Aktif')
+            ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
+            ->where('tanggal_berakhir >=', date('Y-m-d'))
+            ->countAllResults();
+
+        $expired = $this->db->table($this->table)
+            ->groupStart()
+                ->where('status', 'Berakhir')
+                ->orWhere('tanggal_berakhir <', date('Y-m-d'))
+            ->groupEnd()
+            ->countAllResults();
 
         return [
             'total' => $total,
             'active' => $active,
             'expiring' => $expiring,
-            'expired' => $expired
+            'expired' => $expired,
         ];
     }
 

@@ -9,11 +9,12 @@ use App\Models\DivisionModel;
 use App\Models\PermissionModel;
 use App\Models\UserRoleModel;
 use App\Models\UserPermissionModel;
+use App\Traits\ActivityLoggingTrait;
 use CodeIgniter\API\ResponseTrait;
 
 class AdvancedUserManagement extends BaseController
 {
-    use ResponseTrait;
+    use ResponseTrait, ActivityLoggingTrait;
 
     protected $db;
     protected $userModel;
@@ -224,6 +225,17 @@ class AdvancedUserManagement extends BaseController
             $this->db->transComplete();
 
             if ($this->db->transStatus()) {
+                // Log user creation using trait
+                $this->logCreate('users', $userId, [
+                    'user_id' => $userId,
+                    'username' => $userData['username'],
+                    'email' => $userData['email'],
+                    'roles' => $roles,
+                    'divisions' => $divisions,
+                    'permissions' => $permissions,
+                    'created_by' => session()->get('user_id') ?? 1
+                ]);
+                
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON(['success' => true, 'message' => 'User berhasil dibuat', 'user_id' => $userId]);
                 }
@@ -561,6 +573,20 @@ class AdvancedUserManagement extends BaseController
             $this->db->transComplete();
 
             if ($this->db->transStatus()) {
+                // Log user update using trait
+                $this->logUpdate('users', $userId, [
+                    'user_id' => $userId,
+                    'username' => $userData['username'],
+                    'email' => $userData['email'],
+                    'first_name' => $userData['first_name'],
+                    'last_name' => $userData['last_name'],
+                    'roles' => $roles,
+                    'divisions' => $divisions,
+                    'permissions' => $permissions,
+                    'updated_by' => session()->get('user_id') ?? 1,
+                    'password_changed' => !empty($password) ? 'Yes' : 'No'
+                ]);
+                
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON(['success' => true, 'message' => 'User berhasil diperbarui']);
                 }
@@ -602,6 +628,16 @@ class AdvancedUserManagement extends BaseController
         $this->db->transStart();
 
         try {
+            // Store user data before deletion for logging
+            $userDataForLogging = [
+                'user_id' => $userId,
+                'username' => $user['username'],
+                'email' => $user['email'],
+                'first_name' => $user['first_name'] ?? '',
+                'last_name' => $user['last_name'] ?? '',
+                'deleted_by' => session()->get('user_id') ?? 1
+            ];
+
             // Delete related records first
             try {
                 $this->db->table('user_roles')->where('user_id', $userId)->delete();
@@ -621,6 +657,9 @@ class AdvancedUserManagement extends BaseController
             $this->db->transComplete();
 
             if ($this->db->transStatus()) {
+                // Log user deletion using trait
+                $this->logDelete('users', $userId, $userDataForLogging);
+                
                 return $this->response->setJSON(['success' => true, 'message' => 'User berhasil dihapus']);
             } else {
                 throw new \Exception('Transaction failed');

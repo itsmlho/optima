@@ -12,11 +12,14 @@ use App\Models\InventoryAttachmentModel;
 use App\Models\DeliveryInstructionModel;
 use App\Models\DeliveryItemModel;
 use App\Models\NotificationModel;
+use App\Traits\ActivityLoggingTrait;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
 class Marketing extends Controller
 {
+    use ActivityLoggingTrait;
+    
     protected $db;
     protected $spkModel;
     protected $kontrakModel;
@@ -96,6 +99,7 @@ class Marketing extends Controller
                     iu.roda_id,
                     iu.valve_id,
                     iu.kontrak_id,
+                    iu.aksesoris,
                     COALESCE(mu.model_unit, "Unknown") as model_unit,
                     COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as nama_tipe_unit,
                     COALESCE(su.status_unit, "Unknown") as status_unit_name,
@@ -1464,8 +1468,23 @@ class Marketing extends Controller
                 $insertedSpk = $this->spkModel->find($spkId);
                 log_message('info', 'Marketing::spkCreate - Verification - Inserted SPK data: ' . json_encode($insertedSpk));
                 
-                // Notify Service team
-                $this->sendSpkNotification($payload['nomor_spk']);
+                // Log SPK creation using trait
+                $this->logCreate('spk', $spkId, [
+                    'spk_id' => $spkId,
+                    'nomor_spk' => $payload['nomor_spk'],
+                    'jenis_spk' => $payload['jenis_spk'],
+                    'kontrak_id' => $payload['kontrak_id'] ?? null,
+                    'kontrak_spesifikasi_id' => $payload['kontrak_spesifikasi_id'] ?? null,
+                    'jumlah_unit' => $payload['jumlah_unit']
+                ]);
+                
+                // Notify Service team with SPK data
+                $this->sendSpkNotification($payload['nomor_spk'], [
+                    'id' => $spkId,
+                    'pelanggan' => $payload['pelanggan'],
+                    'departemen' => $payload['departemen'] ?? 'N/A',
+                    'lokasi' => $payload['lokasi'] ?? 'N/A'
+                ]);
 
                 return $this->response->setJSON([
                     'success' => true,
@@ -1549,44 +1568,37 @@ class Marketing extends Controller
         }
     }
 
-    private function sendSpkNotification($nomorSpk)
+    private function sendSpkNotification($nomorSpk, $spkData = [])
     {
         try {
-            // Ensure notifications table exists
-            if (!$this->db->tableExists('notifications')) {
-                return; // Skip if notifications not available
+            // Use new rule-based notification system
+            $notificationModel = new NotificationModel();
+            
+            // Get additional SPK data if available
+            $eventData = array_merge([
+                'nomor_spk' => $nomorSpk,  // Match template variable
+                'spk_number' => $nomorSpk, // Alternative variable name
+                'pelanggan' => $spkData['pelanggan'] ?? 'N/A',  // Match template
+                'client_name' => $spkData['pelanggan'] ?? 'N/A', // Alternative
+                'departemen' => $spkData['departemen'] ?? 'N/A',
+                'lokasi' => $spkData['lokasi'] ?? 'N/A',
+                'spk_id' => $spkData['id'] ?? null,
+                'id' => $spkData['id'] ?? null, // Alternative
+                'created_by' => session('user_id'),
+                'timestamp' => date('Y-m-d H:i:s')
+            ], $spkData);
+            
+            // Trigger rule-based notification
+            $result = $notificationModel->sendByRule('spk_created', $eventData);
+            
+            // Log the result for debugging
+            if (!empty($result)) {
+                log_message('info', 'SPK Notification sent: ' . json_encode($result));
             }
-
-            $dataNotif = [
-                'title' => 'SPK Baru',
-                'message' => 'SPK ' . $nomorSpk . ' diajukan oleh Marketing untuk diproses Service.',
-                'type' => 'info',
-                'user_id' => null,
-                'url' => base_url('service/spk_service'),
-                'is_read' => 0,
-                'created_at' => date('Y-m-d H:i:s')
-            ];
-
-            // Check if target_role column exists
-            $hasTargetRole = false;
-            try {
-                $this->db->query('SELECT target_role FROM notifications LIMIT 1');
-                $hasTargetRole = true;
-            } catch (\Throwable $e) { 
-                $hasTargetRole = false; 
-            }
-
-            if ($hasTargetRole) { 
-                $dataNotif['target_role'] = 'service'; 
-            }
-
-            if ($this->notifModel) {
-                $this->notifModel->insert($dataNotif);
-            } else {
-                $this->db->table('notifications')->insert($dataNotif);
-            }
+            
         } catch (\Throwable $e) {
             // Silent fail; notifications are optional
+            log_message('error', 'SPK Notification failed: ' . $e->getMessage());
         }
     }
 
@@ -1796,19 +1808,45 @@ class Marketing extends Controller
         if (!in_array($status,$allowed,true)) {
             return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Status tidak valid']);
         }
-        // Log status history (best-effort)
-        $prev = $this->db->table('spk')->select('status')->where('id',$id)->get()->getRowArray();
+        
+        // Get current SPK data
+        $currentSpk = $this->db->table('spk')->select('*')->where('id',$id)->get()->getRowArray();
+        if (!$currentSpk) {
+            return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'SPK tidak ditemukan']);
+        }
+        
+        $oldStatus = $currentSpk['status'];
+        
+        // Update status
         $this->db->table('spk')->where('id',$id)->update(['status'=>$status,'diperbarui_pada'=>date('Y-m-d H:i:s')]);
-        if ($prev && isset($prev['status'])) {
+        
+        // Log status history (best-effort)
+        if ($oldStatus) {
             $this->db->table('spk_status_history')->insert([
                 'spk_id' => (int)$id,
-                'status_from' => $prev['status'],
+                'status_from' => $oldStatus,
                 'status_to' => $status,
                 'changed_by' => session('user_id') ?: 1,
                 'note' => null,
                 'changed_at' => date('Y-m-d H:i:s'),
             ]);
         }
+        
+        // Log activity using trait
+        try {
+            $this->logUpdate('spk', $id, ['status' => $oldStatus], ['status' => $status], [
+                'description' => "Mengubah status SPK {$currentSpk['nomor_spk']} dari {$oldStatus} ke {$status}",
+                'workflow_stage' => 'STATUS_CHANGED',
+                'business_impact' => 'HIGH',
+                'relations' => [
+                    'spk' => [$id],
+                    'kontrak' => [$currentSpk['kontrak_id']]
+                ]
+            ]);
+        } catch (\Exception $logError) {
+            log_message('error', 'Failed to log SPK status update: ' . $logError->getMessage());
+        }
+        
         return $this->response->setJSON(['success'=>true,'message'=>'Status diperbarui','csrf_hash'=>csrf_hash()]);
     }
 
@@ -2286,6 +2324,18 @@ class Marketing extends Controller
             // Transaction successful, commit it
             $this->db->transCommit();
             
+            // Log DI creation using trait
+            $this->logCreate('delivery_instruction', $diId, [
+                'di_id' => $diId,
+                'nomor_di' => $payload['nomor_di'],
+                'spk_id' => $spkId ?: null,
+                'po_kontrak_nomor' => $poNo,
+                'pelanggan' => $pelanggan,
+                'jenis_perintah_kerja_id' => $jenisPerintahKerjaId,
+                'tujuan_perintah_kerja_id' => $tujuanPerintahKerjaId,
+                'unit_ids' => $unitIds
+            ]);
+            
             return $this->response->setJSON([
                 'success'=>true,
                 'message'=>'DI dibuat',
@@ -2607,6 +2657,50 @@ class Marketing extends Controller
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Gagal mengambil data kontrak: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function getDIData()
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get all DI data with joined information
+            $query = "
+                SELECT 
+                    di.id,
+                    di.no_di,
+                    di.spk_id,
+                    di.status,
+                    di.tanggal_dibuat,
+                    di.tanggal_dikirim,
+                    di.pic,
+                    di.catatan,
+                    spk.no_spk,
+                    spk.pelanggan,
+                    spk.departemen
+                FROM delivery_instructions di
+                LEFT JOIN spk ON di.spk_id = spk.id
+                ORDER BY di.id DESC
+            ";
+            
+            $result = $db->query($query);
+            $data = $result->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $data,
+                'draw' => 1,
+                'recordsTotal' => count($data),
+                'recordsFiltered' => count($data)
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error in Marketing::getDIData(): ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal mengambil data DI: ' . $e->getMessage()
             ]);
         }
     }
@@ -3179,6 +3273,13 @@ class Marketing extends Controller
             $deleteResult = $this->spkModel->delete($id);
 
             if ($deleteResult) {
+                // Log SPK deletion using trait
+                $this->logDelete('spk', $id, $spk, [
+                    'spk_id' => $id,
+                    'nomor_spk' => $spk['nomor_spk'] ?? null,
+                    'status' => $spk['status'] ?? null
+                ]);
+                
                 $this->db->transComplete();
                 return $this->response->setJSON([
                     'success' => true,
@@ -3257,6 +3358,13 @@ class Marketing extends Controller
             $deleteResult = $this->diModel->delete($id);
 
             if ($deleteResult) {
+                // Log DI deletion using trait
+                $this->logDelete('delivery_instruction', $id, $di, [
+                    'di_id' => $id,
+                    'nomor_di' => $di['nomor_di'] ?? null,
+                    'status' => $di['status'] ?? null
+                ]);
+                
                 $this->db->transComplete();
                 return $this->response->setJSON([
                     'success' => true,

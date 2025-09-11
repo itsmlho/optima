@@ -814,7 +814,12 @@ function formatCurrency(amount) {
 function initializeRevenueChart() {
     const ctx = document.getElementById('revenueChart').getContext('2d');
     
-    const revenueChart = new Chart(ctx, {
+    // Destroy existing chart if it exists
+    if (window.revenueChartInstance) {
+        window.revenueChartInstance.destroy();
+    }
+    
+    window.revenueChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
             labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -893,7 +898,12 @@ function initializeRevenueChart() {
 function initializeUnitStatusChart() {
     const ctx = document.getElementById('unitStatusChart').getContext('2d');
     
-    const unitStatusChart = new Chart(ctx, {
+    // Destroy existing chart if it exists
+    if (window.unitStatusChartInstance) {
+        window.unitStatusChartInstance.destroy();
+    }
+    
+    window.unitStatusChartInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: ['Disewakan', 'Tersedia', 'Maintenance'],
@@ -979,10 +989,10 @@ function updateRevenueChart(period) {
 
 // Real-time updates
 function initializeRealTimeUpdates() {
-    // Update every 30 seconds
+    // Update every 3 minutes to reduce server load
     setInterval(() => {
         fetchDashboardData();
-    }, 30000);
+    }, 180000);
 }
 
 function fetchDashboardData() {

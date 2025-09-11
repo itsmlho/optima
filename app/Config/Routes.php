@@ -8,6 +8,9 @@ use CodeIgniter\Router\RouteCollection;
 $routes->get('/', 'Home::index');
 $routes->get('test', 'Test::index');
 $routes->get('test-logging', 'TestLogging::index');
+$routes->get('test-notification', 'TestNotification::index');
+$routes->get('test-notification/rule', 'TestNotification::testRule');
+$routes->get('debug-session', 'DebugSession::index');
 
 // Authentication Routes
 $routes->group('auth', static function ($routes) {
@@ -128,6 +131,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('di/delete/(:num)', 'Marketing::diDelete/$1');
     // Marketing DI page & APIs
     $routes->get('di', 'Marketing::di');
+    $routes->get('di/getData', 'Marketing::getDIData');
     $routes->get('di/list', 'Marketing::diList');
     $routes->get('di/detail/(:num)', 'Marketing::diDetail/$1');
     $routes->get('spk/ready-options', 'Marketing::spkReadyOptions');
@@ -396,13 +400,13 @@ $routes->group('admin', static function ($routes) {
     $routes->post('backup', 'Admin::systemBackup');
     $routes->post('restore', 'Admin::systemRestore');
     
-    // Activity Log Routes
-    $routes->get('activity-log', 'ActivityLog::index');
-    $routes->post('activity-log/data', 'ActivityLog::getData');
-    $routes->get('activity-log/details/(:num)', 'ActivityLog::details/$1');
-    $routes->get('activity-log/statistics', 'ActivityLog::statistics');
-    $routes->get('activity-log/export', 'ActivityLog::export');
-    $routes->post('activity-log/clean', 'ActivityLog::clean');
+    // Activity Log Routes - DEPRECATED: Use ActivityLogViewer instead
+    // $routes->get('activity-log', 'ActivityLog::index');
+    // $routes->post('activity-log/data', 'ActivityLog::getData');
+    // $routes->get('activity-log/details/(:num)', 'ActivityLog::details/$1');
+    // $routes->get('activity-log/statistics', 'ActivityLog::statistics');
+    // $routes->get('activity-log/export', 'ActivityLog::export');
+    // $routes->post('activity-log/clean', 'ActivityLog::clean');
     
     // User Management Routes - Redirect to Advanced User Management
     $routes->group('users', static function ($routes) {
@@ -460,15 +464,15 @@ $routes->group('admin', static function ($routes) {
         $routes->get('export/users', 'Admin\AdvancedUserManagement::exportUsers');
     });
     
-    // Activity Log Routes
-    $routes->group('activity-log', static function ($routes) {
-        $routes->get('/', 'ActivityLog::index');
-        $routes->post('data', 'ActivityLog::getData');
-        $routes->get('details/(:num)', 'ActivityLog::details/$1');
-        $routes->get('statistics', 'ActivityLog::statistics');
-        $routes->get('export', 'ActivityLog::export');
-        $routes->post('clean', 'ActivityLog::clean');
-    });
+    // Activity Log Routes - DEPRECATED: Use ActivityLogViewer instead  
+    // $routes->group('activity-log', static function ($routes) {
+    //     $routes->get('/', 'ActivityLog::index');
+    //     $routes->post('data', 'ActivityLog::getData');
+    //     $routes->get('details/(:num)', 'ActivityLog::details/$1');
+    //     $routes->get('statistics', 'ActivityLog::statistics');
+    //     $routes->get('export', 'ActivityLog::export');
+    //     $routes->post('clean', 'ActivityLog::clean');
+    // });
 
     // Activity Monitor Routes (Enhanced monitoring dashboard)
     $routes->group('activity-monitor', static function ($routes) {
@@ -598,12 +602,32 @@ $routes->group('api', ['namespace' => 'App\Controllers'], function($routes) {
 // Notifications Routes
 $routes->group('notifications', ['namespace' => 'App\Controllers'], function($routes) {
     $routes->get('/', 'Notifications::index');
+    $routes->get('admin', 'Notifications::admin');
+    $routes->post('createRule', 'Notifications::createRule');
+    $routes->get('getRule/(:num)', 'Notifications::getRule/$1');
+    $routes->put('updateRule/(:num)', 'Notifications::updateRule/$1');
+    $routes->post('updateRule/(:num)', 'Notifications::updateRule/$1'); // Fallback for browsers that don't support PUT
+    $routes->delete('deleteRule/(:num)', 'Notifications::deleteRule/$1');
+    $routes->post('deleteRule/(:num)', 'Notifications::deleteRule/$1'); // Fallback for browsers that don't support DELETE
+    $routes->post('testRule/(:num)', 'Notifications::testRule/$1');
+    $routes->post('sendByRule', 'Notifications::sendByRule');
+    $routes->get('analytics', 'Notifications::analytics');
+    $routes->get('teststream', 'Notifications::testStream');
+    $routes->get('preferences', 'Notifications::getPreferences');
+    $routes->post('preferences', 'Notifications::updatePreferences');
+    
+    // Existing routes
     $routes->get('stream', 'Notifications::stream');
     $routes->post('create', 'Notifications::create');
     $routes->post('mark-read/(:num)', 'Notifications::markAsRead/$1');
     $routes->post('mark-all-read', 'Notifications::markAllAsRead');
+    $routes->post('archive/(:num)', 'Notifications::archive/$1');
     $routes->delete('delete/(:num)', 'Notifications::delete/$1');
     $routes->get('count', 'Notifications::getCount');
+    $routes->get('getCount', 'Notifications::getCount'); // Alternative endpoint name
+    $routes->post('update/(:num)', 'Notifications::update/$1'); // Update notification status/action
+    $routes->get('recent', 'Notifications::recent'); // JSON recent notifications for header
+    $routes->get('getUsers', 'Notifications::getUsers'); // Get users for rule targeting
 });
 
 $routes->group('api', function($routes) {
@@ -631,12 +655,12 @@ $routes->group('warehouse/inventory', static function($r){
 // Test Route for Activity Log
 $routes->get('test-activity-log', 'TestActivityLog::index');
 
-// Activity Log Viewer Routes - DISABLED (using ActivityLog controller instead)
-// $routes->group('admin', static function ($routes) {
-//     $routes->get('activity-log', 'ActivityLogViewer::index');
-//     $routes->post('activity-log/data', 'ActivityLogViewer::getData');
-//     $routes->get('activity-log/details/(:num)', 'ActivityLogViewer::getDetails/$1');
-// });
+// Activity Log Viewer Routes - Activated for detailed descriptions
+$routes->group('admin', static function ($routes) {
+    $routes->get('activity-log', 'ActivityLogViewer::index');
+    $routes->post('activity-log/data', 'ActivityLogViewer::getData');
+    $routes->get('activity-log/details/(:num)', 'ActivityLogViewer::getDetails/$1');
+});
 
 
 

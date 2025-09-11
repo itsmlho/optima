@@ -17,12 +17,13 @@ class ActivityLog extends BaseController
     public function index()
     {
         $data = [
-            'title' => 'Activity Log | OPTIMA',
+            'title' => 'Activity Log',
             'page_title' => 'System Activity Log',
             'breadcrumbs' => [
-                '/' => 'Dashboard',
+                '/dashboard' => 'Dashboard',
                 '/admin/activity-log' => 'Activity Log'
-            ]
+            ],
+            'hide_breadcrumb' => false
         ];
 
         return view('admin/activity_log', $data);
@@ -80,7 +81,7 @@ class ActivityLog extends BaseController
             'PRINT' => 'info',
             'DOWNLOAD' => 'secondary',
             'LOGIN' => 'warning',
-            'LOGOUT' => 'light',
+            'LOGOUT' => 'warning',
             'ASSIGN' => 'primary'
         ];
         $actionColor = $actionColors[$row['action_type']] ?? 'secondary';

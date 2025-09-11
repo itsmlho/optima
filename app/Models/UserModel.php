@@ -272,4 +272,98 @@ class UserModel extends Model
                     ->where('user_roles.division_id', $divisionId)
                     ->findAll();
     }
+
+    /**
+     * Get users by roles (for notification targeting)
+     */
+    public function getUsersByRoles($roles)
+    {
+        if (!is_array($roles)) {
+            $roles = [$roles];
+        }
+
+        return $this->select('users.id, users.first_name, users.last_name, users.email')
+                    ->join('user_roles ur', 'ur.user_id = users.id')
+                    ->join('roles r', 'r.id = ur.role_id')
+                    ->whereIn('r.name', $roles)
+                    ->where('users.is_active', 1)
+                    ->groupBy('users.id')
+                    ->findAll();
+    }
+
+    /**
+     * Get users by divisions (for notification targeting)
+     */
+    public function getUsersByDivisions($divisions)
+    {
+        if (!is_array($divisions)) {
+            $divisions = [$divisions];
+        }
+
+        return $this->select('users.id, users.first_name, users.last_name, users.email, divisions.name as division_name')
+                    ->join('divisions', 'divisions.id = users.division_id', 'left')
+                    ->whereIn('divisions.name', $divisions)
+                    ->where('users.is_active', 1)
+                    ->findAll();
+    }
+
+    /**
+     * Get users by departments (for notification targeting)
+     */
+    public function getUsersByDepartments($departments)
+    {
+        if (!is_array($departments)) {
+            $departments = [$departments];
+        }
+
+        return $this->select('users.id, users.first_name, users.last_name, users.email')
+                    ->whereIn('users.department', $departments)
+                    ->where('users.is_active', 1)
+                    ->findAll();
+    }
+
+    /**
+     * Get users by division AND department combination (for specific targeting)
+     */
+    public function getUsersByDivisionAndDepartment($division, $department)
+    {
+        return $this->select('users.id, users.first_name, users.last_name, users.email')
+                    ->join('user_roles ur', 'ur.user_id = users.id')
+                    ->join('divisions d', 'd.id = ur.division_id')
+                    ->where('d.name', $division)
+                    ->where('users.department', $department)
+                    ->where('users.is_active', 1)
+                    ->groupBy('users.id')
+                    ->findAll();
+    }
+
+    /**
+     * Get all managers (for escalation notifications)
+     */
+    public function getManagers()
+    {
+        return $this->select('users.id, users.first_name, users.last_name, users.email')
+                    ->join('user_roles ur', 'ur.user_id = users.id')
+                    ->join('roles r', 'r.id = ur.role_id')
+                    ->where('r.name', 'manager')
+                    ->where('users.is_active', 1)
+                    ->groupBy('users.id')
+                    ->findAll();
+    }
+
+    /**
+     * Get supervisors for specific division
+     */
+    public function getSupervisorsByDivision($division)
+    {
+        return $this->select('users.id, users.first_name, users.last_name, users.email')
+                    ->join('user_roles ur', 'ur.user_id = users.id')
+                    ->join('roles r', 'r.id = ur.role_id')
+                    ->join('divisions d', 'd.id = ur.division_id')
+                    ->where('r.name', 'supervisor')
+                    ->where('d.name', $division)
+                    ->where('users.is_active', 1)
+                    ->groupBy('users.id')
+                    ->findAll();
+    }
 }

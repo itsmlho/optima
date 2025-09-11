@@ -8,10 +8,13 @@ use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
 use App\Models\SpkModel;
 use App\Helpers\UnitComponentFormatter;
+use App\Traits\ActivityLoggingTrait;
 
 
 class Service extends BaseController
 {
+    use ActivityLoggingTrait;
+    
     protected $db;
     protected $unitModel;
     protected $attModel;
@@ -611,9 +614,18 @@ class Service extends BaseController
             return $this->response->setJSON(['success'=>false,'message'=>'Status tidak valid']);
         }
 
+        $oldSpk = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
+        
         $this->db->table('spk')->where('id', $id)->update([
             'status' => $status,
             'diperbarui_pada' => date('Y-m-d H:i:s')
+        ]);
+
+        // Log status update using trait
+        $this->logUpdate('spk', $id, $oldSpk, ['status' => $status], [
+            'spk_id' => $id,
+            'old_status' => $oldSpk['status'] ?? null,
+            'new_status' => $status
         ]);
 
         return $this->response->setJSON(['success'=>true,'message'=>'Status SPK berhasil diperbarui','csrf_hash'=>csrf_hash()]);
@@ -1065,7 +1077,18 @@ class Service extends BaseController
             }
         }
 
+        $oldSpk = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
+        
         $this->db->table('spk')->where('id', $id)->update($updateData);
+
+        // Log stage approval using trait
+        $this->logUpdate('spk', $id, $oldSpk, $updateData, [
+            'spk_id' => $id,
+            'stage' => $stage,
+            'mekanik' => $mekanik,
+            'estimasi_mulai' => $estimasi_mulai,
+            'estimasi_selesai' => $estimasi_selesai
+        ]);
 
         $message = ($stage === 'pdi') ? 'PDI selesai, SPK siap untuk delivery' : 'Approval berhasil disimpan';
         return $this->response->setJSON(['success'=>true,'message'=>$message,'csrf_hash'=>csrf_hash()]);
@@ -1292,6 +1315,16 @@ class Service extends BaseController
         if ($this->db->transStatus() === false) {
             return $this->response->setStatusCode(500)->setJSON(['success'=>false,'message'=>'Gagal menetapkan item']);
         }
+        
+        // Log SPK item assignment using trait
+        $this->logActivity('spk_item_assignment', 'SPK Items Assigned', [
+            'spk_id' => $spkId,
+            'unit_id' => $unitId, 
+            'inventory_attachment_id' => $invAttachmentId ?: null,
+            'previous_status' => $prevStatus,
+            'new_status' => 'READY'
+        ]);
+        
         // Notify Marketing role that SPK is READY
         try {
             if ($this->db->tableExists('notifications')) {
@@ -1699,7 +1732,13 @@ class Service extends BaseController
             if($this->db->affectedRows()>=0){
                 $new = $this->db->table('inventory_unit')->select('*')->where('id_inventory_unit',$id)->get()->getRowArray();
                 $changes=[]; if($old && $new){ foreach($dataUpdate as $k=>$v){ $oldVal=$old[$k]??null; $newVal=$new[$k]??null; if($oldVal!=$newVal){ $changes[$k]=['old'=>$oldVal,'new'=>$newVal]; } } }
-                $this->logActivity('service_unit_update', 'Update Unit Service #'.$id, [ 'unit_id'=>$id, 'changes'=>$changes ]);
+                
+                // Log using trait method
+                $this->logUpdate('inventory_unit', $id, $old, $new, [
+                    'unit_id' => $id,
+                    'changes' => $changes
+                ]);
+                
                 return $this->response->setJSON(['success'=>true,'message'=>'Berhasil disimpan','csrf_hash'=>csrf_hash(),'updated'=>$dataUpdate,'changes'=>$changes]);
             }
             return $this->response->setJSON(['success'=>false,'message'=>'Gagal update','csrf_hash'=>csrf_hash()]);

@@ -3,10 +3,12 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Traits\ActivityLoggingTrait;
 use App\Models\UserModel;
 
 class Profile extends BaseController
 {
+    use ActivityLoggingTrait;
     protected $userModel;
 
     public function __construct()

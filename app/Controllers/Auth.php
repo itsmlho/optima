@@ -3,10 +3,13 @@
 namespace App\Controllers;
 
 use App\Models\UserModel;
+use App\Traits\ActivityLoggingTrait;
 use CodeIgniter\HTTP\RedirectResponse;
 
 class Auth extends BaseController
 {
+    use ActivityLoggingTrait;
+    
     protected $userModel;
     protected $session;
 
@@ -127,6 +130,16 @@ class Auth extends BaseController
         ];
 
         $this->session->set($sessionData);
+
+        // Log successful login using trait
+        $this->logAuthActivity('LOGIN', $user['id'], [
+            'username' => $user['username'],
+            'email' => $user['email'],
+            'ip_address' => $this->request->getIPAddress(),
+            'user_agent' => $this->request->getUserAgent()->getAgentString(),
+            'remember_me' => $remember ? true : false,
+            'description' => 'User Login Successful'
+        ]);
 
         // Handle remember me
         if ($remember) {
@@ -352,9 +365,20 @@ class Auth extends BaseController
 
     public function logout()
     {
-        // Clear remember token if exists
+        // Get user data before destroying session
         $userId = $this->session->get('user_id');
+        $username = $this->session->get('username');
+        
+        // Log logout activity using trait
         if ($userId) {
+            $this->logAuthActivity('LOGOUT', $userId, [
+                'username' => $username,
+                'ip_address' => $this->request->getIPAddress(),
+                'user_agent' => $this->request->getUserAgent()->getAgentString(),
+                'description' => 'User Logout Successful'
+            ]);
+            
+            // Clear remember token if exists
             $this->userModel->update($userId, ['remember_token' => null]);
         }
 

@@ -3,10 +3,12 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Traits\ActivityLoggingTrait;
 use CodeIgniter\HTTP\ResponseInterface;
 
 class Admin extends BaseController
 {
+    use ActivityLoggingTrait;
     public function index()
     {
         $data = [

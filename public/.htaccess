@@ -14,7 +14,7 @@ Options -Indexes
 	# If you installed CodeIgniter in a subfolder, you will need to
 	# change the following line to match the subfolder you need.
 	# http://httpd.apache.org/docs/current/mod/mod_rewrite.html#rewritebase
-	RewriteBase /optima1/
+	# RewriteBase /
 
 	# Redirect Trailing Slashes...
 	RewriteCond %{REQUEST_FILENAME} !-d
@@ -47,18 +47,6 @@ Options -Indexes
 # Disable server signature start
 ServerSignature Off
 # Disable server signature end
-# File: public/.htaccess
-
-# Protect application and system files from being viewed
-RewriteEngine On
-RewriteRule ^(app|system|tests)($|/) - [F]
-
-# Allow any files or directories that exist to be displayed directly
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-
-# Rewrite all other URLs to index.php/URL
-RewriteRule ^(.*)$ index.php/$1 [L]
 
 # CodeIgniter 4 & Bootstrap Pro Optimizations
 RewriteEngine On

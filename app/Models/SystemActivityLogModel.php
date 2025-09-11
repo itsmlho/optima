@@ -13,15 +13,15 @@ class SystemActivityLogModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-        // Core fields (8 fields) - ESSENTIAL
+        // Core fields - ESSENTIAL
         'table_name', 'record_id', 'action_type', 'action_description',
         'old_values', 'new_values', 'affected_fields', 'user_id',
         
-        // Business context (3 fields) - IMPORTANT  
-        'workflow_stage', 'is_critical', 'module_name', 'business_impact',
+        // Business context - IMPORTANT  
+        'workflow_stage', 'is_critical', 'module_name', 'business_impact', 'submenu_item',
         
-        // Related entities (3 fields) - BUSINESS CRITICAL
-        'related_kontrak_id', 'related_spk_id', 'related_di_id'
+        // JSON Relations - FLEXIBLE APPROACH
+        'related_entities'
     ];
 
     protected $useTimestamps = true;
@@ -37,21 +37,49 @@ class SystemActivityLogModel extends Model
         $request = service('request');
         $session = session();
         
-        // Auto-fill system context
+        // Auto-fill system context using only available fields
         $logData = array_merge([
             'user_id' => $session->get('user_id') ?? null,
-            'session_id' => $session->session_id ?? null,
-            'ip_address' => $request->getIPAddress(),
-            'user_agent' => substr($request->getUserAgent()->getAgentString(), 0, 500),
-            'request_method' => $request->getMethod(),
-            'request_url' => substr($request->getPath(), 0, 255),
         ], $data);
 
-        return $this->insert($logData) !== false;
+        // Remove any fields that don't exist in the table - Updated for JSON approach
+        $allowedFields = [
+            'table_name', 'record_id', 'action_type', 'action_description',
+            'old_values', 'new_values', 'affected_fields', 'user_id',
+            'workflow_stage', 'is_critical', 'module_name', 'business_impact', 'submenu_item',
+            'related_entities'
+        ];
+        
+        $filteredData = [];
+        foreach ($logData as $key => $value) {
+            if (in_array($key, $allowedFields)) {
+                $filteredData[$key] = $value;
+            }
+        }
+
+        // Remove null values to avoid SQL syntax errors
+        $cleanData = [];
+        foreach ($filteredData as $key => $value) {
+            if ($value !== null) {
+                $cleanData[$key] = $value;
+            }
+        }
+
+        // Use direct database insert to avoid Model field filtering issues
+        $db = \Config\Database::connect();
+        
+        try {
+            $result = $db->table('system_activity_log')->insert($cleanData);
+            return $result !== false;
+        } catch (\Exception $e) {
+            log_message('error', 'Activity Log Insert Error: ' . $e->getMessage());
+            log_message('error', 'Data attempted: ' . json_encode($cleanData));
+            return false;
+        }
     }
 
     /**
-     * Log CREATE activity
+     * Log CREATE activity with JSON relations
      */
     public function logCreate(string $tableName, int $recordId, array $newData, array $options = []): bool
     {
@@ -64,9 +92,10 @@ class SystemActivityLogModel extends Model
             'affected_fields' => json_encode(array_keys($newData)),
             'workflow_stage' => $options['workflow_stage'] ?? null,
             'is_critical' => $options['is_critical'] ?? false,
-            'related_kontrak_id' => $options['related_kontrak_id'] ?? null,
-            'related_spk_id' => $options['related_spk_id'] ?? null,
-            'related_di_id' => $options['related_di_id'] ?? null,
+            'module_name' => $options['module_name'] ?? null,
+            'submenu_item' => $options['submenu_item'] ?? null,
+            'business_impact' => $options['business_impact'] ?? 'LOW',
+            'related_entities' => $this->buildRelatedEntities($options['relations'] ?? [])
         ]);
     }
 
@@ -102,30 +131,51 @@ class SystemActivityLogModel extends Model
             'affected_fields' => json_encode($affectedFields),
             'workflow_stage' => $options['workflow_stage'] ?? null,
             'is_critical' => $options['is_critical'] ?? false,
-            'related_kontrak_id' => $options['related_kontrak_id'] ?? null,
-            'related_spk_id' => $options['related_spk_id'] ?? null,
-            'related_di_id' => $options['related_di_id'] ?? null,
+            'module_name' => $options['module_name'] ?? null,
+            'submenu_item' => $options['submenu_item'] ?? null,
+            'business_impact' => $options['business_impact'] ?? 'LOW',
+            'related_entities' => $this->buildRelatedEntities($options['relations'] ?? [])
         ]);
     }
 
     /**
-     * Log DELETE activity
+     * Log DELETE activity with JSON relations
      */
     public function logDelete(string $tableName, int $recordId, array $deletedData, array $options = []): bool
     {
-        return $this->logActivity([
+        // Use direct query builder to bypass potential Model field filtering issues
+        $db = \Config\Database::connect();
+        
+        $data = [
             'table_name' => $tableName,
             'record_id' => $recordId,
             'action_type' => 'DELETE',
             'action_description' => $options['description'] ?? "Deleted {$tableName} record",
             'old_values' => json_encode($deletedData),
             'affected_fields' => json_encode(array_keys($deletedData)),
+            'user_id' => $options['user_id'] ?? null,
             'workflow_stage' => $options['workflow_stage'] ?? null,
-            'is_critical' => $options['is_critical'] ?? true, // Deletes are usually critical
-            'related_kontrak_id' => $options['related_kontrak_id'] ?? null,
-            'related_spk_id' => $options['related_spk_id'] ?? null,
-            'related_di_id' => $options['related_di_id'] ?? null,
-        ]);
+            'is_critical' => $options['is_critical'] ?? 1,
+            'module_name' => $options['module_name'] ?? null,
+            'submenu_item' => $options['submenu_item'] ?? null,
+            'business_impact' => $options['business_impact'] ?? null,
+            'related_entities' => $this->buildRelatedEntities($options['relations'] ?? [])
+        ];
+        
+        // Remove null values to avoid SQL issues
+        $cleanData = [];
+        foreach ($data as $key => $value) {
+            if ($value !== null) {
+                $cleanData[$key] = $value;
+            }
+        }
+        
+        try {
+            return $db->table('system_activity_log')->insert($cleanData);
+        } catch (\Exception $e) {
+            log_message('error', 'SystemActivityLogModel::logDelete failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
     /**
@@ -188,7 +238,7 @@ class SystemActivityLogModel extends Model
     }
 
     /**
-     * Get activity statistics
+     * Get activity statistics with JSON relations support
      */
     public function getActivityStats(array $filters = []): array
     {
@@ -214,5 +264,84 @@ class SystemActivityLogModel extends Model
         return $builder->orderBy('count', 'DESC')
                        ->get()
                        ->getResultArray();
+    }
+
+    /**
+     * Build JSON relations object from array of relations
+     * 
+     * @param array $relations Format: ['kontrak' => [123, 456], 'spk' => [789]]
+     * @return string|null JSON string or null if empty
+     */
+    public function buildRelatedEntities(array $relations): ?string
+    {
+        if (empty($relations)) {
+            return null;
+        }
+
+        // Clean and validate relations
+        $cleanRelations = [];
+        foreach ($relations as $entityType => $entityIds) {
+            if (!is_array($entityIds)) {
+                $entityIds = [$entityIds];
+            }
+            
+            // Filter out null/empty IDs and convert to integers
+            $validIds = array_filter($entityIds, function($id) {
+                return !is_null($id) && is_numeric($id) && $id > 0;
+            });
+            
+            if (!empty($validIds)) {
+                $cleanRelations[$entityType] = array_map('intval', $validIds);
+            }
+        }
+
+        return !empty($cleanRelations) ? json_encode($cleanRelations) : null;
+    }
+
+    /**
+     * Search logs by related entity
+     * 
+     * @param string $entityType e.g., 'kontrak', 'spk', 'di'
+     * @param int|array $entityIds Single ID or array of IDs
+     * @param int $limit
+     * @return array
+     */
+    public function findByRelatedEntity(string $entityType, $entityIds, int $limit = 50): array
+    {
+        if (!is_array($entityIds)) {
+            $entityIds = [$entityIds];
+        }
+
+        $builder = $this->select('*')
+                       ->where('related_entities IS NOT NULL');
+
+        // Use JSON_CONTAINS for each entity ID
+        $conditions = [];
+        foreach ($entityIds as $id) {
+            $conditions[] = "JSON_CONTAINS(related_entities, '{$id}', '$.{$entityType}')";
+        }
+
+        if (!empty($conditions)) {
+            $builder->where('(' . implode(' OR ', $conditions) . ')');
+        }
+
+        return $builder->orderBy('created_at', 'DESC')
+                       ->limit($limit)
+                       ->findAll();
+    }
+
+    /**
+     * Get entities that have any relations
+     * 
+     * @param int $limit
+     * @return array
+     */
+    public function getLogsWithRelations(int $limit = 50): array
+    {
+        return $this->select('*')
+                   ->where('related_entities IS NOT NULL')
+                   ->orderBy('created_at', 'DESC')
+                   ->limit($limit)
+                   ->findAll();
     }
 }

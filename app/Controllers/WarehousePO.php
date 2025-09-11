@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Traits\ActivityLoggingTrait;
 use App\Models\POUnitsModel;
 use App\Models\PurchasingModel;
 use CodeIgniter\API\ResponseTrait;
@@ -19,6 +20,7 @@ use Psr\Log\LoggerInterface;
 
 class WarehousePO extends BaseController
 {
+    use ActivityLoggingTrait;
     use ResponseTrait;
     protected $pounitsmodel;
     protected $purchasemodel;

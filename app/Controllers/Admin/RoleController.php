@@ -7,10 +7,12 @@ use App\Models\RoleModel;
 use App\Models\PermissionModel;
 use App\Models\UserModel;
 use CodeIgniter\API\ResponseTrait;
+use App\Traits\ActivityLoggingTrait;
 
 class RoleController extends BaseController
 {
     use ResponseTrait;
+    use ActivityLoggingTrait;
 
     protected $db;
     protected $roleModel;
@@ -276,6 +278,16 @@ class RoleController extends BaseController
                 throw new \Exception('Transaction failed');
             }
 
+            // Log role creation using trait
+            $this->logCreate('roles', $roleId, [
+                'role_id' => $roleId,
+                'name' => $roleData['name'],
+                'description' => $roleData['description'],
+                'is_system_role' => $roleData['is_system_role'],
+                'permissions' => $permissions,
+                'created_by' => session()->get('user_id') ?? 1
+            ]);
+
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Role created successfully',
@@ -359,6 +371,15 @@ class RoleController extends BaseController
                 throw new \Exception('Transaction failed');
             }
 
+            // Log role update using trait
+            $this->logUpdate('roles', $roleId, $roleData, [
+                'role_id' => $roleId,
+                'permissions' => $permissions,
+                'updated_by' => session()->get('user_id') ?? 1,
+                'previous_name' => $role['name'],
+                'previous_description' => $role['description']
+            ]);
+
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Role updated successfully'
@@ -416,6 +437,14 @@ class RoleController extends BaseController
             if ($this->db->transStatus() === false) {
                 throw new \Exception('Transaction failed');
             }
+
+            // Log role deletion using trait
+            $this->logDelete('roles', $roleId, [
+                'role_id' => $roleId,
+                'name' => $role['name'],
+                'description' => $role['description'],
+                'deleted_by' => session()->get('user_id') ?? 1
+            ]);
 
             return $this->response->setJSON([
                 'success' => true,

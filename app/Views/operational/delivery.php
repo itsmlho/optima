@@ -29,6 +29,108 @@
 .filter-card.active .text-muted {
   color: rgba(255,255,255,0.8) !important;
 }
+
+/* Enhanced Table Styling for Better Readability */
+.table {
+  font-size: 14px;
+}
+
+.table th {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  color: #495057;
+  font-weight: 600;
+  border: 1px solid #dee2e6;
+  padding: 15px 10px;
+  font-size: 13px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.table td {
+  padding: 12px 10px;
+  border-color: #e9ecef;
+  vertical-align: middle;
+  font-size: 14px;
+}
+
+.table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+/* Smart Address Column */
+.lokasi-cell {
+  max-width: 200px;
+  position: relative;
+  cursor: pointer;
+}
+
+.lokasi-preview {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+  font-size: 13px;
+  color: #495057;
+  margin: 0;
+}
+
+.lokasi-tooltip {
+  position: absolute;
+  top: -10px;
+  left: 0;
+  right: -20px;
+  background: #fff;
+  border: 2px solid #007bff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+  z-index: 1050;
+  max-width: 320px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #495057;
+  display: none;
+}
+
+.lokasi-cell:hover .lokasi-tooltip {
+  display: block;
+}
+
+.lokasi-badge {
+  display: inline-block;
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  margin-top: 3px;
+}
+
+/* Compact Action Buttons */
+.btn-action {
+  padding: 5px 8px;
+  margin: 2px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  transition: all 0.2s;
+}
+
+.btn-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* Status Badge Improvements */
+.badge {
+  font-size: 12px;
+  padding: 6px 10px;
+  border-radius: 12px;
+}
 </style>
 <?= $this->endSection() ?>
 
@@ -124,7 +226,6 @@
           <thead>
             <tr>
               <th>No. DI</th>
-              <th>No. SPK</th>
               <th>PO/Kontrak</th>
               <th>Pelanggan</th>
               <th>Lokasi</th>
@@ -318,6 +419,30 @@ document.addEventListener('DOMContentLoaded', ()=>{
           return '<span class="text-muted">-</span>';
         }
       };
+
+      // Function to format location column with smart truncation
+      const formatLokasiColumn = (lokasi) => {
+        if (!lokasi || lokasi === '-') {
+          return '<span class="text-muted">-</span>';
+        }
+        
+        // Limit preview to reasonable length
+        const maxPreviewLength = 50;
+        const isLong = lokasi.length > maxPreviewLength;
+        
+        if (isLong) {
+          const preview = lokasi.substring(0, maxPreviewLength) + '...';
+          return `
+            <div class="lokasi-preview">${preview}</div>
+            <div class="lokasi-tooltip">
+              <strong>Alamat Lengkap:</strong><br>
+              ${lokasi}
+            </div>
+          `;
+        } else {
+          return `<div class="lokasi-preview">${lokasi}</div>`;
+        }
+      };
       
       // Format driver/vehicle info
       const formatDriverVehicle = (r) => {
@@ -356,10 +481,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       tr.innerHTML = `
         <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
-        <td>${r.spk_id || '-'}</td>
         <td>${r.po_kontrak_nomor||'-'}</td>
         <td>${r.pelanggan||'-'}</td>
-        <td>${r.lokasi||'-'}</td>
+        <td class="lokasi-cell">${formatLokasiColumn(r.lokasi)}</td>
         <td class="small">${formatTotalUnits(r)}</td>
         <td>${r.jenis_perintah || '-'}</td>
         <td>${r.tujuan_perintah || '-'}</td>
@@ -490,7 +614,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               </div>
               <div class="col-6">
                 <label class="form-label">Lokasi Pengiriman</label>
-                <input type="text" class="form-control-plaintext" readonly value="${di.lokasi || '-'}">
+                <textarea class="form-control-plaintext" readonly rows="3" style="resize: none; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 0.375rem 0.75rem; background-color: #f8f9fa;">${di.lokasi || '-'}</textarea>
               </div>
               <div class="col-12"><hr></div>
               <div class="col-12"><h6 class="text-primary">Data Operasional Pengiriman</h6></div>
@@ -758,7 +882,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>
           <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>
           <div class="col-6"><strong>Kontak:</strong> ${spk.kontak||'-'}</div>
-          <div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
+          <div class="col-12"><strong>Lokasi Pengiriman:</strong><br><div style="background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid #dee2e6; font-size:14px; line-height:1.5;">${d.lokasi||'-'}</div></div>
           <div class="col-12"><hr></div>
           <div class="col-12"><strong>SPK Terkait:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
           <div class="col-12"><strong>Items:</strong><br>${itemsHtml}</div>
@@ -831,22 +955,34 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const prosesDIBtn = document.getElementById('btnProsesDI');
         if (prosesDIBtn) {
           prosesDIBtn.addEventListener('click', () => {
-            const formData = new FormData();
-            formData.append('status', 'PROCESSED');
-            
-            fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {
-              method: 'POST',
-              headers: {'X-Requested-With': 'XMLHttpRequest'},
-              body: formData
-            }).then(r=>r.json()).then(result=>{
-              if (result && result.success) {
-                notify('DI berhasil diproses. Status menjadi PROCESSED.', 'success');
-                bootstrap.Modal.getInstance(document.getElementById('diDetailModal')).hide();
-                load(); // Reload table
-              } else {
-                notify(result.message || 'Gagal memproses DI', 'error');
-              }
-            });
+            // Simple confirmation dialog
+            if (confirm('Apakah Anda yakin ingin memproses DI ini? Status akan berubah menjadi PROCESSED dan DI akan masuk ke tahap workflow operasional.')) {
+              const formData = new FormData();
+              formData.append('action', 'assign_driver');
+              // Send minimal data - actual driver info will be filled during Perencanaan stage
+              formData.append('nama_supir', 'TBD');
+              formData.append('no_hp_supir', '-');
+              formData.append('no_sim_supir', '-');
+              formData.append('kendaraan', 'TBD');
+              formData.append('no_polisi_kendaraan', '-');
+              
+              fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {
+                method: 'POST',
+                headers: {'X-Requested-With': 'XMLHttpRequest'},
+                body: formData
+              }).then(r=>r.json()).then(result=>{
+                if (result && result.success) {
+                  notify('DI berhasil diproses. Silakan lanjutkan ke tahap Perencanaan Pengiriman untuk mengisi detail operasional.', 'success');
+                  bootstrap.Modal.getInstance(document.getElementById('diDetailModal')).hide();
+                  load(); // Reload table
+                } else {
+                  notify(result.message || 'Gagal memproses DI', 'error');
+                }
+              }).catch(err => {
+                notify('Terjadi kesalahan saat memproses DI', 'error');
+                console.error(err);
+              });
+            }
           });
         }
       }, 100);

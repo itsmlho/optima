@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Traits\ActivityLoggingTrait;
 use App\Models\InventorySparepartModel;
 use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
@@ -10,6 +11,7 @@ use Config\Database;
 
 class Warehouse extends BaseController
 {
+    use ActivityLoggingTrait;
     public function index()
     {
         $data = [

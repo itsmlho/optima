@@ -4,6 +4,16 @@
  * Copyright 2024 PT Sarana Mitra Luas Tbk
  */
 
+// CRITICAL: Prevent script duplication at global level
+if (window.OPTIMA_PRO_INITIALIZED) {
+    console.log('⏭️ OptimaPro already initialized, skipping duplicate initialization');
+    // Exit early to prevent duplicate initialization
+    throw new Error('OptimaPro already initialized');
+}
+
+// Mark as initialized
+window.OPTIMA_PRO_INITIALIZED = true;
+
 (function(global, factory) {
     'use strict';
     if (typeof module === 'object' && typeof module.exports === 'object') {
@@ -64,7 +74,7 @@
             // this.initializeRealTimeUpdates();
             this.initializeDivisionThemes();
             this.bindEvents();
-            console.log('OPTIMA Pro v' + this.version + ' initialized successfully');
+            // // console.log('OPTIMA Pro v' + this.version + ' initialized successfully');
         },
 
         // DOM Ready Handler
@@ -178,11 +188,11 @@
             
             // Don't initialize event listener here as it's handled in base.php
             // Just sync the config
-            console.log('Theme initialized with:', savedTheme);
+            // console.log('Theme initialized with:', savedTheme);
         },
 
         setTheme: function(theme) {
-            console.log('setTheme called with:', theme);
+            // console.log('setTheme called with:', theme);
             document.documentElement.setAttribute('data-bs-theme', theme);
             this.config.theme = theme;
             localStorage.setItem('optima-theme', theme);
@@ -193,16 +203,16 @@
                 const icon = themeToggle.querySelector('i');
                 if (icon) {
                     icon.className = theme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-                    console.log('Theme icon updated to:', icon.className);
+                    // console.log('Theme icon updated to:', icon.className);
                 }
             }
         },
 
         toggleTheme: function() {
-            console.log('toggleTheme called, current theme:', this.config.theme);
+            // console.log('toggleTheme called, current theme:', this.config.theme);
             const currentTheme = this.config.theme;
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            console.log('Switching to theme:', newTheme);
+            // console.log('Switching to theme:', newTheme);
             this.setTheme(newTheme);
         },
 
@@ -330,13 +340,40 @@
             });
         },
 
-        // Charts initialization
+        // Charts initialization with conflict prevention
         initializeCharts: function() {
+            // Global chart registry to prevent conflicts
+            if (!window.OptimaCharts) {
+                window.OptimaCharts = {};
+            }
             this.initializeLineCharts();
             this.initializeBarCharts();
             this.initializePieCharts();
             this.initializeAreaCharts();
             this.initializeDoughnutCharts();
+        },
+        
+        // Safe chart creation that destroys existing charts
+        createChart: function(canvasId, config) {
+            if (!window.Chart) return null;
+            
+            // Destroy existing chart if it exists
+            if (window.OptimaCharts && window.OptimaCharts[canvasId]) {
+                window.OptimaCharts[canvasId].destroy();
+                delete window.OptimaCharts[canvasId];
+            }
+            
+            const canvas = document.getElementById(canvasId);
+            if (!canvas) return null;
+            
+            try {
+                const chart = new Chart(canvas.getContext('2d'), config);
+                if (!window.OptimaCharts) window.OptimaCharts = {};
+                window.OptimaCharts[canvasId] = chart;
+                return chart;
+            } catch (error) {
+                return null;
+            }
         },
 
         initializeLineCharts: function() {
@@ -699,7 +736,7 @@
         initializeDropdowns: function() {
             // Let Bootstrap handle all dropdowns automatically
             // We don't need to manually initialize them
-            console.log('Bootstrap dropdowns will be initialized automatically');
+            // console.log('Bootstrap dropdowns will be initialized automatically');
         },
 
         // Scrollspy initialization
@@ -1221,7 +1258,7 @@
                 contentHeader.classList.add('dashboard-header', 'themed');
             }
             
-            console.log('Division theme applied for path:', currentPath);
+            // console.log('Division theme applied for path:', currentPath);
         }
     };
 
@@ -1365,43 +1402,43 @@ function initializeDivisionTheme() {
     if (currentPath.includes('/service/') || currentPath.includes('/service')) {
         body.setAttribute('data-division', 'service');
         body.classList.add('service-theme');
-        console.log('Applied Service theme');
+        // // console.log('Applied Service theme');
     } else if (currentPath.includes('/admin/') || currentPath.includes('/user/')) {
         body.setAttribute('data-division', 'admin');
         body.classList.add('admin-theme');
-        console.log('Applied Admin theme');
+        // // console.log('Applied Admin theme');
     } else if (currentPath.includes('/marketing/')) {
         body.setAttribute('data-division', 'marketing');
         body.classList.add('marketing-theme');
-        console.log('Applied Marketing theme');
+        // // console.log('Applied Marketing theme');
     } else if (currentPath.includes('/finance/') || currentPath.includes('/financial/')) {
         body.setAttribute('data-division', 'finance');
         body.classList.add('finance-theme');
-        console.log('Applied Finance theme');
+        // console.log('Applied Finance theme');
     } else if (currentPath.includes('/warehouse/')) {
         body.setAttribute('data-division', 'warehouse');
         body.classList.add('warehouse-theme');
-        console.log('Applied Warehouse theme');
+        // console.log('Applied Warehouse theme');
     } else if (currentPath.includes('/dashboard/')) {
         body.setAttribute('data-division', 'dashboard');
         body.classList.add('dashboard-theme');
-        console.log('Applied Dashboard theme');
+        // console.log('Applied Dashboard theme');
     } else if (currentPath.includes('/reports/')) {
         body.setAttribute('data-division', 'reports');
         body.classList.add('reports-theme');
-        console.log('Applied Reports theme');
+        // console.log('Applied Reports theme');
     } else if (currentPath.includes('/rental/')) {
         body.setAttribute('data-division', 'rental');
         body.classList.add('rental-theme');
-        console.log('Applied Rental theme');
+        // console.log('Applied Rental theme');
     } else if (currentPath.includes('/customers/')) {
         body.setAttribute('data-division', 'customers');
         body.classList.add('customers-theme');
-        console.log('Applied Customers theme');
+        // console.log('Applied Customers theme');
     } else if (currentPath.includes('/system/') || currentPath.includes('/settings/')) {
         body.setAttribute('data-division', 'system');
         body.classList.add('system-theme');
-        console.log('Applied System theme');
+        // console.log('Applied System theme');
     }
     
     // Add visual feedback for theme changes
@@ -1419,23 +1456,5 @@ function initializeDivisionTheme() {
     }
 }
 
-// Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    initializeDivisionTheme();
-});
-
-// Re-initialize when navigation changes (for SPAs)
-window.addEventListener('popstate', function() {
-    initializeDivisionTheme();
-});
-
-// Override existing initialization if it exists
-if (typeof window.initializeApp === 'function') {
-    const originalInit = window.initializeApp;
-    window.initializeApp = function() {
-        originalInit();
-        initializeDivisionTheme();
-    };
-} else {
-    window.initializeApp = initializeDivisionTheme;
-} 
+// Initialize OptimaPro when DOM is ready
+OptimaPro.initializeDOMReady(); 

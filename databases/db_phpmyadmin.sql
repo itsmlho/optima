@@ -2,11 +2,12 @@
 -- version 5.2.2
 -- https://www.phpmyadmin.net/
 --
--- Host: mysql
--- Generation Time: Sep 01, 2025 at 04:18 AM
--- Server version: 8.0.43
--- PHP Version: 8.2.27
+-- Host: localhost
+-- Generation Time: Sep 09, 2025 at 11:56 AM
+-- Server version: 10.4.32-MariaDB
+-- PHP Version: 8.2.12
 
+SET FOREIGN_KEY_CHECKS=0;
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
@@ -20,255 +21,136 @@ SET time_zone = "+00:00";
 --
 -- Database: `optima_db`
 --
+CREATE DATABASE IF NOT EXISTS `optima_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `optima_db`;
 
-DELIMITER $$
---
--- Procedures
---
-CREATE DEFINER=`root`@`localhost` PROCEDURE `LinkInventoryToUnitAfterDelivery` (IN `p_di_id` INT, IN `p_spk_id` INT, IN `p_unit_id` INT)   BEGIN
-        DECLARE v_spk_spesifikasi JSON;
-        DECLARE v_persiapan_battery_id INT DEFAULT NULL;
-        DECLARE v_persiapan_charger_id INT DEFAULT NULL;
-        DECLARE v_fabrikasi_attachment_id INT DEFAULT NULL;
-        
-        DECLARE EXIT HANDLER FOR SQLEXCEPTION
-        BEGIN
-            ROLLBACK;
-            RESIGNAL;
-        END;
-        
-        START TRANSACTION;
-        
-        -- Ambil data spesifikasi dari SPK
-        SELECT spesifikasi INTO v_spk_spesifikasi 
-        FROM spk 
-        WHERE id = p_spk_id;
-        
-        -- Extract inventory IDs dari JSON spesifikasi
-        SET v_persiapan_battery_id = JSON_UNQUOTE(JSON_EXTRACT(v_spk_spesifikasi, '$.persiapan_battery_id'));
-        SET v_persiapan_charger_id = JSON_UNQUOTE(JSON_EXTRACT(v_spk_spesifikasi, '$.persiapan_charger_id'));
-        SET v_fabrikasi_attachment_id = JSON_UNQUOTE(JSON_EXTRACT(v_spk_spesifikasi, '$.fabrikasi_attachment_id'));
-        
-        -- Link battery ke unit jika ada
-        IF v_persiapan_battery_id IS NOT NULL AND v_persiapan_battery_id != 'null' THEN
-            UPDATE inventory_attachment 
-            SET 
-                id_inventory_unit = p_unit_id,
-                status_unit = 3, -- RENTAL
-                lokasi_penyimpanan = NULL,
-                updated_at = NOW()
-            WHERE id_inventory_attachment = v_persiapan_battery_id
-            AND tipe_item = 'battery'
-            AND status_unit = 7; -- STOCK ASET
-            
-            -- Log activity
-            INSERT INTO inventory_item_unit_log (
-                id_inventory_attachment,
-                id_inventory_unit,
-                action,
-                user_id,
-                note,
-                created_at
-            ) VALUES (
-                v_persiapan_battery_id,
-                p_unit_id,
-                'assign_after_delivery',
-                1, -- System user
-                CONCAT('Auto-assigned after DI #', p_di_id, ' delivered'),
-                NOW()
-            );
-        END IF;
-        
-        -- Link charger ke unit jika ada
-        IF v_persiapan_charger_id IS NOT NULL AND v_persiapan_charger_id != 'null' THEN
-            UPDATE inventory_attachment 
-            SET 
-                id_inventory_unit = p_unit_id,
-                status_unit = 3, -- RENTAL
-                lokasi_penyimpanan = NULL,
-                updated_at = NOW()
-            WHERE id_inventory_attachment = v_persiapan_charger_id
-            AND tipe_item = 'charger'
-            AND status_unit = 7; -- STOCK ASET
-            
-            -- Log activity
-            INSERT INTO inventory_item_unit_log (
-                id_inventory_attachment,
-                id_inventory_unit,
-                action,
-                user_id,
-                note,
-                created_at
-            ) VALUES (
-                v_persiapan_charger_id,
-                p_unit_id,
-                'assign_after_delivery',
-                1, -- System user
-                CONCAT('Auto-assigned after DI #', p_di_id, ' delivered'),
-                NOW()
-            );
-        END IF;
-        
-        -- Link attachment ke unit jika ada
-        IF v_fabrikasi_attachment_id IS NOT NULL AND v_fabrikasi_attachment_id != 'null' THEN
-            UPDATE inventory_attachment 
-            SET 
-                id_inventory_unit = p_unit_id,
-                status_unit = 3, -- RENTAL
-                lokasi_penyimpanan = NULL,
-                updated_at = NOW()
-            WHERE id_inventory_attachment = v_fabrikasi_attachment_id
-            AND tipe_item = 'attachment'
-            AND status_unit = 7; -- STOCK ASET
-            
-            -- Log activity
-            INSERT INTO inventory_item_unit_log (
-                id_inventory_attachment,
-                id_inventory_unit,
-                action,
-                user_id,
-                note,
-                created_at
-            ) VALUES (
-                v_fabrikasi_attachment_id,
-                p_unit_id,
-                'assign_after_delivery',
-                1, -- System user
-                CONCAT('Auto-assigned after DI #', p_di_id, ' delivered'),
-                NOW()
-            );
-        END IF;
-        
-        COMMIT;
-        
-    END$$
-
-CREATE DEFINER=`root`@`localhost` PROCEDURE `update_kontrak_totals_proc` (IN `kontrak_id_param` INT UNSIGNED)   BEGIN
-    DECLARE total_units_count INT DEFAULT 0;
-    DECLARE nilai_total_amount DECIMAL(15,2) DEFAULT 0;
-    DECLARE jenis_sewa_kontrak VARCHAR(10) DEFAULT 'BULANAN';
-
-    -- Get kontrak jenis_sewa
-    SELECT jenis_sewa INTO jenis_sewa_kontrak
-    FROM kontrak
-    WHERE id = kontrak_id_param;
-
-    -- Set default jika NULL
-    IF jenis_sewa_kontrak IS NULL THEN
-        SET jenis_sewa_kontrak = 'BULANAN';
-    END IF;
-
-    -- Calculate totals dari kontrak_spesifikasi
-    IF jenis_sewa_kontrak = 'HARIAN' THEN
-        SELECT
-            COALESCE(SUM(ks.jumlah_dibutuhkan), 0) as total_units,
-            COALESCE(SUM(ks.jumlah_dibutuhkan * COALESCE(ks.harga_per_unit_harian, 0)), 0) as nilai_total
-            INTO total_units_count, nilai_total_amount
-        FROM kontrak_spesifikasi ks
-        WHERE ks.kontrak_id = kontrak_id_param;
-    ELSE
-        -- Default BULANAN
-        SELECT
-            COALESCE(SUM(ks.jumlah_dibutuhkan), 0) as total_units,
-            COALESCE(SUM(ks.jumlah_dibutuhkan * COALESCE(ks.harga_per_unit_bulanan, 0)), 0) as nilai_total
-            INTO total_units_count, nilai_total_amount
-        FROM kontrak_spesifikasi ks
-        WHERE ks.kontrak_id = kontrak_id_param;
-    END IF;
-
-    -- Update kontrak
-    UPDATE kontrak SET
-        total_units = total_units_count,
-        nilai_total = nilai_total_amount
-    WHERE id = kontrak_id_param;
-
-END$$
+-- --------------------------------------------------------
 
 --
--- Functions
+-- Table structure for table `activity_types`
 --
-CREATE DEFINER=`root`@`%` FUNCTION `get_unit_attachment_info` (`unit_id` INT) RETURNS JSON DETERMINISTIC BEGIN
-    DECLARE result JSON DEFAULT NULL;
+-- Creation: Sep 08, 2025 at 06:54 AM
+--
 
-    SELECT JSON_OBJECT(
-        'attachment_id', ia.attachment_id,
-        'sn_attachment', ia.sn_attachment,
-        'tipe', a.tipe,
-        'merk', a.merk,
-        'model', a.model,
-        'inventory_id', ia.id_inventory_attachment
-    ) INTO result
-    FROM inventory_attachment ia
-    JOIN attachment a ON ia.attachment_id = a.id_attachment
-    WHERE ia.id_inventory_unit = unit_id
-      AND ia.tipe_item = 'attachment'
-      AND ia.status_unit = 8
-    LIMIT 1;
+DROP TABLE IF EXISTS `activity_types`;
+CREATE TABLE IF NOT EXISTS `activity_types` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `module_name` varchar(50) NOT NULL,
+  `type_code` varchar(50) NOT NULL,
+  `type_name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `business_impact_default` enum('LOW','MEDIUM','HIGH','CRITICAL') DEFAULT 'LOW',
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_module_type` (`module_name`,`type_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-    RETURN result;
-END$$
+--
+-- RELATIONSHIPS FOR TABLE `activity_types`:
+--
 
-CREATE DEFINER=`root`@`%` FUNCTION `get_unit_battery_info` (`unit_id` INT) RETURNS JSON DETERMINISTIC BEGIN
-    DECLARE result JSON DEFAULT NULL;
+--
+-- Truncate table before insert `activity_types`
+--
 
-    SELECT JSON_OBJECT(
-        'battery_id', ia.baterai_id,
-        'sn_baterai', ia.sn_baterai,
-        'merk', b.merk_baterai,
-        'tipe', b.tipe_baterai,
-        'jenis', b.jenis_baterai,
-        'inventory_id', ia.id_inventory_attachment
-    ) INTO result
-    FROM inventory_attachment ia
-    JOIN baterai b ON ia.baterai_id = b.id
-    WHERE ia.id_inventory_unit = unit_id
-      AND ia.tipe_item = 'battery'
-      AND ia.status_unit = 8
-    LIMIT 1;
+TRUNCATE TABLE `activity_types`;
+--
+-- Dumping data for table `activity_types`
+--
 
-    RETURN result;
-END$$
-
-CREATE DEFINER=`root`@`%` FUNCTION `get_unit_charger_info` (`unit_id` INT) RETURNS JSON DETERMINISTIC BEGIN
-    DECLARE result JSON DEFAULT NULL;
-
-    SELECT JSON_OBJECT(
-        'charger_id', ia.charger_id,
-        'sn_charger', ia.sn_charger,
-        'merk', c.merk_charger,
-        'tipe', c.tipe_charger,
-        'inventory_id', ia.id_inventory_attachment
-    ) INTO result
-    FROM inventory_attachment ia
-    JOIN charger c ON ia.charger_id = c.id_charger
-    WHERE ia.id_inventory_unit = unit_id
-      AND ia.tipe_item = 'charger'
-      AND ia.status_unit = 8
-    LIMIT 1;
-
-    RETURN result;
-END$$
-
-DELIMITER ;
+INSERT DELAYED IGNORE INTO `activity_types` (`id`, `module_name`, `type_code`, `type_name`, `description`, `business_impact_default`, `is_active`, `created_at`) VALUES
+(1, 'PURCHASING', 'PO_CREATE', 'Purchase Order Created', 'New purchase order created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(2, 'PURCHASING', 'PO_APPROVE', 'Purchase Order Approved', 'Purchase order approved by authorized person', 'HIGH', 1, '2025-09-08 06:54:41'),
+(3, 'PURCHASING', 'PO_REJECT', 'Purchase Order Rejected', 'Purchase order rejected', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(4, 'PURCHASING', 'PO_CANCEL', 'Purchase Order Cancelled', 'Purchase order cancelled', 'HIGH', 1, '2025-09-08 06:54:41'),
+(5, 'PURCHASING', 'VENDOR_ADD', 'Vendor Added', 'New vendor/supplier added to system', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(6, 'PURCHASING', 'VENDOR_UPDATE', 'Vendor Updated', 'Vendor information updated', 'LOW', 1, '2025-09-08 06:54:41'),
+(7, 'PURCHASING', 'QUOTATION_REQUEST', 'Quotation Requested', 'Quotation requested from vendor', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(8, 'PURCHASING', 'QUOTATION_RECEIVE', 'Quotation Received', 'Quotation received from vendor', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(9, 'WAREHOUSE', 'STOCK_IN', 'Stock In', 'Items received into warehouse', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(10, 'WAREHOUSE', 'STOCK_OUT', 'Stock Out', 'Items issued from warehouse', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(11, 'WAREHOUSE', 'STOCK_TRANSFER', 'Stock Transfer', 'Items transferred between locations', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(12, 'WAREHOUSE', 'STOCK_ADJUSTMENT', 'Stock Adjustment', 'Stock quantity adjusted', 'HIGH', 1, '2025-09-08 06:54:41'),
+(13, 'WAREHOUSE', 'LOCATION_CREATE', 'Location Created', 'New warehouse location created', 'LOW', 1, '2025-09-08 06:54:41'),
+(14, 'WAREHOUSE', 'INVENTORY_COUNT', 'Inventory Count', 'Physical inventory count performed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(15, 'WAREHOUSE', 'DAMAGE_REPORT', 'Damage Reported', 'Damaged items reported', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(16, 'MARKETING', 'LEAD_CREATE', 'Lead Created', 'New sales lead created', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(17, 'MARKETING', 'LEAD_CONVERT', 'Lead Converted', 'Lead converted to opportunity', 'HIGH', 1, '2025-09-08 06:54:41'),
+(18, 'MARKETING', 'QUOTE_GENERATE', 'Quote Generated', 'Sales quotation generated', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(19, 'MARKETING', 'CONTRACT_CREATE', 'Contract Created', 'New contract/kontrak created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(20, 'MARKETING', 'CONTRACT_APPROVE', 'Contract Approved', 'Contract approved', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(21, 'MARKETING', 'CONTRACT_SIGN', 'Contract Signed', 'Contract signed by customer', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(22, 'MARKETING', 'UNIT_ASSIGN', 'Unit Assigned', 'Unit assigned to contract', 'HIGH', 1, '2025-09-08 06:54:41'),
+(23, 'SERVICE', 'SPK_CREATE', 'SPK Created', 'Service work order (SPK) created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(24, 'SERVICE', 'SPK_START', 'SPK Started', 'Work on SPK started', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(25, 'SERVICE', 'SPK_COMPLETE', 'SPK Completed', 'SPK work completed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(26, 'SERVICE', 'MAINTENANCE_SCHEDULE', 'Maintenance Scheduled', 'Maintenance scheduled for unit', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(27, 'SERVICE', 'MAINTENANCE_COMPLETE', 'Maintenance Completed', 'Maintenance work completed', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(28, 'SERVICE', 'REPAIR_REQUEST', 'Repair Requested', 'Repair service requested', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(29, 'SERVICE', 'PART_USED', 'Parts Used', 'Spare parts used in service', 'LOW', 1, '2025-09-08 06:54:41'),
+(30, 'OPERATIONAL', 'DI_CREATE', 'Delivery Instruction Created', 'New delivery instruction created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(31, 'OPERATIONAL', 'DISPATCH', 'Unit Dispatched', 'Unit dispatched for delivery', 'HIGH', 1, '2025-09-08 06:54:41'),
+(32, 'OPERATIONAL', 'DELIVERY_COMPLETE', 'Delivery Completed', 'Unit delivered to customer', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(33, 'OPERATIONAL', 'PICKUP_SCHEDULE', 'Pickup Scheduled', 'Unit pickup scheduled', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(34, 'OPERATIONAL', 'PICKUP_COMPLETE', 'Pickup Completed', 'Unit picked up from customer', 'HIGH', 1, '2025-09-08 06:54:41'),
+(35, 'OPERATIONAL', 'ROUTE_OPTIMIZE', 'Route Optimized', 'Delivery route optimized', 'LOW', 1, '2025-09-08 06:54:41'),
+(36, 'ACCOUNTING', 'INVOICE_CREATE', 'Invoice Created', 'New invoice created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(37, 'ACCOUNTING', 'INVOICE_SEND', 'Invoice Sent', 'Invoice sent to customer', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(38, 'ACCOUNTING', 'PAYMENT_RECEIVE', 'Payment Received', 'Payment received from customer', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(39, 'ACCOUNTING', 'PAYMENT_OVERDUE', 'Payment Overdue', 'Payment marked as overdue', 'HIGH', 1, '2025-09-08 06:54:41'),
+(40, 'ACCOUNTING', 'EXPENSE_RECORD', 'Expense Recorded', 'Business expense recorded', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(41, 'ACCOUNTING', 'JOURNAL_ENTRY', 'Journal Entry', 'Accounting journal entry created', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(42, 'ACCOUNTING', 'RECONCILIATION', 'Bank Reconciliation', 'Bank account reconciled', 'HIGH', 1, '2025-09-08 06:54:41'),
+(43, 'PERIZINAN', 'PERMIT_APPLY', 'Permit Application', 'New permit application submitted', 'HIGH', 1, '2025-09-08 06:54:41'),
+(44, 'PERIZINAN', 'PERMIT_APPROVE', 'Permit Approved', 'Permit application approved', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(45, 'PERIZINAN', 'PERMIT_REJECT', 'Permit Rejected', 'Permit application rejected', 'HIGH', 1, '2025-09-08 06:54:41'),
+(46, 'PERIZINAN', 'PERMIT_RENEW', 'Permit Renewed', 'Existing permit renewed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(47, 'PERIZINAN', 'PERMIT_EXPIRE', 'Permit Expired', 'Permit expired', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(48, 'PERIZINAN', 'DOCUMENT_UPLOAD', 'Document Uploaded', 'Supporting document uploaded', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(49, 'PERIZINAN', 'COMPLIANCE_CHECK', 'Compliance Check', 'Regulatory compliance check performed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(50, 'ADMIN', 'USER_CREATE', 'User Created', 'New user account created', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(51, 'ADMIN', 'USER_DEACTIVATE', 'User Deactivated', 'User account deactivated', 'HIGH', 1, '2025-09-08 06:54:41'),
+(52, 'ADMIN', 'ROLE_ASSIGN', 'Role Assigned', 'Role assigned to user', 'HIGH', 1, '2025-09-08 06:54:41'),
+(53, 'ADMIN', 'PERMISSION_GRANT', 'Permission Granted', 'Permission granted to user/role', 'HIGH', 1, '2025-09-08 06:54:41'),
+(54, 'ADMIN', 'SYSTEM_BACKUP', 'System Backup', 'System backup performed', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(55, 'ADMIN', 'CONFIG_CHANGE', 'Configuration Changed', 'System configuration changed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(56, 'DASHBOARD', 'DASHBOARD_VIEW', 'Dashboard Viewed', 'Dashboard page accessed', 'LOW', 1, '2025-09-08 06:54:41'),
+(57, 'REPORTS', 'REPORT_GENERATE', 'Report Generated', 'Business report generated', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(58, 'REPORTS', 'REPORT_EXPORT', 'Report Exported', 'Report exported to file', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(59, 'REPORTS', 'REPORT_SCHEDULE', 'Report Scheduled', 'Automatic report scheduled', 'LOW', 1, '2025-09-08 06:54:41');
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `attachment`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `attachment` (
-  `id_attachment` int NOT NULL,
-  `tipe` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `merk` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `model` varchar(100) COLLATE utf8mb4_general_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `attachment`;
+CREATE TABLE IF NOT EXISTS `attachment` (
+  `id_attachment` int(11) NOT NULL AUTO_INCREMENT,
+  `tipe` varchar(100) NOT NULL,
+  `merk` varchar(100) NOT NULL,
+  `model` varchar(100) NOT NULL,
+  PRIMARY KEY (`id_attachment`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `attachment`:
+--
+
+--
+-- Truncate table before insert `attachment`
+--
+
+TRUNCATE TABLE `attachment`;
 --
 -- Dumping data for table `attachment`
 --
 
-INSERT INTO `attachment` (`id_attachment`, `tipe`, `merk`, `model`) VALUES
+INSERT DELAYED IGNORE INTO `attachment` (`id_attachment`, `tipe`, `merk`, `model`) VALUES
 (1, 'FORK POSITIONER', 'CASCADE', '120K-FPS-CO82'),
 (2, 'FORK POSITIONER', 'CASCADE', '65K-FPS'),
 (3, 'PAPER ROLL CLAMP', 'CASCADE', '77F-RCP-01C'),
@@ -285,19 +167,32 @@ INSERT INTO `attachment` (`id_attachment`, `tipe`, `merk`, `model`) VALUES
 --
 -- Table structure for table `baterai`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `baterai` (
-  `id` int NOT NULL,
-  `merk_baterai` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `tipe_baterai` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `jenis_baterai` varchar(50) COLLATE utf8mb4_general_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `baterai`;
+CREATE TABLE IF NOT EXISTS `baterai` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `merk_baterai` varchar(100) NOT NULL,
+  `tipe_baterai` varchar(100) NOT NULL,
+  `jenis_baterai` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `baterai`:
+--
+
+--
+-- Truncate table before insert `baterai`
+--
+
+TRUNCATE TABLE `baterai`;
 --
 -- Dumping data for table `baterai`
 --
 
-INSERT INTO `baterai` (`id`, `merk_baterai`, `tipe_baterai`, `jenis_baterai`) VALUES
+INSERT DELAYED IGNORE INTO `baterai` (`id`, `merk_baterai`, `tipe_baterai`, `jenis_baterai`) VALUES
 (1, 'JUNGHEINRICH (JHR)', '48V / 775AH AQUAMATIC (5PZS775)', 'Lead Acid'),
 (2, 'JUNGHEINRICH (JHR)', '48V / 750AH AQUAMATIC (6PZS750)', 'Lead Acid'),
 (3, 'JUNGHEINRICH (JHR)', '48V / 620AH AQUAMATIC (4PZS620)', 'Lead Acid'),
@@ -331,18 +226,31 @@ INSERT INTO `baterai` (`id`, `merk_baterai`, `tipe_baterai`, `jenis_baterai`) VA
 --
 -- Table structure for table `charger`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `charger` (
-  `id_charger` int NOT NULL,
-  `merk_charger` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `tipe_charger` varchar(100) COLLATE utf8mb4_general_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `charger`;
+CREATE TABLE IF NOT EXISTS `charger` (
+  `id_charger` int(11) NOT NULL AUTO_INCREMENT,
+  `merk_charger` varchar(100) NOT NULL,
+  `tipe_charger` varchar(100) NOT NULL,
+  PRIMARY KEY (`id_charger`)
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `charger`:
+--
+
+--
+-- Truncate table before insert `charger`
+--
+
+TRUNCATE TABLE `charger`;
 --
 -- Dumping data for table `charger`
 --
 
-INSERT INTO `charger` (`id_charger`, `merk_charger`, `tipe_charger`) VALUES
+INSERT DELAYED IGNORE INTO `charger` (`id_charger`, `merk_charger`, `tipe_charger`) VALUES
 (1, 'JUNGHEINRICH', 'SLT010nDe48/80P(48V / 80A)'),
 (2, 'JUNGHEINRICH', 'SLT010nDe48/100P(48V / 100A)'),
 (3, 'JUNGHEINRICH', 'SLT010nEe24/35P(24V / 35A)'),
@@ -366,74 +274,98 @@ INSERT INTO `charger` (`id_charger`, `merk_charger`, `tipe_charger`) VALUES
 --
 -- Table structure for table `delivery_instructions`
 --
+-- Creation: Sep 04, 2025 at 02:17 AM
+--
 
-CREATE TABLE `delivery_instructions` (
-  `id` int UNSIGNED NOT NULL,
-  `nomor_di` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `spk_id` int UNSIGNED DEFAULT NULL,
-  `po_kontrak_nomor` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pelanggan` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `lokasi` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+DROP TABLE IF EXISTS `delivery_instructions`;
+CREATE TABLE IF NOT EXISTS `delivery_instructions` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `nomor_di` varchar(100) NOT NULL,
+  `spk_id` int(10) UNSIGNED DEFAULT NULL,
+  `po_kontrak_nomor` varchar(100) DEFAULT NULL,
+  `pelanggan` varchar(255) NOT NULL,
+  `lokasi` varchar(255) DEFAULT NULL,
   `tanggal_kirim` date DEFAULT NULL,
-  `catatan` text COLLATE utf8mb4_general_ci,
-  `status` enum('SUBMITTED','PROCESSED','SHIPPED','DELIVERED','CANCELLED') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'SUBMITTED',
-  `dibuat_oleh` int UNSIGNED DEFAULT NULL,
-  `dibuat_pada` datetime DEFAULT CURRENT_TIMESTAMP,
-  `diperbarui_pada` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `catatan` text DEFAULT NULL,
+  `status` enum('SUBMITTED','PROCESSED','SHIPPED','DELIVERED','CANCELLED') NOT NULL DEFAULT 'SUBMITTED',
+  `jenis_perintah_kerja_id` int(11) DEFAULT NULL,
+  `tujuan_perintah_kerja_id` int(11) DEFAULT NULL,
+  `status_eksekusi_workflow_id` int(11) DEFAULT 1,
+  `dibuat_oleh` int(10) UNSIGNED DEFAULT NULL,
+  `dibuat_pada` datetime DEFAULT current_timestamp(),
+  `diperbarui_pada` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `perencanaan_tanggal_approve` date DEFAULT NULL COMMENT 'Tanggal approval perencanaan pengiriman',
   `estimasi_sampai` date DEFAULT NULL COMMENT 'Estimasi tanggal sampai dari perencanaan',
-  `nama_supir` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Nama supir yang bertugas',
-  `no_hp_supir` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Nomor HP supir',
-  `no_sim_supir` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Nomor SIM supir',
-  `kendaraan` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Jenis/merk kendaraan yang digunakan',
-  `no_polisi_kendaraan` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Nomor polisi kendaraan',
+  `nama_supir` varchar(100) DEFAULT NULL COMMENT 'Nama supir yang bertugas',
+  `no_hp_supir` varchar(20) DEFAULT NULL COMMENT 'Nomor HP supir',
+  `no_sim_supir` varchar(50) DEFAULT NULL COMMENT 'Nomor SIM supir',
+  `kendaraan` varchar(100) DEFAULT NULL COMMENT 'Jenis/merk kendaraan yang digunakan',
+  `no_polisi_kendaraan` varchar(20) DEFAULT NULL COMMENT 'Nomor polisi kendaraan',
   `berangkat_tanggal_approve` date DEFAULT NULL COMMENT 'Tanggal approval berangkat',
-  `catatan_berangkat` text COLLATE utf8mb4_general_ci COMMENT 'Catatan keberangkatan dan kondisi barang',
+  `catatan_berangkat` text DEFAULT NULL COMMENT 'Catatan keberangkatan dan kondisi barang',
   `sampai_tanggal_approve` date DEFAULT NULL COMMENT 'Tanggal approval sampai',
-  `catatan_sampai` text COLLATE utf8mb4_general_ci COMMENT 'Catatan kedatangan dan konfirmasi penerima'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `catatan_sampai` text DEFAULT NULL COMMENT 'Catatan kedatangan dan konfirmasi penerima',
+  `status_temp` enum('DIAJUKAN','DISETUJUI','PERSIAPAN_UNIT','SIAP_KIRIM','DALAM_PERJALANAN','SAMPAI_LOKASI','SELESAI','DIBATALKAN') DEFAULT 'DIAJUKAN',
+  PRIMARY KEY (`id`),
+  KEY `fk_di_spk` (`spk_id`),
+  KEY `fk_di_jenis_perintah_kerja` (`jenis_perintah_kerja_id`),
+  KEY `fk_di_tujuan_perintah_kerja` (`tujuan_perintah_kerja_id`),
+  KEY `fk_di_status_eksekusi_workflow` (`status_eksekusi_workflow_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=124 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `delivery_instructions`:
+--   `jenis_perintah_kerja_id`
+--       `jenis_perintah_kerja` -> `id`
+--   `spk_id`
+--       `spk` -> `id`
+--   `status_eksekusi_workflow_id`
+--       `status_eksekusi_workflow` -> `id`
+--   `tujuan_perintah_kerja_id`
+--       `tujuan_perintah_kerja` -> `id`
+--
+
+--
+-- Truncate table before insert `delivery_instructions`
+--
+
+TRUNCATE TABLE `delivery_instructions`;
 --
 -- Dumping data for table `delivery_instructions`
 --
 
-INSERT INTO `delivery_instructions` (`id`, `nomor_di`, `spk_id`, `po_kontrak_nomor`, `pelanggan`, `lokasi`, `tanggal_kirim`, `catatan`, `status`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`, `perencanaan_tanggal_approve`, `estimasi_sampai`, `nama_supir`, `no_hp_supir`, `no_sim_supir`, `kendaraan`, `no_polisi_kendaraan`, `berangkat_tanggal_approve`, `catatan_berangkat`, `sampai_tanggal_approve`, `catatan_sampai`) VALUES
-(8, 'DI/202508/001', NULL, NULL, '', NULL, '2025-08-19', NULL, 'DELIVERED', 1, '2025-08-18 04:13:18', '2025-08-27 15:26:25', '2025-08-18', '2025-08-21', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', '2025-08-18', NULL, '2025-08-18', 'asd'),
-(9, 'DI/202508/002', NULL, 'test/1/1/2', 'ADIT', '123', '2025-08-20', NULL, 'DELIVERED', 1, '2025-08-18 06:44:27', '2025-08-27 15:26:25', '2025-08-18', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-26', NULL, '2025-08-26', 'aa'),
-(10, 'DI/202508/003', NULL, 'test/1/1/2', 'ADIT', '123', '2025-08-20', 'a', 'DELIVERED', 1, '2025-08-18 07:42:28', '2025-08-27 15:26:25', '2025-08-19', '2025-08-23', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', '2025-08-19', 'a', '2025-08-19', 'asd'),
-(11, 'DI/202508/004', NULL, '1233', 'kaleng', 'kaaleng', '2025-08-20', NULL, 'DELIVERED', 1, '2025-08-19 02:54:26', '2025-08-27 15:26:25', '2025-08-19', '2025-08-20', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', '2025-08-19', NULL, '2025-08-19', 'as'),
-(12, 'DI/202508/005', NULL, 'test/1/1/2', 'ADIT', '123', '2025-08-26', 'aa', 'PROCESSED', 1, '2025-08-19 07:35:59', '2025-08-27 15:26:25', '2025-08-26', '2025-08-26', 'JOKO', '082138848123', '9123123', 'KOKASD', '123123', NULL, NULL, NULL, NULL),
-(13, 'DI/202508/006', NULL, 'PO-CL-0350', 'PT. Maju Bersama Sejahtera', 'Sunter, Jakarta Utara', '2025-08-20', NULL, 'DELIVERED', 1, '2025-08-19 07:46:13', '2025-08-27 15:26:25', '2025-08-26', NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-26', 'as', '2025-08-26', 'asd'),
-(95, 'DI/202508/007', NULL, 'test/1/1/10', 'PURI INDAH', 'Gemalapik', '2025-08-27', NULL, 'SUBMITTED', 1, '2025-08-27 15:24:37', '2025-08-27 22:24:37', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(96, 'DI/202508/008', NULL, 'test/1/1/11', 'Sarana Mitra Luas Tbk', 'Area Kargo Bandara Soekarno-Hatta', '2025-08-27', NULL, 'SUBMITTED', 1, '2025-08-27 15:26:16', '2025-08-27 22:26:16', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(97, 'DI/202508/011', 24, 'test/1/1/9', 'PURI NUSA', 'Gemalapik', '2025-08-30', NULL, 'SUBMITTED', 1, '2025-08-30 02:26:06', '2025-08-30 02:31:44', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
-(98, 'DI/202508/012', 24, 'test/1/1/9', 'PURI NUSA', 'Gemalapik', '2025-08-30', NULL, 'SUBMITTED', 1, '2025-08-30 02:32:49', '2025-08-30 02:32:49', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+INSERT DELAYED IGNORE INTO `delivery_instructions` (`id`, `nomor_di`, `spk_id`, `po_kontrak_nomor`, `pelanggan`, `lokasi`, `tanggal_kirim`, `catatan`, `status`, `jenis_perintah_kerja_id`, `tujuan_perintah_kerja_id`, `status_eksekusi_workflow_id`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`, `perencanaan_tanggal_approve`, `estimasi_sampai`, `nama_supir`, `no_hp_supir`, `no_sim_supir`, `kendaraan`, `no_polisi_kendaraan`, `berangkat_tanggal_approve`, `catatan_berangkat`, `sampai_tanggal_approve`, `catatan_sampai`, `status_temp`) VALUES
+(100, 'DI/202509/TEST001', 27, 'PO-TEST-001', 'PT Test Customer', 'Jakarta', NULL, NULL, 'SUBMITTED', 1, 1, 1, 1, '2025-09-03 16:52:00', '2025-09-03 16:52:00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'DIAJUKAN'),
+(122, 'DI/202509/001', 27, 'test12345', 'MONORKOBO', 'BEKASI', '2025-09-04', NULL, 'PROCESSED', 1, 1, 1, 1, '2025-09-04 03:43:23', '2025-09-04 17:05:12', '2025-09-04', '2025-09-04', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', NULL, NULL, NULL, NULL, 'SIAP_KIRIM'),
+(123, 'DI/202509/002', 28, 'MSI', 'MSI', 'EROPA', '2025-09-04', 'a', 'DELIVERED', 1, 1, 1, 1, '2025-09-04 04:14:52', '2025-09-04 15:53:00', '2025-09-04', '2025-09-04', 'JOKO', '082138848123', '1231012', 'colt diesel (123)', '123', '2025-09-04', NULL, '2025-09-04', 'ok', 'SELESAI');
 
 --
 -- Triggers `delivery_instructions`
 --
+DROP TRIGGER IF EXISTS `sync_di_status_temp_on_update`;
 DELIMITER $$
-CREATE TRIGGER `tr_delivery_instructions_status_update` AFTER UPDATE ON `delivery_instructions` FOR EACH ROW BEGIN
-        DECLARE v_unit_id INT DEFAULT NULL;
-        
-        -- Jika status berubah menjadi SAMPAI
-        IF OLD.status != 'SAMPAI' AND NEW.status = 'SAMPAI' AND NEW.spk_id IS NOT NULL THEN
-            
-            -- Cari unit_id dari delivery_items yang terkait dengan DI ini
-            SELECT unit_id INTO v_unit_id
-            FROM delivery_items 
-            WHERE di_id = NEW.id 
-            AND item_type = 'UNIT' 
-            AND unit_id IS NOT NULL
-            LIMIT 1;
-            
-            -- Jika ada unit, panggil procedure untuk link inventory
-            IF v_unit_id IS NOT NULL THEN
-                CALL LinkInventoryToUnitAfterDelivery(NEW.id, NEW.spk_id, v_unit_id);
-            END IF;
-            
-        END IF;
-    END
+CREATE TRIGGER `sync_di_status_temp_on_update` BEFORE UPDATE ON `delivery_instructions` FOR EACH ROW BEGIN
+    
+    IF NEW.status = 'DELIVERED' THEN
+        SET NEW.status_temp = 'SELESAI';
+    ELSEIF NEW.status = 'CANCELLED' THEN
+        SET NEW.status_temp = 'DIBATALKAN';
+    ELSEIF NEW.sampai_tanggal_approve IS NOT NULL THEN
+        SET NEW.status_temp = 'SELESAI';
+    ELSEIF NEW.berangkat_tanggal_approve IS NOT NULL THEN
+        SET NEW.status_temp = 'DALAM_PERJALANAN';
+    ELSEIF NEW.nama_supir IS NOT NULL AND NEW.kendaraan IS NOT NULL AND NEW.status = 'PROCESSED' THEN
+        SET NEW.status_temp = 'SIAP_KIRIM';
+    ELSEIF NEW.status = 'PROCESSED' THEN
+        SET NEW.status_temp = 'PERSIAPAN_UNIT';
+    ELSEIF NEW.status = 'SHIPPED' THEN
+        SET NEW.status_temp = 'DALAM_PERJALANAN';
+    ELSE
+        SET NEW.status_temp = 'DIAJUKAN';
+    END IF;
+    
+    SET NEW.diperbarui_pada = NOW();
+END
 $$
 DELIMITER ;
 
@@ -442,56 +374,87 @@ DELIMITER ;
 --
 -- Table structure for table `delivery_items`
 --
+-- Creation: Sep 04, 2025 at 03:34 AM
+--
 
-CREATE TABLE `delivery_items` (
-  `id` int UNSIGNED NOT NULL,
-  `di_id` int UNSIGNED NOT NULL,
-  `item_type` enum('UNIT','ATTACHMENT') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'UNIT',
-  `unit_id` int UNSIGNED DEFAULT NULL,
-  `attachment_id` int UNSIGNED DEFAULT NULL,
-  `keterangan` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `delivery_items`;
+CREATE TABLE IF NOT EXISTS `delivery_items` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `di_id` int(10) UNSIGNED NOT NULL,
+  `item_type` enum('UNIT','ATTACHMENT') NOT NULL DEFAULT 'UNIT',
+  `unit_id` int(10) UNSIGNED DEFAULT NULL,
+  `parent_unit_id` int(11) DEFAULT NULL,
+  `attachment_id` int(10) UNSIGNED DEFAULT NULL,
+  `keterangan` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_delivery_items_di_id` (`di_id`),
+  KEY `idx_delivery_items_type` (`item_type`),
+  KEY `idx_delivery_items_unit` (`unit_id`),
+  KEY `idx_delivery_items_attachment` (`attachment_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=128 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Items untuk delivery instruction';
 
+--
+-- RELATIONSHIPS FOR TABLE `delivery_items`:
+--   `di_id`
+--       `delivery_instructions` -> `id`
+--   `unit_id`
+--       `inventory_unit` -> `id_inventory_unit`
+--
+
+--
+-- Truncate table before insert `delivery_items`
+--
+
+TRUNCATE TABLE `delivery_items`;
 --
 -- Dumping data for table `delivery_items`
 --
 
-INSERT INTO `delivery_items` (`id`, `di_id`, `item_type`, `unit_id`, `attachment_id`, `keterangan`) VALUES
-(12, 10, 'UNIT', 7, NULL, NULL),
-(13, 10, 'ATTACHMENT', NULL, 3, NULL),
-(14, 13, 'UNIT', 7, NULL, NULL),
-(15, 13, 'ATTACHMENT', NULL, 5, NULL),
-(141, 95, 'UNIT', 15, NULL, NULL),
-(142, 95, 'ATTACHMENT', NULL, 3, 'Attachment from SPK'),
-(143, 95, 'ATTACHMENT', NULL, 4, 'Battery from SPK'),
-(144, 95, 'ATTACHMENT', NULL, 5, 'Charger from SPK'),
-(145, 96, 'UNIT', 13, NULL, NULL),
-(146, 96, 'ATTACHMENT', NULL, 3, 'Attachment from SPK'),
-(147, 96, 'ATTACHMENT', NULL, 5, 'Charger from SPK'),
-(148, 98, 'UNIT', 16, NULL, NULL),
-(149, 98, 'UNIT', 17, NULL, NULL),
-(150, 98, 'ATTACHMENT', NULL, 3, 'Attachment from SPK'),
-(151, 98, 'ATTACHMENT', NULL, 4, 'Attachment from SPK'),
-(152, 98, 'ATTACHMENT', NULL, 5, 'Charger from SPK'),
-(153, 98, 'ATTACHMENT', NULL, 3, 'Attachment from SPK'),
-(154, 98, 'ATTACHMENT', NULL, 5, 'Charger from SPK');
+INSERT DELAYED IGNORE INTO `delivery_items` (`id`, `di_id`, `item_type`, `unit_id`, `parent_unit_id`, `attachment_id`, `keterangan`, `created_at`, `updated_at`) VALUES
+(116, 122, 'UNIT', 1, NULL, NULL, NULL, '2025-09-04 03:43:23', '2025-09-04 03:43:23'),
+(117, 122, 'UNIT', 12, NULL, NULL, NULL, '2025-09-04 03:43:23', '2025-09-04 03:43:23'),
+(118, 122, 'ATTACHMENT', NULL, 1, 4, 'Battery for Unit 1', '2025-09-03 20:43:23', '2025-09-03 20:43:23'),
+(119, 122, 'ATTACHMENT', NULL, 1, 5, 'Charger for Unit 1', '2025-09-03 20:43:23', '2025-09-03 20:43:23'),
+(120, 122, 'ATTACHMENT', NULL, 12, 5, 'Charger for Unit 12', '2025-09-03 20:43:23', '2025-09-03 20:43:23'),
+(121, 122, 'ATTACHMENT', NULL, 12, 6, 'Battery for Unit 12', '2025-09-03 20:43:23', '2025-09-03 20:43:23'),
+(122, 123, 'UNIT', 1, NULL, NULL, NULL, '2025-09-04 04:14:52', '2025-09-04 04:14:52'),
+(123, 123, 'UNIT', 2, NULL, NULL, NULL, '2025-09-04 04:14:52', '2025-09-04 04:14:52'),
+(124, 123, 'ATTACHMENT', NULL, 1, 4, 'Battery for Unit 1', '2025-09-03 21:14:52', '2025-09-03 21:14:52'),
+(125, 123, 'ATTACHMENT', NULL, 1, 5, 'Charger for Unit 1', '2025-09-03 21:14:52', '2025-09-03 21:14:52'),
+(126, 123, 'ATTACHMENT', NULL, 2, 4, 'Battery for Unit 2', '2025-09-03 21:14:52', '2025-09-03 21:14:52'),
+(127, 123, 'ATTACHMENT', NULL, 2, 5, 'Charger for Unit 2', '2025-09-03 21:14:52', '2025-09-03 21:14:52');
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `departemen`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `departemen` (
-  `id_departemen` int NOT NULL,
-  `nama_departemen` varchar(100) COLLATE utf8mb4_general_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `departemen`;
+CREATE TABLE IF NOT EXISTS `departemen` (
+  `id_departemen` int(11) NOT NULL AUTO_INCREMENT,
+  `nama_departemen` varchar(100) NOT NULL,
+  PRIMARY KEY (`id_departemen`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `departemen`:
+--
+
+--
+-- Truncate table before insert `departemen`
+--
+
+TRUNCATE TABLE `departemen`;
 --
 -- Dumping data for table `departemen`
 --
 
-INSERT INTO `departemen` (`id_departemen`, `nama_departemen`) VALUES
+INSERT DELAYED IGNORE INTO `departemen` (`id_departemen`, `nama_departemen`) VALUES
 (1, 'DIESEL'),
 (2, 'ELECTRIC'),
 (3, 'GASOLINE');
@@ -501,22 +464,35 @@ INSERT INTO `departemen` (`id_departemen`, `nama_departemen`) VALUES
 --
 -- Table structure for table `divisions`
 --
+-- Creation: Sep 03, 2025 at 09:25 AM
+--
 
-CREATE TABLE `divisions` (
-  `id` int NOT NULL,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `code` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `is_active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `divisions`;
+CREATE TABLE IF NOT EXISTS `divisions` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `code` varchar(20) NOT NULL,
+  `description` text DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `divisions`:
+--
+
+--
+-- Truncate table before insert `divisions`
+--
+
+TRUNCATE TABLE `divisions`;
 --
 -- Dumping data for table `divisions`
 --
 
-INSERT INTO `divisions` (`id`, `name`, `code`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `divisions` (`id`, `name`, `code`, `description`, `is_active`, `created_at`, `updated_at`) VALUES
 (1, 'Administration', 'ADMIN', 'System Administration Division', 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 (2, 'Service', 'SERVICE', 'Service Division - Unit Maintenance & Repair', 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 (3, 'Unit Operational', 'UNIT_OPS', 'Unit Operational Division - Delivery & Rolling', 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
@@ -531,54 +507,67 @@ INSERT INTO `divisions` (`id`, `name`, `code`, `description`, `is_active`, `crea
 --
 -- Table structure for table `forklifts`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `forklifts` (
-  `forklift_id` int UNSIGNED NOT NULL,
-  `unit_code` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
-  `unit_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `brand` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `model` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `type` enum('electric','diesel','gas','hybrid') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'electric',
+DROP TABLE IF EXISTS `forklifts`;
+CREATE TABLE IF NOT EXISTS `forklifts` (
+  `forklift_id` int(10) UNSIGNED NOT NULL,
+  `unit_code` varchar(20) NOT NULL,
+  `unit_name` varchar(255) NOT NULL,
+  `brand` varchar(100) NOT NULL,
+  `model` varchar(100) NOT NULL,
+  `type` enum('electric','diesel','gas','hybrid') NOT NULL DEFAULT 'electric',
   `capacity` decimal(5,2) NOT NULL COMMENT 'Capacity in tons',
-  `fuel_type` enum('electric','diesel','petrol','gas','hybrid') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'electric',
+  `fuel_type` enum('electric','diesel','petrol','gas','hybrid') NOT NULL DEFAULT 'electric',
   `engine_power` decimal(8,2) DEFAULT NULL COMMENT 'Engine power in HP or kW',
   `lift_height` decimal(6,2) DEFAULT NULL COMMENT 'Maximum lift height in meters',
-  `year_manufactured` year DEFAULT NULL,
-  `serial_number` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `year_manufactured` year(4) DEFAULT NULL,
+  `serial_number` varchar(100) DEFAULT NULL,
   `purchase_date` date DEFAULT NULL,
   `purchase_price` decimal(15,2) DEFAULT NULL,
   `current_value` decimal(15,2) DEFAULT NULL,
-  `supplier` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `supplier` varchar(255) DEFAULT NULL,
   `warranty_expiry` date DEFAULT NULL,
   `insurance_expiry` date DEFAULT NULL,
   `last_service_date` date DEFAULT NULL,
   `next_service_date` date DEFAULT NULL,
-  `service_interval_hours` int NOT NULL DEFAULT '250' COMMENT 'Service interval in operating hours',
-  `total_operating_hours` int NOT NULL DEFAULT '0' COMMENT 'Total operating hours',
-  `status` enum('available','rented','maintenance','retired','reserved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'available',
-  `condition` enum('excellent','good','fair','poor','damaged') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'excellent',
-  `location` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Current location/warehouse',
-  `assigned_to` int UNSIGNED DEFAULT NULL COMMENT 'Assigned to user ID',
+  `service_interval_hours` int(11) NOT NULL DEFAULT 250 COMMENT 'Service interval in operating hours',
+  `total_operating_hours` int(11) NOT NULL DEFAULT 0 COMMENT 'Total operating hours',
+  `status` enum('available','rented','maintenance','retired','reserved') NOT NULL DEFAULT 'available',
+  `condition` enum('excellent','good','fair','poor','damaged') NOT NULL DEFAULT 'excellent',
+  `location` varchar(255) DEFAULT NULL COMMENT 'Current location/warehouse',
+  `assigned_to` int(10) UNSIGNED DEFAULT NULL COMMENT 'Assigned to user ID',
   `rental_rate_daily` decimal(10,2) DEFAULT NULL COMMENT 'Daily rental rate',
   `rental_rate_weekly` decimal(10,2) DEFAULT NULL COMMENT 'Weekly rental rate',
   `rental_rate_monthly` decimal(10,2) DEFAULT NULL COMMENT 'Monthly rental rate',
-  `availability` enum('available','unavailable','reserved') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'available',
-  `notes` text COLLATE utf8mb4_general_ci,
-  `specifications` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT 'Additional specifications in JSON format',
-  `attachments` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT 'File attachments in JSON format',
-  `created_by` int UNSIGNED DEFAULT NULL,
-  `updated_by` int UNSIGNED DEFAULT NULL,
-  `deleted_by` int UNSIGNED DEFAULT NULL,
+  `availability` enum('available','unavailable','reserved') NOT NULL DEFAULT 'available',
+  `notes` text DEFAULT NULL,
+  `specifications` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Additional specifications in JSON format',
+  `attachments` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'File attachments in JSON format',
+  `created_by` int(10) UNSIGNED DEFAULT NULL,
+  `updated_by` int(10) UNSIGNED DEFAULT NULL,
+  `deleted_by` int(10) UNSIGNED DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
-  `deleted_at` datetime DEFAULT NULL
-) ;
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`forklift_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `forklifts`:
+--
+
+--
+-- Truncate table before insert `forklifts`
+--
+
+TRUNCATE TABLE `forklifts`;
 --
 -- Dumping data for table `forklifts`
 --
 
-INSERT INTO `forklifts` (`forklift_id`, `unit_code`, `unit_name`, `brand`, `model`, `type`, `capacity`, `fuel_type`, `engine_power`, `lift_height`, `year_manufactured`, `serial_number`, `purchase_date`, `purchase_price`, `current_value`, `supplier`, `warranty_expiry`, `insurance_expiry`, `last_service_date`, `next_service_date`, `service_interval_hours`, `total_operating_hours`, `status`, `condition`, `location`, `assigned_to`, `rental_rate_daily`, `rental_rate_weekly`, `rental_rate_monthly`, `availability`, `notes`, `specifications`, `attachments`, `created_by`, `updated_by`, `deleted_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
+INSERT DELAYED IGNORE INTO `forklifts` (`forklift_id`, `unit_code`, `unit_name`, `brand`, `model`, `type`, `capacity`, `fuel_type`, `engine_power`, `lift_height`, `year_manufactured`, `serial_number`, `purchase_date`, `purchase_price`, `current_value`, `supplier`, `warranty_expiry`, `insurance_expiry`, `last_service_date`, `next_service_date`, `service_interval_hours`, `total_operating_hours`, `status`, `condition`, `location`, `assigned_to`, `rental_rate_daily`, `rental_rate_weekly`, `rental_rate_monthly`, `availability`, `notes`, `specifications`, `attachments`, `created_by`, `updated_by`, `deleted_by`, `created_at`, `updated_at`, `deleted_at`) VALUES
 (1, 'FL001', 'Toyota 8FG25 Forklift', 'Toyota', '8FG25', 'gas', 2.50, 'gas', 68.00, 4.70, '2022', 'TYT8FG25001', '2022-01-15', 450000000.00, 380000000.00, 'Toyota Material Handling', '2025-01-15', '2024-12-31', NULL, NULL, 250, 1250, 'available', 'excellent', 'Warehouse A', NULL, 850000.00, 5500000.00, 20000000.00, 'available', 'Unit kondisi prima, rutin maintenance', NULL, NULL, 1, NULL, NULL, '2025-07-08 06:35:48', NULL, NULL),
 (2, 'FL002', 'Komatsu FB20-12 Electric Forklift', 'Komatsu', 'FB20-12', 'electric', 2.00, 'electric', 24.00, 3.00, '2023', 'KMT FB20001', '2023-03-10', 380000000.00, 340000000.00, 'Komatsu Forklift Indonesia', '2026-03-10', '2024-12-31', NULL, NULL, 300, 890, 'rented', 'excellent', 'Customer Site - PT ABC', NULL, 750000.00, 4800000.00, 18000000.00, 'unavailable', 'Sedang disewa PT ABC Industries', NULL, NULL, 1, NULL, NULL, '2025-07-08 06:35:48', NULL, NULL),
 (3, 'FL003', 'Hyster H3.5FT Diesel Forklift', 'Hyster', 'H3.5FT', 'diesel', 3.50, 'diesel', 74.00, 4.50, '2021', 'HYS H35001', '2021-08-20', 520000000.00, 420000000.00, 'Hyster Indonesia', '2024-08-20', '2024-12-31', NULL, NULL, 250, 2150, 'maintenance', 'good', 'Service Center', NULL, 950000.00, 6200000.00, 23000000.00, 'unavailable', 'Maintenance rutin 2000 jam operasi', NULL, NULL, 1, NULL, NULL, '2025-07-08 06:35:48', NULL, NULL),
@@ -590,47 +579,72 @@ INSERT INTO `forklifts` (`forklift_id`, `unit_code`, `unit_name`, `brand`, `mode
 --
 -- Table structure for table `inventory_attachment`
 --
+-- Creation: Sep 04, 2025 at 07:42 AM
+--
 
-CREATE TABLE `inventory_attachment` (
-  `id_inventory_attachment` int NOT NULL,
-  `tipe_item` enum('attachment','battery','charger') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'attachment',
-  `po_id` int NOT NULL COMMENT 'Foreign key ke purchase_orders.id_po',
-  `id_inventory_unit` int UNSIGNED DEFAULT NULL,
-  `attachment_id` int DEFAULT NULL COMMENT 'FK ke attachment',
-  `sn_attachment` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `baterai_id` int DEFAULT NULL,
-  `sn_baterai` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `charger_id` int DEFAULT NULL COMMENT 'FK ke charger',
-  `sn_charger` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `kondisi_fisik` enum('Baik','Rusak Ringan','Rusak Berat') COLLATE utf8mb4_unicode_ci DEFAULT 'Baik',
-  `kelengkapan` enum('Lengkap','Tidak Lengkap') COLLATE utf8mb4_unicode_ci DEFAULT 'Lengkap',
-  `catatan_fisik` text COLLATE utf8mb4_unicode_ci,
-  `lokasi_penyimpanan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status_unit` int DEFAULT '7',
-  `tanggal_masuk` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'Tanggal masuk ke inventory',
-  `catatan_inventory` text COLLATE utf8mb4_unicode_ci,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Single source of truth untuk semua komponen: battery, charger, attachment';
+DROP TABLE IF EXISTS `inventory_attachment`;
+CREATE TABLE IF NOT EXISTS `inventory_attachment` (
+  `id_inventory_attachment` int(11) NOT NULL AUTO_INCREMENT,
+  `tipe_item` enum('attachment','battery','charger') NOT NULL DEFAULT 'attachment',
+  `po_id` int(11) NOT NULL COMMENT 'Foreign key ke purchase_orders.id_po',
+  `id_inventory_unit` int(10) UNSIGNED DEFAULT NULL,
+  `attachment_id` int(11) DEFAULT NULL COMMENT 'FK ke attachment',
+  `sn_attachment` varchar(255) DEFAULT NULL,
+  `baterai_id` int(11) DEFAULT NULL,
+  `sn_baterai` varchar(100) DEFAULT NULL,
+  `charger_id` int(11) DEFAULT NULL COMMENT 'FK ke charger',
+  `sn_charger` varchar(255) DEFAULT NULL,
+  `kondisi_fisik` enum('Baik','Rusak Ringan','Rusak Berat') DEFAULT 'Baik',
+  `kelengkapan` enum('Lengkap','Tidak Lengkap') DEFAULT 'Lengkap',
+  `catatan_fisik` text DEFAULT NULL,
+  `lokasi_penyimpanan` varchar(255) DEFAULT NULL,
+  `status_unit` int(11) DEFAULT 7,
+  `tanggal_masuk` datetime DEFAULT current_timestamp() COMMENT 'Tanggal masuk ke inventory',
+  `catatan_inventory` text DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_inventory_attachment`),
+  KEY `fk_inventory_attachment_attachment` (`attachment_id`),
+  KEY `fk_inventory_attachment_baterai` (`baterai_id`),
+  KEY `fk_inventory_attachment_charger` (`charger_id`),
+  KEY `fk_inventory_attachment_status_unit` (`status_unit`)
+) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Single source of truth untuk semua komponen: battery, charger, attachment';
 
+--
+-- RELATIONSHIPS FOR TABLE `inventory_attachment`:
+--   `attachment_id`
+--       `attachment` -> `id_attachment`
+--   `baterai_id`
+--       `baterai` -> `id`
+--   `charger_id`
+--       `charger` -> `id_charger`
+--   `status_unit`
+--       `status_unit` -> `id_status`
+--
+
+--
+-- Truncate table before insert `inventory_attachment`
+--
+
+TRUNCATE TABLE `inventory_attachment`;
 --
 -- Dumping data for table `inventory_attachment`
 --
 
-INSERT INTO `inventory_attachment` (`id_inventory_attachment`, `tipe_item`, `po_id`, `id_inventory_unit`, `attachment_id`, `sn_attachment`, `baterai_id`, `sn_baterai`, `charger_id`, `sn_charger`, `kondisi_fisik`, `kelengkapan`, `catatan_fisik`, `lokasi_penyimpanan`, `status_unit`, `tanggal_masuk`, `catatan_inventory`, `created_at`, `updated_at`) VALUES
-(2, 'attachment', 118, NULL, 1, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-22 04:36:39', 'Dari verifikasi PO: Sesuai dan siap digunakan', '2025-08-22 04:36:39', '2025-08-22 04:36:39'),
+INSERT DELAYED IGNORE INTO `inventory_attachment` (`id_inventory_attachment`, `tipe_item`, `po_id`, `id_inventory_unit`, `attachment_id`, `sn_attachment`, `baterai_id`, `sn_baterai`, `charger_id`, `sn_charger`, `kondisi_fisik`, `kelengkapan`, `catatan_fisik`, `lokasi_penyimpanan`, `status_unit`, `tanggal_masuk`, `catatan_inventory`, `created_at`, `updated_at`) VALUES
+(2, 'attachment', 118, 1, 1, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-22 04:36:39', 'Dari verifikasi PO: Sesuai dan siap digunakan', '2025-08-22 04:36:39', '2025-09-08 11:29:47'),
 (3, 'attachment', 124, NULL, 4, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-22 09:18:28', 'Dari verifikasi PO: Sesuai', '2025-08-22 09:18:28', '2025-08-22 09:18:28'),
 (4, 'attachment', 130, NULL, 3, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-22 09:19:00', 'Dari verifikasi PO: Sesuai', '2025-08-22 09:19:00', '2025-08-22 09:19:00'),
-(5, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-22 09:23:14', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-22 09:23:14', '2025-08-27 11:41:47'),
+(5, 'battery', 143, 1, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 3, '2025-08-22 09:23:14', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-22 09:23:14', '2025-09-04 14:48:00'),
 (6, 'charger', 143, 16, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 8, '2025-08-22 09:23:14', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-22 09:23:14', '2025-08-27 23:53:23'),
-(7, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:34', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:34', '2025-08-27 11:41:47'),
+(7, 'battery', 143, 2, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 3, '2025-08-27 04:15:34', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:34', '2025-09-04 14:48:00'),
 (8, 'charger', 143, 17, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 8, '2025-08-27 04:15:34', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:34', '2025-08-30 02:00:18'),
 (9, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:43', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:43', '2025-08-27 11:41:47'),
-(10, 'charger', 143, NULL, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:43', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:43', '2025-08-27 11:41:47'),
+(10, 'charger', 143, 1, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 3, '2025-08-27 04:15:43', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:43', '2025-09-04 14:48:00'),
 (11, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:51', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:51', '2025-08-27 11:41:47'),
-(12, 'charger', 143, NULL, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:51', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:51', '2025-08-27 11:41:47'),
+(12, 'charger', 143, 12, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 8, '2025-08-27 04:15:51', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:51', '2025-09-03 09:41:03'),
 (13, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:58', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:58', '2025-08-27 11:41:47'),
-(14, 'charger', 143, NULL, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:58', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:58', '2025-08-27 11:41:47'),
+(14, 'charger', 143, 2, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 3, '2025-08-27 04:15:58', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:58', '2025-09-04 14:48:00'),
 (15, 'attachment', 131, NULL, 3, 'ok', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:50:06', 'Dari verifikasi PO: Sesuai', '2025-08-27 04:50:06', '2025-08-27 04:50:06'),
 (16, 'attachment', 139, NULL, 3, 'a', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-28 09:32:49', 'Dari verifikasi PO: Sesuai', '2025-08-28 09:32:49', '2025-08-28 09:32:49'),
 (17, 'battery', 38, 4, 2, NULL, 2, 'test', 6, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-12 04:47:28', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:47:28', '2025-08-19 11:38:34'),
@@ -648,80 +662,67 @@ INSERT INTO `inventory_attachment` (`id_inventory_attachment`, `tipe_item`, `po_
 (29, 'battery', 52, 16, NULL, NULL, 3, '111', 6, '123', 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-27 15:35:47', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 15:35:47', '2025-08-27 23:53:23'),
 (30, 'battery', 52, 17, 3, 'ok', 3, '222', 8, '123', 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-27 15:36:17', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 15:36:17', '2025-08-30 02:53:07');
 
---
--- Triggers `inventory_attachment`
---
-DELIMITER $$
-CREATE TRIGGER `trg_inventory_attachment_consistency_insert` BEFORE INSERT ON `inventory_attachment` FOR EACH ROW BEGIN
-    -- Validasi: pastikan setiap record memiliki item sesuai tipe_item
-    IF (NEW.tipe_item = 'attachment' AND (NEW.attachment_id IS NULL OR NEW.sn_attachment IS NULL)) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Attachment tipe_item requires attachment_id and sn_attachment';
-    END IF;
-    
-    IF (NEW.tipe_item = 'battery' AND (NEW.baterai_id IS NULL OR NEW.sn_baterai IS NULL)) THEN
-
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Battery tipe_item requires baterai_id and sn_baterai';
-    END IF;
-    
-    IF (NEW.tipe_item = 'charger' AND (NEW.charger_id IS NULL OR NEW.sn_charger IS NULL)) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Charger tipe_item requires charger_id and sn_charger';
-    END IF;
-END
-$$
-DELIMITER ;
-DELIMITER $$
-CREATE TRIGGER `trg_inventory_attachment_consistency_update` BEFORE UPDATE ON `inventory_attachment` FOR EACH ROW BEGIN
-    -- Validasi: pastikan setiap record memiliki item sesuai tipe_item
-    IF (NEW.tipe_item = 'attachment' AND (NEW.attachment_id IS NULL OR NEW.sn_attachment IS NULL)) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Attachment tipe_item requires attachment_id and sn_attachment';
-    END IF;
-    
-    IF (NEW.tipe_item = 'battery' AND (NEW.baterai_id IS NULL OR NEW.sn_baterai IS NULL)) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Battery tipe_item requires baterai_id and sn_baterai';
-    END IF;
-    
-    IF (NEW.tipe_item = 'charger' AND (NEW.charger_id IS NULL OR NEW.sn_charger IS NULL)) THEN
-        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Charger tipe_item requires charger_id and sn_charger';
-    END IF;
-END
-$$
-DELIMITER ;
-
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `inventory_item_unit_log`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `inventory_item_unit_log` (
-  `id` int NOT NULL,
-  `id_inventory_attachment` int NOT NULL,
-  `id_inventory_unit` int NOT NULL,
-  `action` enum('assign','remove') COLLATE utf8mb4_general_ci NOT NULL,
-  `user_id` int DEFAULT NULL,
-  `note` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `inventory_item_unit_log`;
+CREATE TABLE IF NOT EXISTS `inventory_item_unit_log` (
+  `id` int(11) NOT NULL,
+  `id_inventory_attachment` int(11) NOT NULL,
+  `id_inventory_unit` int(11) NOT NULL,
+  `action` enum('assign','remove') NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `note` varchar(255) DEFAULT NULL,
+  `created_at` datetime DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `inventory_item_unit_log`:
+--
+
+--
+-- Truncate table before insert `inventory_item_unit_log`
+--
+
+TRUNCATE TABLE `inventory_item_unit_log`;
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `inventory_spareparts`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `inventory_spareparts` (
-  `id` int NOT NULL,
-  `sparepart_id` int NOT NULL,
-  `stok` int NOT NULL DEFAULT '0',
-  `lokasi_rak` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `inventory_spareparts`;
+CREATE TABLE IF NOT EXISTS `inventory_spareparts` (
+  `id` int(11) NOT NULL,
+  `sparepart_id` int(11) NOT NULL,
+  `stok` int(11) NOT NULL DEFAULT 0,
+  `lokasi_rak` varchar(100) DEFAULT NULL,
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `inventory_spareparts`:
+--
+
+--
+-- Truncate table before insert `inventory_spareparts`
+--
+
+TRUNCATE TABLE `inventory_spareparts`;
 --
 -- Dumping data for table `inventory_spareparts`
 --
 
-INSERT INTO `inventory_spareparts` (`id`, `sparepart_id`, `stok`, `lokasi_rak`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `inventory_spareparts` (`id`, `sparepart_id`, `stok`, `lokasi_rak`, `updated_at`) VALUES
 (1, 17, 1, 'POS 1', '2025-07-25 09:01:22'),
 (2, 1, 1, 'POS 1', '2025-08-12 03:36:22');
 
@@ -730,47 +731,81 @@ INSERT INTO `inventory_spareparts` (`id`, `sparepart_id`, `stok`, `lokasi_rak`, 
 --
 -- Table structure for table `inventory_unit`
 --
+-- Creation: Sep 08, 2025 at 06:28 AM
+--
 
-CREATE TABLE `inventory_unit` (
-  `id_inventory_unit` int UNSIGNED NOT NULL,
-  `no_unit` int UNSIGNED DEFAULT NULL,
-  `serial_number` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Serial Number utama dari pabrikan',
-  `id_po` int DEFAULT NULL COMMENT 'Foreign Key ke tabel purchase_orders',
-  `tahun_unit` year DEFAULT NULL,
-  `status_unit_id` int DEFAULT NULL COMMENT 'FK ke tabel status_unit (misal: STOK, RENTAL, JUAL)',
+DROP TABLE IF EXISTS `inventory_unit`;
+CREATE TABLE IF NOT EXISTS `inventory_unit` (
+  `id_inventory_unit` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `no_unit` int(10) UNSIGNED DEFAULT NULL,
+  `serial_number` varchar(255) DEFAULT NULL COMMENT 'Serial Number utama dari pabrikan',
+  `id_po` int(11) DEFAULT NULL COMMENT 'Foreign Key ke tabel purchase_orders',
+  `tahun_unit` year(4) DEFAULT NULL,
+  `status_unit_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel status_unit (misal: STOK, RENTAL, JUAL)',
   `status_aset` tinyint(1) DEFAULT NULL COMMENT 'Flag status aset (misal: 1=Aktif, 0=Non-Aktif)',
-  `lokasi_unit` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `departemen_id` int DEFAULT NULL COMMENT 'FK ke tabel departemen',
+  `lokasi_unit` varchar(255) DEFAULT NULL,
+  `departemen_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel departemen',
   `tanggal_kirim` datetime DEFAULT NULL,
-  `keterangan` text COLLATE utf8mb4_general_ci,
+  `keterangan` text DEFAULT NULL,
   `harga_sewa_bulanan` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa per bulan',
   `harga_sewa_harian` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa per hari',
-  `kontrak_id` int UNSIGNED DEFAULT NULL COMMENT 'Foreign key ke tabel kontrak',
-  `kontrak_spesifikasi_id` int UNSIGNED DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi untuk tracking spek mana',
-  `tipe_unit_id` int DEFAULT NULL COMMENT 'FK ke tabel tipe_unit',
-  `model_unit_id` int DEFAULT NULL COMMENT 'FK ke tabel model_unit (sudah termasuk merk)',
-  `kapasitas_unit_id` int DEFAULT NULL COMMENT 'FK ke tabel kapasitas',
-  `model_mast_id` int DEFAULT NULL COMMENT 'FK ke tabel tipe_mast',
-  `tinggi_mast` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Contoh: 4500mm atau 4.5m',
-  `sn_mast` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `model_mesin_id` int DEFAULT NULL COMMENT 'FK ke tabel mesin (sudah termasuk merk)',
-  `sn_mesin` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `roda_id` int DEFAULT NULL COMMENT 'FK ke tabel jenis_roda',
-  `ban_id` int DEFAULT NULL COMMENT 'FK ke tabel tipe_ban',
-  `valve_id` int DEFAULT NULL COMMENT 'FK ke tabel valve',
-  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Data unit utama - komponen disimpan di inventory_attachment';
+  `kontrak_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Foreign key ke tabel kontrak',
+  `kontrak_spesifikasi_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi untuk tracking spek mana',
+  `tipe_unit_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel tipe_unit',
+  `model_unit_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel model_unit (sudah termasuk merk)',
+  `kapasitas_unit_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel kapasitas',
+  `model_mast_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel tipe_mast',
+  `tinggi_mast` varchar(50) DEFAULT NULL COMMENT 'Contoh: 4500mm atau 4.5m',
+  `sn_mast` varchar(255) DEFAULT NULL,
+  `model_mesin_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel mesin (sudah termasuk merk)',
+  `sn_mesin` varchar(255) DEFAULT NULL,
+  `roda_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel jenis_roda',
+  `ban_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel tipe_ban',
+  `valve_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel valve',
+  `created_at` datetime DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_inventory_unit`),
+  KEY `fk_inventory_unit_status` (`status_unit_id`),
+  KEY `fk_inventory_unit_departemen` (`departemen_id`),
+  KEY `fk_inventory_unit_kontrak` (`kontrak_id`),
+  KEY `fk_inventory_unit_kontrak_spesifikasi` (`kontrak_spesifikasi_id`),
+  KEY `fk_inventory_unit_tipe` (`tipe_unit_id`),
+  KEY `fk_inventory_unit_model` (`model_unit_id`),
+  KEY `fk_inventory_unit_kapasitas` (`kapasitas_unit_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Data unit utama - komponen disimpan di inventory_attachment';
 
+--
+-- RELATIONSHIPS FOR TABLE `inventory_unit`:
+--   `departemen_id`
+--       `departemen` -> `id_departemen`
+--   `kapasitas_unit_id`
+--       `kapasitas` -> `id_kapasitas`
+--   `kontrak_id`
+--       `kontrak` -> `id`
+--   `kontrak_spesifikasi_id`
+--       `kontrak_spesifikasi` -> `id`
+--   `model_unit_id`
+--       `model_unit` -> `id_model_unit`
+--   `status_unit_id`
+--       `status_unit` -> `id_status`
+--   `tipe_unit_id`
+--       `tipe_unit` -> `id_tipe_unit`
+--
+
+--
+-- Truncate table before insert `inventory_unit`
+--
+
+TRUNCATE TABLE `inventory_unit`;
 --
 -- Dumping data for table `inventory_unit`
 --
 
-INSERT INTO `inventory_unit` (`id_inventory_unit`, `no_unit`, `serial_number`, `id_po`, `tahun_unit`, `status_unit_id`, `status_aset`, `lokasi_unit`, `departemen_id`, `tanggal_kirim`, `keterangan`, `harga_sewa_bulanan`, `harga_sewa_harian`, `kontrak_id`, `kontrak_spesifikasi_id`, `tipe_unit_id`, `model_unit_id`, `kapasitas_unit_id`, `model_mast_id`, `tinggi_mast`, `sn_mast`, `model_mesin_id`, `sn_mesin`, `roda_id`, `ban_id`, `valve_id`, `created_at`, `updated_at`) VALUES
-(1, 1, NULL, 122, '2025', 8, 0, 'Warehouse', 2, NULL, '', NULL, NULL, 1, NULL, 9, 6, 2, 5, NULL, '', 4, '', 4, 3, 4, '2025-08-12 02:22:14', '2025-08-30 03:42:03'),
-(2, 2, NULL, 123, '2025', 8, 0, 'Warehouse', 2, NULL, '', NULL, NULL, NULL, NULL, 10, 3, 10, 2, NULL, '', 2, '', 2, 2, 3, '2025-08-12 03:15:49', '2025-08-30 03:42:03'),
-(4, 4, 'test', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, 8, NULL, 12, 6, 6, 2, NULL, 'test', 2, 'test', 2, 1, 3, '2025-08-12 04:47:28', '2025-08-30 03:42:03'),
-(5, 7, 'test2', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, 8, NULL, 12, 6, 6, 2, NULL, 'test2', 2, 'test2', 2, 1, 3, '2025-08-12 04:49:52', '2025-08-30 03:42:03'),
+INSERT DELAYED IGNORE INTO `inventory_unit` (`id_inventory_unit`, `no_unit`, `serial_number`, `id_po`, `tahun_unit`, `status_unit_id`, `status_aset`, `lokasi_unit`, `departemen_id`, `tanggal_kirim`, `keterangan`, `harga_sewa_bulanan`, `harga_sewa_harian`, `kontrak_id`, `kontrak_spesifikasi_id`, `tipe_unit_id`, `model_unit_id`, `kapasitas_unit_id`, `model_mast_id`, `tinggi_mast`, `sn_mast`, `model_mesin_id`, `sn_mesin`, `roda_id`, `ban_id`, `valve_id`, `created_at`, `updated_at`) VALUES
+(1, 1, 'unit 1', 122, '2025', 3, 0, 'Warehouse', 2, NULL, '', 9000000.00, NULL, 44, 19, 9, 6, 2, 5, NULL, '', 4, '', 4, 3, 4, '2025-08-12 02:22:14', '2025-09-08 13:24:02'),
+(2, 2, 'unit 2', 123, '2025', 3, 0, 'Warehouse', 2, NULL, '', 9000000.00, NULL, 44, 19, 10, 3, 10, 2, NULL, '', 2, '', 2, 2, 3, '2025-08-12 03:15:49', '2025-09-08 13:24:02'),
+(4, 4, 'test', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test', 2, 'test', 2, 1, 3, '2025-08-12 04:47:28', '2025-08-30 03:42:03'),
+(5, 7, 'test2', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test2', 2, 'test2', 2, 1, 3, '2025-08-12 04:49:52', '2025-08-30 03:42:03'),
 (6, 8, 'test3', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test3', 2, 'test3', 2, 1, 3, '2025-08-12 04:50:15', '2025-08-30 03:42:03'),
 (7, 3, 'test4', 38, '2025', 7, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test4', 2, 'test4', 2, 1, 3, '2025-08-12 04:54:09', '2025-08-16 01:23:28'),
 (8, 11, 'andara', 39, '2025', 8, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 30, 1, NULL, 'andara', 3, 'andara', 1, 3, 1, '2025-08-12 08:15:40', '2025-08-30 03:42:03'),
@@ -787,32 +822,17 @@ INSERT INTO `inventory_unit` (`id_inventory_unit`, `no_unit`, `serial_number`, `
 --
 -- Triggers `inventory_unit`
 --
-DELIMITER $$
-CREATE TRIGGER `update_kontrak_totals_after_unit_delete` AFTER DELETE ON `inventory_unit` FOR EACH ROW BEGIN
-    IF OLD.kontrak_id IS NOT NULL THEN
-        CALL update_kontrak_totals_proc(OLD.kontrak_id);
-    END IF;
-END
-$$
-DELIMITER ;
+DROP TRIGGER IF EXISTS `update_kontrak_totals_after_unit_insert`;
 DELIMITER $$
 CREATE TRIGGER `update_kontrak_totals_after_unit_insert` AFTER INSERT ON `inventory_unit` FOR EACH ROW BEGIN
     IF NEW.kontrak_id IS NOT NULL THEN
-        CALL update_kontrak_totals_proc(NEW.kontrak_id);
-    END IF;
-END
-$$
-DELIMITER ;
-DELIMITER $$
-CREATE TRIGGER `update_kontrak_totals_after_unit_update` AFTER UPDATE ON `inventory_unit` FOR EACH ROW BEGIN
-    -- Update old kontrak if changed
-    IF OLD.kontrak_id IS NOT NULL AND (OLD.kontrak_id != NEW.kontrak_id OR NEW.kontrak_id IS NULL) THEN
-        CALL update_kontrak_totals_proc(OLD.kontrak_id);
-    END IF;
-    
-    -- Update new kontrak
-    IF NEW.kontrak_id IS NOT NULL THEN
-        CALL update_kontrak_totals_proc(NEW.kontrak_id);
+        UPDATE kontrak 
+        SET total_units = (
+            SELECT COUNT(*) 
+            FROM inventory_unit 
+            WHERE kontrak_id = NEW.kontrak_id
+        )
+        WHERE id = NEW.kontrak_id;
     END IF;
 END
 $$
@@ -823,24 +843,37 @@ DELIMITER ;
 --
 -- Table structure for table `inventory_unit_backup`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `inventory_unit_backup` (
-  `id_inventory_unit` int UNSIGNED NOT NULL,
-  `model_baterai_id` int DEFAULT NULL COMMENT 'FK ke tabel baterai (sudah termasuk jenis, merk)',
-  `sn_baterai` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `model_charger_id` int DEFAULT NULL COMMENT 'FK ke tabel charger (sudah termasuk merk)',
-  `sn_charger` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `model_attachment_id` int DEFAULT NULL COMMENT 'FK ke tabel attachment (sudah termasuk tipe, merk, model)',
-  `sn_attachment` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status_unit_id` int DEFAULT NULL COMMENT 'FK ke tabel status_unit (misal: STOK, RENTAL, JUAL)',
-  `backup_timestamp` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+DROP TABLE IF EXISTS `inventory_unit_backup`;
+CREATE TABLE IF NOT EXISTS `inventory_unit_backup` (
+  `id_inventory_unit` int(10) UNSIGNED NOT NULL,
+  `model_baterai_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel baterai (sudah termasuk jenis, merk)',
+  `sn_baterai` varchar(255) DEFAULT NULL,
+  `model_charger_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel charger (sudah termasuk merk)',
+  `sn_charger` varchar(255) DEFAULT NULL,
+  `model_attachment_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel attachment (sudah termasuk tipe, merk, model)',
+  `sn_attachment` varchar(255) DEFAULT NULL,
+  `status_unit_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel status_unit (misal: STOK, RENTAL, JUAL)',
+  `backup_timestamp` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_inventory_unit`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `inventory_unit_backup`:
+--
+
+--
+-- Truncate table before insert `inventory_unit_backup`
+--
+
+TRUNCATE TABLE `inventory_unit_backup`;
 --
 -- Dumping data for table `inventory_unit_backup`
 --
 
-INSERT INTO `inventory_unit_backup` (`id_inventory_unit`, `model_baterai_id`, `sn_baterai`, `model_charger_id`, `sn_charger`, `model_attachment_id`, `sn_attachment`, `status_unit_id`, `backup_timestamp`) VALUES
+INSERT DELAYED IGNORE INTO `inventory_unit_backup` (`id_inventory_unit`, `model_baterai_id`, `sn_baterai`, `model_charger_id`, `sn_charger`, `model_attachment_id`, `sn_attachment`, `status_unit_id`, `backup_timestamp`) VALUES
 (4, 2, 'test', 6, NULL, 2, NULL, 3, '2025-08-19 11:38:34'),
 (5, 2, 'test2', 6, NULL, 2, NULL, 3, '2025-08-19 11:38:34'),
 (6, 2, 'test3', 6, NULL, 2, NULL, 3, '2025-08-21 15:23:38'),
@@ -862,42 +895,96 @@ INSERT INTO `inventory_unit_backup` (`id_inventory_unit`, `model_baterai_id`, `s
 -- Stand-in structure for view `inventory_unit_components`
 -- (See below for the actual view)
 --
-CREATE TABLE `inventory_unit_components` (
-`attachment_merk` varchar(100)
-,`attachment_model` varchar(100)
-,`attachment_tipe` varchar(100)
-,`id_inventory_unit` int unsigned
-,`jenis_baterai` varchar(50)
-,`merk_baterai` varchar(100)
-,`merk_charger` varchar(100)
-,`model_attachment_id` int
-,`model_baterai_id` int
-,`model_charger_id` int
-,`no_unit` int unsigned
+DROP VIEW IF EXISTS `inventory_unit_components`;
+CREATE TABLE IF NOT EXISTS `inventory_unit_components` (
+`id_inventory_unit` int(10) unsigned
+,`no_unit` int(10) unsigned
 ,`serial_number` varchar(255)
-,`sn_attachment` varchar(255)
+,`model_baterai_id` int(11)
 ,`sn_baterai` varchar(100)
-,`sn_charger` varchar(255)
+,`merk_baterai` varchar(100)
 ,`tipe_baterai` varchar(100)
+,`jenis_baterai` varchar(50)
+,`model_charger_id` int(11)
+,`sn_charger` varchar(255)
+,`merk_charger` varchar(100)
 ,`tipe_charger` varchar(100)
+,`model_attachment_id` int(11)
+,`sn_attachment` varchar(255)
+,`attachment_tipe` varchar(100)
+,`attachment_merk` varchar(100)
+,`attachment_model` varchar(100)
 );
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `jenis_perintah_kerja`
+--
+-- Creation: Sep 03, 2025 at 08:58 AM
+--
+
+DROP TABLE IF EXISTS `jenis_perintah_kerja`;
+CREATE TABLE IF NOT EXISTS `jenis_perintah_kerja` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `kode` varchar(20) NOT NULL,
+  `nama` varchar(100) NOT NULL,
+  `deskripsi` text DEFAULT NULL,
+  `aktif` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `kode` (`kode`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `jenis_perintah_kerja`:
+--
+
+--
+-- Truncate table before insert `jenis_perintah_kerja`
+--
+
+TRUNCATE TABLE `jenis_perintah_kerja`;
+--
+-- Dumping data for table `jenis_perintah_kerja`
+--
+
+INSERT DELAYED IGNORE INTO `jenis_perintah_kerja` (`id`, `kode`, `nama`, `deskripsi`, `aktif`, `created_at`, `updated_at`) VALUES
+(1, 'ANTAR', 'Antar Unit', 'Pengantaran unit ke lokasi pelanggan', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(2, 'TARIK', 'Tarik Unit', 'Penarikan unit dari lokasi pelanggan', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(3, 'TUKAR', 'Tukar Unit', 'Penukaran unit lama dengan unit baru', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(4, 'RELOKASI', 'Relokasi Unit', 'Pemindahan unit antar lokasi', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54');
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `jenis_roda`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `jenis_roda` (
-  `id_roda` int NOT NULL,
-  `tipe_roda` varchar(100) COLLATE utf8mb4_general_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `jenis_roda`;
+CREATE TABLE IF NOT EXISTS `jenis_roda` (
+  `id_roda` int(11) NOT NULL AUTO_INCREMENT,
+  `tipe_roda` varchar(100) NOT NULL,
+  PRIMARY KEY (`id_roda`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `jenis_roda`:
+--
+
+--
+-- Truncate table before insert `jenis_roda`
+--
+
+TRUNCATE TABLE `jenis_roda`;
 --
 -- Dumping data for table `jenis_roda`
 --
 
-INSERT INTO `jenis_roda` (`id_roda`, `tipe_roda`) VALUES
+INSERT DELAYED IGNORE INTO `jenis_roda` (`id_roda`, `tipe_roda`) VALUES
 (1, '3-Wheel'),
 (2, '4-Wheel'),
 (3, '3-Way '),
@@ -908,17 +995,30 @@ INSERT INTO `jenis_roda` (`id_roda`, `tipe_roda`) VALUES
 --
 -- Table structure for table `kapasitas`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `kapasitas` (
-  `id_kapasitas` int NOT NULL,
-  `kapasitas_unit` varchar(50) COLLATE utf8mb4_general_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `kapasitas`;
+CREATE TABLE IF NOT EXISTS `kapasitas` (
+  `id_kapasitas` int(11) NOT NULL AUTO_INCREMENT,
+  `kapasitas_unit` varchar(50) NOT NULL,
+  PRIMARY KEY (`id_kapasitas`)
+) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `kapasitas`:
+--
+
+--
+-- Truncate table before insert `kapasitas`
+--
+
+TRUNCATE TABLE `kapasitas`;
 --
 -- Dumping data for table `kapasitas`
 --
 
-INSERT INTO `kapasitas` (`id_kapasitas`, `kapasitas_unit`) VALUES
+INSERT DELAYED IGNORE INTO `kapasitas` (`id_kapasitas`, `kapasitas_unit`) VALUES
 (1, '200 kg'),
 (2, '300 kg'),
 (3, '390 kg'),
@@ -983,135 +1083,63 @@ INSERT INTO `kapasitas` (`id_kapasitas`, `kapasitas_unit`) VALUES
 --
 -- Table structure for table `kontrak`
 --
+-- Creation: Sep 03, 2025 at 08:54 AM
+-- Last update: Sep 09, 2025 at 09:54 AM
+--
 
-CREATE TABLE `kontrak` (
-  `id` int UNSIGNED NOT NULL,
-  `no_kontrak` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `no_po_marketing` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pelanggan` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `lokasi` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pic` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Nama Person In Charge',
-  `kontak` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Kontak PIC (telepon/email)',
+DROP TABLE IF EXISTS `kontrak`;
+CREATE TABLE IF NOT EXISTS `kontrak` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `no_kontrak` varchar(100) NOT NULL,
+  `no_po_marketing` varchar(100) DEFAULT NULL,
+  `pelanggan` varchar(255) NOT NULL,
+  `lokasi` varchar(255) DEFAULT NULL,
+  `pic` varchar(255) DEFAULT NULL COMMENT 'Nama Person In Charge',
+  `kontak` varchar(100) DEFAULT NULL COMMENT 'Kontak PIC (telepon/email)',
   `nilai_total` decimal(15,2) DEFAULT NULL COMMENT 'Nilai total kontrak dalam rupiah',
-  `total_units` int UNSIGNED NOT NULL DEFAULT '0' COMMENT 'Total unit yang terkait dengan kontrak ini',
-  `jenis_sewa` enum('BULANAN','HARIAN') COLLATE utf8mb4_general_ci DEFAULT 'BULANAN' COMMENT 'Jenis periode sewa',
+  `total_units` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Total unit yang terkait dengan kontrak ini',
+  `jenis_sewa` enum('BULANAN','HARIAN') DEFAULT 'BULANAN' COMMENT 'Jenis periode sewa',
   `tanggal_mulai` date NOT NULL,
   `tanggal_berakhir` date NOT NULL,
-  `status` enum('Aktif','Berakhir','Pending','Dibatalkan') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
-  `dibuat_oleh` int UNSIGNED DEFAULT NULL,
-  `dibuat_pada` datetime DEFAULT CURRENT_TIMESTAMP,
-  `diperbarui_pada` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `status` enum('Aktif','Berakhir','Pending','Dibatalkan') NOT NULL DEFAULT 'Pending',
+  `dibuat_oleh` int(10) UNSIGNED DEFAULT NULL,
+  `dibuat_pada` datetime DEFAULT current_timestamp(),
+  `diperbarui_pada` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=55 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `kontrak`:
+--
+
+--
+-- Truncate table before insert `kontrak`
+--
+
+TRUNCATE TABLE `kontrak`;
 --
 -- Dumping data for table `kontrak`
 --
 
-INSERT INTO `kontrak` (`id`, `no_kontrak`, `no_po_marketing`, `pelanggan`, `lokasi`, `pic`, `kontak`, `nilai_total`, `total_units`, `jenis_sewa`, `tanggal_mulai`, `tanggal_berakhir`, `status`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
-(1, '001/SML/RENT/I/2025', 'PO-CL-0123', 'PT. Logistik Cepat Indonesia', 'Gudang Cikarang', NULL, NULL, 0.00, 1, 'BULANAN', '2025-01-15', '2026-01-14', 'Aktif', 1, '2025-08-04 17:08:02', '2025-08-20 13:34:08'),
-(7, 'test/1/1/2', 'test/1/1/2', 'ADIT', '123', NULL, NULL, NULL, 0, 'BULANAN', '2025-08-15', '2025-08-17', 'Aktif', 1, '2025-08-15 09:42:08', '2025-08-26 07:37:56'),
-(8, 'test/1/1/3', '1233', 'kaleng', 'kaaleng', NULL, NULL, 0.00, 0, 'BULANAN', '2025-08-19', '2025-08-19', 'Aktif', 1, '2025-08-19 02:47:02', '2025-08-30 03:42:03'),
-(9, 'test/1/1/4', '1234', 'kalengg', 'kaalengg', NULL, NULL, NULL, 0, 'BULANAN', '2025-08-19', '2025-08-19', 'Pending', 1, '2025-08-19 02:47:14', '2025-08-19 09:47:14'),
-(10, 'test/1/1/5', '12345', 'Sarana Mitra Luas', 'gemalapik', 'Adit', '082134555233', 3703701.00, 3, 'BULANAN', '2025-08-31', '2025-12-31', 'Pending', 1, '2025-08-19 09:29:28', '2025-08-20 14:26:51'),
-(11, 'test/1/1/6', '123456', 'Sarana Mitra Luas', 'Gemalapik', 'Adit', '082134555233', 150000000.00, 10, 'BULANAN', '2025-08-31', '2025-12-31', 'Pending', 1, '2025-08-20 03:42:59', '2025-08-20 14:21:42'),
-(12, 'test/1/1/7', '1234567', 'Sarana Mitra Luas', 'Gemalapik', 'Adit', '082134555233', 490480480.00, 4, 'BULANAN', '2025-08-31', '2025-12-31', 'Pending', 1, '2025-08-20 06:19:37', '2025-08-20 16:22:46'),
-(13, 'test/1/1/8', '12345678', 'IBR', 'Gemalapik', 'Adit', '082134555233', 0.00, 0, 'BULANAN', '2025-08-31', '2025-12-31', 'Pending', 1, '2025-08-21 06:32:35', '2025-08-21 06:32:35'),
-(14, 'test/1/1/9', '12345679', 'PURI NUSA', 'Gemalapik', 'Adit', '082134555233', 1241231230.00, 20, 'BULANAN', '2025-08-31', '2025-12-31', 'Pending', 1, '2025-08-21 06:48:11', '2025-08-26 15:27:24'),
-(15, 'test/1/1/10', '1234567910', 'PURI INDAH', 'Gemalapik', 'Adit', '082134555233', 36000000.00, 3, 'BULANAN', '2025-08-31', '2025-12-31', 'Aktif', 1, '2025-08-21 06:50:17', '2025-08-26 07:28:17'),
-(16, 'test/1/1/11', '112345', 'Sarana Mitra Luas Tbk', 'Area Kargo Bandara Soekarno-Hatta', 'kaleng', '22131231231', 9009999.00, 1, 'BULANAN', '2025-08-27', '2025-12-27', 'Pending', 1, '2025-08-27 09:00:04', '2025-08-27 16:00:33'),
-(17, 'test/1/1/12', '12123456', 'LG Cibitung', 'SAMPING TOL CIBITUNG', 'AA', '12312313', 3690000.00, 3, 'BULANAN', '2025-08-31', '2025-09-30', 'Pending', 1, '2025-08-28 01:53:15', '2025-08-28 08:54:12'),
-(18, 'sabtutest', 'sabtutest', 'MONORKOBO', 'BEKASI', 'JAJA', '09324987729', 0.00, 0, 'BULANAN', '2025-08-31', '2025-09-30', 'Pending', 1, '2025-08-30 03:48:42', '2025-08-30 03:48:42'),
-(19, 'testsabtu', 'testsabtu', 'MONORKOBO', 'BEKASI', 'JAJA', '09324987729', 140000000.00, 2, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 03:53:57', '2025-09-01 02:34:23'),
-(20, 'SPKRJASND', '2131123', 'MONORKOBO', 'BEKASI', 'JAJA', '09324987729', 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:28:11', '2025-08-30 04:28:11'),
-(21, 'SPKRJASND1', '2131123', 'MONORKOBO', 'BEKASI', 'JAJA', '09324987729', 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:29:14', '2025-08-30 04:29:14'),
-(22, 'ASDWAD', '2131123', 'MONORKOBO', 'BEKASI', 'JAJA', '09324987729', 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:52:51', '2025-08-30 04:52:51'),
-(23, 'TEST001', NULL, 'Test Client', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:53:11', '2025-08-30 04:53:11'),
-(24, 'TEST002', NULL, 'Test Client 2', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:53:45', '2025-08-30 04:53:45'),
-(25, 'TEST003', NULL, 'Test Client 3', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:54:03', '2025-08-30 04:54:03'),
-(26, 'TEST004', NULL, 'Test Client 4', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:54:21', '2025-08-30 04:54:21'),
-(39, 'TEST005', NULL, 'Test Client 5', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:55:27', '2025-08-30 04:55:27'),
-(40, 'TEST006', NULL, 'Final Test Client', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:56:06', '2025-08-30 04:56:06'),
-(41, 'TETTETESS', '2131123', 'MONORKOBO', 'BEKASI', 'JAJA', '09324987729', 32000000.00, 5, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-08-30 04:57:38', '2025-09-01 02:35:16'),
-(42, 'KAMSEUPAI', 'ADAAAAA', 'MICRON', 'LIPPO CIKARANG', 'JAKA', '082134555233', 0.00, 2, 'BULANAN', '2025-09-01', '2025-10-01', 'Pending', 1, '2025-09-01 01:43:19', '2025-09-01 01:44:41'),
-(43, 'test12345', '2131123', 'MONORKOBO', 'BEKASI', 'JAJA', '09324987729', 12000000.00, 2, 'BULANAN', '2025-08-30', '2025-09-30', 'Pending', 1, '2025-09-01 01:52:59', '2025-09-01 02:40:20'),
-(44, 'MSI', 'MSI', 'MSI', 'EROPA', 'MSI', '09213123123', 18000000.00, 2, 'BULANAN', '2025-09-01', '2025-09-01', 'Pending', 1, '2025-09-01 01:54:45', '2025-09-01 01:55:43');
-
--- --------------------------------------------------------
+INSERT DELAYED IGNORE INTO `kontrak` (`id`, `no_kontrak`, `no_po_marketing`, `pelanggan`, `lokasi`, `pic`, `kontak`, `nilai_total`, `total_units`, `jenis_sewa`, `tanggal_mulai`, `tanggal_berakhir`, `status`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
+(44, 'MSI', 'MSI', 'MSI', 'EROPA JAYA AMERIKA, LONDON, SINGAPURE, JAKARTA BEKASI, JAWA BRAT', 'MSI', '09213123123', 18000000.00, 2, 'BULANAN', '2025-09-01', '2025-09-01', 'Aktif', 1, '2025-09-01 01:54:45', '2025-09-08 03:46:01'),
+(54, 'KNTRK/2209/0001', 'PO-ADIT10999', 'Sarana Mitra Luas', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', 'Adit', '082134555233', 0.00, 0, 'BULANAN', '2025-09-01', '2025-12-31', 'Pending', 1, '2025-09-09 09:54:01', '2025-09-09 09:54:01');
 
 --
--- Table structure for table `kontrak_spesifikasi`
+-- Triggers `kontrak`
 --
-
-CREATE TABLE `kontrak_spesifikasi` (
-  `id` int UNSIGNED NOT NULL,
-  `kontrak_id` int UNSIGNED NOT NULL,
-  `spek_kode` varchar(50) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Kode unik spesifikasi dalam kontrak (A, B, C)',
-  `jumlah_dibutuhkan` int NOT NULL DEFAULT '1' COMMENT 'Jumlah unit yang dibutuhkan untuk spek ini',
-  `jumlah_tersedia` int NOT NULL DEFAULT '0' COMMENT 'Jumlah unit yang sudah di-assign',
-  `harga_per_unit_bulanan` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa bulanan per unit',
-  `harga_per_unit_harian` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa harian per unit',
-  `catatan_spek` text COLLATE utf8mb4_general_ci COMMENT 'Catatan khusus untuk spesifikasi ini',
-  `departemen_id` int DEFAULT NULL,
-  `tipe_unit_id` int DEFAULT NULL,
-  `tipe_jenis` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `kapasitas_id` int DEFAULT NULL,
-  `merk_unit` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `model_unit` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `attachment_tipe` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `attachment_merk` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `jenis_baterai` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `charger_id` int DEFAULT NULL,
-  `mast_id` int DEFAULT NULL,
-  `ban_id` int DEFAULT NULL,
-  `roda_id` int DEFAULT NULL,
-  `valve_id` int DEFAULT NULL,
-  `aksesoris` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin COMMENT 'Array aksesoris yang dibutuhkan',
-  `dibuat_pada` datetime DEFAULT CURRENT_TIMESTAMP,
-  `diperbarui_pada` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ;
-
---
--- Dumping data for table `kontrak_spesifikasi`
---
-
-INSERT INTO `kontrak_spesifikasi` (`id`, `kontrak_id`, `spek_kode`, `jumlah_dibutuhkan`, `jumlah_tersedia`, `harga_per_unit_bulanan`, `harga_per_unit_harian`, `catatan_spek`, `departemen_id`, `tipe_unit_id`, `tipe_jenis`, `kapasitas_id`, `merk_unit`, `model_unit`, `attachment_tipe`, `attachment_merk`, `jenis_baterai`, `charger_id`, `mast_id`, `ban_id`, `roda_id`, `valve_id`, `aksesoris`, `dibuat_pada`, `diperbarui_pada`) VALUES
-(4, 1, 'SPEC-001', 1, 0, NULL, NULL, 'Test', 1, NULL, 'Forklift', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-08-20 06:34:08', '2025-08-20 06:34:08'),
-(5, 12, 'SPEC-001', 1, 0, 123123123.00, NULL, '', 1, 6, 'COUNTER BALANCE', 10, 'BT', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 1, 6, 1, 2, NULL, '2025-08-20 07:17:47', '2025-08-20 07:17:47'),
-(6, 12, 'SPEC-002', 1, 0, 123123123.00, NULL, '', 1, 6, 'COUNTER BALANCE', 10, 'BT', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 1, 6, 1, 2, NULL, '2025-08-20 07:17:47', '2025-08-20 07:17:47'),
-(7, 11, 'SPEC-001', 10, 0, 15000000.00, NULL, '', 1, 6, 'COUNTER BALANCE', 41, 'HELI', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 18, 1, 1, 3, '[\"LAMPU UTAMA\", \"LAMPU MUNDUR\", \"LAMPU SIGN\", \"LAMPU STOP\", \"BLUE SPOT\", \"BACK BUZZER\", \"CAMERA\", \"SPEED LIMITER\", \"VOICE ANNOUNCER\", \"HORN SPEAKER\", \"HORN KLASON\", \"BIO METRIC\", \"ACRYLIC\", \"APAR 1 KG\", \"APAR 3 KG\", \"P3K\", \"TELEMATIC\"]', '2025-08-20 07:21:42', '2025-08-21 10:05:54'),
-(8, 10, 'SPEC-001', 3, 0, 1234567.00, NULL, '', 2, 6, 'HAND PALLET', 41, 'JUNGHEINRICH', NULL, 'FORK', NULL, 'Lead Acid', 16, 17, 6, 1, 1, NULL, '2025-08-20 07:26:51', '2025-08-20 07:26:51'),
-(9, 12, 'SPEC-003', 1, 0, 234234234.00, NULL, '', 2, 6, 'PALLET MOVER', 19, 'MHE DEMAG', NULL, 'FORK', NULL, 'Lead Acid', 15, 17, 2, 3, 3, NULL, '2025-08-20 07:38:35', '2025-08-20 07:38:35'),
-(10, 12, 'SPEC-004', 1, 0, 10000000.00, NULL, '', 2, 6, 'PALLET STACKER', 12, 'JUNGHEINRICH', NULL, 'FORK POSITIONER', NULL, 'Lithium-ion', 9, 16, 3, 3, 1, '[\"LAMPU UTAMA\", \"LAMPU MUNDUR\", \"LAMPU SIGN\", \"LAMPU STOP\", \"BLUE SPOT\", \"BACK BUZZER\", \"CAMERA\", \"SPEED LIMITER\", \"VOICE ANNOUNCER\", \"HORN SPEAKER\", \"HORN KLASON\", \"BIO METRIC\", \"ACRYLIC\", \"APAR 1 KG\", \"APAR 3 KG\", \"P3K\", \"TELEMATIC\"]', '2025-08-20 09:22:46', '2025-08-21 13:11:55'),
-(11, 15, 'SPEC-001', 3, 0, 12000000.00, NULL, '', 2, 4, 'SCRUBER', 39, 'KOMATSU', NULL, 'FORK POSITIONER', NULL, 'Lead Acid', 9, 15, 6, 1, 2, '[\"LAMPU UTAMA\", \"ROTARY LAMP\", \"BACK BUZZER\", \"CAMERA\", \"SENSOR PARKING\", \"SPEED LIMITER\", \"LASER FORK\", \"VOICE ANNOUNCER\", \"HORN SPEAKER\", \"HORN KLASON\", \"BIO METRIC\", \"APAR 1 KG\", \"APAR 3 KG\", \"BEACON\"]', '2025-08-21 06:51:13', '2025-08-27 07:05:19'),
-(12, 14, 'SPEC-001', 10, 0, 1000000.00, NULL, '', 1, 4, 'SCRUBER', 42, 'LINDE', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 15, 3, 1, 2, '[\"LAMPU UTAMA\", \"ROTARY LAMP\", \"CAMERA AI\", \"CAMERA\", \"LASER FORK\", \"VOICE ANNOUNCER\", \"HORN SPEAKER\", \"ACRYLIC\", \"APAR 1 KG\", \"P3K\", \"BEACON\", \"SPARS ARRESTOR\"]', '2025-08-26 07:48:30', '2025-08-26 08:21:32'),
-(13, 14, 'SPEC-002', 10, 0, 123123123.00, NULL, '', 2, 4, 'SCRUBER', 11, 'HYUNDAI', NULL, 'FORK POSITIONER', NULL, 'Lead Acid', 8, 15, 6, 1, 2, '[\"LAMPU UTAMA\", \"BLUE SPOT\", \"RED LINE\", \"HORN KLASON\", \"ACRYLIC\", \"APAR 3 KG\", \"P3K\", \"SAFETY BELT INTERLOC\", \"TELEMATIC\", \"SPARS ARRESTOR\"]', '2025-08-26 07:50:37', '2025-08-26 08:21:25'),
-(15, 16, 'SPEC-001', 1, 0, 9009999.00, NULL, '', 2, 4, 'SCRUBER', 43, 'KOMATSU', NULL, 'FORK POSITIONER', NULL, 'Lead Acid', 8, 15, 1, 3, 3, '[\"LAMPU UTAMA\", \"BLUE SPOT\", \"ROTARY LAMP\", \"BACK BUZZER\", \"SENSOR PARKING\", \"SPEED LIMITER\", \"HORN SPEAKER\", \"APAR 1 KG\", \"BEACON\"]', '2025-08-27 09:00:33', '2025-08-27 09:00:33'),
-(16, 17, 'SPEC-001', 3, 0, 1230000.00, NULL, '', 2, 6, 'PALLET MOVER', 16, 'HELI', NULL, '', NULL, 'Lead Acid', 4, 12, 3, 1, 2, '[\"LAMPU UTAMA\", \"BLUE SPOT\", \"RED LINE\", \"ROTARY LAMP\", \"BACK BUZZER\", \"CAMERA AI\", \"SENSOR PARKING\", \"SPEED LIMITER\", \"LASER FORK\"]', '2025-08-28 01:54:12', '2025-08-28 01:54:12'),
-(0, 42, 'SPEC-001', 1, 0, NULL, NULL, '', 2, 6, 'REACH TRUCK', 12, 'HELI', NULL, 'FORK POSITIONER', NULL, 'Lithium-ion', 1, 15, 6, 4, 1, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', '2025-09-01 01:44:05', '2025-09-01 01:44:05'),
-(0, 42, 'SPEC-002', 1, 0, NULL, NULL, '', 2, 6, 'REACH TRUCK', 12, 'HELI', NULL, 'FORK POSITIONER', NULL, 'Lithium-ion', 1, 15, 6, 4, 1, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', '2025-09-01 01:44:41', '2025-09-01 01:44:41'),
-(0, 44, 'SPEC-001', 2, 0, 9000000.00, NULL, '', 2, 6, 'HAND PALLET', 41, 'HELI', NULL, 'FORK POSITIONER', NULL, 'Lithium-ion', 5, 22, 6, 1, 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', '2025-09-01 01:55:43', '2025-09-01 01:55:43'),
-(0, 41, 'SPEC-001', 2, 0, 8000000.00, NULL, '', 2, 6, 'HAND PALLET', 11, 'HELI', NULL, 'PAPER ROLL CLAMP', NULL, 'Lithium-ion', 8, 14, 6, 3, 3, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', '2025-09-01 02:05:27', '2025-09-01 02:05:27'),
-(0, 41, 'SPEC-002', 2, 0, 8000000.00, NULL, '', 1, 1, 'WHEEL LOADER', 42, 'KOMATSU', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 14, 6, 1, 3, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', '2025-09-01 02:09:46', '2025-09-01 02:09:46'),
-(0, 19, 'SPEC-001', 2, 0, 70000000.00, NULL, '', 2, 4, 'SCRUBER', 41, 'LINDE', NULL, 'FORK POSITIONER', NULL, 'Lead Acid', 9, 13, 4, 1, 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', '2025-09-01 02:34:23', '2025-09-01 02:34:23'),
-(0, 41, 'SPEC-003', 1, 0, NULL, NULL, '', 2, 6, 'PALLET MOVER', 42, 'KOMATSU', NULL, 'FORKLIFT SCALE', NULL, 'Lithium-ion', 5, 15, 4, 1, 3, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\"]', '2025-09-01 02:35:16', '2025-09-01 02:35:16'),
-(0, 43, 'SPEC-001', 2, 0, 6000000.00, NULL, '', 2, 6, 'PALLET STACKER', 14, 'HELI', NULL, 'PAPER ROLL CLAMP', NULL, 'Lithium-ion', 9, 22, 6, 3, 3, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\"]', '2025-09-01 02:40:20', '2025-09-01 02:40:20');
-
---
--- Triggers `kontrak_spesifikasi`
---
+DROP TRIGGER IF EXISTS `tr_kontrak_status_update`;
 DELIMITER $$
-CREATE TRIGGER `update_kontrak_totals_after_spek_insert` AFTER INSERT ON `kontrak_spesifikasi` FOR EACH ROW BEGIN
-    CALL update_kontrak_totals_proc(NEW.kontrak_id);
-END
-$$
-DELIMITER ;
-DELIMITER $$
-CREATE TRIGGER `update_kontrak_totals_after_spek_update` AFTER UPDATE ON `kontrak_spesifikasi` FOR EACH ROW BEGIN
-    CALL update_kontrak_totals_proc(NEW.kontrak_id);
+CREATE TRIGGER `tr_kontrak_status_update` AFTER UPDATE ON `kontrak` FOR EACH ROW BEGIN
     
-    -- If kontrak_id changed, update old kontrak too
-    IF OLD.kontrak_id != NEW.kontrak_id THEN
-        CALL update_kontrak_totals_proc(OLD.kontrak_id);
+    
+    IF NEW.status != OLD.status THEN
+        INSERT INTO kontrak_status_changes (kontrak_id, old_status, new_status, changed_at)
+        VALUES (NEW.id, OLD.status, NEW.status, NOW())
+        ON DUPLICATE KEY UPDATE 
+            old_status = OLD.status,
+            new_status = NEW.status,
+            changed_at = NOW();
     END IF;
 END
 $$
@@ -1120,21 +1148,127 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
--- Table structure for table `mesin`
+-- Table structure for table `kontrak_spesifikasi`
+--
+-- Creation: Sep 03, 2025 at 09:10 AM
 --
 
-CREATE TABLE `mesin` (
-  `id` int NOT NULL,
-  `merk_mesin` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `model_mesin` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `bahan_bakar` varchar(50) COLLATE utf8mb4_general_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `kontrak_spesifikasi`;
+CREATE TABLE IF NOT EXISTS `kontrak_spesifikasi` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `kontrak_id` int(10) UNSIGNED NOT NULL,
+  `spek_kode` varchar(50) NOT NULL COMMENT 'Kode unik spesifikasi dalam kontrak (A, B, C)',
+  `jumlah_dibutuhkan` int(11) NOT NULL DEFAULT 1 COMMENT 'Jumlah unit yang dibutuhkan untuk spek ini',
+  `jumlah_tersedia` int(11) NOT NULL DEFAULT 0 COMMENT 'Jumlah unit yang sudah di-assign',
+  `harga_per_unit_bulanan` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa bulanan per unit',
+  `harga_per_unit_harian` decimal(15,2) DEFAULT NULL COMMENT 'Harga sewa harian per unit',
+  `catatan_spek` text DEFAULT NULL COMMENT 'Catatan khusus untuk spesifikasi ini',
+  `departemen_id` int(11) DEFAULT NULL,
+  `tipe_unit_id` int(11) DEFAULT NULL,
+  `tipe_jenis` varchar(100) DEFAULT NULL,
+  `kapasitas_id` int(11) DEFAULT NULL,
+  `merk_unit` varchar(100) DEFAULT NULL,
+  `model_unit` varchar(100) DEFAULT NULL,
+  `attachment_tipe` varchar(100) DEFAULT NULL,
+  `attachment_merk` varchar(100) DEFAULT NULL,
+  `jenis_baterai` varchar(100) DEFAULT NULL,
+  `charger_id` int(11) DEFAULT NULL,
+  `mast_id` int(11) DEFAULT NULL,
+  `ban_id` int(11) DEFAULT NULL,
+  `roda_id` int(11) DEFAULT NULL,
+  `valve_id` int(11) DEFAULT NULL,
+  `aksesoris` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Array aksesoris yang dibutuhkan',
+  `dibuat_pada` datetime DEFAULT current_timestamp(),
+  `diperbarui_pada` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `fk_kontrak_spesifikasi_kontrak` (`kontrak_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `kontrak_spesifikasi`:
+--   `kontrak_id`
+--       `kontrak` -> `id`
+--
+
+--
+-- Truncate table before insert `kontrak_spesifikasi`
+--
+
+TRUNCATE TABLE `kontrak_spesifikasi`;
+--
+-- Dumping data for table `kontrak_spesifikasi`
+--
+
+INSERT DELAYED IGNORE INTO `kontrak_spesifikasi` (`id`, `kontrak_id`, `spek_kode`, `jumlah_dibutuhkan`, `jumlah_tersedia`, `harga_per_unit_bulanan`, `harga_per_unit_harian`, `catatan_spek`, `departemen_id`, `tipe_unit_id`, `tipe_jenis`, `kapasitas_id`, `merk_unit`, `model_unit`, `attachment_tipe`, `attachment_merk`, `jenis_baterai`, `charger_id`, `mast_id`, `ban_id`, `roda_id`, `valve_id`, `aksesoris`, `dibuat_pada`, `diperbarui_pada`) VALUES
+(19, 44, 'SPEC-001', 2, 0, 9000000.00, NULL, '', 2, 6, 'HAND PALLET', 41, 'HELI', NULL, 'FORK POSITIONER', NULL, 'Lithium-ion', 5, 22, 6, 1, 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', '2025-09-01 01:55:43', '2025-09-01 01:55:43');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `kontrak_status_changes`
+--
+-- Creation: Sep 04, 2025 at 07:47 AM
+--
+
+DROP TABLE IF EXISTS `kontrak_status_changes`;
+CREATE TABLE IF NOT EXISTS `kontrak_status_changes` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `kontrak_id` int(11) NOT NULL,
+  `old_status` varchar(50) DEFAULT NULL,
+  `new_status` varchar(50) DEFAULT NULL,
+  `changed_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `processed` tinyint(1) DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_kontrak_id` (`kontrak_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `kontrak_status_changes`:
+--
+
+--
+-- Truncate table before insert `kontrak_status_changes`
+--
+
+TRUNCATE TABLE `kontrak_status_changes`;
+--
+-- Dumping data for table `kontrak_status_changes`
+--
+
+INSERT DELAYED IGNORE INTO `kontrak_status_changes` (`id`, `kontrak_id`, `old_status`, `new_status`, `changed_at`, `processed`) VALUES
+(1, 44, 'Berakhir', 'Aktif', '2025-09-04 07:48:00', 0);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `mesin`
+--
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
+
+DROP TABLE IF EXISTS `mesin`;
+CREATE TABLE IF NOT EXISTS `mesin` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `merk_mesin` varchar(100) NOT NULL,
+  `model_mesin` varchar(100) NOT NULL,
+  `bahan_bakar` varchar(50) NOT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=195 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `mesin`:
+--
+
+--
+-- Truncate table before insert `mesin`
+--
+
+TRUNCATE TABLE `mesin`;
 --
 -- Dumping data for table `mesin`
 --
 
-INSERT INTO `mesin` (`id`, `merk_mesin`, `model_mesin`, `bahan_bakar`) VALUES
+INSERT DELAYED IGNORE INTO `mesin` (`id`, `merk_mesin`, `model_mesin`, `bahan_bakar`) VALUES
 (1, 'TOYOTA', '1DZ-0196006', 'Diesel'),
 (2, 'TOYOTA', '1DZ-0197191', 'Diesel'),
 (3, 'TOYOTA', '1DZ-0218846', 'Diesel'),
@@ -1334,22 +1468,35 @@ INSERT INTO `mesin` (`id`, `merk_mesin`, `model_mesin`, `bahan_bakar`) VALUES
 --
 -- Table structure for table `migrations`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `migrations` (
-  `id` bigint UNSIGNED NOT NULL,
-  `version` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `class` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `group` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `namespace` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `time` int NOT NULL,
-  `batch` int UNSIGNED NOT NULL
+DROP TABLE IF EXISTS `migrations`;
+CREATE TABLE IF NOT EXISTS `migrations` (
+  `id` bigint(20) UNSIGNED NOT NULL,
+  `version` varchar(255) NOT NULL,
+  `class` varchar(255) NOT NULL,
+  `group` varchar(255) NOT NULL,
+  `namespace` varchar(255) NOT NULL,
+  `time` int(11) NOT NULL,
+  `batch` int(10) UNSIGNED NOT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `migrations`:
+--
+
+--
+-- Truncate table before insert `migrations`
+--
+
+TRUNCATE TABLE `migrations`;
 --
 -- Dumping data for table `migrations`
 --
 
-INSERT INTO `migrations` (`id`, `version`, `class`, `group`, `namespace`, `time`, `batch`) VALUES
+INSERT DELAYED IGNORE INTO `migrations` (`id`, `version`, `class`, `group`, `namespace`, `time`, `batch`) VALUES
 (7, '2024-01-01-000001', 'App\\Database\\Migrations\\CreateUsersTable', 'default', 'App', 1751956548, 1),
 (8, '2024-01-15-000001', 'App\\Database\\Migrations\\CreateForkliftTable', 'default', 'App', 1751956548, 1);
 
@@ -1358,40 +1505,110 @@ INSERT INTO `migrations` (`id`, `version`, `class`, `group`, `namespace`, `time`
 --
 -- Table structure for table `migration_log`
 --
+-- Creation: Sep 03, 2025 at 08:54 AM
+--
 
-CREATE TABLE `migration_log` (
-  `id` int NOT NULL,
-  `migration_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `executed_at` datetime DEFAULT CURRENT_TIMESTAMP,
-  `description` text COLLATE utf8mb4_general_ci,
-  `status` enum('SUCCESS','FAILED','ROLLBACK') COLLATE utf8mb4_general_ci DEFAULT 'SUCCESS',
-  `error_message` text COLLATE utf8mb4_general_ci
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `migration_log`;
+CREATE TABLE IF NOT EXISTS `migration_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `migration_name` varchar(255) NOT NULL,
+  `executed_at` datetime DEFAULT current_timestamp(),
+  `description` text DEFAULT NULL,
+  `status` enum('SUCCESS','FAILED','ROLLBACK') DEFAULT 'SUCCESS',
+  `error_message` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_migration_name` (`migration_name`),
+  KEY `idx_executed_at` (`executed_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `migration_log`:
+--
+
+--
+-- Truncate table before insert `migration_log`
+--
+
+TRUNCATE TABLE `migration_log`;
 --
 -- Dumping data for table `migration_log`
 --
 
-INSERT INTO `migration_log` (`id`, `migration_name`, `executed_at`, `description`, `status`, `error_message`) VALUES
-(1, 'consolidate_components_to_inventory_attachment', '2025-08-30 03:42:03', 'Konsolidasi battery/charger/attachment ke inventory_attachment sebagai single source of truth', 'SUCCESS', NULL);
+INSERT DELAYED IGNORE INTO `migration_log` (`id`, `migration_name`, `executed_at`, `description`, `status`, `error_message`) VALUES
+(1, 'consolidate_components_to_inventory_attachment', '2025-08-30 03:42:03', 'Konsolidasi battery/charger/attachment ke inventory_attachment sebagai single source of truth', 'SUCCESS', NULL),
+(2, 'workflow_implementation_20250903', '2025-09-03 15:58:54', 'Workflow implementation completed successfully', 'SUCCESS', NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `migration_log_di_workflow`
+--
+-- Creation: Sep 03, 2025 at 09:50 AM
+--
+
+DROP TABLE IF EXISTS `migration_log_di_workflow`;
+CREATE TABLE IF NOT EXISTS `migration_log_di_workflow` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `table_name` varchar(100) DEFAULT NULL,
+  `action` text DEFAULT NULL,
+  `status` enum('SUCCESS','ERROR','SKIPPED') DEFAULT NULL,
+  `error_message` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `migration_log_di_workflow`:
+--
+
+--
+-- Truncate table before insert `migration_log_di_workflow`
+--
+
+TRUNCATE TABLE `migration_log_di_workflow`;
+--
+-- Dumping data for table `migration_log_di_workflow`
+--
+
+INSERT DELAYED IGNORE INTO `migration_log_di_workflow` (`id`, `table_name`, `action`, `status`, `error_message`, `created_at`) VALUES
+(1, 'delivery_instructions', 'Add jenis_perintah_kerja_id', 'SUCCESS', NULL, '2025-09-03 09:50:51'),
+(2, 'delivery_instructions', 'Add tujuan_perintah_kerja_id', 'SUCCESS', NULL, '2025-09-03 09:50:51'),
+(3, 'delivery_instructions', 'Add status_eksekusi_workflow_id', 'SUCCESS', NULL, '2025-09-03 09:50:51'),
+(4, 'delivery_instructions', 'Add FK jenis_perintah_kerja', 'SUCCESS', NULL, '2025-09-03 09:50:51'),
+(5, 'delivery_instructions', 'Add FK tujuan_perintah_kerja', 'SUCCESS', NULL, '2025-09-03 09:50:51'),
+(6, 'delivery_instructions', 'Add FK status_eksekusi_workflow', 'SUCCESS', NULL, '2025-09-03 09:50:51'),
+(7, 'delivery_instructions', 'Update existing records with default workflow values', 'SUCCESS', NULL, '2025-09-03 09:50:51');
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `model_unit`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `model_unit` (
-  `id_model_unit` int NOT NULL,
-  `merk_unit` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `model_unit` varchar(100) COLLATE utf8mb4_general_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `model_unit`;
+CREATE TABLE IF NOT EXISTS `model_unit` (
+  `id_model_unit` int(11) NOT NULL AUTO_INCREMENT,
+  `merk_unit` varchar(100) NOT NULL,
+  `model_unit` varchar(100) NOT NULL,
+  PRIMARY KEY (`id_model_unit`)
+) ENGINE=InnoDB AUTO_INCREMENT=556 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `model_unit`:
+--
+
+--
+-- Truncate table before insert `model_unit`
+--
+
+TRUNCATE TABLE `model_unit`;
 --
 -- Dumping data for table `model_unit`
 --
 
-INSERT INTO `model_unit` (`id_model_unit`, `merk_unit`, `model_unit`) VALUES
+INSERT DELAYED IGNORE INTO `model_unit` (`id_model_unit`, `merk_unit`, `model_unit`) VALUES
 (1, 'AVANT', 'M420MSDTT'),
 (2, 'BT', 'RRE160MC'),
 (3, 'BT', 'LPE200'),
@@ -1953,26 +2170,39 @@ INSERT INTO `model_unit` (`id_model_unit`, `merk_unit`, `model_unit`) VALUES
 --
 -- Table structure for table `notifications`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `notifications` (
-  `id` int NOT NULL,
-  `user_id` int DEFAULT NULL,
-  `target_role` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `url` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `role` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `division` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `message` text COLLATE utf8mb4_general_ci NOT NULL,
-  `link` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `is_read` tinyint(1) NOT NULL DEFAULT '0',
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `read_at` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `notifications`;
+CREATE TABLE IF NOT EXISTS `notifications` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) DEFAULT NULL,
+  `target_role` varchar(100) DEFAULT NULL,
+  `url` varchar(500) DEFAULT NULL,
+  `role` varchar(50) DEFAULT NULL,
+  `division` varchar(50) DEFAULT NULL,
+  `message` text NOT NULL,
+  `link` varchar(255) DEFAULT NULL,
+  `is_read` tinyint(1) NOT NULL DEFAULT 0,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `read_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=58 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `notifications`:
+--
+
+--
+-- Truncate table before insert `notifications`
+--
+
+TRUNCATE TABLE `notifications`;
 --
 -- Dumping data for table `notifications`
 --
 
-INSERT INTO `notifications` (`id`, `user_id`, `target_role`, `url`, `role`, `division`, `message`, `link`, `is_read`, `created_at`, `read_at`) VALUES
+INSERT DELAYED IGNORE INTO `notifications` (`id`, `user_id`, `target_role`, `url`, `role`, `division`, `message`, `link`, `is_read`, `created_at`, `read_at`) VALUES
 (1, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: tester) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-11 16:37:42', NULL),
 (2, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: tester324234) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-12 09:00:10', NULL),
 (3, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: initest) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-12 09:21:21', NULL),
@@ -1999,54 +2229,160 @@ INSERT INTO `notifications` (`id`, `user_id`, `target_role`, `url`, `role`, `div
 (24, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/003 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-27 09:00:44', NULL),
 (25, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/004 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-27 15:37:29', NULL),
 (26, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/005 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-28 01:54:22', NULL),
-(0, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 02:40:53', NULL),
-(0, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/002 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 02:41:52', NULL),
-(0, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 04:16:57', NULL);
+(27, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 02:40:53', NULL),
+(28, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/002 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 02:41:52', NULL),
+(29, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 04:16:57', NULL),
+(56, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-03 09:38:49', NULL),
+(57, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/002 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-04 04:13:09', NULL);
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `notification_logs`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `notification_logs` (
-  `id_notification` int NOT NULL,
-  `po_type` enum('unit','attachment','sparepart') COLLATE utf8mb4_general_ci NOT NULL,
-  `po_id` int NOT NULL,
-  `no_po` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `notification_type` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `message` text COLLATE utf8mb4_general_ci NOT NULL,
-  `sent_to_division` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status` enum('pending','sent','read') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
-  `created_by` int DEFAULT NULL,
+DROP TABLE IF EXISTS `notification_logs`;
+CREATE TABLE IF NOT EXISTS `notification_logs` (
+  `id_notification` int(11) NOT NULL AUTO_INCREMENT,
+  `po_type` enum('unit','attachment','sparepart') NOT NULL,
+  `po_id` int(11) NOT NULL,
+  `no_po` varchar(100) NOT NULL,
+  `notification_type` varchar(100) NOT NULL,
+  `message` text NOT NULL,
+  `sent_to_division` varchar(100) DEFAULT NULL,
+  `status` enum('pending','sent','read') NOT NULL DEFAULT 'pending',
+  `created_by` int(11) DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_notification`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `notification_logs`:
+--
+
+--
+-- Truncate table before insert `notification_logs`
+--
+
+TRUNCATE TABLE `notification_logs`;
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `optimization_additional_log`
+--
+-- Creation: Sep 03, 2025 at 09:32 AM
+--
+
+DROP TABLE IF EXISTS `optimization_additional_log`;
+CREATE TABLE IF NOT EXISTS `optimization_additional_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `operation_type` enum('FK_CONSTRAINT','INDEX','TRIGGER','PROCEDURE') NOT NULL,
+  `table_name` varchar(100) DEFAULT NULL,
+  `constraint_name` varchar(200) DEFAULT NULL,
+  `action` varchar(500) DEFAULT NULL,
+  `status` enum('SUCCESS','ERROR','SKIPPED') NOT NULL,
+  `error_message` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `optimization_additional_log`:
+--
+
+--
+-- Truncate table before insert `optimization_additional_log`
+--
+
+TRUNCATE TABLE `optimization_additional_log`;
+--
+-- Dumping data for table `optimization_additional_log`
+--
+
+INSERT DELAYED IGNORE INTO `optimization_additional_log` (`id`, `operation_type`, `table_name`, `constraint_name`, `action`, `status`, `error_message`, `created_at`) VALUES
+(1, 'FK_CONSTRAINT', 'po_sparepart_items', 'fk_po_sparepart_items_purchase_orders', 'po_sparepart_items.po_id -> purchase_orders.id_po', 'SUCCESS', NULL, '2025-09-03 09:32:02'),
+(2, 'FK_CONSTRAINT', 'po_units', 'fk_po_units_purchase_orders', 'po_units.po_id -> purchase_orders.id_po', 'SUCCESS', NULL, '2025-09-03 09:32:02'),
+(3, 'FK_CONSTRAINT', 'purchase_orders', 'fk_purchase_orders_suppliers', 'purchase_orders.supplier_id -> suppliers.id_supplier', 'SUCCESS', NULL, '2025-09-03 09:32:02'),
+(4, 'INDEX', NULL, NULL, 'Created additional performance indexes', 'SUCCESS', NULL, '2025-09-03 09:32:02');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `optimization_log`
+--
+-- Creation: Sep 03, 2025 at 09:27 AM
+--
+
+DROP TABLE IF EXISTS `optimization_log`;
+CREATE TABLE IF NOT EXISTS `optimization_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `operation_type` enum('FK_CONSTRAINT','INDEX','TRIGGER','PROCEDURE') NOT NULL,
+  `table_name` varchar(100) DEFAULT NULL,
+  `constraint_name` varchar(200) DEFAULT NULL,
+  `action` varchar(500) DEFAULT NULL,
+  `status` enum('SUCCESS','ERROR','SKIPPED') NOT NULL,
+  `error_message` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `optimization_log`:
+--
+
+--
+-- Truncate table before insert `optimization_log`
+--
+
+TRUNCATE TABLE `optimization_log`;
+--
+-- Dumping data for table `optimization_log`
+--
+
+INSERT DELAYED IGNORE INTO `optimization_log` (`id`, `operation_type`, `table_name`, `constraint_name`, `action`, `status`, `error_message`, `created_at`) VALUES
+(1, 'FK_CONSTRAINT', 'delivery_items', 'fk_delivery_items_delivery_instructions', 'delivery_items.di_id -> delivery_instructions.id', 'SUCCESS', NULL, '2025-09-03 09:30:02'),
+(2, 'FK_CONSTRAINT', 'po_items', 'fk_po_items_purchase_orders', 'po_items.po_id -> purchase_orders.id_po', 'SUCCESS', NULL, '2025-09-03 09:30:02');
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `permissions`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `permissions` (
-  `id` int NOT NULL,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `key` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `module` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `category` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT 'general',
-  `is_system_permission` tinyint(1) DEFAULT '0',
-  `is_active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `permissions`;
+CREATE TABLE IF NOT EXISTS `permissions` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `key` varchar(150) NOT NULL,
+  `description` text DEFAULT NULL,
+  `module` varchar(50) NOT NULL,
+  `category` varchar(50) DEFAULT 'general',
+  `is_system_permission` tinyint(1) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `permissions`:
+--
+
+--
+-- Truncate table before insert `permissions`
+--
+
+TRUNCATE TABLE `permissions`;
 --
 -- Dumping data for table `permissions`
 --
 
-INSERT INTO `permissions` (`id`, `name`, `key`, `description`, `module`, `category`, `is_system_permission`, `is_active`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `permissions` (`id`, `name`, `key`, `description`, `module`, `category`, `is_system_permission`, `is_active`, `created_at`, `updated_at`) VALUES
 (1, 'Access Administration', 'admin.access', 'Access to administration module', 'admin', 'access', 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 (2, 'User Management', 'admin.user_management', 'Manage users and their details', 'admin', 'management', 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 (3, 'Role Management', 'admin.role_management', 'Manage roles and role assignments', 'admin', 'management', 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
@@ -2107,28 +2443,46 @@ INSERT INTO `permissions` (`id`, `name`, `key`, `description`, `module`, `catego
 --
 -- Table structure for table `po_items`
 --
+-- Creation: Sep 03, 2025 at 09:32 AM
+--
 
-CREATE TABLE `po_items` (
-  `id_po_item` int NOT NULL,
-  `po_id` int NOT NULL,
-  `item_type` enum('Attachment','Battery') COLLATE utf8mb4_general_ci NOT NULL,
-  `attachment_id` int DEFAULT NULL,
-  `baterai_id` int DEFAULT NULL,
-  `charger_id` int DEFAULT NULL,
-  `serial_number` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `serial_number_charger` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `keterangan` text COLLATE utf8mb4_general_ci,
-  `status_verifikasi` enum('Belum Dicek','Sesuai','Tidak Sesuai') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Belum Dicek',
-  `catatan_verifikasi` text COLLATE utf8mb4_general_ci,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `po_items`;
+CREATE TABLE IF NOT EXISTS `po_items` (
+  `id_po_item` int(11) NOT NULL,
+  `po_id` int(11) NOT NULL,
+  `item_type` enum('Attachment','Battery') NOT NULL,
+  `attachment_id` int(11) DEFAULT NULL,
+  `baterai_id` int(11) DEFAULT NULL,
+  `charger_id` int(11) DEFAULT NULL,
+  `serial_number` varchar(100) DEFAULT NULL,
+  `serial_number_charger` varchar(100) DEFAULT NULL,
+  `keterangan` text DEFAULT NULL,
+  `status_verifikasi` enum('Belum Dicek','Sesuai','Tidak Sesuai') NOT NULL DEFAULT 'Belum Dicek',
+  `catatan_verifikasi` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_po_item`),
+  KEY `fk_po_items_purchase_orders` (`po_id`),
+  KEY `idx_po_items_status_verifikasi` (`status_verifikasi`),
+  KEY `idx_po_items_created_at` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `po_items`:
+--   `po_id`
+--       `purchase_orders` -> `id_po`
+--
+
+--
+-- Truncate table before insert `po_items`
+--
+
+TRUNCATE TABLE `po_items`;
 --
 -- Dumping data for table `po_items`
 --
 
-INSERT INTO `po_items` (`id_po_item`, `po_id`, `item_type`, `attachment_id`, `baterai_id`, `charger_id`, `serial_number`, `serial_number_charger`, `keterangan`, `status_verifikasi`, `catatan_verifikasi`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `po_items` (`id_po_item`, `po_id`, `item_type`, `attachment_id`, `baterai_id`, `charger_id`, `serial_number`, `serial_number_charger`, `keterangan`, `status_verifikasi`, `catatan_verifikasi`, `created_at`, `updated_at`) VALUES
 (2, 27, 'Battery', NULL, 2, 3, '', '', '', 'Sesuai', '', '2025-07-22 00:29:20', '2025-07-23 21:33:15'),
 (3, 27, 'Battery', NULL, 2, 3, '123123', '123123', '', 'Sesuai', '', '2025-07-22 00:29:20', '2025-07-23 21:33:44'),
 (4, 27, 'Battery', NULL, 2, 3, '', '', '', '', '', '2025-07-22 00:29:20', '2025-07-23 21:33:17'),
@@ -2177,23 +2531,40 @@ INSERT INTO `po_items` (`id_po_item`, `po_id`, `item_type`, `attachment_id`, `ba
 --
 -- Table structure for table `po_sparepart_items`
 --
+-- Creation: Sep 03, 2025 at 09:32 AM
+--
 
-CREATE TABLE `po_sparepart_items` (
-  `id` int NOT NULL,
-  `po_id` int NOT NULL,
-  `sparepart_id` int NOT NULL,
-  `qty` int NOT NULL DEFAULT '1',
-  `satuan` enum('Pieces','Rol','Kaleng','Set','Pak','Meter','Unit','Jerigen','Lembar','Box','Pax','Drum','Batang','Pil','Dus','Kilogram','Botol','IBC Tank','Lusin','Liter','Lot') COLLATE utf8mb4_general_ci NOT NULL,
-  `keterangan` text COLLATE utf8mb4_general_ci,
-  `status_verifikasi` enum('Belum Dicek','Sesuai','Tidak Sesuai') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Belum Dicek',
-  `catatan_verifikasi` text COLLATE utf8mb4_general_ci
+DROP TABLE IF EXISTS `po_sparepart_items`;
+CREATE TABLE IF NOT EXISTS `po_sparepart_items` (
+  `id` int(11) NOT NULL,
+  `po_id` int(11) NOT NULL,
+  `sparepart_id` int(11) NOT NULL,
+  `qty` int(11) NOT NULL DEFAULT 1,
+  `satuan` enum('Pieces','Rol','Kaleng','Set','Pak','Meter','Unit','Jerigen','Lembar','Box','Pax','Drum','Batang','Pil','Dus','Kilogram','Botol','IBC Tank','Lusin','Liter','Lot') NOT NULL,
+  `keterangan` text DEFAULT NULL,
+  `status_verifikasi` enum('Belum Dicek','Sesuai','Tidak Sesuai') NOT NULL DEFAULT 'Belum Dicek',
+  `catatan_verifikasi` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_po_sparepart_status_verifikasi` (`status_verifikasi`),
+  KEY `idx_po_sparepart_items_po_id` (`po_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `po_sparepart_items`:
+--   `po_id`
+--       `purchase_orders` -> `id_po`
+--
+
+--
+-- Truncate table before insert `po_sparepart_items`
+--
+
+TRUNCATE TABLE `po_sparepart_items`;
 --
 -- Dumping data for table `po_sparepart_items`
 --
 
-INSERT INTO `po_sparepart_items` (`id`, `po_id`, `sparepart_id`, `qty`, `satuan`, `keterangan`, `status_verifikasi`, `catatan_verifikasi`) VALUES
+INSERT DELAYED IGNORE INTO `po_sparepart_items` (`id`, `po_id`, `sparepart_id`, `qty`, `satuan`, `keterangan`, `status_verifikasi`, `catatan_verifikasi`) VALUES
 (14, 35, 5, 1, 'Pieces', '', 'Sesuai', ''),
 (15, 35, 23, 1, 'Pieces', '', 'Tidak Sesuai', ''),
 (16, 35, 33, 1, 'Pieces', '', 'Sesuai', ''),
@@ -2216,42 +2587,58 @@ INSERT INTO `po_sparepart_items` (`id`, `po_id`, `sparepart_id`, `qty`, `satuan`
 --
 -- Table structure for table `po_units`
 --
+-- Creation: Sep 03, 2025 at 09:32 AM
+--
 
-CREATE TABLE `po_units` (
-  `id_po_unit` int NOT NULL,
+DROP TABLE IF EXISTS `po_units`;
+CREATE TABLE IF NOT EXISTS `po_units` (
+  `id_po_unit` int(11) NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  `po_id` int NOT NULL,
-  `jenis_unit` int DEFAULT NULL,
-  `status_verifikasi` enum('Belum Dicek','Sesuai','Tidak Sesuai') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Belum Dicek',
-  `merk_unit` int DEFAULT NULL,
-  `model_unit_id` int DEFAULT NULL,
-  `tipe_unit_id` int DEFAULT NULL,
-  `serial_number_po` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `tahun_po` int DEFAULT NULL,
-  `kapasitas_id` int DEFAULT NULL,
-  `mast_id` int DEFAULT NULL,
-  `sn_mast_po` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `mesin_id` int DEFAULT NULL,
-  `sn_mesin_po` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `attachment_id` int DEFAULT NULL,
-  `sn_attachment_po` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `baterai_id` int DEFAULT NULL,
-  `sn_baterai_po` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `charger_id` int DEFAULT NULL,
-  `sn_charger_po` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `ban_id` int DEFAULT NULL,
-  `roda_id` int DEFAULT NULL,
-  `valve_id` int DEFAULT NULL,
-  `status_penjualan` enum('Baru','Bekas','Rekondisi') COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `keterangan` text COLLATE utf8mb4_general_ci
+  `po_id` int(11) NOT NULL,
+  `jenis_unit` int(11) DEFAULT NULL,
+  `status_verifikasi` enum('Belum Dicek','Sesuai','Tidak Sesuai') NOT NULL DEFAULT 'Belum Dicek',
+  `merk_unit` int(11) DEFAULT NULL,
+  `model_unit_id` int(11) DEFAULT NULL,
+  `tipe_unit_id` int(11) DEFAULT NULL,
+  `serial_number_po` varchar(100) DEFAULT NULL,
+  `tahun_po` int(11) DEFAULT NULL,
+  `kapasitas_id` int(11) DEFAULT NULL,
+  `mast_id` int(11) DEFAULT NULL,
+  `sn_mast_po` varchar(100) DEFAULT NULL,
+  `mesin_id` int(11) DEFAULT NULL,
+  `sn_mesin_po` varchar(100) DEFAULT NULL,
+  `attachment_id` int(11) DEFAULT NULL,
+  `sn_attachment_po` varchar(100) DEFAULT NULL,
+  `baterai_id` int(11) DEFAULT NULL,
+  `sn_baterai_po` varchar(100) DEFAULT NULL,
+  `charger_id` int(11) DEFAULT NULL,
+  `sn_charger_po` varchar(100) DEFAULT NULL,
+  `ban_id` int(11) DEFAULT NULL,
+  `roda_id` int(11) DEFAULT NULL,
+  `valve_id` int(11) DEFAULT NULL,
+  `status_penjualan` enum('Baru','Bekas','Rekondisi') DEFAULT NULL,
+  `keterangan` text DEFAULT NULL,
+  PRIMARY KEY (`id_po_unit`),
+  KEY `fk_po_units_purchase_orders` (`po_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `po_units`:
+--   `po_id`
+--       `purchase_orders` -> `id_po`
+--
+
+--
+-- Truncate table before insert `po_units`
+--
+
+TRUNCATE TABLE `po_units`;
 --
 -- Dumping data for table `po_units`
 --
 
-INSERT INTO `po_units` (`id_po_unit`, `created_at`, `updated_at`, `po_id`, `jenis_unit`, `status_verifikasi`, `merk_unit`, `model_unit_id`, `tipe_unit_id`, `serial_number_po`, `tahun_po`, `kapasitas_id`, `mast_id`, `sn_mast_po`, `mesin_id`, `sn_mesin_po`, `attachment_id`, `sn_attachment_po`, `baterai_id`, `sn_baterai_po`, `charger_id`, `sn_charger_po`, `ban_id`, `roda_id`, `valve_id`, `status_penjualan`, `keterangan`) VALUES
+INSERT DELAYED IGNORE INTO `po_units` (`id_po_unit`, `created_at`, `updated_at`, `po_id`, `jenis_unit`, `status_verifikasi`, `merk_unit`, `model_unit_id`, `tipe_unit_id`, `serial_number_po`, `tahun_po`, `kapasitas_id`, `mast_id`, `sn_mast_po`, `mesin_id`, `sn_mesin_po`, `attachment_id`, `sn_attachment_po`, `baterai_id`, `sn_baterai_po`, `charger_id`, `sn_charger_po`, `ban_id`, `roda_id`, `valve_id`, `status_penjualan`, `keterangan`) VALUES
 (1, NULL, '2025-07-21 01:31:15', 2, 1, 'Sesuai', NULL, 3, 3, '123123', 2019, 11, 6, '123', 1, '1', 12, '123', 123, '123', 123, '13', 5, 4, 3, NULL, NULL),
 (2, NULL, '2025-07-21 01:31:17', 1, 2, 'Sesuai', NULL, 1, 4, '12331233', 2025, 14, 2, '123', 1, '1', 1, '1', 123, '123', 123, '123', 6, 3, 3, NULL, NULL),
 (42, '2025-07-20 17:00:00', '2025-07-21 01:32:16', 23, 1, 'Sesuai', 1, 1, 1, 'TEST1234123', 2025, 2, 1, '111231451523123', 1, '15235123124512321', 1, '512512312312512315123', 1, '11112455512314123', 1, 'asdafasdadasdsafasd', 1, 1, 1, 'Baru', 'NIM : 312410362Nama : Abdul Malik IbrahimKehadiran : Hadir'),
@@ -2375,27 +2762,47 @@ INSERT INTO `po_units` (`id_po_unit`, `created_at`, `updated_at`, `po_id`, `jeni
 --
 -- Table structure for table `purchase_orders`
 --
+-- Creation: Sep 03, 2025 at 09:32 AM
+--
 
-CREATE TABLE `purchase_orders` (
-  `id_po` int NOT NULL,
-  `no_po` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+DROP TABLE IF EXISTS `purchase_orders`;
+CREATE TABLE IF NOT EXISTS `purchase_orders` (
+  `id_po` int(11) NOT NULL,
+  `no_po` varchar(100) NOT NULL,
   `tanggal_po` date NOT NULL,
-  `supplier_id` int NOT NULL,
-  `invoice_no` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `supplier_id` int(11) NOT NULL,
+  `invoice_no` varchar(100) DEFAULT NULL,
   `invoice_date` date DEFAULT NULL,
   `bl_date` date DEFAULT NULL,
-  `keterangan_po` text COLLATE utf8mb4_general_ci,
-  `tipe_po` enum('Unit','Attachment & Battery','Sparepart','Dinamis') COLLATE utf8mb4_general_ci NOT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `keterangan_po` text DEFAULT NULL,
+  `tipe_po` enum('Unit','Attachment & Battery','Sparepart','Dinamis') NOT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NULL DEFAULT NULL,
-  `status` enum('pending','approved','completed','cancelled','Selesai dengan Catatan') COLLATE utf8mb4_general_ci DEFAULT 'pending'
+  `status` enum('pending','approved','completed','cancelled','Selesai dengan Catatan') DEFAULT 'pending',
+  PRIMARY KEY (`id_po`),
+  KEY `idx_purchase_orders_status` (`status`),
+  KEY `idx_po_tanggal_po` (`tanggal_po`),
+  KEY `idx_purchase_orders_supplier_id` (`supplier_id`),
+  KEY `idx_purchase_orders_no_po` (`no_po`),
+  KEY `idx_purchase_orders_invoice_no` (`invoice_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `purchase_orders`:
+--   `supplier_id`
+--       `suppliers` -> `id_supplier`
+--
+
+--
+-- Truncate table before insert `purchase_orders`
+--
+
+TRUNCATE TABLE `purchase_orders`;
 --
 -- Dumping data for table `purchase_orders`
 --
 
-INSERT INTO `purchase_orders` (`id_po`, `no_po`, `tanggal_po`, `supplier_id`, `invoice_no`, `invoice_date`, `bl_date`, `keterangan_po`, `tipe_po`, `created_at`, `updated_at`, `status`) VALUES
+INSERT DELAYED IGNORE INTO `purchase_orders` (`id_po`, `no_po`, `tanggal_po`, `supplier_id`, `invoice_no`, `invoice_date`, `bl_date`, `keterangan_po`, `tipe_po`, `created_at`, `updated_at`, `status`) VALUES
 (1, 'PO-Unit-2025-07-0001', '2025-07-15', 1, NULL, NULL, NULL, NULL, 'Unit', '2025-07-16 03:44:13', '2025-07-21 01:31:17', 'completed'),
 (2, 'PO/ATT/2024/002', '2025-07-16', 2, NULL, NULL, NULL, NULL, 'Attachment & Battery', '2025-07-16 03:44:13', '2025-07-21 01:31:15', 'completed'),
 (23, 'PO-Unit-2025-07-0004', '2025-07-21', 2, '12441234123123123', '2025-07-21', '2025-07-25', '124123123', 'Unit', '2025-07-20 18:33:37', '2025-07-30 20:31:48', 'completed'),
@@ -2458,126 +2865,178 @@ INSERT INTO `purchase_orders` (`id_po`, `no_po`, `tanggal_po`, `supplier_id`, `i
 --
 -- Table structure for table `rbac_audit_log`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `rbac_audit_log` (
-  `id` int NOT NULL,
-  `user_id` int DEFAULT NULL,
-  `action` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `table_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `record_id` int DEFAULT NULL,
-  `old_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
-  `new_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
-  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `user_agent` text COLLATE utf8mb4_unicode_ci,
-  `performed_by` int DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
-) ;
+DROP TABLE IF EXISTS `rbac_audit_log`;
+CREATE TABLE IF NOT EXISTS `rbac_audit_log` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) DEFAULT NULL,
+  `action` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `table_name` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `record_id` int(11) DEFAULT NULL,
+  `old_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `new_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `ip_address` varchar(45) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `user_agent` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `performed_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `rbac_audit_log`:
+--
+
+--
+-- Truncate table before insert `rbac_audit_log`
+--
+
+TRUNCATE TABLE `rbac_audit_log`;
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `rentals`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `rentals` (
-  `rental_id` int UNSIGNED NOT NULL,
-  `rental_number` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
-  `forklift_id` int UNSIGNED NOT NULL,
-  `customer_name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `customer_company` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `customer_email` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `customer_phone` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
-  `customer_address` text COLLATE utf8mb4_general_ci,
-  `contact_person` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `rental_type` enum('daily','weekly','monthly','yearly') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'daily',
+DROP TABLE IF EXISTS `rentals`;
+CREATE TABLE IF NOT EXISTS `rentals` (
+  `rental_id` int(10) UNSIGNED NOT NULL,
+  `rental_number` varchar(50) NOT NULL,
+  `forklift_id` int(10) UNSIGNED NOT NULL,
+  `customer_name` varchar(255) NOT NULL,
+  `customer_company` varchar(255) NOT NULL,
+  `customer_email` varchar(255) NOT NULL,
+  `customer_phone` varchar(20) NOT NULL,
+  `customer_address` text DEFAULT NULL,
+  `contact_person` varchar(255) DEFAULT NULL,
+  `rental_type` enum('daily','weekly','monthly','yearly') NOT NULL DEFAULT 'daily',
   `start_date` date NOT NULL,
   `end_date` date NOT NULL,
-  `rental_duration` int NOT NULL COMMENT 'Duration in days/weeks/months based on rental_type',
+  `rental_duration` int(11) NOT NULL COMMENT 'Duration in days/weeks/months based on rental_type',
   `rental_rate` decimal(12,2) NOT NULL COMMENT 'Rate per period',
-  `rental_rate_type` enum('daily','weekly','monthly','yearly') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'daily',
+  `rental_rate_type` enum('daily','weekly','monthly','yearly') NOT NULL DEFAULT 'daily',
   `total_amount` decimal(15,2) NOT NULL COMMENT 'Subtotal before discounts and taxes',
-  `discount_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `tax_amount` decimal(12,2) NOT NULL DEFAULT '0.00',
+  `discount_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `tax_amount` decimal(12,2) NOT NULL DEFAULT 0.00,
   `final_amount` decimal(15,2) NOT NULL COMMENT 'Final amount after all adjustments',
-  `security_deposit` decimal(12,2) NOT NULL DEFAULT '0.00',
-  `delivery_required` tinyint(1) NOT NULL DEFAULT '0',
-  `delivery_address` text COLLATE utf8mb4_general_ci,
-  `delivery_cost` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `pickup_required` tinyint(1) NOT NULL DEFAULT '0',
-  `pickup_address` text COLLATE utf8mb4_general_ci,
-  `pickup_cost` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `operator_required` tinyint(1) NOT NULL DEFAULT '0',
-  `operator_name` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `operator_cost` decimal(10,2) NOT NULL DEFAULT '0.00',
-  `fuel_included` tinyint(1) NOT NULL DEFAULT '0',
-  `maintenance_included` tinyint(1) NOT NULL DEFAULT '0',
-  `insurance_included` tinyint(1) NOT NULL DEFAULT '0',
-  `status` enum('draft','confirmed','active','completed','cancelled') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'draft',
-  `contract_status` enum('pending','signed','expired') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
-  `payment_status` enum('pending','partial','paid','overdue') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
-  `payment_method` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `payment_terms` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `po_number` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `contract_file` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `notes` text COLLATE utf8mb4_general_ci,
-  `special_terms` text COLLATE utf8mb4_general_ci,
-  `created_by` int UNSIGNED DEFAULT NULL,
-  `updated_by` int UNSIGNED DEFAULT NULL,
-  `approved_by` int UNSIGNED DEFAULT NULL,
-  `cancelled_by` int UNSIGNED DEFAULT NULL,
-  `completed_by` int UNSIGNED DEFAULT NULL,
+  `security_deposit` decimal(12,2) NOT NULL DEFAULT 0.00,
+  `delivery_required` tinyint(1) NOT NULL DEFAULT 0,
+  `delivery_address` text DEFAULT NULL,
+  `delivery_cost` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `pickup_required` tinyint(1) NOT NULL DEFAULT 0,
+  `pickup_address` text DEFAULT NULL,
+  `pickup_cost` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `operator_required` tinyint(1) NOT NULL DEFAULT 0,
+  `operator_name` varchar(255) DEFAULT NULL,
+  `operator_cost` decimal(10,2) NOT NULL DEFAULT 0.00,
+  `fuel_included` tinyint(1) NOT NULL DEFAULT 0,
+  `maintenance_included` tinyint(1) NOT NULL DEFAULT 0,
+  `insurance_included` tinyint(1) NOT NULL DEFAULT 0,
+  `status` enum('draft','confirmed','active','completed','cancelled') NOT NULL DEFAULT 'draft',
+  `contract_status` enum('pending','signed','expired') NOT NULL DEFAULT 'pending',
+  `payment_status` enum('pending','partial','paid','overdue') NOT NULL DEFAULT 'pending',
+  `payment_method` varchar(50) DEFAULT NULL,
+  `payment_terms` varchar(100) DEFAULT NULL,
+  `po_number` varchar(100) DEFAULT NULL,
+  `contract_file` varchar(255) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `special_terms` text DEFAULT NULL,
+  `created_by` int(10) UNSIGNED DEFAULT NULL,
+  `updated_by` int(10) UNSIGNED DEFAULT NULL,
+  `approved_by` int(10) UNSIGNED DEFAULT NULL,
+  `cancelled_by` int(10) UNSIGNED DEFAULT NULL,
+  `completed_by` int(10) UNSIGNED DEFAULT NULL,
   `confirmed_at` datetime DEFAULT NULL,
-  `confirmed_by` int UNSIGNED DEFAULT NULL,
+  `confirmed_by` int(10) UNSIGNED DEFAULT NULL,
   `started_at` datetime DEFAULT NULL,
   `completed_at` datetime DEFAULT NULL,
   `cancelled_at` datetime DEFAULT NULL,
   `created_at` datetime DEFAULT NULL,
   `updated_at` datetime DEFAULT NULL,
-  `deleted_at` datetime DEFAULT NULL
+  `deleted_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`rental_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `rentals`:
+--
+
+--
+-- Truncate table before insert `rentals`
+--
+
+TRUNCATE TABLE `rentals`;
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `reports`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `reports` (
-  `id` int UNSIGNED NOT NULL,
-  `name` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `type` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
-  `format` varchar(20) COLLATE utf8mb4_general_ci NOT NULL,
-  `filename` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `user_id` int UNSIGNED NOT NULL,
-  `status` enum('pending','processing','completed','failed') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'pending',
-  `data_count` int NOT NULL DEFAULT '0',
+DROP TABLE IF EXISTS `reports`;
+CREATE TABLE IF NOT EXISTS `reports` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `type` varchar(50) NOT NULL,
+  `format` varchar(20) NOT NULL,
+  `filename` varchar(255) DEFAULT NULL,
+  `user_id` int(10) UNSIGNED NOT NULL,
+  `status` enum('pending','processing','completed','failed') NOT NULL DEFAULT 'pending',
+  `data_count` int(11) NOT NULL DEFAULT 0,
   `created_at` datetime DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `reports`:
+--
+
+--
+-- Truncate table before insert `reports`
+--
+
+TRUNCATE TABLE `reports`;
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `roles`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `roles` (
-  `id` int NOT NULL,
-  `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `slug` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `description` text COLLATE utf8mb4_unicode_ci,
-  `division_id` int DEFAULT NULL,
-  `is_system_role` tinyint(1) DEFAULT '0',
-  `is_active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `roles`;
+CREATE TABLE IF NOT EXISTS `roles` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `slug` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `division_id` int(11) DEFAULT NULL,
+  `is_system_role` tinyint(1) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `roles`:
+--
+
+--
+-- Truncate table before insert `roles`
+--
+
+TRUNCATE TABLE `roles`;
 --
 -- Dumping data for table `roles`
 --
 
-INSERT INTO `roles` (`id`, `name`, `slug`, `description`, `division_id`, `is_system_role`, `is_active`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `roles` (`id`, `name`, `slug`, `description`, `division_id`, `is_system_role`, `is_active`, `created_at`, `updated_at`) VALUES
 (1, 'Super Administrator', 'super_admin', 'Full system access with all permissions', 1, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 (2, 'System Administrator', 'system_admin', 'System administration and configuration', 1, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 (3, 'Division Manager', 'division_manager', 'Manager role for division operations', NULL, 1, 1, '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
@@ -2602,23 +3061,38 @@ INSERT INTO `roles` (`id`, `name`, `slug`, `description`, `division_id`, `is_sys
 --
 -- Table structure for table `role_permissions`
 --
+-- Creation: Sep 03, 2025 at 09:32 AM
+--
 
-CREATE TABLE `role_permissions` (
-  `id` int NOT NULL,
-  `role_id` int NOT NULL,
-  `permission_id` int NOT NULL,
-  `granted` tinyint(1) DEFAULT '1',
-  `assigned_by` int DEFAULT NULL,
-  `assigned_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `role_permissions`;
+CREATE TABLE IF NOT EXISTS `role_permissions` (
+  `id` int(11) NOT NULL,
+  `role_id` int(11) NOT NULL,
+  `permission_id` int(11) NOT NULL,
+  `granted` tinyint(1) DEFAULT 1,
+  `assigned_by` int(11) DEFAULT NULL,
+  `assigned_at` timestamp NULL DEFAULT current_timestamp(),
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_role_permissions_role_id` (`role_id`),
+  KEY `idx_role_permissions_permission_id` (`permission_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `role_permissions`:
+--
+
+--
+-- Truncate table before insert `role_permissions`
+--
+
+TRUNCATE TABLE `role_permissions`;
 --
 -- Dumping data for table `role_permissions`
 --
 
-INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `granted`, `assigned_by`, `assigned_at`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `role_permissions` (`id`, `role_id`, `permission_id`, `granted`, `assigned_by`, `assigned_at`, `created_at`, `updated_at`) VALUES
 (1, 1, 1, 1, NULL, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 (2, 1, 2, 1, NULL, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
 (3, 1, 3, 1, NULL, '2025-08-05 07:01:57', '2025-08-05 07:01:57', '2025-08-05 07:01:57'),
@@ -2675,67 +3149,186 @@ INSERT INTO `role_permissions` (`id`, `role_id`, `permission_id`, `granted`, `as
 --
 -- Table structure for table `sparepart`
 --
+-- Creation: Sep 03, 2025 at 09:06 AM
+--
 
-CREATE TABLE `sparepart` (
-  `id_sparepart` int NOT NULL,
-  `kode` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
-  `desc_sparepart` text COLLATE utf8mb4_general_ci NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `sparepart`;
+CREATE TABLE IF NOT EXISTS `sparepart` (
+  `id_sparepart` int(11) NOT NULL AUTO_INCREMENT,
+  `kode` varchar(50) NOT NULL,
+  `desc_sparepart` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_sparepart`),
+  UNIQUE KEY `kode` (`kode`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `sparepart`:
+--
+
+--
+-- Truncate table before insert `sparepart`
+--
+
+TRUNCATE TABLE `sparepart`;
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `spk`
 --
+-- Creation: Sep 03, 2025 at 09:08 AM
+--
 
-CREATE TABLE `spk` (
-  `id` int UNSIGNED NOT NULL,
-  `nomor_spk` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `jenis_spk` enum('UNIT','ATTACHMENT','TUKAR') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'UNIT',
-  `kontrak_id` int UNSIGNED DEFAULT NULL,
-  `kontrak_spesifikasi_id` int UNSIGNED DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi',
-  `jumlah_unit` int DEFAULT '1' COMMENT 'Jumlah unit dalam SPK ini',
-  `po_kontrak_nomor` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `pelanggan` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
-  `pic` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `kontak` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `lokasi` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+DROP TABLE IF EXISTS `spk`;
+CREATE TABLE IF NOT EXISTS `spk` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `nomor_spk` varchar(100) NOT NULL,
+  `jenis_spk` enum('UNIT','ATTACHMENT','TUKAR') NOT NULL DEFAULT 'UNIT',
+  `kontrak_id` int(10) UNSIGNED DEFAULT NULL,
+  `kontrak_spesifikasi_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi',
+  `jumlah_unit` int(11) DEFAULT 1 COMMENT 'Jumlah unit dalam SPK ini',
+  `po_kontrak_nomor` varchar(100) DEFAULT NULL,
+  `pelanggan` varchar(255) NOT NULL,
+  `pic` varchar(255) DEFAULT NULL,
+  `kontak` varchar(255) DEFAULT NULL,
+  `lokasi` varchar(255) DEFAULT NULL,
   `delivery_plan` date DEFAULT NULL,
-  `spesifikasi` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
-  `status` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'SUBMITTED',
-  `persiapan_unit_mekanik` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `spesifikasi` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `status` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') NOT NULL DEFAULT 'SUBMITTED',
+  `persiapan_unit_mekanik` varchar(100) DEFAULT NULL,
   `persiapan_unit_estimasi_mulai` date DEFAULT NULL,
   `persiapan_unit_estimasi_selesai` date DEFAULT NULL,
   `persiapan_unit_tanggal_approve` datetime DEFAULT NULL,
-  `persiapan_unit_id` int DEFAULT NULL,
-  `persiapan_aksesoris_tersedia` text COLLATE utf8mb4_general_ci,
-  `fabrikasi_mekanik` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `persiapan_unit_id` int(11) DEFAULT NULL,
+  `persiapan_aksesoris_tersedia` text DEFAULT NULL,
+  `fabrikasi_mekanik` varchar(100) DEFAULT NULL,
   `fabrikasi_estimasi_mulai` date DEFAULT NULL,
   `fabrikasi_estimasi_selesai` date DEFAULT NULL,
   `fabrikasi_tanggal_approve` datetime DEFAULT NULL,
-  `fabrikasi_attachment_id` int DEFAULT NULL,
-  `painting_mekanik` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `fabrikasi_attachment_id` int(11) DEFAULT NULL,
+  `painting_mekanik` varchar(100) DEFAULT NULL,
   `painting_estimasi_mulai` date DEFAULT NULL,
   `painting_estimasi_selesai` date DEFAULT NULL,
   `painting_tanggal_approve` datetime DEFAULT NULL,
-  `pdi_mekanik` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+  `pdi_mekanik` varchar(100) DEFAULT NULL,
   `pdi_estimasi_mulai` date DEFAULT NULL,
   `pdi_estimasi_selesai` date DEFAULT NULL,
   `pdi_tanggal_approve` datetime DEFAULT NULL,
-  `pdi_catatan` text COLLATE utf8mb4_general_ci,
-  `catatan` text COLLATE utf8mb4_general_ci,
-  `dibuat_oleh` int UNSIGNED DEFAULT NULL,
-  `dibuat_pada` datetime DEFAULT CURRENT_TIMESTAMP,
-  `diperbarui_pada` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ;
+  `pdi_catatan` text DEFAULT NULL,
+  `catatan` text DEFAULT NULL,
+  `dibuat_oleh` int(11) DEFAULT NULL,
+  `dibuat_pada` datetime DEFAULT current_timestamp(),
+  `diperbarui_pada` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `jenis_perintah_kerja_id` int(11) DEFAULT NULL,
+  `tujuan_perintah_kerja_id` int(11) DEFAULT NULL,
+  `status_eksekusi_workflow_id` int(11) DEFAULT 1,
+  `workflow_notes` text DEFAULT NULL,
+  `workflow_created_at` timestamp NULL DEFAULT NULL,
+  `workflow_updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_spk_workflow` (`jenis_perintah_kerja_id`,`tujuan_perintah_kerja_id`,`status_eksekusi_workflow_id`),
+  KEY `idx_spk_status_workflow` (`status_eksekusi_workflow_id`),
+  KEY `fk_spk_kontrak` (`kontrak_id`),
+  KEY `fk_spk_kontrak_spesifikasi` (`kontrak_spesifikasi_id`),
+  KEY `fk_spk_tujuan_perintah` (`tujuan_perintah_kerja_id`),
+  KEY `fk_spk_user` (`dibuat_oleh`)
+) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `spk`:
+--   `jenis_perintah_kerja_id`
+--       `jenis_perintah_kerja` -> `id`
+--   `kontrak_id`
+--       `kontrak` -> `id`
+--   `kontrak_spesifikasi_id`
+--       `kontrak_spesifikasi` -> `id`
+--   `status_eksekusi_workflow_id`
+--       `status_eksekusi_workflow` -> `id`
+--   `tujuan_perintah_kerja_id`
+--       `tujuan_perintah_kerja` -> `id`
+--   `dibuat_oleh`
+--       `users` -> `id`
+--
+
+--
+-- Truncate table before insert `spk`
+--
+
+TRUNCATE TABLE `spk`;
 --
 -- Dumping data for table `spk`
 --
 
-INSERT INTO `spk` (`id`, `nomor_spk`, `jenis_spk`, `kontrak_id`, `kontrak_spesifikasi_id`, `jumlah_unit`, `po_kontrak_nomor`, `pelanggan`, `pic`, `kontak`, `lokasi`, `delivery_plan`, `spesifikasi`, `status`, `persiapan_unit_mekanik`, `persiapan_unit_estimasi_mulai`, `persiapan_unit_estimasi_selesai`, `persiapan_unit_tanggal_approve`, `persiapan_unit_id`, `persiapan_aksesoris_tersedia`, `fabrikasi_mekanik`, `fabrikasi_estimasi_mulai`, `fabrikasi_estimasi_selesai`, `fabrikasi_tanggal_approve`, `fabrikasi_attachment_id`, `painting_mekanik`, `painting_estimasi_mulai`, `painting_estimasi_selesai`, `painting_tanggal_approve`, `pdi_mekanik`, `pdi_estimasi_mulai`, `pdi_estimasi_selesai`, `pdi_tanggal_approve`, `pdi_catatan`, `catatan`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
+INSERT DELAYED IGNORE INTO `spk` (`id`, `nomor_spk`, `jenis_spk`, `kontrak_id`, `kontrak_spesifikasi_id`, `jumlah_unit`, `po_kontrak_nomor`, `pelanggan`, `pic`, `kontak`, `lokasi`, `delivery_plan`, `spesifikasi`, `status`, `persiapan_unit_mekanik`, `persiapan_unit_estimasi_mulai`, `persiapan_unit_estimasi_selesai`, `persiapan_unit_tanggal_approve`, `persiapan_unit_id`, `persiapan_aksesoris_tersedia`, `fabrikasi_mekanik`, `fabrikasi_estimasi_mulai`, `fabrikasi_estimasi_selesai`, `fabrikasi_tanggal_approve`, `fabrikasi_attachment_id`, `painting_mekanik`, `painting_estimasi_mulai`, `painting_estimasi_selesai`, `painting_tanggal_approve`, `pdi_mekanik`, `pdi_estimasi_mulai`, `pdi_estimasi_selesai`, `pdi_tanggal_approve`, `pdi_catatan`, `catatan`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`, `jenis_perintah_kerja_id`, `tujuan_perintah_kerja_id`, `status_eksekusi_workflow_id`, `workflow_notes`, `workflow_created_at`, `workflow_updated_at`) VALUES
+(27, 'SPK/202509/001', 'UNIT', NULL, NULL, 2, 'test12345', 'MONORKOBO', 'JAJA', '09324987729', 'BEKASI', '2025-09-03', '{\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"PALLET STACKER\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"14\",\"attachment_tipe\":\"PAPER ROLL CLAMP\",\"attachment_merk\":null,\"jenis_baterai\":\"Lithium-ion\",\"charger_id\":\"9\",\"mast_id\":\"22\",\"ban_id\":\"6\",\"roda_id\":\"3\",\"valve_id\":\"3\",\"aksesoris\":[],\"persiapan_battery_action\":\"keep_existing\",\"persiapan_battery_id\":\"6\",\"persiapan_charger_action\":\"assign\",\"persiapan_charger_id\":\"12\",\"fabrikasi_attachment_id\":\"15\",\"prepared_units\":[{\"unit_id\":\"1\",\"battery_inventory_id\":\"5\",\"charger_inventory_id\":\"10\",\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-03 09:40:09\"},{\"unit_id\":\"12\",\"battery_inventory_id\":\"6\",\"charger_inventory_id\":\"12\",\"attachment_inventory_id\":\"15\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"a\",\"timestamp\":\"2025-09-03 09:41:18\"}]}', 'IN_PROGRESS', 'JOHANA - DEPI', '2025-09-03', '2025-09-03', '2025-09-03 09:41:03', 12, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\"]', 'JOHANA - DEPI', '2025-09-02', '2025-09-02', '2025-09-03 09:41:10', NULL, 'ARIZAL-EKA', '2025-09-03', '2025-09-03', '2025-09-03 09:41:14', 'JOHANA - DEPI', '2025-09-03', '2025-09-03', '2025-09-03 09:41:18', 'a', NULL, 1, '2025-09-03 09:38:49', '2025-09-04 03:43:23', NULL, NULL, 1, NULL, NULL, NULL),
+(28, 'SPK/202509/002', 'UNIT', 44, 19, 2, 'MSI', 'MSI', 'MSI', '09213123123', 'EROPA', NULL, '{\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"HAND PALLET\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"41\",\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":\"Lithium-ion\",\"charger_id\":\"5\",\"mast_id\":\"22\",\"ban_id\":\"6\",\"roda_id\":\"1\",\"valve_id\":\"2\",\"aksesoris\":[],\"persiapan_battery_action\":\"assign\",\"persiapan_battery_id\":\"7\",\"persiapan_charger_action\":\"assign\",\"persiapan_charger_id\":\"14\",\"fabrikasi_attachment_id\":\"15\",\"prepared_units\":[{\"unit_id\":\"1\",\"battery_inventory_id\":\"5\",\"charger_inventory_id\":\"10\",\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-04 04:14:01\"},{\"unit_id\":\"2\",\"battery_inventory_id\":\"7\",\"charger_inventory_id\":\"14\",\"attachment_inventory_id\":\"15\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-04 04:14:39\"}]}', 'COMPLETED', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:20', 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:29', NULL, 'ARIZAL-EKA', '2025-09-04', '2025-09-04', '2025-09-04 04:14:34', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:39', 'ok', NULL, 1, '2025-09-04 04:13:09', '2025-09-04 08:53:00', NULL, NULL, 1, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `spk_backup_20250903`
+--
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
+
+DROP TABLE IF EXISTS `spk_backup_20250903`;
+CREATE TABLE IF NOT EXISTS `spk_backup_20250903` (
+  `id` int(10) UNSIGNED NOT NULL DEFAULT 0,
+  `nomor_spk` varchar(100) NOT NULL,
+  `jenis_spk` enum('UNIT','ATTACHMENT','TUKAR') NOT NULL DEFAULT 'UNIT',
+  `kontrak_id` int(10) UNSIGNED DEFAULT NULL,
+  `kontrak_spesifikasi_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi',
+  `jumlah_unit` int(11) DEFAULT 1 COMMENT 'Jumlah unit dalam SPK ini',
+  `po_kontrak_nomor` varchar(100) DEFAULT NULL,
+  `pelanggan` varchar(255) NOT NULL,
+  `pic` varchar(255) DEFAULT NULL,
+  `kontak` varchar(255) DEFAULT NULL,
+  `lokasi` varchar(255) DEFAULT NULL,
+  `delivery_plan` date DEFAULT NULL,
+  `spesifikasi` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL,
+  `status` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') NOT NULL DEFAULT 'SUBMITTED',
+  `persiapan_unit_mekanik` varchar(100) DEFAULT NULL,
+  `persiapan_unit_estimasi_mulai` date DEFAULT NULL,
+  `persiapan_unit_estimasi_selesai` date DEFAULT NULL,
+  `persiapan_unit_tanggal_approve` datetime DEFAULT NULL,
+  `persiapan_unit_id` int(11) DEFAULT NULL,
+  `persiapan_aksesoris_tersedia` text DEFAULT NULL,
+  `fabrikasi_mekanik` varchar(100) DEFAULT NULL,
+  `fabrikasi_estimasi_mulai` date DEFAULT NULL,
+  `fabrikasi_estimasi_selesai` date DEFAULT NULL,
+  `fabrikasi_tanggal_approve` datetime DEFAULT NULL,
+  `fabrikasi_attachment_id` int(11) DEFAULT NULL,
+  `painting_mekanik` varchar(100) DEFAULT NULL,
+  `painting_estimasi_mulai` date DEFAULT NULL,
+  `painting_estimasi_selesai` date DEFAULT NULL,
+  `painting_tanggal_approve` datetime DEFAULT NULL,
+  `pdi_mekanik` varchar(100) DEFAULT NULL,
+  `pdi_estimasi_mulai` date DEFAULT NULL,
+  `pdi_estimasi_selesai` date DEFAULT NULL,
+  `pdi_tanggal_approve` datetime DEFAULT NULL,
+  `pdi_catatan` text DEFAULT NULL,
+  `catatan` text DEFAULT NULL,
+  `dibuat_oleh` int(10) UNSIGNED DEFAULT NULL,
+  `dibuat_pada` datetime DEFAULT current_timestamp(),
+  `diperbarui_pada` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `spk_backup_20250903`:
+--
+
+--
+-- Truncate table before insert `spk_backup_20250903`
+--
+
+TRUNCATE TABLE `spk_backup_20250903`;
+--
+-- Dumping data for table `spk_backup_20250903`
+--
+
+INSERT DELAYED IGNORE INTO `spk_backup_20250903` (`id`, `nomor_spk`, `jenis_spk`, `kontrak_id`, `kontrak_spesifikasi_id`, `jumlah_unit`, `po_kontrak_nomor`, `pelanggan`, `pic`, `kontak`, `lokasi`, `delivery_plan`, `spesifikasi`, `status`, `persiapan_unit_mekanik`, `persiapan_unit_estimasi_mulai`, `persiapan_unit_estimasi_selesai`, `persiapan_unit_tanggal_approve`, `persiapan_unit_id`, `persiapan_aksesoris_tersedia`, `fabrikasi_mekanik`, `fabrikasi_estimasi_mulai`, `fabrikasi_estimasi_selesai`, `fabrikasi_tanggal_approve`, `fabrikasi_attachment_id`, `painting_mekanik`, `painting_estimasi_mulai`, `painting_estimasi_selesai`, `painting_tanggal_approve`, `pdi_mekanik`, `pdi_estimasi_mulai`, `pdi_estimasi_selesai`, `pdi_tanggal_approve`, `pdi_catatan`, `catatan`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
 (21, 'SPK/202508/001', 'UNIT', 14, 12, 10, 'test/1/1/9', 'PURI NUSA', 'Adit', '082134555233', 'Gemalapik', '2025-08-26', '{\"ban_id\": \"3\", \"mast_id\": \"15\", \"roda_id\": \"1\", \"valve_id\": \"2\", \"aksesoris\": [], \"merk_unit\": \"LINDE\", \"charger_id\": null, \"model_unit\": null, \"tipe_jenis\": \"SCRUBER\", \"kapasitas_id\": \"42\", \"tipe_unit_id\": \"4\", \"departemen_id\": \"1\", \"jenis_baterai\": null, \"prepared_units\": [{\"catatan\": \"awe\", \"mekanik\": \"SAMSURI-RIKI\", \"unit_id\": \"8\", \"timestamp\": \"2025-08-26 09:16:08\", \"attachment_id\": \"4\", \"aksesoris_tersedia\": \"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"CAMERA AI\\\",\\\"LASER FORK\\\",\\\"VOICE ANNOUNCER\\\",\\\"APAR 1 KG\\\",\\\"P3K\\\",\\\"BEACON\\\",\\\"SPARS ARRESTOR\\\"]\"}, {\"catatan\": \"ok\", \"mekanik\": \"SAMSURI-RIKI\", \"unit_id\": \"7\", \"timestamp\": \"2025-08-27 02:22:28\", \"attachment_id\": \"4\", \"aksesoris_tersedia\": \"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"CAMERA AI\\\",\\\"CAMERA\\\",\\\"LASER FORK\\\",\\\"VOICE ANNOUNCER\\\",\\\"HORN SPEAKER\\\",\\\"ACRYLIC\\\",\\\"APAR 1 KG\\\",\\\"P3K\\\",\\\"BEACON\\\",\\\"SPARS ARRESTOR\\\"]\"}], \"attachment_merk\": null, \"attachment_tipe\": \"FORK POSITIONER\"}', 'IN_PROGRESS', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ok', 'test', 1, '2025-08-26 08:28:33', '2025-08-27 02:22:28'),
 (22, 'SPK/202508/002', 'UNIT', 15, 11, 1, 'test/1/1/10', 'PURI INDAH', 'Adit', '082134555233', 'Gemalapik', '2025-08-27', '{\"ban_id\": \"3\", \"mast_id\": \"15\", \"roda_id\": \"1\", \"valve_id\": \"2\", \"aksesoris\": [], \"merk_unit\": \"KOMATSU\", \"charger_id\": null, \"model_unit\": null, \"tipe_jenis\": \"DUMP TRUCK\", \"kapasitas_id\": null, \"tipe_unit_id\": \"1\", \"departemen_id\": \"1\", \"jenis_baterai\": null, \"prepared_units\": [{\"catatan\": \"a\", \"mekanik\": \"SAMSURI-RIKI\", \"unit_id\": \"15\", \"timestamp\": \"2025-08-27 06:51:38\", \"aksesoris_tersedia\": \"[\\\"LAMPU UTAMA\\\",\\\"BACK BUZZER\\\",\\\"SPEED LIMITER\\\",\\\"VOICE ANNOUNCER\\\",\\\"HORN SPEAKER\\\",\\\"HORN KLASON\\\",\\\"BIO METRIC\\\",\\\"APAR 1 KG\\\",\\\"APAR 3 KG\\\",\\\"BEACON\\\"]\", \"battery_inventory_id\": \"5\", \"charger_inventory_id\": \"6\", \"attachment_inventory_id\": \"4\"}], \"attachment_merk\": null, \"attachment_tipe\": \"FORK POSITIONER\", \"persiapan_battery_id\": \"5\", \"persiapan_charger_id\": \"6\", \"fabrikasi_attachment_id\": \"4\"}', 'IN_PROGRESS', 'IYAN', '2025-08-27', '2025-08-27', '2025-08-27 06:51:14', 15, '[\"LAMPU UTAMA\",\"BACK BUZZER\",\"SPEED LIMITER\",\"VOICE ANNOUNCER\",\"HORN SPEAKER\",\"HORN KLASON\",\"BIO METRIC\",\"APAR 1 KG\",\"APAR 3 KG\",\"BEACON\"]', 'ARIZAL-EKA', '2025-08-27', '2025-08-27', '2025-08-27 06:51:25', NULL, 'JOHANA - DEPI', '2025-08-27', '2025-08-27', '2025-08-27 06:51:32', 'SAMSURI-RIKI', '2025-08-27', '2025-08-27', '2025-08-27 06:51:37', 'a', NULL, 1, '2025-08-27 04:14:39', '2025-08-27 15:24:37'),
 (23, 'SPK/202508/003', 'UNIT', 16, 15, 1, 'test/1/1/11', 'Sarana Mitra Luas Tbk', 'kaleng', '22131231231', 'Area Kargo Bandara Soekarno-Hatta', '2025-08-27', '{\"ban_id\": \"1\", \"mast_id\": \"15\", \"roda_id\": \"3\", \"valve_id\": \"3\", \"aksesoris\": [], \"merk_unit\": \"KOMATSU\", \"charger_id\": \"8\", \"model_unit\": null, \"tipe_jenis\": \"SCRUBER\", \"kapasitas_id\": \"43\", \"tipe_unit_id\": \"4\", \"departemen_id\": \"2\", \"jenis_baterai\": \"Lead Acid\", \"prepared_units\": [{\"catatan\": \"aa\", \"mekanik\": \"SAMSURI-RIKI\", \"unit_id\": \"13\", \"timestamp\": \"2025-08-27 09:01:35\", \"aksesoris_tersedia\": \"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"ROTARY LAMP\\\",\\\"BACK BUZZER\\\",\\\"SENSOR PARKING\\\",\\\"SPEED LIMITER\\\"]\", \"battery_inventory_id\": null, \"charger_inventory_id\": null, \"attachment_inventory_id\": \"4\"}], \"attachment_merk\": null, \"attachment_tipe\": \"FORK POSITIONER\", \"fabrikasi_attachment_id\": \"4\"}', 'IN_PROGRESS', 'IYAN', '2025-08-27', '2025-08-27', '2025-08-27 09:01:05', 13, '[\"LAMPU UTAMA\",\"BLUE SPOT\",\"ROTARY LAMP\",\"BACK BUZZER\",\"SENSOR PARKING\",\"SPEED LIMITER\"]', 'ARIZAL-EKA', '2025-08-27', '2025-08-27', '2025-08-27 09:01:12', NULL, 'JOHANA - DEPI', '2025-08-27', '2025-08-27', '2025-08-27 09:01:26', 'SAMSURI-RIKI', '2025-08-27', '2025-08-27', '2025-08-27 09:01:35', 'aa', NULL, 1, '2025-08-27 09:00:44', '2025-08-27 15:26:16'),
@@ -2748,26 +3341,44 @@ INSERT INTO `spk` (`id`, `nomor_spk`, `jenis_spk`, `kontrak_id`, `kontrak_spesif
 --
 -- Table structure for table `spk_component_transactions`
 --
+-- Creation: Sep 03, 2025 at 08:54 AM
+--
 
-CREATE TABLE `spk_component_transactions` (
-  `id` int UNSIGNED NOT NULL,
-  `spk_id` int UNSIGNED NOT NULL,
-  `transaction_type` enum('ASSIGN','UNASSIGN','MODIFY') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'ASSIGN',
-  `component_type` enum('UNIT','ATTACHMENT','BATTERY','CHARGER') CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL,
-  `component_id` int UNSIGNED NOT NULL COMMENT 'ID from respective table (inventory_unit, inventory_attachment)',
-  `inventory_id` int UNSIGNED DEFAULT NULL COMMENT 'ID from inventory_attachment if applicable',
-  `mekanik` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `catatan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci,
-  `created_by` int UNSIGNED DEFAULT NULL,
-  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `spk_component_transactions`;
+CREATE TABLE IF NOT EXISTS `spk_component_transactions` (
+  `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
+  `spk_id` int(10) UNSIGNED NOT NULL,
+  `transaction_type` enum('ASSIGN','UNASSIGN','MODIFY') NOT NULL DEFAULT 'ASSIGN',
+  `component_type` enum('UNIT','ATTACHMENT','BATTERY','CHARGER') NOT NULL,
+  `component_id` int(10) UNSIGNED NOT NULL COMMENT 'ID from respective table (inventory_unit, inventory_attachment)',
+  `inventory_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'ID from inventory_attachment if applicable',
+  `mekanik` varchar(100) DEFAULT NULL,
+  `catatan` text DEFAULT NULL,
+  `created_by` int(10) UNSIGNED DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_spk_component_spk` (`spk_id`),
+  KEY `idx_spk_component_type` (`component_type`),
+  KEY `idx_spk_component_id` (`component_id`),
+  KEY `idx_spk_component_inventory` (`inventory_id`),
+  KEY `idx_spk_component_created` (`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `spk_component_transactions`:
+--
+
+--
+-- Truncate table before insert `spk_component_transactions`
+--
+
+TRUNCATE TABLE `spk_component_transactions`;
 --
 -- Dumping data for table `spk_component_transactions`
 --
 
-INSERT INTO `spk_component_transactions` (`id`, `spk_id`, `transaction_type`, `component_type`, `component_id`, `inventory_id`, `mekanik`, `catatan`, `created_by`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `spk_component_transactions` (`id`, `spk_id`, `transaction_type`, `component_type`, `component_id`, `inventory_id`, `mekanik`, `catatan`, `created_by`, `created_at`, `updated_at`) VALUES
 (1, 1, 'ASSIGN', 'UNIT', 1, NULL, 'John Doe', 'Unit assigned for SPK preparation', 1, '2025-08-30 02:22:02', '2025-08-30 02:22:02'),
 (2, 1, 'ASSIGN', 'ATTACHMENT', 1, NULL, 'John Doe', 'Forklift attachment assigned', 1, '2025-08-30 02:22:02', '2025-08-30 02:22:02'),
 (3, 1, 'ASSIGN', 'BATTERY', 1, NULL, 'John Doe', 'Battery assigned for unit', 1, '2025-08-30 02:22:02', '2025-08-30 02:22:02');
@@ -2777,55 +3388,136 @@ INSERT INTO `spk_component_transactions` (`id`, `spk_id`, `transaction_type`, `c
 --
 -- Table structure for table `spk_status_history`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `spk_status_history` (
-  `id` int UNSIGNED NOT NULL,
-  `spk_id` int UNSIGNED NOT NULL,
-  `status_from` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `status_to` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') COLLATE utf8mb4_general_ci NOT NULL,
-  `changed_by` int UNSIGNED DEFAULT NULL,
-  `note` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `changed_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP
+DROP TABLE IF EXISTS `spk_status_history`;
+CREATE TABLE IF NOT EXISTS `spk_status_history` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `spk_id` int(10) UNSIGNED NOT NULL,
+  `status_from` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') DEFAULT NULL,
+  `status_to` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') NOT NULL,
+  `changed_by` int(10) UNSIGNED DEFAULT NULL,
+  `note` varchar(255) DEFAULT NULL,
+  `changed_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `spk_status_history`:
+--
+
+--
+-- Truncate table before insert `spk_status_history`
+--
+
+TRUNCATE TABLE `spk_status_history`;
 --
 -- Dumping data for table `spk_status_history`
 --
 
-INSERT INTO `spk_status_history` (`id`, `spk_id`, `status_from`, `status_to`, `changed_by`, `note`, `changed_at`) VALUES
+INSERT DELAYED IGNORE INTO `spk_status_history` (`id`, `spk_id`, `status_from`, `status_to`, `changed_by`, `note`, `changed_at`) VALUES
+(0, 27, 'READY', 'IN_PROGRESS', 1, 'DI created: DI/202509/001', '2025-09-04 10:28:19'),
 (22, 22, 'READY', 'IN_PROGRESS', 1, 'DI created: DI/202508/007', '2025-08-27 15:24:37'),
-(23, 23, 'READY', 'IN_PROGRESS', 1, 'DI created: DI/202508/008', '2025-08-27 15:26:16'),
-(0, 24, 'READY', 'IN_PROGRESS', 1, 'DI created: DI/202508/012', '2025-08-30 02:32:49');
+(23, 23, 'READY', 'IN_PROGRESS', 1, 'DI created: DI/202508/008', '2025-08-27 15:26:16');
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `spk_units`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `spk_units` (
-  `id` int UNSIGNED NOT NULL,
-  `spk_id` int UNSIGNED NOT NULL,
-  `unit_id` int UNSIGNED DEFAULT NULL,
-  `keterangan` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL
+DROP TABLE IF EXISTS `spk_units`;
+CREATE TABLE IF NOT EXISTS `spk_units` (
+  `id` int(10) UNSIGNED NOT NULL,
+  `spk_id` int(10) UNSIGNED NOT NULL,
+  `unit_id` int(10) UNSIGNED DEFAULT NULL,
+  `keterangan` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `spk_units`:
+--
+
+--
+-- Truncate table before insert `spk_units`
+--
+
+TRUNCATE TABLE `spk_units`;
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `status_eksekusi_workflow`
+--
+-- Creation: Sep 03, 2025 at 08:58 AM
+--
+
+DROP TABLE IF EXISTS `status_eksekusi_workflow`;
+CREATE TABLE IF NOT EXISTS `status_eksekusi_workflow` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `kode` varchar(30) NOT NULL,
+  `nama` varchar(100) NOT NULL,
+  `deskripsi` text DEFAULT NULL,
+  `urutan` int(11) NOT NULL,
+  `warna` varchar(7) DEFAULT '#6c757d',
+  `aktif` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `kode` (`kode`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `status_eksekusi_workflow`:
+--
+
+--
+-- Truncate table before insert `status_eksekusi_workflow`
+--
+
+TRUNCATE TABLE `status_eksekusi_workflow`;
+--
+-- Dumping data for table `status_eksekusi_workflow`
+--
+
+INSERT DELAYED IGNORE INTO `status_eksekusi_workflow` (`id`, `kode`, `nama`, `deskripsi`, `urutan`, `warna`, `aktif`, `created_at`) VALUES
+(1, 'BELUM_MULAI', 'Belum Mulai', 'SPK belum dikerjakan', 1, '#6c757d', 1, '2025-09-03 08:58:54'),
+(2, 'PERSIAPAN', 'Persiapan Unit', 'Sedang mempersiapkan unit', 2, '#ffc107', 1, '2025-09-03 08:58:54'),
+(3, 'DALAM_PERJALANAN', 'Dalam Perjalanan', 'Unit sedang dalam perjalanan ke tujuan', 3, '#17a2b8', 1, '2025-09-03 08:58:54'),
+(4, 'SAMPAI_LOKASI', 'Sampai di Lokasi', 'Unit sudah sampai di lokasi tujuan', 4, '#28a745', 1, '2025-09-03 08:58:54'),
+(5, 'SELESAI', 'Selesai', 'Pekerjaan sudah selesai dikerjakan', 5, '#28a745', 1, '2025-09-03 08:58:54');
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `status_unit`
 --
+-- Creation: Sep 03, 2025 at 09:08 AM
+--
 
-CREATE TABLE `status_unit` (
-  `id_status` int NOT NULL,
-  `status_unit` varchar(50) COLLATE utf8mb4_general_ci NOT NULL
+DROP TABLE IF EXISTS `status_unit`;
+CREATE TABLE IF NOT EXISTS `status_unit` (
+  `id_status` int(11) NOT NULL,
+  `status_unit` varchar(50) NOT NULL,
+  PRIMARY KEY (`id_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `status_unit`:
+--
+
+--
+-- Truncate table before insert `status_unit`
+--
+
+TRUNCATE TABLE `status_unit`;
 --
 -- Dumping data for table `status_unit`
 --
 
-INSERT INTO `status_unit` (`id_status`, `status_unit`) VALUES
+INSERT DELAYED IGNORE INTO `status_unit` (`id_status`, `status_unit`) VALUES
 (1, 'WORKSHOP-HIDUP'),
 (2, 'WORKSHOP-RUSAK'),
 (3, 'RENTAL'),
@@ -2841,22 +3533,35 @@ INSERT INTO `status_unit` (`id_status`, `status_unit`) VALUES
 --
 -- Table structure for table `suppliers`
 --
+-- Creation: Sep 03, 2025 at 09:22 AM
+--
 
-CREATE TABLE `suppliers` (
-  `id_supplier` int NOT NULL,
-  `nama_supplier` varchar(150) COLLATE utf8mb4_general_ci NOT NULL,
-  `kontak_person` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `telepon` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
-  `alamat` text COLLATE utf8mb4_general_ci,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` datetime DEFAULT NULL
+DROP TABLE IF EXISTS `suppliers`;
+CREATE TABLE IF NOT EXISTS `suppliers` (
+  `id_supplier` int(11) NOT NULL,
+  `nama_supplier` varchar(150) NOT NULL,
+  `kontak_person` varchar(100) DEFAULT NULL,
+  `telepon` varchar(50) DEFAULT NULL,
+  `alamat` text DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`id_supplier`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `suppliers`:
+--
+
+--
+-- Truncate table before insert `suppliers`
+--
+
+TRUNCATE TABLE `suppliers`;
 --
 -- Dumping data for table `suppliers`
 --
 
-INSERT INTO `suppliers` (`id_supplier`, `nama_supplier`, `kontak_person`, `telepon`, `alamat`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `suppliers` (`id_supplier`, `nama_supplier`, `kontak_person`, `telepon`, `alamat`, `created_at`, `updated_at`) VALUES
 (1, 'PT. Forklift Jaya Abadi', 'Bapak Budi', '081234567890', NULL, '2025-07-15 20:43:59', NULL),
 (2, 'CV. Sinar Baterai', 'Ibu Susan', '081122334455', NULL, '2025-07-15 20:43:59', NULL),
 (3, 'Toko Sparepart Maju', 'Pak Eko', '021-555-1234', NULL, '2025-07-15 20:43:59', NULL);
@@ -2864,19 +3569,215 @@ INSERT INTO `suppliers` (`id_supplier`, `nama_supplier`, `kontak_person`, `telep
 -- --------------------------------------------------------
 
 --
--- Table structure for table `tipe_ban`
+-- Table structure for table `system_activity_log`
+--
+-- Creation: Sep 09, 2025 at 04:48 AM
+-- Last update: Sep 09, 2025 at 09:54 AM
 --
 
-CREATE TABLE `tipe_ban` (
-  `id_ban` int NOT NULL,
-  `tipe_ban` varchar(100) COLLATE utf8mb4_general_ci NOT NULL
+DROP TABLE IF EXISTS `system_activity_log`;
+CREATE TABLE IF NOT EXISTS `system_activity_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `table_name` varchar(64) NOT NULL COMMENT 'Target table name (kontrak, spk, inventory_unit, etc)',
+  `record_id` int(10) UNSIGNED NOT NULL COMMENT 'ID of the affected record',
+  `action_type` enum('CREATE','READ','UPDATE','DELETE','EXPORT','IMPORT','LOGIN','LOGOUT','APPROVE','REJECT','SUBMIT','CANCEL','ASSIGN','UNASSIGN','COMPLETE','PRINT','DOWNLOAD') NOT NULL,
+  `action_description` varchar(255) NOT NULL COMMENT 'Brief description of what happened',
+  `old_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Previous values (only changed fields)' CHECK (json_valid(`old_values`)),
+  `new_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'New values (only changed fields)' CHECK (json_valid(`new_values`)),
+  `affected_fields` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'List of fields that were changed' CHECK (json_valid(`affected_fields`)),
+  `user_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK to users.id',
+  `workflow_stage` varchar(50) DEFAULT NULL COMMENT 'Current business stage',
+  `is_critical` tinyint(1) DEFAULT 0 COMMENT 'Mark critical business actions',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `module_name` enum('PURCHASING','WAREHOUSE','MARKETING','SERVICE','OPERATIONAL','ACCOUNTING','PERIZINAN','ADMIN','DASHBOARD','REPORTS','SETTINGS','USER_MANAGEMENT') DEFAULT NULL COMMENT 'Application module where activity occurred',
+  `submenu_item` varchar(100) DEFAULT NULL COMMENT 'Specific submenu item accessed',
+  `business_impact` enum('LOW','MEDIUM','HIGH','CRITICAL') DEFAULT 'LOW' COMMENT 'Business impact level',
+  `related_entities` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'JSON object storing related entity relationships' CHECK (json_valid(`related_entities`)),
+  PRIMARY KEY (`id`),
+  KEY `idx_related_entities` (`related_entities`(255))
+) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `system_activity_log`:
+--
+
+--
+-- Truncate table before insert `system_activity_log`
+--
+
+TRUNCATE TABLE `system_activity_log`;
+--
+-- Dumping data for table `system_activity_log`
+--
+
+INSERT DELAYED IGNORE INTO `system_activity_log` (`id`, `table_name`, `record_id`, `action_type`, `action_description`, `old_values`, `new_values`, `affected_fields`, `user_id`, `workflow_stage`, `is_critical`, `created_at`, `module_name`, `submenu_item`, `business_impact`, `related_entities`) VALUES
+(1, 'kontrak', 44, 'CREATE', 'Kontrak baru dibuat dengan nomor PO-CL-0488', NULL, '{\"no_po_marketing\": \"PO-CL-0488\", \"pelanggan\": \"PT Client\", \"status\": \"ACTIVE\"}', '[\"no_po_marketing\", \"pelanggan\", \"status\"]', 1, 'KONTRAK', 1, '2025-09-08 06:43:05', NULL, NULL, 'LOW', NULL),
+(2, 'inventory_unit', 1, 'ASSIGN', 'Unit forklift diassign ke kontrak dengan harga Rp 9,000,000/bulan', NULL, '{\"kontrak_id\": 44, \"harga_sewa_bulanan\": 9000000, \"status_unit_id\": 3}', '[\"kontrak_id\", \"harga_sewa_bulanan\", \"status_unit_id\"]', 1, 'KONTRAK', 1, '2025-09-08 06:43:05', NULL, NULL, 'LOW', NULL),
+(3, 'inventory_unit', 2, 'ASSIGN', 'Unit forklift diassign ke kontrak dengan harga Rp 9,000,000/bulan', NULL, '{\"kontrak_id\": 44, \"harga_sewa_bulanan\": 9000000, \"status_unit_id\": 3}', '[\"kontrak_id\", \"harga_sewa_bulanan\", \"status_unit_id\"]', 1, 'KONTRAK', 1, '2025-09-08 06:43:05', NULL, NULL, 'LOW', NULL),
+(7, 'kontrak', 48, 'DELETE', 'Test delete logging manual', NULL, NULL, NULL, 1, NULL, 0, '2025-09-08 10:08:42', NULL, NULL, 'LOW', NULL),
+(8, 'kontrak', 49, 'DELETE', 'Test Delete', '{}', NULL, '[]', 1, NULL, 0, '2025-09-09 04:14:05', NULL, NULL, 'LOW', NULL),
+(9, 'kontrak', 48, 'DELETE', 'Kontrak deleted: TEST-DELETE-LOG (Client: Test Client for Delete)', '{\"id\":\"48\",\"no_kontrak\":\"TEST-DELETE-LOG\",\"no_po_marketing\":null,\"pelanggan\":\"Test Client for Delete\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":null,\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-08\",\"tanggal_berakhir\":\"2025-12-08\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-08 17:06:22\",\"diperbarui_pada\":\"2025-09-08 17:06:22\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, NULL, 1, '2025-09-09 04:16:39', 'MARKETING', NULL, 'LOW', NULL),
+(10, 'kontrak', 49, 'DELETE', 'Kontrak deleted: TEST-DELETE-LOG-2 (Client: Test Client for Delete 2)', '{\"id\":\"49\",\"no_kontrak\":\"TEST-DELETE-LOG-2\",\"no_po_marketing\":null,\"pelanggan\":\"Test Client for Delete 2\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":null,\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-08\",\"tanggal_berakhir\":\"2025-12-08\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-08 17:09:00\",\"diperbarui_pada\":\"2025-09-08 17:09:00\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, NULL, 1, '2025-09-09 04:18:47', 'MARKETING', NULL, 'LOW', NULL),
+(11, 'kontrak', 52, 'DELETE', 'Kontrak deleted: TEST-COMPLETE-LOG (Client: Test Complete Logging)', '{\"id\":\"52\",\"no_kontrak\":\"TEST-COMPLETE-LOG\",\"no_po_marketing\":null,\"pelanggan\":\"Test Complete Logging\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-09\",\"tanggal_berakhir\":\"2025-12-09\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-09 04:27:07\",\"diperbarui_pada\":\"2025-09-09 04:27:07\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 04:28:11', 'MARKETING', NULL, 'HIGH', NULL),
+(12, 'kontrak', 123, 'DELETE', 'Test delete with JSON relations', NULL, NULL, NULL, 1, 'DELETE_CONFIRMED', 0, '2025-09-09 04:51:45', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\": [123], \"spk\": [456, 789], \"di\": [101112]}'),
+(13, 'kontrak', 999, 'CREATE', 'Test kontrak dengan JSON relations implementasi', NULL, NULL, NULL, 1, 'DRAFT', 0, '2025-09-09 04:52:49', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\": [999], \"spk\": [1001, 1002], \"test_entity\": [555]}'),
+(15, 'kontrak', 51, 'DELETE', 'Kontrak deleted: TEST-ALERT-SYSTEM (Client: Test Client for Alert System)', '{\"id\":\"51\",\"no_kontrak\":\"TEST-ALERT-SYSTEM\",\"no_po_marketing\":null,\"pelanggan\":\"Test Client for Alert System\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":null,\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-09\",\"tanggal_berakhir\":\"2025-12-09\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-09 11:19:04\",\"diperbarui_pada\":\"2025-09-09 11:19:04\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 06:28:14', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[51]}'),
+(16, 'kontrak', 46, 'DELETE', 'Kontrak deleted: TEST-1757315452 (Client: Test Client)', '{\"id\":\"46\",\"no_kontrak\":\"TEST-1757315452\",\"no_po_marketing\":\"PO-TEST-1757315452\",\"pelanggan\":\"Test Client\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2024-01-01\",\"tanggal_berakhir\":\"2024-12-31\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-08 07:10:56\",\"diperbarui_pada\":\"2025-09-08 07:10:56\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 06:28:29', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[46]}'),
+(17, 'users', 1, 'LOGOUT', 'User logged out', NULL, NULL, NULL, 1, 'LOGOUT', 0, '2025-09-09 07:28:45', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(18, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-09 07:29:00', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(19, 'users', 1, 'LOGOUT', 'User logged out', NULL, NULL, NULL, 1, 'LOGOUT', 0, '2025-09-09 08:00:32', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(20, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-09 08:00:33', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(21, 'kontrak', 53, 'DELETE', 'Kontrak deleted: KNTRK/2209/0002 (Client: IBR)', '{\"id\":\"53\",\"no_kontrak\":\"KNTRK\\/2209\\/0002\",\"no_po_marketing\":\"PO-ADIT110999\",\"pelanggan\":\"IBR\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-01\",\"tanggal_berakhir\":\"2025-12-31\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-09 06:30:00\",\"diperbarui_pada\":\"2025-09-09 06:30:00\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 09:42:59', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[53]}'),
+(22, 'kontrak', 45, 'DELETE', 'Kontrak deleted: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', '{\"id\":\"45\",\"no_kontrak\":\"KNTRK\\/2209\\/0001\",\"no_po_marketing\":\"PO-ADIT10999\",\"pelanggan\":\"Sarana Mitra Luas\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-01\",\"tanggal_berakhir\":\"2025-09-30\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-08 06:57:54\",\"diperbarui_pada\":\"2025-09-08 06:57:54\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 09:43:20', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[45]}'),
+(23, 'kontrak', 54, 'CREATE', 'Kontrak created: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', NULL, '{\"no_kontrak\":\"KNTRK\\/2209\\/0001\",\"no_po_marketing\":\"PO-ADIT10999\",\"pelanggan\":\"Sarana Mitra Luas\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"nilai_total\":0,\"total_units\":0,\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-01\",\"tanggal_berakhir\":\"2025-12-31\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\"}', '[\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"pic\",\"kontak\",\"lokasi\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\"]', 1, 'DRAFT', 0, '2025-09-09 09:54:01', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[54]}');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_activity_log_backup`
+--
+-- Creation: Sep 08, 2025 at 08:42 AM
+--
+
+DROP TABLE IF EXISTS `system_activity_log_backup`;
+CREATE TABLE IF NOT EXISTS `system_activity_log_backup` (
+  `id` int(11) NOT NULL DEFAULT 0,
+  `table_name` varchar(64) NOT NULL COMMENT 'Target table name (kontrak, spk, inventory_unit, etc)',
+  `record_id` int(10) UNSIGNED NOT NULL COMMENT 'ID of the affected record',
+  `action_type` enum('CREATE','UPDATE','DELETE','ASSIGN','UNASSIGN','APPROVE','REJECT','COMPLETE','CANCEL') NOT NULL COMMENT 'Type of action performed',
+  `action_description` varchar(255) NOT NULL COMMENT 'Brief description of what happened',
+  `old_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Previous values (only changed fields)' CHECK (json_valid(`old_values`)),
+  `new_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'New values (only changed fields)' CHECK (json_valid(`new_values`)),
+  `affected_fields` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'List of fields that were changed' CHECK (json_valid(`affected_fields`)),
+  `user_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK to users.id',
+  `session_id` varchar(128) DEFAULT NULL COMMENT 'Session identifier for tracking',
+  `ip_address` varchar(45) DEFAULT NULL COMMENT 'User IP address',
+  `user_agent` varchar(500) DEFAULT NULL COMMENT 'Browser/device info (truncated)',
+  `request_method` enum('GET','POST','PUT','DELETE','PATCH') DEFAULT NULL COMMENT 'HTTP method used',
+  `request_url` varchar(255) DEFAULT NULL COMMENT 'Endpoint that triggered this action',
+  `related_kontrak_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related kontrak if applicable',
+  `related_spk_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related SPK if applicable',
+  `related_di_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related DI if applicable',
+  `workflow_stage` varchar(50) DEFAULT NULL COMMENT 'Current business stage',
+  `is_critical` tinyint(1) DEFAULT 0 COMMENT 'Mark critical business actions',
+  `execution_time_ms` int(10) UNSIGNED DEFAULT NULL COMMENT 'Time taken to execute action (milliseconds)',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `module_name` enum('PURCHASING','WAREHOUSE','MARKETING','SERVICE','OPERATIONAL','ACCOUNTING','PERIZINAN','ADMIN','DASHBOARD','REPORTS','SETTINGS','USER_MANAGEMENT') DEFAULT NULL COMMENT 'Application module where activity occurred',
+  `feature_name` varchar(100) DEFAULT NULL COMMENT 'Specific feature/page within module',
+  `business_impact` enum('LOW','MEDIUM','HIGH','CRITICAL') DEFAULT 'LOW' COMMENT 'Business impact level',
+  `compliance_relevant` tinyint(1) DEFAULT 0 COMMENT 'Relevant for compliance/audit',
+  `financial_impact` decimal(15,2) DEFAULT NULL COMMENT 'Financial impact of this activity',
+  `related_purchase_order_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related PO for purchasing module',
+  `related_vendor_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related vendor/supplier',
+  `related_customer_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related customer',
+  `related_invoice_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related invoice for accounting',
+  `related_payment_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related payment record',
+  `related_permit_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related permit for perizinan',
+  `related_warehouse_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related warehouse location',
+  `device_type` enum('DESKTOP','MOBILE','TABLET','API') DEFAULT NULL COMMENT 'Device type used',
+  `browser_name` varchar(50) DEFAULT NULL COMMENT 'Browser name',
+  `operating_system` varchar(50) DEFAULT NULL COMMENT 'Operating system'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `system_activity_log_backup`:
+--
+
+--
+-- Truncate table before insert `system_activity_log_backup`
+--
+
+TRUNCATE TABLE `system_activity_log_backup`;
+--
+-- Dumping data for table `system_activity_log_backup`
+--
+
+INSERT DELAYED IGNORE INTO `system_activity_log_backup` (`id`, `table_name`, `record_id`, `action_type`, `action_description`, `old_values`, `new_values`, `affected_fields`, `user_id`, `session_id`, `ip_address`, `user_agent`, `request_method`, `request_url`, `related_kontrak_id`, `related_spk_id`, `related_di_id`, `workflow_stage`, `is_critical`, `execution_time_ms`, `created_at`, `module_name`, `feature_name`, `business_impact`, `compliance_relevant`, `financial_impact`, `related_purchase_order_id`, `related_vendor_id`, `related_customer_id`, `related_invoice_id`, `related_payment_id`, `related_permit_id`, `related_warehouse_id`, `device_type`, `browser_name`, `operating_system`) VALUES
+(1, 'kontrak', 44, 'CREATE', 'Kontrak baru dibuat dengan nomor PO-CL-0488', NULL, '{\"no_po_marketing\": \"PO-CL-0488\", \"pelanggan\": \"PT Client\", \"status\": \"ACTIVE\"}', '[\"no_po_marketing\", \"pelanggan\", \"status\"]', 1, NULL, NULL, NULL, NULL, NULL, 44, NULL, NULL, 'KONTRAK', 1, NULL, '2025-09-08 06:43:05', NULL, NULL, 'LOW', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2, 'inventory_unit', 1, 'ASSIGN', 'Unit forklift diassign ke kontrak dengan harga Rp 9,000,000/bulan', NULL, '{\"kontrak_id\": 44, \"harga_sewa_bulanan\": 9000000, \"status_unit_id\": 3}', '[\"kontrak_id\", \"harga_sewa_bulanan\", \"status_unit_id\"]', 1, NULL, NULL, NULL, NULL, NULL, 44, NULL, NULL, 'KONTRAK', 1, NULL, '2025-09-08 06:43:05', NULL, NULL, 'LOW', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(3, 'inventory_unit', 2, 'ASSIGN', 'Unit forklift diassign ke kontrak dengan harga Rp 9,000,000/bulan', NULL, '{\"kontrak_id\": 44, \"harga_sewa_bulanan\": 9000000, \"status_unit_id\": 3}', '[\"kontrak_id\", \"harga_sewa_bulanan\", \"status_unit_id\"]', 1, NULL, NULL, NULL, NULL, NULL, 44, NULL, NULL, 'KONTRAK', 1, NULL, '2025-09-08 06:43:05', NULL, NULL, 'LOW', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_activity_log_old`
+--
+-- Creation: Sep 08, 2025 at 08:42 AM
+--
+
+DROP TABLE IF EXISTS `system_activity_log_old`;
+CREATE TABLE IF NOT EXISTS `system_activity_log_old` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(100) NOT NULL COMMENT 'Username yang melakukan aktivitas',
+  `user_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK ke users table',
+  `action_type` enum('CREATE','READ','UPDATE','DELETE','PRINT','DOWNLOAD','LOGIN','LOGOUT') NOT NULL COMMENT 'Jenis aktivitas',
+  `table_name` varchar(64) DEFAULT NULL COMMENT 'Nama tabel yang diakses (kontrak, spk, inventory, dll)',
+  `record_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'ID record yang diakses',
+  `description` text NOT NULL COMMENT 'Deskripsi lengkap aktivitas yang dilakukan',
+  `file_name` varchar(255) DEFAULT NULL COMMENT 'Nama file yang di-print/download',
+  `file_type` varchar(50) DEFAULT NULL COMMENT 'Jenis file (PDF, Excel, Word, dll)',
+  `module_name` varchar(50) DEFAULT NULL COMMENT 'Module/Menu yang diakses (Marketing, Service, dll)',
+  `ip_address` varchar(45) DEFAULT NULL COMMENT 'IP address user',
+  `user_agent` text DEFAULT NULL COMMENT 'Browser info',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'Waktu aktivitas',
+  PRIMARY KEY (`id`),
+  KEY `idx_username` (`username`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_action_type` (`action_type`),
+  KEY `idx_table_record` (`table_name`,`record_id`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_module` (`module_name`),
+  KEY `idx_username_date` (`username`,`created_at`),
+  KEY `idx_action_date` (`action_type`,`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Tabel untuk mencatat semua aktivitas user: CRUD, Print, Download';
+
+--
+-- RELATIONSHIPS FOR TABLE `system_activity_log_old`:
+--
+
+--
+-- Truncate table before insert `system_activity_log_old`
+--
+
+TRUNCATE TABLE `system_activity_log_old`;
+--
+-- Dumping data for table `system_activity_log_old`
+--
+
+INSERT DELAYED IGNORE INTO `system_activity_log_old` (`id`, `username`, `user_id`, `action_type`, `table_name`, `record_id`, `description`, `file_name`, `file_type`, `module_name`, `ip_address`, `user_agent`, `created_at`) VALUES
+(1, 'admin', 1, 'CREATE', 'kontrak', 1, 'Membuat kontrak baru PO-TEST-001', NULL, NULL, 'Marketing', '127.0.0.1', NULL, '2025-09-08 08:18:56'),
+(2, 'admin', 1, 'PRINT', 'kontrak', 1, 'Print kontrak PO-TEST-001 ke PDF', NULL, NULL, 'Marketing', '127.0.0.1', NULL, '2025-09-08 08:18:56'),
+(3, 'admin', 1, 'DOWNLOAD', NULL, NULL, 'Download laporan Excel kontrak bulanan', NULL, NULL, 'Reports', '127.0.0.1', NULL, '2025-09-08 08:18:56');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `tipe_ban`
+--
+-- Creation: Sep 08, 2025 at 04:15 AM
+--
+
+DROP TABLE IF EXISTS `tipe_ban`;
+CREATE TABLE IF NOT EXISTS `tipe_ban` (
+  `id_ban` int(11) NOT NULL AUTO_INCREMENT,
+  `tipe_ban` varchar(100) NOT NULL,
+  PRIMARY KEY (`id_ban`)
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `tipe_ban`:
+--
+
+--
+-- Truncate table before insert `tipe_ban`
+--
+
+TRUNCATE TABLE `tipe_ban`;
 --
 -- Dumping data for table `tipe_ban`
 --
 
-INSERT INTO `tipe_ban` (`id_ban`, `tipe_ban`) VALUES
+INSERT DELAYED IGNORE INTO `tipe_ban` (`id_ban`, `tipe_ban`) VALUES
 (1, 'Solid (Ban Mati)'),
 (2, 'Pneumatic (Ban Angin)'),
 (3, 'Cushion (Ban Bantal)'),
@@ -2889,18 +3790,31 @@ INSERT INTO `tipe_ban` (`id_ban`, `tipe_ban`) VALUES
 --
 -- Table structure for table `tipe_mast`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `tipe_mast` (
-  `id_mast` int NOT NULL,
-  `tipe_mast` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-  `tinggi_mast` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Contoh: 4500mm atau 4.5m'
+DROP TABLE IF EXISTS `tipe_mast`;
+CREATE TABLE IF NOT EXISTS `tipe_mast` (
+  `id_mast` int(11) NOT NULL,
+  `tipe_mast` varchar(100) NOT NULL,
+  `tinggi_mast` varchar(50) DEFAULT NULL COMMENT 'Contoh: 4500mm atau 4.5m',
+  PRIMARY KEY (`id_mast`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `tipe_mast`:
+--
+
+--
+-- Truncate table before insert `tipe_mast`
+--
+
+TRUNCATE TABLE `tipe_mast`;
 --
 -- Dumping data for table `tipe_mast`
 --
 
-INSERT INTO `tipe_mast` (`id_mast`, `tipe_mast`, `tinggi_mast`) VALUES
+INSERT DELAYED IGNORE INTO `tipe_mast` (`id_mast`, `tipe_mast`, `tinggi_mast`) VALUES
 (1, 'Duplex (2-stage FFL) - ZM300 DUPLEX', NULL),
 (2, 'Simplex (2-stage mast) - V (3000)', NULL),
 (3, 'Simplex (2-stage mast) - V (5000)', NULL),
@@ -2930,19 +3844,32 @@ INSERT INTO `tipe_mast` (`id_mast`, `tipe_mast`, `tinggi_mast`) VALUES
 --
 -- Table structure for table `tipe_unit`
 --
+-- Creation: Sep 03, 2025 at 09:09 AM
+--
 
-CREATE TABLE `tipe_unit` (
-  `id_tipe_unit` int NOT NULL,
-  `tipe` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
-  `jenis` varchar(50) COLLATE utf8mb4_general_ci NOT NULL,
-  `id_departemen` int DEFAULT NULL
+DROP TABLE IF EXISTS `tipe_unit`;
+CREATE TABLE IF NOT EXISTS `tipe_unit` (
+  `id_tipe_unit` int(11) NOT NULL,
+  `tipe` varchar(50) NOT NULL,
+  `jenis` varchar(50) NOT NULL,
+  `id_departemen` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id_tipe_unit`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `tipe_unit`:
+--
+
+--
+-- Truncate table before insert `tipe_unit`
+--
+
+TRUNCATE TABLE `tipe_unit`;
 --
 -- Dumping data for table `tipe_unit`
 --
 
-INSERT INTO `tipe_unit` (`id_tipe_unit`, `tipe`, `jenis`, `id_departemen`) VALUES
+INSERT DELAYED IGNORE INTO `tipe_unit` (`id_tipe_unit`, `tipe`, `jenis`, `id_departemen`) VALUES
 (1, 'Alat Berat', 'COMPACTOR / VIBRO', 1),
 (2, 'Alat Berat', 'DUMP TRUCK', 1),
 (3, 'Alat Berat', 'WHEEL LOADER', 1),
@@ -2962,36 +3889,104 @@ INSERT INTO `tipe_unit` (`id_tipe_unit`, `tipe`, `jenis`, `id_departemen`) VALUE
 -- --------------------------------------------------------
 
 --
--- Table structure for table `users`
+-- Table structure for table `tujuan_perintah_kerja`
+--
+-- Creation: Sep 03, 2025 at 08:58 AM
 --
 
-CREATE TABLE `users` (
-  `id` int NOT NULL,
-  `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `password_hash` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `first_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `last_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `phone` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `avatar` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `division_id` int DEFAULT NULL,
-  `employee_id` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `position` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `is_super_admin` tinyint(1) DEFAULT '0',
-  `is_active` tinyint(1) DEFAULT '1',
+DROP TABLE IF EXISTS `tujuan_perintah_kerja`;
+CREATE TABLE IF NOT EXISTS `tujuan_perintah_kerja` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `jenis_perintah_id` int(11) NOT NULL,
+  `kode` varchar(50) NOT NULL,
+  `nama` varchar(200) NOT NULL,
+  `deskripsi` text DEFAULT NULL,
+  `aktif` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_jenis_kode` (`jenis_perintah_id`,`kode`),
+  KEY `idx_tujuan_jenis` (`jenis_perintah_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `tujuan_perintah_kerja`:
+--   `jenis_perintah_id`
+--       `jenis_perintah_kerja` -> `id`
+--
+
+--
+-- Truncate table before insert `tujuan_perintah_kerja`
+--
+
+TRUNCATE TABLE `tujuan_perintah_kerja`;
+--
+-- Dumping data for table `tujuan_perintah_kerja`
+--
+
+INSERT DELAYED IGNORE INTO `tujuan_perintah_kerja` (`id`, `jenis_perintah_id`, `kode`, `nama`, `deskripsi`, `aktif`, `created_at`, `updated_at`) VALUES
+(1, 1, 'ANTAR_BARU', 'Kontrak Baru', 'Pengantaran unit untuk kontrak baru', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(2, 1, 'ANTAR_TAMBAHAN', 'Unit Tambahan', 'Pengantaran unit tambahan dari kontrak existing', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(3, 1, 'ANTAR_PENGGANTI', 'Unit Pengganti', 'Pengantaran unit pengganti untuk unit bermasalah', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(4, 2, 'TARIK_HABIS_KONTRAK', 'Habis Kontrak', 'Penarikan unit karena kontrak berakhir', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(5, 2, 'TARIK_PINDAH_LOKASI', 'Pindah Lokasi', 'Penarikan unit untuk dipindah ke lokasi lain', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(6, 2, 'TARIK_MAINTENANCE', 'Maintenance', 'Penarikan unit untuk perawatan/perbaikan', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(7, 2, 'TARIK_RUSAK', 'Unit Rusak', 'Penarikan unit karena mengalami kerusakan', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(8, 3, 'TUKAR_UPGRADE', 'Upgrade Unit', 'Penukaran dengan unit yang lebih tinggi spesifikasinya', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(9, 3, 'TUKAR_DOWNGRADE', 'Downgrade Unit', 'Penukaran dengan unit yang lebih rendah spesifikasinya', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(10, 3, 'TUKAR_RUSAK', 'Ganti Unit Rusak', 'Penukaran unit yang mengalami kerusakan', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(11, 3, 'TUKAR_MAINTENANCE', 'Ganti Saat Maintenance', 'Penukaran sementara selama unit di maintenance', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(12, 4, 'RELOKASI_INTERNAL', 'Antar Lokasi Client', 'Pemindahan unit antar lokasi dalam satu perusahaan', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(13, 4, 'RELOKASI_OPTIMASI', 'Optimasi Distribusi', 'Pemindahan unit untuk optimasi distribusi', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54'),
+(14, 4, 'RELOKASI_EMERGENCY', 'Kebutuhan Mendadak', 'Pemindahan unit untuk kebutuhan mendadak', 1, '2025-09-03 08:58:54', '2025-09-03 08:58:54');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+-- Creation: Sep 03, 2025 at 09:07 AM
+-- Last update: Sep 09, 2025 at 08:00 AM
+--
+
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE IF NOT EXISTS `users` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(50) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `first_name` varchar(50) NOT NULL,
+  `last_name` varchar(50) NOT NULL,
+  `phone` varchar(20) DEFAULT NULL,
+  `avatar` varchar(255) DEFAULT NULL,
+  `division_id` int(11) DEFAULT NULL,
+  `employee_id` varchar(50) DEFAULT NULL,
+  `position` varchar(100) DEFAULT NULL,
+  `is_super_admin` tinyint(1) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1,
   `last_login` timestamp NULL DEFAULT NULL,
   `email_verified_at` timestamp NULL DEFAULT NULL,
-  `remember_token` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `remember_token` varchar(100) DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `users`:
+--
+
+--
+-- Truncate table before insert `users`
+--
+
+TRUNCATE TABLE `users`;
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `first_name`, `last_name`, `phone`, `avatar`, `division_id`, `employee_id`, `position`, `is_super_admin`, `is_active`, `last_login`, `email_verified_at`, `remember_token`, `created_at`, `updated_at`) VALUES
-(1, 'superadmin', 'admin@optima.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super', 'Administrator', '', NULL, 1, NULL, NULL, 1, 1, NULL, NULL, NULL, '2025-08-05 00:01:57', '2025-08-17 12:30:13'),
+INSERT DELAYED IGNORE INTO `users` (`id`, `username`, `email`, `password_hash`, `first_name`, `last_name`, `phone`, `avatar`, `division_id`, `employee_id`, `position`, `is_super_admin`, `is_active`, `last_login`, `email_verified_at`, `remember_token`, `created_at`, `updated_at`) VALUES
+(1, 'superadmin', 'admin@optima.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super', 'Administrator', '', NULL, 1, NULL, NULL, 1, 1, NULL, NULL, NULL, '2025-08-05 00:01:57', '2025-09-09 01:00:32'),
 (5, 'admindiesel', 'admindiesel@optima.com', '$2y$10$Hs4MEuJSEbxX8lGDuDNmwephtPcBnfxuCEi/aaPYPprfxWnbQiHu6', 'service', 'diesel', '082136033596', NULL, NULL, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 19:42:47', '2025-08-06 11:41:04'),
 (6, 'adminelektrik', 'adminelektrik@optima.com', '$2y$10$Hs4MEuJSEbxX8lGDuDNmwephtPcBnfxuCEi/aaPYPprfxWnbQiHu6', 'service', 'elektrik', '08211111111', NULL, NULL, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 20:02:28', '2025-08-06 00:13:03'),
 (9, 'operational', 'operational@optima.com', '$2y$10$Hs4MEuJSEbxX8lGDuDNmwephtPcBnfxuCEi/aaPYPprfxWnbQiHu6', 'operational', 'sml', '08211111111', NULL, NULL, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 20:37:37', '2025-08-05 03:40:00'),
@@ -3000,29 +3995,68 @@ INSERT INTO `users` (`id`, `username`, `email`, `password_hash`, `first_name`, `
 -- --------------------------------------------------------
 
 --
+-- Stand-in structure for view `user_all_permissions`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `user_all_permissions`;
+CREATE TABLE IF NOT EXISTS `user_all_permissions` (
+`user_id` int(11)
+,`username` varchar(50)
+,`email` varchar(100)
+,`first_name` varchar(50)
+,`last_name` varchar(50)
+,`division_name` varchar(100)
+,`permission_id` int(11)
+,`permission_name` varchar(100)
+,`permission_key` varchar(150)
+,`module` varchar(50)
+,`category` varchar(50)
+,`source_type` varchar(6)
+,`source_name` varchar(100)
+,`granted` tinyint(4)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `user_permissions`
 --
+-- Creation: Sep 03, 2025 at 09:32 AM
+--
 
-CREATE TABLE `user_permissions` (
-  `id` int NOT NULL,
-  `user_id` int NOT NULL,
-  `permission_id` int NOT NULL,
-  `division_id` int DEFAULT NULL,
-  `granted` tinyint(1) DEFAULT '1',
-  `reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `assigned_by` int DEFAULT NULL,
-  `assigned_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+DROP TABLE IF EXISTS `user_permissions`;
+CREATE TABLE IF NOT EXISTS `user_permissions` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `permission_id` int(11) NOT NULL,
+  `division_id` int(11) DEFAULT NULL,
+  `granted` tinyint(1) DEFAULT 1,
+  `reason` varchar(255) DEFAULT NULL,
+  `assigned_by` int(11) DEFAULT NULL,
+  `assigned_at` timestamp NULL DEFAULT current_timestamp(),
   `expires_at` timestamp NULL DEFAULT NULL,
-  `is_temporary` tinyint(1) DEFAULT '0',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `is_temporary` tinyint(1) DEFAULT 0,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_user_permissions_user_id` (`user_id`),
+  KEY `idx_user_permissions_permission_id` (`permission_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `user_permissions`:
+--
+
+--
+-- Truncate table before insert `user_permissions`
+--
+
+TRUNCATE TABLE `user_permissions`;
 --
 -- Dumping data for table `user_permissions`
 --
 
-INSERT INTO `user_permissions` (`id`, `user_id`, `permission_id`, `division_id`, `granted`, `reason`, `assigned_by`, `assigned_at`, `expires_at`, `is_temporary`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `user_permissions` (`id`, `user_id`, `permission_id`, `division_id`, `granted`, `reason`, `assigned_by`, `assigned_at`, `expires_at`, `is_temporary`, `created_at`, `updated_at`) VALUES
 (25, 9, 21, NULL, 1, NULL, 1, '2025-08-04 20:37:37', NULL, 0, '2025-08-05 03:37:37', '2025-08-05 03:37:37'),
 (26, 9, 23, NULL, 1, NULL, 1, '2025-08-04 20:37:37', NULL, 0, '2025-08-05 03:37:37', '2025-08-05 03:37:37'),
 (27, 9, 22, NULL, 1, NULL, 1, '2025-08-04 20:37:37', NULL, 0, '2025-08-05 03:37:37', '2025-08-05 03:37:37'),
@@ -3064,25 +4098,40 @@ INSERT INTO `user_permissions` (`id`, `user_id`, `permission_id`, `division_id`,
 --
 -- Table structure for table `user_roles`
 --
+-- Creation: Sep 03, 2025 at 09:32 AM
+--
 
-CREATE TABLE `user_roles` (
-  `id` int NOT NULL,
-  `user_id` int NOT NULL,
-  `role_id` int NOT NULL,
-  `division_id` int DEFAULT NULL,
-  `assigned_by` int DEFAULT NULL,
-  `assigned_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+DROP TABLE IF EXISTS `user_roles`;
+CREATE TABLE IF NOT EXISTS `user_roles` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `role_id` int(11) NOT NULL,
+  `division_id` int(11) DEFAULT NULL,
+  `assigned_by` int(11) DEFAULT NULL,
+  `assigned_at` timestamp NULL DEFAULT current_timestamp(),
   `expires_at` timestamp NULL DEFAULT NULL,
-  `is_active` tinyint(1) DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_user_roles_user_id` (`user_id`),
+  KEY `idx_user_roles_role_id` (`role_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `user_roles`:
+--
+
+--
+-- Truncate table before insert `user_roles`
+--
+
+TRUNCATE TABLE `user_roles`;
 --
 -- Dumping data for table `user_roles`
 --
 
-INSERT INTO `user_roles` (`id`, `user_id`, `role_id`, `division_id`, `assigned_by`, `assigned_at`, `expires_at`, `is_active`, `created_at`, `updated_at`) VALUES
+INSERT DELAYED IGNORE INTO `user_roles` (`id`, `user_id`, `role_id`, `division_id`, `assigned_by`, `assigned_at`, `expires_at`, `is_active`, `created_at`, `updated_at`) VALUES
 (13, 9, 7, 3, 1, '2025-08-04 20:37:37', NULL, 1, '2025-08-05 03:37:37', '2025-08-05 03:37:37'),
 (15, 6, 5, 2, 1, '2025-08-05 11:44:55', NULL, 1, '2025-08-05 18:44:55', '2025-08-05 18:44:55'),
 (23, 5, 5, 2, 1, '2025-08-05 12:52:24', NULL, 1, '2025-08-05 19:52:24', '2025-08-05 19:52:24'),
@@ -3095,129 +4144,799 @@ INSERT INTO `user_roles` (`id`, `user_id`, `role_id`, `division_id`, `assigned_b
 --
 -- Table structure for table `valve`
 --
+-- Creation: Sep 03, 2025 at 09:26 AM
+--
 
-CREATE TABLE `valve` (
-  `id_valve` int NOT NULL,
-  `jumlah_valve` varchar(50) COLLATE utf8mb4_general_ci NOT NULL
+DROP TABLE IF EXISTS `valve`;
+CREATE TABLE IF NOT EXISTS `valve` (
+  `id_valve` int(11) NOT NULL,
+  `jumlah_valve` varchar(50) NOT NULL,
+  PRIMARY KEY (`id_valve`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- RELATIONSHIPS FOR TABLE `valve`:
+--
+
+--
+-- Truncate table before insert `valve`
+--
+
+TRUNCATE TABLE `valve`;
 --
 -- Dumping data for table `valve`
 --
 
-INSERT INTO `valve` (`id_valve`, `jumlah_valve`) VALUES
+INSERT DELAYED IGNORE INTO `valve` (`id_valve`, `jumlah_valve`) VALUES
 (1, '2 Valve'),
 (2, '3 Valve'),
 (3, '4 Valve'),
 (4, '5 Valve ');
 
---
--- Indexes for dumped tables
---
+-- --------------------------------------------------------
 
 --
--- Indexes for table `delivery_instructions`
+-- Stand-in structure for view `view_spk_workflow`
+-- (See below for the actual view)
 --
-ALTER TABLE `delivery_instructions`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `delivery_items`
---
-ALTER TABLE `delivery_items`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `inventory_attachment`
---
-ALTER TABLE `inventory_attachment`
-  ADD PRIMARY KEY (`id_inventory_attachment`);
-
---
--- Indexes for table `kontrak`
---
-ALTER TABLE `kontrak`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `migration_log`
---
-ALTER TABLE `migration_log`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_migration_name` (`migration_name`),
-  ADD KEY `idx_executed_at` (`executed_at`);
-
---
--- Indexes for table `spk`
---
-ALTER TABLE `spk`
-  ADD PRIMARY KEY (`id`);
-
---
--- Indexes for table `spk_component_transactions`
---
-ALTER TABLE `spk_component_transactions`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_spk_component_spk` (`spk_id`),
-  ADD KEY `idx_spk_component_type` (`component_type`),
-  ADD KEY `idx_spk_component_id` (`component_id`),
-  ADD KEY `idx_spk_component_inventory` (`inventory_id`),
-  ADD KEY `idx_spk_component_created` (`created_at`);
-
---
--- AUTO_INCREMENT for dumped tables
---
-
---
--- AUTO_INCREMENT for table `delivery_instructions`
---
-ALTER TABLE `delivery_instructions`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=99;
-
---
--- AUTO_INCREMENT for table `delivery_items`
---
-ALTER TABLE `delivery_items`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=155;
-
---
--- AUTO_INCREMENT for table `inventory_attachment`
---
-ALTER TABLE `inventory_attachment`
-  MODIFY `id_inventory_attachment` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=32;
-
---
--- AUTO_INCREMENT for table `kontrak`
---
-ALTER TABLE `kontrak`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
-
---
--- AUTO_INCREMENT for table `migration_log`
---
-ALTER TABLE `migration_log`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
-
---
--- AUTO_INCREMENT for table `spk`
---
-ALTER TABLE `spk`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `spk_component_transactions`
---
-ALTER TABLE `spk_component_transactions`
-  MODIFY `id` int UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+DROP VIEW IF EXISTS `view_spk_workflow`;
+CREATE TABLE IF NOT EXISTS `view_spk_workflow` (
+`id` int(10) unsigned
+,`nomor_spk` varchar(100)
+,`jenis_spk` enum('UNIT','ATTACHMENT','TUKAR')
+,`kontrak_id` int(10) unsigned
+,`kontrak_spesifikasi_id` int(10) unsigned
+,`jumlah_unit` int(11)
+,`po_kontrak_nomor` varchar(100)
+,`pelanggan` varchar(255)
+,`pic` varchar(255)
+,`kontak` varchar(255)
+,`lokasi` varchar(255)
+,`delivery_plan` date
+,`spesifikasi` longtext
+,`status` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED')
+,`persiapan_unit_mekanik` varchar(100)
+,`persiapan_unit_estimasi_mulai` date
+,`persiapan_unit_estimasi_selesai` date
+,`persiapan_unit_tanggal_approve` datetime
+,`persiapan_unit_id` int(11)
+,`persiapan_aksesoris_tersedia` text
+,`fabrikasi_mekanik` varchar(100)
+,`fabrikasi_estimasi_mulai` date
+,`fabrikasi_estimasi_selesai` date
+,`fabrikasi_tanggal_approve` datetime
+,`fabrikasi_attachment_id` int(11)
+,`painting_mekanik` varchar(100)
+,`painting_estimasi_mulai` date
+,`painting_estimasi_selesai` date
+,`painting_tanggal_approve` datetime
+,`pdi_mekanik` varchar(100)
+,`pdi_estimasi_mulai` date
+,`pdi_estimasi_selesai` date
+,`pdi_tanggal_approve` datetime
+,`pdi_catatan` text
+,`catatan` text
+,`dibuat_oleh` int(11)
+,`dibuat_pada` datetime
+,`diperbarui_pada` datetime
+,`jenis_perintah_kerja_id` int(11)
+,`tujuan_perintah_kerja_id` int(11)
+,`status_eksekusi_workflow_id` int(11)
+,`workflow_notes` text
+,`workflow_created_at` timestamp
+,`workflow_updated_at` timestamp
+,`jenis_perintah_kode` varchar(20)
+,`jenis_perintah_nama` varchar(100)
+,`tujuan_perintah_kode` varchar(50)
+,`tujuan_perintah_nama` varchar(200)
+,`status_eksekusi_kode` varchar(30)
+,`status_eksekusi_nama` varchar(100)
+,`status_eksekusi_warna` varchar(7)
+);
 
 -- --------------------------------------------------------
 
 --
--- Structure for view `inventory_unit_components`
+-- Stand-in structure for view `v_activity_log_relations`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `v_activity_log_relations`;
+CREATE TABLE IF NOT EXISTS `v_activity_log_relations` (
+`id` int(11)
+,`table_name` varchar(64)
+,`record_id` int(10) unsigned
+,`action_type` enum('CREATE','READ','UPDATE','DELETE','EXPORT','IMPORT','LOGIN','LOGOUT','APPROVE','REJECT','SUBMIT','CANCEL','ASSIGN','UNASSIGN','COMPLETE','PRINT','DOWNLOAD')
+,`action_description` varchar(255)
+,`module_name` enum('PURCHASING','WAREHOUSE','MARKETING','SERVICE','OPERATIONAL','ACCOUNTING','PERIZINAN','ADMIN','DASHBOARD','REPORTS','SETTINGS','USER_MANAGEMENT')
+,`submenu_item` varchar(100)
+,`workflow_stage` varchar(50)
+,`business_impact` enum('LOW','MEDIUM','HIGH','CRITICAL')
+,`user_id` int(10) unsigned
+,`created_at` timestamp
+,`related_entities` longtext
+,`related_kontrak` longtext
+,`related_spk` longtext
+,`related_di` longtext
+,`related_po` longtext
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `inventory_unit_components` exported as a table
 --
 DROP TABLE IF EXISTS `inventory_unit_components`;
+CREATE TABLE IF NOT EXISTS `inventory_unit_components`(
+    `id_inventory_unit` int(10) unsigned NOT NULL DEFAULT '0',
+    `no_unit` int(10) unsigned DEFAULT NULL,
+    `serial_number` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Serial Number utama dari pabrikan',
+    `model_baterai_id` int(11) DEFAULT NULL,
+    `sn_baterai` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `merk_baterai` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `tipe_baterai` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `jenis_baterai` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `model_charger_id` int(11) DEFAULT NULL COMMENT 'FK ke charger',
+    `sn_charger` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `merk_charger` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `tipe_charger` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `model_attachment_id` int(11) DEFAULT NULL COMMENT 'FK ke attachment',
+    `sn_attachment` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `attachment_tipe` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `attachment_merk` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `attachment_model` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL
+);
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`%` SQL SECURITY DEFINER VIEW `inventory_unit_components`  AS SELECT `iu`.`id_inventory_unit` AS `id_inventory_unit`, `iu`.`no_unit` AS `no_unit`, `iu`.`serial_number` AS `serial_number`, `ia_battery`.`baterai_id` AS `model_baterai_id`, `ia_battery`.`sn_baterai` AS `sn_baterai`, `b`.`merk_baterai` AS `merk_baterai`, `b`.`tipe_baterai` AS `tipe_baterai`, `b`.`jenis_baterai` AS `jenis_baterai`, `ia_charger`.`charger_id` AS `model_charger_id`, `ia_charger`.`sn_charger` AS `sn_charger`, `c`.`merk_charger` AS `merk_charger`, `c`.`tipe_charger` AS `tipe_charger`, `ia_attachment`.`attachment_id` AS `model_attachment_id`, `ia_attachment`.`sn_attachment` AS `sn_attachment`, `a`.`tipe` AS `attachment_tipe`, `a`.`merk` AS `attachment_merk`, `a`.`model` AS `attachment_model` FROM ((((((`inventory_unit` `iu` left join `inventory_attachment` `ia_battery` on(((`iu`.`id_inventory_unit` = `ia_battery`.`id_inventory_unit`) and (`ia_battery`.`tipe_item` = 'battery') and (`ia_battery`.`status_unit` = 8)))) left join `baterai` `b` on((`ia_battery`.`baterai_id` = `b`.`id`))) left join `inventory_attachment` `ia_charger` on(((`iu`.`id_inventory_unit` = `ia_charger`.`id_inventory_unit`) and (`ia_charger`.`tipe_item` = 'charger') and (`ia_charger`.`status_unit` = 8)))) left join `charger` `c` on((`ia_charger`.`charger_id` = `c`.`id_charger`))) left join `inventory_attachment` `ia_attachment` on(((`iu`.`id_inventory_unit` = `ia_attachment`.`id_inventory_unit`) and (`ia_attachment`.`tipe_item` = 'attachment') and (`ia_attachment`.`status_unit` = 8)))) left join `attachment` `a` on((`ia_attachment`.`attachment_id` = `a`.`id_attachment`))) ;
+-- --------------------------------------------------------
+
+--
+-- Structure for view `user_all_permissions` exported as a table
+--
+DROP TABLE IF EXISTS `user_all_permissions`;
+CREATE TABLE IF NOT EXISTS `user_all_permissions`(
+    `user_id` int(11) NOT NULL DEFAULT '0',
+    `username` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+    `email` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+    `first_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+    `last_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '',
+    `division_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `permission_id` int(11) DEFAULT NULL,
+    `permission_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `permission_key` varchar(150) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `module` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `category` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `source_type` varchar(6) COLLATE utf8mb4_general_ci NOT NULL DEFAULT '',
+    `source_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `granted` tinyint(4) DEFAULT NULL
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `view_spk_workflow` exported as a table
+--
+DROP TABLE IF EXISTS `view_spk_workflow`;
+CREATE TABLE IF NOT EXISTS `view_spk_workflow`(
+    `id` int(10) unsigned NOT NULL DEFAULT '0',
+    `nomor_spk` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+    `jenis_spk` enum('UNIT','ATTACHMENT','TUKAR') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'UNIT',
+    `kontrak_id` int(10) unsigned DEFAULT NULL,
+    `kontrak_spesifikasi_id` int(10) unsigned DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi',
+    `jumlah_unit` int(11) DEFAULT '1' COMMENT 'Jumlah unit dalam SPK ini',
+    `po_kontrak_nomor` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `pelanggan` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+    `pic` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `kontak` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `lokasi` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `delivery_plan` date DEFAULT NULL,
+    `spesifikasi` longtext COLLATE utf8mb4_bin DEFAULT NULL,
+    `status` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'SUBMITTED',
+    `persiapan_unit_mekanik` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `persiapan_unit_estimasi_mulai` date DEFAULT NULL,
+    `persiapan_unit_estimasi_selesai` date DEFAULT NULL,
+    `persiapan_unit_tanggal_approve` datetime DEFAULT NULL,
+    `persiapan_unit_id` int(11) DEFAULT NULL,
+    `persiapan_aksesoris_tersedia` text COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `fabrikasi_mekanik` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `fabrikasi_estimasi_mulai` date DEFAULT NULL,
+    `fabrikasi_estimasi_selesai` date DEFAULT NULL,
+    `fabrikasi_tanggal_approve` datetime DEFAULT NULL,
+    `fabrikasi_attachment_id` int(11) DEFAULT NULL,
+    `painting_mekanik` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `painting_estimasi_mulai` date DEFAULT NULL,
+    `painting_estimasi_selesai` date DEFAULT NULL,
+    `painting_tanggal_approve` datetime DEFAULT NULL,
+    `pdi_mekanik` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `pdi_estimasi_mulai` date DEFAULT NULL,
+    `pdi_estimasi_selesai` date DEFAULT NULL,
+    `pdi_tanggal_approve` datetime DEFAULT NULL,
+    `pdi_catatan` text COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `catatan` text COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `dibuat_oleh` int(11) DEFAULT NULL,
+    `dibuat_pada` datetime DEFAULT 'current_timestamp()',
+    `diperbarui_pada` datetime DEFAULT 'current_timestamp()',
+    `jenis_perintah_kerja_id` int(11) DEFAULT NULL,
+    `tujuan_perintah_kerja_id` int(11) DEFAULT NULL,
+    `status_eksekusi_workflow_id` int(11) DEFAULT '1',
+    `workflow_notes` text COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `workflow_created_at` timestamp DEFAULT NULL,
+    `workflow_updated_at` timestamp DEFAULT NULL,
+    `jenis_perintah_kode` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `jenis_perintah_nama` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `tujuan_perintah_kode` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `tujuan_perintah_nama` varchar(200) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `status_eksekusi_kode` varchar(30) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `status_eksekusi_nama` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `status_eksekusi_warna` varchar(7) COLLATE utf8mb4_general_ci DEFAULT '#6c757d'
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_activity_log_relations` exported as a table
+--
+DROP TABLE IF EXISTS `v_activity_log_relations`;
+CREATE TABLE IF NOT EXISTS `v_activity_log_relations`(
+    `id` int(11) NOT NULL DEFAULT '0',
+    `table_name` varchar(64) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Target table name (kontrak, spk, inventory_unit, etc)',
+    `record_id` int(10) unsigned NOT NULL COMMENT 'ID of the affected record',
+    `action_type` enum('CREATE','READ','UPDATE','DELETE','EXPORT','IMPORT','LOGIN','LOGOUT','APPROVE','REJECT','SUBMIT','CANCEL','ASSIGN','UNASSIGN','COMPLETE','PRINT','DOWNLOAD') COLLATE utf8mb4_general_ci NOT NULL,
+    `action_description` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Brief description of what happened',
+    `module_name` enum('PURCHASING','WAREHOUSE','MARKETING','SERVICE','OPERATIONAL','ACCOUNTING','PERIZINAN','ADMIN','DASHBOARD','REPORTS','SETTINGS','USER_MANAGEMENT') COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Application module where activity occurred',
+    `submenu_item` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Specific submenu item accessed',
+    `workflow_stage` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Current business stage',
+    `business_impact` enum('LOW','MEDIUM','HIGH','CRITICAL') COLLATE utf8mb4_general_ci DEFAULT 'LOW' COMMENT 'Business impact level',
+    `user_id` int(10) unsigned DEFAULT NULL COMMENT 'FK to users.id',
+    `created_at` timestamp NOT NULL DEFAULT 'current_timestamp()',
+    `related_entities` longtext COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'JSON object storing related entity relationships',
+    `related_kontrak` longtext COLLATE utf8mb4_bin DEFAULT NULL,
+    `related_spk` longtext COLLATE utf8mb4_bin DEFAULT NULL,
+    `related_di` longtext COLLATE utf8mb4_bin DEFAULT NULL,
+    `related_po` longtext COLLATE utf8mb4_bin DEFAULT NULL
+);
+
+--
+-- Constraints for dumped tables
+--
+
+--
+-- Constraints for table `delivery_instructions`
+--
+ALTER TABLE `delivery_instructions`
+  ADD CONSTRAINT `fk_di_jenis_perintah_kerja` FOREIGN KEY (`jenis_perintah_kerja_id`) REFERENCES `jenis_perintah_kerja` (`id`),
+  ADD CONSTRAINT `fk_di_spk` FOREIGN KEY (`spk_id`) REFERENCES `spk` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_di_status_eksekusi_workflow` FOREIGN KEY (`status_eksekusi_workflow_id`) REFERENCES `status_eksekusi_workflow` (`id`),
+  ADD CONSTRAINT `fk_di_tujuan_perintah_kerja` FOREIGN KEY (`tujuan_perintah_kerja_id`) REFERENCES `tujuan_perintah_kerja` (`id`);
+
+--
+-- Constraints for table `delivery_items`
+--
+ALTER TABLE `delivery_items`
+  ADD CONSTRAINT `fk_delivery_items_di` FOREIGN KEY (`di_id`) REFERENCES `delivery_instructions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_delivery_items_unit` FOREIGN KEY (`unit_id`) REFERENCES `inventory_unit` (`id_inventory_unit`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Constraints for table `inventory_attachment`
+--
+ALTER TABLE `inventory_attachment`
+  ADD CONSTRAINT `fk_inventory_attachment_attachment` FOREIGN KEY (`attachment_id`) REFERENCES `attachment` (`id_attachment`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_attachment_baterai` FOREIGN KEY (`baterai_id`) REFERENCES `baterai` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_attachment_charger` FOREIGN KEY (`charger_id`) REFERENCES `charger` (`id_charger`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_attachment_status_unit` FOREIGN KEY (`status_unit`) REFERENCES `status_unit` (`id_status`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Constraints for table `inventory_unit`
+--
+ALTER TABLE `inventory_unit`
+  ADD CONSTRAINT `fk_inventory_unit_departemen` FOREIGN KEY (`departemen_id`) REFERENCES `departemen` (`id_departemen`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_unit_kapasitas` FOREIGN KEY (`kapasitas_unit_id`) REFERENCES `kapasitas` (`id_kapasitas`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_unit_kontrak` FOREIGN KEY (`kontrak_id`) REFERENCES `kontrak` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_unit_kontrak_spesifikasi` FOREIGN KEY (`kontrak_spesifikasi_id`) REFERENCES `kontrak_spesifikasi` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_unit_model` FOREIGN KEY (`model_unit_id`) REFERENCES `model_unit` (`id_model_unit`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_unit_status` FOREIGN KEY (`status_unit_id`) REFERENCES `status_unit` (`id_status`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_unit_tipe` FOREIGN KEY (`tipe_unit_id`) REFERENCES `tipe_unit` (`id_tipe_unit`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Constraints for table `kontrak_spesifikasi`
+--
+ALTER TABLE `kontrak_spesifikasi`
+  ADD CONSTRAINT `fk_kontrak_spesifikasi_kontrak` FOREIGN KEY (`kontrak_id`) REFERENCES `kontrak` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `po_items`
+--
+ALTER TABLE `po_items`
+  ADD CONSTRAINT `fk_po_items_purchase_orders` FOREIGN KEY (`po_id`) REFERENCES `purchase_orders` (`id_po`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `po_sparepart_items`
+--
+ALTER TABLE `po_sparepart_items`
+  ADD CONSTRAINT `fk_po_sparepart_items_purchase_orders` FOREIGN KEY (`po_id`) REFERENCES `purchase_orders` (`id_po`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `po_units`
+--
+ALTER TABLE `po_units`
+  ADD CONSTRAINT `fk_po_units_purchase_orders` FOREIGN KEY (`po_id`) REFERENCES `purchase_orders` (`id_po`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `purchase_orders`
+--
+ALTER TABLE `purchase_orders`
+  ADD CONSTRAINT `fk_purchase_orders_suppliers` FOREIGN KEY (`supplier_id`) REFERENCES `suppliers` (`id_supplier`) ON UPDATE CASCADE;
+
+--
+-- Constraints for table `spk`
+--
+ALTER TABLE `spk`
+  ADD CONSTRAINT `fk_spk_jenis_perintah` FOREIGN KEY (`jenis_perintah_kerja_id`) REFERENCES `jenis_perintah_kerja` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_spk_kontrak` FOREIGN KEY (`kontrak_id`) REFERENCES `kontrak` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_spk_kontrak_spesifikasi` FOREIGN KEY (`kontrak_spesifikasi_id`) REFERENCES `kontrak_spesifikasi` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_spk_status_eksekusi` FOREIGN KEY (`status_eksekusi_workflow_id`) REFERENCES `status_eksekusi_workflow` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_spk_tujuan_perintah` FOREIGN KEY (`tujuan_perintah_kerja_id`) REFERENCES `tujuan_perintah_kerja` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_spk_user` FOREIGN KEY (`dibuat_oleh`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
+
+--
+-- Constraints for table `tujuan_perintah_kerja`
+--
+ALTER TABLE `tujuan_perintah_kerja`
+  ADD CONSTRAINT `tujuan_perintah_kerja_ibfk_1` FOREIGN KEY (`jenis_perintah_id`) REFERENCES `jenis_perintah_kerja` (`id`);
+
+
+--
+-- Metadata
+--
+USE `phpmyadmin`;
+
+--
+-- Metadata for table activity_types
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table attachment
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table baterai
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table charger
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table delivery_instructions
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table delivery_items
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table departemen
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table divisions
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table forklifts
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table inventory_attachment
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table inventory_item_unit_log
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table inventory_spareparts
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table inventory_unit
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table inventory_unit_backup
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table inventory_unit_components
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table jenis_perintah_kerja
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table jenis_roda
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table kapasitas
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table kontrak
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table kontrak_spesifikasi
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table kontrak_status_changes
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table mesin
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table migrations
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table migration_log
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table migration_log_di_workflow
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table model_unit
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table notifications
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table notification_logs
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table optimization_additional_log
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table optimization_log
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table permissions
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table po_items
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table po_sparepart_items
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table po_units
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table purchase_orders
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table rbac_audit_log
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table rentals
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table reports
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table roles
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table role_permissions
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table sparepart
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table spk
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table spk_backup_20250903
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table spk_component_transactions
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table spk_status_history
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table spk_units
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table status_eksekusi_workflow
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table status_unit
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table suppliers
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table system_activity_log
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table system_activity_log_backup
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table system_activity_log_old
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table tipe_ban
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table tipe_mast
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table tipe_unit
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table tujuan_perintah_kerja
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table users
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table user_all_permissions
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table user_permissions
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table user_roles
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table valve
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table view_spk_workflow
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table v_activity_log_relations
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for database optima_db
+--
+-- Error reading data for table phpmyadmin.pma__bookmark: #1100 - Table &#039;pma__bookmark&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__relation: #1100 - Table &#039;pma__relation&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__savedsearches: #1100 - Table &#039;pma__savedsearches&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__central_columns: #1100 - Table &#039;pma__central_columns&#039; was not locked with LOCK TABLES
+SET FOREIGN_KEY_CHECKS=1;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

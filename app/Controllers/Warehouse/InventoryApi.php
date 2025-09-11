@@ -4,9 +4,11 @@ namespace App\Controllers\Warehouse;
 
 use App\Controllers\BaseController;
 use App\Models\InventoryAttachmentModel;
+use App\Traits\ActivityLoggingTrait;
 
 class InventoryApi extends BaseController
 {
+    use ActivityLoggingTrait;
     public function availableAttachments()
     {
         $attachmentId = (int) $this->request->getGet('attachment_id');
@@ -85,11 +87,38 @@ class InventoryApi extends BaseController
 
             // Detach old component if exists
             if ($oldAttachmentId > 0) {
+                $oldComponentData = $m->find($oldAttachmentId);
                 $m->detachFromUnit($oldAttachmentId);
+                
+                // Log component detachment
+                $this->logUpdate('inventory_attachments', $oldAttachmentId, [
+                    'status' => 'available',
+                    'unit_id' => null,
+                    'detached_from_unit' => $unitId,
+                    'detached_by' => session()->get('user_id') ?? 1
+                ], [
+                    'previous_unit_id' => $oldComponentData['unit_id'] ?? null,
+                    'component_type' => $componentType
+                ]);
             }
 
+            // Get new component data before attachment
+            $newComponentData = $m->find($newAttachmentId);
+            
             // Attach new component
             $m->attachToUnit($newAttachmentId, $unitId, $unitNumber);
+
+            // Log component attachment
+            $this->logUpdate('inventory_attachments', $newAttachmentId, [
+                'status' => 'attached',
+                'unit_id' => $unitId,
+                'attached_to_unit' => $unitId,
+                'attached_by' => session()->get('user_id') ?? 1
+            ], [
+                'previous_status' => $newComponentData['status'] ?? null,
+                'component_type' => $componentType,
+                'unit_number' => $unitNumber
+            ]);
 
             $db->transComplete();
 

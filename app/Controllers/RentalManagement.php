@@ -3,11 +3,13 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Traits\ActivityLoggingTrait;
 use App\Models\RentalModel;
 use App\Models\ForkliftModel;
 
 class RentalManagement extends BaseController
 {
+    use ActivityLoggingTrait;
     protected $rentalModel;
     protected $forkliftModel;
 

@@ -6,9 +6,12 @@ use CodeIgniter\Controller;
 use App\Models\DeliveryInstructionModel;
 use App\Models\DeliveryItemModel;
 use App\Models\KontrakModel;
+use App\Traits\ActivityLoggingTrait;
 
 class Operational extends Controller
 {
+    use ActivityLoggingTrait;
+    
     protected $db;
     protected $diModel;
     protected $diItemModel;
@@ -147,9 +150,19 @@ class Operational extends Controller
             }
             
             // Update will trigger the sync_di_status_temp_on_update trigger
+            $oldDi = $this->diModel->find((int)$id);
+            if ($oldDi && !is_array($oldDi)) { $oldDi = (array)$oldDi; }
             $updated = $this->diModel->update((int)$id, $updateData);
             
             if ($updated) {
+                // Log DI status update using trait
+                $this->logUpdate('delivery_instruction', $id, $oldDi, $updateData, [
+                    'di_id' => $id,
+                    'action' => $action,
+                    'old_status' => $di['status'] ?? null,
+                    'new_status' => $updateData['status'] ?? null
+                ]);
+                
                 return $this->response->setJSON([
                     'success' => true, 
                     'message' => 'Status DI berhasil diperbarui',
@@ -464,7 +477,19 @@ class Operational extends Controller
             if ($stage === 'perencanaan' && empty($di['berangkat_tanggal_approve']) && empty($di['sampai_tanggal_approve'])) {
                 $updateData['status_eksekusi'] = 'READY';
             }
+            
+            $oldDi = $this->diModel->find((int)$id);
+            if ($oldDi && !is_array($oldDi)) { $oldDi = (array)$oldDi; }
+            
             $this->diModel->update((int)$id, $updateData);
+            
+            // Log DI stage approval using trait
+            $this->logUpdate('delivery_instruction', $id, $oldDi, $updateData, [
+                'di_id' => $id,
+                'stage' => $stage,
+                'tanggal_approve' => $tanggalApprove
+            ]);
+            
         } catch (\Exception $e) {
             log_message('error', 'Failed to update DI ' . $id . ': ' . $e->getMessage());
             return $this->response->setStatusCode(500)->setJSON([

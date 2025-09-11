@@ -602,11 +602,11 @@
                     <div class="dropdown me-3">
                         <button class="btn btn-outline-secondary position-relative" type="button" data-bs-toggle="dropdown">
                             <i class="fas fa-bell"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
                                 <span class="notification-count" data-realtime="notification_count">0</span>
                             </span>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
+                        <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
                             <li><h6 class="dropdown-header">Notifikasi</h6></li>
                             <li><hr class="dropdown-divider"></li>
                             <li class="notification-item">
@@ -772,9 +772,9 @@
     <!-- noUiSlider -->
     <script defer src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
     
-    <!-- OPTIMA Pro JavaScript -->
-    <script src="<?= base_url('assets/js/optima-pro.js') ?>"></script>
-    <script src="<?= base_url('assets/js/sidebar-enhanced.js') ?>"></script>
+    <!-- OPTIMA Pro JavaScript (cache-busted by timestamp) -->
+    <script src="<?= base_url('assets/js/optima-pro.js') ?>?v=<?= time() ?>"></script>
+    <script src="<?= base_url('assets/js/sidebar-enhanced.js') ?>?v=<?= time() ?>"></script>
 
     
     <!-- Global JavaScript Variables -->
@@ -801,6 +801,40 @@
                 }, 300);
             }
         });
+        
+        // Global fetch wrapper to auto-attach CSRF token and X-Requested-With for same-origin non-GET requests
+        (function(){
+            try {
+                const _fetch = window.fetch.bind(window);
+                window.fetch = function(input, init){
+                    init = init || {};
+                    try {
+                        const url = (typeof input === 'string') ? input : (input && input.url) || '';
+                        const isSameOrigin = url && (url.startsWith(window.location.origin) || url.startsWith('/') || url.startsWith(window.baseUrl));
+                        const method = (init.method || (typeof input !== 'string' && input.method) || 'GET').toString().toUpperCase();
+                        if (isSameOrigin) {
+                            init.headers = init.headers || {};
+                            // normalize Headers instance
+                            if (init.headers instanceof Headers) {
+                                // leave as-is; set via append if not present
+                                if (method !== 'GET') {
+                                    if (!init.headers.has('X-CSRF-TOKEN')) init.headers.set('X-CSRF-TOKEN', window.csrfToken);
+                                    if (!init.headers.has('X-Requested-With')) init.headers.set('X-Requested-With', 'XMLHttpRequest');
+                                }
+                            } else {
+                                if (method !== 'GET') {
+                                    if (!('X-CSRF-TOKEN' in init.headers) && !('x-csrf-token' in init.headers)) init.headers['X-CSRF-TOKEN'] = window.csrfToken;
+                                    if (!('X-Requested-With' in init.headers) && !('x-requested-with' in init.headers)) init.headers['X-Requested-With'] = 'XMLHttpRequest';
+                                }
+                            }
+                        }
+                    } catch(e){}
+                    return _fetch(input, init);
+                };
+            } catch(e) {
+                console.warn('Failed to install fetch wrapper for CSRF:', e);
+            }
+        })();
         
         // Global error handler
         window.addEventListener('error', function(event) {
@@ -996,19 +1030,282 @@
     })();
     </script>
 
-    <!-- Notification system disabled -->
+    <!-- Enhanced Notification System -->
     <script>
-// Notification functions disabled for now
-function fetchNotifications() {
-    return;
+// Real-time notification system
+function updateNotificationCount() {
+    fetch('<?= base_url('notifications/getCount') ?>', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': window.csrfToken
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            const count = data.count || 0;
+            
+            // Update header notification badge
+            const headerBadge = document.querySelector('.notification-count');
+            const badgeContainer = document.getElementById('notificationBadge');
+            
+            if (headerBadge) {
+                headerBadge.textContent = count;
+            }
+            
+            if (badgeContainer) {
+                if (count > 0) {
+                    badgeContainer.style.display = 'inline-block';
+                } else {
+                    badgeContainer.style.display = 'none';
+                }
+            }
+            
+            // Update sidebar notification badge
+            const sidebarBadge = document.getElementById('sidebarNotificationCount');
+            if (sidebarBadge) {
+                sidebarBadge.textContent = count;
+                sidebarBadge.style.display = count > 0 ? 'inline' : 'none';
+            }
+        })
+        .catch(error => console.log('Notification count update failed:', error));
 }
 
-function markNotificationRead(id) {
-    return;
+function fetchRecentNotifications() {
+    fetch('<?= base_url('notifications/recent') ?>', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data && data.success && data.notifications) {
+            updateNotificationDropdown(data.notifications.slice(0, 5)); // Show last 5
+        }
+    })
+    .catch(error => console.warn('Recent notifications fetch failed:', error));
 }
 
+// SSE client with reconnection/backoff and polling fallback
+(function(){
+    const sseUrl = '<?= base_url('notifications/stream') ?>';
+    let es = null;
+    let reconnectDelay = 1000; // start 1s
+    let maxDelay = 30000; // max 30s
+    let pollingEnabled = true; // polling fallback enabled until SSE connected
+    let pollIntervalId = null;
+
+    function startPolling() {
+        if (pollIntervalId) return;
+        pollIntervalId = setInterval(() => {
+            updateNotificationCount();
+            fetchRecentNotifications();
+        }, 30000);
+    }
+
+    function stopPolling() {
+        if (!pollIntervalId) return;
+        clearInterval(pollIntervalId);
+        pollIntervalId = null;
+    }
+
+    function connect() {
+        try {
+            es = new EventSource(sseUrl, { withCredentials: true });
+        } catch (err) {
+            console.warn('SSE not supported or failed to construct:', err);
+            return scheduleReconnect();
+        }
+
+        es.addEventListener('open', function() {
+            console.info('SSE connected to notifications/stream');
+            reconnectDelay = 1000;
+            if (pollingEnabled) {
+                pollingEnabled = false;
+                stopPolling();
+            }
+        });
+
+        es.addEventListener('message', function(e) {
+            try {
+                const payload = JSON.parse(e.data);
+                if (payload && payload.type === 'notification') {
+                    // payload.notification should be a single notification or list
+                    const notifs = Array.isArray(payload.notification) ? payload.notification : [payload.notification];
+                    // Update UI: increment or refresh counts and dropdown
+                    updateNotificationCount();
+                    fetchRecentNotifications();
+                }
+            } catch (err) {
+                console.warn('Failed to parse SSE message', err, e.data);
+            }
+        });
+
+        es.addEventListener('error', function(evt) {
+            console.warn('SSE error, will attempt reconnect', evt);
+            // Close and schedule reconnect
+            try { es.close(); } catch(e){}
+            es = null;
+            scheduleReconnect();
+        });
+    }
+
+    function scheduleReconnect() {
+        if (pollingEnabled === false) pollingEnabled = true;
+        startPolling();
+        setTimeout(() => {
+            reconnectDelay = Math.min(maxDelay, Math.floor(reconnectDelay * 1.6));
+            connect();
+        }, reconnectDelay);
+    }
+
+    // Kick off: start polling immediately while we try SSE
+    startPolling();
+
+    // Probe the SSE endpoint with a short timeout to avoid blocking page load
+    function probeSSE(url, timeout = 2000) {
+        return new Promise((resolve) => {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            fetch(url, { method: 'GET', signal: controller.signal, credentials: 'include', headers: { 'Accept': 'text/event-stream' } })
+                .then(resp => {
+                    clearTimeout(id);
+                    // If server returned 200 and content-type looks like event-stream, consider OK
+                    const ct = resp.headers.get('content-type') || '';
+                    if (resp.ok && ct.indexOf('text/event-stream') !== -1) {
+                        resolve(true);
+                    } else {
+                        resolve(false);
+                    }
+                })
+                .catch(() => resolve(false));
+        });
+    }
+
+    probeSSE(sseUrl, 2000).then(ok => {
+        if (ok) connect();
+        else console.warn('SSE probe failed or slow; using polling fallback');
+    });
+
+    // Expose for debugging
+    window.__OptimaSSE = {
+        get eventSource() { return es; },
+        isPolling: () => !!pollIntervalId
+    };
+})();
+
+function updateNotificationDropdown(notifications) {
+    const dropdown = document.getElementById('notificationDropdownMenu');
+    if (!dropdown) return;
+    
+    // Clear existing notifications (keep header and footer)
+    const items = dropdown.querySelectorAll('.notification-item');
+    items.forEach(item => item.remove());
+    
+    // Find insertion point (after divider)
+    const divider = dropdown.querySelector('.dropdown-divider');
+    if (!divider) return;
+    
+    if (notifications.length === 0) {
+        const emptyItem = document.createElement('li');
+        emptyItem.className = 'notification-item';
+        emptyItem.innerHTML = `
+            <div class="dropdown-item text-center text-muted">
+                <i class="fas fa-bell-slash me-2"></i>Tidak ada notifikasi baru
+            </div>
+        `;
+        divider.insertAdjacentElement('afterend', emptyItem);
+        return;
+    }
+    
+    // Add notifications
+    notifications.forEach(notification => {
+        const item = document.createElement('li');
+        item.className = 'notification-item';
+        
+        const iconClass = getNotificationIcon(notification.type || 'info');
+        const timeAgo = formatTimeAgo(notification.created_at);
+        
+        item.innerHTML = `
+            <a class="dropdown-item" href="<?= base_url('notifications') ?>">
+                <div class="d-flex">
+                    <div class="flex-shrink-0">
+                        <i class="fas fa-${iconClass} text-${getNotificationColor(notification.type)}"></i>
+                    </div>
+                    <div class="flex-grow-1 ms-3">
+                        <div class="fw-semibold">${escapeHtml(notification.title || 'Notifikasi')}</div>
+                        <div class="text-muted small">${escapeHtml(notification.message || '').substring(0, 60)}${notification.message && notification.message.length > 60 ? '...' : ''}</div>
+                        <div class="text-muted small">${timeAgo}</div>
+                    </div>
+                </div>
+            </a>
+        `;
+        
+        divider.insertAdjacentElement('afterend', item);
+    });
+}
+
+function getNotificationIcon(type) {
+    switch(type) {
+        case 'success': return 'check-circle';
+        case 'warning': return 'exclamation-triangle';
+        case 'error': return 'times-circle';
+        case 'critical': return 'exclamation-circle';
+        default: return 'info-circle';
+    }
+}
+
+function getNotificationColor(type) {
+    switch(type) {
+        case 'success': return 'success';
+        case 'warning': return 'warning';
+        case 'error': return 'danger';
+        case 'critical': return 'danger';
+        default: return 'info';
+    }
+}
+
+function formatTimeAgo(datetime) {
+    const now = new Date();
+    const time = new Date(datetime);
+    const diff = Math.floor((now - time) / 1000);
+    
+    if (diff < 60) return 'baru saja';
+    if (diff < 3600) return Math.floor(diff / 60) + ' menit lalu';
+    if (diff < 86400) return Math.floor(diff / 3600) + ' jam lalu';
+    if (diff < 2592000) return Math.floor(diff / 86400) + ' hari lalu';
+    
+    return time.toLocaleDateString('id-ID');
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Initialize notification system
 document.addEventListener('DOMContentLoaded', function() {
-    // Notification polling disabled
+    // Initial load
+    updateNotificationCount();
+    fetchRecentNotifications();
+    
+    // Update every 30 seconds
+    setInterval(() => {
+        updateNotificationCount();
+        fetchRecentNotifications();
+    }, 30000);
+    
+    // Update when dropdown is opened
+    const notificationDropdown = document.querySelector('[data-bs-toggle="dropdown"]');
+    if (notificationDropdown) {
+        notificationDropdown.addEventListener('click', function() {
+            setTimeout(() => {
+                fetchRecentNotifications();
+            }, 100);
+        });
+    }
 });
     </script>
 </body>

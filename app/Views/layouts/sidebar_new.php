@@ -6,8 +6,53 @@
  */
 ?>
 
-<!-- Enhanced Sidebar with Search and Better Organization -->
+<!-- Enhanced Sidebar with Advanced Features -->
 <nav class="sidebar sidebar-enhanced" id="sidebar">
+    <!-- Scroll Position Memory -->
+    <script>
+    // Save and restore sidebar scroll position
+    function saveSidebarScrollPosition() {
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            localStorage.setItem('sidebarScrollPosition', sidebar.scrollTop);
+        }
+    }
+    
+    function restoreSidebarScrollPosition() {
+        const sidebar = document.getElementById('sidebar');
+        const savedPosition = localStorage.getItem('sidebarScrollPosition');
+        if (sidebar && savedPosition) {
+            sidebar.scrollTop = parseInt(savedPosition);
+        }
+    }
+    
+    // Restore position on load
+    document.addEventListener('DOMContentLoaded', function() {
+        restoreSidebarScrollPosition();
+        
+        // Save position before navigation
+        const navLinks = document.querySelectorAll('.sidebar .nav-link[href]');
+        navLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                // Only for internal navigation
+                if (this.href && this.href.indexOf(window.location.origin) === 0) {
+                    saveSidebarScrollPosition();
+                }
+            });
+        });
+        
+        // Auto-save on scroll
+        const sidebar = document.getElementById('sidebar');
+        if (sidebar) {
+            sidebar.addEventListener('scroll', function() {
+                clearTimeout(this.scrollTimer);
+                this.scrollTimer = setTimeout(function() {
+                    saveSidebarScrollPosition();
+                }, 150);
+            });
+        }
+    });
+    </script>
     <!-- Sidebar Brand -->
     <a href="<?= base_url('/') ?>" class="sidebar-brand" style="text-decoration: none; color: inherit;">
         <div class="sidebar-brand-icon">
@@ -22,7 +67,8 @@
             
             <!-- Dashboard -->
             <li class="nav-item">
-                <a class="nav-link <?= strpos(current_url(), 'dashboard') !== false ? 'active' : '' ?>" href="<?= base_url('/dashboard') ?>">
+                <a class="nav-link <?= (current_url() === base_url('/') || current_url() === base_url('/dashboard') || strpos(current_url(), 'dashboard') !== false) ? 'active' : '' ?>" 
+                   href="<?= base_url('/dashboard') ?>">
                     <i class="fas fa-tachometer-alt"></i>
                     <span class="nav-link-text">Dashboard</span>
                 </a>
@@ -48,7 +94,8 @@
             <!-- Kontrak & PO -->
             <?php if (can_access('marketing.kontrak.manage')): ?>
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/marketing/kontrak') ?>"
+                <a class="nav-link <?= strpos(current_url(), 'marketing/kontrak') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/marketing/kontrak') ?>"
                    data-search-terms="kontrak po rental">
                     <i class="fas fa-handshake"></i>
                     <span class="nav-link-text">Kontrak/PO Rental</span>
@@ -59,7 +106,8 @@
             <!-- SPK -->
             <?php if (can_access('marketing.spk.manage')): ?>
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/marketing/spk') ?>"
+                <a class="nav-link <?= strpos(current_url(), 'marketing/spk') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/marketing/spk') ?>"
                    data-search-terms="spk surat perintah kerja">
                     <i class="fas fa-file-contract"></i>
                     <span class="nav-link-text">SPK (Surat Perintah Kerja)</span>
@@ -447,7 +495,8 @@
             <!-- System Settings -->
             <?php if (can_access('admin.system_settings')): ?>
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/admin') ?>"
+                <a class="nav-link <?= (strpos(current_url(), '/admin') !== false && strpos(current_url(), 'activity-log') === false && strpos(current_url(), 'advanced-users') === false && strpos(current_url(), 'roles') === false && strpos(current_url(), 'permissions') === false) ? 'active' : '' ?>" 
+                   href="<?= base_url('/admin') ?>"
                    data-search-terms="system settings pengaturan">
                     <i class="fas fa-cog"></i>
                     <span class="nav-link-text">System Settings</span>
@@ -458,10 +507,34 @@
             <!-- Activity Log -->
             <?php if (can_access('admin.activity_log')): ?>
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/admin/activity-log') ?>"
+                <a class="nav-link <?= strpos(current_url(), 'activity-log') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/admin/activity-log') ?>"
                    data-search-terms="activity log aktivitas user audit trail">
                     <i class="fas fa-history"></i>
                     <span class="nav-link-text">Activity Log</span>
+                </a>
+            </li>
+            <?php endif; ?>
+
+            <!-- Notification Center -->
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(current_url(), 'notifications') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/notifications') ?>"
+                   data-search-terms="notifications notifikasi alert pemberitahuan">
+                    <i class="fas fa-bell"></i>
+                    <span class="nav-link-text">Notification Center</span>
+                    <span class="badge bg-warning ms-2 notification-badge" id="sidebarNotificationCount" style="display: none;">0</span>
+                </a>
+            </li>
+
+            <!-- Notification Rules (Super Admin Only) -->
+            <?php if (session()->get('role') === 'super_admin'): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(current_url(), 'notifications/admin') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('notifications/admin') ?>"
+                   data-search-terms="notification rules aturan notifikasi admin">
+                    <i class="fas fa-cogs"></i>
+                    <span class="nav-link-text">Notification Rules</span>
                 </a>
             </li>
             <?php endif; ?>

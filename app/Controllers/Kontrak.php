@@ -6,9 +6,11 @@ use App\Controllers\BaseController;
 use App\Models\KontrakModel;
 use App\Models\KontrakSpesifikasiModel;
 use App\Models\InventoryUnitModel;
+use App\Traits\ActivityLoggingTrait;
 
 class Kontrak extends BaseController
 {
+    use ActivityLoggingTrait;
     protected $kontrakModel;
     protected $kontrakSpesifikasiModel;
     protected $inventoryUnitModel;
@@ -239,8 +241,13 @@ class Kontrak extends BaseController
                 }
             }
 
-            // Log validation failure menggunakan simple logging
-            log_activity('CREATE', 'kontrak', 0, "GAGAL membuat kontrak {$data['no_po_marketing']} - Validasi error: " . implode(', ', array_keys($errors)), null, $data);
+            // Log validation failure using trait
+            $options = [
+                'business_impact' => 'LOW',
+                'is_critical' => 0,
+                'relations' => []
+            ];
+            $this->logActivity('CREATE_FAILED', 'kontrak', 0, "Gagal membuat kontrak {$data['no_po_marketing']} - Validasi error: " . implode(', ', array_keys($errors)), $options);
 
             return $this->response->setJSON([
                 'success' => false,
@@ -261,8 +268,13 @@ class Kontrak extends BaseController
             $errorMessage = 'Gagal menyimpan data ke database: ' . (is_array($errors) ? implode(', ', $errors) : 'Unknown error') . 
                            ($dbError && isset($dbError['message']) ? ' | DB Error: ' . $dbError['message'] : '');
             
-            // Log database failure menggunakan simple logging
-            log_activity('CREATE', 'kontrak', 0, "GAGAL menyimpan kontrak {$data['no_po_marketing']} ke database - Error: {$errorMessage}", null, $data);
+            // Log database failure using trait
+            $options = [
+                'business_impact' => 'MEDIUM',
+                'is_critical' => 1,
+                'relations' => []
+            ];
+            $this->logActivity('CREATE_FAILED', 'kontrak', 0, "Gagal menyimpan kontrak {$data['no_po_marketing']} ke database - Error: {$errorMessage}", $options);
             
             return $this->response->setJSON([
                 'success' => false,
@@ -273,8 +285,16 @@ class Kontrak extends BaseController
 
         $newId = $this->kontrakModel->getInsertID();
 
-        // Log successful creation menggunakan simple logging
-        log_create('kontrak', $newId, "Berhasil membuat kontrak baru: {$data['no_po_marketing']} untuk pelanggan {$data['pelanggan']}", $data);
+        // Log successful creation with trait
+        $this->logCreate('kontrak', $newId, $data, [
+            'description' => 'Kontrak created: ' . $data['no_kontrak'] . ' (Client: ' . $data['pelanggan'] . ')',
+            'submenu_item' => 'Data Kontrak',
+            'workflow_stage' => 'DRAFT',
+            'business_impact' => 'MEDIUM',
+            'relations' => [
+                'kontrak' => [$newId]
+            ]
+        ]);
 
         return $this->response->setJSON([
             'success' => true,
@@ -377,7 +397,36 @@ class Kontrak extends BaseController
         // Disable model validation temporarily for update to avoid is_unique conflict
         $this->kontrakModel->skipValidation(true);
         
+        // Get old data for logging
+        $oldData = $this->kontrakModel->find($contractId);
+        if (is_object($oldData)) {
+            $oldData = $oldData->toArray();
+        }
+        
         if ($this->kontrakModel->update($contractId, $data)) {
+            // Log the update activity with trait
+            $relations = ['kontrak' => [$contractId]];
+            
+            // Add related entities if status changed significantly
+            if (isset($oldData['status']) && $oldData['status'] !== $data['status']) {
+                try {
+                    $relatedSpk = $this->db->table('spk')->where('kontrak_id', $contractId)->select('id')->get();
+                    if ($relatedSpk && !empty($relatedSpkArray = $relatedSpk->getResultArray())) {
+                        $relations['spk'] = array_column($relatedSpkArray, 'id');
+                    }
+                } catch (\Exception $e) {
+                    log_message('debug', 'Kontrak::update - SPK table error: ' . $e->getMessage());
+                }
+            }
+            
+            $this->logUpdate('kontrak', $contractId, $oldData, $data, [
+                'description' => 'Kontrak updated: ' . $data['no_kontrak'] . ' (Client: ' . $data['pelanggan'] . ')',
+                'submenu_item' => 'Data Kontrak',
+                'workflow_stage' => 'UPDATED',
+                'business_impact' => 'MEDIUM',
+                'relations' => $relations
+            ]);
+            
             log_message('debug', "Kontrak updated successfully");
             return $this->response->setJSON([
                 'success' => true, 
@@ -446,7 +495,28 @@ class Kontrak extends BaseController
             log_message('debug', 'Kontrak::delete - Delete result: ' . ($result ? 'true' : 'false'));
             
             if ($result) {
+                // Log the deletion activity using trait
+                $relations = ['kontrak' => [$id]];
+                
+                $this->logDelete('kontrak', $id, $contract, [
+                    'description' => 'Kontrak deleted: ' . $contract['no_kontrak'] . ' (Client: ' . ($contract['pelanggan'] ?? 'Unknown') . ')',
+                    'submenu_item' => 'Data Kontrak',
+                    'workflow_stage' => 'DELETE_CONFIRMED',
+                    'business_impact' => 'HIGH',
+                    'relations' => $relations
+                ]);
+                
+                // Complete transaction and check status
                 $db->transComplete();
+                
+                // Check if transaction was successful
+                if ($db->transStatus() === false) {
+                    log_message('error', 'Kontrak::delete - Transaction failed after transComplete for contract ID: ' . $id);
+                    return $this->response->setJSON([
+                        'success' => false, 
+                        'message' => 'Gagal menghapus kontrak: Transaction rollback.'
+                    ]);
+                }
                 log_message('debug', 'Kontrak::delete - Successfully deleted contract ID: ' . $id);
                 return $this->response->setJSON([
                     'success' => true, 
@@ -916,6 +986,22 @@ class Kontrak extends BaseController
                 
                 log_message('info', 'SUCCESS: Spesifikasi insert completed with ID: ' . $spesifikasiId);
                 
+                // Log activity for kontrak spesifikasi creation
+                try {
+                    $kontrakNumber = is_array($kontrak) ? $kontrak['nomor_kontrak'] : $kontrak->nomor_kontrak;
+                    $this->logCreate('kontrak_spesifikasi', is_numeric($spesifikasiId) ? $spesifikasiId : 0, $data, [
+                        'description' => "Menambahkan spesifikasi {$spekKode} ke kontrak {$kontrakNumber}",
+                        'workflow_stage' => 'SPECIFICATION_ADDED',
+                        'business_impact' => 'MEDIUM',
+                        'relations' => [
+                            'kontrak' => [$kontrakId],
+                            'kontrak_spesifikasi' => [is_numeric($spesifikasiId) ? $spesifikasiId : 0]
+                        ]
+                    ]);
+                } catch (\Exception $logError) {
+                    log_message('error', 'Failed to log kontrak spesifikasi creation: ' . $logError->getMessage());
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Spesifikasi berhasil ditambahkan',
@@ -1025,6 +1111,22 @@ class Kontrak extends BaseController
             });
 
             if ($this->kontrakSpesifikasiModel->update($spesifikasiId, $data)) {
+                // Log activity for kontrak spesifikasi update
+                try {
+                    $oldData = $spesifikasi; // We already have old data
+                    $this->logUpdate('kontrak_spesifikasi', $spesifikasiId, $oldData, $data, [
+                        'description' => "Mengubah spesifikasi {$spesifikasi['spek_kode']}",
+                        'workflow_stage' => 'SPECIFICATION_UPDATED',
+                        'business_impact' => 'MEDIUM',
+                        'relations' => [
+                            'kontrak' => [$spesifikasi['kontrak_id']],
+                            'kontrak_spesifikasi' => [$spesifikasiId]
+                        ]
+                    ]);
+                } catch (\Exception $logError) {
+                    log_message('error', 'Failed to log kontrak spesifikasi update: ' . $logError->getMessage());
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Spesifikasi berhasil diperbarui'
@@ -1122,6 +1224,21 @@ class Kontrak extends BaseController
             log_message('debug', 'Delete result: ' . ($deleteResult ? 'success' : 'failed'));
 
             if ($deleteResult) {
+                // Log activity for kontrak spesifikasi deletion
+                try {
+                    $this->logDelete('kontrak_spesifikasi', $spesifikasiId, $spesifikasi, [
+                        'description' => "Menghapus spesifikasi {$spesifikasi['spek_kode']}",
+                        'workflow_stage' => 'SPECIFICATION_DELETED',
+                        'business_impact' => 'HIGH',
+                        'relations' => [
+                            'kontrak' => [$spesifikasi['kontrak_id']],
+                            'kontrak_spesifikasi' => [$spesifikasiId]
+                        ]
+                    ]);
+                } catch (\Exception $logError) {
+                    log_message('error', 'Failed to log kontrak spesifikasi deletion: ' . $logError->getMessage());
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Spesifikasi berhasil dihapus',
@@ -1175,17 +1292,20 @@ class Kontrak extends BaseController
             $builder->where('iu.kontrak_id IS NULL'); // Not assigned to any contract
             $builder->where('iu.status_unit_id', 7); // STOK status only
             
-            if ($spesifikasi->departemen_id) {
-                $builder->where('iu.departemen_id', $spesifikasi->departemen_id);
+            // Convert to array to avoid magic method warnings
+            $spesifikasiData = (array) $spesifikasi;
+            
+            if (!empty($spesifikasiData['departemen_id'])) {
+                $builder->where('iu.departemen_id', $spesifikasiData['departemen_id']);
             }
-            if ($spesifikasi->tipe_unit_id) {
-                $builder->where('iu.tipe_unit_id', $spesifikasi->tipe_unit_id);
+            if (!empty($spesifikasiData['tipe_unit_id'])) {
+                $builder->where('iu.tipe_unit_id', $spesifikasiData['tipe_unit_id']);
             }
-            if ($spesifikasi->kapasitas_id) {
-                $builder->where('iu.kapasitas_unit_id', $spesifikasi->kapasitas_id);
+            if (!empty($spesifikasiData['kapasitas_id'])) {
+                $builder->where('iu.kapasitas_unit_id', $spesifikasiData['kapasitas_id']);
             }
-            if ($spesifikasi->merk_unit) {
-                $builder->where('mu.merk_unit', $spesifikasi->merk_unit);
+            if (!empty($spesifikasiData['merk_unit'])) {
+                $builder->where('mu.merk_unit', $spesifikasiData['merk_unit']);
             }
 
             $units = $builder->get()->getResultArray();

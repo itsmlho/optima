@@ -15,8 +15,8 @@ function pollNotifications() {
         });
 }
 
-// Poll every 30 seconds
+// Poll every 5 minutes (300 seconds) to reduce server load
 document.addEventListener('DOMContentLoaded', function() {
-    setInterval(pollNotifications, 30000);
+    setInterval(pollNotifications, 300000);
     pollNotifications(); // initial call
 });

@@ -38,6 +38,33 @@
         box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         transition: all 0.2s ease;
     }
+    
+    /* Aksesori card styling */
+    .border-left-info {
+        border-left: 4px solid #36b9cc !important;
+    }
+    
+    .border-left-warning {
+        border-left: 4px solid #f6c23e !important;
+    }
+    
+    .border-left-success {
+        border-left: 4px solid #1cc88a !important;
+    }
+    
+    /* Aksesori detail layout */
+    .aksesori-item {
+        background: #f8f9fa;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s ease;
+    }
+    
+    .aksesori-item:hover {
+        background: #e9ecef;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 </style>
 <?= $this->endSection() ?>
 
@@ -290,6 +317,8 @@
     </div>
 </div>
 
+<?= $this->endSection() ?>
+
 <?= $this->section('script') ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
@@ -381,27 +410,127 @@ $(document).ready(function() {
     let allKontrakData = [];
     let filteredKontrakData = [];
     
-    // Initialize the page
-    loadKontrakData();
+    // OPTIMIZED: Check if data is already loaded to avoid duplicates
+    if (typeof window.kontrakDataLoaded === 'undefined' || !window.kontrakDataLoaded) {
+        // Initialize the page
+        loadKontrakData();
+        window.kontrakDataLoaded = true;
+    } else {
+        console.log('⏭️ Kontrak data already loaded, skipping initialization');
+    }
     
-    // Function to load all kontrak data from server
+    // OPTIMIZED: Function to load all kontrak data from server (with duplicate prevention)
     function loadKontrakData() {
+        // Check if data is already being loaded
+        if (window.kontrakDataLoading) {
+            console.log('⏭️ Kontrak data already loading, skipping duplicate call');
+            return;
+        }
+        
+        window.kontrakDataLoading = true;
+        console.log('🚀 Loading kontrak data...');
+        
+        const tbody = $('#contractsTable tbody');
+        tbody.html('<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>');
+        
         $.ajax({
-            url: '<?= base_url('marketing/kontrak/getData') ?>',
-            type: 'GET',
+            url: '<?= base_url('marketing/kontrak/getDataTable') ?>',
+            type: 'POST',
             dataType: 'json',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            data: {
+                draw: 1,
+                start: 0,
+                length: 100
+            },
             success: function(response) {
-                if (response.success) {
-                    allKontrakData = response.data;
+                console.log('✅ Success Response:', response);
+                
+                if (response && response.data && response.data.length > 0) {
+                    // Convert to expected format
+                    allKontrakData = response.data.map(item => ({
+                        no_kontrak: (item.contract_number || '').replace(/<[^>]*>/g, ''),
+                        no_po_marketing: item.po || '',
+                        pelanggan: item.client_name || '',
+                        periode: item.period || '',
+                        total_unit: item.total_unit || 0,
+                        status: (item.status || '').replace(/<[^>]*>/g, '')
+                    }));
+                    
+                    console.log('📊 Converted data:', allKontrakData.length, 'records');
                     applyKontrakFilter(currentKontrakFilter);
+                    safeShowNotification('Data kontrak berhasil dimuat (' + allKontrakData.length + ' records)', 'success');
                 } else {
-                    console.error('Error loading kontrak data:', response.message);
-                    safeShowNotification('Error loading data: ' + response.message, 'danger');
+                    console.warn('❌ No data in response');
+                    allKontrakData = [];
+                    applyKontrakFilter(currentKontrakFilter);
+                    safeShowNotification('Tidak ada data kontrak ditemukan', 'warning');
                 }
+                
+                // Reset loading flag
+                window.kontrakDataLoading = false;
             },
             error: function(xhr, status, error) {
-                console.error('AJAX error loading kontrak data:', error);
+                console.error('❌ AJAX Error:', error);
+                console.log('Status:', status, 'XHR:', xhr.status);
+                tbody.html('<tr><td colspan="7" class="text-center text-danger">Error: ' + error + 
+                          '<br><button class="btn btn-sm btn-primary mt-2" onclick="loadKontrakData()">Retry</button></td></tr>');
                 safeShowNotification('Error loading data: ' + error, 'danger');
+                
+                // Reset loading flag
+                window.kontrakDataLoading = false;
+            }
+        });
+    }
+    
+    // NEW: Efficient data reload function (content-only, no script reload)
+    function reloadKontrakDataOnly() {
+        console.log('🔄 Reloading kontrak data only...');
+        
+        // Check if data is already being loaded
+        if (window.kontrakDataLoading) {
+            console.log('⏭️ Kontrak data already loading, skipping duplicate call');
+            return;
+        }
+        
+        window.kontrakDataLoading = true;
+        
+        $.ajax({
+            url: '<?= base_url('marketing/kontrak/data') ?>',
+            method: 'GET',
+            data: {
+                draw: 1,
+                start: 0,
+                length: 100
+            },
+            success: function(response) {
+                console.log('✅ Data reload response:', response);
+                
+                if (response && response.data && response.data.length > 0) {
+                    // Update data without reinitializing everything
+                    allKontrakData = response.data.map(item => ({
+                        no_kontrak: (item.contract_number || '').replace(/<[^>]*>/g, ''),
+                        no_po_marketing: item.po || '',
+                        pelanggan: item.client_name || '',
+                        periode: item.period || '',
+                        total_unit: item.total_unit || 0,
+                        status: item.status || 'Unknown'
+                    }));
+                    
+                    // Just update the display without reinitializing
+                    applyKontrakFilter(currentKontrakFilter);
+                    console.log('✅ Kontrak data reloaded: ' + allKontrakData.length + ' records');
+                }
+                
+                // Reset loading flag
+                window.kontrakDataLoading = false;
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Data reload error:', error);
+                // Reset loading flag
+                window.kontrakDataLoading = false;
             }
         });
     }
@@ -739,11 +868,24 @@ $(document).ready(function() {
                 // Show success notification once
                 safeShowNotification(response.message, 'success');
                 
-                // Safely reload DataTable
-                if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
-                    window.contractsTable.ajax.reload();
-                } else {
-                    $('#contractsTable').DataTable().ajax.reload();
+                // Safely reload DataTable with proper error handling
+                try {
+                    if (typeof window.contractsTable !== 'undefined' && window.contractsTable && window.contractsTable.ajax) {
+                        window.contractsTable.ajax.reload();
+                    } else if ($.fn.DataTable && $.fn.DataTable.isDataTable('#contractsTable')) {
+                        $('#contractsTable').DataTable().ajax.reload();
+                    } else {
+                        console.warn('DataTable not found, reloading page instead');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    }
+                } catch (error) {
+                    console.error('Error reloading DataTable:', error);
+                    // Fallback: reload page after a short delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 }
                 
                 if (isEdit) {
@@ -1570,12 +1712,25 @@ function performDelete(contractId) {
             console.log('Delete response:', response);
             if (response.success) {
                 safeShowNotification(response.message, 'success');
-                // Safely reload DataTable
-                if (typeof window.contractsTable !== 'undefined' && window.contractsTable) {
-                    window.contractsTable.ajax.reload();
-                } else {
-                    console.warn('window.contractsTable is undefined, trying direct DataTable access');
-                    $('#contractsTable').DataTable().ajax.reload();
+                // Safely reload DataTable with proper error handling
+                try {
+                    if (typeof window.contractsTable !== 'undefined' && window.contractsTable && window.contractsTable.ajax) {
+                        window.contractsTable.ajax.reload();
+                    } else if ($.fn.DataTable && $.fn.DataTable.isDataTable('#contractsTable')) {
+                        console.warn('window.contractsTable is undefined, trying direct DataTable access');
+                        $('#contractsTable').DataTable().ajax.reload();
+                    } else {
+                        console.warn('DataTable not found, reloading page instead');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1000);
+                    }
+                } catch (error) {
+                    console.error('Error reloading DataTable:', error);
+                    // Fallback: reload page after a short delay
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
                 }
             } else {
                 safeShowNotification(response.message, 'error');
@@ -1885,6 +2040,53 @@ function showUnitDetail(unitId) {
                             </div>
                         </div>
                     </div>`;
+                
+                // Aksesori Terpasang dari kolom aksesoris
+                if (unit.aksesoris) {
+                    let aksesoris = [];
+                    try {
+                        // Try to parse as JSON if it's a string
+                        aksesoris = typeof unit.aksesoris === 'string' ? JSON.parse(unit.aksesoris) : unit.aksesoris;
+                    } catch (e) {
+                        // If not JSON, treat as comma-separated string
+                        aksesoris = unit.aksesoris.split(',').map(item => item.trim()).filter(item => item);
+                    }
+                    
+                    if (aksesoris && aksesoris.length > 0) {
+                        detailHtml += `
+                            <div class="row mt-4">
+                                <div class="col-12">
+                                    <div class="card">
+                                        <div class="card-header bg-info text-black">
+                                            <h6 class="mb-0"><i class="fas fa-puzzle-piece me-2"></i>Aksesori Terpasang</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row">`;
+                        
+                        if (Array.isArray(aksesoris)) {
+                            aksesoris.forEach((item, index) => {
+                                detailHtml += `
+                                    <div class="col-md-6 mb-2">
+                                        <span>-</span>
+                                        ${item}
+                                    </div>`;
+                            });
+                        } else {
+                            detailHtml += `
+                                <div class="col-12">
+                                    <span class="badge bg-primary me-1">1</span>
+                                    ${aksesoris}
+                                </div>`;
+                        }
+                        
+                        detailHtml += `
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }
+                }
                 
                 // Additional Notes
                 if (unit.keterangan) {
@@ -2791,8 +2993,10 @@ $('#btnUpdateContract').on('click', function() {
                 safeShowNotification('Kontrak berhasil diperbarui!', 'success');
                 $('#editContractModal').modal('hide');
                 
-                // Reload kontrak data if function exists
-                if (typeof loadKontrakData === 'function') {
+                // OPTIMIZED: Use efficient data reload instead of full reload
+                if (typeof reloadKontrakDataOnly === 'function') {
+                    reloadKontrakDataOnly();
+                } else if (typeof loadKontrakData === 'function') {
                     loadKontrakData();
                 } else {
                     // Fallback: reload page
@@ -2838,6 +3042,5 @@ $('#btnUpdateContract').on('click', function() {
 });
 </script>
 
-<?= $this->endSection() ?>
 <?= $this->endSection() ?>
 

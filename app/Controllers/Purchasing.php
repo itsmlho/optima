@@ -17,6 +17,7 @@ use App\Models\POAttachmentModel;
 use App\Models\PurchasingManagementModel;
 use App\Models\PurchasingModel;
 use App\Models\StatusUnitModel;
+use App\Traits\ActivityLoggingTrait;
 use CodeIgniter\API\ResponseTrait;
 use App\Models\SupplierModel;
 use App\Models\TipeBanModel;
@@ -32,7 +33,7 @@ use App\Models\InventoryAttachmentModel; // <-- untuk inventory attachment
 
 class Purchasing extends BaseController
 {
-    use ResponseTrait;
+    use ResponseTrait, ActivityLoggingTrait;
  
     // Standardisasi nama properti model
     protected $purchasingModel;
@@ -464,6 +465,16 @@ class Purchasing extends BaseController
             
             if($this->poUnitsModel->insertBatch($poUnitData)){
                 log_message('info', '[Purchasing] Successfully created PO Unit with ID: ' . $newPoId . ' and PO Number: ' . $poNumber);
+                
+                // Log PO Unit creation using trait
+                $this->logCreate('purchase_orders', $newPoId, [
+                    'po_id' => $newPoId,
+                    'no_po' => $poNumber,
+                    'tipe_po' => 'Unit',
+                    'supplier_id' => $this->request->getPost('id_supplier'),
+                    'qty_duplicates' => $qty_duplicates
+                ]);
+                
                 // Tambah notifikasi ke warehouse
                 $notifModel = new \App\Models\NotificationModel();
                 $notifModel->insert([
@@ -573,7 +584,17 @@ class Purchasing extends BaseController
     
     public function deletePoUnit($id_po)
     {
+        $poData = $this->purchaseModel->find($id_po);
+        
         $this->purchaseModel->delete($id_po);
+        
+        // Log PO Unit deletion using trait
+        $this->logDelete('purchase_orders', $id_po, $poData, [
+            'po_id' => $id_po,
+            'no_po' => $poData['no_po'] ?? null,
+            'tipe_po' => $poData['tipe_po'] ?? null
+        ]);
+        
         return $this->response->setJSON(['success' => true]);
     }
 
@@ -722,6 +743,16 @@ class Purchasing extends BaseController
 
             // 4. Gunakan insertBatch untuk efisiensi
             if ($this->poItemsModel->insertBatch($itemsToInsert)) {
+                // Log PO Attachment creation using trait
+                $this->logCreate('purchase_orders', $newPoId, [
+                    'po_id' => $newPoId,
+                    'no_po' => $this->request->getPost('no_po'),
+                    'tipe_po' => 'Attachment & Battery',
+                    'item_type' => $item_type,
+                    'quantity' => $quantity,
+                    'supplier_id' => $this->request->getPost('id_supplier')
+                ]);
+                
                 return redirect()->to('/purchasing/po-attachment')->with('success', 'PO ' . $item_type . ' berhasil ditambahkan sebanyak ' . $quantity . ' unit.');
             } else {
                 $this->purchaseModel->delete($newPoId);
@@ -811,6 +842,8 @@ class Purchasing extends BaseController
     public function deletePoAttachment($id)
     {
         if ($this->request->isAJAX()) {
+            $poData = $this->purchaseModel->find($id);
+            
             $db = \Config\Database::connect();
             $db->transStart();
             $this->poItemsModel->where('po_id', $id)->delete();
@@ -820,6 +853,14 @@ class Purchasing extends BaseController
             if ($db->transStatus() === false) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Gagal menghapus data.']);
             }
+            
+            // Log PO Attachment deletion using trait
+            $this->logDelete('purchase_orders', $id, $poData, [
+                'po_id' => $id,
+                'no_po' => $poData['no_po'] ?? null,
+                'tipe_po' => $poData['tipe_po'] ?? null
+            ]);
+            
             return $this->response->setJSON(['success' => true]);
         }
         return redirect()->to('/purchasing/po-attachment');

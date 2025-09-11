@@ -5,10 +5,12 @@ namespace App\Controllers\Admin;
 use App\Controllers\BaseController;
 use App\Models\PermissionModel;
 use CodeIgniter\API\ResponseTrait;
+use App\Traits\ActivityLoggingTrait;
 
 class PermissionController extends BaseController
 {
     use ResponseTrait;
+    use ActivityLoggingTrait;
 
     protected $db;
     protected $permissionModel;
@@ -97,6 +99,16 @@ class PermissionController extends BaseController
                 throw new \Exception('Failed to create permission');
             }
 
+            // Log permission creation using trait
+            $this->logCreate('permissions', $permissionId, [
+                'permission_id' => $permissionId,
+                'key' => $permissionData['key'],
+                'name' => $permissionData['name'],
+                'description' => $permissionData['description'],
+                'module' => $permissionData['module'],
+                'created_by' => session()->get('user_id') ?? 1
+            ]);
+
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Permission created successfully',
@@ -158,6 +170,18 @@ class PermissionController extends BaseController
                 throw new \Exception('Failed to update permission in database');
             }
 
+            // Log permission update using trait
+            $this->logUpdate('permissions', $permissionId, [
+                'permission_id' => $permissionId,
+                'key' => $permissionData['key'],
+                'name' => $permissionData['name'],
+                'description' => $permissionData['description'],
+                'module' => $permissionData['module'],
+                'updated_by' => session()->get('user_id') ?? 1,
+                'previous_key' => $permission['key'],
+                'previous_name' => $permission['name']
+            ]);
+
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Permission updated successfully'
@@ -206,6 +230,16 @@ class PermissionController extends BaseController
                 log_message('error', 'PermissionModel delete failed for ID: ' . $permissionId);
                 throw new \Exception('Failed to delete permission from database');
             }
+
+            // Log permission deletion using trait
+            $this->logDelete('permissions', $permissionId, [
+                'permission_id' => $permissionId,
+                'key' => $permission['key'],
+                'name' => $permission['name'],
+                'description' => $permission['description'],
+                'module' => $permission['module'],
+                'deleted_by' => session()->get('user_id') ?? 1
+            ]);
 
             return $this->response->setJSON([
                 'success' => true,

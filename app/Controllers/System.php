@@ -41,6 +41,13 @@ class System extends BaseController
 
     public function notifications()
     {
+        // Load notification data properly
+        $db = \Config\Database::connect();
+        $this->ensureNotificationTables($db);
+        
+        $stats = $this->getNotificationStats($db);
+        $notifications = $this->getNotificationsForUser($db);
+        
         $data = [
             'title' => 'Notifikasi | OPTIMA',
             'page_title' => 'Pusat Notifikasi',
@@ -48,10 +55,11 @@ class System extends BaseController
                 '/' => 'Dashboard',
                 '/notifications' => 'Notifikasi'
             ],
-            'notifications' => $this->getNotifications(),
+            'stats' => $stats,
+            'notifications' => $notifications,
         ];
 
-        return view('system/notifications', $data);
+        return view('notifications/index', $data);
     }
 
     public function help()
@@ -204,4 +212,138 @@ class System extends BaseController
             ],
         ];
     }
-} 
+
+    private function ensureNotificationTables($db)
+    {
+        if (!$db->tableExists('notifications')) {
+            // Create notifications table if not exists
+            $forge = \Config\Database::forge();
+            
+            $fields = [
+                'id' => [
+                    'type' => 'INT',
+                    'constraint' => 11,
+                    'unsigned' => true,
+                    'auto_increment' => true
+                ],
+                'user_id' => [
+                    'type' => 'INT',
+                    'constraint' => 11,
+                    'unsigned' => true,
+                    'null' => true
+                ],
+                'target_role' => [
+                    'type' => 'VARCHAR',
+                    'constraint' => 50,
+                    'null' => true
+                ],
+                'title' => [
+                    'type' => 'VARCHAR',
+                    'constraint' => 255
+                ],
+                'message' => [
+                    'type' => 'TEXT'
+                ],
+                'type' => [
+                    'type' => 'VARCHAR',
+                    'constraint' => 50,
+                    'default' => 'info'
+                ],
+                'priority' => [
+                    'type' => 'TINYINT',
+                    'constraint' => 1,
+                    'default' => 1
+                ],
+                'is_read' => [
+                    'type' => 'TINYINT',
+                    'constraint' => 1,
+                    'default' => 0
+                ],
+                'read_at' => [
+                    'type' => 'DATETIME',
+                    'null' => true
+                ],
+                'created_at' => [
+                    'type' => 'DATETIME',
+                    'null' => true
+                ],
+                'updated_at' => [
+                    'type' => 'DATETIME',
+                    'null' => true
+                ]
+            ];
+            
+            $forge->addField($fields);
+            $forge->addKey('id', true);
+            $forge->addKey('user_id');
+            $forge->addKey('target_role');
+            $forge->createTable('notifications');
+        }
+    }
+
+    private function getNotificationStats($db)
+    {
+        if (!$db->tableExists('notifications') || !$db->tableExists('notification_recipients')) {
+            return [
+                'total' => 0,
+                'unread' => 0,
+                'read_today' => 0,
+                'this_week' => 0
+            ];
+        }
+
+        $userId = session()->get('user_id');
+        
+        return [
+            'total' => $db->table('notification_recipients nr')
+                ->join('notifications n', 'n.id = nr.notification_id')
+                ->where('nr.user_id', $userId)
+                ->countAllResults(),
+            'unread' => $db->table('notification_recipients nr')
+                ->join('notifications n', 'n.id = nr.notification_id')
+                ->where('nr.user_id', $userId)
+                ->where('nr.is_read', 0)
+                ->countAllResults(),
+            'read_today' => $db->table('notification_recipients nr')
+                ->join('notifications n', 'n.id = nr.notification_id')
+                ->where('nr.user_id', $userId)
+                ->where('nr.is_read', 1)
+                ->where('DATE(nr.read_at)', date('Y-m-d'))
+                ->countAllResults(),
+            'this_week' => $db->table('notification_recipients nr')
+                ->join('notifications n', 'n.id = nr.notification_id')
+                ->where('nr.user_id', $userId)
+                ->where('n.created_at >=', date('Y-m-d', strtotime('-7 days')))
+                ->countAllResults()
+        ];
+    }
+
+    private function getNotificationsForUser($db)
+    {
+        if (!$db->tableExists('notifications') || !$db->tableExists('notification_recipients')) {
+            return [];
+        }
+
+        $userId = session()->get('user_id');
+        
+        $builder = $db->table('notification_recipients nr')
+            ->select('n.*, nr.is_read, nr.read_at, u.first_name, u.last_name')
+            ->join('notifications n', 'n.id = nr.notification_id')
+            ->join('users u', 'u.id = n.created_by', 'left')
+            ->where('nr.user_id', $userId)
+            ->orderBy('n.created_at', 'DESC')
+            ->limit(50);
+
+        $notifications = $builder->get()->getResultArray();
+
+        // Ensure all notifications have required fields
+        foreach ($notifications as &$notification) {
+            $notification['is_read'] = $notification['is_read'] ?? 0;
+            $notification['priority'] = $notification['priority'] ?? 1;
+            $notification['type'] = $notification['type'] ?? 'info';
+            $notification['sender_name'] = trim(($notification['first_name'] ?? '') . ' ' . ($notification['last_name'] ?? '')) ?: 'System';
+        }
+
+        return $notifications;
+    }
+}

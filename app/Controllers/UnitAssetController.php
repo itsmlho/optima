@@ -3,10 +3,12 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Traits\ActivityLoggingTrait;
 use App\Models\UnitAssetModel;
 
 class UnitAssetController extends BaseController
 {
+    use ActivityLoggingTrait;
     protected $unitAssetModel;
 
     public function __construct()
