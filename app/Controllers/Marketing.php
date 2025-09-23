@@ -1026,6 +1026,7 @@ class Marketing extends Controller
         return $this->response->setJSON([
             'success' => true,
             'data' => $row,
+            'jenis_spk' => $row['jenis_spk'] ?? 'UNIT', // Explicitly include SPK type for frontend
             'spesifikasi' => $enriched,
             'prepared_units' => $preparedUnits,
             'prepared_units_detail' => $enriched['prepared_units_detail'] ?? [],
@@ -1230,6 +1231,11 @@ class Marketing extends Controller
             // Log all received POST data for debugging
             log_message('info', 'Marketing::spkCreate - Received POST data: ' . json_encode($this->request->getPost()));
             
+            // Debug jenis_spk specifically
+            $jenisSpkRaw = $this->request->getPost('jenis_spk');
+            log_message('info', 'Marketing::spkCreate - Raw jenis_spk from form: "' . $jenisSpkRaw . '"');
+            log_message('info', 'Marketing::spkCreate - jenis_spk type: ' . gettype($jenisSpkRaw));
+            
             // Check if this is new workflow with kontrak_spesifikasi_id or kontrak_id
             $kontrakSpesifikasiId = $this->request->getPost('kontrak_spesifikasi_id');
             $kontrakId = $this->request->getPost('kontrak_id');
@@ -1279,9 +1285,14 @@ class Marketing extends Controller
                     'aksesoris' => []
                 ];
 
+                // Get jenis_spk from form input, default to 'UNIT' if not provided
+                $jenis = strtoupper(trim((string)$this->request->getPost('jenis_spk') ?: 'UNIT'));
+                $allowedJenis = ['UNIT','ATTACHMENT'];
+                if (!in_array($jenis, $allowedJenis, true)) { $jenis = 'UNIT'; }
+
                 $payload = [
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
-                    'jenis_spk' => 'UNIT',
+                    'jenis_spk' => $jenis,
                     'kontrak_id' => $kontrak['id'],
                     'kontrak_spesifikasi_id' => $kontrakSpesifikasiId,
                     'jumlah_unit' => $jumlahUnit,
@@ -1343,9 +1354,14 @@ class Marketing extends Controller
                     log_message('info', 'Marketing::spkCreate - No specifications found for kontrak ' . $kontrakId . ', using empty spec');
                 }
 
+                // Get jenis_spk from form input, default to 'UNIT' if not provided
+                $jenis = strtoupper(trim((string)$this->request->getPost('jenis_spk') ?: 'UNIT'));
+                $allowedJenis = ['UNIT','ATTACHMENT'];
+                if (!in_array($jenis, $allowedJenis, true)) { $jenis = 'UNIT'; }
+
                 $payload = [
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
-                    'jenis_spk' => 'UNIT',
+                    'jenis_spk' => $jenis,
                     'kontrak_id' => $kontrak['id'],
                     'kontrak_spesifikasi_id' => $firstSpecId, // Use the first spec ID if available
                     'jumlah_unit' => $jumlahUnit,
@@ -1373,7 +1389,7 @@ class Marketing extends Controller
                 }
 
                 $jenis = strtoupper(trim((string)$this->request->getPost('jenis_spk') ?: 'UNIT'));
-                $allowedJenis = ['UNIT','ATTACHMENT','TUKAR'];
+                $allowedJenis = ['UNIT','ATTACHMENT'];
                 if (!in_array($jenis, $allowedJenis, true)) { $jenis = 'UNIT'; }
 
                 $payload = [
@@ -1933,6 +1949,10 @@ class Marketing extends Controller
             $pelanggan = $spk['pelanggan'];
             $lokasi = $spk['lokasi'];
             
+            // ENHANCEMENT: Detect SPK type for optimized DI handling
+            $isAttachmentSpk = (isset($spk['jenis_spk']) && strtoupper($spk['jenis_spk']) === 'ATTACHMENT');
+            error_log('DI Create - SPK Type: ' . ($spk['jenis_spk'] ?? 'UNKNOWN') . ', isAttachmentSpk: ' . ($isAttachmentSpk ? 'YES' : 'NO'));
+            
             // Extract prepared units from SPK spesifikasi if no units provided
             if (empty($unitIds) && !empty($spk['spesifikasi'])) {
                 $spec = json_decode($spk['spesifikasi'], true);
@@ -1945,6 +1965,17 @@ class Marketing extends Controller
                             }
                         }
                         error_log('DI Create - Extracted unit IDs from SPK prepared_units: ' . json_encode($unitIds));
+                        
+                        // ENHANCEMENT: For ATTACHMENT SPK, extract attachment_inventory_id from prepared_units
+                        if ($isAttachmentSpk && empty($unitIds)) {
+                            foreach ($spec['prepared_units'] as $preparedUnit) {
+                                if (isset($preparedUnit['attachment_inventory_id']) && is_numeric($preparedUnit['attachment_inventory_id'])) {
+                                    $selected['inventory_attachment_id'] = (int)$preparedUnit['attachment_inventory_id'];
+                                    error_log('DI Create - ATTACHMENT SPK: Extracted attachment_inventory_id from prepared_units: ' . $selected['inventory_attachment_id']);
+                                    break; // Take first attachment
+                                }
+                            }
+                        }
                     }
                     
                     // Also check for legacy 'selected' format as fallback
@@ -1952,7 +1983,19 @@ class Marketing extends Controller
                         $selected['unit_id'] = (int)($spec['selected']['unit_id'] ?? 0) ?: null;
                         $selected['inventory_attachment_id'] = (int)($spec['selected']['inventory_attachment_id'] ?? 0) ?: null;
                     }
+                    
+                    // ENHANCEMENT: For ATTACHMENT SPK, prioritize inventory_attachment_id if no unit found
+                    if ($isAttachmentSpk && empty($unitIds) && !empty($selected['inventory_attachment_id'])) {
+                        error_log('DI Create - ATTACHMENT SPK detected with attachment ID: ' . $selected['inventory_attachment_id']);
+                        // We'll handle this in the delivery items section
+                    }
                 }
+            }
+            
+            // ENHANCEMENT: For ATTACHMENT SPK, allow DI creation even without main unit
+            if ($isAttachmentSpk && empty($unitIds) && empty($selected['unit_id']) && empty($selected['inventory_attachment_id'])) {
+                error_log('DI Create - ATTACHMENT SPK without prepared items detected');
+                // This might be a pure attachment delivery - continue with validation below
             }
         }
 
@@ -1976,6 +2019,7 @@ class Marketing extends Controller
         $payload = [
             'nomor_di' => method_exists($this->diModel,'generateNextNumber') ? $this->diModel->generateNextNumber() : $this->generateDiNumber(),
             'spk_id' => $spkId ?: null,
+            'jenis_spk' => isset($spk['jenis_spk']) ? $spk['jenis_spk'] : 'UNIT', // Copy jenis_spk from SPK
             'po_kontrak_nomor' => $poNo,
             'pelanggan' => $pelanggan,
             'lokasi' => $lokasi,
@@ -2062,10 +2106,12 @@ class Marketing extends Controller
         }
         // Insert delivery items: prefer explicit unit_ids from form (multiple),
         // fallback to selected items from SPK if none provided.
+        // ENHANCEMENT: Special handling for ATTACHMENT SPK
         try {
             error_log('DI Create - Starting delivery items processing...');
             error_log('DI Create - diItemModel class: ' . get_class($this->diItemModel));
             error_log('DI Create - About to insert delivery items for unit_ids: ' . json_encode($unitIds));
+            error_log('DI Create - SPK Type: ' . ($spk['jenis_spk'] ?? 'UNKNOWN') . ', isAttachmentSpk: ' . ($isAttachmentSpk ?? 'UNDEFINED'));
             
             if (!empty($unitIds)) {
                 foreach ($unitIds as $uid) {
@@ -2184,30 +2230,52 @@ class Marketing extends Controller
                     }
                 }
             } else {
-                if (!empty($selected['unit_id'])) {
-                    $itemResult = $this->diItemModel->insert([
-                        'di_id' => $diId,
-                        'item_type' => 'UNIT',
-                        'unit_id' => (int)$selected['unit_id'],
-                    ]);
-                    if (!$itemResult) {
-                        $errors = $this->diItemModel->errors();
-                        throw new \Exception('Failed to insert selected unit: ' . implode(', ', $errors));
-                    }
-                }
-                if (!empty($selected['inventory_attachment_id'])) {
+                // ENHANCEMENT: For ATTACHMENT SPK without units, handle attachment-only delivery
+                if ($isAttachmentSpk && empty($selected['unit_id']) && !empty($selected['inventory_attachment_id'])) {
+                    error_log('DI Create - Processing ATTACHMENT-only SPK delivery');
                     // Map inventory_attachment to attachment_id if needed
-                    $inv = $this->db->table('inventory_attachment')->select('attachment_id')->where('id_inventory_attachment', (int)$selected['inventory_attachment_id'])->get()->getRowArray();
+                    $inv = $this->db->table('inventory_attachment')->select('attachment_id, tipe_item')->where('id_inventory_attachment', (int)$selected['inventory_attachment_id'])->get()->getRowArray();
                     $attId = $inv['attachment_id'] ?? null;
                     if ($attId) {
                         $itemResult = $this->diItemModel->insert([
                             'di_id' => $diId,
                             'item_type' => 'ATTACHMENT',
                             'attachment_id' => $attId,
+                            'keterangan' => 'Pure Attachment Delivery - ' . ($inv['tipe_item'] ?? 'attachment'),
                         ]);
                         if (!$itemResult) {
                             $errors = $this->diItemModel->errors();
-                            throw new \Exception('Failed to insert attachment: ' . implode(', ', $errors));
+                            throw new \Exception('Failed to insert pure attachment: ' . implode(', ', $errors));
+                        }
+                        error_log('DI Create - Added pure attachment delivery (ID: ' . $attId . ')');
+                    }
+                } else {
+                    // Standard workflow for UNIT SPK
+                    if (!empty($selected['unit_id'])) {
+                        $itemResult = $this->diItemModel->insert([
+                            'di_id' => $diId,
+                            'item_type' => 'UNIT',
+                            'unit_id' => (int)$selected['unit_id'],
+                        ]);
+                        if (!$itemResult) {
+                            $errors = $this->diItemModel->errors();
+                            throw new \Exception('Failed to insert selected unit: ' . implode(', ', $errors));
+                        }
+                    }
+                    if (!empty($selected['inventory_attachment_id'])) {
+                        // Map inventory_attachment to attachment_id if needed
+                        $inv = $this->db->table('inventory_attachment')->select('attachment_id')->where('id_inventory_attachment', (int)$selected['inventory_attachment_id'])->get()->getRowArray();
+                        $attId = $inv['attachment_id'] ?? null;
+                        if ($attId) {
+                            $itemResult = $this->diItemModel->insert([
+                                'di_id' => $diId,
+                                'item_type' => 'ATTACHMENT',
+                                'attachment_id' => $attId,
+                            ]);
+                            if (!$itemResult) {
+                                $errors = $this->diItemModel->errors();
+                                throw new \Exception('Failed to insert attachment: ' . implode(', ', $errors));
+                            }
                         }
                     }
                 }
@@ -2445,13 +2513,12 @@ class Marketing extends Controller
             $recordsTotal = $this->db->table('kontrak')->countAllResults();
             $recordsFiltered = $countBuilder->countAllResults();
 
-            // Safely determine total_units (kontrak_unit table may not yet exist)
-            $hasKontrakUnit = $this->db->tableExists('kontrak_unit');
-            if ($hasKontrakUnit) {
-                $builder->select('k.*, (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.kontrak_id = k.id) as total_units');
-            } else {
-                $builder->select('k.*');
-            }
+            // Get total_units from inventory_unit table based on kontrak_id
+            $builder->select('k.*, 
+                            (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as calculated_total_units,
+                            COALESCE(k.nilai_total, 
+                                    (SELECT SUM(jumlah_dibutuhkan * harga_per_unit_bulanan) FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id), 
+                                    0) as calculated_value');
 
             $kontrakData = $builder
                 ->orderBy('k.id', 'DESC')
@@ -2465,6 +2532,11 @@ class Marketing extends Controller
                 if ($totalCheck > 0) {
                     log_message('debug', 'Marketing::getDataTable primary query returned empty, running fallback simple select');
                     $kontrakData = $this->db->table('kontrak k')
+                        ->select('k.*, 
+                                (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as calculated_total_units,
+                                COALESCE(k.nilai_total, 
+                                        (SELECT SUM(jumlah_dibutuhkan * harga_per_unit_bulanan) FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id), 
+                                        0) as calculated_value')
                         ->orderBy('k.id','DESC')
                         ->limit($length, $start)
                         ->get()
@@ -2480,20 +2552,17 @@ class Marketing extends Controller
                 $endDate = date('d/m/Y', strtotime($row['tanggal_berakhir']));
                 $period = $startDate . ' - ' . $endDate;
 
-                $totalUnits = $row['total_units'] ?? 0;
-                if (!$hasKontrakUnit) {
-                    // Optional: future-proof placeholder; keep 0 without failing
-                    $totalUnits = 0;
-                }
+                $totalUnits = $row['calculated_total_units'] ?? 0;
 
                 $data[] = [
                     'id' => $row['id'],
                     'contract_number' => esc($row['no_kontrak']),
                     'po' => esc($row['no_po_marketing'] ?? ''),
                     'client_name' => esc($row['pelanggan']),
+                    'jenis_sewa' => ucfirst($row['jenis_sewa'] ?? 'Belum Ditentukan'),
                     'period' => $period,
-                    'value' => 'Rp ' . number_format(0, 0, ',', '.'), // Placeholder (no column yet)
-                    'total_units' => $totalUnits,
+                    'value' => 'Rp ' . number_format($row['calculated_value'] ?? 0, 0, ',', '.'),
+                    'total_units' => intval($row['calculated_total_units'] ?? 0),
                     'status' => '<span class="badge bg-' . $statusClass . '">' . esc($row['status']) . '</span>',
                     'actions' => $this->buildKontrakActions($row['id'])
                 ];
@@ -3166,10 +3235,20 @@ class Marketing extends Controller
             return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
         }
         
+        // Check context - if called from SPK, exclude TARIK workflows
+        $context = $this->request->getGet('context');
+        
         try {
-            $data = $this->db->table('jenis_perintah_kerja')
-                ->where('aktif', 1)
-                ->orderBy('nama', 'ASC')
+            $builder = $this->db->table('jenis_perintah_kerja')
+                ->where('aktif', 1);
+                
+            // For SPK context, exclude TARIK workflows since TARIK doesn't need SPK
+            if ($context === 'spk') {
+                $builder->where('nama !=', 'TARIK')
+                       ->where('kode !=', 'TARIK');
+            }
+                
+            $data = $builder->orderBy('nama', 'ASC')
                 ->get()
                 ->getResultArray();
                 

@@ -366,7 +366,7 @@ class InventoryAttachmentModel extends Model
         return $db->transException(true)->transStart()
             && $this->update($invAttachmentId, [
                 'id_inventory_unit' => $unitId,
-                'status_unit' => 3, // RENTAL
+                'attachment_status' => 'USED', // Using new ENUM status
                 'lokasi_penyimpanan' => null,
             ])
             && $db->table('inventory_item_unit_log')->insert([
@@ -389,7 +389,7 @@ class InventoryAttachmentModel extends Model
         return $db->transException(true)->transStart()
             && $this->update($invAttachmentId, [
                 'id_inventory_unit' => null,
-                'status_unit'       => 7, // STOCK ASET
+                'attachment_status' => 'AVAILABLE', // Using new ENUM status
                 'lokasi_penyimpanan'=> $lokasi,
             ])
             && ($oldUnit ? $db->table('inventory_item_unit_log')->insert([
@@ -409,7 +409,7 @@ class InventoryAttachmentModel extends Model
             ->where([
                 'inventory_attachment.attachment_id' => $attachmentId,
                 'inventory_attachment.tipe_item'     => 'attachment',
-                'inventory_attachment.status_unit'   => 7,
+                'inventory_attachment.attachment_status' => 'AVAILABLE', // Using new ENUM
             ])->where('inventory_attachment.id_inventory_unit', null)
               ->where('inventory_attachment.attachment_id IS NOT NULL')
               ->orderBy('inventory_attachment.tanggal_masuk','ASC')
@@ -418,11 +418,11 @@ class InventoryAttachmentModel extends Model
 
     public function getAvailableChargers(): array
     {
-        // Ambil inventory yang punya charger_id dan tipe_item = 'charger', masih stock (ASET/NON ASET)
+        // Ambil inventory yang punya charger_id dan tipe_item = 'charger', status AVAILABLE
         return $this->select('inventory_attachment.*, c.merk_charger, c.tipe_charger')
             ->join('charger c', 'c.id_charger = inventory_attachment.charger_id', 'left')
             ->where('inventory_attachment.tipe_item', 'charger')
-            ->whereIn('inventory_attachment.status_unit', [7, 8]) // 7=STOCK ASET, 8=STOCK NON ASET
+            ->where('inventory_attachment.attachment_status', 'AVAILABLE') // Using new ENUM
             ->where('(inventory_attachment.id_inventory_unit IS NULL OR inventory_attachment.id_inventory_unit = 0)')
             ->where('inventory_attachment.charger_id IS NOT NULL')
             ->orderBy('inventory_attachment.tanggal_masuk','ASC')
@@ -431,11 +431,11 @@ class InventoryAttachmentModel extends Model
 
     public function getAvailableBatteries(): array
     {
-        // Ambil inventory yang punya baterai_id dan tipe_item = 'battery', masih stock (ASET/NON ASET)
+        // Ambil inventory yang punya baterai_id dan tipe_item = 'battery', status AVAILABLE
         return $this->select('inventory_attachment.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
             ->join('baterai b', 'b.id = inventory_attachment.baterai_id', 'left')
             ->where('inventory_attachment.tipe_item', 'battery')
-            ->whereIn('inventory_attachment.status_unit', [7, 8]) // 7=STOCK ASET, 8=STOCK NON ASET
+            ->where('inventory_attachment.attachment_status', 'AVAILABLE') // Using new ENUM
             ->where('(inventory_attachment.id_inventory_unit IS NULL OR inventory_attachment.id_inventory_unit = 0)')
             ->where('inventory_attachment.baterai_id IS NOT NULL')
             ->orderBy('inventory_attachment.tanggal_masuk','ASC')

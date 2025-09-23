@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Models\KontrakModel;
 use App\Models\KontrakSpesifikasiModel;
 use App\Models\InventoryUnitModel;
+use App\Models\InventoryStatusModel;
 use App\Traits\ActivityLoggingTrait;
 
 class Kontrak extends BaseController
@@ -14,6 +15,7 @@ class Kontrak extends BaseController
     protected $kontrakModel;
     protected $kontrakSpesifikasiModel;
     protected $inventoryUnitModel;
+    protected $inventoryStatusModel;
     protected $db;
 
     public function __construct()
@@ -21,6 +23,7 @@ class Kontrak extends BaseController
         $this->kontrakModel = new KontrakModel();
         $this->kontrakSpesifikasiModel = new KontrakSpesifikasiModel();
         $this->inventoryUnitModel = new InventoryUnitModel();
+        $this->inventoryStatusModel = new InventoryStatusModel();
         $this->db = \Config\Database::connect();
     }
 
@@ -51,7 +54,10 @@ class Kontrak extends BaseController
                 $row['contract_number'] = '<strong>' . esc($contract['no_kontrak']) . '</strong>';
                 $row['po']              = esc(isset($contract['no_po_marketing']) ? $contract['no_po_marketing'] : '-');
                 $row['client_name']     = esc($contract['pelanggan']);
+                $row['jenis_sewa']      = ucfirst($contract['jenis_sewa'] ?? 'BULANAN');
                 $row['period']          = date('d M Y', strtotime($contract['tanggal_mulai'])) . ' - ' . date('d M Y', strtotime($contract['tanggal_berakhir']));
+                $row['total_units']     = intval($contract['total_units'] ?? 0);
+                $row['value']           = 'Rp ' . number_format($contract['nilai_total'] ?? 0, 0, ',', '.');
                 
                 // Status badge with proper color
                 $statusClass = 'bg-secondary';
@@ -404,6 +410,11 @@ class Kontrak extends BaseController
         }
         
         if ($this->kontrakModel->update($contractId, $data)) {
+            // Update inventory status based on contract status change
+            if (isset($oldData['status']) && $oldData['status'] !== $data['status']) {
+                $this->updateInventoryStatusForContract($contractId, $oldData['status'], $data['status']);
+            }
+            
             // Log the update activity with trait
             $relations = ['kontrak' => [$contractId]];
             
@@ -555,7 +566,7 @@ class Kontrak extends BaseController
             ]);
         }
 
-        $contract = $this->kontrakModel->find($id);
+        $contract = $this->kontrakModel->findWithDynamicCalculation($id);
         if ($contract) {
             return $this->response->setJSON([
                 'success' => true, 
@@ -648,6 +659,7 @@ class Kontrak extends BaseController
                 SELECT 
                     iu.id_inventory_unit,
                     iu.no_unit,
+                    iu.serial_number,
                     COALESCE(mu.merk_unit, 'N/A') as merk,
                     COALESCE(mu.model_unit, 'N/A') as model,
                     COALESCE(k.kapasitas_unit, 'N/A') as kapasitas,
@@ -686,6 +698,7 @@ class Kontrak extends BaseController
                 $formattedUnits[] = [
                     'id' => $unit['id_inventory_unit'],
                     'no_unit' => $unit['no_unit'] ?: '-',
+                    'serial_number' => $unit['serial_number'] ?: '-',
                     'merk' => $unit['merk'],
                     'model' => $unit['model'],
                     'kapasitas' => $unit['kapasitas'],
@@ -1476,5 +1489,192 @@ class Kontrak extends BaseController
     public function spesifikasi($kontrakId)
     {
         return $this->getKontrakSpesifikasi($kontrakId);
+    }
+
+    /**
+     * Update inventory status based on contract status changes
+     */
+    private function updateInventoryStatusForContract($kontrakId, $oldStatus, $newStatus)
+    {
+        try {
+            log_message('info', "Updating inventory status for contract {$kontrakId}: {$oldStatus} -> {$newStatus}");
+
+            // Contract becomes active - set to RENTAL
+            if ($newStatus === 'Aktif' && $oldStatus !== 'Aktif') {
+                $result = $this->inventoryStatusModel->updateStatusForActiveContract($kontrakId);
+                if ($result) {
+                    log_message('info', "Successfully updated inventory to RENTAL status for active contract {$kontrakId}");
+                } else {
+                    log_message('error', "Failed to update inventory to RENTAL status for active contract {$kontrakId}");
+                }
+            }
+            
+            // Contract ends or gets cancelled - set to UNIT PULANG
+            elseif (in_array($newStatus, ['Berakhir', 'Dibatalkan']) && $oldStatus === 'Aktif') {
+                $result = $this->inventoryStatusModel->updateStatusForEndedContract($kontrakId);
+                if ($result) {
+                    log_message('info', "Successfully updated inventory to UNIT PULANG status for ended contract {$kontrakId}");
+                } else {
+                    log_message('error', "Failed to update inventory to UNIT PULANG status for ended contract {$kontrakId}");
+                }
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', "Error updating inventory status for contract {$kontrakId}: " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Trigger status update after SPK/DI workflow completion
+     * Called when SPK is marked complete or DI is processed
+     */
+    public function triggerStatusUpdateAfterWorkflow($kontrakId)
+    {
+        try {
+            $result = $this->inventoryStatusModel->updateStatusAfterSPKWorkflow($kontrakId);
+            
+            return $this->response->setJSON([
+                'success' => $result,
+                'message' => $result ? 'Status updated successfully' : 'Status update failed'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::triggerStatusUpdateAfterWorkflow Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error triggering status update: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Handle attachment linking during SPK fabrication
+     * This should be called during the fabrication process
+     */
+    public function linkFabricationAttachments($spkId)
+    {
+        try {
+            $result = $this->inventoryStatusModel->linkAttachmentsFromSPK($spkId);
+            
+            return $this->response->setJSON([
+                'success' => $result,
+                'message' => $result ? 'Attachments linked successfully' : 'Attachment linking failed'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::linkFabricationAttachments Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error linking attachments: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get current inventory status for a contract (for debugging/monitoring)
+     */
+    public function getInventoryStatus($kontrakId)
+    {
+        try {
+            $status = $this->inventoryStatusModel->getInventoryStatusByContract($kontrakId);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $status
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::getInventoryStatus Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error getting inventory status: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Bulk fix inventory status for all active contracts
+     * This method is useful for fixing existing contracts that were created before status update logic
+     */
+    public function bulkFixInventoryStatus()
+    {
+        try {
+            // Get all active contracts
+            $activeContracts = $this->db->query("
+                SELECT k.id, k.no_kontrak, k.status 
+                FROM kontrak k 
+                WHERE k.status = 'Aktif'
+                ORDER BY k.id
+            ")->getResultArray();
+
+            $fixedCount = 0;
+            $errorCount = 0;
+            $skippedCount = 0;
+            $results = [];
+
+            foreach ($activeContracts as $contract) {
+                $contractId = $contract['id'];
+                $contractNumber = $contract['no_kontrak'];
+
+                // Check if this contract has units with wrong status
+                $wrongStatusUnits = $this->db->query("
+                    SELECT COUNT(*) as count
+                    FROM inventory_unit iu
+                    JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                    WHERE ks.kontrak_id = ? AND iu.status_unit_id != 3
+                ", [$contractId])->getRowArray();
+
+                if ($wrongStatusUnits['count'] > 0) {
+                    // Fix the status
+                    $result = $this->inventoryStatusModel->updateStatusForActiveContract($contractId);
+                    
+                    if ($result) {
+                        $fixedCount++;
+                        $results[] = [
+                            'contract_id' => $contractId,
+                            'contract_number' => $contractNumber,
+                            'status' => 'fixed',
+                            'units_updated' => $wrongStatusUnits['count']
+                        ];
+                        log_message('info', "✅ Fixed inventory status for contract {$contractNumber}");
+                    } else {
+                        $errorCount++;
+                        $results[] = [
+                            'contract_id' => $contractId,
+                            'contract_number' => $contractNumber,
+                            'status' => 'error',
+                            'units_affected' => $wrongStatusUnits['count']
+                        ];
+                        log_message('error', "❌ Failed to fix inventory status for contract {$contractNumber}");
+                    }
+                } else {
+                    $skippedCount++;
+                    $results[] = [
+                        'contract_id' => $contractId,
+                        'contract_number' => $contractNumber,
+                        'status' => 'already_correct'
+                    ];
+                }
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => "Bulk fix completed. Fixed: {$fixedCount}, Errors: {$errorCount}, Already correct: {$skippedCount}",
+                'summary' => [
+                    'total_contracts' => count($activeContracts),
+                    'fixed' => $fixedCount,
+                    'errors' => $errorCount,
+                    'already_correct' => $skippedCount
+                ],
+                'details' => $results
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::bulkFixInventoryStatus Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error during bulk fix: ' . $e->getMessage()
+            ]);
+        }
     }
 }

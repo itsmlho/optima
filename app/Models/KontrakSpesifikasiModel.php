@@ -107,7 +107,7 @@ class KontrakSpesifikasiModel extends Model
                 jr.tipe_roda as roda_name,
                 v.jumlah_valve as valve_name,
                 c.tipe_charger as charger_name,
-                COALESCE(spk_summary.total_unit_spk, 0) as jumlah_tersedia,
+                COALESCE(inventory_summary.actual_units, 0) as jumlah_tersedia,
                 COALESCE(spk_summary.jumlah_spk, 0) as jumlah_spk
             ')
             ->join('departemen d', 'd.id_departemen = ks.departemen_id', 'left')
@@ -121,7 +121,14 @@ class KontrakSpesifikasiModel extends Model
             ->join('(
                 SELECT 
                     kontrak_spesifikasi_id,
-                    SUM(jumlah_unit) as total_unit_spk,
+                    COUNT(*) as actual_units
+                FROM inventory_unit 
+                WHERE kontrak_spesifikasi_id IS NOT NULL
+                GROUP BY kontrak_spesifikasi_id
+            ) inventory_summary', 'ks.id = inventory_summary.kontrak_spesifikasi_id', 'left')
+            ->join('(
+                SELECT 
+                    kontrak_spesifikasi_id,
                     COUNT(*) as jumlah_spk
                 FROM spk 
                 WHERE status NOT IN ("CANCELLED", "REJECTED")
@@ -244,10 +251,21 @@ class KontrakSpesifikasiModel extends Model
             $finalHargaBulanan = $hargaBulanan ?? $spek['harga_per_unit_bulanan'];
             $finalHargaHarian = $hargaHarian ?? $spek['harga_per_unit_harian'];
 
+            // Get kontrak status to determine appropriate unit status
+            $kontrakStatus = $kontrak['status'] ?? 'Pending';
+            
+            // Set status based on contract status
+            $newStatusId = 7; // Default: STOCK ASET (available)
+            if ($kontrakStatus === 'Aktif') {
+                $newStatusId = 3; // RENTAL - only when contract is active
+            } else {
+                $newStatusId = 7; // Keep as STOCK ASET when contract is pending
+            }
+
             $updateData = [
                 'kontrak_id' => $spek['kontrak_id'],
                 'kontrak_spesifikasi_id' => $spesifikasiId,
-                'status_unit_id' => 3, // RENTAL
+                'status_unit_id' => $newStatusId,
                 'harga_sewa_bulanan' => $finalHargaBulanan,
                 'harga_sewa_harian' => $finalHargaHarian,
                 'lokasi_pelanggan' => $kontrak['pelanggan'] ?? null
@@ -269,7 +287,8 @@ class KontrakSpesifikasiModel extends Model
                     'data' => [
                         'spesifikasi_id' => $spesifikasiId,
                         'old_status' => $oldUnitData['status_unit_id'] ?? null,
-                        'new_status' => 3,
+                        'new_status' => $newStatusId,
+                        'kontrak_status' => $kontrakStatus,
                         'harga_bulanan' => $finalHargaBulanan,
                         'harga_harian' => $finalHargaHarian
                     ]
@@ -420,23 +439,23 @@ class KontrakSpesifikasiModel extends Model
     {
         $db = \Config\Database::connect();
         
-        // Get summary data with SPK-based unit calculation
+        // Get summary data with actual inventory unit calculation
         $query = "
             SELECT 
                 COUNT(ks.id) as total_spesifikasi,
                 SUM(ks.jumlah_dibutuhkan) as total_unit_dibutuhkan,
-                SUM(COALESCE(spk_summary.total_unit_spk, 0)) as total_unit_tersedia,
+                SUM(COALESCE(inventory_summary.actual_units, 0)) as total_unit_tersedia,
                 SUM(ks.harga_per_unit_bulanan * ks.jumlah_dibutuhkan) as total_nilai_bulanan,
                 SUM(ks.harga_per_unit_harian * ks.jumlah_dibutuhkan) as total_nilai_harian
             FROM kontrak_spesifikasi ks
             LEFT JOIN (
                 SELECT 
                     kontrak_spesifikasi_id,
-                    SUM(jumlah_unit) as total_unit_spk
-                FROM spk 
-                WHERE status NOT IN ('CANCELLED', 'REJECTED')
+                    COUNT(*) as actual_units
+                FROM inventory_unit 
+                WHERE kontrak_spesifikasi_id IS NOT NULL
                 GROUP BY kontrak_spesifikasi_id
-            ) spk_summary ON ks.id = spk_summary.kontrak_spesifikasi_id
+            ) inventory_summary ON ks.id = inventory_summary.kontrak_spesifikasi_id
             WHERE ks.kontrak_id = ?
         ";
         

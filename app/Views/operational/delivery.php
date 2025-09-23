@@ -229,7 +229,7 @@
               <th>PO/Kontrak</th>
               <th>Pelanggan</th>
               <th>Lokasi</th>
-              <th>Total Units</th>
+              <th>Total Items</th>
               <th>Jenis Perintah</th>
               <th>Tujuan Perintah</th>
               <th>Req. Tanggal Kirim</th>
@@ -406,17 +406,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const formatTotalUnits = (r) => {
         const totalUnits = r.total_units || 0;
         const totalAttachments = r.total_attachments || 0;
+        const jenisSpk = r.jenis_spk || 'UNIT'; // Use jenis_spk from delivery_instructions
         
-        if (totalUnits > 0) {
-          // Prioritas units jika ada
-          const unitText = totalUnits === 1 ? 'unit' : 'units';
-          return `<span class="badge bg-info">${totalUnits} ${unitText}</span>`;
-        } else if (totalAttachments > 0) {
-          // Fallback ke attachments jika tidak ada units
-          const attachmentText = totalAttachments === 1 ? 'attachment' : 'attachments';
-          return `<span class="badge bg-warning">${totalAttachments} ${attachmentText}</span>`;
+        if (jenisSpk === 'ATTACHMENT') {
+          // For ATTACHMENT SPK, prioritize attachments count
+          if (totalAttachments > 0) {
+            const attachmentText = totalAttachments === 1 ? 'attachment' : 'attachments';
+            return `<span class="badge bg-warning">${totalAttachments} ${attachmentText}</span>`;
+          } else {
+            return '<span class="text-muted">No attachments</span>';
+          }
         } else {
-          return '<span class="text-muted">-</span>';
+          // For UNIT SPK, prioritize units count
+          if (totalUnits > 0) {
+            const unitText = totalUnits === 1 ? 'unit' : 'units';
+            return `<span class="badge bg-info">${totalUnits} ${unitText}</span>`;
+          } else if (totalAttachments > 0) {
+            // Fallback to attachments if no units but has attachments
+            const attachmentText = totalAttachments === 1 ? 'attachment' : 'attachments';
+            return `<span class="badge bg-warning">${totalAttachments} ${attachmentText}</span>`;
+          } else {
+            return '<span class="text-muted">-</span>';
+          }
         }
       };
 
@@ -765,68 +776,179 @@ document.addEventListener('DOMContentLoaded', ()=>{
     body.innerHTML = '<p class="text-muted">Memuat...</p>';
     fetch('<?= base_url('operational/delivery/detail/') ?>'+id).then(r=>r.json()).then(j=>{
       if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; modal.show(); return; }
-      const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[];
+      const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[]; 
+      const spesifikasi = j.spesifikasi||{}; const kontrak = j.kontrak||{};
+      
+      // Parse spesifikasi JSON if exists (backup method)
+      let s = spesifikasi;
+      if (spk.spesifikasi && Object.keys(s).length === 0) {
+        try {
+          s = JSON.parse(spk.spesifikasi);
+        } catch (e) {
+          console.log('Failed to parse spesifikasi:', e);
+        }
+      }
+      const k = kontrak;
+      
       const status = d.status || 'SUBMITTED';
-      // Display items in structured format
+      // Enhanced: Detect SPK type for proper detail display
+      const spkType = spk.jenis_spk || d.jenis_spk || 'UNIT';
+      const isAttachmentSpk = (spkType === 'ATTACHMENT');
+      // Display items in structured format with modern design
       let itemsHtml = '';
       if (j.items && j.items.length > 0) {
-        j.items.forEach((unitData, index) => {
-          const unitNum = index + 1;
-          itemsHtml += `<div class="col-12"><hr></div>`;
-          
-          // Format unit info with detailed data: no_unit.model_unit.kapasitas_unit_id.departemen_id
-          const unitInfo = unitData.unit_info || {};
-          const unitLabel = `${unitInfo.no_unit || '-'} • ${unitInfo.model_unit || '-'} • ${unitInfo.kapasitas_unit_nama || unitInfo.kapasitas_unit_id || '-'} • ${unitInfo.departemen_nama || unitInfo.departemen_id || '-'}`;
-          itemsHtml += `<div class="col-12"><strong>Unit ${unitNum}:</strong> ${unitLabel}</div>`;
-          
-          // Display battery and charger if electric
-          if (unitData.unit_info.jenis_power && unitData.unit_info.jenis_power.toLowerCase().includes('electric')) {
-            itemsHtml += `<div class="col-12"><strong>Items:</strong><ul class="mb-2">`;
-            
-            if (unitData.battery) {
-              // Format battery with detailed info: merk_baterai.tipe_baterai.jenis_baterai
-              const battery = unitData.battery;
-              const batteryLabel = `${battery.merk_baterai || '-'} • ${battery.tipe_baterai || '-'} • ${battery.jenis_baterai || '-'}`;
-              itemsHtml += `<li><strong>BATTERY</strong> - ${batteryLabel}</li>`;
-            }
-            
-            if (unitData.charger) {
-              // Format charger with detailed info: merk_charger.tipe_charger
-              const charger = unitData.charger;
-              const chargerLabel = `${charger.merk_charger || '-'} • ${charger.tipe_charger || '-'}`;
-              itemsHtml += `<li><strong>CHARGER</strong> - ${chargerLabel}</li>`;
-            }
-            
-            itemsHtml += `</ul></div>`;
-          }
-          
-          // Display unit-specific attachments
-          if (unitData.attachments && unitData.attachments.length > 0) {
-            itemsHtml += `<div class="col-12"><strong>Attachments:</strong><ul class="mb-2">`;
-            unitData.attachments.forEach(attachment => {
-              // Format attachment with detailed info: tipe.merk.model
-              const attachmentLabel = `${attachment.tipe || '-'} • ${attachment.merk || '-'} • ${attachment.model || '-'}`;
-              itemsHtml += `<li>${attachmentLabel}</li>`;
+        const unitItems = j.items.filter(i => i.item_type === 'UNIT');
+        const attachmentItems = j.items.filter(i => i.item_type === 'ATTACHMENT');
+        
+        if (isAttachmentSpk) {
+          // For ATTACHMENT SPK, focus on attachments
+          itemsHtml += '<h6 class="text-muted mb-3">Attachment yang Dikirim:</h6>';
+          if (attachmentItems.length > 0) {
+            itemsHtml += '<div class="list-group list-group-flush">';
+            attachmentItems.forEach(item => {
+              // Use item data first, then spesifikasi and kontrak as fallback (like print_di.php)
+              const attachName = item.att_tipe || s.attachment_tipe || k.attachment_tipe || k.attachment_name || 'Attachment';
+              const attachMerk = item.att_merk || s.attachment_merk || k.attachment_merk || '-';
+              const attachModel = item.att_model || s.attachment_model || k.attachment_model || '';
+              const attachSN = item.sn_attachment ? ` (SN: ${item.sn_attachment})` : '';
+              const fullAttachmentName = attachModel ? `${attachName} ${attachModel}` : attachName;
+              
+              itemsHtml += `
+                <div class="list-group-item border-0 px-0">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-paperclip text-primary me-3"></i>
+                    <div>
+                      <div class="fw-semibold">${fullAttachmentName}${attachSN}</div>
+                      <small class="text-muted">Merk: ${attachMerk}</small>
+                    </div>
+                  </div>
+                </div>`;
             });
-            itemsHtml += `</ul></div>`;
+            itemsHtml += '</div>';
+          } else {
+            // Fallback to spesifikasi data for ATTACHMENT SPK when no items (like print_di.php)
+            const attachType = s.attachment_tipe || k.attachment_tipe || k.attachment_name || 'Attachment';
+            const attachMerk = s.attachment_merk || k.attachment_merk || '-';
+            const attachModel = s.attachment_model || k.attachment_model || '';
+            const fullAttachmentName = attachModel ? `${attachType} ${attachModel}` : attachType;
+            itemsHtml += `
+              <div class="card border-info">
+                <div class="card-body p-3">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-paperclip text-info me-3"></i>
+                    <div>
+                      <div class="fw-semibold">${fullAttachmentName}</div>
+                      <small class="text-muted">Merk: ${attachMerk}</small>
+                    </div>
+                  </div>
+                </div>
+              </div>`;
           }
-        });
+        } else {
+          // For UNIT SPK, display units with their details
+          itemsHtml += '<div class="list-group list-group-flush">';
+          j.items.forEach((unitData, index) => {
+            const unitNum = index + 1;
+            
+            // Format unit info with detailed data: no_unit.model_unit.kapasitas_unit_id.departemen_id
+            const unitInfo = unitData.unit_info || {};
+            const unitLabel = `${unitInfo.no_unit || '-'} • ${unitInfo.model_unit || '-'} • ${unitInfo.kapasitas_unit_nama || unitInfo.kapasitas_unit_id || '-'} • ${unitInfo.departemen_nama || unitInfo.departemen_id || '-'}`;
+            
+            itemsHtml += `
+              <div class="list-group-item border-0 px-0">
+                <div class="d-flex align-items-start">
+                  <i class="bi bi-truck text-success me-3 mt-1"></i>
+                  <div class="flex-grow-1">
+                    <div class="fw-semibold">Unit ${unitNum}: ${unitLabel}</div>`;
+            
+            // Display battery and charger if electric
+            if (unitData.unit_info.jenis_power && unitData.unit_info.jenis_power.toLowerCase().includes('electric')) {
+              itemsHtml += '<div class="mt-2 ms-3">';
+              
+              if (unitData.battery) {
+                // Format battery with detailed info: merk_baterai.tipe_baterai.jenis_baterai
+                const battery = unitData.battery;
+                const batteryLabel = `${battery.merk_baterai || '-'} • ${battery.tipe_baterai || '-'} • ${battery.jenis_baterai || '-'}`;
+                itemsHtml += `
+                  <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-battery text-warning me-2"></i>
+                    <small><strong>BATTERY</strong> - ${batteryLabel}</small>
+                  </div>`;
+              }
+              
+              if (unitData.charger) {
+                // Format charger with detailed info: merk_charger.tipe_charger
+                const charger = unitData.charger;
+                const chargerLabel = `${charger.merk_charger || '-'} • ${charger.tipe_charger || '-'}`;
+                itemsHtml += `
+                  <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-plug text-info me-2"></i>
+                    <small><strong>CHARGER</strong> - ${chargerLabel}</small>
+                  </div>`;
+              }
+              
+              itemsHtml += '</div>';
+            }
+            
+            // Display unit-specific attachments with enhanced details
+            if (unitData.attachments && unitData.attachments.length > 0) {
+              itemsHtml += '<div class="mt-2 ms-3">';
+              unitData.attachments.forEach(attachment => {
+                // Use print_di.php fallback logic: attachment data first, then spesifikasi, then kontrak
+                const attachmentName = attachment.tipe || s.attachment_tipe || k.attachment_tipe || k.attachment_name || 'Attachment';
+                const attachmentMerk = attachment.merk || s.attachment_merk || k.attachment_merk || '-';
+                const attachmentModel = attachment.model || s.attachment_model || k.attachment_model || '';
+                const attachmentSN = attachment.sn_attachment && attachment.sn_attachment !== '-' ? ` (SN: ${attachment.sn_attachment})` : '';
+                const fullAttachmentName = attachmentModel ? `${attachmentName} ${attachmentModel}` : attachmentName;
+                
+                itemsHtml += `
+                  <div class="d-flex align-items-center mb-1">
+                    <i class="bi bi-plus-circle text-primary me-2"></i>
+                    <small><strong>${fullAttachmentName}</strong>${attachmentSN}<br>
+                      <span class="text-muted">Merk: ${attachmentMerk}</span>
+                    </small>
+                  </div>`;
+              });
+              itemsHtml += '</div>';
+            }
+            
+            itemsHtml += `
+                  </div>
+                </div>
+              </div>`;
+          });
+          itemsHtml += '</div>';
+        }
       }
       
-      // Display general attachments (not unit-specific)
+      // Display general attachments (not unit-specific) with enhanced details
       if (j.attachments && j.attachments.length > 0) {
-        itemsHtml += `<div class="col-12"><hr></div>`;
-        itemsHtml += `<div class="col-12"><strong>General Attachments:</strong><ul class="mb-0">`;
+        itemsHtml += '<h6 class="text-muted mb-3 mt-4">Attachment Tambahan:</h6>';
+        itemsHtml += '<div class="list-group list-group-flush">';
         j.attachments.forEach(attachment => {
-          // Format attachment with detailed info: tipe.merk.model
-          const attachmentLabel = `${attachment.tipe || '-'} • ${attachment.merk || '-'} • ${attachment.model || '-'}`;
-          itemsHtml += `<li>${attachmentLabel}</li>`;
+          // Use print_di.php fallback logic: attachment data first, then spesifikasi, then kontrak
+          const attachmentName = attachment.tipe || s.attachment_tipe || k.attachment_tipe || k.attachment_name || 'Attachment';
+          const attachmentMerk = attachment.merk || s.attachment_merk || k.attachment_merk || '-';
+          const attachmentModel = attachment.model || s.attachment_model || k.attachment_model || '';
+          const attachmentSN = attachment.sn_attachment && attachment.sn_attachment !== '-' ? ` (SN: ${attachment.sn_attachment})` : '';
+          const fullAttachmentName = attachmentModel ? `${attachmentName} ${attachmentModel}` : attachmentName;
+          
+          itemsHtml += `
+            <div class="list-group-item border-0 px-0">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-paperclip text-warning me-3"></i>
+                <div>
+                  <div class="fw-semibold">${fullAttachmentName}${attachmentSN}</div>
+                  <small class="text-muted">Merk: ${attachmentMerk}</small>
+                </div>
+              </div>
+            </div>`;
         });
-        itemsHtml += `</ul></div>`;
+        itemsHtml += '</div>';
       }
       
       if (!itemsHtml) {
-        itemsHtml = '<div class="text-muted">No items found</div>';
+        itemsHtml = '<div class="alert alert-warning border-warning"><small><i class="bi bi-exclamation-triangle me-2"></i>Belum ada items yang disiapkan untuk pengiriman ini.</small></div>';
       }
       
       // Update action buttons based on status
@@ -874,18 +996,47 @@ document.addEventListener('DOMContentLoaded', ()=>{
       actionButtons = actionButtons ? `${actionButtons} ${printDIButton}` : printDIButton;
       
       body.innerHTML = `
-        <div class="row g-2">
-          <div class="col-6"><strong>No. DI:</strong> ${d.nomor_di}</div>
-          <div class="col-6"><strong>Status:</strong> <span class="badge bg-secondary">${status}</span></div>
-          <div class="col-6"><strong>PO/Kontrak:</strong> ${d.po_kontrak_nomor||'-'}</div>
-          <div class="col-6"><strong>Tanggal Kirim:</strong> ${d.tanggal_kirim||'-'}</div>
-          <div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>
-          <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>
-          <div class="col-6"><strong>Kontak:</strong> ${spk.kontak||'-'}</div>
-          <div class="col-12"><strong>Lokasi Pengiriman:</strong><br><div style="background:#f8f9fa; padding:10px; border-radius:6px; border:1px solid #dee2e6; font-size:14px; line-height:1.5;">${d.lokasi||'-'}</div></div>
-          <div class="col-12"><hr></div>
-          <div class="col-12"><strong>SPK Terkait:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
-          <div class="col-12"><strong>Items:</strong><br>${itemsHtml}</div>
+        <div class="row g-3">
+          <!-- Basic Information -->
+          <div class="col-12">
+            <h6 class="border-bottom pb-2 mb-3 text-primary">
+              <i class="bi bi-clipboard-data me-2"></i>Informasi Dokumen & Pelanggan
+            </h6>
+            <div class="row g-2">
+              <div class="col-6"><strong>No. DI:</strong> ${d.nomor_di}</div>
+              <div class="col-6"><strong>Status:</strong> <span class="badge bg-secondary">${status}</span></div>
+              <div class="col-6"><strong>No. SPK:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
+              <div class="col-6"><strong>PO/Kontrak:</strong> ${d.po_kontrak_nomor||'-'}</div>
+              <div class="col-6"><strong>Tanggal Kirim:</strong> ${d.tanggal_kirim||'-'}</div>
+              <div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>
+              <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>
+              <div class="col-6"><strong>Kontak:</strong> ${spk.kontak||'-'}</div>
+              <div class="col-12"><strong>Lokasi Pengiriman:</strong><br>
+                <div class="bg-light p-2 rounded border mt-1">${d.lokasi||'-'}</div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Workflow Information -->
+          <div class="col-12">
+            <h6 class="border-bottom pb-2 mb-3 text-info">
+              <i class="bi bi-gear me-2"></i>Informasi Workflow
+            </h6>
+            <div class="row g-2">
+              <div class="col-6"><strong>Jenis Perintah:</strong> ${d.jenis_perintah||'-'}</div>
+              <div class="col-6"><strong>Tujuan Perintah:</strong> ${d.tujuan_perintah||'-'}</div>
+              <div class="col-6"><strong>Status Eksekusi:</strong> ${d.status_eksekusi||'Pending'}</div>
+              <div class="col-6"><strong>Dibuat Oleh:</strong> ${d.dibuat_oleh_name || d.dibuat_oleh || '-'}</div>
+            </div>
+          </div>
+          
+          <!-- Items Detail -->
+          <div class="col-12">
+            <h6 class="border-bottom pb-2 mb-3 text-success">
+              <i class="bi bi-truck me-2"></i>Detail Items yang Dikirim
+            </h6>
+            ${itemsHtml}
+          </div>
           
           ${status === 'PROCESSED' || status === 'DELIVERED' ? `
           <div class="col-12"><hr></div>
@@ -960,10 +1111,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
               const formData = new FormData();
               formData.append('action', 'assign_driver');
               // Send minimal data - actual driver info will be filled during Perencanaan stage
-              formData.append('nama_supir', 'TBD');
+              formData.append('nama_supir', '');
               formData.append('no_hp_supir', '-');
               formData.append('no_sim_supir', '-');
-              formData.append('kendaraan', 'TBD');
+              formData.append('kendaraan', '');
               formData.append('no_polisi_kendaraan', '-');
               
               fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {

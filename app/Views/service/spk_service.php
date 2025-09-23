@@ -193,6 +193,13 @@ let currentFilter = 'all';
 let currentPage = 1;
 let entriesPerPage = 10;
 
+// Make variables globally accessible for SPA system
+window.allSPKData = allSPKData;
+window.filteredSPKData = filteredSPKData;
+window.currentFilter = currentFilter;
+window.currentPage = currentPage;
+window.entriesPerPage = entriesPerPage;
+
 // Unified notifier (fallbacks)
 function notify(msg, type='success'){
 	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
@@ -200,14 +207,50 @@ function notify(msg, type='success'){
 	alert(msg);
 }
 
+// Global function for SPA system to load SPK data
+window.loadSPKData = function() {
+	console.log('🚀 loadSPKData called');
+	
+	// Use existing load function if available
+	if (typeof window.load === 'function') {
+		console.log('✅ Using existing load function');
+		window.load();
+		return;
+	}
+	
+	// Fallback: simple data refresh
+	fetch('<?= base_url('service/spk/list') ?>')
+		.then(response => response.json())
+		.then(data => {
+			console.log('✅ SPK data fetched for SPA');
+			window.allSPKData = data.data || [];
+			allSPKData = window.allSPKData; // Keep local reference
+			
+			// Call existing functions if available
+			if (typeof updateStatistics === 'function') {
+				updateStatistics();
+			}
+			if (typeof applyFilters === 'function') {
+				applyFilters();
+			}
+		})
+		.catch(e => {
+			console.error('❌ SPK data load failed:', e);
+		});
+};
+
 document.addEventListener('DOMContentLoaded', () => {
 	const tbody = document.querySelector('#spkList tbody');
 	
 	const load = () => fetch('<?= base_url('service/spk/list') ?>').then(r=>r.json()).then(j=>{
-		allSPKData = j.data || [];
+		window.allSPKData = j.data || [];
+		allSPKData = window.allSPKData; // Keep local reference
 		updateStatistics();
 		applyFilters();
 	});
+	
+	// Make load function globally accessible
+	window.load = load;
 	
 	function updateStatistics() {
 		const total = allSPKData.length;
@@ -249,7 +292,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		updatePagination();
 	}
 	
+	// Make functions globally accessible for SPA system
+	window.updateStatistics = updateStatistics;
+	window.applyFilters = applyFilters;
+	
 	function renderSPKTable() {
+		// Get tbody reference each time to ensure it exists
+		const tbody = document.querySelector('#spkList tbody');
+		if (!tbody) {
+			console.error('❌ tbody not found in renderSPKTable');
+			return;
+		}
+		
 		const startIndex = (currentPage - 1) * entriesPerPage;
 		const endIndex = startIndex + entriesPerPage;
 		const dataToShow = filteredSPKData.slice(startIndex, endIndex);
@@ -280,10 +334,15 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				let approvalButtons = [];
 				
+				// Determine if this is an ATTACHMENT SPK (skip Persiapan Unit)
+				const isAttachmentSpk = (r.jenis_spk && r.jenis_spk.toUpperCase() === 'ATTACHMENT');
+				
 				// Add active button for current stage
-				if (!persiapanDone) {
+				if (!persiapanDone && !isAttachmentSpk) {
+					// Normal workflow: Start with Persiapan Unit (UNIT SPK only)
 					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('persiapan_unit', 'Bag. Persiapan Unit', ${r.id})">Persiapan Unit</button>`);
-				} else if (!fabrikasiDone) {
+				} else if ((!fabrikasiDone && persiapanDone) || (!fabrikasiDone && isAttachmentSpk)) {
+					// Next stage: Fabrikasi (after Persiapan Unit for UNIT SPK, or directly for ATTACHMENT SPK)
 					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('fabrikasi', 'Bag. Fabrikasi', ${r.id})">Fabrikasi</button>`);
 				} else if (!paintingDone) {
 					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('painting', 'Bag. Painting', ${r.id})">Painting</button>`);
@@ -294,9 +353,10 @@ document.addEventListener('DOMContentLoaded', () => {
 					approvalButtons.push('<span class="text-info">Menunggu update status ke READY</span>');
 				}
 				
-				// Add small completed badges
+				// Add small completed badges (skip Persiapan Unit badge for ATTACHMENT SPK)
 				const completedBadges = [];
-				if (persiapanDone) completedBadges.push('<small class="badge bg-success me-1">✓ Persiapan Unit</small>');
+				if (persiapanDone && !isAttachmentSpk) completedBadges.push('<small class="badge bg-success me-1">✓ Persiapan Unit</small>');
+				if (isAttachmentSpk && !persiapanDone) completedBadges.push('<small class="badge bg-info me-1">Skip Persiapan Unit</small>'); // Indicator that this step was skipped
 				if (fabrikasiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Fabrikasi</small>');
 				if (paintingDone) completedBadges.push('<small class="badge bg-success me-1">✓ Painting</small>');
 				if (pdiDone) completedBadges.push('<small class="badge bg-success me-1">✓ PDI</small>');
@@ -394,7 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	load();
 	
 	window.confirmReady = (id) => {
-		fetch(`<?= base_url('service/spk/confirm-ready/') ?>${id}`, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}})
+		fetch('<?= base_url('service/spk/confirm-ready/') ?>' + id, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}})
 		 .then(r=>r.json()).then(()=>load());
 	}
 
@@ -404,7 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const body = document.getElementById('spkDetailBody');
 		body.innerHTML = '<p class="text-muted">Memuat...</p>';
 
-		fetch(`<?= base_url('service/spk/detail/') ?>${id}`).then(r=>r.json()).then(j=>{
+		fetch('<?= base_url('service/spk/detail/') ?>' + id).then(r=>r.json()).then(j=>{
 			if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; return; }
             const d = j.data || {};
             const s = j.spesifikasi || {};
@@ -426,10 +486,15 @@ document.addEventListener('DOMContentLoaded', () => {
 				const paintingDone = d.painting_tanggal_approve ? true : false;
 				const pdiDone = d.pdi_tanggal_approve ? true : false;
 				
+				// Determine if this is an ATTACHMENT SPK (skip Persiapan Unit)
+				const isAttachmentSpk = (d.jenis_spk && d.jenis_spk.toUpperCase() === 'ATTACHMENT');
+				
 				// Add buttons for incomplete stages
-				if (!persiapanDone) {
+				if (!persiapanDone && !isAttachmentSpk) {
+					// Normal workflow: Start with Persiapan Unit (UNIT SPK only)
 					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'persiapan_unit\', \'Bag. Persiapan Unit\')">Persiapan Unit</button>');
-				} else if (!fabrikasiDone) {
+				} else if ((!fabrikasiDone && persiapanDone) || (!fabrikasiDone && isAttachmentSpk)) {
+					// Next stage: Fabrikasi (after Persiapan Unit for UNIT SPK, or directly for ATTACHMENT SPK)
 					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'fabrikasi\', \'Bag. Fabrikasi\')">Fabrikasi</button>');
 				} else if (!paintingDone) {
 					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'painting\', \'Bag. Painting\')">Painting</button>');
@@ -437,8 +502,9 @@ document.addEventListener('DOMContentLoaded', () => {
 					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'pdi\', \'Bag. PDI Pengecekan\')">PDI Pengecekan</button>');
 				}
 				
-				// Show completed stages with checkmarks
-				if (persiapanDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Persiapan Unit</span>');
+				// Show completed stages with checkmarks (skip Persiapan Unit for ATTACHMENT SPK)
+				if (persiapanDone && !isAttachmentSpk) approvalButtons.push('<span class="badge bg-success me-1">✓ Persiapan Unit</span>');
+				if (isAttachmentSpk && !persiapanDone) approvalButtons.push('<span class="badge bg-info me-1">Skip Persiapan Unit</span>'); // Indicator that this step was skipped
 				if (fabrikasiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Fabrikasi</span>');
 				if (paintingDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Painting</span>');
 				if (pdiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ PDI</span>');
@@ -574,24 +640,40 @@ document.addEventListener('DOMContentLoaded', () => {
 					
 					<div class="col-12">
 						<div class="row g-2">
-							<div class="col-6">
-								<strong>1. Persiapan Unit:</strong> 
-								${d.persiapan_unit_tanggal_approve ? 
-									`<span class="badge bg-success">✓ Selesai</span><br>
-									<small>Oleh: ${d.persiapan_unit_mekanik||'-'} <br>
-									Tanggal: ${d.persiapan_unit_tanggal_approve||'-'}<br>
-									Unit ID: ${workflowData.persiapan_unit_id||'-'}</small>` 
-									: '<span class="badge bg-warning">Menunggu</span>'}
-							</div>
-							<div class="col-6">
-								<strong>2. Fabrikasi:</strong> 
-								${d.fabrikasi_tanggal_approve ? 
-									`<span class="badge bg-success">✓ Selesai</span><br>
-									<small>Oleh: ${d.fabrikasi_mekanik||'-'} <br>
-									Tanggal: ${d.fabrikasi_tanggal_approve||'-'}<br>
-									Attachment ID: ${workflowData.fabrikasi_attachment_id||'-'}</small>` 
-									: '<span class="badge bg-warning">Menunggu</span>'}
-							</div>
+							${(d.jenis_spk && d.jenis_spk.toUpperCase() === 'ATTACHMENT') ? `
+								<div class="col-12">
+									<strong>1. Persiapan Unit:</strong> 
+									<span class="badge bg-info">Skip (SPK Attachment)</span>
+								</div>
+								<div class="col-6">
+									<strong>2. Fabrikasi:</strong> 
+									${d.fabrikasi_tanggal_approve ? 
+										'<span class="badge bg-success">✓ Selesai</span><br>' +
+										'<small>Oleh: ' + (d.fabrikasi_mekanik||'-') + ' <br>' +
+										'Tanggal: ' + (d.fabrikasi_tanggal_approve||'-') + '<br>' +
+										'Attachment ID: ' + (workflowData.fabrikasi_attachment_id||'-') + '</small>' 
+										: '<span class="badge bg-warning">Menunggu</span>'}
+								</div>
+							` : `
+								<div class="col-6">
+									<strong>1. Persiapan Unit:</strong> 
+									${d.persiapan_unit_tanggal_approve ? 
+										'<span class="badge bg-success">✓ Selesai</span><br>' +
+										'<small>Oleh: ' + (d.persiapan_unit_mekanik||'-') + ' <br>' +
+										'Tanggal: ' + (d.persiapan_unit_tanggal_approve||'-') + '<br>' +
+										'Unit ID: ' + (workflowData.persiapan_unit_id||'-') + '</small>' 
+										: '<span class="badge bg-warning">Menunggu</span>'}
+								</div>
+								<div class="col-6">
+									<strong>2. Fabrikasi:</strong> 
+									${d.fabrikasi_tanggal_approve ? 
+										'<span class="badge bg-success">✓ Selesai</span><br>' +
+										'<small>Oleh: ' + (d.fabrikasi_mekanik||'-') + ' <br>' +
+										'Tanggal: ' + (d.fabrikasi_tanggal_approve||'-') + '<br>' +
+										'Attachment ID: ' + (workflowData.fabrikasi_attachment_id||'-') + '</small>' 
+										: '<span class="badge bg-warning">Menunggu</span>'}
+								</div>
+							`}
 							<div class="col-6">
 								<strong>3. Painting:</strong> 
 								${d.painting_tanggal_approve ? 
@@ -638,7 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						const formData = new FormData();
 						formData.append('status', 'IN_PROGRESS');
 						
-						fetch(`<?= base_url('service/spk/update-status/') ?>${id}`, {
+						fetch('<?= base_url('service/spk/update-status/') ?>' + id, {
 							method: 'POST',
 							headers: {'X-Requested-With': 'XMLHttpRequest'},
 							body: formData
@@ -792,7 +874,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		
 		if (stage === 'persiapan_unit') {
 			// Get SPK details to show requested accessories and unit count
-			fetch(`<?= base_url('service/spk/detail/') ?>${spkId}`).then(r=>r.json()).then(j=>{
+			fetch('<?= base_url('service/spk/detail/') ?>' + spkId).then(r=>r.json()).then(j=>{
 				if (j.success) {
 					const spkData = j.data || {};
 					const spesifikasi = j.spesifikasi || {};
@@ -1005,6 +1087,13 @@ document.addEventListener('DOMContentLoaded', () => {
 					
 					// Check if Electric department (id=2) - needs battery/charger
 					const isElectric = departemenId === '2';
+					const isGasoline = departemenName === 'GASOLINE';
+					const isDiesel = departemenName === 'DIESEL';
+					const isNonElectric = isGasoline || isDiesel;
+					
+					console.log(`DEBUG: Unit ${unitId} - Department: ${departemenName} (ID: ${departemenId})`);
+					console.log(`DEBUG: isElectric: ${isElectric}, isGasoline: ${isGasoline}, isDiesel: ${isDiesel}, isNonElectric: ${isNonElectric}`);
+					
 					const electricFields = document.getElementById(`electricFields${suffix}`);
 					
 					// Fabrikasi (attachment) berlaku untuk SEMUA unit, bukan hanya departemen tertentu
@@ -1031,7 +1120,8 @@ document.addEventListener('DOMContentLoaded', () => {
 							console.log(`Unit ${unitId} component status: battery=${hasBattery}, charger=${hasCharger}, attachment=${hasAttachment}`);
 							
 							// Handle Electric components (battery/charger) - smart detection
-							if (isElectric || hasBattery || hasCharger) {
+							// DEPARTMENTAL RULES: GASOLINE dan DIESEL tidak boleh punya battery/charger
+							if (!isNonElectric && (isElectric || hasBattery || hasCharger)) {
 								if (electricFields) {
 									// Check if component UI already exists for this unit
 									const existingRenderKey = `component-ui-${unitId}-${suffix}`;
@@ -1058,6 +1148,17 @@ document.addEventListener('DOMContentLoaded', () => {
 		 								electricFields.innerHTML = componentUI;
 		 							}
 		 							electricFields.style.display = 'block';
+								}
+							} else if (isNonElectric && (hasBattery || hasCharger)) {
+								// GASOLINE/DIESEL unit yang memiliki battery/charger - auto-detach
+								if (electricFields) {
+									electricFields.innerHTML = `
+										<div class="alert alert-warning">
+											<i class="fas fa-exclamation-triangle me-2"></i>Unit ${departemenName} tidak memerlukan battery dan charger.
+											<br>Battery dan charger yang terpasang akan otomatis dilepas dari unit ini.
+										</div>
+									`;
+									electricFields.style.display = 'block';
 								}
 							} else if (electricFields) {
 								electricFields.style.display = 'none';
@@ -1180,6 +1281,13 @@ document.addEventListener('DOMContentLoaded', () => {
 					}).finally(() => {
 						// Reset processing flag
 						this.dataset.processing = 'false';
+						
+						// Apply departmental rules after UI is generated
+						const unitData = {
+							unit_id: unitId,
+							departement_name: departemenName
+						};
+						applyDepartmentalRulesAfterUIGeneration(unitData, suffix);
 					});
 					
 					// Note: Fabrikasi component management is now handled in universal detection above
@@ -1674,7 +1782,7 @@ document.addEventListener('DOMContentLoaded', () => {
 async function fetchUnitComponentData(unitId) {
 	try {
 		console.log('Fetching unit component data for unit:', unitId);
-		const apiUrl = `<?= base_url('warehouse/inventory/unit-components') ?>?unit_id=${unitId}`;
+		const apiUrl = '<?= base_url('warehouse/inventory/unit-components') ?>?unit_id=' + unitId;
 		console.log('API URL:', apiUrl);
 		
 		const response = await fetch(apiUrl, {
@@ -2556,11 +2664,124 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Also initialize when SPK modal is opened
-$(document).on('shown.bs.modal', '#detailSPKModal', function() {
-	setTimeout(() => {
-		attachDuplicateValidationListeners();
-	}, 500);
+document.addEventListener('shown.bs.modal', function(e) {
+	if (e.target.id === 'detailSPKModal') {
+		setTimeout(() => {
+			attachDuplicateValidationListeners();
+		}, 500);
+	}
 });
+
+/**
+ * Handle departmental rules for GASOLINE/DIESEL units
+ * These units should not have battery or charger components
+ */
+function handleDepartmentalRules(departmentName, unitId, suffix) {
+	console.log(`Applying departmental rules for ${departmentName} unit ${unitId}`);
+	
+	const isGasoline = departmentName === 'GASOLINE';
+	const isDiesel = departmentName === 'DIESEL';
+	const isNonElectric = isGasoline || isDiesel;
+	
+	if (isNonElectric) {
+		// Auto-uncheck and disable battery/charger for GASOLINE/DIESEL units
+		const batteryCheckbox = document.getElementById(`useExistingBattery${suffix}`);
+		const chargerCheckbox = document.getElementById(`useExistingCharger${suffix}`);
+		const batterySelect = document.getElementById(`batteryPick${suffix}`);
+		const chargerSelect = document.getElementById(`chargerPick${suffix}`);
+		
+		// Uncheck existing components
+		if (batteryCheckbox) {
+			batteryCheckbox.checked = false;
+			batteryCheckbox.disabled = true;
+			batteryCheckbox.parentElement.style.opacity = '0.5';
+		}
+		
+		if (chargerCheckbox) {
+			chargerCheckbox.checked = false;
+			chargerCheckbox.disabled = true;
+			chargerCheckbox.parentElement.style.opacity = '0.5';
+		}
+		
+		// Disable selection dropdowns
+		if (batterySelect) {
+			batterySelect.disabled = true;
+			batterySelect.value = '';
+			batterySelect.style.opacity = '0.5';
+		}
+		
+		if (chargerSelect) {
+			chargerSelect.disabled = true;
+			chargerSelect.value = '';
+			chargerSelect.style.opacity = '0.5';
+		}
+		
+		// Auto-check replace options to trigger detachment
+		const replaceBatteryCheckbox = document.getElementById(`replaceBattery${suffix}`);
+		const replaceChargerCheckbox = document.getElementById(`replaceCharger${suffix}`);
+		
+		if (replaceBatteryCheckbox) {
+			replaceBatteryCheckbox.checked = true;
+			replaceBatteryCheckbox.disabled = true;
+			
+			// Don't select replacement - this will detach existing battery
+			const replaceBatterySelect = document.getElementById(`batteryPick${suffix}`);
+			if (replaceBatterySelect) {
+				replaceBatterySelect.value = '';
+				replaceBatterySelect.disabled = true;
+			}
+		}
+		
+		if (replaceChargerCheckbox) {
+			replaceChargerCheckbox.checked = true;
+			replaceChargerCheckbox.disabled = true;
+			
+			// Don't select replacement - this will detach existing charger
+			const replaceChargerSelect = document.getElementById(`chargerPick${suffix}`);
+			if (replaceChargerSelect) {
+				replaceChargerSelect.value = '';
+				replaceChargerSelect.disabled = true;
+			}
+		}
+		
+		// Show info message
+		const electricFields = document.getElementById(`electricFields${suffix}`);
+		if (electricFields) {
+			const warningMessage = `
+				<div class="alert alert-warning">
+					<i class="fas fa-exclamation-triangle me-2"></i>
+					<strong>Aturan Departemen ${departmentName}:</strong><br>
+					Unit ${departmentName} tidak memerlukan battery dan charger.<br>
+					Komponen electric yang terpasang akan otomatis dilepas dari unit ini.
+				</div>
+			`;
+			
+			// Prepend warning to existing content
+			electricFields.innerHTML = warningMessage + electricFields.innerHTML;
+		}
+		
+		console.log(`Applied departmental rules: disabled battery/charger for ${departmentName} unit`);
+	}
+}
+
+/**
+ * Apply departmental rules when unit is selected
+ * Should be called after component UI is generated
+ */
+function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
+	console.log('DEBUG: applyDepartmentalRulesAfterUIGeneration called with:', unitData, suffix);
+	
+	if (unitData && unitData.departement_name) {
+		console.log('DEBUG: Applying departmental rules for department:', unitData.departement_name);
+		
+		// Small delay to ensure UI is fully rendered
+		setTimeout(() => {
+			handleDepartmentalRules(unitData.departement_name, unitData.unit_id, suffix);
+		}, 100);
+	} else {
+		console.log('DEBUG: No department name found, skipping departmental rules');
+	}
+}
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

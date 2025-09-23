@@ -94,19 +94,22 @@ class KontrakModel extends Model
      */
     public function getContractsForDataTable($start, $length, $search, $orderColumn, $orderDir)
     {
-        $builder = $this->db->table($this->table);
+        $builder = $this->db->table($this->table . ' k');
+        
+        // Join with users table for counting
+        $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
         
         // Filter out invalid IDs (0 or null)
-        $builder->where('id >', 0);
-        $builder->where('id IS NOT NULL', null, false);
+        $builder->where('k.id >', 0);
+        $builder->where('k.id IS NOT NULL', null, false);
         
         // Search functionality for counting
         if (!empty($search)) {
             $builder->groupStart()
-                    ->like('no_kontrak', $search)
-                    ->orLike('pelanggan', $search)
-                    ->orLike('lokasi', $search)
-                    ->orLike('status', $search)
+                    ->like('k.no_kontrak', $search)
+                    ->orLike('k.pelanggan', $search)
+                    ->orLike('k.lokasi', $search)
+                    ->orLike('k.status', $search)
                     ->groupEnd();
         }
 
@@ -114,31 +117,38 @@ class KontrakModel extends Model
         $totalRecords = $builder->countAllResults(false);
 
         // Reset builder for actual data query
-        $builder = $this->db->table($this->table);
+        $builder = $this->db->table($this->table . ' k');
         
-        // Explicitly select all columns we need
-        $builder->select('id, no_kontrak, no_po_marketing, pelanggan, pic, kontak, lokasi, nilai_total, total_units, tanggal_mulai, tanggal_berakhir, status, dibuat_pada, diperbarui_pada');
+        // Explicitly select all columns we need with dynamic calculations and user name
+        $builder->select('k.id, k.no_kontrak, k.no_po_marketing, k.pelanggan, k.pic, k.kontak, k.lokasi, k.jenis_sewa,
+                         (SELECT COALESCE(SUM(harga_sewa_bulanan), 0) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as nilai_total,
+                         (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as total_units,
+                         k.tanggal_mulai, k.tanggal_berakhir, k.status, k.dibuat_pada, k.diperbarui_pada,
+                         CONCAT(u.first_name, " ", u.last_name) as dibuat_oleh_nama');
+        
+        // Join with users table
+        $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
         
         // Filter out invalid IDs (0 or null)
-        $builder->where('id >', 0);
-        $builder->where('id IS NOT NULL', null, false);
+        $builder->where('k.id >', 0);
+        $builder->where('k.id IS NOT NULL', null, false);
         
         // Apply search again for data query
         if (!empty($search)) {
             $builder->groupStart()
-                    ->like('no_kontrak', $search)
-                    ->orLike('pelanggan', $search)
-                    ->orLike('lokasi', $search)
-                    ->orLike('status', $search)
+                    ->like('k.no_kontrak', $search)
+                    ->orLike('k.pelanggan', $search)
+                    ->orLike('k.lokasi', $search)
+                    ->orLike('k.status', $search)
                     ->groupEnd();
         }
 
         // Order
-        $columns = ['no_kontrak', 'pelanggan', 'tanggal_mulai', 'tanggal_berakhir', 'status'];
+        $columns = ['k.no_kontrak', 'k.pelanggan', 'k.tanggal_mulai', 'k.tanggal_berakhir', 'k.status'];
         if (isset($columns[$orderColumn])) {
             $builder->orderBy($columns[$orderColumn], $orderDir);
         } else {
-            $builder->orderBy('dibuat_pada', 'DESC');
+            $builder->orderBy('k.dibuat_pada', 'DESC');
         }
 
         // Limit
@@ -263,5 +273,44 @@ class KontrakModel extends Model
         }
         
         return $builder->countAllResults() === 0;
+    }
+
+    /**
+     * Find contract with dynamic calculations from inventory_unit
+     */
+    public function findWithDynamicCalculation($id)
+    {
+        // First get the basic contract data with user information
+        $contract = $this->db->table($this->table . ' k')
+            ->select('
+                k.*,
+                CONCAT(u.first_name, " ", u.last_name) as dibuat_oleh_nama
+            ')
+            ->join('users u', 'k.dibuat_oleh = u.id', 'left')
+            ->where('k.id', $id)
+            ->get()
+            ->getRowArray();
+            
+        if (!$contract) {
+            return null;
+        }
+
+        // Then get the dynamic calculations
+        $calculations = $this->db->query("
+            SELECT 
+                COUNT(iu.id_inventory_unit) as actual_units,
+                COALESCE(SUM(iu.harga_sewa_bulanan), 0) as total_nilai
+            FROM kontrak_spesifikasi ks
+            LEFT JOIN inventory_unit iu ON ks.id = iu.kontrak_spesifikasi_id
+            WHERE ks.kontrak_id = ?
+        ", [$id])->getRowArray();
+
+        // Override the calculated fields
+        if ($calculations) {
+            $contract['total_units'] = (int)$calculations['actual_units'];
+            $contract['nilai_total'] = (float)$calculations['total_nilai'];
+        }
+
+        return $contract;
     }
 }

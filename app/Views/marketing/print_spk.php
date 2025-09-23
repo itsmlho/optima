@@ -10,7 +10,7 @@ $placeholder = ($status === 'SUBMITTED');
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SPK (Persiapan Unit)</title>
+    <title><?= 'SPK-' . str_replace('/', '-', esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? 'Unknown')) ?></title>
     <!-- Completely disable favicon to prevent any icon display -->
     <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64,">
     <link rel="shortcut icon" type="image/x-icon" href="data:image/x-icon;base64,">
@@ -492,9 +492,15 @@ $placeholder = ($status === 'SUBMITTED');
     <!-- DEBUG: SPK data -->
     <!-- SPK ID: <?= $spk['id'] ?? 'NULL' ?> -->
     <!-- Spesifikasi ID: <?= $s['id'] ?? 'NULL' ?> -->
-    <!-- Prepared units count: <?= is_array($s['prepared_units_detail'] ?? []) ? count($s['prepared_units_detail']) : 'NULL' ?> -->
+    <!-- Prepared units count: <?= isset($s['prepared_units_detail']) && is_array($s['prepared_units_detail']) ? count($s['prepared_units_detail']) : 'NULL' ?> -->
     
-    <?php $preparedList = $s['prepared_units_detail'] ?? []; ?>
+    <?php 
+    // Safe handling for prepared_units_detail
+    $preparedList = [];
+    if (isset($s['prepared_units_detail']) && is_array($s['prepared_units_detail'])) {
+        $preparedList = $s['prepared_units_detail'];
+    }
+    ?>
     <?php if (is_array($preparedList) && count($preparedList) >= 1): ?>
         <!-- Multi-unit display with enhanced formatting -->
         <div class="mb-2" style="font-style: italic; color: #666;">
@@ -777,6 +783,16 @@ $placeholder = ($status === 'SUBMITTED');
 </div>
 
 <script>
+// Set document title for download filename
+document.addEventListener('DOMContentLoaded', function() {
+    const spkNumber = '<?= str_replace('/', '-', esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? 'Unknown')) ?>';
+    const fileName = 'SPK-' + spkNumber;
+    document.title = fileName;
+    
+    // Add page numbering functionality
+    addPageNumbers();
+});
+
 // Add page numbering functionality
 function addPageNumbers() {
     // Simple page counting for print
@@ -789,9 +805,6 @@ function addPageNumbers() {
     }
 }
 
-// Call on load
-document.addEventListener('DOMContentLoaded', addPageNumbers);
-
 // Option to toggle footer
 function togglePrintFooter(show = true) {
     const footer = document.getElementById('printFooter');
@@ -800,8 +813,10 @@ function togglePrintFooter(show = true) {
     }
 }
 
-// Auto-show footer when printing
+// Auto-show footer when printing and ensure title is set
 window.addEventListener('beforeprint', function() {
+    const spkNumber = '<?= str_replace('/', '-', esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? 'Unknown')) ?>';
+    document.title = 'SPK-' + spkNumber;
     togglePrintFooter(true);
 });
 </script>

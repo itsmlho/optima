@@ -111,7 +111,6 @@
                             <select class="form-select form-select-sm w-auto" name="jenis_spk" required>
                                 <option value="UNIT" selected>SPK Unit</option>
                                 <option value="ATTACHMENT">SPK Attachment</option>
-                                <option value="TUKAR">SPK Tukar</option>
                             </select>
                         </div>
                         
@@ -180,13 +179,18 @@
                                             <!-- Will be populated with specification details -->
                                         </div>
                                         
+                                        <!-- Attachment Inventory List (for SPK Attachment) -->
+                                        <div id="attachmentInventoryList">
+                                            <!-- Will be populated with attachment inventory when SPK type is ATTACHMENT -->
+                                        </div>
+                                        
                                         <div class="mt-3">
-                                            <label class="form-label">Jumlah Unit untuk SPK ini</label>
+                                            <label class="form-label" for="jumlahUnitSpk" id="jumlahUnitLabel">Jumlah Unit untuk SPK ini</label>
                                             <div class="input-group">
-                                                <input type="number" class="form-control" name="jumlah_unit" id="jumlahUnitSpk" min="1" required>
+                                                <input type="number" class="form-control" name="jumlah_unit" id="jumlahUnitSpk" min="1" required placeholder="Jumlah unit">
                                                 <span class="input-group-text" id="maxUnitInfo">dari 0 tersedia</span>
                                             </div>
-                                            <div class="form-text">Masukkan jumlah unit yang akan diproses dalam SPK ini</div>
+                                            <div class="form-text" id="jumlahUnitFormText">Masukkan jumlah unit yang akan diproses dalam SPK ini</div>
                                         </div>
                                     </div>
                                 </div>
@@ -209,7 +213,7 @@
 
     <!-- Modal Buat DI -->
     <div class="modal fade" id="diModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
+        <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header"><h6 class="modal-title">Buat Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
                 <form id="diForm">
@@ -239,21 +243,45 @@
                             <div class="form-text">Alasan/konteks dari perintah kerja ini</div>
                         </div>
                         
-                        <div class="mb-2">
-                            <label class="form-label">Item Terpilih (dari Service)</label>
-                            <div class="alert alert-light border" id="diSelectedSummary">
-                                <span class="text-muted">Belum ada ringkasan.</span>
+                        <!-- TUKAR Workflow Section: Unit TARIK dari kontrak SPK -->
+                        <div id="spkTukarWorkflow" style="display:none;" class="mb-3">
+                            <div class="alert alert-info">
+                                <i class="fas fa-exchange-alt"></i> 
+                                <strong>Workflow TUKAR:</strong> Pilih unit dari kontrak yang akan ditarik sebagai pengganti
                             </div>
+                            
+                            <!-- Unit TARIK Section for TUKAR -->
+                            <div class="card border-warning">
+                                <div class="card-header bg-warning text-dark">
+                                    <h6 class="mb-0"><i class="fas fa-minus-circle"></i> Unit TARIK (dari kontrak SPK ini)</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <div class="small text-muted">Terpilih: <span id="spkTarikCount">0</span> unit</div>
+                                        <div>
+                                            <button class="btn btn-sm btn-outline-warning" type="button" id="spkBtnSelectAllTarik">Pilih Semua</button>
+                                            <button class="btn btn-sm btn-outline-secondary" type="button" id="spkBtnClearTarik">Bersihkan</button>
+                                        </div>
+                                    </div>
+                                    <div id="spkTarikUnitList" class="unit-list" style="max-height:200px; overflow:auto;">
+                                        <div class="text-muted small">Memuat unit dari kontrak...</div>
+                                    </div>
+                                    <div class="form-text">Unit yang dipilih akan dihapus dari kontrak (untuk penggantian)</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-2">
                             <div id="diUnitsPick" class="mt-2" style="display:none">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <strong>Pilih Unit yang akan dikirim</strong>
+                                    <strong id="diPickLabel">Pilih Unit yang akan dikirim</strong>
                                     <div class="btn-group btn-group-sm">
                                         <button type="button" class="btn btn-outline-secondary" id="btnSelectAllUnits">Pilih Semua</button>
                                         <button type="button" class="btn btn-outline-secondary" id="btnClearUnits">Bersihkan</button>
                                     </div>
                                 </div>
                                 <div id="diUnitsList" class="border rounded p-2" style="max-height:200px; overflow:auto"></div>
-                                <div class="form-text">Centang unit yang ingin dimasukkan ke DI ini.</div>
+                                <div class="form-text" id="diPickHelp">Centang unit yang ingin dimasukkan ke DI ini.</div>
                             </div>
                         </div>
                         <div class="row g-2">
@@ -276,6 +304,15 @@
         const mapDI  = { SUBMITTED:'secondary', DISPATCHED:'info', ARRIVED:'success', CANCELLED:'danger' };
         const cls = (entity==='DI'?mapDI[s]:mapSPK[s]) || 'secondary';
         return `<span class="badge bg-${cls}">${status}</span>`;
+    }
+    
+    // Global function for SPK TUKAR workflow unit count (must be global for onchange access)
+    function updateSpkTarikCount() {
+        const checked = document.querySelectorAll('.spk-tarik-unit-check:checked');
+        const countElement = document.getElementById('spkTarikCount');
+        if (countElement) {
+            countElement.textContent = checked.length;
+        }
     }
     
     // Global variables for filtering
@@ -479,25 +516,109 @@
                 if (pickWrap) { pickWrap.style.display = 'none'; list.innerHTML = ''; }
                 fetch(`<?= base_url('marketing/spk/detail/') ?>${data.id}`).then(r=>r.json()).then(j=>{
                     if (!(j && j.success)) { if(sum) sum.innerHTML = '<span class="text-danger">Gagal memuat ringkasan item.</span>'; return; }
+                    
+                    // ENHANCEMENT: Detect SPK type for dynamic labels
+                    const spkType = j && j.jenis_spk ? j.jenis_spk.toUpperCase() : 'UNIT';
+                    const isAttachmentSpk = (spkType === 'ATTACHMENT');
+                    
+                    // Update labels based on SPK type
+                    const pickLabel = document.getElementById('diPickLabel');
+                    const pickHelp = document.getElementById('diPickHelp');
+                    if (pickLabel) {
+                        pickLabel.textContent = isAttachmentSpk ? 'Pilih Attachment yang akan dikirim' : 'Pilih Unit yang akan dikirim';
+                    }
+                    if (pickHelp) {
+                        pickHelp.textContent = isAttachmentSpk ? 'Centang attachment yang ingin dimasukkan ke DI ini.' : 'Centang unit yang ingin dimasukkan ke DI ini.';
+                    }
+                    
+                    console.log('✅ SPK page - Type:', spkType, 'isAttachment:', isAttachmentSpk);
+                    
                     const s = j.spesifikasi || {};
+                    
+                    // Enhanced attachment detection for ATTACHMENT SPK (following di.php logic)
+                    if (isAttachmentSpk) {
+                        console.log('🔍 DEBUG SPK ATTACHMENT - using di.php logic approach');
+                        
+                        // For ATTACHMENT SPK, check selected attachment from spesifikasi (like di.php)
+                        const selected = j && j.spesifikasi && j.spesifikasi.selected ? j.spesifikasi.selected : {};
+                        console.log('🔍 DEBUG spesifikasi.selected:', selected);
+                        
+                        // Check multiple possible attachment data locations (following di.php logic)
+                        let attachmentData = null;
+                        if (selected.attachment) {
+                            attachmentData = selected.attachment;
+                            console.log('✅ Found attachment in selected.attachment (spk.php):', attachmentData);
+                        } else if (selected.inventory_attachment_id) {
+                            // Try to use inventory_attachment_id if available
+                            attachmentData = {
+                                id: selected.inventory_attachment_id,
+                                label: 'Attachment Item',
+                                tipe: 'Attachment',
+                                merk: '-'
+                            };
+                            console.log('✅ Found attachment via inventory_attachment_id (spk.php):', selected.inventory_attachment_id);
+                        } else if (j.spesifikasi.attachment_merk || j.spesifikasi.attachment_tipe) {
+                            // Fallback to basic attachment info from spesifikasi
+                            attachmentData = {
+                                id: 'att_' + (j.data?.id || '1'),
+                                label: j.spesifikasi.attachment_merk || 'Attachment Item',
+                                tipe: j.spesifikasi.attachment_tipe || 'Attachment',
+                                merk: j.spesifikasi.attachment_merk || '-'
+                            };
+                            console.log('✅ Created attachment from spesifikasi fields (spk.php):', attachmentData);
+                        }
+                        
+                        if (attachmentData) {
+                            // Show attachment item for ATTACHMENT SPK (same as di.php approach)
+                            const attachLabel = attachmentData.label || 'Attachment Item';
+                            const attachInfo = attachmentData.tipe ? ` (${attachmentData.tipe} - ${attachmentData.merk || '-'})` : '';
+                            const html = `<ul class=\"mb-0\"><li>📎 Attachment: ${attachLabel}${attachInfo}</li></ul>`;
+                            if (sum) sum.innerHTML = html;
+                            console.log('✅ ATTACHMENT SPK summary displayed (spk.php):', attachLabel);
+                            
+                            // Also create checkbox list for consistency  
+                            if (pickWrap && list) {
+                                pickWrap.style.display = 'block';
+                                const attachId = attachmentData.id || 'att1';
+                                list.innerHTML = `<div class=\"form-check\"><input class=\"form-check-input di-unit-check\" type=\"checkbox\" value=\"${attachId}\" id=\"di_attach_${attachId}\" checked><label class=\"form-check-label\" for=\"di_attach_${attachId}\">1. 📎 ${attachLabel}${attachInfo}</label></div>`;
+                                
+                                // Select all / clear buttons
+                                const btnAll = document.getElementById('btnSelectAllUnits');
+                                const btnClr = document.getElementById('btnClearUnits');
+                                if (btnAll) btnAll.onclick = ()=>{ document.querySelectorAll('.di-unit-check').forEach(ch=>ch.checked=true); };
+                                if (btnClr) btnClr.onclick = ()=>{ document.querySelectorAll('.di-unit-check').forEach(ch=>ch.checked=false); };
+                            }
+                        } else {
+                            // No attachment data found
+                            const html = '<div class="text-danger small">Belum ada attachment yang disiapkan pada SPK ATTACHMENT ini.</div>';
+                            if (sum) sum.innerHTML = html;
+                            console.log('❌ No attachment data found for SPK ATTACHMENT (spk.php)');
+                        }
+                        return; // Exit early for ATTACHMENT SPK - don't process prepared_units_detail
+                    }
+                    
                     // If prepared_units_detail exists (multi-unit), render selectable list
                     const details = Array.isArray(s.prepared_units_detail) ? s.prepared_units_detail : [];
+                    
                     if (details.length > 0 && pickWrap && list) {
                         pickWrap.style.display = 'block';
+                        
+                        // Standard unit rendering for UNIT SPK only (ATTACHMENT SPK already handled above)
                         list.innerHTML = details.map((it,idx)=>{
                             const label = (it.unit_label || `${it.no_unit||'-'} - ${it.merk_unit||'-'} ${it.model_unit||''}`);
                             const sn = it.serial_number ? ` [SN: ${it.serial_number}]` : '';
                             return `<div class=\"form-check\"><input class=\"form-check-input di-unit-check\" type=\"checkbox\" value=\"${it.unit_id}\" id=\"di_unit_${it.unit_id}\" checked><label class=\"form-check-label\" for=\"di_unit_${it.unit_id}\">${idx+1}. ${label}${sn}</label></div>`;
                         }).join('');
                         // Summary
-                        if (sum) sum.innerHTML = `<span class=\"text-success\">${details.length} unit disiapkan oleh Service. Silakan pilih yang akan dikirim.</span>`;
+                        const itemType = isAttachmentSpk ? 'attachment' : 'unit';
+                        if (sum) sum.innerHTML = `<span class=\"text-success\">${details.length} ${itemType} disiapkan oleh Service. Silakan pilih yang akan dikirim.</span>`;
                         // Select all / clear
                         const btnAll = document.getElementById('btnSelectAllUnits');
                         const btnClr = document.getElementById('btnClearUnits');
                         if (btnAll) btnAll.onclick = ()=>{ document.querySelectorAll('.di-unit-check').forEach(ch=>ch.checked=true); };
                         if (btnClr) btnClr.onclick = ()=>{ document.querySelectorAll('.di-unit-check').forEach(ch=>ch.checked=false); };
                     } else {
-                        // Fallback to legacy single selected summary
+                        // Standard UNIT SPK handling (original logic) - ATTACHMENT SPK already handled above
                         const u = s.selected && s.selected.unit ? s.selected.unit : null;
                         const a = s.selected && s.selected.attachment ? s.selected.attachment : null;
                         const unit = u ? `${u.no_unit||'-'} - ${u.merk_unit||'-'} ${u.model_unit||''} @ ${u.lokasi_unit||'-'}${u.serial_number?` [SN: ${u.serial_number}]`:''}` : null;
@@ -527,8 +648,8 @@
     function loadKontrakOptions(q){
         const url = new URL('<?= base_url('marketing/spk/kontrak-options') ?>', window.location.origin);
         if(q) url.searchParams.set('q', q);
-        const jenisSel = document.querySelector('select[name="jenis_spk"]');
-        const jenis = jenisSel ? jenisSel.value : 'UNIT';
+        const jenisSpkElement = document.querySelector('select[name="jenis_spk"]');
+        const jenis = jenisSpkElement ? jenisSpkElement.value : 'UNIT';
         const kontrakStatus = (jenis === 'TUKAR') ? 'Aktif' : 'Pending';
         url.searchParams.set('status', kontrakStatus);
         fetch(url).then(r=>r.json()).then(j=>{
@@ -646,8 +767,8 @@
             const v = kontrakInput.value.trim();
             const url = new URL('<?= base_url('marketing/spk/kontrak-options') ?>', window.location.origin);
             if (v) url.searchParams.set('q', v);
-            const jenisSel = document.querySelector('select[name="jenis_spk"]');
-            const jenis = jenisSel ? jenisSel.value : 'UNIT';
+            const spkJenisSelect = document.querySelector('select[name="jenis_spk"]');
+            const jenis = spkJenisSelect ? spkJenisSelect.value : 'UNIT';
             url.searchParams.set('status', (jenis === 'TUKAR') ? 'Aktif' : 'Pending');
             fetch(url).then(r=>r.json()).then(j=>{
                 const rows = j.data||[];
@@ -806,6 +927,10 @@
         
         // Load specifications for selected contract
         function loadKontrakSpesifikasiForSpk(kontrakId) {
+            // Get selected SPK type to filter specifications
+            const spkTypeElement = document.querySelector('select[name="jenis_spk"]');
+            const jenisSpk = spkTypeElement ? spkTypeElement.value : 'UNIT';
+            
             fetch(`<?= base_url('marketing/kontrak/spesifikasi/') ?>${kontrakId}`, {
                 method: 'GET',
                 headers: {
@@ -818,16 +943,69 @@
                     console.log('Specification data received:', data);
                     let options = '<option value="">-- Pilih Spesifikasi --</option>';
                     if (data.success && data.data) {
-                        console.log('Processing ' + data.data.length + ' specifications');
-                        data.data.forEach(spek => {
+                        console.log('Processing ' + data.data.length + ' specifications for SPK type:', jenisSpk);
+                        
+                        // Debug: log all specifications to see what fields are available
+                        data.data.forEach((spek, index) => {
+                            console.log(`Spec ${index}:`, {
+                                spek_kode: spek.spek_kode,
+                                tipe_unit_id: spek.tipe_unit_id,
+                                attachment_tipe: spek.attachment_tipe,
+                                attachment_merk: spek.attachment_merk,
+                                jumlah_dibutuhkan: spek.jumlah_dibutuhkan
+                            });
+                        });
+                        
+                        // Filter specifications based on SPK type
+                        const filteredSpecs = data.data.filter(spek => {
+                            if (jenisSpk === 'ATTACHMENT') {
+                                // For attachment SPK, show specs that have attachment_tipe OR no unit specification
+                                // This allows for attachment-only specifications
+                                const hasAttachment = spek.attachment_tipe && spek.attachment_tipe.trim() !== '' && spek.attachment_tipe.trim() !== 'N/A' && spek.attachment_tipe !== 'null';
+                                const hasNoUnit = !spek.tipe_unit_id || spek.tipe_unit_id === '0' || spek.tipe_unit_id === '' || spek.tipe_unit_id === null;
+                                
+                                console.log(`Checking attachment for ${spek.spek_kode}: attachment_tipe="${spek.attachment_tipe}", hasAttachment=${hasAttachment}, hasNoUnit=${hasNoUnit}`);
+                                
+                                // Show if has attachment spec OR if it's an attachment-only spec (no unit defined)
+                                return hasAttachment || hasNoUnit;
+                            } else {
+                                // For unit SPK, show specs that have unit specifications (tipe_unit_id)
+                                const hasUnit = spek.tipe_unit_id && parseInt(spek.tipe_unit_id) > 0;
+                                console.log(`Checking unit for ${spek.spek_kode}: tipe_unit_id="${spek.tipe_unit_id}", hasUnit=${hasUnit}`);
+                                return hasUnit;
+                            }
+                        });
+                        
+                        console.log('Filtered ' + filteredSpecs.length + ' specifications for ' + jenisSpk);
+                        
+                        filteredSpecs.forEach(spek => {
                             console.log('Processing spec:', spek);
                             const available = spek.jumlah_dibutuhkan;
                             console.log('Available units:', available, 'dibutuhkan:', spek.jumlah_dibutuhkan);
                             
-                            // Show all specifications, not just those with available units
+                            // Create display label based on SPK type
+                            let displayLabel = '';
+                            if (jenisSpk === 'ATTACHMENT') {
+                                // For attachment SPK, show attachment info or generic label
+                                if (spek.attachment_tipe && spek.attachment_tipe !== 'null') {
+                                    displayLabel = `${spek.spek_kode} - ${spek.attachment_tipe} ${spek.attachment_merk || ''} (${spek.jumlah_dibutuhkan} qty)`;
+                                } else {
+                                    // Generic attachment spec (to be customized)
+                                    displayLabel = `${spek.spek_kode} - Attachment Specification (${spek.jumlah_dibutuhkan} qty)`;
+                                }
+                            } else {
+                                displayLabel = `${spek.spek_kode} - ${spek.jumlah_dibutuhkan} Unit (${available > 0 ? available : 0} available)`;
+                            }
+                            
                             const spekDataEncoded = btoa(encodeURIComponent(JSON.stringify(spek)));
-                            options += `<option value="${spek.id}" data-available="${available}" data-spek-encoded="${spekDataEncoded}">${spek.spek_kode} - ${spek.jumlah_dibutuhkan} Unit (${available > 0 ? available : 0} available)</option>`;
+                            options += `<option value="${spek.id}" data-available="${available}" data-spek-encoded="${spekDataEncoded}">${displayLabel}</option>`;
                         });
+                        
+                        if (filteredSpecs.length === 0) {
+                            const typeLabel = jenisSpk === 'ATTACHMENT' ? 'attachment' : 'unit';
+                            options = `<option value="">No ${typeLabel} specifications found</option>`;
+                        }
+                        
                         console.log('Generated options:', options);
                     } else {
                         console.log('No specification data or success=false:', data);
@@ -905,62 +1083,237 @@
                 return parseInt(amount).toLocaleString('id-ID');
             }
             
-            const detailHtml = `
-                <div class="row g-2">
-                    <div class="col-md-6">
-                        <strong>Kode Spesifikasi:</strong> ${spek.spek_kode || '-'}
+            // Get SPK type to determine what to display
+            const spkTypeSelector = document.querySelector('select[name="jenis_spk"]');
+            const jenisSpk = spkTypeSelector ? spkTypeSelector.value : 'UNIT';
+            
+            // Check if this specification has attachment data
+            const hasAttachment = spek.attachment_tipe || spek.attachment_merk;
+            const hasUnit = spek.tipe_unit_id && spek.tipe_unit_id !== '0';
+            
+            let detailHtml = '';
+            
+            if (jenisSpk === 'ATTACHMENT' || (hasAttachment && !hasUnit)) {
+                // For attachment SPK or attachment-only specifications
+                detailHtml = `
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <strong>Kode Spesifikasi:</strong> ${spek.spek_kode || '-'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Departemen:</strong> ${spek.nama_departemen || '-'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Tipe Attachment:</strong> ${spek.attachment_tipe || 'General Attachment'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Merk Attachment:</strong> ${spek.attachment_merk || 'Sesuai Permintaan'}
+                        </div>
+                        ${spek.jenis_baterai ? `
+                        <div class="col-md-6">
+                            <strong>Jenis Baterai:</strong> ${spek.jenis_baterai}
+                        </div>` : ''}
+                        ${spek.charger_name ? `
+                        <div class="col-md-6">
+                            <strong>Charger:</strong> ${spek.charger_name}
+                        </div>` : ''}
+                        <div class="col-md-6">
+                            <strong>Jumlah Dibutuhkan:</strong> ${spek.jumlah_dibutuhkan || '-'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Harga/Unit (Bulanan):</strong> Rp ${formatCurrency(spek.harga_per_unit_bulanan)}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Harga/Unit (Harian):</strong> Rp ${formatCurrency(spek.harga_per_unit_harian)}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Status:</strong> <span class="badge bg-info">${available > 0 ? 'Tersedia' : 'Proses Pengadaan'}</span>
+                        </div>
+                        ${spek.catatan_spek ? `<div class="col-12"><strong>Catatan:</strong> ${spek.catatan_spek}</div>` : ''}
                     </div>
-                    <div class="col-md-6">
-                        <strong>Departemen:</strong> ${spek.nama_departemen || '-'}
+                `;
+            } else {
+                // For unit SPK, show unit details (original format)
+                detailHtml = `
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <strong>Kode Spesifikasi:</strong> ${spek.spek_kode || '-'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Departemen:</strong> ${spek.nama_departemen || '-'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Tipe Unit:</strong> ${spek.tipe_unit_name || '-'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Jenis:</strong> ${spek.tipe_jenis || '-'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Merk/Model:</strong> ${spek.merk_unit || ''} ${spek.model_unit || ''}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Kapasitas:</strong> ${spek.kapasitas_name || '-'}
+                        </div>
+                        ${hasAttachment ? `
+                        <div class="col-md-6">
+                            <strong>Attachment:</strong> ${spek.attachment_tipe || '-'} ${spek.attachment_merk || ''}
+                        </div>` : ''}
+                        ${spek.jenis_baterai ? `
+                        <div class="col-md-6">
+                            <strong>Baterai:</strong> ${spek.jenis_baterai}
+                        </div>` : ''}
+                        ${spek.charger_name ? `
+                        <div class="col-md-6">
+                            <strong>Charger:</strong> ${spek.charger_name}
+                        </div>` : ''}
+                        ${spek.mast_name ? `
+                        <div class="col-md-6">
+                            <strong>Mast:</strong> ${spek.mast_name}
+                        </div>` : ''}
+                        ${spek.ban_name ? `
+                        <div class="col-md-6">
+                            <strong>Ban:</strong> ${spek.ban_name}
+                        </div>` : ''}
+                        ${spek.roda_name ? `
+                        <div class="col-md-6">
+                            <strong>Roda:</strong> ${spek.roda_name}
+                        </div>` : ''}
+                        ${spek.valve_name ? `
+                        <div class="col-md-6">
+                            <strong>Valve:</strong> ${spek.valve_name}
+                        </div>` : ''}
+                        <div class="col-md-6">
+                            <strong>Jumlah Unit:</strong> ${spek.jumlah_dibutuhkan || '-'}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Harga/Unit (Bulanan):</strong> Rp ${formatCurrency(spek.harga_per_unit_bulanan)}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Harga/Unit (Harian):</strong> Rp ${formatCurrency(spek.harga_per_unit_harian)}
+                        </div>
+                        ${spek.catatan_spek ? `<div class="col-12"><strong>Catatan:</strong> ${spek.catatan_spek}</div>` : ''}
                     </div>
-                    <div class="col-md-6">
-                        <strong>Tipe Unit:</strong> ${spek.tipe_unit_name || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Jenis:</strong> ${spek.tipe_jenis || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Merk/Model:</strong> ${spek.merk_unit || ''} ${spek.model_unit || ''}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Kapasitas:</strong> ${spek.kapasitas_name || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Attachment:</strong> ${spek.attachment || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Baterai:</strong> ${spek.jenis_baterai || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Charger:</strong> ${spek.charger_id || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Mast:</strong> ${spek.mast_id || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Ban:</strong> ${spek.ban_id || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Roda:</strong> ${spek.roda_id || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Valve:</strong> ${spek.valve_id || '-'}
-                    </div>
-                    <div class="col-md-6">
-                        <strong>Jumlah Unit:</strong> ${spek.jumlah_dibutuhkan || '-'}
-                    </div>
-                    <div class="col-md-12">
-                        <strong>Aksesoris:</strong> ${spek.aksesoris || '-'}
-                    </div>
-                    ${spek.catatan_spek ? `<div class="col-12"><strong>Catatan:</strong> ${spek.catatan_spek}</div>` : ''}
-                </div>
-            `;
+                `;
+            }
+            
             const spesifikasiInfo = document.getElementById('spesifikasiInfo');
             if (spesifikasiInfo) {
                 spesifikasiInfo.innerHTML = detailHtml;
             } else {
                 console.error('spesifikasiInfo element not found');
             }
+            
+            // Load attachment inventory if this is an attachment SPK
+            const jenisSpkSelector = document.querySelector('select[name="jenis_spk"]');
+            const currentJenisSpk = jenisSpkSelector ? jenisSpkSelector.value : 'UNIT';
+            
+            // Update form labels based on SPK type
+            const jumlahLabel = document.getElementById('jumlahUnitLabel');
+            const jumlahInput = document.getElementById('jumlahUnitSpk');
+            const formText = document.getElementById('jumlahUnitFormText');
+            
+            if (currentJenisSpk === 'ATTACHMENT') {
+                if (jumlahLabel) jumlahLabel.textContent = 'Jumlah Attachment untuk SPK ini';
+                if (formText) formText.textContent = 'Masukkan jumlah attachment yang akan diproses dalam SPK ini';
+                if (jumlahInput) jumlahInput.placeholder = 'Jumlah attachment';
+                
+                if (spek.attachment_tipe) {
+                    loadAttachmentInventory(spek.attachment_tipe, spek.attachment_merk);
+                }
+            } else {
+                if (jumlahLabel) jumlahLabel.textContent = 'Jumlah Unit untuk SPK ini';
+                if (formText) formText.textContent = 'Masukkan jumlah unit yang akan diproses dalam SPK ini';
+                if (jumlahInput) jumlahInput.placeholder = 'Jumlah unit';
+                
+                // Clear attachment inventory for unit SPK
+                const attachmentInventoryList = document.getElementById('attachmentInventoryList');
+                if (attachmentInventoryList) attachmentInventoryList.innerHTML = '';
+            }
+        }
+        
+        // Load attachment inventory based on specification
+        function loadAttachmentInventory(tipe, merk = '') {
+            console.log('Loading attachment inventory for:', tipe, merk);
+            
+            const params = new URLSearchParams({
+                tipe: tipe || '',
+                merk: merk || '',
+                status: 'TERSEDIA'
+            });
+            
+            fetch(`<?= base_url('warehouse/inventory/get-attachment-list') ?>?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Attachment inventory data:', data);
+                    
+                    const inventoryContainer = document.getElementById('attachmentInventoryList');
+                    if (!inventoryContainer) {
+                        console.warn('attachmentInventoryList container not found');
+                        return;
+                    }
+                    
+                    if (data.success && data.data && data.data.length > 0) {
+                        let html = `
+                            <div class="mb-3">
+                                <h6>Attachment Tersedia (${data.data.length} item)</h6>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Serial Number</th>
+                                                <th>Tipe</th>
+                                                <th>Merk</th>
+                                                <th>Model</th>
+                                                <th>Lokasi</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                        `;
+                        
+                        data.data.forEach(att => {
+                            html += `
+                                <tr>
+                                    <td>${att.sn_attachment || '-'}</td>
+                                    <td>${att.tipe || '-'}</td>
+                                    <td>${att.merk || '-'}</td>
+                                    <td>${att.model || '-'}</td>
+                                    <td>${att.lokasi_penyimpanan || '-'}</td>
+                                    <td><span class="badge bg-success">Tersedia</span></td>
+                                </tr>
+                            `;
+                        });
+                        
+                        html += `
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        `;
+                        
+                        inventoryContainer.innerHTML = html;
+                    } else {
+                        inventoryContainer.innerHTML = `
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                Tidak ada attachment ${tipe} ${merk} yang tersedia di inventory.
+                                SPK akan dibuat untuk pengadaan attachment.
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading attachment inventory:', error);
+                    const inventoryContainer = document.getElementById('attachmentInventoryList');
+                    if (inventoryContainer) {
+                        inventoryContainer.innerHTML = `
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Gagal memuat data attachment inventory.
+                            </div>
+                        `;
+                    }
+                });
         }
         
         // Validate SPK form
@@ -991,6 +1344,34 @@
                 document.getElementById('spesifikasiSection').style.display = 'none';
                 document.getElementById('spesifikasiDetail').style.display = 'none';
                 document.getElementById('submitSpkBtn').disabled = true;
+            });
+        }
+        
+        // Add event listener for SPK type change
+        const jenisSpkSelect = document.querySelector('select[name="jenis_spk"]');
+        if (jenisSpkSelect) {
+            jenisSpkSelect.addEventListener('change', function() {
+                console.log('SPK type changed to:', this.value);
+                
+                // Reset spesifikasi section when SPK type changes
+                const spesifikasiSelect = document.getElementById('spesifikasiSelect');
+                const spesifikasiDetail = document.getElementById('spesifikasiDetail');
+                const submitSpkBtn = document.getElementById('submitSpkBtn');
+                const attachmentInventoryList = document.getElementById('attachmentInventoryList');
+                
+                if (spesifikasiSelect) {
+                    spesifikasiSelect.innerHTML = '<option value="">-- Pilih Spesifikasi --</option>';
+                }
+                if (spesifikasiDetail) spesifikasiDetail.style.display = 'none';
+                if (submitSpkBtn) submitSpkBtn.disabled = true;
+                if (attachmentInventoryList) attachmentInventoryList.innerHTML = '';
+                
+                // Reload specifications for selected contract if any
+                const kontrakSelect = document.getElementById('kontrakSelect');
+                if (kontrakSelect && kontrakSelect.value) {
+                    console.log('Reloading specifications for new SPK type');
+                    loadKontrakSpesifikasiForSpk(kontrakSelect.value);
+                }
             });
         }
 
@@ -1141,7 +1522,7 @@
         // Load jenis perintah from API for SPK modal
         async function loadSpkJenisPerintahOptions() {
             try {
-                const response = await fetch('<?= base_url('marketing/get-jenis-perintah-kerja') ?>', {
+                const response = await fetch('<?= base_url('marketing/get-jenis-perintah-kerja') ?>?context=spk', {
                     method: 'GET',
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
@@ -1221,54 +1602,236 @@
             
             jenisSelect.addEventListener('change', function() {
                 const jenisId = this.value;
+                const jenisText = this.selectedOptions[0]?.textContent || '';
                 
                 // Reset tujuan dropdown
                 tujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
                 tujuanSelect.disabled = true;
+                
+                // Check if this is TUKAR workflow
+                const isTukarWorkflow = jenisText.toUpperCase().includes('TUKAR');
+                
+                // Show/hide TUKAR workflow section
+                handleSpkTukarWorkflowVisibility(isTukarWorkflow);
                 
                 if (jenisId) {
                     // Load tujuan options from API
                     loadSpkTujuanPerintahOptions(jenisId);
                 }
                 
-                // Trigger validation
-                validateSpkDiForm();
+                // Trigger validation from existing validateDiForm function
+                // No need to call separate validation here as the change event will be caught
             });
-            
-            tujuanSelect.addEventListener('change', validateSpkDiForm);
         }
         
-        // Validasi form workflow untuk SPK DI
-        function validateSpkDiForm() {
-            const jenisSelect = document.getElementById('spkJenisPerintah');
-            const tujuanSelect = document.getElementById('spkTujuanPerintah');
-            const submitBtn = document.querySelector('#diForm [type="submit"]');
+        // Handle TUKAR workflow visibility and setup
+        function handleSpkTukarWorkflowVisibility(isTukarWorkflow) {
+            const tukarWorkflow = document.getElementById('spkTukarWorkflow');
+            const standardItems = document.getElementById('diUnitsPick'); // Standard item selection
+            const itemSummary = document.getElementById('diSelectedSummary');
             
-            if (!jenisSelect || !tujuanSelect || !submitBtn) return;
+            if (!tukarWorkflow) return;
             
-            const jenisValid = jenisSelect.value !== '';
-            const tujuanValid = tujuanSelect.value !== '';
-            const isValid = jenisValid && tujuanValid;
+            if (isTukarWorkflow) {
+                // Show TUKAR workflow components
+                tukarWorkflow.style.display = 'block';
+                
+                // Keep standard item selection visible for TUKAR (items KIRIM from SPK)
+                // standardItems visibility will be handled by existing SPK selection logic
+                if (itemSummary) {
+                    itemSummary.innerHTML = '<div class="text-info"><i class="fas fa-exchange-alt"></i> <strong>Mode TUKAR:</strong> Unit KIRIM (dari Service) + Unit TARIK (dari kontrak SPK ini)</div>';
+                }
+                
+                // Load unit TARIK dari kontrak SPK langsung (tidak perlu pilih kontrak lagi)
+                loadSpkTarikUnitsFromSpkKontrak();
+                
+                console.log('SPK DI: TUKAR workflow activated');
+            } else {
+                // Hide TUKAR workflow components
+                tukarWorkflow.style.display = 'none';
+                
+                // Reset TUKAR form fields
+                resetSpkTukarWorkflowFields();
+                
+                // Reset item summary to normal
+                if (itemSummary) {
+                    itemSummary.innerHTML = '<span class="text-muted">Belum ada ringkasan.</span>';
+                }
+                
+                console.log('SPK DI: Standard workflow activated');
+            }
+        }
+        
+        // Load unit TARIK dari kontrak yang terhubung dengan SPK untuk TUKAR workflow
+        function loadSpkTarikUnitsFromSpkKontrak() {
+            // Ambil data SPK yang sedang dipilih
+            const spkId = document.getElementById('diSpkId').value;
+            if (!spkId) {
+                console.error('SPK ID not found for TUKAR workflow');
+                return;
+            }
             
-            // Visual feedback
-            jenisSelect.classList.toggle('is-invalid', !jenisValid && jenisSelect.value !== '');
-            jenisSelect.classList.toggle('is-valid', jenisValid);
+            // Gunakan data SPK yang sudah ada untuk mendapatkan kontrak
+            const poNo = document.getElementById('diPoNo').value;
+            const pelanggan = document.getElementById('diPelanggan').value;
             
-            tujuanSelect.classList.toggle('is-invalid', !tujuanValid && tujuanSelect.value !== '');
-            tujuanSelect.classList.toggle('is-valid', tujuanValid);
+            console.log(`Loading TARIK units for SPK ${spkId} with kontrak: ${poNo} - ${pelanggan}`);
             
-            // Enable/disable submit button (combine with existing validation)
-            const originalDiValidation = document.querySelector('[name="jenis_perintah"]')?.value !== '' && 
-                                       document.querySelector('[name="tujuan_perintah"]')?.value !== '';
+            // Fetch SPK detail untuk mendapatkan kontrak_id
+            fetch(`<?= base_url('marketing/spk/detail/') ?>${spkId}`)
+                .then(r => r.json())
+                .then(j => {
+                    console.log('SPK Detail Response:', j); // Debug response
+                    if (j && j.success && j.data && j.data.kontrak_id) {
+                        // Load units dari kontrak
+                        console.log(`Found kontrak_id: ${j.data.kontrak_id} for SPK ${spkId}`);
+                        loadSpkTarikUnits(j.data.kontrak_id);
+                    } else {
+                        console.error('SPK tidak memiliki kontrak yang terhubung. Response:', j);
+                        document.getElementById('spkTarikUnitList').innerHTML = 
+                            '<div class="text-danger small">SPK ini tidak terhubung dengan kontrak.</div>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching SPK detail:', error);
+                    document.getElementById('spkTarikUnitList').innerHTML = 
+                        '<div class="text-danger small">Error loading SPK data.</div>';
+                });
+        }
+        
+        // Setup kontrak selection change handler for SPK TUKAR workflow
+        function setupSpkKontrakChangeHandler() {
+            const kontrakSelect = document.getElementById('spkKontrakSelect');
             
-            submitBtn.disabled = !(isValid && originalDiValidation);
+            if (!kontrakSelect) return;
+            
+            kontrakSelect.addEventListener('change', function() {
+                if (this.value) {
+                    // Get selected option text which contains "no_kontrak - pelanggan"
+                    const selectedOption = this.selectedOptions[0];
+                    const optionText = selectedOption.textContent;
+                    
+                    // Parse no_kontrak and pelanggan from option text
+                    const parts = optionText.split(' - ');
+                    const noKontrak = parts[0] || '';
+                    const pelanggan = parts[1] || '';
+                    
+                    // Auto-populate hidden fields for backend validation
+                    document.getElementById('spkPoKontrakNomor').value = noKontrak;
+                    document.getElementById('spkPelangganKontrak').value = pelanggan;
+                    
+                    console.log(`SPK TUKAR Kontrak selected: ${noKontrak} - ${pelanggan}`);
+                    
+                    // Load TARIK units for TUKAR workflow
+                    loadSpkTarikUnits(this.value);
+                } else {
+                    // Reset hidden fields and list
+                    document.getElementById('spkPoKontrakNomor').value = '';
+                    document.getElementById('spkPelangganKontrak').value = '';
+                    document.getElementById('spkTarikUnitList').innerHTML = '<div class="text-muted small">Pilih kontrak terlebih dahulu...</div>';
+                    document.getElementById('spkTarikCount').textContent = '0';
+                }
+            });
+        }
+        
+        // Load TARIK units for SPK TUKAR workflow
+        async function loadSpkTarikUnits(kontrakId) {
+            try {
+                const response = await fetch(`<?= base_url('marketing/kontrak/units/') ?>${kontrakId}`, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const result = await response.json();
+                
+                if (result.success && result.data.length > 0) {
+                    const unitList = document.getElementById('spkTarikUnitList');
+                    if (unitList) {
+                        const unitsHtml = result.data.map(unit => {
+                            const unitLabel = `${unit.no_unit || '-'} - ${unit.merk || '-'} ${unit.model || ''}`;
+                            const kapasitas = unit.kapasitas ? ` (${unit.kapasitas})` : '';
+                            const jenis = unit.jenis_unit ? ` - ${unit.jenis_unit}` : '';
+                            
+                            return `
+                                <div class="form-check">
+                                    <input class="form-check-input spk-tarik-unit-check" type="checkbox" 
+                                           value="${unit.id}" id="spk_tarik_unit_${unit.id}" 
+                                           name="tarik_units[]" onchange="updateSpkTarikCount()">
+                                    <label class="form-check-label" for="spk_tarik_unit_${unit.id}">
+                                        ${unitLabel}${kapasitas}${jenis}
+                                        <small class="text-muted d-block">SN: ${unit.serial_number || '-'} | Status: ${unit.status || 'TERSEDIA'}</small>
+                                    </label>
+                                </div>
+                            `;
+                        }).join('');
+                        
+                        unitList.innerHTML = unitsHtml;
+                        
+                        // Setup select all / clear buttons
+                        setupSpkTarikUnitButtons();
+                        
+                        console.log('Loaded', result.data.length, 'units for SPK TUKAR workflow');
+                    }
+                } else {
+                    document.getElementById('spkTarikUnitList').innerHTML = 
+                        '<div class="text-muted small">Tidak ada unit tersedia di kontrak ini.</div>';
+                }
+                
+                // Reset count
+                updateSpkTarikCount();
+                
+            } catch (error) {
+                console.error('Error loading TARIK units for SPK TUKAR:', error);
+                document.getElementById('spkTarikUnitList').innerHTML = 
+                    '<div class="text-danger small">Error loading units.</div>';
+            }
+        }
+        
+        // Setup select all / clear buttons for SPK TARIK units
+        function setupSpkTarikUnitButtons() {
+            const btnSelectAll = document.getElementById('spkBtnSelectAllTarik');
+            const btnClear = document.getElementById('spkBtnClearTarik');
+            
+            if (btnSelectAll) {
+                btnSelectAll.onclick = function() {
+                    document.querySelectorAll('.spk-tarik-unit-check').forEach(checkbox => {
+                        checkbox.checked = true;
+                    });
+                    updateSpkTarikCount();
+                };
+            }
+            
+            if (btnClear) {
+                btnClear.onclick = function() {
+                    document.querySelectorAll('.spk-tarik-unit-check').forEach(checkbox => {
+                        checkbox.checked = false;
+                    });
+                    updateSpkTarikCount();
+                };
+            }
+        }
+        
+        // Reset SPK TUKAR workflow fields
+        function resetSpkTukarWorkflowFields() {
+            // Reset unit list
+            const tarikUnitList = document.getElementById('spkTarikUnitList');
+            const tarikCount = document.getElementById('spkTarikCount');
+            
+            if (tarikUnitList) {
+                tarikUnitList.innerHTML = '<div class="text-muted small">Memuat unit dari kontrak...</div>';
+            }
+            
+            if (tarikCount) {
+                tarikCount.textContent = '0';
+            }
         }
         
         // Initialize SPK workflow dropdowns when modal shown
         document.getElementById('diModal').addEventListener('shown.bs.modal', function() {
             setupSpkWorkflowDropdowns();
             loadSpkJenisPerintahOptions(); // Load initial jenis perintah options
-            validateSpkDiForm();
         });
         
         // =====================================================

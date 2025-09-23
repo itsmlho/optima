@@ -7,6 +7,9 @@ use App\Models\DeliveryInstructionModel;
 use App\Models\DeliveryItemModel;
 use App\Models\KontrakModel;
 use App\Traits\ActivityLoggingTrait;
+use App\Services\DeliveryInstructionService;
+use App\Config\JenisPerintahKerja;
+use App\Config\TujuanPerintahKerja;
 
 class Operational extends Controller
 {
@@ -16,13 +19,15 @@ class Operational extends Controller
     protected $diModel;
     protected $diItemModel;
     protected $kontrakModel;
+    protected $diService;
 
     public function __construct()
     {
-    $this->db = \Config\Database::connect();
-    $this->diModel = new DeliveryInstructionModel();
-    $this->diItemModel = new DeliveryItemModel();
-    $this->kontrakModel = new KontrakModel();
+        $this->db = \Config\Database::connect();
+        $this->diModel = new DeliveryInstructionModel();
+        $this->diItemModel = new DeliveryItemModel();
+        $this->kontrakModel = new KontrakModel();
+        $this->diService = new DeliveryInstructionService();
     }
 
     public function delivery()
@@ -228,14 +233,24 @@ class Operational extends Controller
 
     public function diDetail($id)
     {
-        $di = $this->diModel->find((int)$id);
-        if ($di && !is_array($di)) { $di = (array)$di; }
+        // Get DI with user name resolution for dibuat_oleh field
+        $di = $this->db->table('delivery_instructions di')
+            ->select('di.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, di.dibuat_oleh) as dibuat_oleh_name')
+            ->join('users u', 'u.id = di.dibuat_oleh', 'left')
+            ->where('di.id', (int)$id)
+            ->get()->getRowArray();
+            
         if (!$di) {
             return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'DI tidak ditemukan']);
         }
+        
         $spk = null;
         if (!empty($di['spk_id'])) {
-            $spk = $this->db->table('spk')->where('id',(int)$di['spk_id'])->get()->getRowArray();
+            $spk = $this->db->table('spk s')
+                ->select('s.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, s.dibuat_oleh) as created_by_name')
+                ->join('users u', 'u.id = s.dibuat_oleh', 'left')
+                ->where('s.id', (int)$di['spk_id'])
+                ->get()->getRowArray();
         }
 
         // Get all delivery items with detailed information, grouping by unit
@@ -390,10 +405,32 @@ class Operational extends Controller
         // Convert grouped items to array format
         $structuredItems = array_values($groupedItems);
 
+        // Get spesifikasi data for fallback (like in print_di)
+        $spesifikasi = [];
+        if ($spk && !empty($spk['spesifikasi'])) {
+            $decoded = json_decode($spk['spesifikasi'], true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $spesifikasi = $decoded;
+            }
+        }
+
+        // Get kontrak data for additional fallback (like in print_di)  
+        $kontrakData = [];
+        if (!empty($di['po_kontrak_nomor'])) {
+            $kontrak = $this->db->table('kontrak')
+                ->where('nomor_kontrak', $di['po_kontrak_nomor'])
+                ->get()->getRowArray();
+            if ($kontrak) {
+                $kontrakData = $kontrak;
+            }
+        }
+
         return $this->response->setJSON([
             'success'=>true,
             'data'=>$di,
             'spk'=>$spk,
+            'spesifikasi'=>$spesifikasi,
+            'kontrak'=>$kontrakData,
             'items'=>$structuredItems,
             'attachments'=>$formattedStandaloneAttachments,
             'csrf_hash'=>csrf_hash()
@@ -529,6 +566,136 @@ class Operational extends Controller
                     ->orWhere('no_po_marketing', $di['po_kontrak_nomor'])
                 ->groupEnd()
                 ->update(['status'=>'Aktif','diperbarui_pada'=>date('Y-m-d H:i:s')]);
+        }
+
+        // CRITICAL FIX: Update inventory_unit and inventory_attachment with kontrak and DI relationships
+        if ($stage === 'sampai') {
+            try {
+                // Get kontrak data based on po_kontrak_nomor
+                $kontrak = null;
+                if (!empty($di['po_kontrak_nomor'])) {
+                    $kontrak = $this->db->table('kontrak')
+                        ->groupStart()
+                            ->where('no_kontrak', $di['po_kontrak_nomor'])
+                            ->orWhere('no_po_marketing', $di['po_kontrak_nomor'])
+                        ->groupEnd()
+                        ->get()->getRowArray();
+                }
+
+                // Get SPK data to find kontrak_spesifikasi_id
+                $spk = null;
+                $kontrakSpesifikasiId = null;
+                if (!empty($di['spk_id'])) {
+                    $spk = $this->db->table('spk')->where('id', $di['spk_id'])->get()->getRowArray();
+                    if ($spk && !empty($spk['kontrak_spesifikasi_id'])) {
+                        $kontrakSpesifikasiId = $spk['kontrak_spesifikasi_id'];
+                    }
+                }
+
+                // Update all units in this DI to link them with kontrak and DI
+                $deliveryUnits = $this->db->table('delivery_items')
+                    ->where('di_id', $id)
+                    ->where('item_type', 'UNIT')
+                    ->get()->getResultArray();
+
+                foreach ($deliveryUnits as $deliveryUnit) {
+                    if (!empty($deliveryUnit['unit_id'])) {
+                        $updateUnitData = [
+                            'spk_id' => $di['spk_id'],
+                            'delivery_instruction_id' => $id,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ];
+
+                        // Add kontrak info if available
+                        if ($kontrak) {
+                            $updateUnitData['kontrak_id'] = $kontrak['id'];
+                        }
+                        if ($kontrakSpesifikasiId) {
+                            $updateUnitData['kontrak_spesifikasi_id'] = $kontrakSpesifikasiId;
+                        }
+
+                        // Add delivery date from DI
+                        if (!empty($di['tanggal_kirim'])) {
+                            $updateUnitData['tanggal_kirim'] = $di['tanggal_kirim'];
+                        } else {
+                            // Use actual delivery date (sampai_tanggal_approve) as fallback
+                            $updateUnitData['tanggal_kirim'] = date('Y-m-d');
+                        }
+
+                        // Get pricing from kontrak_spesifikasi
+                        if ($kontrakSpesifikasiId) {
+                            $kontrakSpec = $this->db->table('kontrak_spesifikasi')
+                                ->where('id', $kontrakSpesifikasiId)
+                                ->get()->getRowArray();
+                            
+                            if ($kontrakSpec) {
+                                if (!empty($kontrakSpec['harga_per_unit_bulanan'])) {
+                                    $updateUnitData['harga_sewa_bulanan'] = $kontrakSpec['harga_per_unit_bulanan'];
+                                }
+                                if (!empty($kontrakSpec['harga_per_unit_harian'])) {
+                                    $updateUnitData['harga_sewa_harian'] = $kontrakSpec['harga_per_unit_harian'];
+                                }
+                            }
+                        }
+
+                        // Get accessories from SPK prepared_units
+                        if ($spk && !empty($spk['spesifikasi'])) {
+                            $spesifikasiData = json_decode($spk['spesifikasi'], true);
+                            if (isset($spesifikasiData['prepared_units']) && is_array($spesifikasiData['prepared_units'])) {
+                                foreach ($spesifikasiData['prepared_units'] as $preparedUnit) {
+                                    if (isset($preparedUnit['unit_id']) && $preparedUnit['unit_id'] == $deliveryUnit['unit_id']) {
+                                        if (isset($preparedUnit['aksesoris_tersedia'])) {
+                                            // aksesoris_tersedia is already JSON string, use directly
+                                            $updateUnitData['aksesoris'] = $preparedUnit['aksesoris_tersedia'];
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        $this->db->table('inventory_unit')
+                            ->where('id_inventory_unit', $deliveryUnit['unit_id'])
+                            ->update($updateUnitData);
+
+                        log_message('info', "Updated inventory_unit {$deliveryUnit['unit_id']} with comprehensive data for DI {$id}");
+                    }
+                }
+
+                // Update all attachments in this DI to link them with the delivery
+                $deliveryAttachments = $this->db->table('delivery_items')
+                    ->where('di_id', $id)
+                    ->where('item_type', 'ATTACHMENT')
+                    ->get()->getResultArray();
+
+                foreach ($deliveryAttachments as $deliveryAttachment) {
+                    if (!empty($deliveryAttachment['attachment_id']) && !empty($deliveryAttachment['parent_unit_id'])) {
+                        // Find the inventory_attachment record based on the attachment
+                        $inventoryAttachment = $this->db->table('inventory_attachment')
+                            ->where('attachment_id', $deliveryAttachment['attachment_id'])
+                            ->where('id_inventory_unit', $deliveryAttachment['parent_unit_id'])
+                            ->get()->getRowArray();
+
+                        if ($inventoryAttachment) {
+                            $updateAttachmentData = [
+                                'updated_at' => date('Y-m-d H:i:s')
+                            ];
+
+                            $this->db->table('inventory_attachment')
+                                ->where('id_inventory_attachment', $inventoryAttachment['id_inventory_attachment'])
+                                ->update($updateAttachmentData);
+
+                            log_message('info', "Updated inventory_attachment {$inventoryAttachment['id_inventory_attachment']} for DI {$id}");
+                        }
+                    }
+                }
+
+                log_message('info', "Successfully updated inventory relationships for DI {$id} when delivered");
+                
+            } catch (\Exception $e) {
+                log_message('error', "Failed to update inventory relationships for DI {$id}: " . $e->getMessage());
+                // Continue execution - this is not critical enough to fail the delivery
+            }
         }
 
         $stageNames = [
@@ -1137,5 +1304,488 @@ class Operational extends Controller
                 'message' => 'Internal server error'
             ]);
         }
+    }
+
+    // ========================================
+    // DI Workflow Logic Methods
+    // ========================================
+
+    /**
+     * Get jenis perintah kerja for dropdown
+     */
+    public function getJenisPerintahKerja()
+    {
+        try {
+            $jenisPerintah = $this->db->table('jenis_perintah_kerja')
+                ->select('id, kode, nama, deskripsi')
+                ->where('aktif', 1)
+                ->orderBy('kode')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $jenisPerintah
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'getJenisPerintahKerja error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Failed to load jenis perintah kerja'
+            ]);
+        }
+    }
+
+    /**
+     * Get tujuan perintah kerja based on jenis
+     */
+    public function getTujuanPerintahKerja($jenisId = null)
+    {
+        try {
+            if (!$jenisId) {
+                $jenisId = $this->request->getGet('jenis_id');
+            }
+
+            if (!$jenisId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Jenis ID required'
+                ]);
+            }
+
+            $tujuanPerintah = $this->db->table('tujuan_perintah_kerja')
+                ->select('id, kode, nama, deskripsi')
+                ->where('jenis_perintah_id', $jenisId)
+                ->where('aktif', 1)
+                ->orderBy('kode')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $tujuanPerintah
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'getTujuanPerintahKerja error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Failed to load tujuan perintah kerja'
+            ]);
+        }
+    }
+
+    /**
+     * Get available SPK based on jenis and tujuan perintah with contract units
+     */
+    public function getAvailableSpkWithUnits()
+    {
+        try {
+            $jenisId = $this->request->getGet('jenis_id');
+            $tujuanId = $this->request->getGet('tujuan_id');
+
+            if (!$jenisId || !$tujuanId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Jenis ID and Tujuan ID required'
+                ]);
+            }
+
+            // Get jenis and tujuan codes
+            $jenis = $this->db->table('jenis_perintah_kerja')
+                ->where('id', $jenisId)
+                ->get()
+                ->getRowArray();
+
+            $tujuan = $this->db->table('tujuan_perintah_kerja')
+                ->where('id', $tujuanId)
+                ->get()
+                ->getRowArray();
+
+            if (!$jenis || !$tujuan) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid jenis or tujuan ID'
+                ]);
+            }
+
+            // Use service to get available SPK with contract info
+            $spkList = $this->diService->getAvailableSpkWithContractInfo($jenis['kode'], $tujuan['kode']);
+
+            // Add constraints information
+            $constraints = $this->diService->getSpkSelectionConstraints($jenis['kode'], $tujuan['kode']);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $spkList,
+                'constraints' => $constraints,
+                'message' => $this->getSpkSelectionMessage($jenis['kode'], $tujuan['kode']),
+                'workflow_type' => in_array($jenis['kode'], ['TARIK', 'TUKAR']) ? 'contract_based' : 'unit_selection'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getAvailableSpkWithUnits error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Failed to load available SPK: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get contract units for TARIK/TUKAR operations
+     */
+    public function getContractUnits()
+    {
+        try {
+            $kontrakId = $this->request->getGet('kontrak_id');
+            $jenisId = $this->request->getGet('jenis_id');
+            $tujuanId = $this->request->getGet('tujuan_id');
+
+            if (!$kontrakId || !$jenisId || !$tujuanId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Kontrak ID, Jenis ID, and Tujuan ID required'
+                ]);
+            }
+
+            // Get codes
+            $jenis = $this->db->table('jenis_perintah_kerja')
+                ->where('id', $jenisId)
+                ->get()
+                ->getRowArray();
+
+            $tujuan = $this->db->table('tujuan_perintah_kerja')
+                ->where('id', $tujuanId)
+                ->get()
+                ->getRowArray();
+
+            if (!$jenis || !$tujuan) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid jenis or tujuan ID'
+                ]);
+            }
+
+            // Get contract units
+            $contractUnits = $this->diService->getContractUnits($kontrakId, $jenis['kode'], $tujuan['kode']);
+
+            // Get contract info
+            $contractInfo = $this->db->table('kontrak')
+                ->where('id', $kontrakId)
+                ->get()
+                ->getRowArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contractUnits,
+                'contract_info' => $contractInfo,
+                'message' => $this->getContractUnitMessage($jenis['kode'], count($contractUnits)),
+                'selection_rules' => $this->getUnitSelectionRules($jenis['kode'], $tujuan['kode'])
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getContractUnits error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Failed to load contract units: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Process DI approval with unit workflow
+     */
+    public function processWorkflowApproval()
+    {
+        try {
+            $data = $this->request->getJSON(true);
+
+            if (!$data || !isset($data['di_id'], $data['stage'], $data['jenis_perintah'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Missing required data'
+                ]);
+            }
+
+            $result = null;
+
+            // Process based on jenis perintah
+            if ($data['jenis_perintah'] === 'TARIK') {
+                $result = $this->diService->processUnitTarik(
+                    $data['unit_ids'],
+                    $data['di_id'],
+                    $data['stage']
+                );
+            } elseif ($data['jenis_perintah'] === 'TUKAR') {
+                $result = $this->diService->processUnitTukar(
+                    $data['old_unit_ids'],
+                    $data['new_unit_ids'],
+                    $data['di_id'],
+                    $data['stage']
+                );
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unsupported jenis perintah for workflow processing'
+                ]);
+            }
+
+            if ($result['success']) {
+                // Update DI status
+                $this->db->table('delivery_instructions')
+                    ->where('id', $data['di_id'])
+                    ->update([
+                        'status' => $data['stage'],
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
+
+                // Log activity
+                $activityData = json_encode([
+                    'di_id' => $data['di_id'],
+                    'stage' => $data['stage'],
+                    'jenis_perintah' => $data['jenis_perintah']
+                ]);
+                
+                $this->logActivity('DI_WORKFLOW_APPROVED', $activityData, $data['di_id'], 'delivery_instructions');
+            }
+
+            return $this->response->setJSON($result);
+
+        } catch (\Exception $e) {
+            log_message('error', 'processWorkflowApproval error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Failed to process workflow approval: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get available units for selected SPK
+     */
+    public function getAvailableUnits()
+    {
+        try {
+            $spkId = $this->request->getGet('spk_id');
+            $jenisId = $this->request->getGet('jenis_id');
+            $tujuanId = $this->request->getGet('tujuan_id');
+
+            if (!$spkId || !$jenisId || !$tujuanId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'SPK ID, Jenis ID, and Tujuan ID required'
+                ]);
+            }
+
+            // Get codes
+            $jenis = $this->db->table('jenis_perintah_kerja')
+                ->where('id', $jenisId)
+                ->get()
+                ->getRowArray();
+
+            $tujuan = $this->db->table('tujuan_perintah_kerja')
+                ->where('id', $tujuanId)
+                ->get()
+                ->getRowArray();
+
+            if (!$jenis || !$tujuan) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid jenis or tujuan ID'
+                ]);
+            }
+
+            // Use service to get available units with business logic
+            $unitList = $this->diService->getAvailableUnits($spkId, $jenis['kode'], $tujuan['kode']);
+
+            // Get unit selection rules
+            $rules = TujuanPerintahKerja::getUnitSelectionRules($tujuan['kode']);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $unitList,
+                'rules' => $rules,
+                'message' => $this->getUnitSelectionMessage($jenis['kode'], $tujuan['kode'])
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getAvailableUnits error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Failed to load available units: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Validate DI data before creation
+     */
+    public function validateDiData()
+    {
+        try {
+            $data = $this->request->getJSON(true);
+
+            if (!$data) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'No data provided'
+                ]);
+            }
+
+            // Use service to validate
+            $errors = $this->diService->validateDiCreation($data);
+
+            if (empty($errors)) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Validation passed'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $errors
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'validateDiData error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Validation error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get workflow information for jenis and tujuan
+     */
+    public function getWorkflowInfo()
+    {
+        try {
+            $jenisId = $this->request->getGet('jenis_id');
+            $tujuanId = $this->request->getGet('tujuan_id');
+
+            if (!$jenisId || !$tujuanId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Jenis ID and Tujuan ID required'
+                ]);
+            }
+
+            // Get codes
+            $jenis = $this->db->table('jenis_perintah_kerja')
+                ->where('id', $jenisId)
+                ->get()
+                ->getRowArray();
+
+            $tujuan = $this->db->table('tujuan_perintah_kerja')
+                ->where('id', $tujuanId)
+                ->get()
+                ->getRowArray();
+
+            if (!$jenis || !$tujuan) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid jenis or tujuan ID'
+                ]);
+            }
+
+            // Get recommended next steps
+            $nextSteps = $this->diService->getRecommendedNextSteps($jenis['kode'], $tujuan['kode']);
+
+            // Get constraints
+            $constraints = $this->diService->getSpkSelectionConstraints($jenis['kode'], $tujuan['kode']);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'jenis' => $jenis,
+                    'tujuan' => $tujuan,
+                    'next_steps' => $nextSteps,
+                    'constraints' => $constraints
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getWorkflowInfo error: ' . $e->getMessage());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Failed to load workflow info: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // ========================================
+    // Helper Methods
+    // ========================================
+
+    /**
+     * Get user-friendly message for contract unit selection
+     */
+    private function getContractUnitMessage($jenisKode, $unitCount)
+    {
+        $messages = [
+            'TARIK' => "Menampilkan {$unitCount} unit yang sedang disewa dan dapat ditarik dari kontrak ini",
+            'TUKAR' => "Menampilkan {$unitCount} unit yang sedang disewa dan dapat ditukar dari kontrak ini"
+        ];
+
+        return $messages[$jenisKode] ?? "Menampilkan {$unitCount} unit dari kontrak ini";
+    }
+
+    /**
+     * Get unit selection rules for contract-based operations
+     */
+    private function getUnitSelectionRules($jenisKode, $tujuanKode)
+    {
+        $rules = [
+            'TARIK' => [
+                'min_selection' => 1,
+                'max_selection' => null, // unlimited
+                'allow_partial' => true,
+                'description' => 'Pilih unit yang akan ditarik dari lokasi pelanggan',
+                'warning' => 'Unit yang ditarik akan terputus dari kontrak dan kembali ke workshop'
+            ],
+            'TUKAR' => [
+                'min_selection' => 1,
+                'max_selection' => null,
+                'allow_partial' => true,
+                'description' => 'Pilih unit yang akan ditukar dengan unit baru',
+                'warning' => 'Unit lama akan diganti dengan unit baru dalam kontrak yang sama'
+            ]
+        ];
+
+        return $rules[$jenisKode] ?? [];
+    }
+
+    /**
+     * Get user-friendly message for SPK selection
+     */
+    private function getSpkSelectionMessage($jenisKode, $tujuanKode)
+    {
+        $messages = [
+            'TARIK_HABIS_KONTRAK' => 'Menampilkan SPK dengan kontrak yang sudah berakhir atau non-aktif',
+            'ANTAR_BARU' => 'Menampilkan SPK untuk kontrak baru atau tanpa kontrak',
+            'ANTAR_TAMBAHAN' => 'Menampilkan SPK dengan kontrak aktif untuk unit tambahan',
+            'TUKAR_UPGRADE' => 'Menampilkan SPK dengan kontrak aktif untuk upgrade unit',
+            'TUKAR_DOWNGRADE' => 'Menampilkan SPK dengan kontrak aktif untuk downgrade unit',
+        ];
+
+        return $messages[$tujuanKode] ?? 'Menampilkan SPK yang tersedia sesuai dengan jenis dan tujuan perintah';
+    }
+
+    /**
+     * Get user-friendly message for unit selection
+     */
+    private function getUnitSelectionMessage($jenisKode, $tujuanKode)
+    {
+        $messages = [
+            'TARIK' => 'Menampilkan unit yang sedang disewa/beroperasi untuk ditarik',
+            'ANTAR' => 'Menampilkan unit yang tersedia di gudang untuk diantarkan',
+            'TUKAR' => 'Menampilkan unit yang terkait dengan kontrak untuk ditukar',
+            'RELOKASI' => 'Menampilkan unit yang dapat dipindahkan antar lokasi',
+        ];
+
+        return $messages[$jenisKode] ?? 'Menampilkan unit yang sesuai dengan jenis perintah';
     }
 }

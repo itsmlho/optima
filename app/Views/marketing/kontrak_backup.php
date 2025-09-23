@@ -1362,7 +1362,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         <select class="form-select" name="jenis_spk" required>
                             <option value="UNIT" selected>SPK Unit</option>
                             <option value="ATTACHMENT">SPK Attachment</option>
-                            <option value="TUKAR">SPK Tukar</option>
                         </select>
                     </div>
                     <div class="mb-3">

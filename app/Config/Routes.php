@@ -106,6 +106,12 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('available-units/(:num)', 'Kontrak::getAvailableUnits/$1');
         $routes->post('assign-units', 'Kontrak::assignUnitsToSpesifikasi');
         
+        // Inventory status monitoring
+        $routes->get('inventory-status/(:num)', 'Kontrak::getInventoryStatus/$1');
+        $routes->post('bulk-fix-inventory-status', 'Kontrak::bulkFixInventoryStatus');
+        $routes->post('trigger-status-update/(:num)', 'Kontrak::triggerStatusUpdateAfterWorkflow/$1');
+        $routes->post('link-fabrication-attachments/(:num)', 'Kontrak::linkFabricationAttachments/$1');
+        
         // Debug endpoint (development only)
         $routes->get('debug-test-insert', 'Kontrak::debugTestInsert');
         
@@ -206,6 +212,17 @@ $routes->group('operational', static function ($routes) {
     $routes->get('tracking', 'Operational::tracking');
     $routes->post('tracking-search', 'Operational::trackingSearch');
     $routes->post('audit-trail', 'Operational::auditTrail');
+    
+    // DI Workflow Logic API Routes
+    $routes->get('api/jenis-perintah-kerja', 'Operational::getJenisPerintahKerja');
+    $routes->get('api/tujuan-perintah-kerja/(:num)', 'Operational::getTujuanPerintahKerja/$1');
+    $routes->get('api/tujuan-perintah-kerja', 'Operational::getTujuanPerintahKerja');
+    $routes->get('api/available-spk-with-units', 'Operational::getAvailableSpkWithUnits');
+    $routes->get('api/contract-units', 'Operational::getContractUnits');
+    $routes->get('api/available-units', 'Operational::getAvailableUnits');
+    $routes->post('api/validate-di-data', 'Operational::validateDiData');
+    $routes->get('api/workflow-info', 'Operational::getWorkflowInfo');
+    $routes->post('api/process-workflow-approval', 'Operational::processWorkflowApproval');
 });
 
 // Warehouse Routes

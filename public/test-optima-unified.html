@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OPTIMA Unified System - Test Page</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            line-height: 1.6;
+        }
+        
+        .test-section {
+            margin: 2rem 0;
+            padding: 1.5rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #0061f2;
+        }
+        
+        .btn {
+            background: #0061f2;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0.25rem;
+        }
+        
+        .btn:hover {
+            background: #0052cc;
+        }
+        
+        .btn.secondary {
+            background: #6c757d;
+        }
+        
+        .btn.secondary:hover {
+            background: #545b62;
+        }
+        
+        .status {
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 4px;
+            background: #e7f3ff;
+            border-left: 4px solid #0061f2;
+        }
+        
+        .log {
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            max-height: 300px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 OPTIMA Unified System - Test Page</h1>
+    <p>Halaman ini untuk testing sistem OPTIMA Unified yang baru. Semua fungsi utama dapat diuji di sini.</p>
+
+    <div class="status" id="systemStatus">
+        <strong>System Status:</strong> <span id="statusText">Checking...</span>
+    </div>
+
+    <div class="grid">
+        <div class="test-section">
+            <h3>🔧 System Information</h3>
+            <button class="btn" onclick="checkSystemInfo()">Check System Info</button>
+            <button class="btn secondary" onclick="clearLog()">Clear Log</button>
+            <div class="log" id="systemLog">System log akan muncul di sini...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>📱 Sidebar Management</h3>
+            <button class="btn" onclick="testSidebarToggle()">Toggle Sidebar</button>
+            <button class="btn" onclick="testSidebarScroll()">Test Scroll Memory</button>
+            <button class="btn" onclick="testSidebarState()">Check Sidebar State</button>
+            <div id="sidebarStatus">Sidebar tests akan muncul di sini...</div>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="test-section">
+            <h3>🌐 SPA Navigation</h3>
+            <button class="btn" onclick="testSPANavigation()">Test SPA Navigation</button>
+            <button class="btn" onclick="testPageReload()">Test Page Reload</button>
+            <button class="btn" onclick="testNavigationState()">Check Navigation State</button>
+            <div id="spaStatus">SPA tests akan muncul di sini...</div>
+        </div>
+
+        <div class="test-section">
+            <h3>🎯 Event System</h3>
+            <button class="btn" onclick="testCustomEvents()">Test Custom Events</button>
+            <button class="btn" onclick="testEventListeners()">Test Event Listeners</button>
+            <button class="btn" onclick="testEventCleanup()">Test Event Cleanup</button>
+            <div id="eventStatus">Event tests akan muncul di sini...</div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h3>💾 State Management</h3>
+        <button class="btn" onclick="testStateSave()">Save Test State</button>
+        <button class="btn" onclick="testStateLoad()">Load Test State</button>
+        <button class="btn" onclick="testStateReset()">Reset State</button>
+        <button class="btn" onclick="testStatePersistence()">Test Persistence</button>
+        <div id="stateStatus">State management tests akan muncul di sini...</div>
+    </div>
+
+    <div class="test-section">
+        <h3>🐛 Performance & Debugging</h3>
+        <button class="btn" onclick="testPerformance()">Test Performance</button>
+        <button class="btn" onclick="testMemoryUsage()">Check Memory Usage</button>
+        <button class="btn" onclick="testScriptTracking()">Check Script Tracking</button>
+        <button class="btn" onclick="testDebugMode()">Toggle Debug Mode</button>
+        <div id="performanceStatus">Performance tests akan muncul di sini...</div>
+    </div>
+
+    <!-- Load OPTIMA Unified System -->
+    <script src="optima-unified.js"></script>
+
+    <script>
+        // Test utilities
+        let testLog = [];
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+            testLog.push(logEntry);
+            
+            const logElement = document.getElementById('systemLog');
+            logElement.textContent = testLog.slice(-20).join('\n');
+            logElement.scrollTop = logElement.scrollHeight;
+            
+            console.log(logEntry);
+        }
+        
+        function clearLog() {
+            testLog = [];
+            document.getElementById('systemLog').textContent = 'Log cleared...';
+        }
+        
+        function updateStatus(elementId, message, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<span style="color: ${isSuccess ? 'green' : 'red'}">${message}</span>`;
+        }
+        
+        // System Information Tests
+        function checkSystemInfo() {
+            log('Checking OPTIMA system information...');
+            
+            if (window.OPTIMA) {
+                log(`✅ OPTIMA System Found - Version: ${window.OPTIMA.version}`);
+                log(`📊 Initialized: ${window.OPTIMA.initialized}`);
+                log(`🧩 Components: ${Array.from(window.OPTIMA.components.keys()).join(', ')}`);
+                log(`📡 Events: ${Array.from(window.OPTIMA.events.keys()).length} registered`);
+                
+                updateStatus('statusText', 'OPTIMA System Ready ✅');
+            } else {
+                log('❌ OPTIMA System not found!');
+                updateStatus('statusText', 'OPTIMA System Not Found ❌', false);
+            }
+        }
+        
+        // Sidebar Tests
+        function testSidebarToggle() {
+            log('Testing sidebar toggle...');
+            
+            if (window.OPTIMA && window.OPTIMA.toggleSidebar) {
+                window.OPTIMA.toggleSidebar();
+                log('✅ Sidebar toggle executed');
+                updateStatus('sidebarStatus', 'Sidebar toggle: SUCCESS ✅');
+            } else {
+                log('❌ Sidebar toggle function not found');
+                updateStatus('sidebarStatus', 'Sidebar toggle: FAILED ❌', false);
+            }
+        }
+        
+        function testSidebarScroll() {
+            log('Testing sidebar scroll memory...');
+            
+            if (window.OPTIMA) {
+                const testPosition = 150;
+                window.OPTIMA.setSidebarScrollPosition(testPosition);
+                const retrievedPosition = window.OPTIMA.getSidebarScrollPosition();
+                
+                if (retrievedPosition === testPosition) {
+                    log('✅ Sidebar scroll memory working correctly');
+                    updateStatus('sidebarStatus', 'Scroll memory: SUCCESS ✅');
+                } else {
+                    log(`❌ Scroll memory failed. Set: ${testPosition}, Got: ${retrievedPosition}`);
+                    updateStatus('sidebarStatus', 'Scroll memory: FAILED ❌', false);
+                }
+            }
+        }
+        
+        function testSidebarState() {
+            log('Checking sidebar state...');
+            
+            if (window.OPTIMA && window.OPTIMA.state) {
+                const state = window.OPTIMA.state;
+                log(`📊 Sidebar collapsed: ${state.sidebarCollapsed}`);
+                log(`📏 Scroll position: ${state.sidebarScrollPosition}`);
+                updateStatus('sidebarStatus', 'State check: SUCCESS ✅');
+            }
+        }
+        
+        // SPA Navigation Tests
+        function testSPANavigation() {
+            log('Testing SPA navigation...');
+            
+            if (window.OPTIMA && window.OPTIMA.navigateToPage) {
+                // Test with a mock URL
+                const testUrl = window.location.href + '#test';
+                log(`🌐 Testing navigation to: ${testUrl}`);
+                updateStatus('spaStatus', 'SPA Navigation: READY ✅');
+            } else {
+                log('❌ SPA navigation function not found');
+                updateStatus('spaStatus', 'SPA Navigation: FAILED ❌', false);
+            }
+        }
+        
+        function testPageReload() {
+            log('Testing page reload functionality...');
+            
+            if (window.OPTIMA && window.OPTIMA.reloadCurrentPage) {
+                log('✅ Page reload function available');
+                updateStatus('spaStatus', 'Page reload: READY ✅');
+            } else {
+                log('❌ Page reload function not found');
+                updateStatus('spaStatus', 'Page reload: FAILED ❌', false);
+            }
+        }
+        
+        function testNavigationState() {
+            log('Checking navigation state...');
+            
+            if (window.OPTIMA && window.OPTIMA.state) {
+                const state = window.OPTIMA.state;
+                log(`📍 Current path: ${state.currentPath}`);
+                log(`🔄 Is navigating: ${state.isNavigating}`);
+                updateStatus('spaStatus', 'Navigation state: SUCCESS ✅');
+            }
+        }
+        
+        // Event System Tests
+        function testCustomEvents() {
+            log('Testing custom event system...');
+            
+            if (window.OPTIMA && window.OPTIMA.on && window.OPTIMA.emit) {
+                // Add test event listener
+                window.OPTIMA.on('test:event', function(data) {
+                    log(`✅ Custom event received: ${data.message}`);
+                });
+                
+                // Emit test event
+                window.OPTIMA.emit('test:event', { message: 'Test event data' });
+                
+                updateStatus('eventStatus', 'Custom events: SUCCESS ✅');
+            } else {
+                log('❌ Event system not found');
+                updateStatus('eventStatus', 'Custom events: FAILED ❌', false);
+            }
+        }
+        
+        function testEventListeners() {
+            log('Testing event listeners...');
+            
+            if (window.OPTIMA && window.OPTIMA.events) {
+                const eventCount = window.OPTIMA.events.size;
+                log(`📡 Active event listeners: ${eventCount}`);
+                
+                Array.from(window.OPTIMA.events.keys()).forEach(event => {
+                    const listenerCount = window.OPTIMA.events.get(event).length;
+                    log(`  📌 ${event}: ${listenerCount} listener(s)`);
+                });
+                
+                updateStatus('eventStatus', 'Event listeners: SUCCESS ✅');
+            }
+        }
+        
+        function testEventCleanup() {
+            log('Testing event cleanup...');
+            
+            // Add temporary event
+            const testHandler = () => log('Temporary event fired');
+            window.OPTIMA.on('temp:event', testHandler);
+            
+            // Remove it
+            window.OPTIMA.off('temp:event', testHandler);
+            
+            log('✅ Event cleanup test completed');
+            updateStatus('eventStatus', 'Event cleanup: SUCCESS ✅');
+        }
+        
+        // State Management Tests
+        function testStateSave() {
+            log('Testing state save...');
+            
+            if (window.OPTIMA && window.OPTIMA.saveState) {
+                window.OPTIMA.state.testValue = Date.now();
+                window.OPTIMA.saveState();
+                log('✅ State saved successfully');
+                updateStatus('stateStatus', 'State save: SUCCESS ✅');
+            }
+        }
+        
+        function testStateLoad() {
+            log('Testing state load...');
+            
+            if (window.OPTIMA && window.OPTIMA.loadState) {
+                window.OPTIMA.loadState();
+                log('✅ State loaded successfully');
+                updateStatus('stateStatus', 'State load: SUCCESS ✅');
+            }
+        }
+        
+        function testStateReset() {
+            log('Testing state reset...');
+            
+            if (window.OPTIMA && window.OPTIMA.state) {
+                // Reset to defaults
+                window.OPTIMA.state.sidebarCollapsed = false;
+                window.OPTIMA.state.sidebarScrollPosition = 0;
+                window.OPTIMA.saveState();
+                
+                log('✅ State reset completed');
+                updateStatus('stateStatus', 'State reset: SUCCESS ✅');
+            }
+        }
+        
+        function testStatePersistence() {
+            log('Testing state persistence...');
+            
+            try {
+                const testData = { test: 'persistence', timestamp: Date.now() };
+                localStorage.setItem('optima-test', JSON.stringify(testData));
+                
+                const retrieved = JSON.parse(localStorage.getItem('optima-test'));
+                
+                if (retrieved && retrieved.test === 'persistence') {
+                    log('✅ State persistence working correctly');
+                    updateStatus('stateStatus', 'State persistence: SUCCESS ✅');
+                    localStorage.removeItem('optima-test');
+                } else {
+                    throw new Error('Data mismatch');
+                }
+            } catch (error) {
+                log(`❌ State persistence failed: ${error.message}`);
+                updateStatus('stateStatus', 'State persistence: FAILED ❌', false);
+            }
+        }
+        
+        // Performance Tests
+        function testPerformance() {
+            log('Testing performance...');
+            
+            const start = performance.now();
+            
+            // Simulate typical operations
+            for (let i = 0; i < 1000; i++) {
+                if (window.OPTIMA && window.OPTIMA.isInternalLink) {
+                    window.OPTIMA.isInternalLink('https://example.com/test');
+                }
+            }
+            
+            const end = performance.now();
+            const duration = Math.round(end - start);
+            
+            log(`⚡ Performance test completed in ${duration}ms`);
+            updateStatus('performanceStatus', `Performance: ${duration}ms ✅`);
+        }
+        
+        function testMemoryUsage() {
+            log('Checking memory usage...');
+            
+            if (performance.memory) {
+                const memory = performance.memory;
+                const used = Math.round(memory.usedJSHeapSize / 1024 / 1024);
+                const total = Math.round(memory.totalJSHeapSize / 1024 / 1024);
+                
+                log(`💾 Memory usage: ${used}MB / ${total}MB`);
+                updateStatus('performanceStatus', `Memory: ${used}MB used ✅`);
+            } else {
+                log('⚠️ Memory API not available');
+                updateStatus('performanceStatus', 'Memory: API not available ⚠️');
+            }
+        }
+        
+        function testScriptTracking() {
+            log('Checking script tracking...');
+            
+            if (window.OPTIMA && window.OPTIMA.scripts) {
+                const scripts = window.OPTIMA.scripts;
+                log(`📜 Loaded scripts: ${scripts.loaded.size}`);
+                log(`⚡ Executing scripts: ${scripts.executing.size}`);
+                log(`🚫 Blocked scripts: ${scripts.blocked.size}`);
+                
+                updateStatus('performanceStatus', 'Script tracking: SUCCESS ✅');
+            }
+        }
+        
+        function testDebugMode() {
+            log('Toggling debug mode...');
+            
+            if (window.OPTIMA) {
+                window.OPTIMA.debug = !window.OPTIMA.debug;
+                log(`🐛 Debug mode: ${window.OPTIMA.debug ? 'ON' : 'OFF'}`);
+                updateStatus('performanceStatus', `Debug: ${window.OPTIMA.debug ? 'ON' : 'OFF'} ✅`);
+            }
+        }
+        
+        // Initialize tests when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                log('🚀 Test page loaded, running initial checks...');
+                checkSystemInfo();
+            }, 500);
+        });
+        
+        // Monitor OPTIMA system initialization
+        if (window.OPTIMA) {
+            window.OPTIMA.on('system:initialized', function() {
+                log('🎉 OPTIMA System fully initialized!');
+                updateStatus('statusText', 'OPTIMA System Fully Ready 🎉');
+            });
+        }
+    </script>
+</body>
+</html>

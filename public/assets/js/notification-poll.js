@@ -1,22 +1,8 @@
-// Notification polling for Optima
-// Call this in your main layout after login
-// Requires: showNotification() already loaded
+// NOTIFICATION POLLING DISABLED for performance optimization
+// This file is disabled to prevent heavy polling that slows down the website
 
-function pollNotifications() {
-    fetch('/api/notifications')
-        .then(res => res.json())
-        .then(data => {
-            if (Array.isArray(data) && data.length > 0) {
-                data.forEach(n => {
-                    showNotification(n.message, 'warning');
-                    // Optionally, update notification bell UI here
-                });
-            }
-        });
-}
+console.log('📡 Notification polling disabled for performance optimization');
 
-// Poll every 5 minutes (300 seconds) to reduce server load
-document.addEventListener('DOMContentLoaded', function() {
-    setInterval(pollNotifications, 300000);
-    pollNotifications(); // initial call
-});
+// DISABLED: Heavy polling removed
+// function pollNotifications() { ... }
+// setInterval(pollNotifications, 300000); // DISABLED

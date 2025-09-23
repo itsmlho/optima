@@ -73,7 +73,7 @@ class Service extends BaseController
             ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'attachment')
-            ->where('ia.status_unit', 8) // In use
+            ->where('ia.attachment_status', 'USED') // In use
             ->get()->getRowArray();
 
         if ($attachment) {
@@ -995,6 +995,12 @@ class Service extends BaseController
             
             // Save updated spesifikasi JSON
             $updateData['spesifikasi'] = json_encode($spec, JSON_UNESCAPED_UNICODE);
+            
+            // Apply departmental rules for all units (GASOLINE/DIESEL should not have battery/charger)
+            $this->applyDepartmentalRules($unit_id);
+            
+            // Trigger unit status update based on contract status
+            $this->triggerUnitStatusUpdate($unit_id);
         }
         elseif ($stage === 'fabrikasi') {
             $attachment_id = $this->request->getPost('attachment_id');
@@ -1010,6 +1016,43 @@ class Service extends BaseController
             if ($attachment_id) {
                 // Store attachment selection in JSON spesifikasi
                 $spec['fabrikasi_attachment_id'] = $attachment_id;
+                
+                // Get unit ID from persiapan_unit_id
+                $unit_id = $current['persiapan_unit_id'];
+                if ($unit_id) {
+                    // Link attachment to unit via FK and update status
+                    $inventoryAttachmentModel = new \App\Models\InventoryAttachmentModel();
+                    $result = $inventoryAttachmentModel->assignToUnit($attachment_id, $unit_id);
+                    
+                    if ($result) {
+                        log_message('info', "Successfully linked attachment {$attachment_id} to unit {$unit_id} during fabrikasi");
+                    } else {
+                        log_message('error', "Failed to link attachment {$attachment_id} to unit {$unit_id} during fabrikasi");
+                    }
+                    
+                    // Get contract status to determine appropriate component status
+                    $kontrak = $this->db->query("
+                        SELECT k.status 
+                        FROM kontrak k
+                        JOIN kontrak_spesifikasi ks ON k.id = ks.kontrak_id
+                        JOIN inventory_unit iu ON ks.id = iu.kontrak_spesifikasi_id
+                        WHERE iu.id_inventory_unit = ?
+                    ", [$unit_id])->getRowArray();
+                    
+                    $targetStatus = ($kontrak && $kontrak['status'] === 'Aktif') ? 3 : 7; // RENTAL or STOCK ASET
+                    
+                    // Update attachment status to match contract status
+                    $this->db->query("
+                        UPDATE inventory_attachment 
+                        SET attachment_status = CASE 
+                            WHEN ? = 3 THEN 'USED'
+                            ELSE 'AVAILABLE'
+                        END
+                        WHERE id_inventory_attachment = ?
+                    ", [$targetStatus, $attachment_id]);
+                    
+                    log_message('info', "Updated attachment {$attachment_id} status to {$targetStatus} based on contract status");
+                }
             }
             
             // Save updated spesifikasi JSON
@@ -1193,15 +1236,16 @@ class Service extends BaseController
         return $this->response->setJSON(['success'=>true,'data'=>$data,'csrf_hash'=>csrf_hash()]);
     }
 
-    /** Simple list for attachment picking from inventory (statuses: 7/8) - only tipe_item = 'attachment' */
+    /** Simple list for attachment picking from inventory (statuses: AVAILABLE) - only tipe_item = 'attachment' */
     public function dataAttachmentSimple()
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
         $qb = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment as id, a.tipe, a.merk, a.model, ia.sn_attachment, ia.lokasi_penyimpanan, ia.status_unit')
+            ->select('ia.id_inventory_attachment as id, a.tipe, a.merk, a.model, ia.sn_attachment, ia.lokasi_penyimpanan, ia.status_attachment_id, sa.nama_status')
             ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
+            ->join('status_attachment sa', 'ia.status_attachment_id = sa.id_status_attachment', 'left')
             ->where('ia.tipe_item', 'attachment')  // Only attachment items
-            ->whereIn('ia.status_unit', [7,8])
+            ->where('ia.status_attachment_id', 1) // Only AVAILABLE attachments
             ->orderBy('ia.id_inventory_attachment','DESC')
             ->limit(50);
         if ($q !== '') {
@@ -1247,9 +1291,9 @@ class Service extends BaseController
         // Validate attachment inventory if provided
         $invAtt = null;
         if ($invAttachmentId > 0) {
-            $invAtt = $this->db->table('inventory_attachment')->select('id_inventory_attachment, status_unit')->where('id_inventory_attachment',$invAttachmentId)->get()->getRowArray();
-            if (!$invAtt || !in_array((int)$invAtt['status_unit'], [7,8], true)) {
-                return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Attachment inventory tidak tersedia']);
+            $invAtt = $this->db->table('inventory_attachment')->select('id_inventory_attachment, status_attachment_id')->where('id_inventory_attachment',$invAttachmentId)->get()->getRowArray();
+            if (!$invAtt || (int)$invAtt['status_attachment_id'] !== 1) { // Must be AVAILABLE
+                return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Attachment inventory tidak tersedia (harus status AVAILABLE)']);
             }
         }
         // Merge into spesifikasi JSON: add selected items
@@ -1366,6 +1410,7 @@ class Service extends BaseController
         $diPayload = [
             'nomor_di' => $this->generateDiNumber(),
             'spk_id' => $spkId,
+            'jenis_spk' => $spk['jenis_spk'] ?? 'UNIT', // Copy jenis_spk from SPK
             'po_kontrak_nomor' => $spk['po_kontrak_nomor'],
             'pelanggan' => $spk['pelanggan'],
             'lokasi' => $spk['lokasi'],
@@ -1398,6 +1443,18 @@ class Service extends BaseController
                 'note' => 'DI prepared by Service',
                 'changed_at' => date('Y-m-d H:i:s'),
             ]);
+            
+            // Trigger inventory status update after SPK completion
+            $kontrakId = $spk['kontrak_spesifikasi']['kontrak_id'] ?? null;
+            if ($kontrakId) {
+                try {
+                    $inventoryStatusModel = new \App\Models\InventoryStatusModel();
+                    $result = $inventoryStatusModel->updateStatusAfterSPKWorkflow($kontrakId);
+                    log_message('info', "Triggered inventory status update for contract {$kontrakId} after SPK {$spkId} completion: " . ($result ? 'SUCCESS' : 'FAILED'));
+                } catch (\Exception $e) {
+                    log_message('error', "Failed to trigger inventory status update after SPK {$spkId} completion: " . $e->getMessage());
+                }
+            }
         }
         $this->db->transComplete();
         if ($this->db->transStatus() === false) {
@@ -2390,6 +2447,23 @@ class Service extends BaseController
                 ]);
             }
         }
+        
+        // Apply departmental rules: GASOLINE/DIESEL units should not have battery/charger
+        $departmentName = $spec['departemen_name'] ?? '';
+        if (in_array($departmentName, ['GASOLINE', 'DIESEL'])) {
+            // Auto-detach any existing battery/charger from GASOLINE/DIESEL units
+            try {
+                $inventoryStatusModel = new \App\Models\InventoryStatusModel();
+                $kontrakId = $spec['kontrak_id'] ?? null;
+                if ($kontrakId) {
+                    // This will apply departmental rules automatically
+                    $result = $inventoryStatusModel->handleDepartmentAttachmentRules($kontrakId);
+                    log_message('info', "Applied departmental rules for {$departmentName} unit in fabrikasi process");
+                }
+            } catch (\Exception $e) {
+                log_message('error', "Failed to apply departmental rules in fabrikasi: " . $e->getMessage());
+            }
+        }
 
         // Simpan jejak pilihan fabrikasi terakhir ke JSON (akan dipush ke prepared_units saat PDI)
         $spec['fabrikasi_last'] = [
@@ -2459,7 +2533,7 @@ class Service extends BaseController
                 ->join('baterai b', 'ia.baterai_id = b.id', 'left')
                 ->where('ia.id_inventory_unit', $unitId)
                 ->where('ia.tipe_item', 'battery')
-                ->where('ia.status_unit', 8) // In use
+                ->where('ia.attachment_status', 'USED') // In use
                 ->get()
                 ->getRowArray();
 
@@ -2477,7 +2551,7 @@ class Service extends BaseController
                 ->join('charger c', 'ia.charger_id = c.id_charger', 'left')
                 ->where('ia.id_inventory_unit', $unitId)
                 ->where('ia.tipe_item', 'charger')
-                ->where('ia.status_unit', 8) // In use
+                ->where('ia.attachment_status', 'USED') // In use
                 ->get()
                 ->getRowArray();
 
@@ -2495,7 +2569,7 @@ class Service extends BaseController
                 ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
                 ->where('ia.id_inventory_unit', $unitId)
                 ->where('ia.tipe_item', 'attachment')
-                ->where('ia.status_unit', 8) // In use
+                ->where('ia.attachment_status', 'USED') // In use
                 ->get()
                 ->getRowArray();
 
@@ -2536,42 +2610,74 @@ class Service extends BaseController
 
         $db = \Config\Database::connect();
 
+        // Get contract status to determine appropriate component status
+        $kontrak = $db->query("
+            SELECT k.status 
+            FROM kontrak k
+            JOIN kontrak_spesifikasi ks ON k.id = ks.kontrak_id
+            JOIN inventory_unit iu ON ks.id = iu.kontrak_spesifikasi_id
+            WHERE iu.id_inventory_unit = ?
+        ", [$unitId])->getRowArray();
+        
+        $targetStatus = ($kontrak && $kontrak['status'] === 'Aktif') ? 3 : 7; // RENTAL or STOCK ASET
+
+        // Get unit department to apply departmental rules
+        $unit = $db->query("
+            SELECT iu.departemen_id, d.nama_departemen
+            FROM inventory_unit iu
+            LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
+            WHERE iu.id_inventory_unit = ?
+        ", [$unitId])->getRowArray();
+        
+        $isGasolineOrDiesel = ($unit && in_array($unit['nama_departemen'], ['GASOLINE', 'DIESEL']));
+
         // Process battery component
         if (isset($componentData['components']['battery'])) {
             $battery = $componentData['components']['battery'];
 
-            if ($battery['action'] === 'replace' && $battery['new_inventory_attachment_id'] && $battery['existing_model_id']) {
-                // Return old battery to inventory
-                $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $battery['existing_model_id'])
-                    ->update([
-                        'status_unit' => 7, // Available
-                        'id_inventory_unit' => null,
-                        'updated_at' => date('Y-m-d H:i:s')
-                    ]);
+            if ($isGasolineOrDiesel) {
+                // GASOLINE/DIESEL units should not have battery - detach any existing
+                if ($battery['existing_model_id']) {
+                    $db->table('inventory_attachment')
+                        ->where('id_inventory_attachment', $battery['existing_model_id'])
+                        ->update([
+                            'attachment_status' => 'AVAILABLE', // Return to inventory
+                            'id_inventory_unit' => null,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
+                    log_message('info', "Detached battery {$battery['existing_model_id']} from GASOLINE/DIESEL unit {$unitId}");
+                }
+            } else {
+                // Electric units can have battery
+                if ($battery['action'] === 'replace' && $battery['new_inventory_attachment_id'] && $battery['existing_model_id']) {
+                    // Return old battery to inventory
+                    $db->table('inventory_attachment')
+                        ->where('id_inventory_attachment', $battery['existing_model_id'])
+                        ->update([
+                            'status_attachment_id' => 1, // AVAILABLE
+                            'id_inventory_unit' => null,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
 
-                // Assign new battery from inventory
-                $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
-                    ->update([
-                        'status_unit' => 8, // In use
-                        'id_inventory_unit' => $unitId,
-                        'updated_at' => date('Y-m-d H:i:s')
-                    ]);
+                    // Assign new battery from inventory
+                    $db->table('inventory_attachment')
+                        ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
+                        ->update([
+                            'status_unit' => $targetStatus, // RENTAL or STOCK ASET based on contract
+                            'id_inventory_unit' => $unitId,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
 
-                // Note: No longer updating inventory_unit columns - using inventory_attachment as single source
-
-            } else if ($battery['action'] === 'assign' && $battery['new_inventory_attachment_id']) {
-                // Assign battery to unit that doesn't have one
-                $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
-                    ->update([
-                        'status_unit' => 8, // In use
-                        'id_inventory_unit' => $unitId,
-                        'updated_at' => date('Y-m-d H:i:s')
-                    ]);
-
-                // Note: No longer updating inventory_unit columns - using inventory_attachment as single source
+                } else if ($battery['action'] === 'assign' && $battery['new_inventory_attachment_id']) {
+                    // Assign battery to unit that doesn't have one
+                    $db->table('inventory_attachment')
+                        ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
+                        ->update([
+                            'status_unit' => $targetStatus, // RENTAL or STOCK ASET based on contract
+                            'id_inventory_unit' => $unitId,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
+                }
             }
         }
 
@@ -2579,43 +2685,157 @@ class Service extends BaseController
         if (isset($componentData['components']['charger'])) {
             $charger = $componentData['components']['charger'];
 
-            if ($charger['action'] === 'replace' && $charger['new_inventory_attachment_id'] && $charger['existing_model_id']) {
-                // Return old charger to inventory
-                $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $charger['existing_model_id'])
-                    ->update([
-                        'status_unit' => 7, // Available
-                        'id_inventory_unit' => null,
-                        'updated_at' => date('Y-m-d H:i:s')
-                    ]);
+            if ($isGasolineOrDiesel) {
+                // GASOLINE/DIESEL units should not have charger - detach any existing
+                if ($charger['existing_model_id']) {
+                    $db->table('inventory_attachment')
+                        ->where('id_inventory_attachment', $charger['existing_model_id'])
+                        ->update([
+                            'status_unit' => 7, // STOCK ASET (returned to inventory)
+                            'id_inventory_unit' => null,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
+                    log_message('info', "Detached charger {$charger['existing_model_id']} from GASOLINE/DIESEL unit {$unitId}");
+                }
+            } else {
+                // Electric units can have charger
+                if ($charger['action'] === 'replace' && $charger['new_inventory_attachment_id'] && $charger['existing_model_id']) {
+                    // Return old charger to inventory
+                    $db->table('inventory_attachment')
+                        ->where('id_inventory_attachment', $charger['existing_model_id'])
+                        ->update([
+                            'status_unit' => 7, // STOCK ASET (available)
+                            'id_inventory_unit' => null,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
 
-                // Assign new charger from inventory
-                $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
-                    ->update([
-                        'status_unit' => 8, // In use
-                        'id_inventory_unit' => $unitId,
-                        'updated_at' => date('Y-m-d H:i:s')
-                    ]);
+                    // Assign new charger from inventory
+                    $db->table('inventory_attachment')
+                        ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
+                        ->update([
+                            'status_unit' => $targetStatus, // RENTAL or STOCK ASET based on contract
+                            'id_inventory_unit' => $unitId,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
 
-                // Note: No longer updating inventory_unit columns - using inventory_attachment as single source
-
-            } else if ($charger['action'] === 'assign' && $charger['new_inventory_attachment_id']) {
-                // Assign charger to unit that doesn't have one
-                $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
-                    ->update([
-                        'status_unit' => 8, // In use
-                        'id_inventory_unit' => $unitId,
-                        'updated_at' => date('Y-m-d H:i:s')
-                    ]);
-
-                // Note: No longer updating inventory_unit columns - using inventory_attachment as single source
+                } else if ($charger['action'] === 'assign' && $charger['new_inventory_attachment_id']) {
+                    // Assign charger to unit that doesn't have one
+                    $db->table('inventory_attachment')
+                        ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
+                        ->update([
+                            'status_unit' => $targetStatus, // RENTAL or STOCK ASET based on contract
+                            'id_inventory_unit' => $unitId,
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
+                }
             }
         }
 
         // Log component transactions for audit trail
         $this->logComponentTransactions($unitId, $componentData);
+    }
+    
+    /**
+     * Apply departmental rules for units
+     * GASOLINE/DIESEL units should not have battery/charger components
+     */
+    private function applyDepartmentalRules($unitId)
+    {
+        if (!$unitId) {
+            return;
+        }
+
+        $db = \Config\Database::connect();
+
+        // Get unit department
+        $unit = $db->query("
+            SELECT iu.departemen_id, d.nama_departemen
+            FROM inventory_unit iu
+            LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
+            WHERE iu.id_inventory_unit = ?
+        ", [$unitId])->getRowArray();
+
+        if (!$unit) {
+            return;
+        }
+
+        $isGasolineOrDiesel = in_array($unit['nama_departemen'], ['GASOLINE', 'DIESEL']);
+
+        if ($isGasolineOrDiesel) {
+            // GASOLINE/DIESEL units should not have battery or charger components
+            log_message('info', "Applying departmental rules for {$unit['nama_departemen']} unit {$unitId}");
+
+            // Detach any battery components
+            $detachedBatteries = $db->query("
+                UPDATE inventory_attachment 
+                SET id_inventory_unit = NULL, 
+                    attachment_status = 'AVAILABLE',
+                    updated_at = NOW()
+                WHERE id_inventory_unit = ? 
+                AND tipe_item = 'battery'
+            ", [$unitId]);
+            
+            $batteryCount = $db->affectedRows();
+            if ($batteryCount > 0) {
+                log_message('info', "Detached {$batteryCount} battery component(s) from {$unit['nama_departemen']} unit {$unitId}");
+            }
+
+            // Detach any charger components
+            $detachedChargers = $db->query("
+                UPDATE inventory_attachment 
+                SET id_inventory_unit = NULL, 
+                    attachment_status = 'AVAILABLE',
+                    updated_at = NOW()
+                WHERE id_inventory_unit = ? 
+                AND tipe_item = 'charger'
+            ", [$unitId]);
+            
+            $chargerCount = $db->affectedRows();
+            if ($chargerCount > 0) {
+                log_message('info', "Detached {$chargerCount} charger component(s) from {$unit['nama_departemen']} unit {$unitId}");
+            }
+
+            if ($batteryCount > 0 || $chargerCount > 0) {
+                log_message('info', "Departmental rules applied: Removed " . ($batteryCount + $chargerCount) . " components from {$unit['nama_departemen']} unit {$unitId}");
+            }
+        }
+    }
+    
+    /**
+     * Trigger unit status update based on contract status
+     */
+    private function triggerUnitStatusUpdate($unitId)
+    {
+        try {
+            // Get contract status for this unit
+            $kontrak = $this->db->query("
+                SELECT k.id as kontrak_id, k.status 
+                FROM kontrak k
+                JOIN kontrak_spesifikasi ks ON k.id = ks.kontrak_id
+                JOIN inventory_unit iu ON ks.id = iu.kontrak_spesifikasi_id
+                WHERE iu.id_inventory_unit = ?
+            ", [$unitId])->getRowArray();
+            
+            if ($kontrak && $kontrak['status'] === 'Aktif') {
+                // Update unit status to RENTAL
+                $this->db->query("
+                    UPDATE inventory_unit 
+                    SET status_unit_id = 3, updated_at = NOW()
+                    WHERE id_inventory_unit = ?
+                ", [$unitId]);
+                
+                log_message('info', "Updated unit {$unitId} status to RENTAL (3) due to active contract");
+                
+                // Also trigger inventory status model for comprehensive update
+                $inventoryStatusModel = new \App\Models\InventoryStatusModel();
+                $result = $inventoryStatusModel->updateStatusForActiveContract($kontrak['kontrak_id']);
+                
+                log_message('info', "Triggered comprehensive status update for contract {$kontrak['kontrak_id']}: " . ($result ? 'SUCCESS' : 'FAILED'));
+            }
+            
+        } catch (\Exception $e) {
+            log_message('error', "Failed to trigger unit status update for unit {$unitId}: " . $e->getMessage());
+        }
     }
     
     /**

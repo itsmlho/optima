@@ -8,51 +8,6 @@
 
 <!-- Enhanced Sidebar with Advanced Features -->
 <nav class="sidebar sidebar-enhanced" id="sidebar">
-    <!-- Scroll Position Memory -->
-    <script>
-    // Save and restore sidebar scroll position
-    function saveSidebarScrollPosition() {
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) {
-            localStorage.setItem('sidebarScrollPosition', sidebar.scrollTop);
-        }
-    }
-    
-    function restoreSidebarScrollPosition() {
-        const sidebar = document.getElementById('sidebar');
-        const savedPosition = localStorage.getItem('sidebarScrollPosition');
-        if (sidebar && savedPosition) {
-            sidebar.scrollTop = parseInt(savedPosition);
-        }
-    }
-    
-    // Restore position on load
-    document.addEventListener('DOMContentLoaded', function() {
-        restoreSidebarScrollPosition();
-        
-        // Save position before navigation
-        const navLinks = document.querySelectorAll('.sidebar .nav-link[href]');
-        navLinks.forEach(link => {
-            link.addEventListener('click', function(e) {
-                // Only for internal navigation
-                if (this.href && this.href.indexOf(window.location.origin) === 0) {
-                    saveSidebarScrollPosition();
-                }
-            });
-        });
-        
-        // Auto-save on scroll
-        const sidebar = document.getElementById('sidebar');
-        if (sidebar) {
-            sidebar.addEventListener('scroll', function() {
-                clearTimeout(this.scrollTimer);
-                this.scrollTimer = setTimeout(function() {
-                    saveSidebarScrollPosition();
-                }, 150);
-            });
-        }
-    });
-    </script>
     <!-- Sidebar Brand -->
     <a href="<?= base_url('/') ?>" class="sidebar-brand" style="text-decoration: none; color: inherit;">
         <div class="sidebar-brand-icon">
@@ -71,6 +26,24 @@
                    href="<?= base_url('/dashboard') ?>">
                     <i class="fas fa-tachometer-alt"></i>
                     <span class="nav-link-text">Dashboard</span>
+                </a>
+            </li>
+
+            <!-- Tracking Delivery -->
+            <li class="nav-item">
+                <a class="nav-link" href="<?= base_url('/operational/tracking') ?>"
+                   data-search-terms="tracking delivery pengiriman monitoring">
+                    <i class="fas fa-truck"></i>
+                    <span class="nav-link-text">Tracking Delivery</span>
+                </a>
+            </li>
+
+            <!-- Tracking Work Orders -->
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(service('router')->getMatchedRoute()[0], 'tracking') !== false ? 'active' : '' ?>" href="<?= base_url('/tracking-wo') ?>"
+                   data-search-terms="tracking work orders wo">
+                    <i class="fas fa-clipboard-list"></i>
+                    <span class="nav-link-text">Tracking Work Orders</span>
                 </a>
             </li>
 
@@ -174,60 +147,20 @@
                 </a>
             </li>
             <?php endif; ?>
-
-            <!-- Work Orders -->
+            
+            <!-- Workorders -->
             <?php if (can_access('service.work_orders.view')): ?>
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#workOrdersSubmenu"
-                   data-search-terms="work order complaint keluhan">
+                <a class="nav-link" href="<?= base_url('/service/work-orders') ?>"
+                   data-search-terms="workorder complaint keluhan">
                     <i class="fas fa-wrench"></i>
-                    <span class="nav-link-text">Work Order / Complaint</span>
-                    <i class="fas fa-chevron-down ms-auto collapse-icon"></i>
+                    <span class="nav-link-text">Work Orders</span>
                 </a>
-                <div class="collapse" id="workOrdersSubmenu">
-                    <div class="nav-submenu">
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/service/work-orders') ?>"
-                           data-search-terms="work order">
-                            <i class="fas fa-circle"></i>
-                            Work Order
-                        </a>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/service/work-orders/history') ?>"
-                           data-search-terms="work order history">
-                            <i class="fas fa-circle"></i>
-                            History
-                        </a>
-                    </div>
-                </div>
             </li>
             <?php endif; ?>
 
-            <!-- Service Inventory -->
-            <?php if (can_access('service.inventory.view')): ?>
-            <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#serviceInventorySubmenu"
-                   data-search-terms="service inventory unit attachment">
-                    <i class="fas fa-boxes"></i>
-                    <span class="nav-link-text">Service Inventory</span>
-                    <i class="fas fa-chevron-down ms-auto collapse-icon"></i>
-                </a>
-                <div class="collapse" id="serviceInventorySubmenu">
-                    <div class="nav-submenu">
-                        <?php if (can_access('service.unit_inventory.view')): ?>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/service/unit-inventory') ?>"
-                           data-search-terms="service unit inventory">
-                            <i class="fas fa-circle"></i>
-                            Unit Inventory
-                        </a>
-                        <?php endif; ?>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/service/attachment-inventory') ?>"
-                           data-search-terms="service attachment inventory">
-                            <i class="fas fa-circle"></i>
-                            Attachment Inventory
-                        </a>
-                    </div>
-                </div>
-            </li>
-            <?php endif; ?> 
+
+            
 
             <!-- Data Unit -->
             <?php if (can_access('service.data_unit.view')): ?>
@@ -257,35 +190,6 @@
                 </a>
             </li>
             <?php endif; ?>
-
-            <!-- Tracking -->
-            <?php if (can_access('operational.tracking.view')): ?>
-            <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/operational/tracking') ?>"
-                   data-search-terms="tracking pelacakan monitoring">
-                    <i class="fas fa-route"></i>
-                    <span class="nav-link-text">Tracking</span>
-                </a>
-            </li>
-            <?php endif; ?>
-
-            <!-- Tracking Delivery -->
-            <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/operational/tracking') ?>"
-                   data-search-terms="tracking delivery pengiriman">
-                    <i class="fas fa-truck"></i>
-                    <span class="nav-link-text">Tracking Delivery</span>
-                </a>
-            </li>
-
-            <!-- Tracking Work Orders -->
-            <li class="nav-item">
-                <a class="nav-link <?= strpos(service('router')->getMatchedRoute()[0], 'tracking') !== false ? 'active' : '' ?>" href="<?= base_url('/tracking-wo') ?>"
-                   data-search-terms="tracking work orders wo">
-                    <i class="fas fa-clipboard-list"></i>
-                    <span class="nav-link-text">Tracking Work Orders</span>
-                </a>
-            </li>
             <?php endif; ?>
 
             <!-- ACCOUNTING DIVISION -->
@@ -366,34 +270,35 @@
                 <div class="sidebar-heading">WAREHOUSE & ASSETS</div>
             </li>
 
-            <!-- Inventory - Dropdown -->
+            <!-- Inventory -->
+            <?php if (can_access('warehouse.access')): ?>
+            <!-- Unit Inventory -->
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#inventorySubmenu"
-                   data-search-terms="warehouse inventory unit attachment sparepart assets">
-                    <i class="fas fa-warehouse"></i>
-                    <span class="nav-link-text">Inventory</span>
-                    <i class="fas fa-chevron-down ms-auto collapse-icon"></i>
+                <a class="nav-link" href="<?= base_url('/warehouse/inventory/invent_unit') ?>"
+                   data-search-terms="inventory unit assets warehouse">
+                    <i class="fas fa-truck"></i>
+                    <span class="nav-link-text">Unit Inventory</span>
                 </a>
-                <div class="collapse" id="inventorySubmenu">
-                    <div class="nav-submenu">
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/inventory/invent_unit') ?>"
-                           data-search-terms="inventory unit assets">
-                            <i class="fas fa-truck"></i>
-                            Unit
-                        </a>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/inventory/invent_attachment') ?>"
-                           data-search-terms="inventory attachment battery">
-                            <i class="fas fa-paperclip"></i>
-                            Attachment & Battery
-                        </a>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/inventory/invent_sparepart') ?>"
-                           data-search-terms="inventory sparepart spare part">
-                            <i class="fas fa-tools"></i>
-                            Sparepart
-                        </a>
-                    </div>
-                </div>
             </li>
+            
+            <!-- Attachment & Battery Inventory -->
+            <li class="nav-item">
+                <a class="nav-link" href="<?= base_url('/warehouse/inventory/invent_attachment') ?>"
+                   data-search-terms="inventory attachment battery warehouse">
+                    <i class="fas fa-battery-half"></i>
+                    <span class="nav-link-text">Attachment & Battery Inventory</span>
+                </a>
+            </li>
+            
+            <!-- Sparepart Inventory -->
+            <li class="nav-item">
+                <a class="nav-link" href="<?= base_url('/warehouse/inventory/invent_sparepart') ?>"
+                   data-search-terms="inventory sparepart spare part warehouse">
+                    <i class="fas fa-tools"></i>
+                    <span class="nav-link-text">Sparepart Inventory</span>
+                </a>
+            </li>
+            <?php endif; ?>
 
             <!-- PO Verification - Dropdown -->
             <li class="nav-item">

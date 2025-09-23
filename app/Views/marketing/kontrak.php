@@ -82,9 +82,14 @@
     <div class="card table-card">
         <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
             <h5 class="h5 mb-0 text-gray-800">Daftar Kontrak Rental</h5>
-            <button class="btn btn-sm btn-primary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addContractModal">
-                <span class="fw-semibold">+ Kontrak</span>
-            </button>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary" onclick="refreshPageData()" title="Refresh Data">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button class="btn btn-sm btn-primary d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#addContractModal">
+                    <span class="fw-semibold">+ Kontrak</span>
+                </button>
+            </div>
         </div>
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
@@ -111,6 +116,7 @@
                             <th>No. Kontrak</th>
                             <th>No. PO</th>
                             <th>Nama Perusahaan</th>
+                            <th>Jenis Sewa</th>
                             <th>Periode Kontrak</th>
                             <th>Total Unit</th>
                             <th>Status</th>
@@ -451,17 +457,21 @@ $(document).ready(function() {
                 if (response && response.data && response.data.length > 0) {
                     // Convert to expected format
                     allKontrakData = response.data.map(item => ({
+                        id: item.id || item.contract_id || 0, // Add ID field
                         no_kontrak: (item.contract_number || '').replace(/<[^>]*>/g, ''),
                         no_po_marketing: item.po || '',
                         pelanggan: item.client_name || '',
+                        jenis_sewa: item.jenis_sewa || 'BULANAN',
                         periode: item.period || '',
-                        total_unit: item.total_unit || 0,
-                        status: (item.status || '').replace(/<[^>]*>/g, '')
+                        total_unit: item.total_units || 0,
+                        status: (item.status || '').replace(/<[^>]*>/g, ''),
+                        tanggal_mulai: item.start_date || '',
+                        tanggal_selesai: item.end_date || ''
                     }));
                     
                     console.log('📊 Converted data:', allKontrakData.length, 'records');
                     applyKontrakFilter(currentKontrakFilter);
-                    safeShowNotification('Data kontrak berhasil dimuat (' + allKontrakData.length + ' records)', 'success');
+                    
                 } else {
                     console.warn('❌ No data in response');
                     allKontrakData = [];
@@ -511,12 +521,15 @@ $(document).ready(function() {
                 if (response && response.data && response.data.length > 0) {
                     // Update data without reinitializing everything
                     allKontrakData = response.data.map(item => ({
+                        id: item.id || item.contract_id || 0, // Add ID field
                         no_kontrak: (item.contract_number || '').replace(/<[^>]*>/g, ''),
                         no_po_marketing: item.po || '',
                         pelanggan: item.client_name || '',
                         periode: item.period || '',
                         total_unit: item.total_unit || 0,
-                        status: item.status || 'Unknown'
+                        status: item.status || 'Unknown',
+                        tanggal_mulai: item.start_date || '',
+                        tanggal_selesai: item.end_date || ''
                     }));
                     
                     // Just update the display without reinitializing
@@ -581,7 +594,7 @@ $(document).ready(function() {
         if (filteredKontrakData.length === 0) {
             tbody.html(`
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">
+                    <td colspan="7" class="text-center text-muted py-4">
                         <i class="fas fa-inbox fa-2x mb-2"></i><br>
                         Tidak ada data kontrak yang ditemukan
                     </td>
@@ -600,9 +613,10 @@ $(document).ready(function() {
         // Generate table rows
         let tableHTML = '';
         pageData.forEach(kontrak => {
+            console.log('Processing kontrak row:', kontrak); // Debug log
             const statusBadge = getStatusBadge(kontrak.status);
-            const period = kontrak.tanggal_mulai && kontrak.tanggal_selesai ? 
-                `${kontrak.tanggal_mulai} s/d ${kontrak.tanggal_selesai}` : '-';
+            // Use periode field from backend mapping instead of manual calculation
+            const period = kontrak.periode || '-';
             
             tableHTML += `
                 <tr>
@@ -613,8 +627,9 @@ $(document).ready(function() {
                     </td>
                     <td>${kontrak.no_po_marketing || '-'}</td>
                     <td>${kontrak.pelanggan || '-'}</td>
+                    <td><span class="badge bg-info text-dark">${kontrak.jenis_sewa || 'BULANAN'}</span></td>
                     <td>${period}</td>
-                    <td><span class="fw-bold text-primary">${kontrak.total_units || 0}</span></td>
+                    <td><span class="fw-bold text-primary">${kontrak.total_unit || 0}</span></td>
                     <td>${statusBadge}</td>
                 </tr>
             `;
@@ -1087,6 +1102,117 @@ $(document).ready(function() {
         });
     }); // End spesifikasi form handler
 
+    // ===== ATTACHMENT SPESIFIKASI FORM HANDLER =====
+    
+    // Handle add attachment spesifikasi form submission
+    $('#addAttachmentSpesifikasiForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        // Validate required fields on frontend
+        const kontrakId = $('#attachmentSpekKontrakId').val();
+        const jumlahDibutuhkan = $('input[name="jumlah_dibutuhkan"]', this).val();
+        const departemenId = $('select[name="departemen_id"]', this).val();
+        const attachmentTipe = $('select[name="attachment_tipe"]', this).val();
+        const hargaBulanan = $('input[name="harga_per_unit_bulanan"]', this).val();
+        
+        // Frontend validation check
+        if (!kontrakId) {
+            safeShowNotification('ID kontrak tidak valid.', 'error');
+            return;
+        }
+        
+        if (!jumlahDibutuhkan || jumlahDibutuhkan <= 0) {
+            safeShowNotification('Jumlah attachment harus diisi dan lebih dari 0.', 'error');
+            return;
+        }
+        
+        if (!departemenId) {
+            safeShowNotification('Departemen harus dipilih.', 'error');
+            return;
+        }
+        
+        if (!attachmentTipe) {
+            safeShowNotification('Tipe attachment harus dipilih.', 'error');
+            return;
+        }
+        
+        if (!hargaBulanan || hargaBulanan < 0) {
+            safeShowNotification('Harga per unit bulanan harus diisi.', 'error');
+            return;
+        }
+        
+        // Get form data with proper serialization
+        const formData = $(this).serialize() + '&<?= csrf_token() ?>=' + '<?= csrf_hash() ?>';
+        
+        // Debug: Log form data
+        console.log('Attachment spesifikasi form data being sent:', formData);
+        
+        // Check if this is edit mode
+        const spekId = $('#attachmentSpekEditId').val();
+        const isEdit = spekId && spekId !== '';
+        const url = isEdit ? 
+            '<?= base_url('marketing/kontrak/update-spesifikasi/') ?>' + spekId :
+            '<?= base_url('marketing/kontrak/add-spesifikasi') ?>';
+        
+        $.ajax({
+            url: url,
+            method: 'POST',
+            data: formData,
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    safeShowNotification(response.message, 'success');
+                    $('#addAttachmentSpesifikasiModal').modal('hide');
+                    
+                    // Reset form
+                    $('#addAttachmentSpesifikasiForm')[0].reset();
+                    
+                    // Reload spesifikasi tab
+                    const contractId = $('#attachmentSpekKontrakId').val();
+                    if (contractId) {
+                        loadContractSpesifikasi(contractId);
+                    }
+                } else {
+                    // Show detailed error information
+                    let errorMsg = response.message || 'Terjadi kesalahan saat menyimpan spesifikasi attachment';
+                    
+                    // Show validation errors if any
+                    if (response.validation_errors && Object.keys(response.validation_errors).length > 0) {
+                        errorMsg += '\nValidation errors: ' + JSON.stringify(response.validation_errors);
+                    }
+                    
+                    // Show database errors if any
+                    if (response.db_error && response.db_error.message) {
+                        errorMsg += '\nDatabase error: ' + response.db_error.message;
+                    }
+                    
+                    safeShowNotification(errorMsg, 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('AJAX Error for attachment spesifikasi:', {
+                    status: status,
+                    error: error,
+                    responseText: xhr.responseText
+                });
+                
+                let errorMessage = 'Gagal menambah spesifikasi attachment: ' + error;
+                if (xhr.responseText) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        if (response.message) {
+                            errorMessage = response.message;
+                        }
+                    } catch (e) {
+                        console.warn('Could not parse error response');
+                    }
+                }
+                
+                safeShowNotification(errorMessage, 'error');
+            }
+        });
+    }); // End attachment spesifikasi form handler
+
     // Note: Only one submit handler for addSpesifikasiForm to prevent duplicates
 
 });
@@ -1236,7 +1362,7 @@ function loadContractInfo(id) {
                     <div class="col-md-6"><strong>Tanggal Berakhir:</strong> ${d.tanggal_berakhir || '-'}</div>
                     <div class="col-md-6"><strong>Total Unit:</strong> <span class="fw-bold text-primary">${d.total_units || 0}</span></div>
                     <div class="col-md-6"><strong>Nilai Total:</strong> <span class="fw-bold text-success">Rp ${formatNumber(d.nilai_total || 0)}</span></div>
-                    <div class="col-md-6"><strong>Dibuat Oleh:</strong> ${d.dibuat_oleh || '-'}</div>
+                    <div class="col-md-6"><strong>Dibuat Oleh:</strong> ${d.dibuat_oleh_nama || '-'}</div>
                     <div class="col-md-6"><strong>Dibuat Pada:</strong> ${d.dibuat_pada || '-'}</div>
                 </div>
             `;
@@ -1327,12 +1453,19 @@ function loadContractSpesifikasi(kontrakId) {
                     const progress = spek.jumlah_dibutuhkan > 0 ? 
                         Math.round((spek.jumlah_tersedia / spek.jumlah_dibutuhkan) * 100) : 0;
                     const progressClass = progress === 100 ? 'success' : progress > 0 ? 'warning' : 'secondary';
+                    
+                    // Determine if this is an attachment-only specification
+                    const isAttachmentSpec = spek.attachment_tipe && (!spek.tipe_unit_id || spek.tipe_unit_id === '0');
+                    const cardClass = isAttachmentSpec ? 'border-success' : 'border-primary';
+                    const badgeClass = isAttachmentSpec ? 'bg-success' : 'bg-primary';
+                    const specType = isAttachmentSpec ? 'Attachment' : 'Unit';
                 
                 html += `
-                    <div class="card mb-3" data-spek-id="${spek.id}" data-jumlah-dibutuhkan="${spek.jumlah_dibutuhkan}" data-jumlah-tersedia="${spek.jumlah_tersedia}">
+                    <div class="card mb-3 ${cardClass}" data-spek-id="${spek.id}" data-jumlah-dibutuhkan="${spek.jumlah_dibutuhkan}" data-jumlah-tersedia="${spek.jumlah_tersedia}" data-is-attachment="${isAttachmentSpec ? 'true' : 'false'}">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h6 class="mb-0">
-                                <span class="badge bg-primary me-2">${spek.spek_kode}</span>
+                                <span class="badge ${badgeClass} me-2">${spek.spek_kode}</span>
+                                <span class="badge bg-light text-dark me-2">${specType}</span>
                                 ${spek.catatan_spek || 'Spesifikasi ' + spek.spek_kode}
                             </h6>
                             <div>
@@ -1347,7 +1480,7 @@ function loadContractSpesifikasi(kontrakId) {
                         <div class="card-body">
                             <div class="row g-2">
                                 <div class="col-md-4">
-                                    <small class="text-muted">Total Unit</small>
+                                    <small class="text-muted">Total ${isAttachmentSpec ? 'Attachment' : 'Unit'}</small>
                                     <div class="fw-bold">${spek.jumlah_dibutuhkan}</div>
                                 </div>
                                 <div class="col-md-4">
@@ -1365,26 +1498,41 @@ function loadContractSpesifikasi(kontrakId) {
                                     <small class="text-muted">Departemen</small>
                                     <div>${spek.nama_departemen || '-'}</div>
                                 </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted">Tipe/Jenis</small>
-                                    <div>${spek.tipe_unit_name || spek.tipe_jenis || '-'}</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted">Kapasitas</small>
-                                    <div>${spek.kapasitas_name || '-'}</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted">Merk/Model</small>
-                                    <div>${spek.merk_unit || '-'} ${spek.model_unit || ''}</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted">Attachment</small>
-                                    <div>${spek.attachment_tipe || '-'} ${spek.attachment_merk || ''}</div>
-                                </div>
-                                <div class="col-md-4">
-                                    <small class="text-muted">Baterai/Charger</small>
-                                    <div>${spek.jenis_baterai || '-'} / ${spek.charger_name || '-'}</div>
-                                </div>
+                                ${isAttachmentSpec ? `
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Tipe Attachment</small>
+                                        <div>${spek.attachment_tipe || '-'}</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Merk Attachment</small>
+                                        <div>${spek.attachment_merk || 'Sesuai Kebutuhan'}</div>
+                                    </div>
+                                ` : `
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Tipe/Jenis</small>
+                                        <div>${spek.tipe_unit_name || spek.tipe_jenis || '-'}</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Kapasitas</small>
+                                        <div>${spek.kapasitas_name || '-'}</div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Merk/Model</small>
+                                        <div>${spek.merk_unit || '-'} ${spek.model_unit || ''}</div>
+                                    </div>
+                                    ${spek.attachment_tipe ? `
+                                        <div class="col-md-4">
+                                            <small class="text-muted">Attachment</small>
+                                            <div>${spek.attachment_tipe || '-'} ${spek.attachment_merk || ''}</div>
+                                        </div>
+                                    ` : ''}
+                                `}
+                                ${spek.jenis_baterai || spek.charger_name ? `
+                                    <div class="col-md-4">
+                                        <small class="text-muted">Baterai/Charger</small>
+                                        <div>${spek.jenis_baterai || '-'} / ${spek.charger_name || '-'}</div>
+                                    </div>
+                                ` : ''}
                             </div>
                             
                             ${spek.aksesoris && spek.aksesoris.length > 0 ? `
@@ -1400,8 +1548,8 @@ function loadContractSpesifikasi(kontrakId) {
                             
                             ${spek.jumlah_tersedia < spek.jumlah_dibutuhkan ? `
                                 <div class="mt-2">
-                                    <button class="btn btn-sm btn-primary" onclick="openSpkModalFromKontrak(${spek.id})">
-                                        <i class="fas fa-file-alt me-1"></i>Buat SPK
+                                    <button class="btn btn-sm ${isAttachmentSpec ? 'btn-success' : 'btn-primary'}" onclick="openSpkModalFromKontrak(${spek.id})">
+                                        <i class="fas fa-file-alt me-1"></i>Buat SPK ${specType}
                                     </button>
                                     <small class="text-muted d-block mt-1">
                                         <i class="fas fa-info-circle me-1"></i>SPK yang dibuat: ${spek.jumlah_spk || 0}
@@ -1409,8 +1557,8 @@ function loadContractSpesifikasi(kontrakId) {
                                 </div>
                             ` : `
                                 <div class="mt-2">
-                                    <span class="badge bg-success">
-                                        <i class="fas fa-check me-1"></i>SPK Lengkap (${spek.jumlah_spk || 0} SPK dibuat)
+                                    <span class="badge ${isAttachmentSpec ? 'bg-success' : 'bg-success'}">
+                                        <i class="fas fa-check me-1"></i>SPK ${specType} Lengkap (${spek.jumlah_spk || 0} SPK dibuat)
                                     </span>
                                 </div>
                             `}
@@ -1460,7 +1608,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         <select class="form-select" name="jenis_spk" required>
                             <option value="UNIT" selected>SPK Unit</option>
                             <option value="ATTACHMENT">SPK Attachment</option>
-                            <option value="TUKAR">SPK Tukar</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -1531,8 +1678,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (lokasiField) lokasiField.value = window.currentContractData.lokasi || '';
             }
             
-            // Reset other fields
-            document.querySelector('#spkFromKontrakForm [name="jenis_spk"]').value = 'UNIT';
+            // Determine SPK type based on specification type
+            let spkType = 'UNIT'; // default
+            try {
+                const card = document.querySelector(`[data-spek-id="${spekId}"]`);
+                if (card && card.getAttribute('data-is-attachment') === 'true') {
+                    spkType = 'ATTACHMENT';
+                }
+            } catch(e) { 
+                console.warn('Failed to determine SPK type from specification', e); 
+            }
+            
+            // Reset other fields and set appropriate SPK type
+            document.querySelector('#spkFromKontrakForm [name="jenis_spk"]').value = spkType;
             document.querySelector('#spkFromKontrakForm [name="delivery_plan"]').value = '';
             document.querySelector('#spkFromKontrakForm [name="jumlah_unit"]').value = '';
             document.querySelector('#spkFromKontrakForm [name="catatan"]').value = '';
@@ -2191,6 +2349,138 @@ function openAddSpesifikasiModal() {
     $('#addSpesifikasiModal').modal('show');
 }
 
+// Open add attachment spesifikasi modal
+function openAddAttachmentSpesifikasiModal() {
+    const contractId = window.currentKontrakId;
+    if (!contractId) {
+        safeShowNotification('ID kontrak tidak ditemukan. Silakan buka detail kontrak terlebih dahulu.', 'error');
+        return;
+    }
+    
+    console.log('Opening add attachment spesifikasi modal for contract ID:', contractId);
+    
+    // Reset form
+    $('#addAttachmentSpesifikasiForm')[0].reset();
+    $('#attachmentSpekKontrakId').val(contractId);
+    
+    // Remove edit mode hidden field if exists
+    $('#attachmentSpekEditId').remove();
+    
+    // Reset modal title and button text
+    $('#addAttachmentSpesifikasiModal .modal-title').text('Tambah Spesifikasi Attachment');
+    $('#submitAttachmentSpesifikasiBtn').text('Simpan Spesifikasi Attachment');
+    
+    console.log('Attachment Kontrak ID set to form:', $('#attachmentSpekKontrakId').val());
+    
+    // Load attachment dropdowns
+    loadAttachmentSpesifikasiDropdowns();
+    
+    // Show modal
+    $('#addAttachmentSpesifikasiModal').modal('show');
+}
+
+// Load dropdown options for attachment spesifikasi form
+function loadAttachmentSpesifikasiDropdowns() {
+    // Helper function to fill select options
+    function fillAttachmentSelect(selector, items, nameField = 'name') {
+        const selectElement = document.querySelector(selector);
+        if (!selectElement) return;
+        
+        const placeholder = selector.includes('Departemen') ? '-- Pilih Departemen --' :
+                           selector.includes('Tipe') ? '-- Pilih Tipe Attachment --' :
+                           selector.includes('Charger') ? '-- Pilih Charger --' :
+                           selector.includes('Baterai') ? '-- Pilih Jenis Baterai --' : '-- Pilih --';
+        
+        let options = `<option value="">${placeholder}</option>`;
+        if (items && items.length > 0) {
+            items.forEach(item => {
+                const displayName = item[nameField] || item.nama || item.tipe || item.jenis || item.id;
+                options += `<option value="${item.id}">${displayName}</option>`;
+            });
+        }
+        selectElement.innerHTML = options;
+    }
+    
+    // Load departemen
+    fetch(`<?= base_url('marketing/spk/spec-options') ?>?type=departemen`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                fillAttachmentSelect('#attachmentSpekDepartemen', data.data || []);
+                setupAttachmentCascadingDropdowns();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading departemen for attachment:', error);
+        });
+    
+    // Load attachment types
+    fetch(`<?= base_url('marketing/spk/spec-options') ?>?type=attachment_tipe`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                fillAttachmentSelect('#attachmentSpekTipe', data.data || []);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading attachment types:', error);
+        });
+    
+    // Load jenis baterai
+    fetch(`<?= base_url('marketing/spk/spec-options') ?>?type=jenis_baterai`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                fillAttachmentSelect('#attachmentSpekJenisBaterai', data.data || []);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading jenis baterai for attachment:', error);
+        });
+}
+
+// Setup cascading dropdown behavior for attachment
+function setupAttachmentCascadingDropdowns() {
+    // Departemen change - affects charger and shows/hides electric options
+    $('#attachmentSpekDepartemen').on('change', function() {
+        const departemenId = this.value;
+        const selectedOption = this.options[this.selectedIndex];
+        const departemenText = selectedOption ? selectedOption.text : '';
+        
+        // Clear charger dropdown
+        $('#attachmentSpekCharger').html('<option value="">-- Pilih Charger --</option>');
+        
+        if (departemenId) {
+            // Check if electric department
+            const isElectric = departemenText.toLowerCase().includes('electric') || 
+                              departemenText.toLowerCase().includes('listrik');
+            
+            if (isElectric) {
+                // Show electric options
+                $('#electricAttachmentOptions').show();
+                
+                // Load charger for electric attachments
+                fetch(`<?= base_url('marketing/spk/spec-options') ?>?type=charger&departemen_id=${departemenId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            fillAttachmentSelect('#attachmentSpekCharger', data.data || []);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading charger for attachment:', error);
+                    });
+            } else {
+                // Hide electric options for non-electric attachments
+                $('#electricAttachmentOptions').hide();
+            }
+        } else {
+            // Hide electric options if no departemen selected
+            $('#electricAttachmentOptions').hide();
+        }
+    });
+}
+
 // Load dropdown options for spesifikasi form
 function loadSpesifikasiDropdowns() {
     // Helper function to fill select options
@@ -2638,10 +2928,15 @@ function createSPKForSpec(spekId) {
                     <!-- Spesifikasi Tab -->
                     <div class="tab-pane fade" id="spesifikasi-content" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0">Request Spesifikasi Unit untuk dasar pembuatan SPK</h6>
-                            <button class="btn btn-primary btn-sm" onclick="openAddSpesifikasiModal()">
-                                <i class="fas fa-plus me-1"></i>Tambah Spesifikasi
-                            </button>
+                            <h6 class="mb-0">Request Spesifikasi untuk dasar pembuatan SPK</h6>
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-primary btn-sm" onclick="openAddSpesifikasiModal()">
+                                    <i class="fas fa-plus me-1"></i>Tambah Unit
+                                </button>
+                                <button class="btn btn-success btn-sm" onclick="openAddAttachmentSpesifikasiModal()">
+                                    <i class="fas fa-puzzle-piece me-1"></i>Tambah Attachment
+                                </button>
+                            </div>
                         </div>
                         <br>
 
@@ -2936,6 +3231,87 @@ function createSPKForSpec(spekId) {
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
                     <button type="submit" class="btn btn-primary" id="submitSpesifikasiBtn">Simpan Spesifikasi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Attachment Spesifikasi Modal -->
+<div class="modal fade" id="addAttachmentSpesifikasiModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h6 class="modal-title">Tambah Spesifikasi Attachment</h6>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addAttachmentSpesifikasiForm" method="post" action="javascript:void(0)">
+                <div class="modal-body">
+                    <input type="hidden" name="kontrak_id" id="attachmentSpekKontrakId">
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Spesifikasi Attachment</strong> digunakan untuk permintaan attachment tambahan atau penggantian 
+                        dengan harga terpisah dari kontrak utama (misal: upgrade attachment, attachment khusus, dll).
+                    </div>
+                    
+                    <div class="row g-3">
+                        <!-- Basic Info -->
+                        <div class="col-md-6">
+                            <label class="form-label">Departemen <span class="text-danger">*</span></label>
+                            <select class="form-select" name="departemen_id" id="attachmentSpekDepartemen" required>
+                                <option value="">-- Pilih Departemen --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Jumlah Attachment <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="jumlah_dibutuhkan" placeholder="Jumlah attachment" min="1" required>
+                        </div>
+                        
+                        <div class="col-12"><hr><h6>Spesifikasi Attachment</h6></div>
+                        
+                        <!-- Attachment Specs -->
+                        <div class="col-md-6">
+                            <label class="form-label">Tipe Attachment <span class="text-danger">*</span></label>
+                            <select class="form-select" name="attachment_tipe" id="attachmentSpekTipe" required>
+                                <option value="">-- Pilih Tipe Attachment --</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Merk Attachment</label>
+                            <input type="text" class="form-control" name="attachment_merk" id="attachmentSpekMerk" placeholder="Merk attachment (opsional)">
+                        </div>
+                        
+                        <!-- Pricing -->
+                        <div class="col-12"><hr><h6>Harga Attachment</h6></div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Harga per Unit (Bulanan) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="number" class="form-control" name="harga_per_unit_bulanan" placeholder="0" min="0" required>
+                            </div>
+                            <div class="form-text">Harga tambahan per attachment per bulan</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Harga per Unit (Harian)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">Rp</span>
+                                <input type="number" class="form-control" name="harga_per_unit_harian" placeholder="0" min="0">
+                            </div>
+                            <div class="form-text">Harga tambahan per attachment per hari (opsional)</div>
+                        </div>
+                        
+                        <!-- Additional Info -->
+                        <div class="col-12">
+                            <label class="form-label">Catatan Spesifikasi</label>
+                            <textarea class="form-control" name="catatan_spek" rows="3" placeholder="Catatan tambahan untuk spesifikasi attachment ini (contoh: untuk mengganti attachment unit A, upgrade khusus, dll)"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-success" id="submitAttachmentSpesifikasiBtn">Simpan Spesifikasi Attachment</button>
                 </div>
             </form>
         </div>

@@ -1470,13 +1470,13 @@ class NotificationCenter {
         this.selectedItems.clear();
     }
 
-    // Real-time updates simulation
+    // Real-time updates simulation - DISABLED for performance
     startRealTimeUpdates() {
-        // Simulate receiving new notifications
-        setInterval(() => {
-            // This would normally be a WebSocket connection or SSE
-            this.checkForNewNotifications();
-        }, 30000); // Check every 30 seconds
+        console.log('📡 Real-time updates disabled for performance optimization');
+        // DISABLED: Heavy polling removed
+        // setInterval(() => {
+        //     this.checkForNewNotifications();
+        // }, 30000); // DISABLED
     }
 
     async checkForNewNotifications() {

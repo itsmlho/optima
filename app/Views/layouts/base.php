@@ -49,9 +49,8 @@
     <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
     
     <!-- Custom CSS -->
-    <link href="<?= base_url('assets/css/optima-pro.css') ?>" rel="stylesheet">
-    <link href="<?= base_url('assets/css/sidebar-enhanced.css') ?>" rel="stylesheet">
-    
+    <link href="<?= base_url('assets/css/optima-pro.css') ?>?v=<?= time() ?>" rel="stylesheet">
+   
     <!-- Page Specific CSS -->
     <?= $this->renderSection('css') ?>
     
@@ -772,10 +771,10 @@
     <!-- noUiSlider -->
     <script defer src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
     
-    <!-- OPTIMA Pro JavaScript (cache-busted by timestamp) -->
-    <script src="<?= base_url('assets/js/optima-pro.js') ?>?v=<?= time() ?>"></script>
-    <script src="<?= base_url('assets/js/sidebar-enhanced.js') ?>?v=<?= time() ?>"></script>
-
+    <!-- OPTIMA SPA Main System (Single File) -->
+    <script src="<?= base_url('assets/js/optima-spa-main.js') ?>?v=<?= time() ?>"></script>
+    
+    
     
     <!-- Global JavaScript Variables -->
     <script>
@@ -877,7 +876,7 @@
         })();
         
         document.addEventListener('DOMContentLoaded', function() {
-            // Direct theme toggle implementation without dependency on OptimaPro
+            // Theme toggle will be handled by OPTIMA unified system
             const themeToggle = document.querySelector('.theme-toggle');
             if (themeToggle) {
                 themeToggle.addEventListener('click', function() {
@@ -895,13 +894,11 @@
                         icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
                     }
                     
-                    // Update OptimaPro config if available
-                    if (typeof OptimaPro !== 'undefined' && OptimaPro.config) {
-                        OptimaPro.config.theme = newTheme;
+                    // Update OPTIMA state if available
+                    if (window.OPTIMA && window.OPTIMA.initialized) {
+                        window.OPTIMA.state.theme = newTheme;
+                        window.OPTIMA.log(`Theme switched to ${newTheme} mode`);
                     }
-                    
-                    // Show notification for theme change
-                    OptimaPro.showNotification(`Switched to ${newTheme} mode`, 'info', 2000);
                     
                     console.log('Theme switched to:', newTheme);
                 });
@@ -915,49 +912,14 @@
             }
         });
 
-        // Sidebar toggle functionality
-        window.toggleSidebar = function() {
-            const sidebar = document.querySelector('.sidebar');
-            const mainContent = document.querySelector('.main-content');
-            
-            if (sidebar && mainContent) {
-                sidebar.classList.toggle('collapsed');
-                mainContent.classList.toggle('expanded');
-                
-                // Save state to localStorage
-                const isCollapsed = sidebar.classList.contains('collapsed');
-                localStorage.setItem('optima-sidebar-collapsed', isCollapsed);
-                
-                // Show notification
-                OptimaPro.showNotification(
-                    isCollapsed ? 'Sidebar collapsed' : 'Sidebar expanded', 
-                    'info', 
-                    1500
-                );
-                
-                // Trigger resize event for charts
-                window.dispatchEvent(new Event('resize'));
-            }
-        };
-
-        // Initialize sidebar state from localStorage
-        document.addEventListener('DOMContentLoaded', function() {
-            const savedState = localStorage.getItem('optima-sidebar-collapsed');
-            if (savedState === 'true') {
-                const sidebar = document.querySelector('.sidebar');
-                const mainContent = document.querySelector('.main-content');
-                if (sidebar && mainContent) {
-                    sidebar.classList.add('collapsed');
-                    mainContent.classList.add('expanded');
-                }
-            }
-        });
+        // Sidebar toggle functionality - Now handled by OPTIMA unified system
+        // window.toggleSidebar function is provided by optima-unified.js
     </script>
     
     <!-- Page Specific JavaScript -->
     <?= $this->renderSection('javascript') ?>
     
-    <!-- Initialize OPTIMA Pro -->
+    <!-- Initialize OPTIMA Unified System -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
             // Initialize Bootstrap dropdowns first
@@ -969,12 +931,8 @@
                 });
             }
             
-            // Initialize application
-            if (typeof OptimaPro !== 'undefined') {
-                OptimaPro.init();
-            }
-            
-            // Page specific initialization
+            // OPTIMA unified system will auto-initialize
+            // No need for manual initialization
         });
     </script>
     <?= $this->renderSection('script') ?>
@@ -1087,111 +1045,42 @@ function fetchRecentNotifications() {
     .catch(error => console.warn('Recent notifications fetch failed:', error));
 }
 
-// SSE client with reconnection/backoff and polling fallback
+// LIGHTWEIGHT NOTIFICATION SYSTEM - SSE DISABLED for performance
 (function(){
-    const sseUrl = '<?= base_url('notifications/stream') ?>';
-    let es = null;
-    let reconnectDelay = 1000; // start 1s
-    let maxDelay = 30000; // max 30s
-    let pollingEnabled = true; // polling fallback enabled until SSE connected
+    console.log('🚀 Starting LIGHTWEIGHT notification system (SSE disabled)');
+    
     let pollIntervalId = null;
+    let isPolling = false;
 
-    function startPolling() {
-        if (pollIntervalId) return;
+    function startLightweightPolling() {
+        if (pollIntervalId || isPolling) return;
+        
+        isPolling = true;
+        console.log('📡 Starting lightweight notification polling (every 2 minutes)');
+        
+        // LIGHTWEIGHT: Only update count, not full notifications
         pollIntervalId = setInterval(() => {
             updateNotificationCount();
-            fetchRecentNotifications();
-        }, 30000);
+        }, 120000); // 2 minutes instead of 30 seconds
     }
 
-    function stopPolling() {
-        if (!pollIntervalId) return;
-        clearInterval(pollIntervalId);
-        pollIntervalId = null;
-    }
-
-    function connect() {
-        try {
-            es = new EventSource(sseUrl, { withCredentials: true });
-        } catch (err) {
-            console.warn('SSE not supported or failed to construct:', err);
-            return scheduleReconnect();
+    function stopLightweightPolling() {
+        if (pollIntervalId) {
+            clearInterval(pollIntervalId);
+            pollIntervalId = null;
         }
-
-        es.addEventListener('open', function() {
-            console.info('SSE connected to notifications/stream');
-            reconnectDelay = 1000;
-            if (pollingEnabled) {
-                pollingEnabled = false;
-                stopPolling();
-            }
-        });
-
-        es.addEventListener('message', function(e) {
-            try {
-                const payload = JSON.parse(e.data);
-                if (payload && payload.type === 'notification') {
-                    // payload.notification should be a single notification or list
-                    const notifs = Array.isArray(payload.notification) ? payload.notification : [payload.notification];
-                    // Update UI: increment or refresh counts and dropdown
-                    updateNotificationCount();
-                    fetchRecentNotifications();
-                }
-            } catch (err) {
-                console.warn('Failed to parse SSE message', err, e.data);
-            }
-        });
-
-        es.addEventListener('error', function(evt) {
-            console.warn('SSE error, will attempt reconnect', evt);
-            // Close and schedule reconnect
-            try { es.close(); } catch(e){}
-            es = null;
-            scheduleReconnect();
-        });
+        isPolling = false;
+        console.log('⏹️ Stopped lightweight notification polling');
     }
 
-    function scheduleReconnect() {
-        if (pollingEnabled === false) pollingEnabled = true;
-        startPolling();
-        setTimeout(() => {
-            reconnectDelay = Math.min(maxDelay, Math.floor(reconnectDelay * 1.6));
-            connect();
-        }, reconnectDelay);
-    }
-
-    // Kick off: start polling immediately while we try SSE
-    startPolling();
-
-    // Probe the SSE endpoint with a short timeout to avoid blocking page load
-    function probeSSE(url, timeout = 2000) {
-        return new Promise((resolve) => {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), timeout);
-            fetch(url, { method: 'GET', signal: controller.signal, credentials: 'include', headers: { 'Accept': 'text/event-stream' } })
-                .then(resp => {
-                    clearTimeout(id);
-                    // If server returned 200 and content-type looks like event-stream, consider OK
-                    const ct = resp.headers.get('content-type') || '';
-                    if (resp.ok && ct.indexOf('text/event-stream') !== -1) {
-                        resolve(true);
-                    } else {
-                        resolve(false);
-                    }
-                })
-                .catch(() => resolve(false));
-        });
-    }
-
-    probeSSE(sseUrl, 2000).then(ok => {
-        if (ok) connect();
-        else console.warn('SSE probe failed or slow; using polling fallback');
-    });
+    // Start lightweight polling immediately
+    startLightweightPolling();
 
     // Expose for debugging
-    window.__OptimaSSE = {
-        get eventSource() { return es; },
-        isPolling: () => !!pollIntervalId
+    window.__OptimaNotificationSystem = {
+        isPolling: () => !!pollIntervalId,
+        stop: stopLightweightPolling,
+        start: startLightweightPolling
     };
 })();
 

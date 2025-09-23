@@ -638,142 +638,23 @@ class Notifications extends BaseController
 
     public function stream()
     {
-    try {
-    // Force raw headers for Server-Sent Events (use header() to avoid framework overrides)
-    header('Content-Type: text/event-stream');
-    header('Cache-Control: no-cache');
-    header('Connection: keep-alive');
-        // Allow same-origin credentials; restrict CORS to same origin where possible
-        $origin = $this->request->getHeaderLine('Origin') ?: '';
-        if ($origin) {
-            $this->response->setHeader('Access-Control-Allow-Origin', $origin);
-            $this->response->setHeader('Access-Control-Allow-Credentials', 'true');
-        }
-        $this->response->setHeader('Access-Control-Allow-Headers', 'Cache-Control, Last-Event-ID');
-
-        // Ensure script can run indefinitely for streaming
-        if (function_exists('set_time_limit')) {
-            @set_time_limit(0);
-        }
-        @ignore_user_abort(true);
-
-        // Disable output buffering
-        if (ob_get_level()) {
-            ob_end_clean();
-        }
-
-    $userId = session()->get('user_id');
-    $lastEventId = $this->request->getHeaderLine('Last-Event-ID') ?: 0;
-
-    // Disable proxy buffering for nginx/varnish where possible
-    header('X-Accel-Buffering: no');
-
-    // Create notifications table if it doesn't exist and ensure columns
-    $this->createNotificationsTable();
-    $this->ensureNotificationColumns();
-
-        // Send initial retry suggestion and initial payload so clients can sync
-        echo "retry: 5000\n"; // client should retry after 5s on error
-        $initialLastId = (int)$lastEventId;
-        $unread = 0;
-        try {
-            $unread = $this->db->table('notifications')->where('is_read', 0)->where('user_id', $userId)->countAllResults();
-        } catch (\Exception $e) { /* ignore */ }
-
-        echo "event: init\n";
-        echo "data: " . json_encode(['lastEventId' => $initialLastId, 'unread' => $unread]) . "\n\n";
-
-        while (true) {
-            // Check for new notifications
-            $notifications = $this->getNewNotifications($userId, $lastEventId);
-            
-            if (!empty($notifications)) {
-                foreach ($notifications as $notification) {
-                    $payload = [
-                        'type' => 'notification',
-                        'notification' => [
-                            'id' => $notification['id'],
-                            'title' => $notification['title'],
-                            'message' => $notification['message'],
-                            'type' => $notification['type'],
-                            'icon' => $this->getNotificationIcon($notification['type']),
-                            'created_at' => $notification['created_at'],
-                            'url' => $notification['url']
-                        ]
-                    ];
-
-                    echo "id: {$notification['id']}\n";
-                    echo "event: notification\n";
-                    echo "data: " . json_encode($payload) . "\n\n";
-
-                    $lastEventId = $notification['id'];
-                }
-
-                // Flush output
-                if (ob_get_level()) {
-                    ob_flush();
-                }
-                flush();
-            }
-
-            // Send heartbeat every 30 seconds
-            echo "event: heartbeat\n";
-            echo "data: " . json_encode(['timestamp' => time()]) . "\n\n";
-            
-            if (ob_get_level()) {
-                ob_flush();
-            }
-            flush();
-
-            // Sleep for 5 seconds before checking again
-            sleep(5);
-
-            // Check if connection is still alive
-            if (connection_aborted()) {
-                break;
-            }
-        }
-        } catch (\Throwable $e) {
-            // Log server error for debugging
-            error_log('[Notifications::stream] SSE failed: ' . $e->getMessage() . " in " . $e->getFile() . ':' . $e->getLine());
-            // Also write a detailed trace to writable logs for user inspection
-            try {
-                $logPath = WRITEPATH . 'logs' . DIRECTORY_SEPARATOR . 'sse_stream_error.log';
-                $content = "[" . date('Y-m-d H:i:s') . "] SSE stream exception: " . $e->getMessage() . " in " . $e->getFile() . ':' . $e->getLine() . "\n";
-                $content .= $e->getTraceAsString() . "\n\n";
-                file_put_contents($logPath, $content, FILE_APPEND | LOCK_EX);
-            } catch (\Exception $inner) {
-                // If logging fails, still continue
-                error_log('[Notifications::stream] Failed writing SSE debug log: ' . $inner->getMessage());
-            }
-            // If headers not sent, provide JSON 500 for easier debugging in Network tab
-            if (!headers_sent()) {
-                http_response_code(500);
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => 'SSE stream error', 'error' => $e->getMessage()]);
-            }
-        }
+        // SSE DISABLED for performance - return 404 to stop SSE connections
+        return $this->response->setStatusCode(404)->setJSON([
+            'success' => false,
+            'message' => 'SSE endpoint disabled for performance optimization'
+        ]);
     }
 
     /**
-     * Lightweight SSE test endpoint (sends one event and exits)
-     * Useful for debugging SSE connectivity without full stream logic.
+     * SSE test endpoint - DISABLED for performance
      */
     public function testStream()
     {
-    // Force raw headers for SSE test
-    header('Content-Type: text/event-stream');
-    header('Cache-Control: no-cache');
-    header('Connection: keep-alive');
-        header('X-Accel-Buffering: no');
-
-        if (ob_get_level()) ob_end_clean();
-
-        $payload = ['type' => 'notification', 'notification' => ['id' => 0, 'title' => 'SSE Test', 'message' => 'Test event from server', 'created_at' => date('Y-m-d H:i:s')]];
-        echo "event: test\n";
-        echo "data: " . json_encode($payload) . "\n\n";
-        if (ob_get_level()) ob_flush();
-        flush();
+        // SSE DISABLED for performance
+        return $this->response->setStatusCode(404)->setJSON([
+            'success' => false,
+            'message' => 'SSE test endpoint disabled for performance optimization'
+        ]);
     }
 
     public function create()
