@@ -43,4 +43,46 @@ class Validation extends BaseConfig
     // --------------------------------------------------------------------
     // Rules
     // --------------------------------------------------------------------
+    
+    public array $work_order_store = [
+        'unit_id' => [
+            'label' => 'Unit',
+            'rules' => 'required|integer',
+            'errors' => [
+                'required' => 'Unit harus dipilih',
+                'integer' => 'Unit ID harus berupa angka'
+            ]
+        ],
+        'order_type' => [
+            'label' => 'Tipe Order',
+            'rules' => 'required',
+            'errors' => [
+                'required' => 'Tipe order harus dipilih'
+            ]
+        ],
+        'priority_id' => [
+            'label' => 'Priority',
+            'rules' => 'required|integer',
+            'errors' => [
+                'required' => 'Priority harus dipilih',
+                'integer' => 'Priority ID harus berupa angka'
+            ]
+        ],
+        'category_id' => [
+            'label' => 'Kategori',
+            'rules' => 'required|integer',
+            'errors' => [
+                'required' => 'Kategori harus dipilih',
+                'integer' => 'Category ID harus berupa angka'
+            ]
+        ],
+        'complaint_description' => [
+            'label' => 'Deskripsi Keluhan',
+            'rules' => 'required|min_length[5]',
+            'errors' => [
+                'required' => 'Deskripsi keluhan harus diisi',
+                'min_length' => 'Deskripsi keluhan minimal 5 karakter'
+            ]
+        ]
+    ];
 }

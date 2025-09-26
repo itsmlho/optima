@@ -164,6 +164,41 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('kontrak/update/(:num)', 'Marketing::updateKontrak/$1');
     $routes->post('kontrak/delete/(:num)', 'Marketing::deleteKontrak/$1');
 
+    // Customer Management Routes
+    $routes->group('customer-management', static function ($routes) {
+        $routes->get('/', 'CustomerManagementController::index');
+        // Customers
+        $routes->post('getCustomers', 'CustomerManagementController::getCustomers');
+        $routes->get('showCustomer/(:num)', 'CustomerManagementController::showCustomer/$1');
+        $routes->post('storeCustomer', 'CustomerManagementController::storeCustomer');
+        $routes->post('updateCustomer/(:num)', 'CustomerManagementController::updateCustomer/$1');
+        $routes->delete('deleteCustomer/(:num)', 'CustomerManagementController::deleteCustomer/$1');
+        $routes->post('deleteCustomer/(:num)', 'CustomerManagementController::deleteCustomer/$1'); // Fallback
+        // Customer Locations
+        $routes->post('getCustomerLocations', 'CustomerManagementController::getCustomerLocations');
+        $routes->get('showCustomerLocation/(:num)', 'CustomerManagementController::showCustomerLocation/$1');
+        $routes->post('storeCustomerLocation', 'CustomerManagementController::storeCustomerLocation');
+        $routes->post('updateCustomerLocation/(:num)', 'CustomerManagementController::updateCustomerLocation/$1');
+        $routes->delete('deleteCustomerLocation/(:num)', 'CustomerManagementController::deleteCustomerLocation/$1');
+        $routes->post('deleteCustomerLocation/(:num)', 'CustomerManagementController::deleteCustomerLocation/$1'); // Fallback
+        // Customer Contracts
+        $routes->post('getCustomerContracts', 'CustomerManagementController::getCustomerContracts');
+        $routes->get('showCustomerContract/(:num)', 'CustomerManagementController::showCustomerContract/$1');
+        $routes->post('storeCustomerContract', 'CustomerManagementController::storeCustomerContract');
+        $routes->post('updateCustomerContract/(:num)', 'CustomerManagementController::updateCustomerContract/$1');
+        $routes->delete('deleteCustomerContract/(:num)', 'CustomerManagementController::deleteCustomerContract/$1');
+        $routes->post('deleteCustomerContract/(:num)', 'CustomerManagementController::deleteCustomerContract/$1'); // Fallback
+        
+        // Locations
+        $routes->get('getLocations/(:num)', 'CustomerManagementController::getLocations/$1');
+        $routes->get('getLocation/(:num)', 'CustomerManagementController::getLocation/$1');
+        
+        // Stats & Dropdown
+        $routes->get('getStats', 'CustomerManagementController::getStats');
+        $routes->get('getCustomersDropdown', 'CustomerManagementController::getCustomersDropdown');
+        $routes->get('getAreasDropdown', 'CustomerManagementController::getAreasDropdown');
+    });
+
 });
 
 // Service Division Routes
@@ -198,6 +233,36 @@ $routes->group('service', static function ($routes) {
     // Assign selected items (unit+attachment) to SPK and mark READY
     $routes->post('spk/assign-items', 'Service::spkAssignItems');
     $routes->get('spk/pdf/(:num)', 'Service::spkPdf/$1');
+    
+    // Service Area & Employee Management Routes  
+    $routes->group('area-management', static function($routes) {
+        $routes->get('/', 'ServiceAreaManagementController::index');
+        // Areas
+        $routes->post('getAreas', 'ServiceAreaManagementController::getAreas');
+        $routes->get('showArea/(:num)', 'ServiceAreaManagementController::showArea/$1');
+        $routes->post('storeArea', 'ServiceAreaManagementController::storeArea');
+        $routes->post('updateArea/(:num)', 'ServiceAreaManagementController::updateArea/$1');
+        $routes->delete('deleteArea/(:num)', 'ServiceAreaManagementController::deleteArea/$1');
+        $routes->post('deleteArea/(:num)', 'ServiceAreaManagementController::deleteArea/$1'); // Fallback
+        // Employees
+        $routes->post('getEmployees', 'ServiceAreaManagementController::getEmployees');
+        $routes->get('showEmployee/(:num)', 'ServiceAreaManagementController::showEmployee/$1');
+        $routes->post('storeEmployee', 'ServiceAreaManagementController::storeEmployee');
+        $routes->post('updateEmployee/(:num)', 'ServiceAreaManagementController::updateEmployee/$1');
+        $routes->delete('deleteEmployee/(:num)', 'ServiceAreaManagementController::deleteEmployee/$1');
+        $routes->post('deleteEmployee/(:num)', 'ServiceAreaManagementController::deleteEmployee/$1'); // Fallback
+        // Assignments
+        $routes->get('getAreaAssignments/(:num)', 'ServiceAreaManagementController::getAreaAssignments/$1');
+        $routes->get('getEmployeeAssignments/(:num)', 'ServiceAreaManagementController::getEmployeeAssignments/$1');
+        $routes->post('storeAssignment', 'ServiceAreaManagementController::storeAssignment');
+        $routes->post('updateAssignment/(:num)', 'ServiceAreaManagementController::updateAssignment/$1');
+        $routes->delete('deleteAssignment/(:num)', 'ServiceAreaManagementController::deleteAssignment/$1');
+        $routes->post('deleteAssignment/(:num)', 'ServiceAreaManagementController::deleteAssignment/$1'); // Fallback
+        $routes->get('showAssignment/(:num)', 'ServiceAreaManagementController::showAssignment/$1');
+        // Availability
+        $routes->get('getAvailableEmployees/(:num)', 'ServiceAreaManagementController::getAvailableEmployees/$1');
+        $routes->get('getAvailableEmployees/(:num)/(:segment)', 'ServiceAreaManagementController::getAvailableEmployees/$1/$2');
+    });
 });
 
 // Operational Routes (Delivery)
@@ -360,20 +425,7 @@ $routes->group('purchasing', static function ($routes) {
     
 });
 
-// Database Fix Routes
-$routes->get('fix-status-column', 'DatabaseFix::fixStatusColumn');
-$routes->get('add-sample-data', 'DatabaseFix::addSampleData');
 
-// Customer Management Routes
-$routes->group('customers', static function ($routes) {
-    $routes->get('/', 'Customers::index');
-    $routes->get('create', 'Customers::create');
-    $routes->post('store', 'Customers::store');
-    $routes->get('edit/(:num)', 'Customers::edit/$1');
-    $routes->post('update/(:num)', 'Customers::update/$1');
-    $routes->post('delete/(:num)', 'Customers::delete/$1');
-    $routes->post('list', 'Customers::getCustomerList');
-});
 
 // Finance Management Routes
 $routes->group('finance', static function ($routes) {
@@ -671,6 +723,9 @@ $routes->group('warehouse/inventory', static function($r){
 
 // Test Route for Activity Log
 $routes->get('test-activity-log', 'TestActivityLog::index');
+
+// Test Area Staff Integration
+$routes->get('test-area-staff-integration', 'TestAreaStaffIntegration::index');
 
 // Activity Log Viewer Routes - Activated for detailed descriptions
 $routes->group('admin', static function ($routes) {

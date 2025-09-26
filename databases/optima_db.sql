@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Sep 04, 2025 at 11:33 AM
+-- Generation Time: Sep 23, 2025 at 09:14 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -23,6 +23,321 @@ SET time_zone = "+00:00";
 --
 CREATE DATABASE IF NOT EXISTS `optima_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 USE `optima_db`;
+
+DELIMITER $$
+--
+-- Procedures
+--
+DROP PROCEDURE IF EXISTS `ProcessUnitTarik`$$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `ProcessUnitTarik` (IN `p_unit_ids` TEXT, IN `p_di_id` INT, IN `p_stage` VARCHAR(50), IN `p_user_id` INT, OUT `p_result` VARCHAR(1000))   BEGIN
+    DECLARE v_new_status VARCHAR(50);
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SET p_result = 'ERROR: Transaction failed';
+    END;
+
+    START TRANSACTION;
+
+    
+    CASE p_stage
+        WHEN 'DISETUJUI' THEN SET v_new_status = 'UNIT_AKAN_DITARIK';
+        WHEN 'UNIT_DITARIK' THEN SET v_new_status = 'UNIT_SEDANG_DITARIK';
+        WHEN 'SAMPAI_KANTOR' THEN SET v_new_status = 'STOCK_ASET';
+        ELSE SET v_new_status = NULL;
+    END CASE;
+
+    
+    IF p_unit_ids IS NOT NULL AND v_new_status IS NOT NULL THEN
+        
+        UPDATE inventory_unit 
+        SET workflow_status = v_new_status, 
+            di_workflow_id = p_di_id,
+            updated_at = NOW()
+        WHERE FIND_IN_SET(id_inventory_unit, p_unit_ids);
+
+        
+        INSERT INTO unit_workflow_log (
+            unit_id, di_id, stage, jenis_perintah, 
+            old_status, new_status, created_by
+        ) 
+        SELECT 
+            id_inventory_unit, p_di_id, p_stage, 'TARIK',
+            workflow_status, v_new_status, p_user_id
+        FROM inventory_unit 
+        WHERE FIND_IN_SET(id_inventory_unit, p_unit_ids);
+
+        
+        IF p_stage IN ('SAMPAI_KANTOR', 'SELESAI') THEN
+            
+            INSERT INTO contract_disconnection_log (
+                kontrak_id, unit_id, stage, reason, disconnected_by
+            ) 
+            SELECT 
+                kontrak_id, id_inventory_unit, p_stage, 'TARIK_PROCESS', p_user_id
+            FROM inventory_unit 
+            WHERE FIND_IN_SET(id_inventory_unit, p_unit_ids) AND kontrak_id IS NOT NULL;
+
+            
+            UPDATE inventory_unit 
+            SET kontrak_id = NULL,
+                contract_disconnect_date = NOW(),
+                contract_disconnect_stage = p_stage,
+                updated_at = NOW()
+            WHERE FIND_IN_SET(id_inventory_unit, p_unit_ids);
+        END IF;
+    END IF;
+
+    COMMIT;
+    SET p_result = 'SUCCESS: Unit TARIK processed successfully';
+
+END$$
+
+DROP PROCEDURE IF EXISTS `sp_assign_unit_to_spk`$$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_assign_unit_to_spk` (IN `p_unit_id` INT, IN `p_spk_id` INT, IN `p_kontrak_spesifikasi_id` INT)   BEGIN
+    DECLARE v_aksesoris TEXT;
+    DECLARE v_kontrak_id INT;
+    DECLARE v_pelanggan VARCHAR(255);
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    
+    START TRANSACTION;
+    
+    
+    SELECT ks.aksesoris, ks.kontrak_id, k.pelanggan 
+    INTO v_aksesoris, v_kontrak_id, v_pelanggan
+    FROM kontrak_spesifikasi ks
+    JOIN kontrak k ON ks.kontrak_id = k.id 
+    WHERE ks.id = p_kontrak_spesifikasi_id;
+    
+    
+    UPDATE inventory_unit 
+    SET 
+        spk_id = p_spk_id,
+        kontrak_spesifikasi_id = p_kontrak_spesifikasi_id,
+        kontrak_id = v_kontrak_id,
+        aksesoris = v_aksesoris,
+        lokasi_unit = v_pelanggan,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id_inventory_unit = p_unit_id;
+    
+    COMMIT;
+    
+END$$
+
+DROP PROCEDURE IF EXISTS `sp_attach_item_to_unit`$$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_attach_item_to_unit` (IN `p_attachment_id` INT, IN `p_unit_id` INT)   BEGIN
+    DECLARE v_unit_no INT;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    
+    START TRANSACTION;
+    
+    
+    SELECT no_unit INTO v_unit_no
+    FROM inventory_unit 
+    WHERE id_inventory_unit = p_unit_id;
+    
+    
+    IF v_unit_no IS NULL THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Unit tidak ditemukan';
+    END IF;
+    
+    
+    UPDATE inventory_attachment 
+    SET 
+        id_inventory_unit = p_unit_id,
+        lokasi_penyimpanan = CONCAT('Terpasang di Unit ', v_unit_no),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id_inventory_attachment = p_attachment_id;
+    
+    COMMIT;
+    
+END$$
+
+DROP PROCEDURE IF EXISTS `sp_detach_item_from_unit`$$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_detach_item_from_unit` (IN `p_attachment_id` INT)   BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    
+    START TRANSACTION;
+    
+    
+    UPDATE inventory_attachment 
+    SET 
+        id_inventory_unit = NULL,
+        lokasi_penyimpanan = 'Gudang Pusat',
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id_inventory_attachment = p_attachment_id;
+    
+    COMMIT;
+    
+END$$
+
+DROP PROCEDURE IF EXISTS `sp_sync_workflow_data`$$
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_sync_workflow_data` ()   BEGIN
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+    
+    START TRANSACTION;
+    
+    
+    UPDATE inventory_unit iu
+    JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+    SET iu.aksesoris = ks.aksesoris,
+        iu.updated_at = CURRENT_TIMESTAMP
+    WHERE iu.kontrak_spesifikasi_id IS NOT NULL
+    AND (iu.aksesoris IS NULL OR iu.aksesoris != ks.aksesoris);
+    
+    
+    UPDATE inventory_unit iu
+    JOIN kontrak k ON iu.kontrak_id = k.id
+    SET iu.lokasi_unit = k.pelanggan,
+        iu.updated_at = CURRENT_TIMESTAMP
+    WHERE iu.kontrak_id IS NOT NULL
+    AND (iu.lokasi_unit IS NULL OR iu.lokasi_unit != k.pelanggan);
+    
+    
+    UPDATE inventory_unit iu
+    JOIN spk s ON (iu.spk_id = s.id OR iu.kontrak_spesifikasi_id = s.kontrak_spesifikasi_id)
+    JOIN delivery_instructions di ON s.id = di.spk_id
+    SET iu.tanggal_kirim = di.tanggal_kirim,
+        iu.spk_id = COALESCE(iu.spk_id, s.id),
+        iu.delivery_instruction_id = di.id,
+        iu.updated_at = CURRENT_TIMESTAMP
+    WHERE di.tanggal_kirim IS NOT NULL
+    AND di.status IN ('DELIVERED', 'SHIPPED')
+    AND (iu.tanggal_kirim IS NULL OR iu.tanggal_kirim != di.tanggal_kirim);
+    
+    
+    UPDATE inventory_attachment ia
+    JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
+    SET ia.lokasi_penyimpanan = CONCAT('Terpasang di Unit ', iu.no_unit),
+        ia.updated_at = CURRENT_TIMESTAMP
+    WHERE ia.id_inventory_unit IS NOT NULL
+    AND (ia.lokasi_penyimpanan IS NULL OR ia.lokasi_penyimpanan != CONCAT('Terpasang di Unit ', iu.no_unit));
+    
+    COMMIT;
+    
+    
+    SELECT 
+        'Workflow data sync completed' as message,
+        (SELECT COUNT(*) FROM inventory_unit WHERE aksesoris IS NOT NULL) as units_with_accessories,
+        (SELECT COUNT(*) FROM inventory_unit WHERE tanggal_kirim IS NOT NULL) as units_with_delivery_date,
+        (SELECT COUNT(*) FROM inventory_attachment WHERE lokasi_penyimpanan LIKE 'Terpasang di Unit%') as attached_items;
+    
+END$$
+
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `activity_types`
+--
+-- Creation: Sep 08, 2025 at 06:54 AM
+--
+
+DROP TABLE IF EXISTS `activity_types`;
+CREATE TABLE IF NOT EXISTS `activity_types` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `module_name` varchar(50) NOT NULL,
+  `type_code` varchar(50) NOT NULL,
+  `type_name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `business_impact_default` enum('LOW','MEDIUM','HIGH','CRITICAL') DEFAULT 'LOW',
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_module_type` (`module_name`,`type_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=60 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `activity_types`:
+--
+
+--
+-- Truncate table before insert `activity_types`
+--
+
+TRUNCATE TABLE `activity_types`;
+--
+-- Dumping data for table `activity_types`
+--
+
+INSERT DELAYED IGNORE INTO `activity_types` (`id`, `module_name`, `type_code`, `type_name`, `description`, `business_impact_default`, `is_active`, `created_at`) VALUES
+(1, 'PURCHASING', 'PO_CREATE', 'Purchase Order Created', 'New purchase order created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(2, 'PURCHASING', 'PO_APPROVE', 'Purchase Order Approved', 'Purchase order approved by authorized person', 'HIGH', 1, '2025-09-08 06:54:41'),
+(3, 'PURCHASING', 'PO_REJECT', 'Purchase Order Rejected', 'Purchase order rejected', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(4, 'PURCHASING', 'PO_CANCEL', 'Purchase Order Cancelled', 'Purchase order cancelled', 'HIGH', 1, '2025-09-08 06:54:41'),
+(5, 'PURCHASING', 'VENDOR_ADD', 'Vendor Added', 'New vendor/supplier added to system', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(6, 'PURCHASING', 'VENDOR_UPDATE', 'Vendor Updated', 'Vendor information updated', 'LOW', 1, '2025-09-08 06:54:41'),
+(7, 'PURCHASING', 'QUOTATION_REQUEST', 'Quotation Requested', 'Quotation requested from vendor', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(8, 'PURCHASING', 'QUOTATION_RECEIVE', 'Quotation Received', 'Quotation received from vendor', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(9, 'WAREHOUSE', 'STOCK_IN', 'Stock In', 'Items received into warehouse', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(10, 'WAREHOUSE', 'STOCK_OUT', 'Stock Out', 'Items issued from warehouse', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(11, 'WAREHOUSE', 'STOCK_TRANSFER', 'Stock Transfer', 'Items transferred between locations', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(12, 'WAREHOUSE', 'STOCK_ADJUSTMENT', 'Stock Adjustment', 'Stock quantity adjusted', 'HIGH', 1, '2025-09-08 06:54:41'),
+(13, 'WAREHOUSE', 'LOCATION_CREATE', 'Location Created', 'New warehouse location created', 'LOW', 1, '2025-09-08 06:54:41'),
+(14, 'WAREHOUSE', 'INVENTORY_COUNT', 'Inventory Count', 'Physical inventory count performed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(15, 'WAREHOUSE', 'DAMAGE_REPORT', 'Damage Reported', 'Damaged items reported', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(16, 'MARKETING', 'LEAD_CREATE', 'Lead Created', 'New sales lead created', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(17, 'MARKETING', 'LEAD_CONVERT', 'Lead Converted', 'Lead converted to opportunity', 'HIGH', 1, '2025-09-08 06:54:41'),
+(18, 'MARKETING', 'QUOTE_GENERATE', 'Quote Generated', 'Sales quotation generated', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(19, 'MARKETING', 'CONTRACT_CREATE', 'Contract Created', 'New contract/kontrak created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(20, 'MARKETING', 'CONTRACT_APPROVE', 'Contract Approved', 'Contract approved', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(21, 'MARKETING', 'CONTRACT_SIGN', 'Contract Signed', 'Contract signed by customer', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(22, 'MARKETING', 'UNIT_ASSIGN', 'Unit Assigned', 'Unit assigned to contract', 'HIGH', 1, '2025-09-08 06:54:41'),
+(23, 'SERVICE', 'SPK_CREATE', 'SPK Created', 'Service work order (SPK) created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(24, 'SERVICE', 'SPK_START', 'SPK Started', 'Work on SPK started', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(25, 'SERVICE', 'SPK_COMPLETE', 'SPK Completed', 'SPK work completed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(26, 'SERVICE', 'MAINTENANCE_SCHEDULE', 'Maintenance Scheduled', 'Maintenance scheduled for unit', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(27, 'SERVICE', 'MAINTENANCE_COMPLETE', 'Maintenance Completed', 'Maintenance work completed', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(28, 'SERVICE', 'REPAIR_REQUEST', 'Repair Requested', 'Repair service requested', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(29, 'SERVICE', 'PART_USED', 'Parts Used', 'Spare parts used in service', 'LOW', 1, '2025-09-08 06:54:41'),
+(30, 'OPERATIONAL', 'DI_CREATE', 'Delivery Instruction Created', 'New delivery instruction created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(31, 'OPERATIONAL', 'DISPATCH', 'Unit Dispatched', 'Unit dispatched for delivery', 'HIGH', 1, '2025-09-08 06:54:41'),
+(32, 'OPERATIONAL', 'DELIVERY_COMPLETE', 'Delivery Completed', 'Unit delivered to customer', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(33, 'OPERATIONAL', 'PICKUP_SCHEDULE', 'Pickup Scheduled', 'Unit pickup scheduled', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(34, 'OPERATIONAL', 'PICKUP_COMPLETE', 'Pickup Completed', 'Unit picked up from customer', 'HIGH', 1, '2025-09-08 06:54:41'),
+(35, 'OPERATIONAL', 'ROUTE_OPTIMIZE', 'Route Optimized', 'Delivery route optimized', 'LOW', 1, '2025-09-08 06:54:41'),
+(36, 'ACCOUNTING', 'INVOICE_CREATE', 'Invoice Created', 'New invoice created', 'HIGH', 1, '2025-09-08 06:54:41'),
+(37, 'ACCOUNTING', 'INVOICE_SEND', 'Invoice Sent', 'Invoice sent to customer', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(38, 'ACCOUNTING', 'PAYMENT_RECEIVE', 'Payment Received', 'Payment received from customer', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(39, 'ACCOUNTING', 'PAYMENT_OVERDUE', 'Payment Overdue', 'Payment marked as overdue', 'HIGH', 1, '2025-09-08 06:54:41'),
+(40, 'ACCOUNTING', 'EXPENSE_RECORD', 'Expense Recorded', 'Business expense recorded', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(41, 'ACCOUNTING', 'JOURNAL_ENTRY', 'Journal Entry', 'Accounting journal entry created', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(42, 'ACCOUNTING', 'RECONCILIATION', 'Bank Reconciliation', 'Bank account reconciled', 'HIGH', 1, '2025-09-08 06:54:41'),
+(43, 'PERIZINAN', 'PERMIT_APPLY', 'Permit Application', 'New permit application submitted', 'HIGH', 1, '2025-09-08 06:54:41'),
+(44, 'PERIZINAN', 'PERMIT_APPROVE', 'Permit Approved', 'Permit application approved', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(45, 'PERIZINAN', 'PERMIT_REJECT', 'Permit Rejected', 'Permit application rejected', 'HIGH', 1, '2025-09-08 06:54:41'),
+(46, 'PERIZINAN', 'PERMIT_RENEW', 'Permit Renewed', 'Existing permit renewed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(47, 'PERIZINAN', 'PERMIT_EXPIRE', 'Permit Expired', 'Permit expired', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(48, 'PERIZINAN', 'DOCUMENT_UPLOAD', 'Document Uploaded', 'Supporting document uploaded', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(49, 'PERIZINAN', 'COMPLIANCE_CHECK', 'Compliance Check', 'Regulatory compliance check performed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(50, 'ADMIN', 'USER_CREATE', 'User Created', 'New user account created', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(51, 'ADMIN', 'USER_DEACTIVATE', 'User Deactivated', 'User account deactivated', 'HIGH', 1, '2025-09-08 06:54:41'),
+(52, 'ADMIN', 'ROLE_ASSIGN', 'Role Assigned', 'Role assigned to user', 'HIGH', 1, '2025-09-08 06:54:41'),
+(53, 'ADMIN', 'PERMISSION_GRANT', 'Permission Granted', 'Permission granted to user/role', 'HIGH', 1, '2025-09-08 06:54:41'),
+(54, 'ADMIN', 'SYSTEM_BACKUP', 'System Backup', 'System backup performed', 'CRITICAL', 1, '2025-09-08 06:54:41'),
+(55, 'ADMIN', 'CONFIG_CHANGE', 'Configuration Changed', 'System configuration changed', 'HIGH', 1, '2025-09-08 06:54:41'),
+(56, 'DASHBOARD', 'DASHBOARD_VIEW', 'Dashboard Viewed', 'Dashboard page accessed', 'LOW', 1, '2025-09-08 06:54:41'),
+(57, 'REPORTS', 'REPORT_GENERATE', 'Report Generated', 'Business report generated', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(58, 'REPORTS', 'REPORT_EXPORT', 'Report Exported', 'Report exported to file', 'MEDIUM', 1, '2025-09-08 06:54:41'),
+(59, 'REPORTS', 'REPORT_SCHEDULE', 'Report Scheduled', 'Automatic report scheduled', 'LOW', 1, '2025-09-08 06:54:41');
 
 -- --------------------------------------------------------
 
@@ -176,10 +491,65 @@ INSERT DELAYED IGNORE INTO `charger` (`id_charger`, `merk_charger`, `tipe_charge
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `contract_disconnection_log`
+--
+-- Creation: Sep 15, 2025 at 09:18 AM
+--
+
+DROP TABLE IF EXISTS `contract_disconnection_log`;
+CREATE TABLE IF NOT EXISTS `contract_disconnection_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `kontrak_id` int(11) NOT NULL,
+  `unit_id` int(10) UNSIGNED NOT NULL,
+  `stage` varchar(50) NOT NULL,
+  `reason` varchar(100) DEFAULT NULL,
+  `disconnected_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `disconnected_by` int(11) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_disconnect_kontrak` (`kontrak_id`),
+  KEY `idx_disconnect_unit` (`unit_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `contract_disconnection_log`:
+--
+
+--
+-- Truncate table before insert `contract_disconnection_log`
+--
+
+TRUNCATE TABLE `contract_disconnection_log`;
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `contract_unit_summary`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `contract_unit_summary`;
+CREATE TABLE IF NOT EXISTS `contract_unit_summary` (
+`kontrak_id` int(10) unsigned
+,`no_kontrak` varchar(100)
+,`pelanggan` varchar(255)
+,`lokasi` varchar(255)
+,`kontrak_status` enum('Aktif','Berakhir','Pending','Dibatalkan')
+,`tanggal_mulai` date
+,`tanggal_berakhir` date
+,`total_units` bigint(21)
+,`active_units` bigint(21)
+,`tarik_units` bigint(21)
+,`tukar_units` bigint(21)
+,`operational_units` bigint(21)
+,`workflow_units` bigint(21)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `delivery_instructions`
 --
--- Creation: Sep 04, 2025 at 02:17 AM
--- Last update: Sep 04, 2025 at 09:03 AM
+-- Creation: Sep 17, 2025 at 03:42 AM
+-- Last update: Sep 23, 2025 at 06:21 AM
 --
 
 DROP TABLE IF EXISTS `delivery_instructions`;
@@ -187,6 +557,7 @@ CREATE TABLE IF NOT EXISTS `delivery_instructions` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `nomor_di` varchar(100) NOT NULL,
   `spk_id` int(10) UNSIGNED DEFAULT NULL,
+  `jenis_spk` enum('UNIT','ATTACHMENT') DEFAULT 'UNIT',
   `po_kontrak_nomor` varchar(100) DEFAULT NULL,
   `pelanggan` varchar(255) NOT NULL,
   `lokasi` varchar(255) DEFAULT NULL,
@@ -215,8 +586,9 @@ CREATE TABLE IF NOT EXISTS `delivery_instructions` (
   KEY `fk_di_spk` (`spk_id`),
   KEY `fk_di_jenis_perintah_kerja` (`jenis_perintah_kerja_id`),
   KEY `fk_di_tujuan_perintah_kerja` (`tujuan_perintah_kerja_id`),
-  KEY `fk_di_status_eksekusi_workflow` (`status_eksekusi_workflow_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=124 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  KEY `fk_di_status_eksekusi_workflow` (`status_eksekusi_workflow_id`),
+  KEY `idx_delivery_instructions_jenis_spk` (`jenis_spk`)
+) ENGINE=InnoDB AUTO_INCREMENT=132 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `delivery_instructions`:
@@ -239,10 +611,18 @@ TRUNCATE TABLE `delivery_instructions`;
 -- Dumping data for table `delivery_instructions`
 --
 
-INSERT DELAYED IGNORE INTO `delivery_instructions` (`id`, `nomor_di`, `spk_id`, `po_kontrak_nomor`, `pelanggan`, `lokasi`, `tanggal_kirim`, `catatan`, `status`, `jenis_perintah_kerja_id`, `tujuan_perintah_kerja_id`, `status_eksekusi_workflow_id`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`, `perencanaan_tanggal_approve`, `estimasi_sampai`, `nama_supir`, `no_hp_supir`, `no_sim_supir`, `kendaraan`, `no_polisi_kendaraan`, `berangkat_tanggal_approve`, `catatan_berangkat`, `sampai_tanggal_approve`, `catatan_sampai`, `status_temp`) VALUES
-(100, 'DI/202509/TEST001', 27, 'PO-TEST-001', 'PT Test Customer', 'Jakarta', NULL, NULL, 'SUBMITTED', 1, 1, 1, 1, '2025-09-03 16:52:00', '2025-09-03 16:52:00', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'DIAJUKAN'),
-(122, 'DI/202509/001', 27, 'test12345', 'MONORKOBO', 'BEKASI', '2025-09-04', NULL, 'PROCESSED', 1, 1, 1, 1, '2025-09-04 03:43:23', '2025-09-04 16:03:32', '2025-09-04', '2025-09-04', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', NULL, NULL, NULL, NULL, 'SIAP_KIRIM'),
-(123, 'DI/202509/002', 28, 'MSI', 'MSI', 'EROPA', '2025-09-04', 'a', 'DELIVERED', 1, 1, 1, 1, '2025-09-04 04:14:52', '2025-09-04 15:53:00', '2025-09-04', '2025-09-04', 'JOKO', '082138848123', '1231012', 'colt diesel (123)', '123', '2025-09-04', NULL, '2025-09-04', 'ok', 'SELESAI');
+INSERT DELAYED IGNORE INTO `delivery_instructions` (`id`, `nomor_di`, `spk_id`, `jenis_spk`, `po_kontrak_nomor`, `pelanggan`, `lokasi`, `tanggal_kirim`, `catatan`, `status`, `jenis_perintah_kerja_id`, `tujuan_perintah_kerja_id`, `status_eksekusi_workflow_id`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`, `perencanaan_tanggal_approve`, `estimasi_sampai`, `nama_supir`, `no_hp_supir`, `no_sim_supir`, `kendaraan`, `no_polisi_kendaraan`, `berangkat_tanggal_approve`, `catatan_berangkat`, `sampai_tanggal_approve`, `catatan_sampai`, `status_temp`) VALUES
+(100, 'DI/202509/TEST001', 27, 'UNIT', 'PO-TEST-001', 'PT Test Customer', 'Jakarta', NULL, NULL, 'SUBMITTED', 1, 1, 1, 1, '2025-09-03 16:52:00', '2025-09-17 10:41:42', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'DIAJUKAN'),
+(122, 'DI/202509/001', 27, 'UNIT', 'test12345', 'MONORKOBO', 'BEKASI', '2025-09-04', NULL, 'PROCESSED', 1, 1, 1, 1, '2025-09-04 03:43:23', '2025-09-17 10:41:42', '2025-09-04', '2025-09-04', 'JOKO', '082138848123', '1231012', 'colt diesel', '123', NULL, NULL, NULL, NULL, 'SIAP_KIRIM'),
+(123, 'DI/202509/002', 28, 'UNIT', 'MSI', 'MSI', 'EROPA', '2025-09-04', 'a', 'DELIVERED', 1, 1, 1, 1, '2025-09-04 04:14:52', '2025-09-17 10:41:42', '2025-09-04', '2025-09-04', 'JOKO', '082138848123', '1231012', 'colt diesel (123)', '123', '2025-09-04', NULL, '2025-09-04', 'ok', 'SELESAI'),
+(124, 'DI/202509/003', 29, 'UNIT', 'KNTRK/2209/0001', 'Sarana Mitra Luas', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-12', 'DIKIRIM', 'DELIVERED', 1, 1, 1, 1, '2025-09-09 10:07:55', '2025-09-17 10:41:42', '2025-09-12', '2025-09-12', 'UDIN', '082138881231', '8992381', 'TRUK', 'B 8213 JKT', '2025-09-12', NULL, '2025-09-12', 'sudah sampai', 'SELESAI'),
+(125, 'DI/202509/004', 36, 'UNIT', 'SML/DS/121025', 'LG', 'Gandaria 8 Office Tower Lv. 29 BC & 31 ABCD, Jalan Sultan Iskandar Muda, Kebayoran Lama, RT.5/RW.3, Senayan, Jakarta Selatan, Daerah Khusus Ibukota Jakarta, 12190', '2025-09-12', NULL, 'DELIVERED', 1, 1, 1, 1, '2025-09-12 06:51:13', '2025-09-17 10:41:42', '2025-09-12', '2025-09-12', 'UDIN', '082138881231', '8992381', 'TRUK', 'B 8213 JKT', '2025-09-12', NULL, '2025-09-12', 'ok', 'SELESAI'),
+(126, 'DI/202509/005', 37, 'UNIT', 'TEST/AUTO/001', 'Test Auto Update', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-12', NULL, 'DELIVERED', 1, 1, 1, 1, '2025-09-12 10:06:23', '2025-09-17 10:41:42', '2025-09-12', '2025-09-12', 'UDIN', '082138881231', '8992381', 'TRUK', 'B 8213 JKT', '2025-09-12', NULL, '2025-09-12', '123', 'SELESAI'),
+(127, 'DI/202509/006', 38, 'UNIT', 'KNTRK/2209/0001', 'Sarana Mitra Luas', NULL, '2025-09-13', NULL, 'DELIVERED', 1, 1, 1, 1, '2025-09-13 01:47:49', '2025-09-17 10:41:42', '2025-09-13', '2025-09-13', 'UDIN', '082138881231', '8992381', 'TRUK', 'B 8213 JKT', '2025-09-13', NULL, '2025-09-13', 'qwe', 'SELESAI'),
+(128, 'DI/202509/007', 39, 'UNIT', 'test/1/1/5', 'Sarana Mitra Luas', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-13', NULL, 'DELIVERED', 1, 1, 1, 1, '2025-09-13 02:58:51', '2025-09-17 10:41:42', '2025-09-13', '2025-09-13', 'UDIN', '082138881231', '8992381', 'TRUK', 'B 8213 JKT', '2025-09-13', NULL, '2025-09-13', 'a', 'SELESAI'),
+(129, 'DI/202509/008', 40, 'UNIT', 'test/1/1/5', 'Sarana Mitra Luas', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-13', NULL, 'DELIVERED', 1, 1, 1, 1, '2025-09-13 03:43:34', '2025-09-17 10:41:42', '2025-09-13', '2025-09-13', 'UDIN', '082138881231', '8992381', 'TRUK', 'B 8213 JKT', '2025-09-13', 'a', '2025-09-13', 'a', 'SELESAI'),
+(130, 'DI/202509/009', NULL, 'UNIT', 'TEST/AUTO/001', 'Test Client', NULL, '2025-09-16', NULL, 'SUBMITTED', 2, 4, 1, 1, '2025-09-16 03:10:02', '2025-09-16 10:10:02', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'DIAJUKAN'),
+(131, 'DI/202509/010', 49, 'ATTACHMENT', 'TEST/AUTO/001', 'Test Client', NULL, '2025-09-17', NULL, 'PROCESSED', 1, 1, 1, 1, '2025-09-17 02:54:40', '2025-09-23 13:21:02', NULL, NULL, '', '-', '-', '', '-', NULL, NULL, NULL, NULL, 'SIAP_KIRIM');
 
 --
 -- Triggers `delivery_instructions`
@@ -273,6 +653,58 @@ CREATE TRIGGER `sync_di_status_temp_on_update` BEFORE UPDATE ON `delivery_instru
 END
 $$
 DELIMITER ;
+DROP TRIGGER IF EXISTS `tr_delivery_instructions_update_unit`;
+DELIMITER $$
+CREATE TRIGGER `tr_delivery_instructions_update_unit` AFTER UPDATE ON `delivery_instructions` FOR EACH ROW BEGIN
+    
+    IF NEW.tanggal_kirim IS NOT NULL AND NEW.spk_id IS NOT NULL 
+       AND (OLD.tanggal_kirim IS NULL OR OLD.tanggal_kirim != NEW.tanggal_kirim) THEN
+        
+        UPDATE `inventory_unit` iu
+        JOIN `spk` s ON iu.spk_id = s.id OR iu.kontrak_spesifikasi_id = s.kontrak_spesifikasi_id
+        SET iu.tanggal_kirim = NEW.tanggal_kirim,
+            iu.delivery_instruction_id = NEW.id,
+            iu.updated_at = CURRENT_TIMESTAMP
+        WHERE s.id = NEW.spk_id;
+    END IF;
+END
+$$
+DELIMITER ;
+DROP TRIGGER IF EXISTS `tr_di_create_workflow_stages`;
+DELIMITER $$
+CREATE TRIGGER `tr_di_create_workflow_stages` AFTER INSERT ON `delivery_instructions` FOR EACH ROW BEGIN
+    DECLARE v_jenis_kode VARCHAR(20);
+    
+    
+    SELECT kode INTO v_jenis_kode 
+    FROM jenis_perintah_kerja 
+    WHERE id = NEW.jenis_perintah_kerja_id;
+    
+    
+    IF v_jenis_kode = 'TARIK' THEN
+        INSERT INTO di_workflow_stages (di_id, stage_code, stage_name, status) VALUES
+        (NEW.id, 'DIAJUKAN', 'DI Diajukan', 'COMPLETED'),
+        (NEW.id, 'DISETUJUI', 'DI Disetujui', 'PENDING'),
+        (NEW.id, 'PERSIAPAN_UNIT', 'Persiapan Tim & Transportasi', 'PENDING'),
+        (NEW.id, 'DALAM_PERJALANAN', 'Dalam Perjalanan ke Lokasi', 'PENDING'),
+        (NEW.id, 'UNIT_DITARIK', 'Unit Berhasil Ditarik', 'PENDING'),
+        (NEW.id, 'UNIT_PULANG', 'Unit Dalam Perjalanan Pulang', 'PENDING'),
+        (NEW.id, 'SAMPAI_KANTOR', 'Unit Sampai di Kantor/Workshop', 'PENDING'),
+        (NEW.id, 'SELESAI', 'Proses Penarikan Selesai', 'PENDING');
+    ELSEIF v_jenis_kode = 'TUKAR' THEN
+        INSERT INTO di_workflow_stages (di_id, stage_code, stage_name, status) VALUES
+        (NEW.id, 'DIAJUKAN', 'DI Diajukan', 'COMPLETED'),
+        (NEW.id, 'DISETUJUI', 'DI Disetujui', 'PENDING'),
+        (NEW.id, 'PERSIAPAN_UNIT', 'Persiapan Unit Baru & Tim', 'PENDING'),
+        (NEW.id, 'DALAM_PERJALANAN', 'Dalam Perjalanan ke Lokasi', 'PENDING'),
+        (NEW.id, 'UNIT_DITUKAR', 'Unit Berhasil Ditukar', 'PENDING'),
+        (NEW.id, 'UNIT_LAMA_PULANG', 'Unit Lama Dalam Perjalanan Pulang', 'PENDING'),
+        (NEW.id, 'SAMPAI_KANTOR', 'Unit Lama Sampai di Kantor', 'PENDING'),
+        (NEW.id, 'SELESAI', 'Proses Penukaran Selesai', 'PENDING');
+    END IF;
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -280,7 +712,6 @@ DELIMITER ;
 -- Table structure for table `delivery_items`
 --
 -- Creation: Sep 04, 2025 at 03:34 AM
--- Last update: Sep 04, 2025 at 04:14 AM
 --
 
 DROP TABLE IF EXISTS `delivery_items`;
@@ -299,7 +730,7 @@ CREATE TABLE IF NOT EXISTS `delivery_items` (
   KEY `idx_delivery_items_type` (`item_type`),
   KEY `idx_delivery_items_unit` (`unit_id`),
   KEY `idx_delivery_items_attachment` (`attachment_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=128 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Items untuk delivery instruction';
+) ENGINE=InnoDB AUTO_INCREMENT=147 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Items untuk delivery instruction';
 
 --
 -- RELATIONSHIPS FOR TABLE `delivery_items`:
@@ -330,7 +761,26 @@ INSERT DELAYED IGNORE INTO `delivery_items` (`id`, `di_id`, `item_type`, `unit_i
 (124, 123, 'ATTACHMENT', NULL, 1, 4, 'Battery for Unit 1', '2025-09-03 21:14:52', '2025-09-03 21:14:52'),
 (125, 123, 'ATTACHMENT', NULL, 1, 5, 'Charger for Unit 1', '2025-09-03 21:14:52', '2025-09-03 21:14:52'),
 (126, 123, 'ATTACHMENT', NULL, 2, 4, 'Battery for Unit 2', '2025-09-03 21:14:52', '2025-09-03 21:14:52'),
-(127, 123, 'ATTACHMENT', NULL, 2, 5, 'Charger for Unit 2', '2025-09-03 21:14:52', '2025-09-03 21:14:52');
+(127, 123, 'ATTACHMENT', NULL, 2, 5, 'Charger for Unit 2', '2025-09-03 21:14:52', '2025-09-03 21:14:52'),
+(128, 124, 'UNIT', 12, NULL, NULL, NULL, '2025-09-09 10:07:55', '2025-09-09 10:07:55'),
+(129, 124, 'ATTACHMENT', NULL, 12, 5, 'Charger for Unit 12', '2025-09-09 03:07:55', '2025-09-09 03:07:55'),
+(130, 124, 'ATTACHMENT', NULL, 12, 6, 'Battery for Unit 12', '2025-09-09 03:07:55', '2025-09-09 03:07:55'),
+(131, 125, 'UNIT', 4, NULL, NULL, NULL, '2025-09-12 06:51:13', '2025-09-12 06:51:13'),
+(132, 125, 'UNIT', 10, NULL, NULL, NULL, '2025-09-12 06:51:13', '2025-09-12 06:51:13'),
+(133, 125, 'ATTACHMENT', NULL, 4, 2, 'Battery for Unit 4', '2025-09-11 23:51:13', '2025-09-11 23:51:13'),
+(134, 125, 'ATTACHMENT', NULL, 10, 2, 'Battery for Unit 10', '2025-09-11 23:51:13', '2025-09-11 23:51:13'),
+(135, 126, 'UNIT', 7, NULL, NULL, NULL, '2025-09-12 10:06:23', '2025-09-12 10:06:23'),
+(136, 126, 'ATTACHMENT', NULL, 7, 2, 'Battery for Unit 7', '2025-09-12 03:06:23', '2025-09-12 03:06:23'),
+(137, 127, 'UNIT', 5, NULL, NULL, NULL, '2025-09-13 01:47:49', '2025-09-13 01:47:49'),
+(138, 127, 'ATTACHMENT', NULL, 5, 2, 'Battery for Unit 5', '2025-09-12 18:47:49', '2025-09-12 18:47:49'),
+(139, 128, 'UNIT', 6, NULL, NULL, NULL, '2025-09-13 02:58:51', '2025-09-13 02:58:51'),
+(140, 128, 'UNIT', 9, NULL, NULL, NULL, '2025-09-13 02:58:51', '2025-09-13 02:58:51'),
+(141, 128, 'ATTACHMENT', NULL, 6, 2, 'Battery for Unit 6', '2025-09-12 19:58:51', '2025-09-12 19:58:51'),
+(142, 128, 'ATTACHMENT', NULL, 9, 2, 'Battery for Unit 9', '2025-09-12 19:58:51', '2025-09-12 19:58:51'),
+(143, 129, 'UNIT', 11, NULL, NULL, NULL, '2025-09-13 03:43:34', '2025-09-13 03:43:34'),
+(144, 129, 'ATTACHMENT', NULL, 11, 4, 'Attachment for Unit 11', '2025-09-12 20:43:34', '2025-09-12 20:43:34'),
+(145, 129, 'ATTACHMENT', NULL, 11, 3, 'Battery for Unit 11', '2025-09-12 20:43:34', '2025-09-12 20:43:34'),
+(146, 131, 'ATTACHMENT', NULL, NULL, 16, 'Side Shifter - Manual Fix for Testing', '2025-09-22 02:27:20', '2025-09-22 02:27:20');
 
 -- --------------------------------------------------------
 
@@ -411,6 +861,55 @@ INSERT DELAYED IGNORE INTO `divisions` (`id`, `name`, `code`, `description`, `is
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `di_workflow_stages`
+--
+-- Creation: Sep 15, 2025 at 09:18 AM
+--
+
+DROP TABLE IF EXISTS `di_workflow_stages`;
+CREATE TABLE IF NOT EXISTS `di_workflow_stages` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `di_id` int(11) NOT NULL,
+  `stage_code` varchar(50) NOT NULL,
+  `stage_name` varchar(100) NOT NULL,
+  `status` enum('PENDING','IN_PROGRESS','COMPLETED','SKIPPED') DEFAULT 'PENDING',
+  `started_at` datetime DEFAULT NULL,
+  `completed_at` datetime DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `approved_by` int(11) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_workflow_stages_di` (`di_id`),
+  KEY `idx_workflow_stages_code` (`stage_code`)
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `di_workflow_stages`:
+--
+
+--
+-- Truncate table before insert `di_workflow_stages`
+--
+
+TRUNCATE TABLE `di_workflow_stages`;
+--
+-- Dumping data for table `di_workflow_stages`
+--
+
+INSERT DELAYED IGNORE INTO `di_workflow_stages` (`id`, `di_id`, `stage_code`, `stage_name`, `status`, `started_at`, `completed_at`, `notes`, `approved_by`, `created_at`, `updated_at`) VALUES
+(1, 130, 'DIAJUKAN', 'DI Diajukan', 'COMPLETED', NULL, NULL, NULL, NULL, '2025-09-16 10:10:02', '2025-09-16 10:10:02'),
+(2, 130, 'DISETUJUI', 'DI Disetujui', 'PENDING', NULL, NULL, NULL, NULL, '2025-09-16 10:10:02', '2025-09-16 10:10:02'),
+(3, 130, 'PERSIAPAN_UNIT', 'Persiapan Tim & Transportasi', 'PENDING', NULL, NULL, NULL, NULL, '2025-09-16 10:10:02', '2025-09-16 10:10:02'),
+(4, 130, 'DALAM_PERJALANAN', 'Dalam Perjalanan ke Lokasi', 'PENDING', NULL, NULL, NULL, NULL, '2025-09-16 10:10:02', '2025-09-16 10:10:02'),
+(5, 130, 'UNIT_DITARIK', 'Unit Berhasil Ditarik', 'PENDING', NULL, NULL, NULL, NULL, '2025-09-16 10:10:02', '2025-09-16 10:10:02'),
+(6, 130, 'UNIT_PULANG', 'Unit Dalam Perjalanan Pulang', 'PENDING', NULL, NULL, NULL, NULL, '2025-09-16 10:10:02', '2025-09-16 10:10:02'),
+(7, 130, 'SAMPAI_KANTOR', 'Unit Sampai di Kantor/Workshop', 'PENDING', NULL, NULL, NULL, NULL, '2025-09-16 10:10:02', '2025-09-16 10:10:02'),
+(8, 130, 'SELESAI', 'Proses Penarikan Selesai', 'PENDING', NULL, NULL, NULL, NULL, '2025-09-16 10:10:02', '2025-09-16 10:10:02');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `forklifts`
 --
 -- Creation: Sep 03, 2025 at 09:26 AM
@@ -485,8 +984,7 @@ INSERT DELAYED IGNORE INTO `forklifts` (`forklift_id`, `unit_code`, `unit_name`,
 --
 -- Table structure for table `inventory_attachment`
 --
--- Creation: Sep 04, 2025 at 07:42 AM
--- Last update: Sep 04, 2025 at 07:48 AM
+-- Creation: Sep 13, 2025 at 05:26 AM
 --
 
 DROP TABLE IF EXISTS `inventory_attachment`;
@@ -506,15 +1004,20 @@ CREATE TABLE IF NOT EXISTS `inventory_attachment` (
   `catatan_fisik` text DEFAULT NULL,
   `lokasi_penyimpanan` varchar(255) DEFAULT NULL,
   `status_unit` int(11) DEFAULT 7,
+  `attachment_status` enum('AVAILABLE','USED','MAINTENANCE','RUSAK','RESERVED') DEFAULT 'AVAILABLE',
   `tanggal_masuk` datetime DEFAULT current_timestamp() COMMENT 'Tanggal masuk ke inventory',
   `catatan_inventory` text DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `status_attachment_id` int(11) DEFAULT 1,
   PRIMARY KEY (`id_inventory_attachment`),
   KEY `fk_inventory_attachment_attachment` (`attachment_id`),
   KEY `fk_inventory_attachment_baterai` (`baterai_id`),
   KEY `fk_inventory_attachment_charger` (`charger_id`),
-  KEY `fk_inventory_attachment_status_unit` (`status_unit`)
+  KEY `fk_inventory_attachment_status_unit` (`status_unit`),
+  KEY `idx_inventory_attachment_status` (`status_attachment_id`),
+  KEY `idx_inventory_attachment_unit_status` (`id_inventory_unit`,`status_attachment_id`),
+  KEY `idx_attachment_status` (`attachment_status`)
 ) ENGINE=InnoDB AUTO_INCREMENT=32 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Single source of truth untuk semua komponen: battery, charger, attachment';
 
 --
@@ -538,48 +1041,74 @@ TRUNCATE TABLE `inventory_attachment`;
 -- Dumping data for table `inventory_attachment`
 --
 
-INSERT DELAYED IGNORE INTO `inventory_attachment` (`id_inventory_attachment`, `tipe_item`, `po_id`, `id_inventory_unit`, `attachment_id`, `sn_attachment`, `baterai_id`, `sn_baterai`, `charger_id`, `sn_charger`, `kondisi_fisik`, `kelengkapan`, `catatan_fisik`, `lokasi_penyimpanan`, `status_unit`, `tanggal_masuk`, `catatan_inventory`, `created_at`, `updated_at`) VALUES
-(2, 'attachment', 118, NULL, 1, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-22 04:36:39', 'Dari verifikasi PO: Sesuai dan siap digunakan', '2025-08-22 04:36:39', '2025-08-22 04:36:39'),
-(3, 'attachment', 124, NULL, 4, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-22 09:18:28', 'Dari verifikasi PO: Sesuai', '2025-08-22 09:18:28', '2025-08-22 09:18:28'),
-(4, 'attachment', 130, NULL, 3, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-22 09:19:00', 'Dari verifikasi PO: Sesuai', '2025-08-22 09:19:00', '2025-08-22 09:19:00'),
-(5, 'battery', 143, 1, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 3, '2025-08-22 09:23:14', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-22 09:23:14', '2025-09-04 14:48:00'),
-(6, 'charger', 143, 16, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 8, '2025-08-22 09:23:14', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-22 09:23:14', '2025-08-27 23:53:23'),
-(7, 'battery', 143, 2, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 3, '2025-08-27 04:15:34', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:34', '2025-09-04 14:48:00'),
-(8, 'charger', 143, 17, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 8, '2025-08-27 04:15:34', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:34', '2025-08-30 02:00:18'),
-(9, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:43', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:43', '2025-08-27 11:41:47'),
-(10, 'charger', 143, 1, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 3, '2025-08-27 04:15:43', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:43', '2025-09-04 14:48:00'),
-(11, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:51', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:51', '2025-08-27 11:41:47'),
-(12, 'charger', 143, 12, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 8, '2025-08-27 04:15:51', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:51', '2025-09-03 09:41:03'),
-(13, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:15:58', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:58', '2025-08-27 11:41:47'),
-(14, 'charger', 143, 2, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'POS 1', 3, '2025-08-27 04:15:58', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:58', '2025-09-04 14:48:00'),
-(15, 'attachment', 131, NULL, 3, 'ok', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-27 04:50:06', 'Dari verifikasi PO: Sesuai', '2025-08-27 04:50:06', '2025-08-27 04:50:06'),
-(16, 'attachment', 139, NULL, 3, 'a', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, '2025-08-28 09:32:49', 'Dari verifikasi PO: Sesuai', '2025-08-28 09:32:49', '2025-08-28 09:32:49'),
-(17, 'battery', 38, 4, 2, NULL, 2, 'test', 6, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-12 04:47:28', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:47:28', '2025-08-19 11:38:34'),
-(18, 'battery', 38, 5, 2, NULL, 2, 'test2', 6, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-12 04:49:52', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:49:52', '2025-08-19 11:38:34'),
-(19, 'battery', 38, 6, 2, NULL, 2, 'test3', 6, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-12 04:50:15', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:50:15', '2025-08-21 15:23:38'),
-(20, 'battery', 38, 7, 3, '', 2, 'test4', 6, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-12 04:54:09', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:54:09', '2025-08-16 01:23:28'),
-(21, 'battery', 39, 8, NULL, NULL, 6, 'andara', NULL, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-12 08:15:40', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 08:15:40', '2025-08-26 16:48:09'),
-(22, 'battery', 38, 9, 5, 'wae', 2, 'adaaaaa', 6, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-12 08:21:22', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 08:21:22', '2025-08-21 15:24:29'),
-(23, 'battery', 38, 10, 2, NULL, 2, 'adit', 6, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-16 04:20:16', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-16 04:20:16', '2025-08-18 09:33:12'),
-(24, 'battery', 47, 11, NULL, NULL, 3, 'adit', NULL, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-16 04:20:38', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-16 04:20:38', '2025-08-21 15:24:56'),
-(25, 'battery', 39, 12, NULL, NULL, 6, 'adit', NULL, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-16 04:24:32', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-16 04:24:32', '2025-08-16 21:59:26'),
-(26, 'battery', 38, 13, 2, NULL, 2, 'adit', 6, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-16 04:26:43', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-16 04:26:43', '2025-08-27 22:34:17'),
-(27, 'battery', 39, 14, NULL, NULL, 6, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-27 02:22:59', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 02:22:59', '2025-08-27 13:31:31'),
-(28, 'battery', 39, 15, NULL, NULL, 6, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-27 02:23:14', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 02:23:14', '2025-08-27 13:51:14'),
-(29, 'battery', 52, 16, NULL, NULL, 3, '111', 6, '123', 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-27 15:35:47', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 15:35:47', '2025-08-27 23:53:23'),
-(30, 'battery', 52, 17, 3, 'ok', 3, '222', 8, '123', 'Baik', 'Lengkap', NULL, NULL, 7, '2025-08-27 15:36:17', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 15:36:17', '2025-08-30 02:53:07');
+INSERT DELAYED IGNORE INTO `inventory_attachment` (`id_inventory_attachment`, `tipe_item`, `po_id`, `id_inventory_unit`, `attachment_id`, `sn_attachment`, `baterai_id`, `sn_baterai`, `charger_id`, `sn_charger`, `kondisi_fisik`, `kelengkapan`, `catatan_fisik`, `lokasi_penyimpanan`, `status_unit`, `attachment_status`, `tanggal_masuk`, `catatan_inventory`, `created_at`, `updated_at`, `status_attachment_id`) VALUES
+(2, 'attachment', 118, 1, 1, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 1', 7, 'USED', '2025-08-22 04:36:39', 'Dari verifikasi PO: Sesuai dan siap digunakan', '2025-08-22 04:36:39', '2025-09-13 12:26:44', 2),
+(3, 'attachment', 124, 11, 4, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, 'USED', '2025-08-22 09:18:28', 'Dari verifikasi PO: Sesuai', '2025-08-22 09:18:28', '2025-09-13 12:26:44', 2),
+(4, 'attachment', 130, 13, 3, '123', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, 'AVAILABLE', '2025-08-22 09:19:00', 'Dari verifikasi PO: Sesuai', '2025-08-22 09:19:00', '2025-09-16 06:57:44', 1),
+(5, 'battery', 143, 1, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 1', 3, 'USED', '2025-08-22 09:23:14', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-22 09:23:14', '2025-09-13 12:26:44', 2),
+(6, 'charger', 143, 16, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 15', 8, 'USED', '2025-08-22 09:23:14', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-22 09:23:14', '2025-09-13 12:26:44', 2),
+(7, 'battery', 143, 2, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 2', 3, 'USED', '2025-08-27 04:15:34', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:34', '2025-09-13 12:26:44', 2),
+(8, 'charger', 143, 17, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 16', 8, 'USED', '2025-08-27 04:15:34', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:34', '2025-09-13 12:26:44', 2),
+(9, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, 'AVAILABLE', '2025-08-27 04:15:43', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:43', '2025-08-27 11:41:47', 1),
+(10, 'charger', 143, 1, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 1', 3, 'USED', '2025-08-27 04:15:43', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:43', '2025-09-13 12:26:44', 2),
+(11, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, 'AVAILABLE', '2025-08-27 04:15:51', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:51', '2025-08-27 11:41:47', 1),
+(12, 'charger', 143, 12, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 5', 3, 'USED', '2025-08-27 04:15:51', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:51', '2025-09-13 12:26:44', 2),
+(13, 'battery', 143, NULL, NULL, NULL, 4, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, 'AVAILABLE', '2025-08-27 04:15:58', 'Dari verifikasi PO (Battery): Sesuai', '2025-08-27 04:15:58', '2025-08-27 11:41:47', 1),
+(14, 'charger', 143, 2, NULL, NULL, NULL, NULL, 5, '123', 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 2', 3, 'USED', '2025-08-27 04:15:58', 'Dari verifikasi PO (Charger): Sesuai', '2025-08-27 04:15:58', '2025-09-13 12:26:44', 2),
+(15, 'attachment', 131, NULL, 3, 'ok', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, 'POS 1', 7, 'AVAILABLE', '2025-08-27 04:50:06', 'Dari verifikasi PO: Sesuai', '2025-08-27 04:50:06', '2025-08-27 04:50:06', 1),
+(16, 'attachment', 139, 13, 3, 'a', NULL, NULL, NULL, NULL, 'Baik', 'Lengkap', NULL, NULL, 7, 'USED', '2025-08-28 09:32:49', 'Dari verifikasi PO: Sesuai', '2025-08-28 09:32:49', '2025-09-15 15:23:52', 1),
+(17, 'battery', 38, NULL, 2, NULL, 2, 'test', 6, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 4', 3, 'AVAILABLE', '2025-08-12 04:47:28', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:47:28', '2025-09-13 12:35:58', 2),
+(18, 'battery', 38, NULL, 2, NULL, 2, 'test2', 6, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 7', 3, 'AVAILABLE', '2025-08-12 04:49:52', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:49:52', '2025-09-13 12:35:58', 2),
+(19, 'battery', 38, NULL, 2, NULL, 2, 'test3', 6, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 8', 7, 'AVAILABLE', '2025-08-12 04:50:15', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:50:15', '2025-09-13 12:35:58', 2),
+(20, 'battery', 38, NULL, 3, '', 2, 'test4', 6, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 3', 3, 'AVAILABLE', '2025-08-12 04:54:09', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 04:54:09', '2025-09-13 12:35:58', 2),
+(21, 'battery', 39, 8, NULL, NULL, 6, 'andara', NULL, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 11', 7, 'USED', '2025-08-12 08:15:40', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 08:15:40', '2025-09-13 12:26:44', 2),
+(22, 'battery', 38, NULL, 5, 'wae', 2, 'adaaaaa', 6, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 9', 7, 'AVAILABLE', '2025-08-12 08:21:22', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-12 08:21:22', '2025-09-13 12:35:58', 2),
+(23, 'battery', 38, NULL, 2, NULL, 2, 'adit', 6, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 6', 3, 'AVAILABLE', '2025-08-16 04:20:16', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-16 04:20:16', '2025-09-13 12:35:58', 2),
+(24, 'battery', 47, NULL, NULL, NULL, 3, 'adit', NULL, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 10', 7, 'AVAILABLE', '2025-08-16 04:20:38', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-16 04:20:38', '2025-09-13 12:12:08', 1),
+(25, 'battery', 39, 12, NULL, NULL, 6, 'adit', NULL, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 5', 3, 'USED', '2025-08-16 04:24:32', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-16 04:24:32', '2025-09-13 12:26:44', 2),
+(26, 'battery', 38, NULL, 2, NULL, 2, 'adit', 6, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 14', 7, 'AVAILABLE', '2025-08-16 04:26:43', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-16 04:26:43', '2025-09-13 12:35:58', 2),
+(27, 'battery', 39, 14, NULL, NULL, 6, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 12', 7, 'USED', '2025-08-27 02:22:59', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 02:22:59', '2025-09-13 12:26:44', 2),
+(28, 'battery', 39, 15, NULL, NULL, 6, '123', NULL, NULL, 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 13', 7, 'USED', '2025-08-27 02:23:14', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 02:23:14', '2025-09-13 12:26:44', 2),
+(29, 'battery', 52, 16, NULL, NULL, 3, '111', 6, '123', 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 15', 7, 'USED', '2025-08-27 15:35:47', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 15:35:47', '2025-09-13 12:26:44', 2),
+(30, 'battery', 52, 17, 3, 'ok', 3, '222', 8, '123', 'Baik', 'Lengkap', NULL, 'Terpasang di Unit 16', 7, 'USED', '2025-08-27 15:36:17', 'Migrated from inventory_unit on 2025-08-30 03:37:37', '2025-08-27 15:36:17', '2025-09-13 12:26:44', 2);
+
+--
+-- Triggers `inventory_attachment`
+--
+DROP TRIGGER IF EXISTS `tr_inventory_attachment_status_sync`;
+DELIMITER $$
+CREATE TRIGGER `tr_inventory_attachment_status_sync` AFTER UPDATE ON `inventory_attachment` FOR EACH ROW BEGIN
+    
+    IF (OLD.id_inventory_unit IS NULL AND NEW.id_inventory_unit IS NOT NULL) OR
+       (OLD.id_inventory_unit IS NOT NULL AND NEW.id_inventory_unit IS NULL) OR
+       (OLD.id_inventory_unit IS NOT NULL AND NEW.id_inventory_unit IS NOT NULL AND OLD.id_inventory_unit != NEW.id_inventory_unit) THEN
+        
+        
+        IF NEW.id_inventory_unit IS NOT NULL THEN
+            UPDATE inventory_unit iu
+            JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+            JOIN kontrak k ON ks.kontrak_id = k.id
+            SET iu.status_unit_id = 3, iu.updated_at = NOW()
+            WHERE iu.id_inventory_unit = NEW.id_inventory_unit 
+            AND k.status = 'Aktif' 
+            AND iu.status_unit_id != 3;
+        END IF;
+    END IF;
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `inventory_item_unit_log`
 --
--- Creation: Sep 03, 2025 at 09:26 AM
+-- Creation: Sep 15, 2025 at 08:15 AM
 --
 
 DROP TABLE IF EXISTS `inventory_item_unit_log`;
 CREATE TABLE IF NOT EXISTS `inventory_item_unit_log` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `id_inventory_attachment` int(11) NOT NULL,
   `id_inventory_unit` int(11) NOT NULL,
   `action` enum('assign','remove') NOT NULL,
@@ -587,7 +1116,7 @@ CREATE TABLE IF NOT EXISTS `inventory_item_unit_log` (
   `note` varchar(255) DEFAULT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `inventory_item_unit_log`:
@@ -598,6 +1127,15 @@ CREATE TABLE IF NOT EXISTS `inventory_item_unit_log` (
 --
 
 TRUNCATE TABLE `inventory_item_unit_log`;
+--
+-- Dumping data for table `inventory_item_unit_log`
+--
+
+INSERT DELAYED IGNORE INTO `inventory_item_unit_log` (`id`, `id_inventory_attachment`, `id_inventory_unit`, `action`, `user_id`, `note`, `created_at`) VALUES
+(1, 3, 11, 'assign', NULL, NULL, '2025-09-13 10:43:16'),
+(3, 16, 13, 'assign', NULL, NULL, '2025-09-15 15:21:59'),
+(4, 4, 13, 'assign', NULL, NULL, '2025-09-16 13:57:44');
+
 -- --------------------------------------------------------
 
 --
@@ -638,19 +1176,17 @@ INSERT DELAYED IGNORE INTO `inventory_spareparts` (`id`, `sparepart_id`, `stok`,
 --
 -- Table structure for table `inventory_unit`
 --
--- Creation: Sep 03, 2025 at 09:21 AM
--- Last update: Sep 04, 2025 at 07:48 AM
+-- Creation: Sep 15, 2025 at 09:16 AM
 --
 
 DROP TABLE IF EXISTS `inventory_unit`;
 CREATE TABLE IF NOT EXISTS `inventory_unit` (
-  `id_inventory_unit` int(10) UNSIGNED NOT NULL,
+  `id_inventory_unit` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `no_unit` int(10) UNSIGNED DEFAULT NULL,
   `serial_number` varchar(255) DEFAULT NULL COMMENT 'Serial Number utama dari pabrikan',
   `id_po` int(11) DEFAULT NULL COMMENT 'Foreign Key ke tabel purchase_orders',
   `tahun_unit` year(4) DEFAULT NULL,
   `status_unit_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel status_unit (misal: STOK, RENTAL, JUAL)',
-  `status_aset` tinyint(1) DEFAULT NULL COMMENT 'Flag status aset (misal: 1=Aktif, 0=Non-Aktif)',
   `lokasi_unit` varchar(255) DEFAULT NULL,
   `departemen_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel departemen',
   `tanggal_kirim` datetime DEFAULT NULL,
@@ -672,6 +1208,13 @@ CREATE TABLE IF NOT EXISTS `inventory_unit` (
   `valve_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel valve',
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
+  `aksesoris` longtext DEFAULT NULL,
+  `spk_id` int(10) UNSIGNED DEFAULT NULL,
+  `delivery_instruction_id` int(10) UNSIGNED DEFAULT NULL,
+  `di_workflow_id` int(11) DEFAULT NULL,
+  `workflow_status` varchar(50) DEFAULT NULL,
+  `contract_disconnect_date` datetime DEFAULT NULL,
+  `contract_disconnect_stage` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`id_inventory_unit`),
   KEY `fk_inventory_unit_status` (`status_unit_id`),
   KEY `fk_inventory_unit_departemen` (`departemen_id`),
@@ -679,11 +1222,17 @@ CREATE TABLE IF NOT EXISTS `inventory_unit` (
   KEY `fk_inventory_unit_kontrak_spesifikasi` (`kontrak_spesifikasi_id`),
   KEY `fk_inventory_unit_tipe` (`tipe_unit_id`),
   KEY `fk_inventory_unit_model` (`model_unit_id`),
-  KEY `fk_inventory_unit_kapasitas` (`kapasitas_unit_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Data unit utama - komponen disimpan di inventory_attachment';
+  KEY `fk_inventory_unit_kapasitas` (`kapasitas_unit_id`),
+  KEY `fk_inventory_unit_spk` (`spk_id`),
+  KEY `fk_inventory_unit_delivery_instruction` (`delivery_instruction_id`),
+  KEY `idx_unit_workflow` (`di_workflow_id`),
+  KEY `idx_unit_workflow_status` (`workflow_status`)
+) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Data unit utama - komponen disimpan di inventory_attachment';
 
 --
 -- RELATIONSHIPS FOR TABLE `inventory_unit`:
+--   `delivery_instruction_id`
+--       `delivery_instructions` -> `id`
 --   `departemen_id`
 --       `departemen` -> `id_departemen`
 --   `kapasitas_unit_id`
@@ -694,6 +1243,8 @@ CREATE TABLE IF NOT EXISTS `inventory_unit` (
 --       `kontrak_spesifikasi` -> `id`
 --   `model_unit_id`
 --       `model_unit` -> `id_model_unit`
+--   `spk_id`
+--       `spk` -> `id`
 --   `status_unit_id`
 --       `status_unit` -> `id_status`
 --   `tipe_unit_id`
@@ -709,23 +1260,23 @@ TRUNCATE TABLE `inventory_unit`;
 -- Dumping data for table `inventory_unit`
 --
 
-INSERT DELAYED IGNORE INTO `inventory_unit` (`id_inventory_unit`, `no_unit`, `serial_number`, `id_po`, `tahun_unit`, `status_unit_id`, `status_aset`, `lokasi_unit`, `departemen_id`, `tanggal_kirim`, `keterangan`, `harga_sewa_bulanan`, `harga_sewa_harian`, `kontrak_id`, `kontrak_spesifikasi_id`, `tipe_unit_id`, `model_unit_id`, `kapasitas_unit_id`, `model_mast_id`, `tinggi_mast`, `sn_mast`, `model_mesin_id`, `sn_mesin`, `roda_id`, `ban_id`, `valve_id`, `created_at`, `updated_at`) VALUES
-(1, 1, 'unit 1', 122, '2025', 3, 0, 'Warehouse', 2, NULL, '', NULL, NULL, 44, NULL, 9, 6, 2, 5, NULL, '', 4, '', 4, 3, 4, '2025-08-12 02:22:14', '2025-09-04 14:48:00'),
-(2, 2, 'unit 2', 123, '2025', 3, 0, 'Warehouse', 2, NULL, '', NULL, NULL, 44, NULL, 10, 3, 10, 2, NULL, '', 2, '', 2, 2, 3, '2025-08-12 03:15:49', '2025-09-04 14:48:00'),
-(4, 4, 'test', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test', 2, 'test', 2, 1, 3, '2025-08-12 04:47:28', '2025-08-30 03:42:03'),
-(5, 7, 'test2', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test2', 2, 'test2', 2, 1, 3, '2025-08-12 04:49:52', '2025-08-30 03:42:03'),
-(6, 8, 'test3', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test3', 2, 'test3', 2, 1, 3, '2025-08-12 04:50:15', '2025-08-30 03:42:03'),
-(7, 3, 'test4', 38, '2025', 7, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'test4', 2, 'test4', 2, 1, 3, '2025-08-12 04:54:09', '2025-08-16 01:23:28'),
-(8, 11, 'andara', 39, '2025', 8, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 30, 1, NULL, 'andara', 3, 'andara', 1, 3, 1, '2025-08-12 08:15:40', '2025-08-30 03:42:03'),
-(9, 9, 'adaaaaa', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adaaaaa', 2, 'adaaaaa', 2, 1, 3, '2025-08-12 08:21:22', '2025-08-30 03:42:03'),
-(10, 6, 'adit', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adit', 2, 'adit', 2, 1, 3, '2025-08-16 04:20:16', '2025-08-30 03:42:03'),
-(11, 10, 'adit', 47, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 3, 6, 4, 5, NULL, 'adit', 3, 'adit', 2, 3, 2, '2025-08-16 04:20:38', '2025-08-30 03:42:03'),
-(12, 5, 'adit', 39, '2025', 8, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 3, 1, NULL, 'adit', 3, 'adit', 1, 3, 1, '2025-08-16 04:24:32', '2025-08-30 03:42:03'),
-(13, 14, 'kkai', 38, '2025', 8, NULL, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adit', 2, 'adit', 2, 1, 3, '2025-08-16 04:26:43', '2025-08-30 03:42:03'),
-(14, 12, '123', 39, '2025', 8, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 3, 1, NULL, '123', 3, '123', 1, 3, 1, '2025-08-27 02:22:59', '2025-08-30 03:42:03'),
-(15, 13, '123', 39, '2025', 8, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 3, 1, NULL, '123', 3, '123', 1, 3, 1, '2025-08-27 02:23:14', '2025-08-30 03:42:03'),
-(16, 15, '111', 52, '2025', 8, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 5, 3, NULL, '111', 3, '111', 1, 2, 2, '2025-08-27 15:35:47', '2025-08-30 03:42:03'),
-(17, 16, '222', 52, '2025', 7, NULL, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 5, 3, NULL, '222', 3, '222', 1, 2, 2, '2025-08-27 15:36:17', '2025-08-30 02:53:07');
+INSERT DELAYED IGNORE INTO `inventory_unit` (`id_inventory_unit`, `no_unit`, `serial_number`, `id_po`, `tahun_unit`, `status_unit_id`, `lokasi_unit`, `departemen_id`, `tanggal_kirim`, `keterangan`, `harga_sewa_bulanan`, `harga_sewa_harian`, `kontrak_id`, `kontrak_spesifikasi_id`, `tipe_unit_id`, `model_unit_id`, `kapasitas_unit_id`, `model_mast_id`, `tinggi_mast`, `sn_mast`, `model_mesin_id`, `sn_mesin`, `roda_id`, `ban_id`, `valve_id`, `created_at`, `updated_at`, `aksesoris`, `spk_id`, `delivery_instruction_id`, `di_workflow_id`, `workflow_status`, `contract_disconnect_date`, `contract_disconnect_stage`) VALUES
+(1, 1, 'unit 1', 122, '2025', 3, 'MSI', 2, '2025-09-04 00:00:00', '', 9000000.00, NULL, 44, 19, 9, 6, 2, 5, NULL, '', 4, '', 4, 3, 4, '2025-08-12 02:22:14', '2025-09-10 09:01:05', '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', 28, 123, NULL, NULL, NULL, NULL),
+(2, 2, 'unit 2', 123, '2025', 3, 'MSI', 2, '2025-09-04 00:00:00', '', 9000000.00, NULL, 44, 19, 10, 3, 10, 2, NULL, '', 2, '', 2, 2, 3, '2025-08-12 03:15:49', '2025-09-10 09:01:05', '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', 28, 123, NULL, NULL, NULL, NULL),
+(4, 4, 'test', 38, '2025', 3, 'POS 1', 3, '2025-09-12 00:00:00', NULL, 12000000.00, NULL, 55, 39, 12, 6, 6, 2, NULL, 'test', 2, 'test', 2, 1, 3, '2025-08-12 04:47:28', '2025-09-12 16:49:35', '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', 36, 125, NULL, NULL, NULL, NULL),
+(5, 7, 'test2', 38, '2025', 3, 'POS 1', 3, '2025-09-13 00:00:00', NULL, 19776000.00, NULL, 54, 37, 12, 6, 6, 2, NULL, 'test2', 2, 'test2', 2, 1, 3, '2025-08-12 04:49:52', '2025-09-13 09:13:24', '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', 38, 127, NULL, NULL, NULL, NULL),
+(6, 8, 'test3', 38, '2025', 3, 'POS 1', 3, '2025-09-13 00:00:00', NULL, 89000000.00, NULL, 57, 41, 12, 6, 6, 2, NULL, 'test3', 2, 'test3', 2, 1, 3, '2025-08-12 04:50:15', '2025-09-13 10:32:41', '[\"LAMPU UTAMA\",\"BLUE SPOT\",\"RED LINE\",\"WORK LIGHT\",\"CAMERA\",\"BIO METRIC\",\"P3K\"]', 39, 128, NULL, NULL, NULL, NULL),
+(7, 3, 'test4', 38, '2025', 3, 'POS 1', 3, '2025-09-12 00:00:00', NULL, 15000000.00, NULL, 56, 40, 12, 6, 6, 2, NULL, 'test4', 2, 'test4', 2, 1, 3, '2025-08-12 04:54:09', '2025-09-13 08:20:35', '[]', 37, 126, NULL, NULL, NULL, NULL),
+(8, 11, 'andara', 39, '2025', 7, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 30, 1, NULL, 'andara', 3, 'andara', 1, 3, 1, '2025-08-12 08:15:40', '2025-09-13 10:32:32', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(9, 9, 'adaaaaa', 38, '2025', 3, 'POS 1', 3, '2025-09-13 00:00:00', NULL, 89000000.00, NULL, 57, 41, 12, 6, 6, 2, NULL, 'adaaaaa', 2, 'adaaaaa', 2, 1, 3, '2025-08-12 08:21:22', '2025-09-13 10:32:25', '[\"LAMPU UTAMA\",\"BLUE SPOT\",\"RED LINE\",\"ACRYLIC\",\"P3K\",\"SAFETY BELT INTERLOC\",\"SPARS ARRESTOR\"]', 39, 128, NULL, NULL, NULL, NULL),
+(10, 6, 'adit', 38, '2025', 3, 'POS 1', 3, '2025-09-12 00:00:00', NULL, 12000000.00, NULL, 55, 39, 12, 6, 6, 2, NULL, 'adit', 2, 'adit', 2, 1, 3, '2025-08-16 04:20:16', '2025-09-12 16:49:35', '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', 36, 125, NULL, NULL, NULL, NULL),
+(11, 10, 'adit', 47, '2025', 3, 'POS 1', 3, '2025-09-13 00:00:00', NULL, 100000000.00, NULL, 57, 42, 3, 6, 4, 5, NULL, 'adit', 3, 'adit', 2, 3, 2, '2025-08-16 04:20:38', '2025-09-13 12:12:21', '[\"LAMPU UTAMA\",\"CAMERA AI\",\"SPEED LIMITER\",\"LASER FORK\",\"HORN KLASON\",\"APAR 3 KG\"]', 40, 129, NULL, NULL, NULL, NULL),
+(12, 5, 'adit', 39, '2025', 3, 'POS 1', 2, '2025-09-12 00:00:00', NULL, 19776000.00, NULL, 54, 37, 2, 1, 3, 1, NULL, 'adit', 3, 'adit', 1, 3, 1, '2025-08-16 04:24:32', '2025-09-12 16:31:11', NULL, 29, 124, NULL, NULL, NULL, NULL),
+(13, 14, 'kkai', 38, '2025', 8, 'POS 1', 3, NULL, NULL, NULL, NULL, NULL, NULL, 12, 6, 6, 2, NULL, 'adit', 2, 'adit', 2, 1, 3, '2025-08-16 04:26:43', '2025-08-30 03:42:03', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(14, 12, '123', 39, '2025', 8, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 3, 1, NULL, '123', 3, '123', 1, 3, 1, '2025-08-27 02:22:59', '2025-08-30 03:42:03', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(15, 13, '123', 39, '2025', 8, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 3, 1, NULL, '123', 3, '123', 1, 3, 1, '2025-08-27 02:23:14', '2025-08-30 03:42:03', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(16, 15, '111', 52, '2025', 8, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 5, 3, NULL, '111', 3, '111', 1, 2, 2, '2025-08-27 15:35:47', '2025-08-30 03:42:03', NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(17, 16, '222', 52, '2025', 7, 'POS 1', 2, NULL, NULL, NULL, NULL, NULL, NULL, 2, 1, 5, 3, NULL, '222', 3, '222', 1, 2, 2, '2025-08-27 15:36:17', '2025-08-30 02:53:07', NULL, NULL, NULL, NULL, NULL, NULL, NULL);
 
 --
 -- Triggers `inventory_unit`
@@ -992,7 +1543,6 @@ INSERT DELAYED IGNORE INTO `kapasitas` (`id_kapasitas`, `kapasitas_unit`) VALUES
 -- Table structure for table `kontrak`
 --
 -- Creation: Sep 03, 2025 at 08:54 AM
--- Last update: Sep 04, 2025 at 08:53 AM
 --
 
 DROP TABLE IF EXISTS `kontrak`;
@@ -1014,7 +1564,7 @@ CREATE TABLE IF NOT EXISTS `kontrak` (
   `dibuat_pada` datetime DEFAULT current_timestamp(),
   `diperbarui_pada` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=59 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `kontrak`:
@@ -1030,7 +1580,12 @@ TRUNCATE TABLE `kontrak`;
 --
 
 INSERT DELAYED IGNORE INTO `kontrak` (`id`, `no_kontrak`, `no_po_marketing`, `pelanggan`, `lokasi`, `pic`, `kontak`, `nilai_total`, `total_units`, `jenis_sewa`, `tanggal_mulai`, `tanggal_berakhir`, `status`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`) VALUES
-(44, 'MSI', 'MSI', 'MSI', 'EROPA', 'MSI', '09213123123', 18000000.00, 2, 'BULANAN', '2025-09-01', '2025-09-01', 'Aktif', 1, '2025-09-01 01:54:45', '2025-09-04 08:53:00');
+(44, 'KNTRK/2208/0001', 'PO-ADIT10998', 'Sarana Mitra Luas', 'EROPA JAYA AMERIKA, LONDON, SINGAPURE, JAKARTA BEKASI, JAWA BRAT', 'Adit', '09213123123', 18000000.00, 2, 'BULANAN', '2025-09-01', '2025-09-01', 'Aktif', 1, '2025-09-01 01:54:45', '2025-09-10 03:08:34'),
+(54, 'KNTRK/2209/0001', NULL, 'Sarana Mitra Luas', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-09-01', '2025-12-31', 'Aktif', 1, '2025-09-09 09:54:01', '2025-09-13 01:48:42'),
+(55, 'SML/DS/121025', NULL, 'Test', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-09-01', '2025-12-31', 'Aktif', 1, '2025-09-12 06:34:46', '2025-09-12 09:49:35'),
+(56, 'TEST/AUTO/001', NULL, 'Test Client', NULL, NULL, NULL, 0.00, 0, 'BULANAN', '2025-09-01', '2025-12-31', 'Aktif', 1, '2025-09-12 09:54:47', '2025-09-13 01:20:35'),
+(57, 'test/1/1/5', '12345', 'Sarana Mitra Luas', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', 'Adit', '082134555233', 0.00, 0, 'BULANAN', '2025-09-13', '2025-09-13', 'Aktif', 1, '2025-09-13 02:56:22', '2025-09-13 03:43:58'),
+(58, 'test/1/1/6', '12345', 'Sarana Mitra Luas', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', 'Adit', '082134555233', 0.00, 0, 'HARIAN', '2025-09-13', '2025-09-13', 'Pending', 1, '2025-09-15 08:06:12', '2025-09-15 08:06:12');
 
 --
 -- Triggers `kontrak`
@@ -1058,7 +1613,6 @@ DELIMITER ;
 -- Table structure for table `kontrak_spesifikasi`
 --
 -- Creation: Sep 03, 2025 at 09:10 AM
--- Last update: Sep 04, 2025 at 07:48 AM
 --
 
 DROP TABLE IF EXISTS `kontrak_spesifikasi`;
@@ -1090,7 +1644,7 @@ CREATE TABLE IF NOT EXISTS `kontrak_spesifikasi` (
   `diperbarui_pada` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `fk_kontrak_spesifikasi_kontrak` (`kontrak_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `kontrak_spesifikasi`:
@@ -1108,7 +1662,46 @@ TRUNCATE TABLE `kontrak_spesifikasi`;
 --
 
 INSERT DELAYED IGNORE INTO `kontrak_spesifikasi` (`id`, `kontrak_id`, `spek_kode`, `jumlah_dibutuhkan`, `jumlah_tersedia`, `harga_per_unit_bulanan`, `harga_per_unit_harian`, `catatan_spek`, `departemen_id`, `tipe_unit_id`, `tipe_jenis`, `kapasitas_id`, `merk_unit`, `model_unit`, `attachment_tipe`, `attachment_merk`, `jenis_baterai`, `charger_id`, `mast_id`, `ban_id`, `roda_id`, `valve_id`, `aksesoris`, `dibuat_pada`, `diperbarui_pada`) VALUES
-(19, 44, 'SPEC-001', 2, 0, 9000000.00, NULL, '', 2, 6, 'HAND PALLET', 41, 'HELI', NULL, 'FORK POSITIONER', NULL, 'Lithium-ion', 5, 22, 6, 1, 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', '2025-09-01 01:55:43', '2025-09-01 01:55:43');
+(19, 44, 'SPEC-001', 2, 0, 9000000.00, NULL, '', 2, 6, 'HAND PALLET', 41, 'HELI', NULL, 'FORK POSITIONER', NULL, 'Lithium-ion', 5, 22, 6, 1, 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', '2025-09-01 01:55:43', '2025-09-01 01:55:43'),
+(37, 54, 'SPEC-001', 2, 0, 19776000.00, NULL, '', 2, 6, 'PALLET STACKER', 42, 'HELI', NULL, 'FORKLIFT SCALE', NULL, 'Lead Acid', 1, 14, 6, 1, 1, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', '2025-09-09 10:03:32', '2025-09-09 10:03:32'),
+(39, 55, 'SPEC-001', 2, 0, 12000000.00, NULL, '', 1, 6, 'THREE WHEEL', 14, 'HANGCHA', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 16, 6, 2, 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', '2025-09-12 06:35:44', '2025-09-12 06:35:44'),
+(40, 56, 'SPEC-001', 1, 0, 15000000.00, NULL, NULL, 2, 6, NULL, 42, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-12 09:55:35', '2025-09-12 09:55:35'),
+(41, 57, 'SPEC-001', 2, 0, 89000000.00, NULL, '', 3, 6, 'COUNTER BALANCE', 40, 'HELI', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 16, 3, 1, 3, '[\"LAMPU UTAMA\",\"BLUE SPOT\",\"RED LINE\",\"WORK LIGHT\",\"CAMERA\",\"BIO METRIC\",\"ACRYLIC\",\"P3K\",\"SAFETY BELT INTERLOC\",\"SPARS ARRESTOR\"]', '2025-09-13 02:57:03', '2025-09-13 02:57:03'),
+(42, 57, 'SPEC-002', 1, 0, 100000000.00, NULL, '', 3, 6, 'PALLET STACKER', 42, 'KOMATSU', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 17, 3, 4, 2, '[\"LAMPU UTAMA\",\"CAMERA AI\",\"SPEED LIMITER\",\"LASER FORK\",\"HORN KLASON\",\"APAR 3 KG\"]', '2025-09-13 03:34:55', '2025-09-13 03:34:55'),
+(43, 58, 'SPEC-001', 2, 0, NULL, 100000000.00, '', 3, 6, 'HAND PALLET', 41, 'LINDE', NULL, 'FORK POSITIONER', NULL, NULL, NULL, 15, 6, 1, 3, '[\"LAMPU UTAMA\",\"BLUE SPOT\",\"RED LINE\",\"WORK LIGHT\"]', '2025-09-15 08:09:13', '2025-09-15 08:09:13'),
+(44, 56, 'SPEC-002', 1, 0, 1000000.00, NULL, '', 1, NULL, NULL, NULL, NULL, NULL, 'SIDE SHIFTER', '', '', 0, NULL, NULL, NULL, NULL, NULL, '2025-09-16 08:13:27', '2025-09-16 08:13:27');
+
+--
+-- Triggers `kontrak_spesifikasi`
+--
+DROP TRIGGER IF EXISTS `tr_kontrak_spesifikasi_aksesoris_insert`;
+DELIMITER $$
+CREATE TRIGGER `tr_kontrak_spesifikasi_aksesoris_insert` AFTER INSERT ON `kontrak_spesifikasi` FOR EACH ROW BEGIN
+    
+    IF NEW.aksesoris IS NOT NULL THEN
+        UPDATE `inventory_unit` 
+        SET `aksesoris` = NEW.aksesoris,
+            `kontrak_spesifikasi_id` = NEW.id,
+            `updated_at` = CURRENT_TIMESTAMP
+        WHERE `kontrak_id` = NEW.kontrak_id 
+        AND `kontrak_spesifikasi_id` IS NULL;
+    END IF;
+END
+$$
+DELIMITER ;
+DROP TRIGGER IF EXISTS `tr_kontrak_spesifikasi_aksesoris_update`;
+DELIMITER $$
+CREATE TRIGGER `tr_kontrak_spesifikasi_aksesoris_update` AFTER UPDATE ON `kontrak_spesifikasi` FOR EACH ROW BEGIN
+    
+    IF NEW.aksesoris IS NOT NULL AND (OLD.aksesoris IS NULL OR OLD.aksesoris != NEW.aksesoris) THEN
+        UPDATE `inventory_unit` 
+        SET `aksesoris` = NEW.aksesoris,
+            `updated_at` = CURRENT_TIMESTAMP
+        WHERE `kontrak_spesifikasi_id` = NEW.id;
+    END IF;
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -1116,7 +1709,6 @@ INSERT DELAYED IGNORE INTO `kontrak_spesifikasi` (`id`, `kontrak_id`, `spek_kode
 -- Table structure for table `kontrak_status_changes`
 --
 -- Creation: Sep 04, 2025 at 07:47 AM
--- Last update: Sep 04, 2025 at 07:48 AM
 --
 
 DROP TABLE IF EXISTS `kontrak_status_changes`;
@@ -1129,7 +1721,7 @@ CREATE TABLE IF NOT EXISTS `kontrak_status_changes` (
   `processed` tinyint(1) DEFAULT 0,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_kontrak_id` (`kontrak_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `kontrak_status_changes`:
@@ -1145,7 +1737,11 @@ TRUNCATE TABLE `kontrak_status_changes`;
 --
 
 INSERT DELAYED IGNORE INTO `kontrak_status_changes` (`id`, `kontrak_id`, `old_status`, `new_status`, `changed_at`, `processed`) VALUES
-(1, 44, 'Berakhir', 'Aktif', '2025-09-04 07:48:00', 0);
+(1, 44, 'Berakhir', 'Aktif', '2025-09-04 07:48:00', 0),
+(3, 54, 'Berakhir', 'Aktif', '2025-09-12 09:31:11', 0),
+(4, 55, 'Pending', 'Aktif', '2025-09-12 09:49:35', 0),
+(11, 56, 'Pending', 'Aktif', '2025-09-13 01:20:35', 0),
+(14, 57, 'Pending', 'Aktif', '2025-09-13 02:59:38', 0);
 
 -- --------------------------------------------------------
 
@@ -2079,25 +2675,38 @@ INSERT DELAYED IGNORE INTO `model_unit` (`id_model_unit`, `merk_unit`, `model_un
 --
 -- Table structure for table `notifications`
 --
--- Creation: Sep 03, 2025 at 09:06 AM
--- Last update: Sep 04, 2025 at 04:13 AM
+-- Creation: Sep 10, 2025 at 03:58 AM
 --
 
 DROP TABLE IF EXISTS `notifications`;
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `user_id` int(11) DEFAULT NULL,
-  `target_role` varchar(100) DEFAULT NULL,
-  `url` varchar(500) DEFAULT NULL,
-  `role` varchar(50) DEFAULT NULL,
-  `division` varchar(50) DEFAULT NULL,
+  `rule_id` int(11) DEFAULT NULL,
+  `title` varchar(255) NOT NULL,
   `message` text NOT NULL,
-  `link` varchar(255) DEFAULT NULL,
-  `is_read` tinyint(1) NOT NULL DEFAULT 0,
-  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  `read_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=58 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+  `type` enum('info','success','warning','error','critical') DEFAULT 'info',
+  `category` varchar(100) DEFAULT NULL COMMENT 'spk, di, inventory, maintenance, etc',
+  `icon` varchar(50) DEFAULT NULL,
+  `related_table` varchar(100) DEFAULT NULL COMMENT 'Table reference like spk, delivery_instruction',
+  `related_id` int(11) DEFAULT NULL COMMENT 'Record ID reference',
+  `url` varchar(500) DEFAULT NULL COMMENT 'Action URL for notification',
+  `metadata` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`metadata`)),
+  `priority` tinyint(4) DEFAULT 1 COMMENT '1=low, 2=medium, 3=high, 4=critical',
+  `expires_at` datetime DEFAULT NULL COMMENT 'Auto-delete after this date',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_category` (`category`),
+  KEY `idx_related` (`related_table`,`related_id`),
+  KEY `idx_priority` (`priority`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_notifications_category_type` (`category`,`type`),
+  KEY `idx_notifications_priority_created` (`priority`,`created_at`),
+  KEY `idx_notifications_rule_id` (`rule_id`),
+  KEY `idx_notifications_created_by` (`created_by`),
+  KEY `idx_notifications_created_at` (`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=30 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `notifications`:
@@ -2112,65 +2721,51 @@ TRUNCATE TABLE `notifications`;
 -- Dumping data for table `notifications`
 --
 
-INSERT DELAYED IGNORE INTO `notifications` (`id`, `user_id`, `target_role`, `url`, `role`, `division`, `message`, `link`, `is_read`, `created_at`, `read_at`) VALUES
-(1, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: tester) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-11 16:37:42', NULL),
-(2, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: tester324234) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-12 09:00:10', NULL),
-(3, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: initest) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-12 09:21:21', NULL),
-(4, NULL, NULL, NULL, 'warehouse', 'warehouse', 'Ada 1 unit PO baru (No: initest123) yang harus diverifikasi.', '/warehouse/purchase-orders', 0, '2025-08-12 13:45:20', NULL),
-(5, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/004 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-15 09:42:53', NULL),
-(6, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/005 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-16 02:21:30', NULL),
-(7, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/006 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-16 02:56:25', NULL),
-(8, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/007 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-16 03:54:30', NULL),
-(9, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/008 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-16 04:45:17', NULL),
-(10, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/009 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-16 12:47:25', NULL),
-(11, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/010 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-16 13:36:27', NULL),
-(12, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/011 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-16 14:12:06', NULL),
-(13, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/012 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-18 02:32:15', NULL),
-(14, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/013 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-18 02:33:49', NULL),
-(15, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/014 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-19 02:48:19', NULL),
-(16, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/015 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-20 10:12:25', NULL),
-(17, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/016 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-20 10:14:49', NULL),
-(18, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/017 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-21 02:19:31', NULL),
-(19, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/018 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-21 07:02:47', NULL),
-(20, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-26 07:48:51', NULL),
-(21, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/002 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-26 07:53:03', NULL),
-(22, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-26 08:28:33', NULL),
-(23, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/002 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-27 04:14:39', NULL),
-(24, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/003 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-27 09:00:44', NULL),
-(25, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/004 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-27 15:37:29', NULL),
-(26, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202508/005 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-08-28 01:54:22', NULL),
-(27, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 02:40:53', NULL),
-(28, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/002 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 02:41:52', NULL),
-(29, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-01 04:16:57', NULL),
-(56, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/001 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-03 09:38:49', NULL),
-(57, NULL, NULL, NULL, NULL, NULL, 'SPK SPK/202509/002 diajukan oleh Marketing untuk diproses Service.', NULL, 0, '2025-09-04 04:13:09', NULL);
+INSERT DELAYED IGNORE INTO `notifications` (`id`, `rule_id`, `title`, `message`, `type`, `category`, `icon`, `related_table`, `related_id`, `url`, `metadata`, `priority`, `expires_at`, `created_by`, `created_at`, `updated_at`) VALUES
+(1, NULL, 'Test Notification', 'This is a test notification to verify the system is working correctly.', 'info', 'system', 'fas fa-bell', 'test', 1, '/dashboard', NULL, 1, NULL, NULL, '2025-09-10 03:47:33', '2025-09-10 03:47:33'),
+(2, NULL, 'Test Notification', 'This is a test notification to verify the system is working correctly.', 'info', 'system', 'fas fa-bell', 'test', 1, '/dashboard', NULL, 1, NULL, NULL, '2025-09-10 06:37:37', '2025-09-10 06:37:37'),
+(3, NULL, 'Maintenance Unit FL-045', 'Engine overheat detected pada unit Forklift FL-045. Perlu segera diperiksa.', 'error', 'maintenance', NULL, NULL, NULL, NULL, NULL, 3, NULL, 1, '2025-09-10 06:38:28', '2025-09-10 06:38:28'),
+(4, NULL, 'Schedule Maintenance Besok', '5 unit memerlukan service rutin besok pagi.', 'warning', 'maintenance', NULL, NULL, NULL, NULL, NULL, 2, NULL, 1, '2025-09-10 06:38:28', '2025-09-10 06:38:28'),
+(5, NULL, 'Invoice Overdue', 'Invoice INV-001234 dari PT Mandiri Logistik sudah overdue.', 'info', 'finance', NULL, NULL, NULL, NULL, NULL, 1, NULL, 1, '2025-09-10 06:38:28', '2025-09-10 06:38:28'),
+(6, NULL, 'SPK Baru', 'SPK SPK/202509/004 diajukan oleh Marketing untuk diproses Service.', 'info', NULL, NULL, NULL, NULL, 'http://localhost/optima1/public/service/spk_service', NULL, 1, NULL, NULL, '2025-09-10 01:19:25', '2025-09-10 01:19:25'),
+(7, 1, 'Test SPK Notification', 'Test SPK TEST/001 telah dibuat untuk testing', 'info', 'spk', NULL, NULL, NULL, NULL, NULL, 1, NULL, 1, '2025-09-10 21:37:19', '2025-09-11 02:37:19'),
+(8, NULL, 'SPK Ready for Service', 'SPK/TEST/002 is ready for service team processing', 'info', 'spk', NULL, NULL, NULL, 'service/spk_service', NULL, 1, NULL, 1, '2025-09-10 23:48:24', '2025-09-11 04:48:24'),
+(9, NULL, 'SPK Baru Perlu Diproses', 'SPK SPK/202509/871 telah dibuat untuk PT Test Company Indonesia dengan spesifikasi Forklift Diesel 3 Ton untuk keperluan warehouse. Silakan periksa dan proses sesuai prosedur.', 'info', 'spk', NULL, NULL, NULL, 'service/spk_service', NULL, 1, NULL, 1, '2025-09-10 23:54:39', '2025-09-11 04:54:39'),
+(11, NULL, 'SPK Baru: SPK/202509/673 - PT Test Superadmin Notification', 'SPK baru telah dibuat untuk PT Test Superadmin Notification dengan spesifikasi Forklift Elektrik 2.5 Ton untuk warehouse automation. Silakan periksa dan proses sesuai prosedur.', 'info', 'spk', NULL, NULL, NULL, 'service/spk_service', NULL, 1, NULL, 1, '2025-09-11 00:02:21', '2025-09-11 05:02:21'),
+(12, NULL, 'SPK Baru: SPK/202509/673 - PT Test Superadmin Notification', 'SPK SPK/202509/673 telah dibuat untuk PT Test Superadmin Notification dengan spesifikasi Forklift Elektrik 2.5 Ton untuk warehouse automation. Lokasi: Jakarta Selatan. Status: Menunggu persiapan service.', 'info', 'spk', NULL, NULL, NULL, 'service/spk_service', NULL, 1, NULL, 1, '2025-09-11 00:02:21', '2025-09-11 05:02:21'),
+(13, NULL, 'SPK Baru: SPK/202509/905 - PT Test Superadmin Notification', 'SPK baru telah dibuat untuk PT Test Superadmin Notification dengan spesifikasi Forklift Elektrik 2.5 Ton untuk warehouse automation. Silakan periksa dan proses sesuai prosedur.', 'info', 'spk', NULL, NULL, NULL, 'service/spk_service', NULL, 1, NULL, 1, '2025-09-11 01:23:26', '2025-09-11 06:23:26'),
+(14, NULL, 'SPK Baru: SPK/202509/905 - PT Test Superadmin Notification', 'SPK SPK/202509/905 telah dibuat untuk PT Test Superadmin Notification dengan spesifikasi Forklift Elektrik 2.5 Ton untuk warehouse automation. Lokasi: Jakarta Selatan. Status: Menunggu persiapan service.', 'info', 'spk', NULL, NULL, NULL, 'service/spk_service', NULL, 1, NULL, 1, '2025-09-11 01:23:26', '2025-09-11 06:23:26');
 
 -- --------------------------------------------------------
 
 --
 -- Table structure for table `notification_logs`
 --
--- Creation: Sep 03, 2025 at 09:06 AM
+-- Creation: Sep 10, 2025 at 06:37 AM
 --
 
 DROP TABLE IF EXISTS `notification_logs`;
 CREATE TABLE IF NOT EXISTS `notification_logs` (
-  `id_notification` int(11) NOT NULL AUTO_INCREMENT,
-  `po_type` enum('unit','attachment','sparepart') NOT NULL,
-  `po_id` int(11) NOT NULL,
-  `no_po` varchar(100) NOT NULL,
-  `notification_type` varchar(100) NOT NULL,
-  `message` text NOT NULL,
-  `sent_to_division` varchar(100) DEFAULT NULL,
-  `status` enum('pending','sent','read') NOT NULL DEFAULT 'pending',
-  `created_by` int(11) DEFAULT NULL,
-  `created_at` datetime DEFAULT NULL,
-  `updated_at` datetime DEFAULT NULL,
-  PRIMARY KEY (`id_notification`)
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `notification_id` int(11) NOT NULL,
+  `rule_id` int(11) DEFAULT NULL,
+  `total_recipients` int(11) DEFAULT 0,
+  `successful_deliveries` int(11) DEFAULT 0,
+  `failed_deliveries` int(11) DEFAULT 0,
+  `processing_time_ms` int(11) DEFAULT NULL,
+  `trigger_data` longtext DEFAULT NULL COMMENT 'JSON data that triggered the notification',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  KEY `idx_notification` (`notification_id`),
+  KEY `idx_rule` (`rule_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `notification_logs`:
+--   `notification_id`
+--       `notifications` -> `id`
+--   `rule_id`
+--       `notification_rules` -> `id`
 --
 
 --
@@ -2178,6 +2773,138 @@ CREATE TABLE IF NOT EXISTS `notification_logs` (
 --
 
 TRUNCATE TABLE `notification_logs`;
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notification_recipients`
+--
+-- Creation: Sep 10, 2025 at 06:37 AM
+--
+
+DROP TABLE IF EXISTS `notification_recipients`;
+CREATE TABLE IF NOT EXISTS `notification_recipients` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `notification_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `is_read` tinyint(1) DEFAULT 0,
+  `read_at` timestamp NULL DEFAULT NULL,
+  `is_dismissed` tinyint(1) DEFAULT 0,
+  `dismissed_at` timestamp NULL DEFAULT NULL,
+  `delivery_method` enum('web','email','sms') DEFAULT 'web',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_notification_user` (`notification_id`,`user_id`),
+  KEY `idx_user_unread` (`user_id`,`is_read`),
+  KEY `idx_notification` (`notification_id`),
+  KEY `idx_recipients_user_read_created` (`user_id`,`is_read`,`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=17 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `notification_recipients`:
+--   `notification_id`
+--       `notifications` -> `id`
+--
+
+--
+-- Truncate table before insert `notification_recipients`
+--
+
+TRUNCATE TABLE `notification_recipients`;
+--
+-- Dumping data for table `notification_recipients`
+--
+
+INSERT DELAYED IGNORE INTO `notification_recipients` (`id`, `notification_id`, `user_id`, `is_read`, `read_at`, `is_dismissed`, `dismissed_at`, `delivery_method`, `created_at`) VALUES
+(1, 1, 1, 1, '2025-09-10 19:38:11', 0, NULL, 'web', '2025-09-10 06:37:37'),
+(2, 2, 1, 1, '2025-09-10 19:38:11', 1, '2025-09-10 21:52:02', 'web', '2025-09-10 06:37:37'),
+(5, 7, 5, 0, NULL, 0, NULL, 'web', '2025-09-10 21:37:19'),
+(6, 7, 6, 0, NULL, 0, NULL, 'web', '2025-09-10 21:37:19'),
+(7, 8, 5, 0, NULL, 0, NULL, 'web', '2025-09-10 23:48:24'),
+(8, 8, 6, 0, NULL, 0, NULL, 'web', '2025-09-10 23:48:24'),
+(9, 9, 5, 0, NULL, 0, NULL, 'web', '2025-09-10 23:54:39'),
+(10, 9, 6, 0, NULL, 0, NULL, 'web', '2025-09-10 23:54:39'),
+(11, 11, 5, 0, NULL, 0, NULL, 'web', '2025-09-11 00:02:21'),
+(12, 11, 6, 0, NULL, 0, NULL, 'web', '2025-09-11 00:02:21'),
+(13, 12, 1, 1, '2025-09-10 22:02:29', 0, NULL, 'web', '2025-09-11 00:02:21'),
+(14, 13, 5, 0, NULL, 0, NULL, 'web', '2025-09-11 01:23:26'),
+(15, 13, 6, 0, NULL, 0, NULL, 'web', '2025-09-11 01:23:26'),
+(16, 14, 1, 1, '2025-09-10 23:27:12', 0, NULL, 'web', '2025-09-11 01:23:26');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `notification_rules`
+--
+-- Creation: Sep 11, 2025 at 06:20 AM
+--
+
+DROP TABLE IF EXISTS `notification_rules`;
+CREATE TABLE IF NOT EXISTS `notification_rules` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `trigger_event` varchar(100) NOT NULL COMMENT 'spk_created, spk_approved, di_processed, inventory_low, etc',
+  `is_active` tinyint(1) DEFAULT 1,
+  `conditions` longtext DEFAULT NULL COMMENT 'JSON conditions like {"departemen": "DIESEL", "status": "APPROVED"}',
+  `target_roles` varchar(500) DEFAULT NULL COMMENT 'Comma-separated: superadmin,manager,supervisor',
+  `target_divisions` varchar(500) DEFAULT NULL COMMENT 'Comma-separated: service,marketing,operational',
+  `target_departments` varchar(500) DEFAULT NULL COMMENT 'Comma-separated: DIESEL,ELECTRIC,LPG',
+  `target_users` varchar(500) DEFAULT NULL COMMENT 'Specific user IDs comma-separated',
+  `exclude_creator` tinyint(1) DEFAULT 0 COMMENT 'Exclude notification creator',
+  `title_template` varchar(500) NOT NULL COMMENT 'Template with variables like "SPK {{nomor_spk}} untuk {{departemen}}"',
+  `message_template` text NOT NULL,
+  `category` varchar(100) DEFAULT NULL,
+  `type` enum('info','success','warning','error','critical') DEFAULT 'info',
+  `priority` tinyint(4) DEFAULT 1,
+  `url_template` varchar(500) DEFAULT NULL COMMENT 'URL template with variables',
+  `delay_minutes` int(11) DEFAULT 0 COMMENT 'Delay notification by X minutes',
+  `expire_days` int(11) DEFAULT 30 COMMENT 'Auto-delete after X days',
+  `created_by` int(11) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `auto_include_superadmin` tinyint(1) DEFAULT 1 COMMENT 'Automatically include superadmin in all notifications',
+  `target_mixed` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'JSON array for complex multi-targeting: {divisions: [], roles: [], users: [], departments: []}' CHECK (json_valid(`target_mixed`)),
+  `rule_description` text DEFAULT NULL COMMENT 'Detailed description of when and why this rule triggers',
+  PRIMARY KEY (`id`),
+  KEY `idx_trigger_event` (`trigger_event`),
+  KEY `idx_active` (`is_active`),
+  KEY `idx_rules_event_active` (`trigger_event`,`is_active`)
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `notification_rules`:
+--
+
+--
+-- Truncate table before insert `notification_rules`
+--
+
+TRUNCATE TABLE `notification_rules`;
+--
+-- Dumping data for table `notification_rules`
+--
+
+INSERT DELAYED IGNORE INTO `notification_rules` (`id`, `name`, `description`, `trigger_event`, `is_active`, `conditions`, `target_roles`, `target_divisions`, `target_departments`, `target_users`, `exclude_creator`, `title_template`, `message_template`, `category`, `type`, `priority`, `url_template`, `delay_minutes`, `expire_days`, `created_by`, `created_at`, `updated_at`, `auto_include_superadmin`, `target_mixed`, `rule_description`) VALUES
+(1, 'SPK Created - Service Notification', 'Notify service division when new SPK is created', 'spk_created', 1, '{}', 'manager,supervisor,technician', 'service', NULL, NULL, 1, 'SPK Baru: {{nomor_spk}} - {{departemen}}', 'SPK baru telah dibuat untuk {{pelanggan}} dengan departemen {{departemen}}. Silakan periksa dan proses sesuai prosedur.', 'spk', 'info', 2, 'service/spk_service', 0, 30, NULL, '2025-09-10 03:47:33', '2025-09-11 04:45:27', 1, NULL, NULL),
+(2, 'SPK DIESEL - Service DIESEL Team', 'Notify DIESEL service team for DIESEL SPK', 'spk_created', 1, '{\"departemen\": \"DIESEL\"}', NULL, 'service', 'DIESEL', NULL, 0, 'SPK DIESEL: {{nomor_spk}} - {{pelanggan}}', 'SPK DIESEL baru memerlukan perhatian tim service DIESEL. Unit: {{unit_info}}, Lokasi: {{lokasi}}', 'spk', 'warning', 3, 'service/spk_service', 0, 30, NULL, '2025-09-10 03:47:33', '2025-09-11 04:45:27', 1, NULL, NULL),
+(3, 'DI Ready - Operational Team', 'Notify operational when DI is ready for processing', 'di_submitted', 1, '{}', NULL, 'operational', NULL, NULL, 0, 'DI Siap Diproses: {{nomor_di}}', 'Delivery Instruction {{nomor_di}} untuk {{pelanggan}} siap diproses. Lokasi: {{lokasi}}', 'di', 'info', 2, '/operational/delivery', 0, 30, NULL, '2025-09-10 03:47:33', '2025-09-10 03:47:33', 1, NULL, NULL),
+(4, 'Low Stock Alert', 'Notify warehouse managers when inventory is low', 'inventory_low_stock', 1, '{\"stock_level\": \"below_minimum\"}', 'manager,supervisor', 'warehouse,purchasing', NULL, NULL, 0, 'Stok Rendah: {{item_name}}', 'Item {{item_name}} memiliki stok di bawah minimum. Stok saat ini: {{current_stock}}, Minimum: {{minimum_stock}}', 'inventory', 'warning', 3, '/warehouse/inventory', 0, 30, NULL, '2025-09-10 03:47:33', '2025-09-10 03:47:33', 1, NULL, NULL),
+(5, 'Maintenance Due Alert', 'Notify service team when unit maintenance is due', 'maintenance_due', 1, '{}', NULL, 'service', 'DIESEL,ELECTRIC,LPG', NULL, 0, 'Maintenance Due: {{unit_no}}', 'Unit {{unit_no}} memerlukan maintenance {{maintenance_type}}. Due date: {{due_date}}', 'maintenance', 'warning', 3, '/service/maintenance', 0, 30, NULL, '2025-09-10 03:47:33', '2025-09-10 03:47:33', 1, NULL, NULL),
+(6, 'SPK DIESEL to Service DIESEL', 'Notifikasi untuk SPK departemen DIESEL ke divisi Service', 'spk_created', 1, '{\"source_department\": \"diesel\", \"target_division\": \"service\"}', NULL, 'service', 'diesel', NULL, 0, 'SPK Baru - {departemen} #{spk_id}', 'SPK baru telah dibuat untuk departemen {departemen}. Silakan review dan proses sesuai prosedur.', NULL, 'info', 2, 'service/spk_service', 0, 30, 1, '2025-09-10 03:58:43', '2025-09-11 04:45:27', 1, NULL, NULL),
+(7, 'DI Processing Alert', 'Alert untuk DI yang perlu diproses', 'di_created', 1, '{}', NULL, 'service', '', NULL, 0, 'DI Baru Perlu Diproses - #{di_id}', 'Delivery Instruction baru telah dibuat dan menunggu pemrosesan dari divisi yang bertanggung jawab.', NULL, 'info', 3, NULL, 0, 30, 1, '2025-09-10 03:58:43', '2025-09-10 03:58:43', 1, NULL, NULL),
+(8, 'Low Stock Alert', 'Alert untuk stok rendah', 'inventory_low_stock', 1, '{}', NULL, '', '', NULL, 0, 'Stok Rendah - {item_name}', 'Item {item_name} memiliki stok rendah ({current_stock} tersisa). Segera lakukan reorder.', NULL, 'info', 3, NULL, 0, 30, 1, '2025-09-10 03:58:43', '2025-09-10 03:58:43', 1, NULL, NULL),
+(9, 'Maintenance Due Alert', 'Alert untuk maintenance yang jatuh tempo', 'maintenance_due', 1, '{}', NULL, 'service', '', NULL, 0, 'Maintenance Terjadwal - Unit {unit_code}', 'Unit {unit_code} memerlukan maintenance terjadwal. Silakan koordinasi dengan tim maintenance.', NULL, 'info', 2, NULL, 0, 30, 1, '2025-09-10 03:58:43', '2025-09-10 03:58:43', 1, NULL, NULL),
+(10, 'SPK DIESEL to Service DIESEL', 'Notifikasi untuk SPK departemen DIESEL ke divisi Service', 'spk_created', 1, '{\"source_department\": \"diesel\", \"target_division\": \"service\"}', NULL, 'service', 'diesel', NULL, 0, 'SPK Baru - {departemen} #{spk_id}', 'SPK baru telah dibuat untuk departemen {departemen}. Silakan review dan proses sesuai prosedur.', NULL, 'info', 2, NULL, 0, 30, 1, '2025-09-10 03:59:35', '2025-09-10 03:59:35', 1, NULL, NULL),
+(11, 'DI Processing Alert', 'Alert untuk DI yang perlu diproses', 'di_created', 1, '{}', NULL, 'service', '', NULL, 0, 'DI Baru Perlu Diproses - #{di_id}', 'Delivery Instruction baru telah dibuat dan menunggu pemrosesan dari divisi yang bertanggung jawab.', NULL, 'info', 3, NULL, 0, 30, 1, '2025-09-10 03:59:35', '2025-09-10 03:59:35', 1, NULL, NULL),
+(12, 'Low Stock Alert', 'Alert untuk stok rendah', 'inventory_low_stock', 1, '{}', NULL, '', '', NULL, 0, 'Stok Rendah - {item_name}', 'Item {item_name} memiliki stok rendah ({current_stock} tersisa). Segera lakukan reorder.', NULL, 'info', 3, NULL, 0, 30, 1, '2025-09-10 03:59:35', '2025-09-10 03:59:35', 1, NULL, NULL),
+(13, 'Maintenance Due Alert', 'Alert untuk maintenance yang jatuh tempo', 'maintenance_due', 1, '{}', NULL, 'service', '', NULL, 0, 'Maintenance Terjadwal - Unit {unit_code}', 'Unit {unit_code} memerlukan maintenance terjadwal. Silakan koordinasi dengan tim maintenance.', NULL, 'info', 2, NULL, 0, 30, 1, '2025-09-10 03:59:35', '2025-09-10 03:59:35', 1, NULL, NULL),
+(14, 'SPK Created - Service Notification', 'Notify service division when new SPK is created', 'SPK Created', 1, '{}', 'superadmin', '', '', '', 1, 'SPK Baru: {{nomor_spk}} - {{departemen}}', 'SPK baru telah dibuat untuk {{pelanggan}} dengan departemen {{departemen}}. Silakan periksa dan proses sesuai prosedur.', 'spk', 'info', 2, '/service/spk/detail/{{id}}', 0, 30, NULL, '2025-09-10 06:37:37', '2025-09-10 21:56:11', 1, NULL, NULL),
+(15, 'SPK DIESEL - Service DIESEL Team', 'Notify DIESEL service team for DIESEL SPK', 'spk_created', 1, '{\"departemen\": \"DIESEL\"}', NULL, 'service', 'DIESEL', NULL, 0, 'SPK DIESEL: {{nomor_spk}} - {{pelanggan}}', 'SPK DIESEL baru memerlukan perhatian tim service DIESEL. Unit: {{unit_info}}, Lokasi: {{lokasi}}', 'spk', 'warning', 3, '/service/spk/detail/{{id}}', 0, 30, NULL, '2025-09-10 06:37:37', '2025-09-10 06:37:37', 1, NULL, NULL),
+(16, 'DI Ready - Operational Team', 'Notify operational when DI is ready for processing', 'di_submitted', 1, '{}', NULL, 'operational', NULL, NULL, 0, 'DI Siap Diproses: {{nomor_di}}', 'Delivery Instruction {{nomor_di}} untuk {{pelanggan}} siap diproses. Lokasi: {{lokasi}}', 'di', 'info', 2, '/operational/delivery', 0, 30, NULL, '2025-09-10 06:37:37', '2025-09-10 06:37:37', 1, NULL, NULL),
+(18, 'Maintenance Due Alert', 'Notify service team when unit maintenance is due', 'maintenance_due', 1, '{}', NULL, 'service', 'DIESEL,ELECTRIC,LPG', NULL, 0, 'Maintenance Due: {{unit_no}}', 'Unit {{unit_no}} memerlukan maintenance {{maintenance_type}}. Due date: {{due_date}}', 'maintenance', 'warning', 3, '/service/maintenance', 0, 30, NULL, '2025-09-10 06:37:37', '2025-09-10 06:37:37', 1, NULL, NULL),
+(19, 'SPK Created - Superadmin Notification', 'Notify superadmin when new SPK is created for oversight', 'spk_created', 1, NULL, 'Super Administrator', NULL, NULL, NULL, 0, 'SPK Baru: {{nomor_spk}} - {{pelanggan}}', 'SPK {{nomor_spk}} telah dibuat untuk {{pelanggan}} dengan spesifikasi {{spesifikasi}}. Lokasi: {{lokasi}}. Status: Menunggu persiapan service.', 'spk', 'info', 3, 'service/spk_service', 0, 30, NULL, '2025-09-11 05:01:25', '2025-09-11 05:01:25', 1, NULL, NULL),
+(20, 'Purchase Order Created - Multi-Target', 'Notify purchase division and specific warehouse user when PO is created', 'purchase_order_created', 1, NULL, NULL, NULL, NULL, NULL, 0, 'PO Baru: {{po_number}} - {{vendor}}', 'Purchase Order {{po_number}} telah dibuat untuk vendor {{vendor}} dengan nilai {{amount}}. Silakan lakukan verifikasi dan proses selanjutnya.', 'purchase_order', 'info', 2, 'purchasing/po', 0, 30, NULL, '2025-09-11 06:20:23', '2025-09-11 06:20:23', 1, '{\"divisions\": [\"Purchase\", \"Warehouse\"], \"roles\": [\"manager\"], \"users\": [], \"departments\": []}', NULL);
+
 -- --------------------------------------------------------
 
 --
@@ -2670,64 +3397,6 @@ INSERT DELAYED IGNORE INTO `po_units` (`id_po_unit`, `created_at`, `updated_at`,
 -- --------------------------------------------------------
 
 --
--- Table structure for table `primary_key_fixes_log`
---
--- Creation: Sep 03, 2025 at 09:25 AM
---
-
-DROP TABLE IF EXISTS `primary_key_fixes_log`;
-CREATE TABLE IF NOT EXISTS `primary_key_fixes_log` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `table_name` varchar(100) DEFAULT NULL,
-  `action` varchar(200) DEFAULT NULL,
-  `status` enum('SUCCESS','ERROR','SKIPPED') DEFAULT NULL,
-  `error_message` text DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- RELATIONSHIPS FOR TABLE `primary_key_fixes_log`:
---
-
---
--- Truncate table before insert `primary_key_fixes_log`
---
-
-TRUNCATE TABLE `primary_key_fixes_log`;
---
--- Dumping data for table `primary_key_fixes_log`
---
-
-INSERT DELAYED IGNORE INTO `primary_key_fixes_log` (`id`, `table_name`, `action`, `status`, `error_message`, `created_at`) VALUES
-(1, 'divisions', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:25:04'),
-(2, 'forklifts', 'Added PRIMARY KEY (forklift_id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(3, 'inventory_item_unit_log', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(4, 'inventory_spareparts', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(5, 'inventory_unit_backup', 'Added PRIMARY KEY (id_inventory_unit)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(6, 'migrations', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(7, 'permissions', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(8, 'po_items', 'Added PRIMARY KEY (id_po_item)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(9, 'po_sparepart_items', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(10, 'po_units', 'Added PRIMARY KEY (id_po_unit)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(11, 'purchase_orders', 'Added PRIMARY KEY (id_po)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(12, 'rbac_audit_log', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(13, 'rentals', 'Added PRIMARY KEY (rental_id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(14, 'reports', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(15, 'roles', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(16, 'role_permissions', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(17, 'spk_backup_20250903', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(18, 'spk_status_history', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(19, 'spk_units', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(20, 'tipe_ban', 'Added PRIMARY KEY (id_ban)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(21, 'tipe_mast', 'Added PRIMARY KEY (id_mast)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(22, 'user_permissions', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(23, 'user_roles', 'Added PRIMARY KEY (id)', 'SUCCESS', NULL, '2025-09-03 09:26:10'),
-(24, 'valve', 'Added PRIMARY KEY (id_valve)', 'SUCCESS', NULL, '2025-09-03 09:26:10');
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `purchase_orders`
 --
 -- Creation: Sep 03, 2025 at 09:32 AM
@@ -3145,15 +3814,14 @@ TRUNCATE TABLE `sparepart`;
 --
 -- Table structure for table `spk`
 --
--- Creation: Sep 03, 2025 at 09:08 AM
--- Last update: Sep 04, 2025 at 08:53 AM
+-- Creation: Sep 15, 2025 at 08:07 AM
 --
 
 DROP TABLE IF EXISTS `spk`;
 CREATE TABLE IF NOT EXISTS `spk` (
   `id` int(10) UNSIGNED NOT NULL AUTO_INCREMENT,
   `nomor_spk` varchar(100) NOT NULL,
-  `jenis_spk` enum('UNIT','ATTACHMENT','TUKAR') NOT NULL DEFAULT 'UNIT',
+  `jenis_spk` enum('UNIT','ATTACHMENT') NOT NULL DEFAULT 'UNIT',
   `kontrak_id` int(10) UNSIGNED DEFAULT NULL,
   `kontrak_spesifikasi_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi',
   `jumlah_unit` int(11) DEFAULT 1 COMMENT 'Jumlah unit dalam SPK ini',
@@ -3202,7 +3870,7 @@ CREATE TABLE IF NOT EXISTS `spk` (
   KEY `fk_spk_kontrak_spesifikasi` (`kontrak_spesifikasi_id`),
   KEY `fk_spk_tujuan_perintah` (`tujuan_perintah_kerja_id`),
   KEY `fk_spk_user` (`dibuat_oleh`)
-) ENGINE=InnoDB AUTO_INCREMENT=29 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=50 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `spk`:
@@ -3231,7 +3899,34 @@ TRUNCATE TABLE `spk`;
 
 INSERT DELAYED IGNORE INTO `spk` (`id`, `nomor_spk`, `jenis_spk`, `kontrak_id`, `kontrak_spesifikasi_id`, `jumlah_unit`, `po_kontrak_nomor`, `pelanggan`, `pic`, `kontak`, `lokasi`, `delivery_plan`, `spesifikasi`, `status`, `persiapan_unit_mekanik`, `persiapan_unit_estimasi_mulai`, `persiapan_unit_estimasi_selesai`, `persiapan_unit_tanggal_approve`, `persiapan_unit_id`, `persiapan_aksesoris_tersedia`, `fabrikasi_mekanik`, `fabrikasi_estimasi_mulai`, `fabrikasi_estimasi_selesai`, `fabrikasi_tanggal_approve`, `fabrikasi_attachment_id`, `painting_mekanik`, `painting_estimasi_mulai`, `painting_estimasi_selesai`, `painting_tanggal_approve`, `pdi_mekanik`, `pdi_estimasi_mulai`, `pdi_estimasi_selesai`, `pdi_tanggal_approve`, `pdi_catatan`, `catatan`, `dibuat_oleh`, `dibuat_pada`, `diperbarui_pada`, `jenis_perintah_kerja_id`, `tujuan_perintah_kerja_id`, `status_eksekusi_workflow_id`, `workflow_notes`, `workflow_created_at`, `workflow_updated_at`) VALUES
 (27, 'SPK/202509/001', 'UNIT', NULL, NULL, 2, 'test12345', 'MONORKOBO', 'JAJA', '09324987729', 'BEKASI', '2025-09-03', '{\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"PALLET STACKER\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"14\",\"attachment_tipe\":\"PAPER ROLL CLAMP\",\"attachment_merk\":null,\"jenis_baterai\":\"Lithium-ion\",\"charger_id\":\"9\",\"mast_id\":\"22\",\"ban_id\":\"6\",\"roda_id\":\"3\",\"valve_id\":\"3\",\"aksesoris\":[],\"persiapan_battery_action\":\"keep_existing\",\"persiapan_battery_id\":\"6\",\"persiapan_charger_action\":\"assign\",\"persiapan_charger_id\":\"12\",\"fabrikasi_attachment_id\":\"15\",\"prepared_units\":[{\"unit_id\":\"1\",\"battery_inventory_id\":\"5\",\"charger_inventory_id\":\"10\",\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-03 09:40:09\"},{\"unit_id\":\"12\",\"battery_inventory_id\":\"6\",\"charger_inventory_id\":\"12\",\"attachment_inventory_id\":\"15\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"a\",\"timestamp\":\"2025-09-03 09:41:18\"}]}', 'IN_PROGRESS', 'JOHANA - DEPI', '2025-09-03', '2025-09-03', '2025-09-03 09:41:03', 12, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\"]', 'JOHANA - DEPI', '2025-09-02', '2025-09-02', '2025-09-03 09:41:10', NULL, 'ARIZAL-EKA', '2025-09-03', '2025-09-03', '2025-09-03 09:41:14', 'JOHANA - DEPI', '2025-09-03', '2025-09-03', '2025-09-03 09:41:18', 'a', NULL, 1, '2025-09-03 09:38:49', '2025-09-04 03:43:23', NULL, NULL, 1, NULL, NULL, NULL),
-(28, 'SPK/202509/002', 'UNIT', 44, 19, 2, 'MSI', 'MSI', 'MSI', '09213123123', 'EROPA', NULL, '{\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"HAND PALLET\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"41\",\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":\"Lithium-ion\",\"charger_id\":\"5\",\"mast_id\":\"22\",\"ban_id\":\"6\",\"roda_id\":\"1\",\"valve_id\":\"2\",\"aksesoris\":[],\"persiapan_battery_action\":\"assign\",\"persiapan_battery_id\":\"7\",\"persiapan_charger_action\":\"assign\",\"persiapan_charger_id\":\"14\",\"fabrikasi_attachment_id\":\"15\",\"prepared_units\":[{\"unit_id\":\"1\",\"battery_inventory_id\":\"5\",\"charger_inventory_id\":\"10\",\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-04 04:14:01\"},{\"unit_id\":\"2\",\"battery_inventory_id\":\"7\",\"charger_inventory_id\":\"14\",\"attachment_inventory_id\":\"15\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-04 04:14:39\"}]}', 'COMPLETED', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:20', 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:29', NULL, 'ARIZAL-EKA', '2025-09-04', '2025-09-04', '2025-09-04 04:14:34', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:39', 'ok', NULL, 1, '2025-09-04 04:13:09', '2025-09-04 08:53:00', NULL, NULL, 1, NULL, NULL, NULL);
+(28, 'SPK/202509/002', 'UNIT', 44, 19, 2, 'MSI', 'MSI', 'MSI', '09213123123', 'EROPA', NULL, '{\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"HAND PALLET\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"41\",\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":\"Lithium-ion\",\"charger_id\":\"5\",\"mast_id\":\"22\",\"ban_id\":\"6\",\"roda_id\":\"1\",\"valve_id\":\"2\",\"aksesoris\":[],\"persiapan_battery_action\":\"assign\",\"persiapan_battery_id\":\"7\",\"persiapan_charger_action\":\"assign\",\"persiapan_charger_id\":\"14\",\"fabrikasi_attachment_id\":\"15\",\"prepared_units\":[{\"unit_id\":\"1\",\"battery_inventory_id\":\"5\",\"charger_inventory_id\":\"10\",\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-04 04:14:01\"},{\"unit_id\":\"2\",\"battery_inventory_id\":\"7\",\"charger_inventory_id\":\"14\",\"attachment_inventory_id\":\"15\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-04 04:14:39\"}]}', 'COMPLETED', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:20', 2, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:29', NULL, 'ARIZAL-EKA', '2025-09-04', '2025-09-04', '2025-09-04 04:14:34', 'JOHANA - DEPI', '2025-09-04', '2025-09-04', '2025-09-04 04:14:39', 'ok', NULL, 1, '2025-09-04 04:13:09', '2025-09-04 08:53:00', NULL, NULL, 1, NULL, NULL, NULL),
+(29, 'SPK/202509/003', 'UNIT', 54, 37, 2, 'KNTRK/2209/0001', 'Sarana Mitra Luas', 'Adit', '082134555233', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-09', '{\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"PALLET STACKER\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"42\",\"attachment_tipe\":\"FORKLIFT SCALE\",\"attachment_merk\":null,\"jenis_baterai\":\"Lead Acid\",\"charger_id\":\"1\",\"mast_id\":\"14\",\"ban_id\":\"6\",\"roda_id\":\"1\",\"valve_id\":\"1\",\"aksesoris\":[],\"persiapan_battery_action\":\"keep_existing\",\"persiapan_battery_id\":\"6\",\"persiapan_charger_action\":\"assign\",\"persiapan_charger_id\":\"12\",\"fabrikasi_attachment_id\":\"4\",\"prepared_units\":[{\"unit_id\":\"12\",\"battery_inventory_id\":\"6\",\"charger_inventory_id\":\"5\",\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\",\\\"BEACON\\\"]\",\"mekanik\":\"IYAN\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-09 10:04:37\"},{\"unit_id\":\"12\",\"battery_inventory_id\":\"6\",\"charger_inventory_id\":\"12\",\"attachment_inventory_id\":\"4\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\",\\\"BEACON\\\"]\",\"mekanik\":\"IYAN\",\"catatan\":\"123\",\"timestamp\":\"2025-09-09 10:06:17\"}]}', 'COMPLETED', 'IYAN', '2025-09-09', '2025-09-09', '2025-09-09 10:06:03', 12, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', 'JOHANA - DEPI', '2025-09-09', '2025-09-09', '2025-09-09 10:06:09', NULL, 'JOHANA - DEPI', '2025-09-09', '2025-09-09', '2025-09-09 10:06:13', 'IYAN', '2025-09-09', '2025-09-09', '2025-09-09 10:06:17', '123', NULL, 1, '2025-09-09 10:03:41', '2025-09-12 06:24:16', NULL, NULL, 1, NULL, NULL, NULL),
+(36, 'SPK/202509/004', 'UNIT', 55, 39, 2, 'SML/DS/121025', 'LG', 'ANDI', '08213564778', 'Gandaria 8 Office Tower Lv. 29 BC & 31 ABCD, Jalan Sultan Iskandar Muda, Kebayoran Lama, RT.5/RW.3, Senayan, Jakarta Selatan, Daerah Khusus Ibukota Jakarta, 12190', '2025-09-12', '{\"departemen_id\":\"1\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"THREE WHEEL\",\"merk_unit\":\"HANGCHA\",\"model_unit\":null,\"kapasitas_id\":\"14\",\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":null,\"charger_id\":null,\"mast_id\":\"16\",\"ban_id\":\"6\",\"roda_id\":\"2\",\"valve_id\":\"2\",\"aksesoris\":[],\"fabrikasi_attachment_id\":\"3\",\"prepared_units\":[{\"unit_id\":\"4\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"4\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"mekanik\":\"INDRA\",\"catatan\":\"OK\",\"timestamp\":\"2025-09-12 06:37:44\"},{\"unit_id\":\"10\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"3\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"mekanik\":\"UDUD\",\"catatan\":\"ok\",\"timestamp\":\"2025-09-12 06:38:33\"}]}', 'COMPLETED', 'IYAN', '2025-09-12', '2025-09-12', '2025-09-12 06:38:03', 10, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\"]', 'BADRUN', '2025-09-12', '2025-09-12', '2025-09-12 06:38:16', NULL, 'INDRA', '2025-09-12', '2025-09-12', '2025-09-12 06:38:24', 'UDUD', '2025-09-12', '2025-09-12', '2025-09-12 06:38:33', 'ok', NULL, 1, '2025-09-12 06:35:58', '2025-09-12 06:52:30', NULL, NULL, 1, NULL, NULL, NULL),
+(37, 'SPK/202509/005', 'UNIT', 56, 40, 1, 'TEST/AUTO/001', 'Test Auto Update', 'Adit', '082134555233', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-12', '{\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":null,\"merk_unit\":null,\"model_unit\":null,\"kapasitas_id\":\"42\",\"attachment_tipe\":null,\"attachment_merk\":null,\"jenis_baterai\":null,\"charger_id\":null,\"mast_id\":null,\"ban_id\":null,\"roda_id\":null,\"valve_id\":null,\"aksesoris\":[],\"fabrikasi_attachment_id\":\"16\",\"prepared_units\":[{\"unit_id\":\"7\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[]\",\"mekanik\":\"123\",\"catatan\":\"123\",\"timestamp\":\"2025-09-12 10:06:06\"}]}', 'COMPLETED', '123', '2025-09-12', '2025-09-12', '2025-09-12 10:05:41', 7, '[]', '123', '2025-09-12', '2025-09-12', '2025-09-12 10:05:52', NULL, '123', '2025-09-12', '2025-09-12', '2025-09-12 10:05:59', '123', '2025-09-12', '2025-09-12', '2025-09-12 10:06:06', '123', NULL, 1, '2025-09-12 10:05:22', '2025-09-12 10:06:48', NULL, NULL, 1, NULL, NULL, NULL),
+(38, 'SPK/202509/006', 'UNIT', 54, 37, 1, 'KNTRK/2209/0001', 'Sarana Mitra Luas', NULL, NULL, NULL, '2025-09-13', '{\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"PALLET STACKER\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"42\",\"attachment_tipe\":\"FORKLIFT SCALE\",\"attachment_merk\":null,\"jenis_baterai\":\"Lead Acid\",\"charger_id\":\"1\",\"mast_id\":\"14\",\"ban_id\":\"6\",\"roda_id\":\"1\",\"valve_id\":\"1\",\"aksesoris\":[],\"fabrikasi_attachment_id\":\"16\",\"prepared_units\":[{\"unit_id\":\"5\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\",\\\"BEACON\\\"]\",\"mekanik\":\"123\",\"catatan\":\"1\",\"timestamp\":\"2025-09-13 01:46:42\"}]}', 'COMPLETED', 'JAJA', '2025-09-13', '2025-09-13', '2025-09-13 01:46:15', 5, '[\"LAMPU UTAMA\",\"ROTARY LAMP\",\"SENSOR PARKING\",\"HORN SPEAKER\",\"APAR 1 KG\",\"BEACON\"]', '123', '2025-09-13', '2025-09-13', '2025-09-13 01:46:26', NULL, '123', '2025-09-13', '2025-09-13', '2025-09-13 01:46:32', '123', '2025-09-13', '2025-09-13', '2025-09-13 01:46:42', '1', NULL, 1, '2025-09-13 01:33:11', '2025-09-13 01:48:42', NULL, NULL, 1, NULL, NULL, NULL),
+(39, 'SPK/202509/007', 'UNIT', 57, 41, 2, 'test/1/1/5', 'Sarana Mitra Luas', 'Adit', '082134555233', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-13', '{\"departemen_id\":\"3\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"COUNTER BALANCE\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"40\",\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":null,\"charger_id\":null,\"mast_id\":\"16\",\"ban_id\":\"3\",\"roda_id\":\"1\",\"valve_id\":\"3\",\"aksesoris\":[],\"fabrikasi_attachment_id\":\"15\",\"prepared_units\":[{\"unit_id\":\"6\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"WORK LIGHT\\\",\\\"CAMERA\\\",\\\"BIO METRIC\\\",\\\"P3K\\\"]\",\"mekanik\":\"123\",\"catatan\":\"a\",\"timestamp\":\"2025-09-13 02:58:09\"},{\"unit_id\":\"9\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"15\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"ACRYLIC\\\",\\\"P3K\\\",\\\"SAFETY BELT INTERLOC\\\",\\\"SPARS ARRESTOR\\\"]\",\"mekanik\":\"123\",\"catatan\":\"a\",\"timestamp\":\"2025-09-13 02:58:34\"}]}', 'COMPLETED', 'JAJA', '2025-09-13', '2025-09-13', '2025-09-13 02:58:20', 9, '[\"LAMPU UTAMA\",\"BLUE SPOT\",\"RED LINE\",\"ACRYLIC\",\"P3K\",\"SAFETY BELT INTERLOC\",\"SPARS ARRESTOR\"]', '123', '2025-09-13', '2025-09-13', '2025-09-13 02:58:26', NULL, '123', '2025-09-13', '2025-09-13', '2025-09-13 02:58:29', '123', '2025-09-13', '2025-09-13', '2025-09-13 02:58:34', 'a', NULL, 1, '2025-09-13 02:57:15', '2025-09-13 02:59:38', NULL, NULL, 1, NULL, NULL, NULL),
+(40, 'SPK/202509/008', 'UNIT', 57, 42, 1, 'test/1/1/5', 'Sarana Mitra Luas', 'Adit', '082134555233', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-13', '{\"departemen_id\":\"3\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"PALLET STACKER\",\"merk_unit\":\"KOMATSU\",\"model_unit\":null,\"kapasitas_id\":\"42\",\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":null,\"charger_id\":null,\"mast_id\":\"17\",\"ban_id\":\"3\",\"roda_id\":\"4\",\"valve_id\":\"2\",\"aksesoris\":[],\"fabrikasi_attachment_id\":\"3\",\"prepared_units\":[{\"unit_id\":\"11\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"3\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"CAMERA AI\\\",\\\"SPEED LIMITER\\\",\\\"LASER FORK\\\",\\\"HORN KLASON\\\",\\\"APAR 3 KG\\\"]\",\"mekanik\":\"123\",\"catatan\":\"1\",\"timestamp\":\"2025-09-13 03:43:24\"}]}', 'COMPLETED', 'JAJA', '2025-09-13', '2025-09-13', '2025-09-13 03:35:25', 11, '[\"LAMPU UTAMA\",\"CAMERA AI\",\"SPEED LIMITER\",\"LASER FORK\",\"HORN KLASON\",\"APAR 3 KG\"]', '123', '2025-09-13', '2025-09-13', '2025-09-13 03:43:16', NULL, '123', '2025-09-13', '2025-09-13', '2025-09-13 03:43:21', '123', '2025-09-13', '2025-09-13', '2025-09-13 03:43:24', '1', NULL, 1, '2025-09-13 03:35:03', '2025-09-13 03:43:58', NULL, NULL, 1, NULL, NULL, NULL),
+(41, 'SPK/202509/009', 'UNIT', 58, 43, 1, 'test/1/1/6', 'Sarana Mitra Luas', 'Adit', '082134555233', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', '2025-09-15', '{\"departemen_id\":\"3\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"HAND PALLET\",\"merk_unit\":\"LINDE\",\"model_unit\":null,\"kapasitas_id\":\"41\",\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":null,\"charger_id\":null,\"mast_id\":\"15\",\"ban_id\":\"6\",\"roda_id\":\"1\",\"valve_id\":\"3\",\"aksesoris\":[],\"fabrikasi_attachment_id\":\"16\",\"prepared_units\":[{\"unit_id\":\"13\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"WORK LIGHT\\\"]\",\"mekanik\":\"JOHANA - DEPI\",\"catatan\":\"a\",\"timestamp\":\"2025-09-15 08:22:53\"}]}', 'READY', 'JAJA', '2025-09-15', '2025-09-15', '2025-09-15 08:09:51', 13, '[\"LAMPU UTAMA\",\"BLUE SPOT\",\"RED LINE\",\"WORK LIGHT\"]', 'ARIZAL-EKA', '2025-09-15', '2025-09-15', '2025-09-15 08:21:59', NULL, '123', '2025-09-15', '2025-09-15', '2025-09-15 08:22:44', 'JOHANA - DEPI', '2025-09-15', '2025-09-15', '2025-09-15 08:22:53', 'a', NULL, 1, '2025-09-15 08:09:31', '2025-09-15 08:22:53', NULL, NULL, 1, NULL, NULL, NULL),
+(42, 'SPK/202509/010', 'UNIT', 57, 41, 1, 'test/1/1/5', 'Sarana Mitra Luas', 'Adit', '082134555233', 'Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530', NULL, '{\"departemen_id\":\"3\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"COUNTER BALANCE\",\"merk_unit\":\"HELI\",\"model_unit\":null,\"kapasitas_id\":\"40\",\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":null,\"charger_id\":null,\"mast_id\":\"16\",\"ban_id\":\"3\",\"roda_id\":\"1\",\"valve_id\":\"3\",\"aksesoris\":[],\"fabrikasi_attachment_id\":\"4\",\"prepared_units\":[{\"unit_id\":\"13\",\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"4\",\"aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"WORK LIGHT\\\",\\\"CAMERA\\\",\\\"BIO METRIC\\\",\\\"ACRYLIC\\\",\\\"P3K\\\",\\\"SAFETY BELT INTERLOC\\\",\\\"SPARS ARRESTOR\\\"]\",\"mekanik\":\"IYAN\",\"catatan\":\"a\",\"timestamp\":\"2025-09-16 06:57:54\"}]}', 'READY', 'ARIZAL-EKA', '2025-09-16', '2025-09-16', '2025-09-16 06:57:35', 13, '[\"LAMPU UTAMA\",\"BLUE SPOT\",\"RED LINE\",\"WORK LIGHT\",\"CAMERA\",\"BIO METRIC\",\"ACRYLIC\",\"P3K\",\"SAFETY BELT INTERLOC\",\"SPARS ARRESTOR\"]', 'IYAN', '2025-09-16', '2025-09-16', '2025-09-16 06:57:44', NULL, 'IYAN', '2025-09-16', '2025-09-16', '2025-09-16 06:57:50', 'IYAN', '2025-09-16', '2025-09-16', '2025-09-16 06:57:54', 'a', NULL, 1, '2025-09-16 06:56:53', '2025-09-16 06:57:54', NULL, NULL, 1, NULL, NULL, NULL),
+(49, 'SPK/202509/011', 'ATTACHMENT', 56, 44, 1, 'TEST/AUTO/001', 'Test Client', NULL, NULL, NULL, '2025-09-16', '{\"departemen_id\":\"1\",\"tipe_unit_id\":null,\"tipe_jenis\":null,\"merk_unit\":null,\"model_unit\":null,\"kapasitas_id\":null,\"attachment_tipe\":\"SIDE SHIFTER\",\"attachment_merk\":\"\",\"jenis_baterai\":\"\",\"charger_id\":\"0\",\"mast_id\":null,\"ban_id\":null,\"roda_id\":null,\"valve_id\":null,\"aksesoris\":[],\"fabrikasi_attachment_id\":\"16\",\"prepared_units\":[{\"unit_id\":null,\"battery_inventory_id\":null,\"charger_inventory_id\":null,\"attachment_inventory_id\":\"16\",\"aksesoris_tersedia\":null,\"mekanik\":\"IYAN\",\"catatan\":\"a\",\"timestamp\":\"2025-09-16 09:10:41\"}]}', 'IN_PROGRESS', NULL, NULL, NULL, NULL, NULL, NULL, 'IYAN', '2025-09-16', '2025-09-16', '2025-09-16 09:10:32', NULL, 'IYAN', '2025-09-16', '2025-09-16', '2025-09-16 09:10:35', 'IYAN', '2025-09-16', '2025-09-16', '2025-09-16 09:10:41', 'a', NULL, 1, '2025-09-16 08:43:46', '2025-09-17 02:54:40', NULL, NULL, 1, NULL, NULL, NULL);
+
+--
+-- Triggers `spk`
+--
+DROP TRIGGER IF EXISTS `tr_spk_update_unit`;
+DELIMITER $$
+CREATE TRIGGER `tr_spk_update_unit` AFTER UPDATE ON `spk` FOR EACH ROW BEGIN
+    
+    IF NEW.status IN ('READY', 'COMPLETED') AND OLD.status != NEW.status THEN
+        UPDATE `inventory_unit` iu
+        SET iu.spk_id = NEW.id,
+            iu.updated_at = CURRENT_TIMESTAMP
+        WHERE iu.kontrak_spesifikasi_id = NEW.kontrak_spesifikasi_id
+        AND iu.spk_id IS NULL;
+    END IF;
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -3358,7 +4053,6 @@ INSERT DELAYED IGNORE INTO `spk_component_transactions` (`id`, `spk_id`, `transa
 -- Table structure for table `spk_status_history`
 --
 -- Creation: Sep 03, 2025 at 09:26 AM
--- Last update: Sep 04, 2025 at 03:28 AM
 --
 
 DROP TABLE IF EXISTS `spk_status_history`;
@@ -3417,6 +4111,46 @@ CREATE TABLE IF NOT EXISTS `spk_units` (
 --
 
 TRUNCATE TABLE `spk_units`;
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `status_attachment`
+--
+-- Creation: Sep 13, 2025 at 05:18 AM
+--
+
+DROP TABLE IF EXISTS `status_attachment`;
+CREATE TABLE IF NOT EXISTS `status_attachment` (
+  `id_status_attachment` int(11) NOT NULL AUTO_INCREMENT,
+  `nama_status` varchar(50) NOT NULL,
+  `deskripsi` varchar(255) DEFAULT NULL,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id_status_attachment`),
+  UNIQUE KEY `nama_status` (`nama_status`)
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `status_attachment`:
+--
+
+--
+-- Truncate table before insert `status_attachment`
+--
+
+TRUNCATE TABLE `status_attachment`;
+--
+-- Dumping data for table `status_attachment`
+--
+
+INSERT DELAYED IGNORE INTO `status_attachment` (`id_status_attachment`, `nama_status`, `deskripsi`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'AVAILABLE', 'Attachment tersedia untuk digunakan', 1, '2025-09-13 05:18:52', '2025-09-13 05:18:52'),
+(2, 'USED', 'Attachment sedang digunakan pada unit', 1, '2025-09-13 05:18:52', '2025-09-13 05:18:52'),
+(3, 'MAINTENANCE', 'Attachment dalam pemeliharaan', 1, '2025-09-13 05:18:52', '2025-09-13 05:18:52'),
+(4, 'RUSAK', 'Attachment rusak tidak dapat digunakan', 1, '2025-09-13 05:18:52', '2025-09-13 05:18:52'),
+(5, 'RESERVED', 'Attachment direservasi untuk SPK tertentu', 1, '2025-09-13 05:18:52', '2025-09-13 05:18:52');
+
 -- --------------------------------------------------------
 
 --
@@ -3539,17 +4273,346 @@ INSERT DELAYED IGNORE INTO `suppliers` (`id_supplier`, `nama_supplier`, `kontak_
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `system_activity_log`
+--
+-- Creation: Sep 09, 2025 at 04:48 AM
+-- Last update: Sep 23, 2025 at 06:21 AM
+--
+
+DROP TABLE IF EXISTS `system_activity_log`;
+CREATE TABLE IF NOT EXISTS `system_activity_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `table_name` varchar(64) NOT NULL COMMENT 'Target table name (kontrak, spk, inventory_unit, etc)',
+  `record_id` int(10) UNSIGNED NOT NULL COMMENT 'ID of the affected record',
+  `action_type` enum('CREATE','READ','UPDATE','DELETE','EXPORT','IMPORT','LOGIN','LOGOUT','APPROVE','REJECT','SUBMIT','CANCEL','ASSIGN','UNASSIGN','COMPLETE','PRINT','DOWNLOAD') NOT NULL,
+  `action_description` varchar(255) NOT NULL COMMENT 'Brief description of what happened',
+  `old_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Previous values (only changed fields)' CHECK (json_valid(`old_values`)),
+  `new_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'New values (only changed fields)' CHECK (json_valid(`new_values`)),
+  `affected_fields` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'List of fields that were changed' CHECK (json_valid(`affected_fields`)),
+  `user_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK to users.id',
+  `workflow_stage` varchar(50) DEFAULT NULL COMMENT 'Current business stage',
+  `is_critical` tinyint(1) DEFAULT 0 COMMENT 'Mark critical business actions',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `module_name` enum('PURCHASING','WAREHOUSE','MARKETING','SERVICE','OPERATIONAL','ACCOUNTING','PERIZINAN','ADMIN','DASHBOARD','REPORTS','SETTINGS','USER_MANAGEMENT') DEFAULT NULL COMMENT 'Application module where activity occurred',
+  `submenu_item` varchar(100) DEFAULT NULL COMMENT 'Specific submenu item accessed',
+  `business_impact` enum('LOW','MEDIUM','HIGH','CRITICAL') DEFAULT 'LOW' COMMENT 'Business impact level',
+  `related_entities` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'JSON object storing related entity relationships' CHECK (json_valid(`related_entities`)),
+  PRIMARY KEY (`id`),
+  KEY `idx_related_entities` (`related_entities`(255))
+) ENGINE=InnoDB AUTO_INCREMENT=175 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `system_activity_log`:
+--
+
+--
+-- Truncate table before insert `system_activity_log`
+--
+
+TRUNCATE TABLE `system_activity_log`;
+--
+-- Dumping data for table `system_activity_log`
+--
+
+INSERT DELAYED IGNORE INTO `system_activity_log` (`id`, `table_name`, `record_id`, `action_type`, `action_description`, `old_values`, `new_values`, `affected_fields`, `user_id`, `workflow_stage`, `is_critical`, `created_at`, `module_name`, `submenu_item`, `business_impact`, `related_entities`) VALUES
+(1, 'kontrak', 44, 'CREATE', 'Kontrak baru dibuat dengan nomor PO-CL-0488', NULL, '{\"no_po_marketing\": \"PO-CL-0488\", \"pelanggan\": \"PT Client\", \"status\": \"ACTIVE\"}', '[\"no_po_marketing\", \"pelanggan\", \"status\"]', 1, 'KONTRAK', 1, '2025-09-08 06:43:05', NULL, NULL, 'LOW', NULL),
+(2, 'inventory_unit', 1, 'ASSIGN', 'Unit forklift diassign ke kontrak dengan harga Rp 9,000,000/bulan', NULL, '{\"kontrak_id\": 44, \"harga_sewa_bulanan\": 9000000, \"status_unit_id\": 3}', '[\"kontrak_id\", \"harga_sewa_bulanan\", \"status_unit_id\"]', 1, 'KONTRAK', 1, '2025-09-08 06:43:05', NULL, NULL, 'LOW', NULL),
+(3, 'inventory_unit', 2, 'ASSIGN', 'Unit forklift diassign ke kontrak dengan harga Rp 9,000,000/bulan', NULL, '{\"kontrak_id\": 44, \"harga_sewa_bulanan\": 9000000, \"status_unit_id\": 3}', '[\"kontrak_id\", \"harga_sewa_bulanan\", \"status_unit_id\"]', 1, 'KONTRAK', 1, '2025-09-08 06:43:05', NULL, NULL, 'LOW', NULL),
+(7, 'kontrak', 48, 'DELETE', 'Test delete logging manual', NULL, NULL, NULL, 1, NULL, 0, '2025-09-08 10:08:42', NULL, NULL, 'LOW', NULL),
+(8, 'kontrak', 49, 'DELETE', 'Test Delete', '{}', NULL, '[]', 1, NULL, 0, '2025-09-09 04:14:05', NULL, NULL, 'LOW', NULL),
+(9, 'kontrak', 48, 'DELETE', 'Kontrak deleted: TEST-DELETE-LOG (Client: Test Client for Delete)', '{\"id\":\"48\",\"no_kontrak\":\"TEST-DELETE-LOG\",\"no_po_marketing\":null,\"pelanggan\":\"Test Client for Delete\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":null,\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-08\",\"tanggal_berakhir\":\"2025-12-08\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-08 17:06:22\",\"diperbarui_pada\":\"2025-09-08 17:06:22\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, NULL, 1, '2025-09-09 04:16:39', 'MARKETING', NULL, 'LOW', NULL),
+(10, 'kontrak', 49, 'DELETE', 'Kontrak deleted: TEST-DELETE-LOG-2 (Client: Test Client for Delete 2)', '{\"id\":\"49\",\"no_kontrak\":\"TEST-DELETE-LOG-2\",\"no_po_marketing\":null,\"pelanggan\":\"Test Client for Delete 2\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":null,\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-08\",\"tanggal_berakhir\":\"2025-12-08\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-08 17:09:00\",\"diperbarui_pada\":\"2025-09-08 17:09:00\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, NULL, 1, '2025-09-09 04:18:47', 'MARKETING', NULL, 'LOW', NULL),
+(11, 'kontrak', 52, 'DELETE', 'Kontrak deleted: TEST-COMPLETE-LOG (Client: Test Complete Logging)', '{\"id\":\"52\",\"no_kontrak\":\"TEST-COMPLETE-LOG\",\"no_po_marketing\":null,\"pelanggan\":\"Test Complete Logging\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-09\",\"tanggal_berakhir\":\"2025-12-09\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-09 04:27:07\",\"diperbarui_pada\":\"2025-09-09 04:27:07\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 04:28:11', 'MARKETING', NULL, 'HIGH', NULL),
+(12, 'kontrak', 123, 'DELETE', 'Test delete with JSON relations', NULL, NULL, NULL, 1, 'DELETE_CONFIRMED', 0, '2025-09-09 04:51:45', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\": [123], \"spk\": [456, 789], \"di\": [101112]}'),
+(13, 'kontrak', 999, 'CREATE', 'Test kontrak dengan JSON relations implementasi', NULL, NULL, NULL, 1, 'DRAFT', 0, '2025-09-09 04:52:49', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\": [999], \"spk\": [1001, 1002], \"test_entity\": [555]}'),
+(15, 'kontrak', 51, 'DELETE', 'Kontrak deleted: TEST-ALERT-SYSTEM (Client: Test Client for Alert System)', '{\"id\":\"51\",\"no_kontrak\":\"TEST-ALERT-SYSTEM\",\"no_po_marketing\":null,\"pelanggan\":\"Test Client for Alert System\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":null,\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-09\",\"tanggal_berakhir\":\"2025-12-09\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-09 11:19:04\",\"diperbarui_pada\":\"2025-09-09 11:19:04\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 06:28:14', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[51]}'),
+(16, 'kontrak', 46, 'DELETE', 'Kontrak deleted: TEST-1757315452 (Client: Test Client)', '{\"id\":\"46\",\"no_kontrak\":\"TEST-1757315452\",\"no_po_marketing\":\"PO-TEST-1757315452\",\"pelanggan\":\"Test Client\",\"lokasi\":null,\"pic\":null,\"kontak\":null,\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2024-01-01\",\"tanggal_berakhir\":\"2024-12-31\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-08 07:10:56\",\"diperbarui_pada\":\"2025-09-08 07:10:56\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 06:28:29', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[46]}'),
+(17, 'users', 1, 'LOGOUT', 'User logged out', NULL, NULL, NULL, 1, 'LOGOUT', 0, '2025-09-09 07:28:45', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(18, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-09 07:29:00', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(19, 'users', 1, 'LOGOUT', 'User logged out', NULL, NULL, NULL, 1, 'LOGOUT', 0, '2025-09-09 08:00:32', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(20, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-09 08:00:33', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(21, 'kontrak', 53, 'DELETE', 'Kontrak deleted: KNTRK/2209/0002 (Client: IBR)', '{\"id\":\"53\",\"no_kontrak\":\"KNTRK\\/2209\\/0002\",\"no_po_marketing\":\"PO-ADIT110999\",\"pelanggan\":\"IBR\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-01\",\"tanggal_berakhir\":\"2025-12-31\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-09 06:30:00\",\"diperbarui_pada\":\"2025-09-09 06:30:00\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 09:42:59', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[53]}'),
+(22, 'kontrak', 45, 'DELETE', 'Kontrak deleted: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', '{\"id\":\"45\",\"no_kontrak\":\"KNTRK\\/2209\\/0001\",\"no_po_marketing\":\"PO-ADIT10999\",\"pelanggan\":\"Sarana Mitra Luas\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-01\",\"tanggal_berakhir\":\"2025-09-30\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\",\"dibuat_pada\":\"2025-09-08 06:57:54\",\"diperbarui_pada\":\"2025-09-08 06:57:54\"}', NULL, '[\"id\",\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"lokasi\",\"pic\",\"kontak\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'DELETE_CONFIRMED', 1, '2025-09-09 09:43:20', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[45]}'),
+(23, 'kontrak', 54, 'CREATE', 'Kontrak created: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', NULL, '{\"no_kontrak\":\"KNTRK\\/2209\\/0001\",\"no_po_marketing\":\"PO-ADIT10999\",\"pelanggan\":\"Sarana Mitra Luas\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"nilai_total\":0,\"total_units\":0,\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-01\",\"tanggal_berakhir\":\"2025-12-31\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\"}', '[\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"pic\",\"kontak\",\"lokasi\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\"]', 1, 'DRAFT', 0, '2025-09-09 09:54:01', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[54]}'),
+(24, 'spk', 29, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":29,\"nomor_spk\":\"SPK\\/202509\\/003\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"54\",\"kontrak_spesifikasi_id\":\"37\",\"jumlah_unit\":2}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-09 10:03:41', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[29]}'),
+(25, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-09 10:03:48', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(26, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-09 10:03:48\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null,\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[]}\"}', '{\"persiapan_unit_mekanik\":\"ARIZAL-EKA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-09\",\"persiapan_unit_estimasi_selesai\":\"2025-09-09\",\"persiapan_unit_tanggal_approve\":\"2025-09-09 10:04:10\",\"diperbarui_pada\":\"2025-09-09 10:04:10\",\"persiapan_unit_id\":\"12\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\",\\\"BEACON\\\"]\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"keep_existing\\\",\\\"persiapan_charger_id\\\":\\\"5\\\"}\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-09 10:04:10', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(27, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-09 10:04:10\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"keep_existing\\\",\\\"persiapan_charger_id\\\":\\\"5\\\"}\"}', '{\"fabrikasi_mekanik\":\"JOHANA - DEPI\",\"fabrikasi_estimasi_mulai\":\"2025-09-09\",\"fabrikasi_estimasi_selesai\":\"2025-09-09\",\"fabrikasi_tanggal_approve\":\"2025-09-09 10:04:19\",\"diperbarui_pada\":\"2025-09-09 10:04:19\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"keep_existing\\\",\\\"persiapan_charger_id\\\":\\\"5\\\",\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-09 10:04:19', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(28, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-09 10:04:19\"}', '{\"painting_mekanik\":\"JOHANA - DEPI\",\"painting_estimasi_mulai\":\"2025-09-09\",\"painting_estimasi_selesai\":\"2025-09-09\",\"painting_tanggal_approve\":\"2025-09-09 10:04:27\",\"diperbarui_pada\":\"2025-09-09 10:04:27\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-09 10:04:27', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(29, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"diperbarui_pada\":\"2025-09-09 10:04:27\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"keep_existing\\\",\\\"persiapan_charger_id\\\":\\\"5\\\",\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\",\"pdi_catatan\":null,\"persiapan_unit_id\":\"12\",\"persiapan_unit_mekanik\":\"ARIZAL-EKA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-09\",\"persiapan_unit_estimasi_selesai\":\"2025-09-09\",\"persiapan_unit_tanggal_approve\":\"2025-09-09 10:04:10\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\",\\\"BEACON\\\"]\",\"fabrikasi_mekanik\":\"JOHANA - DEPI\",\"fabrikasi_estimasi_mulai\":\"2025-09-09\",\"fabrikasi_estimasi_selesai\":\"2025-09-09\",\"fabrikasi_tanggal_approve\":\"2025-09-09 10:04:19\",\"painting_mekanik\":\"JOHANA - DEPI\",\"painting_estimasi_mulai\":\"2025-09-09\",\"painting_estimasi_selesai\":\"2025-09-09\",\"painting_tanggal_approve\":\"2025-09-09 10:04:27\"}', '{\"diperbarui_pada\":\"2025-09-09 10:04:37\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"keep_existing\\\",\\\"persiapan_charger_id\\\":\\\"5\\\",\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"12\\\",\\\"battery_inventory_id\\\":\\\"6\\\",\\\"charger_inventory_id\\\":\\\"5\\\",\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"ok\\\",\\\"timestamp\\\":\\\"2025-09-09 10:04:37\\\"}]}\",\"pdi_catatan\":\"ok\",\"persiapan_unit_id\":null,\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"persiapan_aksesoris_tersedia\":null,\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null}', '[\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"persiapan_unit_id\",\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"persiapan_aksesoris_tersedia\",\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\"]', 1, 'UPDATED', 0, '2025-09-09 10:04:37', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(30, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-09 10:04:37\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null,\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"keep_existing\\\",\\\"persiapan_charger_id\\\":\\\"5\\\",\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"12\\\",\\\"battery_inventory_id\\\":\\\"6\\\",\\\"charger_inventory_id\\\":\\\"5\\\",\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"ok\\\",\\\"timestamp\\\":\\\"2025-09-09 10:04:37\\\"}]}\"}', '{\"persiapan_unit_mekanik\":\"IYAN\",\"persiapan_unit_estimasi_mulai\":\"2025-09-09\",\"persiapan_unit_estimasi_selesai\":\"2025-09-09\",\"persiapan_unit_tanggal_approve\":\"2025-09-09 10:06:03\",\"diperbarui_pada\":\"2025-09-09 10:06:03\",\"persiapan_unit_id\":\"12\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\",\\\"BEACON\\\"]\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"assign\\\",\\\"persiapan_charger_id\\\":\\\"12\\\",\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"12\\\",\\\"battery_inventory_id\\\":\\\"6\\\",\\\"charger_inventory_id\\\":\\\"5\\\",\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"ok\\\",\\\"timestamp\\\":\\\"2025-09-09 10:04:37\\\"}]}\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-09 10:06:03', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(31, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-09 10:06:03\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"assign\\\",\\\"persiapan_charger_id\\\":\\\"12\\\",\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"12\\\",\\\"battery_inventory_id\\\":\\\"6\\\",\\\"charger_inventory_id\\\":\\\"5\\\",\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"ok\\\",\\\"timestamp\\\":\\\"2025-09-09 10:04:37\\\"}]}\"}', '{\"fabrikasi_mekanik\":\"JOHANA - DEPI\",\"fabrikasi_estimasi_mulai\":\"2025-09-09\",\"fabrikasi_estimasi_selesai\":\"2025-09-09\",\"fabrikasi_tanggal_approve\":\"2025-09-09 10:06:09\",\"diperbarui_pada\":\"2025-09-09 10:06:09\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"assign\\\",\\\"persiapan_charger_id\\\":\\\"12\\\",\\\"fabrikasi_attachment_id\\\":\\\"4\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"12\\\",\\\"battery_inventory_id\\\":\\\"6\\\",\\\"charger_inventory_id\\\":\\\"5\\\",\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"ok\\\",\\\"timestamp\\\":\\\"2025-09-09 10:04:37\\\"}]}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-09 10:06:09', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(32, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-09 10:06:09\"}', '{\"painting_mekanik\":\"JOHANA - DEPI\",\"painting_estimasi_mulai\":\"2025-09-09\",\"painting_estimasi_selesai\":\"2025-09-09\",\"painting_tanggal_approve\":\"2025-09-09 10:06:13\",\"diperbarui_pada\":\"2025-09-09 10:06:13\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-09 10:06:13', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(33, 'spk', 29, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-09 10:06:13\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"assign\\\",\\\"persiapan_charger_id\\\":\\\"12\\\",\\\"fabrikasi_attachment_id\\\":\\\"4\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"12\\\",\\\"battery_inventory_id\\\":\\\"6\\\",\\\"charger_inventory_id\\\":\\\"5\\\",\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"ok\\\",\\\"timestamp\\\":\\\"2025-09-09 10:04:37\\\"}]}\",\"pdi_catatan\":\"ok\",\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"IYAN\",\"pdi_estimasi_mulai\":\"2025-09-09\",\"pdi_estimasi_selesai\":\"2025-09-09\",\"pdi_tanggal_approve\":\"2025-09-09 10:06:17\",\"diperbarui_pada\":\"2025-09-09 10:06:17\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"persiapan_battery_action\\\":\\\"keep_existing\\\",\\\"persiapan_battery_id\\\":\\\"6\\\",\\\"persiapan_charger_action\\\":\\\"assign\\\",\\\"persiapan_charger_id\\\":\\\"12\\\",\\\"fabrikasi_attachment_id\\\":\\\"4\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"12\\\",\\\"battery_inventory_id\\\":\\\"6\\\",\\\"charger_inventory_id\\\":\\\"5\\\",\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"ok\\\",\\\"timestamp\\\":\\\"2025-09-09 10:04:37\\\"},{\\\"unit_id\\\":\\\"12\\\",\\\"battery_inventory_id\\\":\\\"6\\\",\\\"charger_inventory_id\\\":\\\"12\\\",\\\"attachment_inventory_id\\\":\\\"4\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"123\\\",\\\"timestamp\\\":\\\"2025-09-09 10:06:17\\\"}]}\",\"pdi_catatan\":\"123\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-09 10:06:17', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[29]}'),
+(34, 'delivery_instruction', 124, 'CREATE', 'Created new delivery_instruction record', NULL, '{\"di_id\":124,\"nomor_di\":\"DI\\/202509\\/003\",\"spk_id\":29,\"po_kontrak_nomor\":\"KNTRK\\/2209\\/0001\",\"pelanggan\":\"Sarana Mitra Luas\",\"jenis_perintah_kerja_id\":1,\"tujuan_perintah_kerja_id\":1,\"unit_ids\":[12]}', '[\"di_id\",\"nomor_di\",\"spk_id\",\"po_kontrak_nomor\",\"pelanggan\",\"jenis_perintah_kerja_id\",\"tujuan_perintah_kerja_id\",\"unit_ids\"]', 1, 'CREATED', 0, '2025-09-09 10:07:55', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"delivery_instruction\":[124]}'),
+(35, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-10 01:24:52', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(36, 'users', 1, 'LOGOUT', 'User logged out', NULL, NULL, NULL, 1, 'LOGOUT', 0, '2025-09-10 02:25:25', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(37, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-10 02:25:26', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(38, 'spk', 29, 'UPDATE', 'Updated SPK workflow', '{\"status\":\"IN_PROGRESS\"}', '{\"status\":\"READY\",\"pdi_mekanik\":\"IYAN\",\"pdi_tanggal_approve\":\"2025-09-10 09:00:00\"}', NULL, 1, NULL, 0, '2025-09-10 02:27:18', 'SERVICE', NULL, 'MEDIUM', NULL),
+(39, 'kontrak_spesifikasi', 1, 'CREATE', 'Created kontrak spesifikasi', NULL, '{\"spek_kode\":\"SPEK001\",\"kontrak_id\":1,\"jumlah_dibutuhkan\":2,\"harga_per_unit_bulanan\":5000000}', NULL, 1, NULL, 0, '2025-09-10 02:36:58', 'MARKETING', NULL, 'MEDIUM', NULL),
+(40, 'kontrak_spesifikasi', 38, 'DELETE', 'Menghapus spesifikasi SPEC-002', '{\"id\":\"38\",\"kontrak_id\":\"54\",\"spek_kode\":\"SPEC-002\",\"jumlah_dibutuhkan\":\"1\",\"jumlah_tersedia\":\"0\",\"harga_per_unit_bulanan\":\"10000000.00\",\"harga_per_unit_harian\":null,\"catatan_spek\":\"\",\"departemen_id\":\"2\",\"tipe_unit_id\":\"6\",\"tipe_jenis\":\"COUNTER BALANCE\",\"kapasitas_id\":\"41\",\"merk_unit\":\"KOMATSU\",\"model_unit\":null,\"attachment_tipe\":\"FORK POSITIONER\",\"attachment_merk\":null,\"jenis_baterai\":\"Lithium-ion\",\"charger_id\":\"15\",\"mast_id\":\"14\",\"ban_id\":\"6\",\"roda_id\":\"1\",\"valve_id\":\"2\",\"aksesoris\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\",\\\"BEACON\\\"]\",\"dibuat_pada\":\"2025-09-10 02:26:21\",\"diperbarui_pada\":\"2025-09-10 02:26:21\"}', NULL, '[\"id\",\"kontrak_id\",\"spek_kode\",\"jumlah_dibutuhkan\",\"jumlah_tersedia\",\"harga_per_unit_bulanan\",\"harga_per_unit_harian\",\"catatan_spek\",\"departemen_id\",\"tipe_unit_id\",\"tipe_jenis\",\"kapasitas_id\",\"merk_unit\",\"model_unit\",\"attachment_tipe\",\"attachment_merk\",\"jenis_baterai\",\"charger_id\",\"mast_id\",\"ban_id\",\"roda_id\",\"valve_id\",\"aksesoris\",\"dibuat_pada\",\"diperbarui_pada\"]', 1, 'SPECIFICATION_DELETED', 1, '2025-09-10 02:49:33', 'MARKETING', 'Data Kontrak', 'HIGH', '{\"kontrak\":[54],\"kontrak_spesifikasi\":[38]}'),
+(41, 'kontrak', 44, 'UPDATE', 'Kontrak updated: MSI (Client: MSI)', '{\"pic\":\"MSI\",\"catatan\":null}', '{\"pic\":\"Adit\",\"catatan\":\"\"}', '[\"pic\",\"catatan\"]', 1, 'UPDATED', 0, '2025-09-10 03:07:51', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[44]}'),
+(42, 'kontrak', 44, 'UPDATE', 'Kontrak updated: KNTRK/2208/0001 (Client: Sarana Mitra Luas)', '{\"no_kontrak\":\"MSI\",\"no_po_marketing\":\"MSI\",\"pelanggan\":\"MSI\",\"catatan\":null}', '{\"no_kontrak\":\"KNTRK\\/2208\\/0001\",\"no_po_marketing\":\"PO-ADIT10998\",\"pelanggan\":\"Sarana Mitra Luas\",\"catatan\":\"\"}', '[\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"catatan\"]', 1, 'UPDATED', 0, '2025-09-10 03:08:34', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[44]}'),
+(43, 'delivery_instruction', 124, 'UPDATE', 'Updated delivery_instruction record', '{\"nama_supir\":null,\"no_hp_supir\":null,\"no_sim_supir\":null,\"kendaraan\":null,\"no_polisi_kendaraan\":null,\"status\":\"SUBMITTED\"}', '{\"nama_supir\":\"JOKO\",\"no_hp_supir\":\"082138848123\",\"no_sim_supir\":\"1231012\",\"kendaraan\":\"KOKASD\",\"no_polisi_kendaraan\":\"123123\",\"status\":\"PROCESSED\"}', '[\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-10 03:35:03', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[124]}'),
+(44, 'users', 1, 'LOGOUT', 'User logged out', NULL, NULL, NULL, 1, 'LOGOUT', 0, '2025-09-10 04:18:22', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(45, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-10 04:18:23', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(46, 'spk', 30, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":30,\"nomor_spk\":\"SPK\\/202509\\/004\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"54\",\"kontrak_spesifikasi_id\":\"37\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-10 08:19:25', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[30]}'),
+(47, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-11 02:03:59', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(48, 'users', 1, 'LOGOUT', 'User logged out', NULL, NULL, NULL, 1, 'LOGOUT', 0, '2025-09-11 02:07:28', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(49, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-11 02:08:24', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(50, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-11 02:10:27', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(51, 'spk', 32, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":32,\"nomor_spk\":\"SPK\\/202509\\/872\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"54\",\"kontrak_spesifikasi_id\":\"37\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-11 04:55:30', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[32]}'),
+(52, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-11 07:53:30', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(53, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-12 01:21:56', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(54, 'spk', 35, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":35,\"nomor_spk\":\"SPK\\/202509\\/906\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"54\",\"kontrak_spesifikasi_id\":\"37\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-12 03:52:36', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[35]}'),
+(55, 'delivery_instruction', 124, 'UPDATE', 'Updated delivery_instruction record', '{\"perencanaan_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-10 10:35:03\",\"tanggal_kirim\":\"2025-09-09\",\"estimasi_sampai\":null,\"nama_supir\":\"JOKO\",\"no_hp_supir\":\"082138848123\",\"no_sim_supir\":\"1231012\",\"kendaraan\":\"KOKASD\",\"no_polisi_kendaraan\":\"123123\",\"catatan\":null,\"status_eksekusi\":null}', '{\"perencanaan_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 06:24:06\",\"tanggal_kirim\":\"2025-09-12\",\"estimasi_sampai\":\"2025-09-12\",\"nama_supir\":\"UDIN\",\"no_hp_supir\":\"082138881231\",\"no_sim_supir\":\"8992381\",\"kendaraan\":\"TRUK\",\"no_polisi_kendaraan\":\"B 8213 JKT\",\"catatan\":\"DIKIRIM\",\"status_eksekusi\":\"READY\"}', '[\"perencanaan_tanggal_approve\",\"diperbarui_pada\",\"tanggal_kirim\",\"estimasi_sampai\",\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"catatan\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 06:24:06', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[124]}'),
+(56, 'delivery_instruction', 124, 'UPDATE', 'Updated delivery_instruction record', '{\"berangkat_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 13:24:06\",\"status_eksekusi\":null}', '{\"berangkat_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 06:24:10\",\"status_eksekusi\":\"DISPATCHED\"}', '[\"berangkat_tanggal_approve\",\"diperbarui_pada\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 06:24:10', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[124]}'),
+(57, 'delivery_instruction', 124, 'UPDATE', 'Updated delivery_instruction record', '{\"sampai_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 13:24:10\",\"catatan_sampai\":null,\"status\":\"PROCESSED\",\"status_eksekusi\":null}', '{\"sampai_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 06:24:16\",\"catatan_sampai\":\"sudah sampai\",\"status\":\"DELIVERED\",\"status_eksekusi\":\"DELIVERED\"}', '[\"sampai_tanggal_approve\",\"diperbarui_pada\",\"catatan_sampai\",\"status\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 06:24:16', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[124]}'),
+(58, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-12 06:29:53', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(59, 'kontrak', 55, 'CREATE', 'Kontrak created: SML/DS/121025 (Client: LG)', NULL, '{\"no_kontrak\":\"SML\\/DS\\/121025\",\"no_po_marketing\":\"PO-LG998123\",\"pelanggan\":\"LG\",\"pic\":\"ANDI\",\"kontak\":\"08213564778\",\"lokasi\":\"Gandaria 8 Office Tower Lv. 29 BC & 31 ABCD, Jalan Sultan Iskandar Muda, Kebayoran Lama, RT.5\\/RW.3, Senayan, Jakarta Selatan, Daerah Khusus Ibukota Jakarta, 12190\",\"nilai_total\":0,\"total_units\":0,\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-30\",\"tanggal_berakhir\":\"2025-10-31\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\"}', '[\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"pic\",\"kontak\",\"lokasi\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\"]', 1, 'DRAFT', 0, '2025-09-12 06:34:46', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[55]}'),
+(60, 'spk', 36, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":36,\"nomor_spk\":\"SPK\\/202509\\/004\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"55\",\"kontrak_spesifikasi_id\":\"39\",\"jumlah_unit\":2}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-12 06:35:58', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[36]}'),
+(61, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-12 06:36:09', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(62, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 06:36:09\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"IYAN\",\"persiapan_unit_estimasi_mulai\":\"2025-09-12\",\"persiapan_unit_estimasi_selesai\":\"2025-09-12\",\"persiapan_unit_tanggal_approve\":\"2025-09-12 06:36:44\",\"diperbarui_pada\":\"2025-09-12 06:36:44\",\"persiapan_unit_id\":\"4\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-12 06:36:44', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(63, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 06:36:44\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"THREE WHEEL\\\",\\\"merk_unit\\\":\\\"HANGCHA\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"14\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"2\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[]}\"}', '{\"fabrikasi_mekanik\":\"BADRUN\",\"fabrikasi_estimasi_mulai\":\"2025-09-12\",\"fabrikasi_estimasi_selesai\":\"2025-09-12\",\"fabrikasi_tanggal_approve\":\"2025-09-12 06:37:00\",\"diperbarui_pada\":\"2025-09-12 06:37:00\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"THREE WHEEL\\\",\\\"merk_unit\\\":\\\"HANGCHA\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"14\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"2\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"4\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-12 06:37:00', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(64, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 06:37:00\"}', '{\"painting_mekanik\":\"UDUD\",\"painting_estimasi_mulai\":\"2025-09-12\",\"painting_estimasi_selesai\":\"2025-09-12\",\"painting_tanggal_approve\":\"2025-09-12 06:37:09\",\"diperbarui_pada\":\"2025-09-12 06:37:09\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-12 06:37:09', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(65, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"diperbarui_pada\":\"2025-09-12 06:37:09\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"THREE WHEEL\\\",\\\"merk_unit\\\":\\\"HANGCHA\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"14\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"2\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"4\\\"}\",\"pdi_catatan\":null,\"persiapan_unit_id\":\"4\",\"persiapan_unit_mekanik\":\"IYAN\",\"persiapan_unit_estimasi_mulai\":\"2025-09-12\",\"persiapan_unit_estimasi_selesai\":\"2025-09-12\",\"persiapan_unit_tanggal_approve\":\"2025-09-12 06:36:44\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\",\"fabrikasi_mekanik\":\"BADRUN\",\"fabrikasi_estimasi_mulai\":\"2025-09-12\",\"fabrikasi_estimasi_selesai\":\"2025-09-12\",\"fabrikasi_tanggal_approve\":\"2025-09-12 06:37:00\",\"painting_mekanik\":\"UDUD\",\"painting_estimasi_mulai\":\"2025-09-12\",\"painting_estimasi_selesai\":\"2025-09-12\",\"painting_tanggal_approve\":\"2025-09-12 06:37:09\"}', '{\"diperbarui_pada\":\"2025-09-12 06:37:44\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"THREE WHEEL\\\",\\\"merk_unit\\\":\\\"HANGCHA\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"14\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"2\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"4\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"4\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"4\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\"]\\\",\\\"mekanik\\\":\\\"INDRA\\\",\\\"catatan\\\":\\\"OK\\\",\\\"timestamp\\\":\\\"2025-09-12 06:37:44\\\"}]}\",\"pdi_catatan\":\"OK\",\"persiapan_unit_id\":null,\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"persiapan_aksesoris_tersedia\":null,\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null}', '[\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"persiapan_unit_id\",\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"persiapan_aksesoris_tersedia\",\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\"]', 1, 'UPDATED', 0, '2025-09-12 06:37:44', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(66, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 06:37:44\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"IYAN\",\"persiapan_unit_estimasi_mulai\":\"2025-09-12\",\"persiapan_unit_estimasi_selesai\":\"2025-09-12\",\"persiapan_unit_tanggal_approve\":\"2025-09-12 06:38:03\",\"diperbarui_pada\":\"2025-09-12 06:38:03\",\"persiapan_unit_id\":\"10\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\"]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-12 06:38:03', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(67, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 06:38:03\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"THREE WHEEL\\\",\\\"merk_unit\\\":\\\"HANGCHA\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"14\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"2\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"4\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"4\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"4\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\"]\\\",\\\"mekanik\\\":\\\"INDRA\\\",\\\"catatan\\\":\\\"OK\\\",\\\"timestamp\\\":\\\"2025-09-12 06:37:44\\\"}]}\"}', '{\"fabrikasi_mekanik\":\"BADRUN\",\"fabrikasi_estimasi_mulai\":\"2025-09-12\",\"fabrikasi_estimasi_selesai\":\"2025-09-12\",\"fabrikasi_tanggal_approve\":\"2025-09-12 06:38:16\",\"diperbarui_pada\":\"2025-09-12 06:38:16\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"THREE WHEEL\\\",\\\"merk_unit\\\":\\\"HANGCHA\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"14\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"2\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"3\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"4\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"4\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\"]\\\",\\\"mekanik\\\":\\\"INDRA\\\",\\\"catatan\\\":\\\"OK\\\",\\\"timestamp\\\":\\\"2025-09-12 06:37:44\\\"}]}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-12 06:38:16', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(68, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 06:38:16\"}', '{\"painting_mekanik\":\"INDRA\",\"painting_estimasi_mulai\":\"2025-09-12\",\"painting_estimasi_selesai\":\"2025-09-12\",\"painting_tanggal_approve\":\"2025-09-12 06:38:24\",\"diperbarui_pada\":\"2025-09-12 06:38:24\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-12 06:38:24', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(69, 'spk', 36, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 06:38:24\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"THREE WHEEL\\\",\\\"merk_unit\\\":\\\"HANGCHA\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"14\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"2\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"3\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"4\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"4\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\"]\\\",\\\"mekanik\\\":\\\"INDRA\\\",\\\"catatan\\\":\\\"OK\\\",\\\"timestamp\\\":\\\"2025-09-12 06:37:44\\\"}]}\",\"pdi_catatan\":\"OK\",\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"UDUD\",\"pdi_estimasi_mulai\":\"2025-09-12\",\"pdi_estimasi_selesai\":\"2025-09-12\",\"pdi_tanggal_approve\":\"2025-09-12 06:38:33\",\"diperbarui_pada\":\"2025-09-12 06:38:33\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"THREE WHEEL\\\",\\\"merk_unit\\\":\\\"HANGCHA\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"14\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"2\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"3\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"4\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"4\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\"]\\\",\\\"mekanik\\\":\\\"INDRA\\\",\\\"catatan\\\":\\\"OK\\\",\\\"timestamp\\\":\\\"2025-09-12 06:37:44\\\"},{\\\"unit_id\\\":\\\"10\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"3\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\"]\\\",\\\"mekanik\\\":\\\"UDUD\\\",\\\"catatan\\\":\\\"ok\\\",\\\"timestamp\\\":\\\"2025-09-12 06:38:33\\\"}]}\",\"pdi_catatan\":\"ok\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-12 06:38:33', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[36]}'),
+(70, 'delivery_instruction', 125, 'CREATE', 'Created new delivery_instruction record', NULL, '{\"di_id\":125,\"nomor_di\":\"DI\\/202509\\/004\",\"spk_id\":36,\"po_kontrak_nomor\":\"SML\\/DS\\/121025\",\"pelanggan\":\"LG\",\"jenis_perintah_kerja_id\":1,\"tujuan_perintah_kerja_id\":1,\"unit_ids\":[4,10]}', '[\"di_id\",\"nomor_di\",\"spk_id\",\"po_kontrak_nomor\",\"pelanggan\",\"jenis_perintah_kerja_id\",\"tujuan_perintah_kerja_id\",\"unit_ids\"]', 1, 'CREATED', 0, '2025-09-12 06:51:13', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"delivery_instruction\":[125]}'),
+(71, 'delivery_instruction', 125, 'UPDATE', 'Updated delivery_instruction record', '{\"nama_supir\":null,\"no_hp_supir\":null,\"no_sim_supir\":null,\"kendaraan\":null,\"no_polisi_kendaraan\":null,\"status\":\"SUBMITTED\"}', '{\"nama_supir\":\"TBD\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"TBD\",\"no_polisi_kendaraan\":\"-\",\"status\":\"PROCESSED\"}', '[\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-12 06:51:23', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[125]}'),
+(72, 'delivery_instruction', 125, 'UPDATE', 'Updated delivery_instruction record', '{\"perencanaan_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 13:51:23\",\"estimasi_sampai\":null,\"nama_supir\":\"TBD\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"TBD\",\"no_polisi_kendaraan\":\"-\",\"status_eksekusi\":null}', '{\"perencanaan_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 06:52:18\",\"estimasi_sampai\":\"2025-09-12\",\"nama_supir\":\"UDIN\",\"no_hp_supir\":\"082138881231\",\"no_sim_supir\":\"8992381\",\"kendaraan\":\"TRUK\",\"no_polisi_kendaraan\":\"B 8213 JKT\",\"status_eksekusi\":\"READY\"}', '[\"perencanaan_tanggal_approve\",\"diperbarui_pada\",\"estimasi_sampai\",\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 06:52:18', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[125]}'),
+(73, 'delivery_instruction', 125, 'UPDATE', 'Updated delivery_instruction record', '{\"berangkat_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 13:52:18\",\"status_eksekusi\":null}', '{\"berangkat_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 06:52:26\",\"status_eksekusi\":\"DISPATCHED\"}', '[\"berangkat_tanggal_approve\",\"diperbarui_pada\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 06:52:26', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[125]}'),
+(74, 'delivery_instruction', 125, 'UPDATE', 'Updated delivery_instruction record', '{\"sampai_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 13:52:26\",\"catatan_sampai\":null,\"status\":\"PROCESSED\",\"status_eksekusi\":null}', '{\"sampai_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 06:52:30\",\"catatan_sampai\":\"ok\",\"status\":\"DELIVERED\",\"status_eksekusi\":\"DELIVERED\"}', '[\"sampai_tanggal_approve\",\"diperbarui_pada\",\"catatan_sampai\",\"status\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 06:52:30', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[125]}'),
+(75, 'kontrak', 54, 'UPDATE', 'Kontrak updated: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', '{\"no_po_marketing\":\"PO-ADIT10999\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"nilai_total\":\"39552000.00\",\"total_units\":\"2\"}', '{\"no_po_marketing\":null,\"pic\":null,\"kontak\":null,\"lokasi\":null,\"nilai_total\":0,\"total_units\":0}', '[\"no_po_marketing\",\"pic\",\"kontak\",\"lokasi\",\"nilai_total\",\"total_units\"]', NULL, 'UPDATED', 0, '2025-09-12 09:28:23', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[54]}'),
+(76, 'kontrak', 54, 'UPDATE', 'Kontrak updated: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', '{\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"status\":\"Aktif\"}', '{\"nilai_total\":0,\"total_units\":0,\"status\":\"Pending\"}', '[\"nilai_total\",\"total_units\",\"status\"]', NULL, 'UPDATED', 0, '2025-09-12 09:28:41', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[54],\"spk\":[29]}'),
+(77, 'kontrak', 54, 'UPDATE', 'Kontrak updated: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', '{\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"status\":\"Pending\"}', '{\"nilai_total\":0,\"total_units\":0,\"status\":\"Aktif\"}', '[\"nilai_total\",\"total_units\",\"status\"]', NULL, 'UPDATED', 0, '2025-09-12 09:29:01', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[54],\"spk\":[29]}'),
+(78, 'kontrak', 54, 'UPDATE', 'Kontrak updated: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', '{\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"status\":\"Aktif\"}', '{\"nilai_total\":0,\"total_units\":0,\"status\":\"Berakhir\"}', '[\"nilai_total\",\"total_units\",\"status\"]', NULL, 'UPDATED', 0, '2025-09-12 09:30:05', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[54],\"spk\":[29]}'),
+(79, 'kontrak', 54, 'UPDATE', 'Kontrak updated: KNTRK/2209/0001 (Client: Sarana Mitra Luas)', '{\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"status\":\"Berakhir\"}', '{\"nilai_total\":0,\"total_units\":0,\"status\":\"Aktif\"}', '[\"nilai_total\",\"total_units\",\"status\"]', NULL, 'UPDATED', 0, '2025-09-12 09:31:11', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[54],\"spk\":[29]}'),
+(80, 'kontrak', 55, 'UPDATE', 'Kontrak updated: SML/DS/121025 (Client: Test)', '{\"no_po_marketing\":\"PO-LG998123\",\"pelanggan\":\"LG\",\"pic\":\"ANDI\",\"kontak\":\"08213564778\",\"lokasi\":\"Gandaria 8 Office Tower Lv. 29 BC & 31 ABCD, Jalan Sultan Iskandar Muda, Kebayoran Lama, RT.5\\/RW.3, Senayan, Jakarta Selatan, Daerah Khusus Ibukota Jakarta, 12190\",\"nilai_total\":\"24000000.00\",\"total_units\":\"2\",\"tanggal_mulai\":\"2025-09-30\",\"tanggal_berakhir\":\"2025-10-31\",\"status\":\"Aktif\"}', '{\"no_po_marketing\":null,\"pelanggan\":\"Test\",\"pic\":null,\"kontak\":null,\"lokasi\":null,\"nilai_total\":0,\"total_units\":0,\"tanggal_mulai\":\"2025-09-01\",\"tanggal_berakhir\":\"2025-12-31\",\"status\":\"Pending\"}', '[\"no_po_marketing\",\"pelanggan\",\"pic\",\"kontak\",\"lokasi\",\"nilai_total\",\"total_units\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\"]', NULL, 'UPDATED', 0, '2025-09-12 09:49:13', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[55],\"spk\":[36]}'),
+(81, 'kontrak', 55, 'UPDATE', 'Kontrak updated: SML/DS/121025 (Client: Test)', '{\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"status\":\"Pending\"}', '{\"nilai_total\":0,\"total_units\":0,\"status\":\"Aktif\"}', '[\"nilai_total\",\"total_units\",\"status\"]', NULL, 'UPDATED', 0, '2025-09-12 09:49:35', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[55],\"spk\":[36]}'),
+(82, 'kontrak', 56, 'CREATE', 'Kontrak created: TEST/AUTO/001 (Client: Test Auto Update)', NULL, '{\"no_kontrak\":\"TEST\\/AUTO\\/001\",\"no_po_marketing\":null,\"pelanggan\":\"Test Auto Update\",\"pic\":null,\"kontak\":null,\"lokasi\":null,\"nilai_total\":0,\"total_units\":0,\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-01\",\"tanggal_berakhir\":\"2025-12-31\",\"status\":\"Pending\",\"dibuat_oleh\":1}', '[\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"pic\",\"kontak\",\"lokasi\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\"]', NULL, 'DRAFT', 0, '2025-09-12 09:54:47', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[56]}'),
+(88, 'spk', 37, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":37,\"nomor_spk\":\"SPK\\/202509\\/005\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"56\",\"kontrak_spesifikasi_id\":\"40\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-12 10:05:22', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[37]}'),
+(89, 'spk', 37, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-12 10:05:28', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[37]}'),
+(90, 'spk', 37, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 10:05:28\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"123\",\"persiapan_unit_estimasi_mulai\":\"2025-09-12\",\"persiapan_unit_estimasi_selesai\":\"2025-09-12\",\"persiapan_unit_tanggal_approve\":\"2025-09-12 10:05:41\",\"diperbarui_pada\":\"2025-09-12 10:05:41\",\"persiapan_unit_id\":\"7\",\"persiapan_aksesoris_tersedia\":\"[]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-12 10:05:41', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[37]}'),
+(91, 'spk', 37, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 10:05:41\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":null,\\\"merk_unit\\\":null,\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":null,\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":null,\\\"ban_id\\\":null,\\\"roda_id\\\":null,\\\"valve_id\\\":null,\\\"aksesoris\\\":[]}\"}', '{\"fabrikasi_mekanik\":\"123\",\"fabrikasi_estimasi_mulai\":\"2025-09-12\",\"fabrikasi_estimasi_selesai\":\"2025-09-12\",\"fabrikasi_tanggal_approve\":\"2025-09-12 10:05:52\",\"diperbarui_pada\":\"2025-09-12 10:05:52\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":null,\\\"merk_unit\\\":null,\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":null,\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":null,\\\"ban_id\\\":null,\\\"roda_id\\\":null,\\\"valve_id\\\":null,\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-12 10:05:52', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[37]}'),
+(92, 'spk', 37, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 10:05:52\"}', '{\"painting_mekanik\":\"123\",\"painting_estimasi_mulai\":\"2025-09-12\",\"painting_estimasi_selesai\":\"2025-09-12\",\"painting_tanggal_approve\":\"2025-09-12 10:05:59\",\"diperbarui_pada\":\"2025-09-12 10:05:59\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-12 10:05:59', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[37]}'),
+(93, 'spk', 37, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 10:05:59\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":null,\\\"merk_unit\\\":null,\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":null,\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":null,\\\"ban_id\\\":null,\\\"roda_id\\\":null,\\\"valve_id\\\":null,\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\",\"pdi_catatan\":null,\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"123\",\"pdi_estimasi_mulai\":\"2025-09-12\",\"pdi_estimasi_selesai\":\"2025-09-12\",\"pdi_tanggal_approve\":\"2025-09-12 10:06:06\",\"diperbarui_pada\":\"2025-09-12 10:06:06\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":null,\\\"merk_unit\\\":null,\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":null,\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":null,\\\"ban_id\\\":null,\\\"roda_id\\\":null,\\\"valve_id\\\":null,\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"7\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"123\\\",\\\"timestamp\\\":\\\"2025-09-12 10:06:06\\\"}]}\",\"pdi_catatan\":\"123\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-12 10:06:06', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[37]}'),
+(94, 'delivery_instruction', 126, 'CREATE', 'Created new delivery_instruction record', NULL, '{\"di_id\":126,\"nomor_di\":\"DI\\/202509\\/005\",\"spk_id\":37,\"po_kontrak_nomor\":\"TEST\\/AUTO\\/001\",\"pelanggan\":\"Test Auto Update\",\"jenis_perintah_kerja_id\":1,\"tujuan_perintah_kerja_id\":1,\"unit_ids\":[7]}', '[\"di_id\",\"nomor_di\",\"spk_id\",\"po_kontrak_nomor\",\"pelanggan\",\"jenis_perintah_kerja_id\",\"tujuan_perintah_kerja_id\",\"unit_ids\"]', 1, 'CREATED', 0, '2025-09-12 10:06:23', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"delivery_instruction\":[126]}'),
+(95, 'delivery_instruction', 126, 'UPDATE', 'Updated delivery_instruction record', '{\"nama_supir\":null,\"no_hp_supir\":null,\"no_sim_supir\":null,\"kendaraan\":null,\"no_polisi_kendaraan\":null,\"status\":\"SUBMITTED\"}', '{\"nama_supir\":\"TBD\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"TBD\",\"no_polisi_kendaraan\":\"-\",\"status\":\"PROCESSED\"}', '[\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-12 10:06:32', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[126]}'),
+(96, 'delivery_instruction', 126, 'UPDATE', 'Updated delivery_instruction record', '{\"perencanaan_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 17:06:32\",\"estimasi_sampai\":null,\"nama_supir\":\"TBD\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"TBD\",\"no_polisi_kendaraan\":\"-\",\"status_eksekusi\":null}', '{\"perencanaan_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 10:06:43\",\"estimasi_sampai\":\"2025-09-12\",\"nama_supir\":\"UDIN\",\"no_hp_supir\":\"082138881231\",\"no_sim_supir\":\"8992381\",\"kendaraan\":\"TRUK\",\"no_polisi_kendaraan\":\"B 8213 JKT\",\"status_eksekusi\":\"READY\"}', '[\"perencanaan_tanggal_approve\",\"diperbarui_pada\",\"estimasi_sampai\",\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 10:06:43', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[126]}'),
+(97, 'delivery_instruction', 126, 'UPDATE', 'Updated delivery_instruction record', '{\"berangkat_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 17:06:43\",\"status_eksekusi\":null}', '{\"berangkat_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 10:06:45\",\"status_eksekusi\":\"DISPATCHED\"}', '[\"berangkat_tanggal_approve\",\"diperbarui_pada\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 10:06:45', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[126]}'),
+(98, 'delivery_instruction', 126, 'UPDATE', 'Updated delivery_instruction record', '{\"sampai_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-12 17:06:45\",\"catatan_sampai\":null,\"status\":\"PROCESSED\",\"status_eksekusi\":null}', '{\"sampai_tanggal_approve\":\"2025-09-12\",\"diperbarui_pada\":\"2025-09-12 10:06:48\",\"catatan_sampai\":\"123\",\"status\":\"DELIVERED\",\"status_eksekusi\":\"DELIVERED\"}', '[\"sampai_tanggal_approve\",\"diperbarui_pada\",\"catatan_sampai\",\"status\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-12 10:06:48', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[126]}'),
+(99, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-13 01:06:29', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(100, 'kontrak', 56, 'UPDATE', 'Kontrak updated: TEST/AUTO/001 (Client: Test Client)', '{\"pelanggan\":\"Test Auto Update\",\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"status\":\"Aktif\"}', '{\"pelanggan\":\"Test Client\",\"nilai_total\":0,\"total_units\":0,\"status\":\"Pending\"}', '[\"pelanggan\",\"nilai_total\",\"total_units\",\"status\"]', NULL, 'UPDATED', 0, '2025-09-13 01:20:06', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[56],\"spk\":[37]}'),
+(101, 'kontrak', 56, 'UPDATE', 'Kontrak updated: TEST/AUTO/001 (Client: Test Client)', '{\"nilai_total\":\"0.00\",\"total_units\":\"0\",\"status\":\"Pending\"}', '{\"nilai_total\":0,\"total_units\":0,\"status\":\"Aktif\"}', '[\"nilai_total\",\"total_units\",\"status\"]', NULL, 'UPDATED', 0, '2025-09-13 01:20:35', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[56],\"spk\":[37]}'),
+(102, 'spk', 38, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":38,\"nomor_spk\":\"SPK\\/202509\\/006\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"54\",\"kontrak_spesifikasi_id\":\"37\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-13 01:33:11', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[38]}'),
+(103, 'spk', 38, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-13 01:33:20', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[38]}'),
+(104, 'spk', 38, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 01:33:20\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"JAJA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-13\",\"persiapan_unit_estimasi_selesai\":\"2025-09-13\",\"persiapan_unit_tanggal_approve\":\"2025-09-13 01:46:15\",\"diperbarui_pada\":\"2025-09-13 01:46:15\",\"persiapan_unit_id\":\"5\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"ROTARY LAMP\\\",\\\"SENSOR PARKING\\\",\\\"HORN SPEAKER\\\",\\\"APAR 1 KG\\\",\\\"BEACON\\\"]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-13 01:46:15', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[38]}'),
+(105, 'spk', 38, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 01:46:15\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[]}\"}', '{\"fabrikasi_mekanik\":\"123\",\"fabrikasi_estimasi_mulai\":\"2025-09-13\",\"fabrikasi_estimasi_selesai\":\"2025-09-13\",\"fabrikasi_tanggal_approve\":\"2025-09-13 01:46:26\",\"diperbarui_pada\":\"2025-09-13 01:46:26\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-13 01:46:26', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[38]}'),
+(106, 'spk', 38, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 01:46:26\"}', '{\"painting_mekanik\":\"123\",\"painting_estimasi_mulai\":\"2025-09-13\",\"painting_estimasi_selesai\":\"2025-09-13\",\"painting_tanggal_approve\":\"2025-09-13 01:46:32\",\"diperbarui_pada\":\"2025-09-13 01:46:32\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-13 01:46:32', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[38]}'),
+(107, 'spk', 38, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 01:46:32\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\",\"pdi_catatan\":null,\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"123\",\"pdi_estimasi_mulai\":\"2025-09-13\",\"pdi_estimasi_selesai\":\"2025-09-13\",\"pdi_tanggal_approve\":\"2025-09-13 01:46:42\",\"diperbarui_pada\":\"2025-09-13 01:46:42\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"2\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORKLIFT SCALE\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":\\\"Lead Acid\\\",\\\"charger_id\\\":\\\"1\\\",\\\"mast_id\\\":\\\"14\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"1\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"5\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"ROTARY LAMP\\\\\\\",\\\\\\\"SENSOR PARKING\\\\\\\",\\\\\\\"HORN SPEAKER\\\\\\\",\\\\\\\"APAR 1 KG\\\\\\\",\\\\\\\"BEACON\\\\\\\"]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"1\\\",\\\"timestamp\\\":\\\"2025-09-13 01:46:42\\\"}]}\",\"pdi_catatan\":\"1\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-13 01:46:42', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[38]}'),
+(108, 'delivery_instruction', 127, 'CREATE', 'Created new delivery_instruction record', NULL, '{\"di_id\":127,\"nomor_di\":\"DI\\/202509\\/006\",\"spk_id\":38,\"po_kontrak_nomor\":\"KNTRK\\/2209\\/0001\",\"pelanggan\":\"Sarana Mitra Luas\",\"jenis_perintah_kerja_id\":1,\"tujuan_perintah_kerja_id\":1,\"unit_ids\":[5]}', '[\"di_id\",\"nomor_di\",\"spk_id\",\"po_kontrak_nomor\",\"pelanggan\",\"jenis_perintah_kerja_id\",\"tujuan_perintah_kerja_id\",\"unit_ids\"]', 1, 'CREATED', 0, '2025-09-13 01:47:49', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"delivery_instruction\":[127]}'),
+(109, 'delivery_instruction', 127, 'UPDATE', 'Updated delivery_instruction record', '{\"nama_supir\":null,\"no_hp_supir\":null,\"no_sim_supir\":null,\"kendaraan\":null,\"no_polisi_kendaraan\":null,\"status\":\"SUBMITTED\"}', '{\"nama_supir\":\"TBD\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"TBD\",\"no_polisi_kendaraan\":\"-\",\"status\":\"PROCESSED\"}', '[\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-13 01:48:00', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[127]}'),
+(110, 'delivery_instruction', 127, 'UPDATE', 'Updated delivery_instruction record', '{\"perencanaan_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 08:48:00\",\"estimasi_sampai\":null,\"nama_supir\":\"TBD\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"TBD\",\"no_polisi_kendaraan\":\"-\",\"status_eksekusi\":null}', '{\"perencanaan_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 01:48:36\",\"estimasi_sampai\":\"2025-09-13\",\"nama_supir\":\"UDIN\",\"no_hp_supir\":\"082138881231\",\"no_sim_supir\":\"8992381\",\"kendaraan\":\"TRUK\",\"no_polisi_kendaraan\":\"B 8213 JKT\",\"status_eksekusi\":\"READY\"}', '[\"perencanaan_tanggal_approve\",\"diperbarui_pada\",\"estimasi_sampai\",\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 01:48:36', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[127]}'),
+(111, 'delivery_instruction', 127, 'UPDATE', 'Updated delivery_instruction record', '{\"berangkat_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 08:48:36\",\"status_eksekusi\":null}', '{\"berangkat_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 01:48:38\",\"status_eksekusi\":\"DISPATCHED\"}', '[\"berangkat_tanggal_approve\",\"diperbarui_pada\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 01:48:38', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[127]}'),
+(112, 'delivery_instruction', 127, 'UPDATE', 'Updated delivery_instruction record', '{\"sampai_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 08:48:38\",\"catatan_sampai\":null,\"status\":\"PROCESSED\",\"status_eksekusi\":null}', '{\"sampai_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 01:48:42\",\"catatan_sampai\":\"qwe\",\"status\":\"DELIVERED\",\"status_eksekusi\":\"DELIVERED\"}', '[\"sampai_tanggal_approve\",\"diperbarui_pada\",\"catatan_sampai\",\"status\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 01:48:42', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[127]}'),
+(113, 'kontrak', 57, 'CREATE', 'Kontrak created: test/1/1/5 (Client: Sarana Mitra Luas)', NULL, '{\"no_kontrak\":\"test\\/1\\/1\\/5\",\"no_po_marketing\":\"12345\",\"pelanggan\":\"Sarana Mitra Luas\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"nilai_total\":0,\"total_units\":0,\"jenis_sewa\":\"BULANAN\",\"tanggal_mulai\":\"2025-09-13\",\"tanggal_berakhir\":\"2025-09-13\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\"}', '[\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"pic\",\"kontak\",\"lokasi\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\"]', 1, 'DRAFT', 0, '2025-09-13 02:56:22', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[57]}'),
+(114, 'spk', 39, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":39,\"nomor_spk\":\"SPK\\/202509\\/007\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"57\",\"kontrak_spesifikasi_id\":\"41\",\"jumlah_unit\":2}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-13 02:57:15', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[39]}'),
+(115, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-13 02:57:22', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(116, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 02:57:22\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"JAJA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-13\",\"persiapan_unit_estimasi_selesai\":\"2025-09-13\",\"persiapan_unit_tanggal_approve\":\"2025-09-13 02:57:44\",\"diperbarui_pada\":\"2025-09-13 02:57:44\",\"persiapan_unit_id\":\"6\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"WORK LIGHT\\\",\\\"CAMERA\\\",\\\"BIO METRIC\\\",\\\"P3K\\\"]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-13 02:57:44', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(117, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 02:57:44\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[]}\"}', '{\"fabrikasi_mekanik\":\"123\",\"fabrikasi_estimasi_mulai\":\"2025-09-13\",\"fabrikasi_estimasi_selesai\":\"2025-09-13\",\"fabrikasi_tanggal_approve\":\"2025-09-13 02:58:00\",\"diperbarui_pada\":\"2025-09-13 02:58:00\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-13 02:58:00', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(118, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 02:58:00\"}', '{\"painting_mekanik\":\"123\",\"painting_estimasi_mulai\":\"2025-09-13\",\"painting_estimasi_selesai\":\"2025-09-13\",\"painting_tanggal_approve\":\"2025-09-13 02:58:04\",\"diperbarui_pada\":\"2025-09-13 02:58:04\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-13 02:58:04', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(119, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"diperbarui_pada\":\"2025-09-13 02:58:04\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\",\"pdi_catatan\":null,\"persiapan_unit_id\":\"6\",\"persiapan_unit_mekanik\":\"JAJA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-13\",\"persiapan_unit_estimasi_selesai\":\"2025-09-13\",\"persiapan_unit_tanggal_approve\":\"2025-09-13 02:57:44\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"WORK LIGHT\\\",\\\"CAMERA\\\",\\\"BIO METRIC\\\",\\\"P3K\\\"]\",\"fabrikasi_mekanik\":\"123\",\"fabrikasi_estimasi_mulai\":\"2025-09-13\",\"fabrikasi_estimasi_selesai\":\"2025-09-13\",\"fabrikasi_tanggal_approve\":\"2025-09-13 02:58:00\",\"painting_mekanik\":\"123\",\"painting_estimasi_mulai\":\"2025-09-13\",\"painting_estimasi_selesai\":\"2025-09-13\",\"painting_tanggal_approve\":\"2025-09-13 02:58:04\"}', '{\"diperbarui_pada\":\"2025-09-13 02:58:09\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"6\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"BLUE SPOT\\\\\\\",\\\\\\\"RED LINE\\\\\\\",\\\\\\\"WORK LIGHT\\\\\\\",\\\\\\\"CAMERA\\\\\\\",\\\\\\\"BIO METRIC\\\\\\\",\\\\\\\"P3K\\\\\\\"]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-13 02:58:09\\\"}]}\",\"pdi_catatan\":\"a\",\"persiapan_unit_id\":null,\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"persiapan_aksesoris_tersedia\":null,\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null}', '[\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"persiapan_unit_id\",\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"persiapan_aksesoris_tersedia\",\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\"]', 1, 'UPDATED', 0, '2025-09-13 02:58:09', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(120, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 02:58:09\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"JAJA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-13\",\"persiapan_unit_estimasi_selesai\":\"2025-09-13\",\"persiapan_unit_tanggal_approve\":\"2025-09-13 02:58:20\",\"diperbarui_pada\":\"2025-09-13 02:58:20\",\"persiapan_unit_id\":\"9\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"ACRYLIC\\\",\\\"P3K\\\",\\\"SAFETY BELT INTERLOC\\\",\\\"SPARS ARRESTOR\\\"]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-13 02:58:20', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(121, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 02:58:20\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"6\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"BLUE SPOT\\\\\\\",\\\\\\\"RED LINE\\\\\\\",\\\\\\\"WORK LIGHT\\\\\\\",\\\\\\\"CAMERA\\\\\\\",\\\\\\\"BIO METRIC\\\\\\\",\\\\\\\"P3K\\\\\\\"]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-13 02:58:09\\\"}]}\"}', '{\"fabrikasi_mekanik\":\"123\",\"fabrikasi_estimasi_mulai\":\"2025-09-13\",\"fabrikasi_estimasi_selesai\":\"2025-09-13\",\"fabrikasi_tanggal_approve\":\"2025-09-13 02:58:26\",\"diperbarui_pada\":\"2025-09-13 02:58:26\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"15\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"6\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"BLUE SPOT\\\\\\\",\\\\\\\"RED LINE\\\\\\\",\\\\\\\"WORK LIGHT\\\\\\\",\\\\\\\"CAMERA\\\\\\\",\\\\\\\"BIO METRIC\\\\\\\",\\\\\\\"P3K\\\\\\\"]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-13 02:58:09\\\"}]}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-13 02:58:26', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(122, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 02:58:26\"}', '{\"painting_mekanik\":\"123\",\"painting_estimasi_mulai\":\"2025-09-13\",\"painting_estimasi_selesai\":\"2025-09-13\",\"painting_tanggal_approve\":\"2025-09-13 02:58:29\",\"diperbarui_pada\":\"2025-09-13 02:58:29\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-13 02:58:29', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(123, 'spk', 39, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 02:58:29\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"15\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"6\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"BLUE SPOT\\\\\\\",\\\\\\\"RED LINE\\\\\\\",\\\\\\\"WORK LIGHT\\\\\\\",\\\\\\\"CAMERA\\\\\\\",\\\\\\\"BIO METRIC\\\\\\\",\\\\\\\"P3K\\\\\\\"]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-13 02:58:09\\\"}]}\",\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"123\",\"pdi_estimasi_mulai\":\"2025-09-13\",\"pdi_estimasi_selesai\":\"2025-09-13\",\"pdi_tanggal_approve\":\"2025-09-13 02:58:34\",\"diperbarui_pada\":\"2025-09-13 02:58:34\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"15\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"6\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"BLUE SPOT\\\\\\\",\\\\\\\"RED LINE\\\\\\\",\\\\\\\"WORK LIGHT\\\\\\\",\\\\\\\"CAMERA\\\\\\\",\\\\\\\"BIO METRIC\\\\\\\",\\\\\\\"P3K\\\\\\\"]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-13 02:58:09\\\"},{\\\"unit_id\\\":\\\"9\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"15\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"BLUE SPOT\\\\\\\",\\\\\\\"RED LINE\\\\\\\",\\\\\\\"ACRYLIC\\\\\\\",\\\\\\\"P3K\\\\\\\",\\\\\\\"SAFETY BELT INTERLOC\\\\\\\",\\\\\\\"SPARS ARRESTOR\\\\\\\"]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-13 02:58:34\\\"}]}\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"status\"]', 1, 'UPDATED', 0, '2025-09-13 02:58:34', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[39]}'),
+(124, 'delivery_instruction', 128, 'CREATE', 'Created new delivery_instruction record', NULL, '{\"di_id\":128,\"nomor_di\":\"DI\\/202509\\/007\",\"spk_id\":39,\"po_kontrak_nomor\":\"test\\/1\\/1\\/5\",\"pelanggan\":\"Sarana Mitra Luas\",\"jenis_perintah_kerja_id\":1,\"tujuan_perintah_kerja_id\":1,\"unit_ids\":[6,9]}', '[\"di_id\",\"nomor_di\",\"spk_id\",\"po_kontrak_nomor\",\"pelanggan\",\"jenis_perintah_kerja_id\",\"tujuan_perintah_kerja_id\",\"unit_ids\"]', 1, 'CREATED', 0, '2025-09-13 02:58:51', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"delivery_instruction\":[128]}'),
+(125, 'delivery_instruction', 128, 'UPDATE', 'Updated delivery_instruction record', '{\"nama_supir\":null,\"no_hp_supir\":null,\"no_sim_supir\":null,\"kendaraan\":null,\"no_polisi_kendaraan\":null,\"status\":\"SUBMITTED\"}', '{\"nama_supir\":\"\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"\",\"no_polisi_kendaraan\":\"-\",\"status\":\"PROCESSED\"}', '[\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-13 02:59:24', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[128]}'),
+(126, 'delivery_instruction', 128, 'UPDATE', 'Updated delivery_instruction record', '{\"perencanaan_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 09:59:24\",\"estimasi_sampai\":null,\"nama_supir\":\"\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"\",\"no_polisi_kendaraan\":\"-\",\"status_eksekusi\":null}', '{\"perencanaan_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 02:59:33\",\"estimasi_sampai\":\"2025-09-13\",\"nama_supir\":\"UDIN\",\"no_hp_supir\":\"082138881231\",\"no_sim_supir\":\"8992381\",\"kendaraan\":\"TRUK\",\"no_polisi_kendaraan\":\"B 8213 JKT\",\"status_eksekusi\":\"READY\"}', '[\"perencanaan_tanggal_approve\",\"diperbarui_pada\",\"estimasi_sampai\",\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 02:59:33', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[128]}'),
+(127, 'delivery_instruction', 128, 'UPDATE', 'Updated delivery_instruction record', '{\"berangkat_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 09:59:33\",\"status_eksekusi\":null}', '{\"berangkat_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 02:59:36\",\"status_eksekusi\":\"DISPATCHED\"}', '[\"berangkat_tanggal_approve\",\"diperbarui_pada\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 02:59:36', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[128]}'),
+(128, 'delivery_instruction', 128, 'UPDATE', 'Updated delivery_instruction record', '{\"sampai_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 09:59:36\",\"catatan_sampai\":null,\"status\":\"PROCESSED\",\"status_eksekusi\":null}', '{\"sampai_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 02:59:38\",\"catatan_sampai\":\"a\",\"status\":\"DELIVERED\",\"status_eksekusi\":\"DELIVERED\"}', '[\"sampai_tanggal_approve\",\"diperbarui_pada\",\"catatan_sampai\",\"status\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 02:59:38', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[128]}'),
+(129, 'spk', 40, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":40,\"nomor_spk\":\"SPK\\/202509\\/008\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"57\",\"kontrak_spesifikasi_id\":\"42\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-13 03:35:03', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[40]}'),
+(130, 'spk', 40, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-13 03:35:11', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[40]}'),
+(131, 'spk', 40, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 03:35:11\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"JAJA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-13\",\"persiapan_unit_estimasi_selesai\":\"2025-09-13\",\"persiapan_unit_tanggal_approve\":\"2025-09-13 03:35:25\",\"diperbarui_pada\":\"2025-09-13 03:35:25\",\"persiapan_unit_id\":\"11\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"CAMERA AI\\\",\\\"SPEED LIMITER\\\",\\\"LASER FORK\\\",\\\"HORN KLASON\\\",\\\"APAR 3 KG\\\"]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-13 03:35:25', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[40]}'),
+(132, 'spk', 40, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 03:35:25\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"KOMATSU\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"17\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"4\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[]}\"}', '{\"fabrikasi_mekanik\":\"123\",\"fabrikasi_estimasi_mulai\":\"2025-09-13\",\"fabrikasi_estimasi_selesai\":\"2025-09-13\",\"fabrikasi_tanggal_approve\":\"2025-09-13 03:43:16\",\"diperbarui_pada\":\"2025-09-13 03:43:16\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"KOMATSU\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"17\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"4\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"3\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-13 03:43:16', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[40]}'),
+(133, 'spk', 40, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 03:43:16\"}', '{\"painting_mekanik\":\"123\",\"painting_estimasi_mulai\":\"2025-09-13\",\"painting_estimasi_selesai\":\"2025-09-13\",\"painting_tanggal_approve\":\"2025-09-13 03:43:21\",\"diperbarui_pada\":\"2025-09-13 03:43:21\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-13 03:43:21', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[40]}'),
+(134, 'spk', 40, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 03:43:21\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"KOMATSU\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"17\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"4\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"3\\\"}\",\"pdi_catatan\":null,\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"123\",\"pdi_estimasi_mulai\":\"2025-09-13\",\"pdi_estimasi_selesai\":\"2025-09-13\",\"pdi_tanggal_approve\":\"2025-09-13 03:43:24\",\"diperbarui_pada\":\"2025-09-13 03:43:24\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"PALLET STACKER\\\",\\\"merk_unit\\\":\\\"KOMATSU\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"42\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"17\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"4\\\",\\\"valve_id\\\":\\\"2\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"3\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"11\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"3\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"CAMERA AI\\\\\\\",\\\\\\\"SPEED LIMITER\\\\\\\",\\\\\\\"LASER FORK\\\\\\\",\\\\\\\"HORN KLASON\\\\\\\",\\\\\\\"APAR 3 KG\\\\\\\"]\\\",\\\"mekanik\\\":\\\"123\\\",\\\"catatan\\\":\\\"1\\\",\\\"timestamp\\\":\\\"2025-09-13 03:43:24\\\"}]}\",\"pdi_catatan\":\"1\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-13 03:43:24', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[40]}'),
+(135, 'delivery_instruction', 129, 'CREATE', 'Created new delivery_instruction record', NULL, '{\"di_id\":129,\"nomor_di\":\"DI\\/202509\\/008\",\"spk_id\":40,\"po_kontrak_nomor\":\"test\\/1\\/1\\/5\",\"pelanggan\":\"Sarana Mitra Luas\",\"jenis_perintah_kerja_id\":1,\"tujuan_perintah_kerja_id\":1,\"unit_ids\":[11]}', '[\"di_id\",\"nomor_di\",\"spk_id\",\"po_kontrak_nomor\",\"pelanggan\",\"jenis_perintah_kerja_id\",\"tujuan_perintah_kerja_id\",\"unit_ids\"]', 1, 'CREATED', 0, '2025-09-13 03:43:34', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"delivery_instruction\":[129]}'),
+(136, 'delivery_instruction', 129, 'UPDATE', 'Updated delivery_instruction record', '{\"nama_supir\":null,\"no_hp_supir\":null,\"no_sim_supir\":null,\"kendaraan\":null,\"no_polisi_kendaraan\":null,\"status\":\"SUBMITTED\"}', '{\"nama_supir\":\"\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"\",\"no_polisi_kendaraan\":\"-\",\"status\":\"PROCESSED\"}', '[\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-13 03:43:43', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[129]}'),
+(137, 'delivery_instruction', 129, 'UPDATE', 'Updated delivery_instruction record', '{\"perencanaan_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 10:43:43\",\"estimasi_sampai\":null,\"nama_supir\":\"\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"\",\"no_polisi_kendaraan\":\"-\",\"status_eksekusi\":null}', '{\"perencanaan_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 03:43:52\",\"estimasi_sampai\":\"2025-09-13\",\"nama_supir\":\"UDIN\",\"no_hp_supir\":\"082138881231\",\"no_sim_supir\":\"8992381\",\"kendaraan\":\"TRUK\",\"no_polisi_kendaraan\":\"B 8213 JKT\",\"status_eksekusi\":\"READY\"}', '[\"perencanaan_tanggal_approve\",\"diperbarui_pada\",\"estimasi_sampai\",\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 03:43:52', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[129]}'),
+(138, 'delivery_instruction', 129, 'UPDATE', 'Updated delivery_instruction record', '{\"berangkat_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 10:43:52\",\"catatan_berangkat\":null,\"status_eksekusi\":null}', '{\"berangkat_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 03:43:55\",\"catatan_berangkat\":\"a\",\"status_eksekusi\":\"DISPATCHED\"}', '[\"berangkat_tanggal_approve\",\"diperbarui_pada\",\"catatan_berangkat\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 03:43:55', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[129]}'),
+(139, 'delivery_instruction', 129, 'UPDATE', 'Updated delivery_instruction record', '{\"sampai_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-13 10:43:55\",\"catatan_sampai\":null,\"status\":\"PROCESSED\",\"status_eksekusi\":null}', '{\"sampai_tanggal_approve\":\"2025-09-13\",\"diperbarui_pada\":\"2025-09-13 03:43:58\",\"catatan_sampai\":\"a\",\"status\":\"DELIVERED\",\"status_eksekusi\":\"DELIVERED\"}', '[\"sampai_tanggal_approve\",\"diperbarui_pada\",\"catatan_sampai\",\"status\",\"status_eksekusi\"]', 1, 'UPDATED', 0, '2025-09-13 03:43:58', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[129]}'),
+(140, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-15 07:58:52', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(141, 'kontrak', 58, 'CREATE', 'Kontrak created: test/1/1/6 (Client: Sarana Mitra Luas)', NULL, '{\"no_kontrak\":\"test\\/1\\/1\\/6\",\"no_po_marketing\":\"12345\",\"pelanggan\":\"Sarana Mitra Luas\",\"pic\":\"Adit\",\"kontak\":\"082134555233\",\"lokasi\":\"Jl. Gemalapik Raya No.130-111, Pasirsari, Cikarang Sel., Kabupaten Bekasi, Jawa Barat 17530\",\"nilai_total\":0,\"total_units\":0,\"jenis_sewa\":\"HARIAN\",\"tanggal_mulai\":\"2025-09-13\",\"tanggal_berakhir\":\"2025-09-13\",\"status\":\"Pending\",\"dibuat_oleh\":\"1\"}', '[\"no_kontrak\",\"no_po_marketing\",\"pelanggan\",\"pic\",\"kontak\",\"lokasi\",\"nilai_total\",\"total_units\",\"jenis_sewa\",\"tanggal_mulai\",\"tanggal_berakhir\",\"status\",\"dibuat_oleh\"]', 1, 'DRAFT', 0, '2025-09-15 08:06:12', 'MARKETING', 'Data Kontrak', 'MEDIUM', '{\"kontrak\":[58]}'),
+(142, 'spk', 41, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":41,\"nomor_spk\":\"SPK\\/202509\\/009\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"58\",\"kontrak_spesifikasi_id\":\"43\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-15 08:09:31', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[41]}'),
+(143, 'spk', 41, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-15 08:09:36', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[41]}'),
+(144, 'spk', 41, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-15 08:09:36\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"JAJA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-15\",\"persiapan_unit_estimasi_selesai\":\"2025-09-15\",\"persiapan_unit_tanggal_approve\":\"2025-09-15 08:09:51\",\"diperbarui_pada\":\"2025-09-15 08:09:51\",\"persiapan_unit_id\":\"13\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"WORK LIGHT\\\"]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-15 08:09:51', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[41]}'),
+(145, 'spk', 41, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-15 08:09:51\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"HAND PALLET\\\",\\\"merk_unit\\\":\\\"LINDE\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"41\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"15\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[]}\"}', '{\"fabrikasi_mekanik\":\"ARIZAL-EKA\",\"fabrikasi_estimasi_mulai\":\"2025-09-15\",\"fabrikasi_estimasi_selesai\":\"2025-09-15\",\"fabrikasi_tanggal_approve\":\"2025-09-15 08:21:59\",\"diperbarui_pada\":\"2025-09-15 08:21:59\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"HAND PALLET\\\",\\\"merk_unit\\\":\\\"LINDE\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"41\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"15\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-15 08:21:59', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[41]}'),
+(146, 'spk', 41, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-15 08:21:59\"}', '{\"painting_mekanik\":\"123\",\"painting_estimasi_mulai\":\"2025-09-15\",\"painting_estimasi_selesai\":\"2025-09-15\",\"painting_tanggal_approve\":\"2025-09-15 08:22:44\",\"diperbarui_pada\":\"2025-09-15 08:22:44\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-15 08:22:44', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[41]}'),
+(147, 'spk', 41, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-15 08:22:44\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"HAND PALLET\\\",\\\"merk_unit\\\":\\\"LINDE\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"41\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"15\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\",\"pdi_catatan\":null,\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"JOHANA - DEPI\",\"pdi_estimasi_mulai\":\"2025-09-15\",\"pdi_estimasi_selesai\":\"2025-09-15\",\"pdi_tanggal_approve\":\"2025-09-15 08:22:53\",\"diperbarui_pada\":\"2025-09-15 08:22:53\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"HAND PALLET\\\",\\\"merk_unit\\\":\\\"LINDE\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"41\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"15\\\",\\\"ban_id\\\":\\\"6\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"13\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"BLUE SPOT\\\\\\\",\\\\\\\"RED LINE\\\\\\\",\\\\\\\"WORK LIGHT\\\\\\\"]\\\",\\\"mekanik\\\":\\\"JOHANA - DEPI\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-15 08:22:53\\\"}]}\",\"pdi_catatan\":\"a\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-15 08:22:53', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[41]}'),
+(148, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-16 01:25:33', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(149, 'delivery_instruction', 130, 'CREATE', 'Created new delivery_instruction record', NULL, '{\"di_id\":130,\"nomor_di\":\"DI\\/202509\\/009\",\"spk_id\":null,\"po_kontrak_nomor\":\"TEST\\/AUTO\\/001\",\"pelanggan\":\"Test Client\",\"jenis_perintah_kerja_id\":2,\"tujuan_perintah_kerja_id\":4,\"unit_ids\":[]}', '[\"di_id\",\"nomor_di\",\"spk_id\",\"po_kontrak_nomor\",\"pelanggan\",\"jenis_perintah_kerja_id\",\"tujuan_perintah_kerja_id\",\"unit_ids\"]', 1, 'CREATED', 0, '2025-09-16 03:10:02', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"delivery_instruction\":[130]}'),
+(150, 'spk', 42, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":42,\"nomor_spk\":\"SPK\\/202509\\/010\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"57\",\"kontrak_spesifikasi_id\":\"41\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-16 06:56:53', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[42]}'),
+(151, 'spk', 42, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-16 06:57:09', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[42]}'),
+(152, 'spk', 42, 'UPDATE', 'Updated spk record', '{\"persiapan_unit_mekanik\":null,\"persiapan_unit_estimasi_mulai\":null,\"persiapan_unit_estimasi_selesai\":null,\"persiapan_unit_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-16 06:57:09\",\"persiapan_unit_id\":null,\"persiapan_aksesoris_tersedia\":null}', '{\"persiapan_unit_mekanik\":\"ARIZAL-EKA\",\"persiapan_unit_estimasi_mulai\":\"2025-09-16\",\"persiapan_unit_estimasi_selesai\":\"2025-09-16\",\"persiapan_unit_tanggal_approve\":\"2025-09-16 06:57:35\",\"diperbarui_pada\":\"2025-09-16 06:57:35\",\"persiapan_unit_id\":\"13\",\"persiapan_aksesoris_tersedia\":\"[\\\"LAMPU UTAMA\\\",\\\"BLUE SPOT\\\",\\\"RED LINE\\\",\\\"WORK LIGHT\\\",\\\"CAMERA\\\",\\\"BIO METRIC\\\",\\\"ACRYLIC\\\",\\\"P3K\\\",\\\"SAFETY BELT INTERLOC\\\",\\\"SPARS ARRESTOR\\\"]\"}', '[\"persiapan_unit_mekanik\",\"persiapan_unit_estimasi_mulai\",\"persiapan_unit_estimasi_selesai\",\"persiapan_unit_tanggal_approve\",\"diperbarui_pada\",\"persiapan_unit_id\",\"persiapan_aksesoris_tersedia\"]', 1, 'UPDATED', 0, '2025-09-16 06:57:35', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[42]}'),
+(153, 'spk', 42, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-16 06:57:35\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[]}\"}', '{\"fabrikasi_mekanik\":\"IYAN\",\"fabrikasi_estimasi_mulai\":\"2025-09-16\",\"fabrikasi_estimasi_selesai\":\"2025-09-16\",\"fabrikasi_tanggal_approve\":\"2025-09-16 06:57:44\",\"diperbarui_pada\":\"2025-09-16 06:57:44\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"4\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-16 06:57:44', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[42]}'),
+(154, 'spk', 42, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-16 06:57:44\"}', '{\"painting_mekanik\":\"IYAN\",\"painting_estimasi_mulai\":\"2025-09-16\",\"painting_estimasi_selesai\":\"2025-09-16\",\"painting_tanggal_approve\":\"2025-09-16 06:57:50\",\"diperbarui_pada\":\"2025-09-16 06:57:50\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-16 06:57:50', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[42]}'),
+(155, 'spk', 42, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-16 06:57:50\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"4\\\"}\",\"pdi_catatan\":null,\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"IYAN\",\"pdi_estimasi_mulai\":\"2025-09-16\",\"pdi_estimasi_selesai\":\"2025-09-16\",\"pdi_tanggal_approve\":\"2025-09-16 06:57:54\",\"diperbarui_pada\":\"2025-09-16 06:57:54\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"3\\\",\\\"tipe_unit_id\\\":\\\"6\\\",\\\"tipe_jenis\\\":\\\"COUNTER BALANCE\\\",\\\"merk_unit\\\":\\\"HELI\\\",\\\"model_unit\\\":null,\\\"kapasitas_id\\\":\\\"40\\\",\\\"attachment_tipe\\\":\\\"FORK POSITIONER\\\",\\\"attachment_merk\\\":null,\\\"jenis_baterai\\\":null,\\\"charger_id\\\":null,\\\"mast_id\\\":\\\"16\\\",\\\"ban_id\\\":\\\"3\\\",\\\"roda_id\\\":\\\"1\\\",\\\"valve_id\\\":\\\"3\\\",\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"4\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":\\\"13\\\",\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"4\\\",\\\"aksesoris_tersedia\\\":\\\"[\\\\\\\"LAMPU UTAMA\\\\\\\",\\\\\\\"BLUE SPOT\\\\\\\",\\\\\\\"RED LINE\\\\\\\",\\\\\\\"WORK LIGHT\\\\\\\",\\\\\\\"CAMERA\\\\\\\",\\\\\\\"BIO METRIC\\\\\\\",\\\\\\\"ACRYLIC\\\\\\\",\\\\\\\"P3K\\\\\\\",\\\\\\\"SAFETY BELT INTERLOC\\\\\\\",\\\\\\\"SPARS ARRESTOR\\\\\\\"]\\\",\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-16 06:57:54\\\"}]}\",\"pdi_catatan\":\"a\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-16 06:57:54', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[42]}'),
+(156, 'spk', 43, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":43,\"nomor_spk\":\"SPK\\/202509\\/011\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"56\",\"kontrak_spesifikasi_id\":\"44\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-16 08:15:28', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[43]}'),
+(157, 'spk', 43, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-16 08:15:35', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[43]}'),
+(158, 'spk', 44, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":44,\"nomor_spk\":\"SPK\\/202509\\/011\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"56\",\"kontrak_spesifikasi_id\":\"44\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-16 08:16:37', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[44]}'),
+(159, 'spk', 45, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":45,\"nomor_spk\":\"SPK\\/202509\\/011\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"56\",\"kontrak_spesifikasi_id\":\"44\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-16 08:26:45', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[45]}'),
+(160, 'spk', 46, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":46,\"nomor_spk\":\"SPK\\/202509\\/011\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"56\",\"kontrak_spesifikasi_id\":\"44\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-16 08:27:38', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[46]}'),
+(161, 'spk', 47, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":47,\"nomor_spk\":\"SPK\\/202509\\/011\",\"jenis_spk\":\"UNIT\",\"kontrak_id\":\"56\",\"kontrak_spesifikasi_id\":\"44\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-16 08:37:20', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[47]}'),
+(162, 'spk', 48, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":48,\"nomor_spk\":\"SPK\\/202509\\/011\",\"jenis_spk\":\"ATTACHMENT\",\"kontrak_id\":\"56\",\"kontrak_spesifikasi_id\":\"44\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-16 08:37:45', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[48]}'),
+(163, 'spk', 49, 'CREATE', 'Created new spk record', NULL, '{\"spk_id\":49,\"nomor_spk\":\"SPK\\/202509\\/011\",\"jenis_spk\":\"ATTACHMENT\",\"kontrak_id\":\"56\",\"kontrak_spesifikasi_id\":\"44\",\"jumlah_unit\":1}', '[\"spk_id\",\"nomor_spk\",\"jenis_spk\",\"kontrak_id\",\"kontrak_spesifikasi_id\",\"jumlah_unit\"]', 1, 'CREATED', 0, '2025-09-16 08:43:46', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"spk\":[49]}'),
+(164, 'spk', 49, 'UPDATE', 'Updated spk record', '{\"status\":\"SUBMITTED\"}', '{\"status\":\"IN_PROGRESS\"}', '[\"status\"]', 1, 'UPDATED', 0, '2025-09-16 08:43:55', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[49]}'),
+(165, 'spk', 49, 'UPDATE', 'Updated spk record', '{\"fabrikasi_mekanik\":null,\"fabrikasi_estimasi_mulai\":null,\"fabrikasi_estimasi_selesai\":null,\"fabrikasi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-16 08:43:55\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":null,\\\"tipe_jenis\\\":null,\\\"merk_unit\\\":null,\\\"model_unit\\\":null,\\\"kapasitas_id\\\":null,\\\"attachment_tipe\\\":\\\"SIDE SHIFTER\\\",\\\"attachment_merk\\\":\\\"\\\",\\\"jenis_baterai\\\":\\\"\\\",\\\"charger_id\\\":\\\"0\\\",\\\"mast_id\\\":null,\\\"ban_id\\\":null,\\\"roda_id\\\":null,\\\"valve_id\\\":null,\\\"aksesoris\\\":[]}\"}', '{\"fabrikasi_mekanik\":\"IYAN\",\"fabrikasi_estimasi_mulai\":\"2025-09-16\",\"fabrikasi_estimasi_selesai\":\"2025-09-16\",\"fabrikasi_tanggal_approve\":\"2025-09-16 09:10:32\",\"diperbarui_pada\":\"2025-09-16 09:10:32\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":null,\\\"tipe_jenis\\\":null,\\\"merk_unit\\\":null,\\\"model_unit\\\":null,\\\"kapasitas_id\\\":null,\\\"attachment_tipe\\\":\\\"SIDE SHIFTER\\\",\\\"attachment_merk\\\":\\\"\\\",\\\"jenis_baterai\\\":\\\"\\\",\\\"charger_id\\\":\\\"0\\\",\\\"mast_id\\\":null,\\\"ban_id\\\":null,\\\"roda_id\\\":null,\\\"valve_id\\\":null,\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\"}', '[\"fabrikasi_mekanik\",\"fabrikasi_estimasi_mulai\",\"fabrikasi_estimasi_selesai\",\"fabrikasi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\"]', 1, 'UPDATED', 0, '2025-09-16 09:10:32', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[49]}'),
+(166, 'spk', 49, 'UPDATE', 'Updated spk record', '{\"painting_mekanik\":null,\"painting_estimasi_mulai\":null,\"painting_estimasi_selesai\":null,\"painting_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-16 09:10:32\"}', '{\"painting_mekanik\":\"IYAN\",\"painting_estimasi_mulai\":\"2025-09-16\",\"painting_estimasi_selesai\":\"2025-09-16\",\"painting_tanggal_approve\":\"2025-09-16 09:10:35\",\"diperbarui_pada\":\"2025-09-16 09:10:35\"}', '[\"painting_mekanik\",\"painting_estimasi_mulai\",\"painting_estimasi_selesai\",\"painting_tanggal_approve\",\"diperbarui_pada\"]', 1, 'UPDATED', 0, '2025-09-16 09:10:35', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[49]}'),
+(167, 'spk', 49, 'UPDATE', 'Updated spk record', '{\"pdi_mekanik\":null,\"pdi_estimasi_mulai\":null,\"pdi_estimasi_selesai\":null,\"pdi_tanggal_approve\":null,\"diperbarui_pada\":\"2025-09-16 09:10:35\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":null,\\\"tipe_jenis\\\":null,\\\"merk_unit\\\":null,\\\"model_unit\\\":null,\\\"kapasitas_id\\\":null,\\\"attachment_tipe\\\":\\\"SIDE SHIFTER\\\",\\\"attachment_merk\\\":\\\"\\\",\\\"jenis_baterai\\\":\\\"\\\",\\\"charger_id\\\":\\\"0\\\",\\\"mast_id\\\":null,\\\"ban_id\\\":null,\\\"roda_id\\\":null,\\\"valve_id\\\":null,\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\"}\",\"pdi_catatan\":null,\"status\":\"IN_PROGRESS\"}', '{\"pdi_mekanik\":\"IYAN\",\"pdi_estimasi_mulai\":\"2025-09-16\",\"pdi_estimasi_selesai\":\"2025-09-16\",\"pdi_tanggal_approve\":\"2025-09-16 09:10:41\",\"diperbarui_pada\":\"2025-09-16 09:10:41\",\"spesifikasi\":\"{\\\"departemen_id\\\":\\\"1\\\",\\\"tipe_unit_id\\\":null,\\\"tipe_jenis\\\":null,\\\"merk_unit\\\":null,\\\"model_unit\\\":null,\\\"kapasitas_id\\\":null,\\\"attachment_tipe\\\":\\\"SIDE SHIFTER\\\",\\\"attachment_merk\\\":\\\"\\\",\\\"jenis_baterai\\\":\\\"\\\",\\\"charger_id\\\":\\\"0\\\",\\\"mast_id\\\":null,\\\"ban_id\\\":null,\\\"roda_id\\\":null,\\\"valve_id\\\":null,\\\"aksesoris\\\":[],\\\"fabrikasi_attachment_id\\\":\\\"16\\\",\\\"prepared_units\\\":[{\\\"unit_id\\\":null,\\\"battery_inventory_id\\\":null,\\\"charger_inventory_id\\\":null,\\\"attachment_inventory_id\\\":\\\"16\\\",\\\"aksesoris_tersedia\\\":null,\\\"mekanik\\\":\\\"IYAN\\\",\\\"catatan\\\":\\\"a\\\",\\\"timestamp\\\":\\\"2025-09-16 09:10:41\\\"}]}\",\"pdi_catatan\":\"a\",\"status\":\"READY\"}', '[\"pdi_mekanik\",\"pdi_estimasi_mulai\",\"pdi_estimasi_selesai\",\"pdi_tanggal_approve\",\"diperbarui_pada\",\"spesifikasi\",\"pdi_catatan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-16 09:10:41', 'SERVICE', 'Service Management', 'MEDIUM', '{\"spk\":[49]}'),
+(168, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-17 01:26:00', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(169, 'delivery_instruction', 131, 'CREATE', 'Created new delivery_instruction record', NULL, '{\"di_id\":131,\"nomor_di\":\"DI\\/202509\\/010\",\"spk_id\":49,\"po_kontrak_nomor\":\"TEST\\/AUTO\\/001\",\"pelanggan\":\"Test Client\",\"jenis_perintah_kerja_id\":1,\"tujuan_perintah_kerja_id\":1,\"unit_ids\":[]}', '[\"di_id\",\"nomor_di\",\"spk_id\",\"po_kontrak_nomor\",\"pelanggan\",\"jenis_perintah_kerja_id\",\"tujuan_perintah_kerja_id\",\"unit_ids\"]', 1, 'CREATED', 0, '2025-09-17 02:54:40', 'MARKETING', 'App\\s\\marketing Management', 'MEDIUM', '{\"delivery_instruction\":[131]}'),
+(170, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-22 01:23:38', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(171, 'users', 1, 'LOGOUT', 'User logged out', NULL, NULL, NULL, 1, 'LOGOUT', 0, '2025-09-22 06:17:30', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(172, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-22 06:17:50', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(173, 'users', 1, 'LOGIN', 'User logged in successfully', NULL, NULL, NULL, 1, 'LOGIN', 0, '2025-09-23 06:17:04', 'USER_MANAGEMENT', 'User Session', 'LOW', '{\"users\":[1]}'),
+(174, 'delivery_instruction', 131, 'UPDATE', 'Updated delivery_instruction record', '{\"nama_supir\":null,\"no_hp_supir\":null,\"no_sim_supir\":null,\"kendaraan\":null,\"no_polisi_kendaraan\":null,\"status\":\"SUBMITTED\"}', '{\"nama_supir\":\"\",\"no_hp_supir\":\"-\",\"no_sim_supir\":\"-\",\"kendaraan\":\"\",\"no_polisi_kendaraan\":\"-\",\"status\":\"PROCESSED\"}', '[\"nama_supir\",\"no_hp_supir\",\"no_sim_supir\",\"kendaraan\",\"no_polisi_kendaraan\",\"status\"]', 1, 'UPDATED', 0, '2025-09-23 06:21:02', 'OPERATIONAL', 'Operational Data', 'MEDIUM', '{\"delivery_instruction\":[131]}');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_activity_log_backup`
+--
+-- Creation: Sep 08, 2025 at 08:42 AM
+--
+
+DROP TABLE IF EXISTS `system_activity_log_backup`;
+CREATE TABLE IF NOT EXISTS `system_activity_log_backup` (
+  `id` int(11) NOT NULL DEFAULT 0,
+  `table_name` varchar(64) NOT NULL COMMENT 'Target table name (kontrak, spk, inventory_unit, etc)',
+  `record_id` int(10) UNSIGNED NOT NULL COMMENT 'ID of the affected record',
+  `action_type` enum('CREATE','UPDATE','DELETE','ASSIGN','UNASSIGN','APPROVE','REJECT','COMPLETE','CANCEL') NOT NULL COMMENT 'Type of action performed',
+  `action_description` varchar(255) NOT NULL COMMENT 'Brief description of what happened',
+  `old_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Previous values (only changed fields)' CHECK (json_valid(`old_values`)),
+  `new_values` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'New values (only changed fields)' CHECK (json_valid(`new_values`)),
+  `affected_fields` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'List of fields that were changed' CHECK (json_valid(`affected_fields`)),
+  `user_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK to users.id',
+  `session_id` varchar(128) DEFAULT NULL COMMENT 'Session identifier for tracking',
+  `ip_address` varchar(45) DEFAULT NULL COMMENT 'User IP address',
+  `user_agent` varchar(500) DEFAULT NULL COMMENT 'Browser/device info (truncated)',
+  `request_method` enum('GET','POST','PUT','DELETE','PATCH') DEFAULT NULL COMMENT 'HTTP method used',
+  `request_url` varchar(255) DEFAULT NULL COMMENT 'Endpoint that triggered this action',
+  `related_kontrak_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related kontrak if applicable',
+  `related_spk_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related SPK if applicable',
+  `related_di_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related DI if applicable',
+  `workflow_stage` varchar(50) DEFAULT NULL COMMENT 'Current business stage',
+  `is_critical` tinyint(1) DEFAULT 0 COMMENT 'Mark critical business actions',
+  `execution_time_ms` int(10) UNSIGNED DEFAULT NULL COMMENT 'Time taken to execute action (milliseconds)',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `module_name` enum('PURCHASING','WAREHOUSE','MARKETING','SERVICE','OPERATIONAL','ACCOUNTING','PERIZINAN','ADMIN','DASHBOARD','REPORTS','SETTINGS','USER_MANAGEMENT') DEFAULT NULL COMMENT 'Application module where activity occurred',
+  `feature_name` varchar(100) DEFAULT NULL COMMENT 'Specific feature/page within module',
+  `business_impact` enum('LOW','MEDIUM','HIGH','CRITICAL') DEFAULT 'LOW' COMMENT 'Business impact level',
+  `compliance_relevant` tinyint(1) DEFAULT 0 COMMENT 'Relevant for compliance/audit',
+  `financial_impact` decimal(15,2) DEFAULT NULL COMMENT 'Financial impact of this activity',
+  `related_purchase_order_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related PO for purchasing module',
+  `related_vendor_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related vendor/supplier',
+  `related_customer_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related customer',
+  `related_invoice_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related invoice for accounting',
+  `related_payment_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related payment record',
+  `related_permit_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related permit for perizinan',
+  `related_warehouse_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'Related warehouse location',
+  `device_type` enum('DESKTOP','MOBILE','TABLET','API') DEFAULT NULL COMMENT 'Device type used',
+  `browser_name` varchar(50) DEFAULT NULL COMMENT 'Browser name',
+  `operating_system` varchar(50) DEFAULT NULL COMMENT 'Operating system'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `system_activity_log_backup`:
+--
+
+--
+-- Truncate table before insert `system_activity_log_backup`
+--
+
+TRUNCATE TABLE `system_activity_log_backup`;
+--
+-- Dumping data for table `system_activity_log_backup`
+--
+
+INSERT DELAYED IGNORE INTO `system_activity_log_backup` (`id`, `table_name`, `record_id`, `action_type`, `action_description`, `old_values`, `new_values`, `affected_fields`, `user_id`, `session_id`, `ip_address`, `user_agent`, `request_method`, `request_url`, `related_kontrak_id`, `related_spk_id`, `related_di_id`, `workflow_stage`, `is_critical`, `execution_time_ms`, `created_at`, `module_name`, `feature_name`, `business_impact`, `compliance_relevant`, `financial_impact`, `related_purchase_order_id`, `related_vendor_id`, `related_customer_id`, `related_invoice_id`, `related_payment_id`, `related_permit_id`, `related_warehouse_id`, `device_type`, `browser_name`, `operating_system`) VALUES
+(1, 'kontrak', 44, 'CREATE', 'Kontrak baru dibuat dengan nomor PO-CL-0488', NULL, '{\"no_po_marketing\": \"PO-CL-0488\", \"pelanggan\": \"PT Client\", \"status\": \"ACTIVE\"}', '[\"no_po_marketing\", \"pelanggan\", \"status\"]', 1, NULL, NULL, NULL, NULL, NULL, 44, NULL, NULL, 'KONTRAK', 1, NULL, '2025-09-08 06:43:05', NULL, NULL, 'LOW', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(2, 'inventory_unit', 1, 'ASSIGN', 'Unit forklift diassign ke kontrak dengan harga Rp 9,000,000/bulan', NULL, '{\"kontrak_id\": 44, \"harga_sewa_bulanan\": 9000000, \"status_unit_id\": 3}', '[\"kontrak_id\", \"harga_sewa_bulanan\", \"status_unit_id\"]', 1, NULL, NULL, NULL, NULL, NULL, 44, NULL, NULL, 'KONTRAK', 1, NULL, '2025-09-08 06:43:05', NULL, NULL, 'LOW', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL),
+(3, 'inventory_unit', 2, 'ASSIGN', 'Unit forklift diassign ke kontrak dengan harga Rp 9,000,000/bulan', NULL, '{\"kontrak_id\": 44, \"harga_sewa_bulanan\": 9000000, \"status_unit_id\": 3}', '[\"kontrak_id\", \"harga_sewa_bulanan\", \"status_unit_id\"]', 1, NULL, NULL, NULL, NULL, NULL, 44, NULL, NULL, 'KONTRAK', 1, NULL, '2025-09-08 06:43:05', NULL, NULL, 'LOW', 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL);
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `system_activity_log_old`
+--
+-- Creation: Sep 08, 2025 at 08:42 AM
+--
+
+DROP TABLE IF EXISTS `system_activity_log_old`;
+CREATE TABLE IF NOT EXISTS `system_activity_log_old` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `username` varchar(100) NOT NULL COMMENT 'Username yang melakukan aktivitas',
+  `user_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'FK ke users table',
+  `action_type` enum('CREATE','READ','UPDATE','DELETE','PRINT','DOWNLOAD','LOGIN','LOGOUT') NOT NULL COMMENT 'Jenis aktivitas',
+  `table_name` varchar(64) DEFAULT NULL COMMENT 'Nama tabel yang diakses (kontrak, spk, inventory, dll)',
+  `record_id` int(10) UNSIGNED DEFAULT NULL COMMENT 'ID record yang diakses',
+  `description` text NOT NULL COMMENT 'Deskripsi lengkap aktivitas yang dilakukan',
+  `file_name` varchar(255) DEFAULT NULL COMMENT 'Nama file yang di-print/download',
+  `file_type` varchar(50) DEFAULT NULL COMMENT 'Jenis file (PDF, Excel, Word, dll)',
+  `module_name` varchar(50) DEFAULT NULL COMMENT 'Module/Menu yang diakses (Marketing, Service, dll)',
+  `ip_address` varchar(45) DEFAULT NULL COMMENT 'IP address user',
+  `user_agent` text DEFAULT NULL COMMENT 'Browser info',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp() COMMENT 'Waktu aktivitas',
+  PRIMARY KEY (`id`),
+  KEY `idx_username` (`username`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_action_type` (`action_type`),
+  KEY `idx_table_record` (`table_name`,`record_id`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_module` (`module_name`),
+  KEY `idx_username_date` (`username`,`created_at`),
+  KEY `idx_action_date` (`action_type`,`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Tabel untuk mencatat semua aktivitas user: CRUD, Print, Download';
+
+--
+-- RELATIONSHIPS FOR TABLE `system_activity_log_old`:
+--
+
+--
+-- Truncate table before insert `system_activity_log_old`
+--
+
+TRUNCATE TABLE `system_activity_log_old`;
+--
+-- Dumping data for table `system_activity_log_old`
+--
+
+INSERT DELAYED IGNORE INTO `system_activity_log_old` (`id`, `username`, `user_id`, `action_type`, `table_name`, `record_id`, `description`, `file_name`, `file_type`, `module_name`, `ip_address`, `user_agent`, `created_at`) VALUES
+(1, 'admin', 1, 'CREATE', 'kontrak', 1, 'Membuat kontrak baru PO-TEST-001', NULL, NULL, 'Marketing', '127.0.0.1', NULL, '2025-09-08 08:18:56'),
+(2, 'admin', 1, 'PRINT', 'kontrak', 1, 'Print kontrak PO-TEST-001 ke PDF', NULL, NULL, 'Marketing', '127.0.0.1', NULL, '2025-09-08 08:18:56'),
+(3, 'admin', 1, 'DOWNLOAD', NULL, NULL, 'Download laporan Excel kontrak bulanan', NULL, NULL, 'Reports', '127.0.0.1', NULL, '2025-09-08 08:18:56');
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `tipe_ban`
 --
--- Creation: Sep 03, 2025 at 09:26 AM
+-- Creation: Sep 08, 2025 at 04:15 AM
 --
 
 DROP TABLE IF EXISTS `tipe_ban`;
 CREATE TABLE IF NOT EXISTS `tipe_ban` (
-  `id_ban` int(11) NOT NULL,
+  `id_ban` int(11) NOT NULL AUTO_INCREMENT,
   `tipe_ban` varchar(100) NOT NULL,
   PRIMARY KEY (`id_ban`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- RELATIONSHIPS FOR TABLE `tipe_ban`:
@@ -3730,6 +4793,97 @@ INSERT DELAYED IGNORE INTO `tujuan_perintah_kerja` (`id`, `jenis_perintah_id`, `
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `unit_replacement_log`
+--
+-- Creation: Sep 15, 2025 at 09:18 AM
+--
+
+DROP TABLE IF EXISTS `unit_replacement_log`;
+CREATE TABLE IF NOT EXISTS `unit_replacement_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `di_id` int(11) NOT NULL,
+  `old_unit_id` int(10) UNSIGNED NOT NULL,
+  `new_unit_id` int(10) UNSIGNED NOT NULL,
+  `kontrak_id` int(11) NOT NULL,
+  `stage` varchar(50) NOT NULL,
+  `replacement_date` datetime NOT NULL DEFAULT current_timestamp(),
+  `replaced_by` int(11) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_replacement_di` (`di_id`),
+  KEY `idx_replacement_kontrak` (`kontrak_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `unit_replacement_log`:
+--
+
+--
+-- Truncate table before insert `unit_replacement_log`
+--
+
+TRUNCATE TABLE `unit_replacement_log`;
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `unit_workflow_log`
+--
+-- Creation: Sep 15, 2025 at 09:18 AM
+--
+
+DROP TABLE IF EXISTS `unit_workflow_log`;
+CREATE TABLE IF NOT EXISTS `unit_workflow_log` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `unit_id` int(10) UNSIGNED NOT NULL,
+  `di_id` int(11) NOT NULL,
+  `stage` varchar(50) NOT NULL,
+  `jenis_perintah` varchar(20) NOT NULL,
+  `old_status` varchar(50) DEFAULT NULL,
+  `new_status` varchar(50) DEFAULT NULL,
+  `notes` text DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `created_by` int(11) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_unit_workflow_unit` (`unit_id`),
+  KEY `idx_unit_workflow_di` (`di_id`),
+  KEY `idx_unit_workflow_stage` (`stage`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `unit_workflow_log`:
+--
+
+--
+-- Truncate table before insert `unit_workflow_log`
+--
+
+TRUNCATE TABLE `unit_workflow_log`;
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `unit_workflow_status`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `unit_workflow_status`;
+CREATE TABLE IF NOT EXISTS `unit_workflow_status` (
+`id_inventory_unit` int(10) unsigned
+,`no_unit` int(10) unsigned
+,`current_status` varchar(50)
+,`workflow_status` varchar(50)
+,`di_workflow_id` int(11)
+,`kontrak_id` int(10) unsigned
+,`no_kontrak` varchar(100)
+,`pelanggan` varchar(255)
+,`nomor_di` varchar(100)
+,`di_status` enum('SUBMITTED','PROCESSED','SHIPPED','DELIVERED','CANCELLED')
+,`jenis_perintah` varchar(20)
+,`tujuan_perintah` varchar(50)
+,`workflow_category` varchar(11)
+);
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `users`
 --
 -- Creation: Sep 03, 2025 at 09:07 AM
@@ -3772,9 +4926,9 @@ TRUNCATE TABLE `users`;
 --
 
 INSERT DELAYED IGNORE INTO `users` (`id`, `username`, `email`, `password_hash`, `first_name`, `last_name`, `phone`, `avatar`, `division_id`, `employee_id`, `position`, `is_super_admin`, `is_active`, `last_login`, `email_verified_at`, `remember_token`, `created_at`, `updated_at`) VALUES
-(1, 'superadmin', 'admin@optima.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super', 'Administrator', '', NULL, 1, NULL, NULL, 1, 1, NULL, NULL, NULL, '2025-08-05 00:01:57', '2025-08-17 12:30:13'),
-(5, 'admindiesel', 'admindiesel@optima.com', '$2y$10$Hs4MEuJSEbxX8lGDuDNmwephtPcBnfxuCEi/aaPYPprfxWnbQiHu6', 'service', 'diesel', '082136033596', NULL, NULL, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 19:42:47', '2025-08-06 11:41:04'),
-(6, 'adminelektrik', 'adminelektrik@optima.com', '$2y$10$Hs4MEuJSEbxX8lGDuDNmwephtPcBnfxuCEi/aaPYPprfxWnbQiHu6', 'service', 'elektrik', '08211111111', NULL, NULL, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 20:02:28', '2025-08-06 00:13:03'),
+(1, 'superadmin', 'admin@optima.com', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Super', 'Administrator', '', NULL, 1, NULL, NULL, 1, 1, NULL, NULL, NULL, '2025-08-05 00:01:57', '2025-09-21 23:17:30'),
+(5, 'admindiesel', 'admindiesel@optima.com', '$2y$10$Hs4MEuJSEbxX8lGDuDNmwephtPcBnfxuCEi/aaPYPprfxWnbQiHu6', 'service', 'diesel', '082136033596', NULL, 2, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 19:42:47', '2025-09-11 02:32:20'),
+(6, 'adminelektrik', 'adminelektrik@optima.com', '$2y$10$Hs4MEuJSEbxX8lGDuDNmwephtPcBnfxuCEi/aaPYPprfxWnbQiHu6', 'service', 'elektrik', '08211111111', NULL, 2, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 20:02:28', '2025-09-11 02:32:20'),
 (9, 'operational', 'operational@optima.com', '$2y$10$Hs4MEuJSEbxX8lGDuDNmwephtPcBnfxuCEi/aaPYPprfxWnbQiHu6', 'operational', 'sml', '08211111111', NULL, NULL, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 20:37:37', '2025-08-05 03:40:00'),
 (10, 'adminmarketing', 'adminmarketing@optima.com', '$2y$10$yXhHVLd2XoQXmJkVjByQMerMh8ThRtKuxpLCXfoeDqXdA7k163gEC', 'admin', 'marketing1', '08211111111', NULL, NULL, NULL, NULL, 0, 1, NULL, NULL, NULL, '2025-08-04 20:39:51', '2025-08-05 18:35:10');
 
@@ -3802,6 +4956,41 @@ CREATE TABLE IF NOT EXISTS `user_all_permissions` (
 ,`granted` tinyint(4)
 );
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_notification_preferences`
+--
+-- Creation: Sep 10, 2025 at 06:37 AM
+--
+
+DROP TABLE IF EXISTS `user_notification_preferences`;
+CREATE TABLE IF NOT EXISTS `user_notification_preferences` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `user_id` int(11) NOT NULL,
+  `category` varchar(100) NOT NULL COMMENT 'spk, di, inventory, etc',
+  `web_enabled` tinyint(1) DEFAULT 1,
+  `email_enabled` tinyint(1) DEFAULT 0,
+  `sms_enabled` tinyint(1) DEFAULT 0,
+  `min_priority` tinyint(4) DEFAULT 1 COMMENT 'Minimum priority to receive',
+  `quiet_hours_start` time DEFAULT NULL COMMENT 'No notifications during quiet hours',
+  `quiet_hours_end` time DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_user_category` (`user_id`,`category`),
+  KEY `idx_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- RELATIONSHIPS FOR TABLE `user_notification_preferences`:
+--
+
+--
+-- Truncate table before insert `user_notification_preferences`
+--
+
+TRUNCATE TABLE `user_notification_preferences`;
 -- --------------------------------------------------------
 
 --
@@ -3969,7 +5158,7 @@ DROP VIEW IF EXISTS `view_spk_workflow`;
 CREATE TABLE IF NOT EXISTS `view_spk_workflow` (
 `id` int(10) unsigned
 ,`nomor_spk` varchar(100)
-,`jenis_spk` enum('UNIT','ATTACHMENT','TUKAR')
+,`jenis_spk` enum('UNIT','ATTACHMENT')
 ,`kontrak_id` int(10) unsigned
 ,`kontrak_spesifikasi_id` int(10) unsigned
 ,`jumlah_unit` int(11)
@@ -4023,11 +5212,188 @@ CREATE TABLE IF NOT EXISTS `view_spk_workflow` (
 -- --------------------------------------------------------
 
 --
+-- Stand-in structure for view `vw_attachment_installed`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `vw_attachment_installed`;
+CREATE TABLE IF NOT EXISTS `vw_attachment_installed` (
+`id_inventory_attachment` int(11)
+,`tipe_item` enum('attachment','battery','charger')
+,`item_name` varchar(304)
+,`serial_number` varchar(255)
+,`id_inventory_unit` int(10) unsigned
+,`no_unit` int(10) unsigned
+,`unit_serial` varchar(255)
+,`lokasi_penyimpanan` varchar(255)
+,`status_unit` int(11)
+,`nama_status` varchar(50)
+,`created_at` datetime
+,`updated_at` datetime
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_attachment_status`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `vw_attachment_status`;
+CREATE TABLE IF NOT EXISTS `vw_attachment_status` (
+`id_inventory_attachment` int(11)
+,`tipe_item` enum('attachment','battery','charger')
+,`po_id` int(11)
+,`id_inventory_unit` int(10) unsigned
+,`attachment_id` int(11)
+,`sn_attachment` varchar(255)
+,`baterai_id` int(11)
+,`sn_baterai` varchar(100)
+,`charger_id` int(11)
+,`sn_charger` varchar(255)
+,`kondisi_fisik` enum('Baik','Rusak Ringan','Rusak Berat')
+,`kelengkapan` enum('Lengkap','Tidak Lengkap')
+,`catatan_fisik` text
+,`lokasi_penyimpanan` varchar(255)
+,`status_unit` int(11)
+,`tanggal_masuk` datetime
+,`catatan_inventory` text
+,`created_at` datetime
+,`updated_at` datetime
+,`status_attachment_id` int(11)
+,`status_attachment_name` varchar(50)
+,`status_attachment_desc` varchar(255)
+,`simple_status` varchar(9)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `vw_workflow_kontrak_spk_di`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `vw_workflow_kontrak_spk_di`;
+CREATE TABLE IF NOT EXISTS `vw_workflow_kontrak_spk_di` (
+`id_inventory_unit` int(10) unsigned
+,`no_unit` int(10) unsigned
+,`serial_number` varchar(255)
+,`kontrak_id` int(10) unsigned
+,`no_kontrak` varchar(100)
+,`pelanggan` varchar(255)
+,`kontrak_lokasi` varchar(255)
+,`kontrak_status` enum('Aktif','Berakhir','Pending','Dibatalkan')
+,`kontrak_spesifikasi_id` int(10) unsigned
+,`spek_kode` varchar(50)
+,`spek_aksesoris` longtext
+,`spk_id` int(10) unsigned
+,`nomor_spk` varchar(100)
+,`spk_status` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED')
+,`delivery_plan` date
+,`delivery_instruction_id` int(10) unsigned
+,`nomor_di` varchar(100)
+,`tanggal_kirim` date
+,`di_status` enum('SUBMITTED','PROCESSED','SHIPPED','DELIVERED','CANCELLED')
+,`unit_aksesoris` longtext
+,`lokasi_unit` varchar(255)
+,`status_unit_id` int(11)
+,`nama_status` varchar(50)
+,`unit_created` datetime
+,`unit_updated` datetime
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_activity_log_relations`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `v_activity_log_relations`;
+CREATE TABLE IF NOT EXISTS `v_activity_log_relations` (
+`id` int(11)
+,`table_name` varchar(64)
+,`record_id` int(10) unsigned
+,`action_type` enum('CREATE','READ','UPDATE','DELETE','EXPORT','IMPORT','LOGIN','LOGOUT','APPROVE','REJECT','SUBMIT','CANCEL','ASSIGN','UNASSIGN','COMPLETE','PRINT','DOWNLOAD')
+,`action_description` varchar(255)
+,`module_name` enum('PURCHASING','WAREHOUSE','MARKETING','SERVICE','OPERATIONAL','ACCOUNTING','PERIZINAN','ADMIN','DASHBOARD','REPORTS','SETTINGS','USER_MANAGEMENT')
+,`submenu_item` varchar(100)
+,`workflow_stage` varchar(50)
+,`business_impact` enum('LOW','MEDIUM','HIGH','CRITICAL')
+,`user_id` int(10) unsigned
+,`created_at` timestamp
+,`related_entities` longtext
+,`related_kontrak` longtext
+,`related_spk` longtext
+,`related_di` longtext
+,`related_po` longtext
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_notification_stats`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `v_notification_stats`;
+CREATE TABLE IF NOT EXISTS `v_notification_stats` (
+`user_id` int(11)
+,`total_notifications` bigint(21)
+,`unread_count` decimal(22,0)
+,`high_priority_count` decimal(22,0)
+,`latest_notification` timestamp
+);
+
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `v_user_notifications`
+-- (See below for the actual view)
+--
+DROP VIEW IF EXISTS `v_user_notifications`;
+CREATE TABLE IF NOT EXISTS `v_user_notifications` (
+`id` int(11)
+,`title` varchar(255)
+,`message` text
+,`type` enum('info','success','warning','error','critical')
+,`category` varchar(100)
+,`icon` varchar(50)
+,`url` varchar(500)
+,`priority` tinyint(4)
+,`created_at` timestamp
+,`user_id` int(11)
+,`is_read` tinyint(1)
+,`read_at` timestamp
+,`is_dismissed` tinyint(1)
+,`time_category` varchar(9)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `contract_unit_summary` exported as a table
+--
+DROP TABLE IF EXISTS `contract_unit_summary`;
+CREATE TABLE IF NOT EXISTS `contract_unit_summary`(
+    `kontrak_id` int(10) unsigned NOT NULL DEFAULT '0',
+    `no_kontrak` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
+    `pelanggan` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+    `lokasi` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `kontrak_status` enum('Aktif','Berakhir','Pending','Dibatalkan') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'Pending',
+    `tanggal_mulai` date NOT NULL,
+    `tanggal_berakhir` date NOT NULL,
+    `total_units` bigint(21) NOT NULL DEFAULT '0',
+    `active_units` bigint(21) NOT NULL DEFAULT '0',
+    `tarik_units` bigint(21) NOT NULL DEFAULT '0',
+    `tukar_units` bigint(21) NOT NULL DEFAULT '0',
+    `operational_units` bigint(21) NOT NULL DEFAULT '0',
+    `workflow_units` bigint(21) NOT NULL DEFAULT '0'
+);
+
+-- --------------------------------------------------------
+
+--
 -- Structure for view `inventory_unit_components` exported as a table
 --
 DROP TABLE IF EXISTS `inventory_unit_components`;
 CREATE TABLE IF NOT EXISTS `inventory_unit_components`(
-    `id_inventory_unit` int(10) unsigned NOT NULL,
+    `id_inventory_unit` int(10) unsigned NOT NULL DEFAULT '0',
     `no_unit` int(10) unsigned DEFAULT NULL,
     `serial_number` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Serial Number utama dari pabrikan',
     `model_baterai_id` int(11) DEFAULT NULL,
@@ -4044,6 +5410,28 @@ CREATE TABLE IF NOT EXISTS `inventory_unit_components`(
     `attachment_tipe` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
     `attachment_merk` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
     `attachment_model` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `unit_workflow_status` exported as a table
+--
+DROP TABLE IF EXISTS `unit_workflow_status`;
+CREATE TABLE IF NOT EXISTS `unit_workflow_status`(
+    `id_inventory_unit` int(10) unsigned NOT NULL DEFAULT '0',
+    `no_unit` int(10) unsigned DEFAULT NULL,
+    `current_status` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `workflow_status` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `di_workflow_id` int(11) DEFAULT NULL,
+    `kontrak_id` int(10) unsigned DEFAULT NULL COMMENT 'Foreign key ke tabel kontrak',
+    `no_kontrak` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `pelanggan` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `nomor_di` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `di_status` enum('SUBMITTED','PROCESSED','SHIPPED','DELIVERED','CANCELLED') COLLATE utf8mb4_general_ci DEFAULT 'SUBMITTED',
+    `jenis_perintah` varchar(20) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `tujuan_perintah` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `workflow_category` varchar(11) COLLATE utf8mb4_general_ci DEFAULT NULL
 );
 
 -- --------------------------------------------------------
@@ -4078,7 +5466,7 @@ DROP TABLE IF EXISTS `view_spk_workflow`;
 CREATE TABLE IF NOT EXISTS `view_spk_workflow`(
     `id` int(10) unsigned NOT NULL DEFAULT '0',
     `nomor_spk` varchar(100) COLLATE utf8mb4_general_ci NOT NULL,
-    `jenis_spk` enum('UNIT','ATTACHMENT','TUKAR') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'UNIT',
+    `jenis_spk` enum('UNIT','ATTACHMENT') COLLATE utf8mb4_general_ci NOT NULL DEFAULT 'UNIT',
     `kontrak_id` int(10) unsigned DEFAULT NULL,
     `kontrak_spesifikasi_id` int(10) unsigned DEFAULT NULL COMMENT 'FK ke kontrak_spesifikasi',
     `jumlah_unit` int(11) DEFAULT '1' COMMENT 'Jumlah unit dalam SPK ini',
@@ -4129,6 +5517,155 @@ CREATE TABLE IF NOT EXISTS `view_spk_workflow`(
     `status_eksekusi_warna` varchar(7) COLLATE utf8mb4_general_ci DEFAULT '#6c757d'
 );
 
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_attachment_installed` exported as a table
+--
+DROP TABLE IF EXISTS `vw_attachment_installed`;
+CREATE TABLE IF NOT EXISTS `vw_attachment_installed`(
+    `id_inventory_attachment` int(11) NOT NULL DEFAULT '0',
+    `tipe_item` enum('attachment','battery','charger') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'attachment',
+    `item_name` varchar(304) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `serial_number` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `id_inventory_unit` int(10) unsigned DEFAULT '0',
+    `no_unit` int(10) unsigned DEFAULT NULL,
+    `unit_serial` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Serial Number utama dari pabrikan',
+    `lokasi_penyimpanan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `status_unit` int(11) DEFAULT '7',
+    `nama_status` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `created_at` datetime DEFAULT 'current_timestamp()',
+    `updated_at` datetime DEFAULT 'current_timestamp()'
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_attachment_status` exported as a table
+--
+DROP TABLE IF EXISTS `vw_attachment_status`;
+CREATE TABLE IF NOT EXISTS `vw_attachment_status`(
+    `id_inventory_attachment` int(11) NOT NULL DEFAULT '0',
+    `tipe_item` enum('attachment','battery','charger') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'attachment',
+    `po_id` int(11) NOT NULL COMMENT 'Foreign key ke purchase_orders.id_po',
+    `id_inventory_unit` int(10) unsigned DEFAULT NULL,
+    `attachment_id` int(11) DEFAULT NULL COMMENT 'FK ke attachment',
+    `sn_attachment` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `baterai_id` int(11) DEFAULT NULL,
+    `sn_baterai` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `charger_id` int(11) DEFAULT NULL COMMENT 'FK ke charger',
+    `sn_charger` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `kondisi_fisik` enum('Baik','Rusak Ringan','Rusak Berat') COLLATE utf8mb4_unicode_ci DEFAULT 'Baik',
+    `kelengkapan` enum('Lengkap','Tidak Lengkap') COLLATE utf8mb4_unicode_ci DEFAULT 'Lengkap',
+    `catatan_fisik` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `lokasi_penyimpanan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `status_unit` int(11) DEFAULT '7',
+    `tanggal_masuk` datetime DEFAULT 'current_timestamp()' COMMENT 'Tanggal masuk ke inventory',
+    `catatan_inventory` text COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `created_at` datetime DEFAULT 'current_timestamp()',
+    `updated_at` datetime DEFAULT 'current_timestamp()',
+    `status_attachment_id` int(11) DEFAULT '1',
+    `status_attachment_name` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `status_attachment_desc` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `simple_status` varchar(9) COLLATE utf8mb4_general_ci NOT NULL DEFAULT ''
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `vw_workflow_kontrak_spk_di` exported as a table
+--
+DROP TABLE IF EXISTS `vw_workflow_kontrak_spk_di`;
+CREATE TABLE IF NOT EXISTS `vw_workflow_kontrak_spk_di`(
+    `id_inventory_unit` int(10) unsigned NOT NULL DEFAULT '0',
+    `no_unit` int(10) unsigned DEFAULT NULL,
+    `serial_number` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Serial Number utama dari pabrikan',
+    `kontrak_id` int(10) unsigned DEFAULT '0',
+    `no_kontrak` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `pelanggan` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `kontrak_lokasi` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `kontrak_status` enum('Aktif','Berakhir','Pending','Dibatalkan') COLLATE utf8mb4_general_ci DEFAULT 'Pending',
+    `kontrak_spesifikasi_id` int(10) unsigned DEFAULT '0',
+    `spek_kode` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Kode unik spesifikasi dalam kontrak (A, B, C)',
+    `spek_aksesoris` longtext COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'Array aksesoris yang dibutuhkan',
+    `spk_id` int(10) unsigned DEFAULT '0',
+    `nomor_spk` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `spk_status` enum('DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED') COLLATE utf8mb4_general_ci DEFAULT 'SUBMITTED',
+    `delivery_plan` date DEFAULT NULL,
+    `delivery_instruction_id` int(10) unsigned DEFAULT '0',
+    `nomor_di` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `tanggal_kirim` date DEFAULT NULL,
+    `di_status` enum('SUBMITTED','PROCESSED','SHIPPED','DELIVERED','CANCELLED') COLLATE utf8mb4_general_ci DEFAULT 'SUBMITTED',
+    `unit_aksesoris` longtext COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `lokasi_unit` varchar(255) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `status_unit_id` int(11) DEFAULT NULL COMMENT 'FK ke tabel status_unit (misal: STOK, RENTAL, JUAL)',
+    `nama_status` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `unit_created` datetime DEFAULT 'current_timestamp()',
+    `unit_updated` datetime DEFAULT NULL
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_activity_log_relations` exported as a table
+--
+DROP TABLE IF EXISTS `v_activity_log_relations`;
+CREATE TABLE IF NOT EXISTS `v_activity_log_relations`(
+    `id` int(11) NOT NULL DEFAULT '0',
+    `table_name` varchar(64) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Target table name (kontrak, spk, inventory_unit, etc)',
+    `record_id` int(10) unsigned NOT NULL COMMENT 'ID of the affected record',
+    `action_type` enum('CREATE','READ','UPDATE','DELETE','EXPORT','IMPORT','LOGIN','LOGOUT','APPROVE','REJECT','SUBMIT','CANCEL','ASSIGN','UNASSIGN','COMPLETE','PRINT','DOWNLOAD') COLLATE utf8mb4_general_ci NOT NULL,
+    `action_description` varchar(255) COLLATE utf8mb4_general_ci NOT NULL COMMENT 'Brief description of what happened',
+    `module_name` enum('PURCHASING','WAREHOUSE','MARKETING','SERVICE','OPERATIONAL','ACCOUNTING','PERIZINAN','ADMIN','DASHBOARD','REPORTS','SETTINGS','USER_MANAGEMENT') COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Application module where activity occurred',
+    `submenu_item` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Specific submenu item accessed',
+    `workflow_stage` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Current business stage',
+    `business_impact` enum('LOW','MEDIUM','HIGH','CRITICAL') COLLATE utf8mb4_general_ci DEFAULT 'LOW' COMMENT 'Business impact level',
+    `user_id` int(10) unsigned DEFAULT NULL COMMENT 'FK to users.id',
+    `created_at` timestamp NOT NULL DEFAULT 'current_timestamp()',
+    `related_entities` longtext COLLATE utf8mb4_bin DEFAULT NULL COMMENT 'JSON object storing related entity relationships',
+    `related_kontrak` longtext COLLATE utf8mb4_bin DEFAULT NULL,
+    `related_spk` longtext COLLATE utf8mb4_bin DEFAULT NULL,
+    `related_di` longtext COLLATE utf8mb4_bin DEFAULT NULL,
+    `related_po` longtext COLLATE utf8mb4_bin DEFAULT NULL
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_notification_stats` exported as a table
+--
+DROP TABLE IF EXISTS `v_notification_stats`;
+CREATE TABLE IF NOT EXISTS `v_notification_stats`(
+    `user_id` int(11) NOT NULL,
+    `total_notifications` bigint(21) NOT NULL DEFAULT '0',
+    `unread_count` decimal(22,0) DEFAULT NULL,
+    `high_priority_count` decimal(22,0) DEFAULT NULL,
+    `latest_notification` timestamp DEFAULT 'current_timestamp()'
+);
+
+-- --------------------------------------------------------
+
+--
+-- Structure for view `v_user_notifications` exported as a table
+--
+DROP TABLE IF EXISTS `v_user_notifications`;
+CREATE TABLE IF NOT EXISTS `v_user_notifications`(
+    `id` int(11) NOT NULL DEFAULT '0',
+    `title` varchar(255) COLLATE utf8mb4_general_ci NOT NULL,
+    `message` text COLLATE utf8mb4_general_ci NOT NULL,
+    `type` enum('info','success','warning','error','critical') COLLATE utf8mb4_general_ci DEFAULT 'info',
+    `category` varchar(100) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'spk, di, inventory, maintenance, etc',
+    `icon` varchar(50) COLLATE utf8mb4_general_ci DEFAULT NULL,
+    `url` varchar(500) COLLATE utf8mb4_general_ci DEFAULT NULL COMMENT 'Action URL for notification',
+    `priority` tinyint(4) DEFAULT '1' COMMENT '1=low, 2=medium, 3=high, 4=critical',
+    `created_at` timestamp NOT NULL DEFAULT 'current_timestamp()',
+    `user_id` int(11) NOT NULL,
+    `is_read` tinyint(1) DEFAULT '0',
+    `read_at` timestamp DEFAULT NULL,
+    `is_dismissed` tinyint(1) DEFAULT '0',
+    `time_category` varchar(9) COLLATE utf8mb4_general_ci DEFAULT NULL
+);
+
 --
 -- Constraints for dumped tables
 --
@@ -4162,11 +5699,13 @@ ALTER TABLE `inventory_attachment`
 -- Constraints for table `inventory_unit`
 --
 ALTER TABLE `inventory_unit`
+  ADD CONSTRAINT `fk_inventory_unit_delivery_instruction` FOREIGN KEY (`delivery_instruction_id`) REFERENCES `delivery_instructions` (`id`),
   ADD CONSTRAINT `fk_inventory_unit_departemen` FOREIGN KEY (`departemen_id`) REFERENCES `departemen` (`id_departemen`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_inventory_unit_kapasitas` FOREIGN KEY (`kapasitas_unit_id`) REFERENCES `kapasitas` (`id_kapasitas`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_inventory_unit_kontrak` FOREIGN KEY (`kontrak_id`) REFERENCES `kontrak` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_inventory_unit_kontrak_spesifikasi` FOREIGN KEY (`kontrak_spesifikasi_id`) REFERENCES `kontrak_spesifikasi` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_inventory_unit_model` FOREIGN KEY (`model_unit_id`) REFERENCES `model_unit` (`id_model_unit`) ON DELETE SET NULL ON UPDATE CASCADE,
+  ADD CONSTRAINT `fk_inventory_unit_spk` FOREIGN KEY (`spk_id`) REFERENCES `spk` (`id`),
   ADD CONSTRAINT `fk_inventory_unit_status` FOREIGN KEY (`status_unit_id`) REFERENCES `status_unit` (`id_status`) ON DELETE SET NULL ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_inventory_unit_tipe` FOREIGN KEY (`tipe_unit_id`) REFERENCES `tipe_unit` (`id_tipe_unit`) ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -4175,6 +5714,19 @@ ALTER TABLE `inventory_unit`
 --
 ALTER TABLE `kontrak_spesifikasi`
   ADD CONSTRAINT `fk_kontrak_spesifikasi_kontrak` FOREIGN KEY (`kontrak_id`) REFERENCES `kontrak` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `notification_logs`
+--
+ALTER TABLE `notification_logs`
+  ADD CONSTRAINT `notification_logs_ibfk_1` FOREIGN KEY (`notification_id`) REFERENCES `notifications` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `notification_logs_ibfk_2` FOREIGN KEY (`rule_id`) REFERENCES `notification_rules` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `notification_recipients`
+--
+ALTER TABLE `notification_recipients`
+  ADD CONSTRAINT `notification_recipients_ibfk_1` FOREIGN KEY (`notification_id`) REFERENCES `notifications` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `po_items`
@@ -4224,1157 +5776,559 @@ ALTER TABLE `tujuan_perintah_kerja`
 USE `phpmyadmin`;
 
 --
+-- Metadata for table activity_types
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
 -- Metadata for table attachment
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table baterai
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table charger
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
 --
--- Truncate table before insert `pma__column_info`
+-- Metadata for table contract_disconnection_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__column_info`;
 --
--- Truncate table before insert `pma__table_uiprefs`
+-- Metadata for table contract_unit_summary
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table delivery_instructions
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table delivery_items
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table departemen
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table divisions
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
 --
--- Truncate table before insert `pma__column_info`
+-- Metadata for table di_workflow_stages
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table forklifts
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table inventory_attachment
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Dumping data for table `pma__table_uiprefs`
---
-
-INSERT DELAYED IGNORE INTO `pma__table_uiprefs` (`username`, `db_name`, `table_name`, `prefs`, `last_update`) VALUES
-('root', 'optima_db', 'inventory_attachment', '{\"sorted_col\":\"`id_inventory_unit` ASC\"}', '2025-09-04 07:44:56');
-
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table inventory_item_unit_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table inventory_spareparts
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table inventory_unit
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table inventory_unit_backup
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table inventory_unit_components
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table jenis_perintah_kerja
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table jenis_roda
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table kapasitas
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table kontrak
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table kontrak_spesifikasi
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table kontrak_status_changes
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table mesin
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table migrations
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table migration_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table migration_log_di_workflow
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table model_unit
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table notifications
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table notification_logs
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
 --
--- Truncate table before insert `pma__column_info`
+-- Metadata for table notification_recipients
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__column_info`;
 --
--- Truncate table before insert `pma__table_uiprefs`
+-- Metadata for table notification_rules
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table optimization_additional_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table optimization_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table permissions
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table po_items
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table po_sparepart_items
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table po_units
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
---
--- Metadata for table primary_key_fixes_log
---
-
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table purchase_orders
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table rbac_audit_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table rentals
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table reports
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table roles
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table role_permissions
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table sparepart
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table spk
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table spk_backup_20250903
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table spk_component_transactions
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table spk_status_history
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table spk_units
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
 --
--- Truncate table before insert `pma__column_info`
+-- Metadata for table status_attachment
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table status_eksekusi_workflow
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table status_unit
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table suppliers
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
 --
--- Truncate table before insert `pma__column_info`
+-- Metadata for table system_activity_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__column_info`;
 --
--- Truncate table before insert `pma__table_uiprefs`
+-- Metadata for table system_activity_log_backup
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__table_uiprefs`;
 --
--- Truncate table before insert `pma__tracking`
+-- Metadata for table system_activity_log_old
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table tipe_ban
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table tipe_mast
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table tipe_unit
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table tujuan_perintah_kerja
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
 --
--- Truncate table before insert `pma__column_info`
+-- Metadata for table unit_replacement_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__column_info`;
 --
--- Truncate table before insert `pma__table_uiprefs`
+-- Metadata for table unit_workflow_log
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__table_uiprefs`;
 --
--- Truncate table before insert `pma__tracking`
+-- Metadata for table unit_workflow_status
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table users
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table user_all_permissions
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
 --
--- Truncate table before insert `pma__column_info`
+-- Metadata for table user_notification_preferences
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table user_permissions
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table user_roles
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table valve
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
---
--- Truncate table before insert `pma__column_info`
---
-
-TRUNCATE TABLE `pma__column_info`;
---
--- Truncate table before insert `pma__table_uiprefs`
---
-
-TRUNCATE TABLE `pma__table_uiprefs`;
---
--- Truncate table before insert `pma__tracking`
---
-
-TRUNCATE TABLE `pma__tracking`;
 --
 -- Metadata for table view_spk_workflow
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
 --
--- Truncate table before insert `pma__column_info`
+-- Metadata for table vw_attachment_installed
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__column_info`;
 --
--- Truncate table before insert `pma__table_uiprefs`
+-- Metadata for table vw_attachment_status
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__table_uiprefs`;
 --
--- Truncate table before insert `pma__tracking`
+-- Metadata for table vw_workflow_kontrak_spk_di
 --
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
 
-TRUNCATE TABLE `pma__tracking`;
+--
+-- Metadata for table v_activity_log_relations
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table v_notification_stats
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
+--
+-- Metadata for table v_user_notifications
+--
+-- Error reading data for table phpmyadmin.pma__column_info: #1100 - Table &#039;pma__column_info&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__table_uiprefs: #1100 - Table &#039;pma__table_uiprefs&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__tracking: #1100 - Table &#039;pma__tracking&#039; was not locked with LOCK TABLES
+
 --
 -- Metadata for database optima_db
 --
-
---
--- Truncate table before insert `pma__bookmark`
---
-
-TRUNCATE TABLE `pma__bookmark`;
---
--- Truncate table before insert `pma__relation`
---
-
-TRUNCATE TABLE `pma__relation`;
---
--- Truncate table before insert `pma__savedsearches`
---
-
-TRUNCATE TABLE `pma__savedsearches`;
---
--- Truncate table before insert `pma__central_columns`
---
-
-TRUNCATE TABLE `pma__central_columns`;SET FOREIGN_KEY_CHECKS=1;
+-- Error reading data for table phpmyadmin.pma__bookmark: #1100 - Table &#039;pma__bookmark&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__relation: #1100 - Table &#039;pma__relation&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__savedsearches: #1100 - Table &#039;pma__savedsearches&#039; was not locked with LOCK TABLES
+-- Error reading data for table phpmyadmin.pma__central_columns: #1100 - Table &#039;pma__central_columns&#039; was not locked with LOCK TABLES
+SET FOREIGN_KEY_CHECKS=1;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

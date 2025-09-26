@@ -112,6 +112,8 @@ class InventoryUnitModel extends Model
                               iu.no_unit as nomor_aset,
                               iu.serial_number as serial_number_po,
                               iu.status_unit_id as status_unit,
+                              COALESCE(k.pelanggan, "Belum Ada Kontrak") as pelanggan,
+                              COALESCE(k.lokasi, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
                               COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                               COALESCE(mu.model_unit, "Unknown") as model_unit,
                               COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as nama_tipe_unit,
@@ -124,9 +126,14 @@ class InventoryUnitModel extends Model
                               END) as status_unit_name,
                               iu.departemen_id,
                               COALESCE(d.nama_departemen, "-") as nama_departemen,
-                              iu.lokasi_unit,
+                              iu.lokasi_unit as lokasi_unit_internal,
                               iu.created_at as tanggal_masuk');
-            $tableExists = $this->checkTablesExist(['model_unit', 'tipe_unit', 'status_unit', 'departemen']);
+            $tableExists = $this->checkTablesExist(['model_unit', 'tipe_unit', 'status_unit', 'departemen', 'kontrak']);
+            
+            // Join with kontrak table for pelanggan and lokasi
+            if ($tableExists['kontrak']) {
+                $builder->join('kontrak as k', 'k.id = iu.kontrak_id', 'left');
+            }
             if ($tableExists['model_unit']) {
                 $builder->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
             }
@@ -278,5 +285,58 @@ class InventoryUnitModel extends Model
             }
         }
         return $result;
+    }
+
+    /**
+     * Get units for dropdown selection
+     */
+    public function getUnitsForDropdown()
+    {
+        $builder = $this->db->table($this->table . ' as iu');
+        $builder->select('iu.id_inventory_unit, 
+                          iu.no_unit, 
+                          iu.serial_number,
+                          iu.lokasi_unit,
+                          COALESCE(k.pelanggan, "Belum Ada Kontrak") as pelanggan,
+                          COALESCE(k.lokasi, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
+                          COALESCE(mu.merk_unit, "Unknown") as merk_unit,
+                          COALESCE(mu.model_unit, "Unknown") as model_unit,
+                          COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe')
+                ->join('kontrak as k', 'k.id = iu.kontrak_id', 'left')
+                ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+                ->where('iu.status_unit_id !=', 2) // Exclude WORKSHOP-RUSAK
+                ->orderBy('iu.no_unit', 'ASC');
+        
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Get unit detail with contract info for work orders
+     */
+    public function getUnitDetailForWorkOrder($unitId)
+    {
+        $builder = $this->db->table($this->table . ' as iu');
+        $builder->select('iu.id_inventory_unit, 
+                          iu.no_unit, 
+                          iu.serial_number,
+                          iu.lokasi_unit as lokasi_unit_internal,
+                          iu.kontrak_id,
+                          k.no_kontrak,
+                          k.pelanggan,
+                          k.lokasi as lokasi_kontrak,
+                          k.pic as pic_kontrak,
+                          COALESCE(k.lokasi, iu.lokasi_unit) as lokasi,
+                          COALESCE(mu.merk_unit, "Unknown") as merk_unit,
+                          COALESCE(mu.model_unit, "Unknown") as model_unit,
+                          COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe,
+                          COALESCE(ku.kapasitas, "Unknown") as kapasitas')
+                ->join('kontrak as k', 'k.id = iu.kontrak_id', 'left')
+                ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+                ->join('kapasitas_unit as ku', 'ku.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                ->where('iu.id_inventory_unit', $unitId);
+        
+        return $builder->get()->getRowArray();
     }
 }

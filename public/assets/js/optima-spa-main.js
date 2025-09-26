@@ -26,6 +26,7 @@ class OptimaSPAMain {
         this.setupPopStateListener();
         this.setupActiveStates();
         this.preserveScrollPosition();
+        this.restoreSidebarState();
     }
 
     setupMenuClickListener() {
@@ -36,11 +37,9 @@ class OptimaSPAMain {
                 e.preventDefault();
                 this.saveScrollPosition();
                 this.navigateWithReload(link.href);
-            }
-        });
-    }
-    
-    isMenuLink(link) {
+        }
+    });
+};    isMenuLink(link) {
         const href = link.getAttribute('href');
         
         // Skip external links, downloads, etc.
@@ -199,10 +198,29 @@ class OptimaSPAMain {
     }
 
     preserveScrollPosition() {
-        // Auto-scroll to active item if it's out of view
-        setTimeout(() => {
-            this.scrollToActiveItem();
-        }, 100);
+        // Save scroll position when navigating away
+        window.addEventListener('beforeunload', () => {
+            this.saveScrollPosition();
+        });
+    }
+
+    restoreSidebarState() {
+        // Restore sidebar collapsed state from localStorage
+        const isCollapsed = localStorage.getItem('optima-sidebar-collapsed') === 'true';
+        const sidebar = document.querySelector('.sidebar');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (sidebar && mainContent && isCollapsed) {
+            sidebar.classList.add('collapsed');
+            mainContent.classList.add('expanded');
+            
+            // Update tooltips for collapsed state
+            setTimeout(() => {
+                if (typeof window.updateSidebarTooltips === 'function') {
+                    window.updateSidebarTooltips(true);
+                }
+            }, 100);
+        }
     }
 
     scrollToActiveItem() {
@@ -306,6 +324,7 @@ class OptimaSPAMain {
     }
 
     hideLoadingIndicator() {
+        this.isLoading = false;
         const indicator = document.getElementById('spa-loading-indicator');
         if (indicator) {
             indicator.remove();
@@ -318,4 +337,79 @@ if (typeof window.optimaSPA === 'undefined') {
     window.optimaSPA = new OptimaSPAMain();
 } else {
     console.log('📋 OptimaSPAMain already running.');
+}
+
+// Enhanced Sidebar Toggle based on OPTIMA Pro design
+window.toggleSidebar = function() {
+    const sidebar = document.querySelector('.sidebar');
+    const mainContent = document.querySelector('.main-content');
+    
+    if (!sidebar || !mainContent) {
+        console.warn('Sidebar or main content not found');
+        return;
+    }
+    
+    // Toggle collapsed state
+    sidebar.classList.toggle('collapsed');
+    mainContent.classList.toggle('expanded');
+    
+    // Save state to localStorage
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    localStorage.setItem('optima-sidebar-collapsed', isCollapsed);
+    
+    // Update tooltips for collapsed state
+    updateSidebarTooltips(isCollapsed);
+    
+    // Trigger window resize event to update charts/tables after animation
+    setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+    }, 300);
+    
+    console.log(`Sidebar ${isCollapsed ? 'collapsed' : 'expanded'}`);
+};
+
+// Update tooltips for sidebar items when collapsed
+window.updateSidebarTooltips = function(isCollapsed) {
+    const sidebar = document.querySelector('.sidebar');
+    if (!sidebar) return;
+    
+    const navLinks = sidebar.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        const textElement = link.querySelector('.nav-link-text');
+        if (textElement) {
+            const text = textElement.textContent.trim();
+            
+            if (isCollapsed) {
+                // Add tooltip for collapsed state
+                if (!link.hasAttribute('data-bs-toggle')) {
+                    link.setAttribute('data-bs-toggle', 'tooltip');
+                    link.setAttribute('data-bs-placement', 'right');
+                    link.setAttribute('title', text);
+                }
+            } else {
+                // Remove tooltip for expanded state
+                link.removeAttribute('data-bs-toggle');
+                link.removeAttribute('data-bs-placement');
+                link.removeAttribute('title');
+            }
+        }
+    });
+    
+    // Initialize/dispose tooltips
+    if (typeof bootstrap !== 'undefined' && bootstrap.Tooltip) {
+        // Dispose existing tooltips
+        const existingTooltips = sidebar.querySelectorAll('[data-bs-toggle="tooltip"]');
+        existingTooltips.forEach(el => {
+            const tooltip = bootstrap.Tooltip.getInstance(el);
+            if (tooltip) tooltip.dispose();
+        });
+        
+        // Initialize new tooltips if collapsed
+        if (isCollapsed) {
+            const tooltipTriggerList = sidebar.querySelectorAll('[data-bs-toggle="tooltip"]');
+            tooltipTriggerList.forEach(tooltipTriggerEl => {
+                new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+    }
 }

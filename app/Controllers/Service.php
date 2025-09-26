@@ -140,6 +140,13 @@ class Service extends BaseController
 
     public function workOrders()
     {
+        // Load models
+        $statusModel = new \App\Models\WorkOrderStatusModel();
+        $priorityModel = new \App\Models\WorkOrderPriorityModel();
+        $categoryModel = new \App\Models\WorkOrderCategoryModel();
+        $staffModel = new \App\Models\WorkOrderStaffModel();
+        $inventoryModel = new \App\Models\InventoryUnitModel();
+
         $data = [
             'title' => 'Work Orders | OPTIMA',
             'page_title' => 'Work Orders',
@@ -151,6 +158,12 @@ class Service extends BaseController
             'workorders' => $this->getWorkOrders(),
             'mode' => 'active',
             'active_statuses' => ['OPEN', 'KENDALA', 'PENDING'],
+            // Required data for view
+            'statuses' => $statusModel->getActiveStatuses(),
+            'priorities' => $priorityModel->getActivePriorities(),
+            'categories' => $categoryModel->getActiveCategories(),
+            'staff' => $staffModel->getStaffByRole(),
+            'units' => $inventoryModel->getUnitsForDropdown()
         ];
 
         return view('service/work_orders', $data);
@@ -2021,7 +2034,7 @@ class Service extends BaseController
             $userId = null; // adapt if session user id available
             $sess = session();
             if($sess && $sess->has('user_id')) { $userId = (int)$sess->get('user_id'); }
-            $db->table('activity_logs')->insert([
+            $db->table('system_activity_log')->insert([
                 'user_id' => $userId,
                 'action' => $action,
                 'entity_type' => 'inventory_unit',

@@ -6,8 +6,8 @@ use CodeIgniter\Model;
 
 class SystemManagementModel extends Model
 {
-    protected $table = 'activity_logs';
-    protected $primaryKey = 'log_id';
+    protected $table = 'system_activity_log';
+    protected $primaryKey = 'id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dropdown Endpoints</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h2>Test Dropdown Endpoints</h2>
+    
+    <h3>1. Test Units Dropdown</h3>
+    <button onclick="testUnitsDropdown()">Load Units</button>
+    <div id="units-result"></div>
+    
+    <h3>2. Test Staff Dropdown</h3>
+    <select onchange="testStaffDropdown(this.value)">
+        <option value="">Select Role</option>
+        <option value="ADMIN">Admin</option>
+        <option value="FOREMAN">Foreman</option>
+        <option value="MECHANIC">Mechanic</option>
+        <option value="HELPER">Helper</option>
+    </select>
+    <div id="staff-result"></div>
+    
+    <h3>3. Test Subcategories</h3>
+    <input type="number" id="categoryId" placeholder="Category ID" value="1">
+    <button onclick="testSubcategories()">Load Subcategories</button>
+    <div id="subcategories-result"></div>
+    
+    <script>
+        function testUnitsDropdown() {
+            $.ajax({
+                url: '/optima1/public/work-orders/units-dropdown',
+                type: 'GET',
+                success: function(response) {
+                    $('#units-result').html('<pre>' + JSON.stringify(response, null, 2) + '</pre>');
+                },
+                error: function(xhr, status, error) {
+                    $('#units-result').html('<p style="color:red;">Error: ' + error + '</p>');
+                }
+            });
+        }
+        
+        function testStaffDropdown(role) {
+            if (!role) return;
+            
+            $.ajax({
+                url: '/optima1/public/work-orders/staff-dropdown',
+                type: 'POST',
+                data: { staff_role: role },
+                success: function(response) {
+                    $('#staff-result').html('<pre>' + JSON.stringify(response, null, 2) + '</pre>');
+                },
+                error: function(xhr, status, error) {
+                    $('#staff-result').html('<p style="color:red;">Error: ' + error + '</p>');
+                }
+            });
+        }
+        
+        function testSubcategories() {
+            let categoryId = $('#categoryId').val();
+            
+            $.ajax({
+                url: '/optima1/public/work-orders/get-subcategories',
+                type: 'POST',
+                data: { category_id: categoryId },
+                success: function(response) {
+                    $('#subcategories-result').html('<pre>' + JSON.stringify(response, null, 2) + '</pre>');
+                },
+                error: function(xhr, status, error) {
+                    $('#subcategories-result').html('<p style="color:red;">Error: ' + error + '</p>');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

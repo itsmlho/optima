@@ -418,11 +418,36 @@ class Operational extends Controller
         $kontrakData = [];
         if (!empty($di['po_kontrak_nomor'])) {
             $kontrak = $this->db->table('kontrak')
-                ->where('nomor_kontrak', $di['po_kontrak_nomor'])
+                ->where('no_kontrak', $di['po_kontrak_nomor'])
                 ->get()->getRowArray();
             if ($kontrak) {
                 $kontrakData = $kontrak;
+                
+                // Also get kontrak spesifikasi for attachment data
+                $kontrakSpesifikasi = $this->db->table('kontrak_spesifikasi ks')
+                    ->where('ks.kontrak_id', $kontrak['id'])
+                    ->get()->getRowArray();
+                if ($kontrakSpesifikasi) {
+                    // Merge kontrak spesifikasi data into kontrakData
+                    $kontrakData = array_merge($kontrakData, $kontrakSpesifikasi);
+                }
             }
+        }
+
+        // For ATTACHMENT SPK with no delivery_items, create fallback attachment data from spesifikasi
+        if (empty($structuredItems) && empty($formattedStandaloneAttachments) && 
+            $spk && ($spk['jenis_spk'] === 'ATTACHMENT' || $di['jenis_spk'] === 'ATTACHMENT')) {
+            
+            // Create attachment data from spesifikasi as fallback
+            $attachmentFromSpesifikasi = [
+                'id' => null,
+                'tipe' => $spesifikasi['attachment_tipe'] ?? $kontrakData['attachment_tipe'] ?? $kontrakData['attachment_name'] ?? 'Attachment',
+                'merk' => $spesifikasi['attachment_merk'] ?? $kontrakData['attachment_merk'] ?? '-',
+                'model' => $spesifikasi['attachment_model'] ?? $kontrakData['attachment_model'] ?? '',
+                'sn_attachment' => '-'
+            ];
+            
+            $formattedStandaloneAttachments = [$attachmentFromSpesifikasi];
         }
 
         return $this->response->setJSON([

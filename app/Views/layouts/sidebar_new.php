@@ -88,6 +88,17 @@
             </li>
             <?php endif; ?>
 
+            <!-- Customer Management -->
+            <?php if (can_access('marketing.access')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= (strpos(current_url(), 'customer-management') !== false) ? 'active' : '' ?>" href="<?= base_url('/marketing/customer-management') ?>"
+                   data-search-terms="customer management marketing">
+                    <i class="fas fa-users"></i>
+                    <span class="nav-link-text">Customer Management</span>
+                </a>
+            </li>
+            <?php endif; ?>
+
             <!-- Delivery Instructions -->
             <?php if (can_access('marketing.di.manage')): ?>
             <li class="nav-item">
@@ -159,8 +170,16 @@
             </li>
             <?php endif; ?>
 
-
-            
+            <!-- Area & Employee Management -->
+            <?php if (can_access('service.access')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= (strpos(current_url(), 'service/area-management') !== false) ? 'active' : '' ?>" href="<?= base_url('/service/area-management') ?>"
+                   data-search-terms="area staff employee management service">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <span class="nav-link-text">Area & Employee Management</span>
+                </a>
+            </li>
+            <?php endif; ?>
 
             <!-- Data Unit -->
             <?php if (can_access('service.data_unit.view')): ?>

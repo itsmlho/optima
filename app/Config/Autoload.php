@@ -95,6 +95,5 @@ class Autoload extends AutoloadConfig
         'rbac',
         'activity_log',
         'comprehensive_activity_log',
-        'simple_activity_log'  // Helper baru untuk logging sederhana
     ];
 }

@@ -825,8 +825,30 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 </div>`;
             });
             itemsHtml += '</div>';
+          } else if (j.attachments && j.attachments.length > 0) {
+            // Use standalone attachments from backend (fallback from spesifikasi)
+            itemsHtml += '<div class="list-group list-group-flush">';
+            j.attachments.forEach(attachment => {
+              const attachName = attachment.tipe || 'Attachment';
+              const attachMerk = attachment.merk || '-';
+              const attachModel = attachment.model || '';
+              const attachSN = attachment.sn_attachment && attachment.sn_attachment !== '-' ? ` (SN: ${attachment.sn_attachment})` : '';
+              const fullAttachmentName = attachModel ? `${attachName} ${attachModel}` : attachName;
+              
+              itemsHtml += `
+                <div class="list-group-item border-0 px-0">
+                  <div class="d-flex align-items-center">
+                    <i class="bi bi-paperclip text-primary me-3"></i>
+                    <div>
+                      <div class="fw-semibold">${fullAttachmentName}${attachSN}</div>
+                      <small class="text-muted">Merk: ${attachMerk}</small>
+                    </div>
+                  </div>
+                </div>`;
+            });
+            itemsHtml += '</div>';
           } else {
-            // Fallback to spesifikasi data for ATTACHMENT SPK when no items (like print_di.php)
+            // Final fallback to spesifikasi data for ATTACHMENT SPK when no items (like print_di.php)
             const attachType = s.attachment_tipe || k.attachment_tipe || k.attachment_name || 'Attachment';
             const attachMerk = s.attachment_merk || k.attachment_merk || '-';
             const attachModel = s.attachment_model || k.attachment_model || '';
@@ -921,8 +943,33 @@ document.addEventListener('DOMContentLoaded', ()=>{
         }
       }
       
+      // For ATTACHMENT SPK with no items, show attachment data from spesifikasi/kontrak
+      if (isAttachmentSpk && !itemsHtml && (j.attachments && j.attachments.length > 0)) {
+        itemsHtml += '<h6 class="text-muted mb-3">Attachment yang Dikirim:</h6>';
+        itemsHtml += '<div class="list-group list-group-flush">';
+        j.attachments.forEach(attachment => {
+          const attachName = attachment.tipe || 'Attachment';
+          const attachMerk = attachment.merk || '-';
+          const attachModel = attachment.model || '';
+          const attachSN = attachment.sn_attachment && attachment.sn_attachment !== '-' ? ` (SN: ${attachment.sn_attachment})` : '';
+          const fullAttachmentName = attachModel ? `${attachName} ${attachModel}` : attachName;
+          
+          itemsHtml += `
+            <div class="list-group-item border-0 px-0">
+              <div class="d-flex align-items-center">
+                <i class="bi bi-paperclip text-primary me-3"></i>
+                <div>
+                  <div class="fw-semibold">${fullAttachmentName}${attachSN}</div>
+                  <small class="text-muted">Merk: ${attachMerk}</small>
+                </div>
+              </div>
+            </div>`;
+        });
+        itemsHtml += '</div>';
+      }
+      
       // Display general attachments (not unit-specific) with enhanced details
-      if (j.attachments && j.attachments.length > 0) {
+      if (j.attachments && j.attachments.length > 0 && !isAttachmentSpk) {
         itemsHtml += '<h6 class="text-muted mb-3 mt-4">Attachment Tambahan:</h6>';
         itemsHtml += '<div class="list-group list-group-flush">';
         j.attachments.forEach(attachment => {
@@ -1006,6 +1053,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               <div class="col-6"><strong>No. DI:</strong> ${d.nomor_di}</div>
               <div class="col-6"><strong>Status:</strong> <span class="badge bg-secondary">${status}</span></div>
               <div class="col-6"><strong>No. SPK:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
+              <div class="col-6"><strong>Jenis SPK:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
               <div class="col-6"><strong>PO/Kontrak:</strong> ${d.po_kontrak_nomor||'-'}</div>
               <div class="col-6"><strong>Tanggal Kirim:</strong> ${d.tanggal_kirim||'-'}</div>
               <div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>

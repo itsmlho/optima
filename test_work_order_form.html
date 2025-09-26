@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Order Auto Assignment Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .form-group { margin: 10px 0; }
+        label { display: inline-block; width: 150px; }
+        input, select, textarea { width: 300px; padding: 5px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; cursor: pointer; }
+        .result { margin: 20px 0; padding: 15px; border: 1px solid #ddd; background: #f9f9f9; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Work Order Auto Assignment Test</h1>
+    
+    <div id="unit-info" class="result" style="display: none;">
+        <h3>Selected Unit Information</h3>
+        <div id="unit-details"></div>
+    </div>
+
+    <form id="workOrderForm">
+        <div class="form-group">
+            <label>Unit:</label>
+            <select name="unit_id" id="unit_id" required onchange="loadUnitInfo()">
+                <option value="">Select Unit</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Order Type:</label>
+            <select name="order_type" required>
+                <option value="">Select Type</option>
+                <option value="COMPLAINT">COMPLAINT</option>
+                <option value="PMPS">PMPS</option>
+                <option value="FABRIKASI">FABRIKASI</option>
+                <option value="PERSIAPAN">PERSIAPAN</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Priority:</label>
+            <select name="priority_id" required>
+                <option value="">Select Priority</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Category:</label>
+            <select name="category_id" required>
+                <option value="">Select Category</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>Complaint:</label>
+            <textarea name="complaint_description" required placeholder="Describe the complaint or work needed"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <button type="button" onclick="simulateWorkOrder()">Simulate Auto Assignment</button>
+            <button type="submit">Create Work Order</button>
+        </div>
+    </form>
+
+    <div id="result" class="result" style="display: none;">
+        <h3>Assignment Result</h3>
+        <div id="assignment-details"></div>
+    </div>
+
+    <script>
+        // Load form data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadUnits();
+            loadPriorities();
+            loadCategories();
+        });
+
+        function loadUnits() {
+            fetch('index.php/workorder/api/units')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.getElementById('unit_id');
+                    data.forEach(unit => {
+                        const option = document.createElement('option');
+                        option.value = unit.id_inventory_unit;
+                        option.textContent = `${unit.no_unit} - ${unit.pelanggan || 'Unknown Customer'}`;
+                        option.dataset.unitInfo = JSON.stringify(unit);
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading units:', error));
+        }
+
+        function loadPriorities() {
+            fetch('index.php/workorder/api/priorities')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.querySelector('select[name="priority_id"]');
+                    data.forEach(priority => {
+                        const option = document.createElement('option');
+                        option.value = priority.id;
+                        option.textContent = priority.priority_name;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading priorities:', error));
+        }
+
+        function loadCategories() {
+            fetch('index.php/workorder/api/categories')
+                .then(response => response.json())
+                .then(data => {
+                    const select = document.querySelector('select[name="category_id"]');
+                    data.forEach(category => {
+                        const option = document.createElement('option');
+                        option.value = category.id;
+                        option.textContent = category.category_name;
+                        select.appendChild(option);
+                    });
+                })
+                .catch(error => console.error('Error loading categories:', error));
+        }
+
+        function loadUnitInfo() {
+            const select = document.getElementById('unit_id');
+            const selectedOption = select.options[select.selectedIndex];
+            
+            if (selectedOption.value) {
+                const unitInfo = JSON.parse(selectedOption.dataset.unitInfo || '{}');
+                
+                // Show unit information
+                document.getElementById('unit-info').style.display = 'block';
+                document.getElementById('unit-details').innerHTML = `
+                    <p><strong>Unit:</strong> ${unitInfo.no_unit}</p>
+                    <p><strong>Customer:</strong> ${unitInfo.pelanggan || 'Unknown'}</p>
+                    <p><strong>Area:</strong> ${unitInfo.area_name || 'No Area'} (${unitInfo.area_code || 'N/A'})</p>
+                    <p><strong>Merk:</strong> ${unitInfo.merk_unit || 'Unknown'}</p>
+                    <p><strong>Type:</strong> ${unitInfo.tipe || 'Unknown'}</p>
+                `;
+                
+                // Get unit area info for staff assignment preview
+                if (unitInfo.id_inventory_unit) {
+                    fetch(`index.php/workorder/api/unit-area-info/${unitInfo.id_inventory_unit}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.area_info) {
+                                document.getElementById('unit-details').innerHTML += `
+                                    <p><strong>Available Staff in Area:</strong></p>
+                                    <ul>
+                                        ${data.available_staff.map(staff => 
+                                            `<li>${staff.staff_name} (${staff.role})</li>`
+                                        ).join('')}
+                                    </ul>
+                                `;
+                            }
+                        })
+                        .catch(error => console.error('Error loading area info:', error));
+                }
+            } else {
+                document.getElementById('unit-info').style.display = 'none';
+            }
+        }
+
+        function simulateWorkOrder() {
+            const form = document.getElementById('workOrderForm');
+            const formData = new FormData(form);
+            
+            // Basic validation
+            if (!formData.get('unit_id') || !formData.get('order_type') || 
+                !formData.get('priority_id') || !formData.get('category_id') || 
+                !formData.get('complaint_description')) {
+                alert('Please fill all required fields');
+                return;
+            }
+
+            // Simulate auto assignment
+            fetch('index.php/workorder/api/simulate-assignment', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').style.display = 'block';
+                
+                if (data.success) {
+                    document.getElementById('assignment-details').innerHTML = `
+                        <div class="success">
+                            <h4>Auto Assignment Simulation Successful!</h4>
+                            <p><strong>Unit:</strong> ${data.unit_info.no_unit}</p>
+                            <p><strong>Area:</strong> ${data.unit_info.area_name} (${data.unit_info.area_code})</p>
+                            <p><strong>Assigned Staff:</strong></p>
+                            <ul>
+                                ${Object.entries(data.assigned_staff).map(([role, name]) => 
+                                    `<li>${role}: ${name}</li>`
+                                ).join('')}
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    document.getElementById('assignment-details').innerHTML = `
+                        <div class="error">
+                            <h4>Simulation Failed</h4>
+                            <p>${data.message}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('assignment-details').innerHTML = `
+                    <div class="error">
+                        <h4>Network Error</h4>
+                        <p>Unable to simulate assignment: ${error.message}</p>
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('workOrderForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            
+            fetch('index.php/workorder/store', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').style.display = 'block';
+                
+                if (data.success) {
+                    document.getElementById('assignment-details').innerHTML = `
+                        <div class="success">
+                            <h4>Work Order Created Successfully!</h4>
+                            <p><strong>Work Order Number:</strong> ${data.work_order.work_order_number}</p>
+                            <p><strong>Unit:</strong> ${data.unit_info.no_unit}</p>
+                            <p><strong>Area:</strong> ${data.unit_info.area_name}</p>
+                            <p><strong>Auto Assigned Staff:</strong></p>
+                            <ul>
+                                ${data.assigned_staff.map(staff => `<li>${staff}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                    
+                    // Reset form
+                    this.reset();
+                    document.getElementById('unit-info').style.display = 'none';
+                } else {
+                    document.getElementById('assignment-details').innerHTML = `
+                        <div class="error">
+                            <h4>Work Order Creation Failed</h4>
+                            <p>${data.message}</p>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('assignment-details').innerHTML = `
+                    <div class="error">
+                        <h4>Network Error</h4>
+                        <p>Unable to create work order: ${error.message}</p>
+                    </div>
+                `;
+            });
+        });
+    </script>
+</body>
+</html>
