@@ -17,9 +17,32 @@ class VerificationAuditLogModel extends Model
     public function log(array $data): bool
     {
         try {
-            return (bool)$this->insert($data);
+            // Ensure created_at is set if not provided
+            if (empty($data['created_at'])) {
+                $jakartaTz = new \DateTimeZone('Asia/Jakarta');
+                $now = new \DateTime('now', $jakartaTz);
+                $data['created_at'] = $now->format('Y-m-d H:i:s');
+            }
+            
+            // Ensure user_id is integer
+            if (isset($data['user_id'])) {
+                $data['user_id'] = (int)$data['user_id'];
+            }
+            
+            log_message('debug', '[VerificationAuditLogModel] Inserting log: ' . json_encode($data));
+            
+            $result = (bool)$this->insert($data);
+            
+            if ($result) {
+                log_message('info', '[VerificationAuditLogModel] ✓ Log inserted successfully. ID: ' . $this->insertID());
+            } else {
+                $errors = $this->errors();
+                log_message('error', '[VerificationAuditLogModel] ✗ Failed to insert log. Errors: ' . json_encode($errors));
+            }
+            
+            return $result;
         } catch (\Throwable $e) {
-            log_message('error', '[VerificationAuditLogModel] Failed to insert log: '.$e->getMessage());
+            log_message('error', '[VerificationAuditLogModel] Exception: '.$e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return false;
         }
     }

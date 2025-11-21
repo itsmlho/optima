@@ -1,63 +1,9 @@
 <?= $this->extend('layouts/base') ?>
 
 <?= $this->section('css') ?>
+<!-- CSS umum sudah ada di optima-pro.css -->
 <style>
-.card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
-.table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
-.modal-header { background: linear-gradient(135deg, #e9ecef 0%, #e9ecef 100%); color: white; border-radius: 15px 15px 0 0; }
-.filter-card {
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border: 1px solid #dee2e6;
-}
-
-.filter-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
-  border-color: #0d6efd;
-}
-
-.filter-card.active {
-  background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%);
-  color: white;
-  border-color: #0d6efd;
-  transform: translateY(-3px);
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-  border: 2px solid #fff;
-}
-
-.filter-card.active .text-muted {
-  color: rgba(255,255,255,0.8) !important;
-}
-
-/* Enhanced Table Styling for Better Readability */
-.table {
-  font-size: 14px;
-}
-
-.table th {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  color: #495057;
-  font-weight: 600;
-  border: 1px solid #dee2e6;
-  padding: 15px 10px;
-  font-size: 13px;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-.table td {
-  padding: 12px 10px;
-  border-color: #e9ecef;
-  vertical-align: middle;
-  font-size: 14px;
-}
-
-.table tbody tr:hover {
-  background-color: #f8f9fa;
-}
-
-/* Smart Address Column */
+/* Custom delivery page - Smart address column */
 .lokasi-cell {
   max-width: 200px;
   position: relative;
@@ -136,7 +82,6 @@
 
 <?= $this->section('content') ?>
 
-
 <!-- Statistics Cards - Modern Dashboard Style -->
 <div class="row g-4 mb-4">
   <div class="col-xl-3 col-md-6">
@@ -203,6 +148,26 @@
         <!-- No create button for operational - they process existing DIs -->
       </div>
     </div>
+    
+    <!-- Filter Tabs -->
+    <ul class="nav nav-tabs mb-3" id="filterTabs">
+      <li class="nav-item">
+        <a class="nav-link active filter-tab" href="#" data-filter="all">All</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED">Submitted</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS">In Progress</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab" href="#" data-filter="DELIVERED">Delivered</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab" href="#" data-filter="CANCELLED">Cancelled</a>
+      </li>
+    </ul>
+    
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
@@ -277,19 +242,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   function updateStatistics() {
     const total = allDIData.length;
-    // Map Indonesian status to English and count accordingly
+    // Count by status_di
     const submitted = allDIData.filter(item => {
-      const status = (item.status || '').toUpperCase();
-      return !item.status || status === 'SUBMITTED';
+      const status = (item.status_di || '').toUpperCase();
+      return !item.status_di || status === 'DIAJUKAN';
     }).length;
     const inprogress = allDIData.filter(item => {
-      const status = (item.status || '').toUpperCase();
-      return status === 'PROCESSED' || 
-             status === 'SHIPPED';
+      const status = (item.status_di || '').toUpperCase();
+      return status === 'DISETUJUI' || 
+             status === 'PERSIAPAN_UNIT' ||
+             status === 'SIAP_KIRIM' ||
+             status === 'DALAM_PERJALANAN';
     }).length;
     const delivered = allDIData.filter(item => {
-      const status = (item.status || '').toUpperCase();
-      return status === 'DELIVERED';
+      const status = (item.status_di || '').toUpperCase();
+      return status === 'SAMPAI_LOKASI' || status === 'SELESAI';
     }).length;
     
     document.getElementById('totalDI').textContent = total;
@@ -301,29 +268,36 @@ document.addEventListener('DOMContentLoaded', ()=>{
   function applyFilters() {
     const searchTerm = document.getElementById('diSearch').value.toLowerCase();
     
-    // Filter by status - map between Indonesian and English status terms
+    // Filter by status_di - map between Indonesian and English status terms
     let filtered;
     if (currentFilter === 'all') {
       filtered = [...allDIData];
     } else if (currentFilter === 'SUBMITTED') {
       filtered = allDIData.filter(item => {
-        const status = (item.status || '').toUpperCase();
-        return !item.status || status === 'SUBMITTED';
+        const status = (item.status_di || '').toUpperCase();
+        return !item.status_di || status === 'DIAJUKAN';
       });
     } else if (currentFilter === 'INPROGRESS') {
       filtered = allDIData.filter(item => {
-        const status = (item.status || '').toUpperCase();
-        return status === 'PROCESSED' || 
-               status === 'SHIPPED';
+        const status = (item.status_di || '').toUpperCase();
+        return status === 'DISETUJUI' || 
+               status === 'PERSIAPAN_UNIT' ||
+               status === 'SIAP_KIRIM' ||
+               status === 'DALAM_PERJALANAN';
       });
     } else if (currentFilter === 'DELIVERED') {
       filtered = allDIData.filter(item => {
-        const status = (item.status || '').toUpperCase();
-        return status === 'DELIVERED';
+        const status = (item.status_di || '').toUpperCase();
+        return status === 'SAMPAI_LOKASI' || status === 'SELESAI';
+      });
+    } else if (currentFilter === 'CANCELLED') {
+      filtered = allDIData.filter(item => {
+        const status = (item.status_di || '').toUpperCase();
+        return status === 'DIBATALKAN';
       });
     } else {
       // Legacy filter - exact match
-      filtered = allDIData.filter(item => (item.status || '').toUpperCase() === currentFilter);
+      filtered = allDIData.filter(item => (item.status_di || '').toUpperCase() === currentFilter);
     }
     
     // Filter by search term
@@ -367,9 +341,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       // Conditional action button based on status - approval workflow style
       let aksiBtn = '';
-      if (!r.status || r.status === 'SUBMITTED') {
+      const statusDi = (r.status_di || '').toUpperCase();
+      if (!r.status_di || statusDi === 'DIAJUKAN') {
         aksiBtn = '<span class="text-muted">Menunggu diproses</span>';
-      } else if (r.status === 'PROCESSED') {
+      } else if (statusDi === 'SIAP_KIRIM' || statusDi === 'DISETUJUI' || statusDi === 'PERSIAPAN_UNIT' || statusDi === 'DALAM_PERJALANAN') {
         // Show approval stage buttons directly in table
         const perencanaanDone = r.perencanaan_tanggal_approve ? true : false;
         const berangkatDone = r.berangkat_tanggal_approve ? true : false;
@@ -396,7 +371,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (sampaiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Sampai</small>');
         
         aksiBtn = approvalButtons.join(' ') + (completedBadges.length > 0 ? '<br>' + completedBadges.join('') : '');
-      } else if (r.status === 'DELIVERED') {
+      } else if (statusDi === 'SAMPAI_LOKASI' || statusDi === 'SELESAI') {
         aksiBtn = '<span class="text-success">Completed</span>';
       } else {
         aksiBtn = '<span class="text-muted">-</span>';
@@ -466,27 +441,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
         return `<div class="small"><strong>Supir:</strong> ${driver}<br><strong>Kendaraan:</strong> ${vehicle}</div>`;
       };
       
-      // Operational status display (fokus pada status eksekusi workflow)
+      // Operational status display
       const getOperationalStatusDisplay = (r) => {
-        const status = r.status_temp || r.status;
+        const status = r.status_di;
         const statusUpper = (status || '').toUpperCase();
         const statusMap = {
-          'DIAJUKAN': { text: 'Menunggu Persetujuan', color: 'secondary' },
-          'DISETUJUI': { text: 'Disetujui', color: 'info' },
-          'PERSIAPAN_UNIT': { text: 'Persiapan Unit', color: 'warning' },
-          'SIAP_KIRIM': { text: 'Siap Kirim', color: 'primary' },
-          'DALAM_PERJALANAN': { text: 'Dalam Perjalanan', color: 'warning' },
-          'SAMPAI_LOKASI': { text: 'Sampai Lokasi', color: 'success' },
-          'SELESAI': { text: 'Selesai', color: 'success' },
-          'DIBATALKAN': { text: 'Dibatalkan', color: 'danger' },
-          // Fallback untuk status lama
-          'SUBMITTED': { text: 'Diajukan', color: 'secondary' },
-          'PROCESSED': { text: 'Diproses', color: 'info' },
-          'SHIPPED': { text: 'Dikirim', color: 'warning' },
-          'DELIVERED': { text: 'Terkirim', color: 'success' },
-          'CANCELLED': { text: 'Dibatalkan', color: 'danger' }
+          'DIAJUKAN': { text: 'DIAJUKAN', color: 'secondary' },
+          'DISETUJUI': { text: 'DISETUJUI', color: 'info' },
+          'PERSIAPAN_UNIT': { text: 'PERSIAPAN_UNIT', color: 'warning' },
+          'SIAP_KIRIM': { text: 'SIAP_KIRIM', color: 'primary' },
+          'DALAM_PERJALANAN': { text: 'DALAM_PERJALANAN', color: 'warning' },
+          'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', color: 'success' },
+          'SELESAI': { text: 'SELESAI', color: 'success' },
+          'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' }
         };
-        const mapped = statusMap[statusUpper] || { text: status || 'Diajukan', color: 'secondary' };
+        const mapped = statusMap[statusUpper] || { text: status || 'DIAJUKAN', color: 'secondary' };
         return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
       };
       
@@ -570,6 +539,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // Update active card
       document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
       this.classList.add('active');
+      
+      applyFilters();
+    });
+  });
+  
+  // Add filter tab click listeners
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', function(e) {
+      e.preventDefault();
+      const filter = this.dataset.filter;
+      currentFilter = filter;
+      
+      // Update active tab
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      
+      // Update active card
+      document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+      const correspondingCard = document.querySelector(`[data-filter="${filter}"]`);
+      if (correspondingCard) {
+        correspondingCard.classList.add('active');
+      }
       
       applyFilters();
     });
@@ -790,7 +781,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
       const k = kontrak;
       
-      const status = d.status || 'SUBMITTED';
+      const status = d.status_di || d.status_eksekusi || d.status || 'SUBMITTED';
       // Enhanced: Detect SPK type for proper detail display
       const spkType = spk.jenis_spk || d.jenis_spk || 'UNIT';
       const isAttachmentSpk = (spkType === 'ATTACHMENT');
@@ -848,7 +839,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
             });
             itemsHtml += '</div>';
           } else {
-            // Final fallback to spesifikasi data for ATTACHMENT SPK when no items (like print_di.php)
+            // Final fallback to spesifikasi data for ATTACHMENT SPK when no itemsnformasi Attachment (like print_di.php)
             const attachType = s.attachment_tipe || k.attachment_tipe || k.attachment_name || 'Attachment';
             const attachMerk = s.attachment_merk || k.attachment_merk || '-';
             const attachModel = s.attachment_model || k.attachment_model || '';
@@ -1002,10 +993,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const actionDiv = document.getElementById('modalActionButtons');
       let actionButtons = '';
       
-      if (status === 'SUBMITTED') {
+      // Debug: Log the actual status and raw data
+      console.log('🔍 DI Modal Status Debug:', { 
+        status, 
+        status_di: d.status_di, 
+        status_eksekusi: d.status_eksekusi,
+        status_field: d.status,
+        spk: spk?.id,
+        raw_d: d 
+      });
+      
+      // Determine action buttons based on status
+      if (status === 'SUBMITTED' || status === 'DIAJUKAN') {
+        // Only show Proses DI button for initial statuses
         actionButtons = '<button class="btn btn-success btn-sm" id="btnProsesDI">Proses DI</button>';
-      } else if (status === 'PROCESSED') {
-        // Show approval stage buttons based on completion status
+        console.log('✅ Showing Proses DI button for status:', status);
+      } else if (status === 'PROCESSED' || status === 'SIAP KIRIM') {
+        // Show approval stage buttons for processed statuses
         let approvalButtons = [];
         
         // Check which stages are completed
@@ -1028,14 +1032,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (sampaiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Sampai</span>');
         
         actionButtons = approvalButtons.join(' ');
-      } else if (status === 'DELIVERED') {
+        console.log('✅ Showing workflow buttons for status:', status);
+      } else if (status === 'DELIVERED' || status === 'SELESAI' || status === 'COMPLETED') {
+        // Show completed status
         actionButtons = `<span class="badge bg-success">Completed</span>`;
+        console.log('✅ Showing completed status for:', status);
+      } else {
+        // For any other status, show no action buttons
+        actionButtons = '';
+        console.log('⚠️ No action buttons for status:', status);
       }
       
-      // Add PDF SPK button if SPK exists (for all statuses except SUBMITTED)
-      if (status !== 'SUBMITTED' && spk && spk.id) {
-        const pdfButton = `<a class="btn btn-outline-info btn-sm" href="<?= base_url('service/spk/print/') ?>${spk.id}" target="_blank" rel="noopener"><i class="fas fa-file-pdf"></i> PDF SPK</a>`;
-        actionButtons = actionButtons ? `${actionButtons} ${pdfButton}` : pdfButton;
+      // Add Print SPK button if SPK exists (for all statuses except SUBMITTED and DIAJUKAN)
+      if (status !== 'SUBMITTED' && status !== 'DIAJUKAN' && spk && spk.id) {
+        const printSPKButton = `<a class="btn btn-outline-success btn-sm" href="<?= base_url('marketing/spk/print/') ?>${spk.id}" target="_blank" rel="noopener"><i class="fas fa-print"></i> Print SPK</a>`;
+        actionButtons = actionButtons ? `${actionButtons} ${printSPKButton}` : printSPKButton;
       }
       
       // Add Print DI button right after PDF SPK button - open in new tab like PDF SPK

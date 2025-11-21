@@ -148,6 +148,13 @@
                             </select>
                         </div>
                         <div class="col-md-4">
+                            <label for="svcEditArea" class="form-label">Area <span class="text-danger">*</span></label>
+                            <select class="form-select form-select-sm" name="area_id" id="svcEditArea" required>
+                                <option value="" selected disabled>Pilih Area...</option>
+                            </select>
+                            <div class="form-text">Area menentukan penugasan staff untuk work order</div>
+                        </div>
+                        <div class="col-md-4">
                             <label for="svcEditTahun" class="form-label">Tahun Pembuatan</label>
                             <input type="number" class="form-control form-control-sm" name="tahun_unit" id="svcEditTahun" placeholder="Contoh: 2023">
                         </div>
@@ -395,6 +402,29 @@ function svcActions(id){
                 + `<li><a class='dropdown-item' href='<?= base_url('service/work-orders') ?>?unit=${id}'><i class="fas fa-wrench me-2 text-warning"></i>Work Order</a></li>`
                 + `</ul></div>`;
 }
+// Load area options for edit form
+function loadAreaOptions() {
+    fetch('<?= base_url('service/areas') ?>')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.data) {
+                const areaSelect = document.getElementById('svcEditArea');
+                if (areaSelect) {
+                    areaSelect.innerHTML = '<option value="">Pilih Area...</option>';
+                    data.data.forEach(area => {
+                        const option = document.createElement('option');
+                        option.value = area.id;
+                        option.textContent = `${area.area_code} - ${area.area_name}`;
+                        areaSelect.appendChild(option);
+                    });
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error loading areas:', error);
+        });
+}
+
 function initSvc(){
         svcTable = $('#service-units-table').DataTable({
                 processing:true, serverSide:true, pageLength:25,
@@ -540,6 +570,7 @@ function svcEdit(id){
                 $('#svcEditId').val(id);
                 $('#svcEditNoUnit').val('');
                 $('#svcEditStatus').val('');
+                $('#svcEditArea').val('');
                 $('#svcEditLokasi').val('');
                 $('#svcEditKet').val('');
                 $('#svcEditModal').modal('show');
@@ -550,6 +581,7 @@ function svcEdit(id){
                                 const d=j.data;
                                 $('#svcEditNoUnit').val(d.no_unit||'');
                                             $('#svcEditStatus').val(d.status_unit||'');
+                                            $('#svcEditArea').val(d.area_id||'');
                                             $('#svcEditDept').val(d.departemen_id||'');
                                             $('#svcEditModel').val(d.model_unit_id||'');
                                             $('#svcEditTipe').val(d.tipe_unit_id||'');
@@ -596,7 +628,10 @@ $('#svcEditForm').on('submit', function(e){
         .catch(()=> $('#svcEditErr').removeClass('d-none').text('Error server'));
 });
 
-$(function(){ initSvc(); });
+$(function(){ 
+    initSvc(); 
+    loadAreaOptions(); // Load area options on page load
+});
 // Export
 $('#svcExport').on('click', function(){
         const params = new URLSearchParams();

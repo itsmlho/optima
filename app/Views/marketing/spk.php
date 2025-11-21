@@ -1,66 +1,132 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<style>
-    .card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
-    .table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
-    .modal-header { background: linear-gradient(135deg, #e9ecef 0%, #e9ecef 100%); color: white; border-radius: 15px 15px 0 0; }
-    .filter-card.active { 
-        transform: translateY(-3px); 
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
-        border: 2px solid #fff; 
-    }
-    .filter-card:hover { 
-        transform: translateY(-5px); 
-        box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
-    }
-    
-    /* DI Form Styling */
-    .form-label .text-danger {
-        font-size: 0.875em;
-    }
-    
-    .form-control.is-valid, .form-select.is-valid {
-        border-color: #198754;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='m2.3 6.73.98-.97-.97-.97 1.378-1.38.97.97 2.564-2.565 1.378 1.378-3.942 3.942L2.3 6.73z'/%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right 0.75rem center;
-        background-size: 1rem 1rem;
-    }
-    
-    .form-control.is-invalid, .form-select.is-invalid {
-        border-color: #dc3545;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 0.4 0.4 0.4-0.4M5.8 7.4 6.2 7 6.6 7.4'/%3e%3c/svg%3e");
-        background-repeat: no-repeat;
-        background-position: right 0.75rem center;
-        background-size: 1rem 1rem;
-    }
-    
-    .btn:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-</style>
-<?= $this->endSection() ?>
+<?php
+// Load global permission helper
+helper('global_permission');
+
+// Get permissions for marketing module
+$permissions = get_global_permission('marketing');
+$can_view = $permissions['view'];
+$can_create = $permissions['create'];
+$can_edit = $permissions['edit'];
+$can_delete = $permissions['delete'];
+$can_export = $permissions['export'];
+?>
 
 <?= $this->section('content') ?>
 
-    <!-- Statistics Cards -->
-    <div class="row g-4 mb-4">
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-total-spk">0</h2><h6 class="card-title text-uppercase small">Total SPK</h6></div></div></div>
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="READY" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-ready">0</h2><h6 class="card-title text-uppercase small">Ready</h6></div></div></div>
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-info text-white h-100 filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-in-progress">0</h2><h6 class="card-title text-uppercase small">In Progress</h6></div></div></div>
-        <div class="col-xl-3 col-md-6"><div class="card card-stats bg-success text-white h-100 filter-card" data-filter="COMPLETED" style="cursor: pointer;"><div class="card-body"><h2 class="fw-bold mb-1" id="stat-completed">0</h2><h6 class="card-title text-uppercase small">Completed</h6></div></div></div>
+    
+    <?php if (!$can_view): ?>
+    <div class="alert alert-warning">
+        <i class="fas fa-lock me-2"></i>
+        <strong>Access Denied:</strong> You do not have permission to view SPK. 
+        Please contact your administrator to request access.
     </div>
-
-    <div class="card table-card mb-3">
-        <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-            <h5 class="h5 mb-0 text-gray-800">Daftar SPK</h5>
-            <div class="d-flex gap-2 align-items-center">
-                <a class="btn btn-outline-secondary btn-sm" href="<?= base_url('operational/tracking') ?>">Tracking</a>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#spkModal">Buat SPK</button>
+    <?php else: ?>
+    
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Total SPK</h6>
+                            <h3 class="mb-0" id="stat-total-spk">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-file-alt fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">In Progress</h6>
+                            <h3 class="mb-0" id="stat-in-progress">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-clock fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Ready</h6>
+                            <h3 class="mb-0" id="stat-ready">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Completed</h6>
+                            <h3 class="mb-0" id="stat-completed">0</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-double fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="card">
+        <div class="card-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">Daftar SPK</h6>
+                <?php if ($can_create): ?>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#spkModal">
+                    <i class="fas fa-plus me-1"></i>Buat SPK
+                </button>
+                <?php else: ?>
+                <button class="btn btn-primary btn-sm disabled" title="Access Denied">
+                    <i class="fas fa-plus me-1"></i>Buat SPK
+                </button>
+                <?php endif; ?>
+            </div>
+        </div>
+        
+        <!-- Filter Tabs -->
+        <ul class="nav nav-tabs mb-3" id="filterTabs">
+            <li class="nav-item">
+                <a class="nav-link active filter-tab" href="#" data-filter="all">All</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED">Submitted</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link filter-tab" href="#" data-filter="IN_PROGRESS">In Progress</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link filter-tab" href="#" data-filter="READY">Ready</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link filter-tab" href="#" data-filter="COMPLETED">Completed</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link filter-tab" href="#" data-filter="CANCELLED">Cancelled</a>
+            </li>
+        </ul>
+        
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex align-items-center gap-2">
@@ -80,7 +146,7 @@
             </div>
             
             <div class="table-responsive">
-                <table class="table table-sm mb-0" id="spkList">
+                <table class="table table-sm mb-0 <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
                     <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Total Unit</th><th>Aksi</th></tr></thead>
                     <tbody></tbody>
                 </table>
@@ -108,7 +174,7 @@
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Jenis SPK</label>
-                            <select class="form-select form-select-sm w-auto" name="jenis_spk" required>
+                            <select class="form-select form-select-sm w-auto" name="jenis_spk" id="jenisSpkSelect" required>
                                 <option value="UNIT" selected>SPK Unit</option>
                                 <option value="ATTACHMENT">SPK Attachment</option>
                             </select>
@@ -153,6 +219,31 @@
                                             <label class="form-label">Delivery Plan</label>
                                             <input type="date" class="form-control" name="delivery_plan">
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Target Unit Section (hanya untuk ATTACHMENT) - Muncul setelah kontrak dipilih -->
+                        <div id="attachmentTargetSection" style="display: none;">
+                            <div class="card bg-warning bg-opacity-10 border-warning mb-3">
+                                <div class="card-header bg-warning bg-opacity-25">
+                                    <h6 class="mb-0"><i class="fas fa-bullseye me-2"></i>Target Unit untuk Attachment</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Unit Tujuan <span class="text-danger">*</span></label>
+                                        <select class="form-control" name="target_unit_id" id="targetUnitSelect">
+                                            <option value="">- Pilih Unit Tujuan -</option>
+                                        </select>
+                                        <div class="form-text">Pilih unit yang akan menerima attachment pengganti</div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label class="form-label">Alasan Penggantian</label>
+                                        <textarea class="form-control" name="replacement_reason" id="replacementReason" rows="2" 
+                                                  placeholder="Contoh: Fork rusak, attachment lama aus, perlu upgrade, dll"></textarea>
+                                        <div class="form-text">Jelaskan mengapa attachment perlu diganti</div>
                                     </div>
                                 </div>
                             </div>
@@ -339,10 +430,16 @@
             else if (status === 'COMPLETED' || status === 'DELIVERED') stats.completed++;
         });
         
-        document.getElementById('stat-total-spk').textContent = stats.total;
-        document.getElementById('stat-in-progress').textContent = stats.inProgress;
-        document.getElementById('stat-ready').textContent = stats.ready;
-        document.getElementById('stat-completed').textContent = stats.completed;
+        // Update statistics with null check
+        const totalElement = document.getElementById('stat-total-spk');
+        const inProgressElement = document.getElementById('stat-in-progress');
+        const readyElement = document.getElementById('stat-ready');
+        const completedElement = document.getElementById('stat-completed');
+        
+        if (totalElement) totalElement.textContent = stats.total;
+        if (inProgressElement) inProgressElement.textContent = stats.inProgress;
+        if (readyElement) readyElement.textContent = stats.ready;
+        if (completedElement) completedElement.textContent = stats.completed;
     }
     
     // Apply both status filter and search
@@ -462,7 +559,11 @@
         document.querySelectorAll('.filter-card').forEach(card => {
             card.classList.remove('active');
         });
-        document.querySelector(`[data-filter="${filter}"]`).classList.add('active');
+        
+        const activeCard = document.querySelector(`[data-filter="${filter}"]`);
+        if (activeCard) {
+            activeCard.classList.add('active');
+        }
         
         applyFilters();
     }
@@ -607,16 +708,21 @@
                         list.innerHTML = details.map((it,idx)=>{
                             const label = (it.unit_label || `${it.no_unit||'-'} - ${it.merk_unit||'-'} ${it.model_unit||''}`);
                             const sn = it.serial_number ? ` [SN: ${it.serial_number}]` : '';
-                            return `<div class=\"form-check\"><input class=\"form-check-input di-unit-check\" type=\"checkbox\" value=\"${it.unit_id}\" id=\"di_unit_${it.unit_id}\" checked><label class=\"form-check-label\" for=\"di_unit_${it.unit_id}\">${idx+1}. ${label}${sn}</label></div>`;
+                            const isInActiveDI = it.is_in_active_di || false;
+                            const activeDI = it.active_di_info || null;
+                            const disabled = isInActiveDI ? 'disabled' : '';
+                            const checked = isInActiveDI ? '' : 'checked';
+                            const warningText = isInActiveDI && activeDI ? ` <span class="badge bg-warning text-dark">Sudah di ${activeDI.nomor_di}</span>` : '';
+                            return `<div class=\"form-check\"><input class=\"form-check-input di-unit-check\" type=\"checkbox\" value=\"${it.unit_id}\" id=\"di_unit_${it.unit_id}\" ${checked} ${disabled}><label class=\"form-check-label\" for=\"di_unit_${it.unit_id}\">${idx+1}. ${label}${sn}${warningText}</label></div>`;
                         }).join('');
                         // Summary
                         const itemType = isAttachmentSpk ? 'attachment' : 'unit';
                         if (sum) sum.innerHTML = `<span class=\"text-success\">${details.length} ${itemType} disiapkan oleh Service. Silakan pilih yang akan dikirim.</span>`;
-                        // Select all / clear
+                        // Select all / clear (skip disabled units)
                         const btnAll = document.getElementById('btnSelectAllUnits');
                         const btnClr = document.getElementById('btnClearUnits');
-                        if (btnAll) btnAll.onclick = ()=>{ document.querySelectorAll('.di-unit-check').forEach(ch=>ch.checked=true); };
-                        if (btnClr) btnClr.onclick = ()=>{ document.querySelectorAll('.di-unit-check').forEach(ch=>ch.checked=false); };
+                        if (btnAll) btnAll.onclick = ()=>{ document.querySelectorAll('.di-unit-check:not(:disabled)').forEach(ch=>ch.checked=true); };
+                        if (btnClr) btnClr.onclick = ()=>{ document.querySelectorAll('.di-unit-check:not(:disabled)').forEach(ch=>ch.checked=false); };
                     } else {
                         // Standard UNIT SPK handling (original logic) - ATTACHMENT SPK already handled above
                         const u = s.selected && s.selected.unit ? s.selected.unit : null;
@@ -713,6 +819,22 @@
         });
     });
     
+    // Add filter tab click listeners
+    document.querySelectorAll('.filter-tab').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            const filter = this.dataset.filter;
+            currentFilter = filter;
+            
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Apply filter
+            filterSpkData(filter);
+        });
+    });
+    
     // Add search functionality
     const spkSearchInput = document.getElementById('spkSearch');
     if (spkSearchInput) {
@@ -735,7 +857,10 @@
 
     
     // Set default active filter (all)
-    document.querySelector('[data-filter="all"]').classList.add('active');
+    const defaultFilter = document.querySelector('[data-filter="all"]');
+    if (defaultFilter) {
+        defaultFilter.classList.add('active');
+    }
     
     const kontrakInput = document.querySelector('input[name="po_kontrak_nomor"]');
     const pelangganInput = document.getElementById('inpPelanggan');
@@ -798,6 +923,8 @@
         
         // Load available contracts with specifications
         function loadAvailableKontraks() {
+            console.log('Loading available contracts...');
+            
             fetch('<?= base_url('marketing/kontrak/get-active-contracts') ?>', {
                 method: 'GET',
                 headers: {
@@ -805,27 +932,43 @@
                     'Content-Type': 'application/json'
                 }
             })
-                .then(response => response.json())
-                .then(data => {
-                    let options = '<option value="">-- Pilih Kontrak --</option>';
-                    if (data.success && data.data) {
-                        data.data.forEach(kontrak => {
-                            options += `<option value="${kontrak.id}">${kontrak.no_kontrak} - ${kontrak.pelanggan}</option>`;
-                        });
+                .then(response => {
+                    console.log('Contracts response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
                     }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Contracts response data:', data);
+                    let options = '<option value="">-- Pilih Kontrak --</option>';
+                    if (data.success && data.data && data.data.length > 0) {
+                        console.log(`Found ${data.data.length} contracts`);
+                        data.data.forEach(kontrak => {
+                            const label = `${kontrak.no_kontrak || 'No Contract'} - ${kontrak.pelanggan || 'Unknown Customer'}`;
+                            options += `<option value="${kontrak.id}">${label}</option>`;
+                            console.log(`Added contract option: ${kontrak.id} - ${label}`);
+                        });
+                    } else {
+                        console.log('No contracts found or error in response:', data);
+                        options = '<option value="">Tidak ada kontrak yang tersedia</option>';
+                    }
+                    
                     if (kontrakSelect) {
                         kontrakSelect.innerHTML = options;
+                        console.log('Contract dropdown populated');
                     }
                     
                     // If we have a pre-selected specification, find and select its contract
                     if (preSelectedSpekId) {
+                        console.log('Pre-selected specification ID:', preSelectedSpekId);
                         findAndSelectKontrakBySpekId(preSelectedSpekId);
                     }
                 })
                 .catch(error => {
                     console.error('Error loading contracts:', error);
                     if (kontrakSelect) {
-                        kontrakSelect.innerHTML = '<option value="">Error loading contracts</option>';
+                        kontrakSelect.innerHTML = `<option value="">Error loading contracts: ${error.message}</option>`;
                     }
                 });
         }
@@ -872,6 +1015,23 @@
                     loadKontrakInfo(kontrakId);
                     // Load specifications for this contract
                     loadKontrakSpesifikasiForSpk(kontrakId);
+                    
+                    // Load units for ATTACHMENT if SPK type is ATTACHMENT
+                    const jenisSpk = document.getElementById('jenisSpkSelect');
+                    if (jenisSpk && jenisSpk.value === 'ATTACHMENT') {
+                        loadContractUnitsForAttachment(kontrakId);
+                        
+                        // Show attachment target section
+                        const attachmentSection = document.getElementById('attachmentTargetSection');
+                        const targetUnitSelect = document.getElementById('targetUnitSelect');
+                        if (attachmentSection) {
+                            attachmentSection.style.display = 'block';
+                        }
+                        if (targetUnitSelect) {
+                            targetUnitSelect.setAttribute('required', 'required');
+                        }
+                    }
+                    
                     // Show contract info section
                     const kontrakInfoSection = document.getElementById('kontrakInfoSection');
                     const spesifikasiSection = document.getElementById('spesifikasiSection');
@@ -883,9 +1043,16 @@
                     const spesifikasiSection = document.getElementById('spesifikasiSection');
                     const spesifikasiDetail = document.getElementById('spesifikasiDetail');
                     const submitSpkBtn = document.getElementById('submitSpkBtn');
+                    const attachmentSection = document.getElementById('attachmentTargetSection');
+                    const targetUnitSelect = document.getElementById('targetUnitSelect');
                     
                     if (kontrakInfoSection) kontrakInfoSection.style.display = 'none';
                     if (spesifikasiSection) spesifikasiSection.style.display = 'none';
+                    if (attachmentSection) attachmentSection.style.display = 'none';
+                    if (targetUnitSelect) {
+                        targetUnitSelect.removeAttribute('required');
+                        targetUnitSelect.value = '';
+                    }
                     if (spesifikasiDetail) spesifikasiDetail.style.display = 'none';
                     if (submitSpkBtn) submitSpkBtn.disabled = true;
                 }
@@ -896,6 +1063,8 @@
         
         // Load contract information
         function loadKontrakInfo(kontrakId) {
+            console.log('Loading contract info for ID:', kontrakId);
+            
             fetch(`<?= base_url('marketing/kontrak/get-kontrak/') ?>${kontrakId}`, {
                 method: 'GET',
                 headers: {
@@ -903,8 +1072,15 @@
                     'Content-Type': 'application/json'
                 }
             })
-                .then(response => response.json())
+                .then(response => {
+                    console.log('Contract info response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    console.log('Contract info response data:', data);
                     if (data.success && data.data) {
                         const kontrak = data.data;
                         const inpPelanggan = document.getElementById('inpPelanggan');
@@ -913,22 +1089,54 @@
                         const inpKontak = document.getElementById('inpKontak');
                         const inpLokasi = document.getElementById('inpLokasi');
                         
+                        console.log('Contract data to populate:', {
+                            pelanggan: kontrak.pelanggan,
+                            no_kontrak: kontrak.no_kontrak,
+                            pic: kontrak.pic,
+                            kontak: kontrak.kontak,
+                            lokasi: kontrak.lokasi
+                        });
+                        
                         if (inpPelanggan) inpPelanggan.value = kontrak.pelanggan || '';
                         if (inpPoKontrak) inpPoKontrak.value = kontrak.no_kontrak || '';
                         if (inpPic) inpPic.value = kontrak.pic || '';
                         if (inpKontak) inpKontak.value = kontrak.kontak || '';
                         if (inpLokasi) inpLokasi.value = kontrak.lokasi || '';
+                        
+                        console.log('Contract info populated successfully');
+                    } else {
+                        console.error('No contract data received:', data);
+                        // Show error in contract info section
+                        const kontrakInfoSection = document.getElementById('kontrakInfoSection');
+                        if (kontrakInfoSection) {
+                            kontrakInfoSection.innerHTML = `
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Gagal memuat informasi kontrak: ${data.message || 'Data tidak ditemukan'}
+                                </div>
+                            `;
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error loading contract info:', error);
+                    // Show error in contract info section
+                    const kontrakInfoSection = document.getElementById('kontrakInfoSection');
+                    if (kontrakInfoSection) {
+                        kontrakInfoSection.innerHTML = `
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-circle me-2"></i>
+                                Error loading contract info: ${error.message}
+                            </div>
+                        `;
+                    }
                 });
         }
         
         // Load specifications for selected contract
         function loadKontrakSpesifikasiForSpk(kontrakId) {
             // Get selected SPK type to filter specifications
-            const spkTypeElement = document.querySelector('select[name="jenis_spk"]');
+            const spkTypeElement = document.getElementById('jenisSpkSelect');
             const jenisSpk = spkTypeElement ? spkTypeElement.value : 'UNIT';
             
             fetch(`<?= base_url('marketing/kontrak/spesifikasi/') ?>${kontrakId}`, {
@@ -1348,10 +1556,33 @@
         }
         
         // Add event listener for SPK type change
-        const jenisSpkSelect = document.querySelector('select[name="jenis_spk"]');
+        const jenisSpkSelect = document.getElementById('jenisSpkSelect');
         if (jenisSpkSelect) {
             jenisSpkSelect.addEventListener('change', function() {
                 console.log('SPK type changed to:', this.value);
+                
+                const attachmentSection = document.getElementById('attachmentTargetSection');
+                const targetUnitSelect = document.getElementById('targetUnitSelect');
+                const kontrakSelect = document.getElementById('kontrakSelect');
+                
+                if (this.value === 'ATTACHMENT') {
+                    // Show attachment target section
+                    if (attachmentSection) attachmentSection.style.display = 'block';
+                    if (targetUnitSelect) targetUnitSelect.setAttribute('required', 'required');
+                    
+                    // Load units for selected contract
+                    if (kontrakSelect && kontrakSelect.value) {
+                        loadContractUnitsForAttachment(kontrakSelect.value);
+                    }
+                } else {
+                    // Hide attachment target section
+                    if (attachmentSection) attachmentSection.style.display = 'none';
+                    if (targetUnitSelect) {
+                        targetUnitSelect.removeAttribute('required');
+                        targetUnitSelect.value = '';
+                        targetUnitSelect.innerHTML = '<option value="">- Pilih Unit Tujuan -</option>';
+                    }
+                }
                 
                 // Reset spesifikasi section when SPK type changes
                 const spesifikasiSelect = document.getElementById('spesifikasiSelect');
@@ -1367,18 +1598,68 @@
                 if (attachmentInventoryList) attachmentInventoryList.innerHTML = '';
                 
                 // Reload specifications for selected contract if any
-                const kontrakSelect = document.getElementById('kontrakSelect');
                 if (kontrakSelect && kontrakSelect.value) {
                     console.log('Reloading specifications for new SPK type');
                     loadKontrakSpesifikasiForSpk(kontrakSelect.value);
                 }
             });
         }
+        
+        // Function to load units from contract for ATTACHMENT target
+        function loadContractUnitsForAttachment(kontrakId) {
+            if (!kontrakId) return;
+            
+            fetch(`<?= base_url('marketing/kontrak/units/') ?>${kontrakId}`)
+                .then(r => r.json())
+                .then(data => {
+                    const select = document.getElementById('targetUnitSelect');
+                    if (!select) return;
+                    
+                    select.innerHTML = '<option value="">- Pilih Unit Tujuan -</option>';
+                    
+                    if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+                        data.data.forEach(unit => {
+                            const option = document.createElement('option');
+                            option.value = unit.id;
+                            option.textContent = `${unit.serial_number} - ${unit.jenis_unit || 'N/A'} (${unit.status || 'N/A'})`;
+                            option.dataset.sn = unit.serial_number;
+                            select.appendChild(option);
+                        });
+                    } else {
+                        const option = document.createElement('option');
+                        option.value = '';
+                        option.textContent = '-- Tidak ada unit terdaftar di kontrak ini --';
+                        option.disabled = true;
+                        select.appendChild(option);
+                    }
+                })
+                .catch(err => {
+                    console.error('Failed to load contract units:', err);
+                });
+        }
 
         // Updated form submission to handle new workflow
         document.getElementById('spkForm').addEventListener('submit', (e)=>{
             e.preventDefault();
             const fd = new FormData(e.target);
+            
+            // Validate ATTACHMENT specific fields
+            const jenisSpk = fd.get('jenis_spk');
+            if (jenisSpk === 'ATTACHMENT') {
+                const targetUnitId = fd.get('target_unit_id');
+                if (!targetUnitId) {
+                    if (window.OptimaPro && typeof OptimaPro.showNotification==='function') {
+                        OptimaPro.showNotification('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT', 'error');
+                    } else if (typeof showNotification==='function') {
+                        showNotification('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT', 'error');
+                    } else {
+                        alert('Unit Tujuan wajib dipilih untuk SPK ATTACHMENT');
+                    }
+                    return;
+                }
+                // Force jumlah_unit to 1 for attachment
+                fd.set('jumlah_unit', '1');
+            }
             
             // Add specification ID for new workflow
             const spekId = spesifikasiSelect ? spesifikasiSelect.value : '';
@@ -1630,7 +1911,10 @@
             const standardItems = document.getElementById('diUnitsPick'); // Standard item selection
             const itemSummary = document.getElementById('diSelectedSummary');
             
-            if (!tukarWorkflow) return;
+            if (!tukarWorkflow) {
+                console.warn('SPK TUKAR workflow element not found');
+                return;
+            }
             
             if (isTukarWorkflow) {
                 // Show TUKAR workflow components
@@ -2069,7 +2353,13 @@
     // Edit SPK function
     function editSpk() {
         if (!currentSpkId) {
-            alert('SPK ID tidak ditemukan');
+            if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                OptimaPro.showNotification('SPK ID tidak ditemukan', 'error');
+            } else if (typeof showNotification === 'function') {
+                showNotification('SPK ID tidak ditemukan', 'error');
+            } else {
+                alert('SPK ID tidak ditemukan');
+            }
             return;
         }
         
@@ -2087,19 +2377,37 @@
                     // Show edit modal
                     new bootstrap.Modal(document.getElementById('spkEditModal')).show();
                 } else {
-                    alert('Gagal memuat data SPK untuk edit');
+                    if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                        OptimaPro.showNotification('Gagal memuat data SPK untuk edit', 'error');
+                    } else if (typeof showNotification === 'function') {
+                        showNotification('Gagal memuat data SPK untuk edit', 'error');
+                    } else {
+                        alert('Gagal memuat data SPK untuk edit');
+                    }
                 }
             })
             .catch(error => {
                 console.error('Error loading SPK for edit:', error);
-                alert('Error loading SPK data');
+                if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                    OptimaPro.showNotification('Error loading SPK data', 'error');
+                } else if (typeof showNotification === 'function') {
+                    showNotification('Error loading SPK data', 'error');
+                } else {
+                    alert('Error loading SPK data');
+                }
             });
     }
     
     // Delete SPK function with double confirmation
     function deleteSpk() {
         if (!currentSpkId) {
-            alert('SPK ID tidak ditemukan');
+            if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                OptimaPro.showNotification('SPK ID tidak ditemukan', 'error');
+            } else if (typeof showNotification === 'function') {
+                showNotification('SPK ID tidak ditemukan', 'error');
+            } else {
+                alert('SPK ID tidak ditemukan');
+            }
             return;
         }
         
@@ -2132,14 +2440,34 @@
                 // Reload SPK list
                 loadSpk();
                 
-                alert('SPK berhasil dihapus');
+                if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                    OptimaPro.showNotification('SPK berhasil dihapus', 'success');
+                } else if (typeof showNotification === 'function') {
+                    showNotification('SPK berhasil dihapus', 'success');
+                } else {
+                    alert('SPK berhasil dihapus');
+                }
             } else {
-                alert(j.message || 'Gagal menghapus SPK');
+                const errorMsg = j.message || 'Gagal menghapus SPK';
+                if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                    OptimaPro.showNotification(errorMsg, 'error');
+                } else if (typeof showNotification === 'function') {
+                    showNotification(errorMsg, 'error');
+                } else {
+                    alert(errorMsg);
+                }
             }
         })
         .catch(error => {
             console.error('Error deleting SPK:', error);
-            alert('Error deleting SPK: ' + error.message);
+            const errorMsg = 'Error deleting SPK: ' + error.message;
+            if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                OptimaPro.showNotification(errorMsg, 'error');
+            } else if (typeof showNotification === 'function') {
+                showNotification(errorMsg, 'error');
+            } else {
+                alert(errorMsg);
+            }
         });
     }
     
@@ -2167,15 +2495,30 @@
                 const formData = new FormData(this);
                 const spkId = formData.get('id');
                 
+                // Debug: Log form data
+                console.log('SPK Edit Form Data:', {
+                    spkId: spkId,
+                    jenis_spk: formData.get('jenis_spk'),
+                    po_kontrak_nomor: formData.get('po_kontrak_nomor'),
+                    pelanggan: formData.get('pelanggan'),
+                    status: formData.get('status')
+                });
+                
                 fetch(`<?= base_url('marketing/spk/update/') ?>${spkId}`, {
-                    method: 'PUT',
+                    method: 'POST',
                     headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-HTTP-Method-Override': 'PUT'
                     },
-                    body: formData
+                    body: new URLSearchParams(formData)
                 })
-                .then(r => r.json())
+                .then(r => {
+                    console.log('Response status:', r.status);
+                    return r.json();
+                })
                 .then(j => {
+                    console.log('Response data:', j);
                     if (j.success) {
                         // Close edit modal
                         const editModal = bootstrap.Modal.getInstance(document.getElementById('spkEditModal'));
@@ -2184,14 +2527,37 @@
                         // Reload SPK list
                         loadSpk();
                         
-                        alert('SPK berhasil diperbarui');
+                        // Show success notification
+                        const successMsg = 'SPK berhasil diperbarui! Status: ' + (j.data?.status || 'Unknown');
+                        if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                            OptimaPro.showNotification(successMsg, 'success');
+                        } else if (typeof showNotification === 'function') {
+                            showNotification(successMsg, 'success');
+                        } else {
+                            alert(successMsg);
+                        }
                     } else {
-                        alert(j.message || 'Gagal memperbarui SPK');
+                        // Show error notification
+                        const errorMsg = j.message || 'Gagal memperbarui SPK';
+                        if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                            OptimaPro.showNotification(errorMsg, 'error');
+                        } else if (typeof showNotification === 'function') {
+                            showNotification(errorMsg, 'error');
+                        } else {
+                            alert(errorMsg);
+                        }
                     }
                 })
                 .catch(error => {
                     console.error('Error updating SPK:', error);
-                    alert('Error updating SPK: ' + error.message);
+                    const errorMsg = 'Terjadi kesalahan saat memperbarui SPK: ' + error.message;
+                    if (window.OptimaPro && typeof OptimaPro.showNotification === 'function') {
+                        OptimaPro.showNotification(errorMsg, 'error');
+                    } else if (typeof showNotification === 'function') {
+                        showNotification(errorMsg, 'error');
+                    } else {
+                        alert(errorMsg);
+                    }
                 });
             });
         }
@@ -2275,7 +2641,9 @@
                 </form>
             </div>
         </div>
+        </div>
     </div>
-
+    
+    <?php endif; ?>
 </div>
 <?= $this->endSection() ?>

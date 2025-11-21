@@ -23,21 +23,23 @@ class InventoryStatusModel extends Model
             $this->db->transBegin();
 
             // Update inventory_unit status to RENTAL (id: 3)
-            $unitResult = $this->db->query("
+            // Cover both cases: units linked via kontrak_spesifikasi_id and units linked directly via kontrak_id
+            $this->db->query("
                 UPDATE inventory_unit iu
-                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                LEFT JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
                 SET iu.status_unit_id = 3
-                WHERE ks.kontrak_id = ? AND iu.status_unit_id != 3
-            ", [$kontrakId]);
+                WHERE (ks.kontrak_id = ? OR iu.kontrak_id = ?) AND iu.status_unit_id != 3
+            ", [$kontrakId, $kontrakId]);
 
             // Update inventory_attachment status to RENTAL (id: 3) for items linked to this contract
-            $attachmentResult = $this->db->query("
+            // This covers attachments referenced by inventory_unit regardless of how the unit is linked
+            $this->db->query("
                 UPDATE inventory_attachment ia
                 JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
-                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                LEFT JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
                 SET ia.status_unit = 3
-                WHERE ks.kontrak_id = ? AND ia.status_unit != 3
-            ", [$kontrakId]);
+                WHERE (ks.kontrak_id = ? OR iu.kontrak_id = ?) AND ia.status_unit != 3
+            ", [$kontrakId, $kontrakId]);
 
             // Handle departemen-specific attachment rules
             $this->handleDepartmentAttachmentRules($kontrakId);

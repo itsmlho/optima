@@ -44,6 +44,7 @@ class CustomerLocationModel extends Model
         'city' => 'required|max_length[100]',
         'province' => 'required|max_length[100]',
         'postal_code' => 'permit_empty|max_length[10]',
+        'email' => 'max_length[128]',
         'gps_latitude' => 'permit_empty|decimal',
         'gps_longitude' => 'permit_empty|decimal',
         'is_primary' => 'permit_empty|in_list[0,1]',
@@ -70,6 +71,9 @@ class CustomerLocationModel extends Model
         'province' => [
             'required' => 'Provinsi harus diisi',
             'max_length' => 'Nama provinsi maksimal 100 karakter'
+        ],
+        'email' => [
+            'valid_email' => 'Format email tidak valid'
         ]
     ];
     
@@ -161,7 +165,7 @@ class CustomerLocationModel extends Model
     {
         $builder = $this->select('customer_locations.*, customers.customer_name, customers.customer_code, areas.area_name')
                        ->join('customers', 'customers.id = customer_locations.customer_id')
-                       ->join('areas', 'areas.id = customers.area_id')
+                       ->join('areas', 'areas.id = customer_locations.area_id')
                        ->where('customer_locations.is_active', 1);
                        
         if ($locationId) {
@@ -181,7 +185,7 @@ class CustomerLocationModel extends Model
     {
         $builder = $this->select('customer_locations.*, customers.customer_name, customers.customer_code, areas.area_name')
                        ->join('customers', 'customers.id = customer_locations.customer_id')
-                       ->join('areas', 'areas.id = customers.area_id')
+                       ->join('areas', 'areas.id = customer_locations.area_id')
                        ->where('customer_locations.is_active', 1);
                        
         if (!empty($search)) {
@@ -198,7 +202,7 @@ class CustomerLocationModel extends Model
         }
         
         if ($areaId) {
-            $builder->where('customers.area_id', $areaId);
+            $builder->where('customer_locations.area_id', $areaId);
         }
         
         return $builder->orderBy('customers.customer_name')

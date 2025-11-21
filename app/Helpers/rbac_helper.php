@@ -14,7 +14,11 @@ if (!function_exists('can_access')) {
     {
         $user_id = $user_id ?? session()->get('user_id');
         
+        // DEBUG: Log permission check
+        log_message('info', "RBAC Debug - Permission: {$permission_key}, User ID: " . ($user_id ?? 'NULL'));
+        
         if (!$user_id) {
+            log_message('info', "RBAC Debug - No user ID found");
             return false;
         }
 
@@ -54,12 +58,108 @@ if (!function_exists('can_access')) {
                 ->where('p.key', $permission_key)
                 ->countAllResults();
 
+            // DEBUG: Log role permission result
+            log_message('info', "RBAC Debug - Role permission count for {$permission_key}: {$rolePermission}");
+            
             return $rolePermission > 0;
 
         } catch (\Exception $e) {
             log_message('error', 'RBAC Helper Error: ' . $e->getMessage());
             return false;
         }
+    }
+}
+
+if (!function_exists('get_permission_level')) {
+    /**
+     * Get permission access level for user
+     * Returns: 'none', 'view', 'edit', 'delete', 'manage'
+     */
+    function get_permission_level($permission_key, $user_id = null, $division_id = null)
+    {
+        $user_id = $user_id ?? session()->get('user_id');
+        
+        if (!$user_id) {
+            return 'none';
+        }
+
+        // Super Administrator has full access
+        $userRole = session()->get('role');
+        if ($userRole) {
+            $roleKey = strtolower(str_replace(['_', ' '], '', trim($userRole)));
+            if (in_array($roleKey, ['superadministrator', 'superadmin'])) {
+                return 'manage';
+            }
+        }
+
+        $db = \Config\Database::connect();
+
+        try {
+            // Check for specific permission levels
+            $permissionLevels = [
+                $permission_key . '.manage' => 'manage',
+                $permission_key . '.delete' => 'delete', 
+                $permission_key . '.edit' => 'edit',
+                $permission_key . '.view' => 'view',
+                $permission_key => 'view' // Default to view if just permission key
+            ];
+
+            foreach ($permissionLevels as $permKey => $level) {
+                if (can_access($permKey, $user_id, $division_id)) {
+                    return $level;
+                }
+            }
+
+            return 'none';
+
+        } catch (\Exception $e) {
+            log_message('error', 'Permission Level Error: ' . $e->getMessage());
+            return 'none';
+        }
+    }
+}
+
+if (!function_exists('can_view')) {
+    /**
+     * Check if user can view (read-only access)
+     */
+    function can_view($permission_key, $user_id = null, $division_id = null)
+    {
+        $level = get_permission_level($permission_key, $user_id, $division_id);
+        return in_array($level, ['view', 'edit', 'delete', 'manage']);
+    }
+}
+
+if (!function_exists('can_edit')) {
+    /**
+     * Check if user can edit
+     */
+    function can_edit($permission_key, $user_id = null, $division_id = null)
+    {
+        $level = get_permission_level($permission_key, $user_id, $division_id);
+        return in_array($level, ['edit', 'delete', 'manage']);
+    }
+}
+
+if (!function_exists('can_delete')) {
+    /**
+     * Check if user can delete
+     */
+    function can_delete($permission_key, $user_id = null, $division_id = null)
+    {
+        $level = get_permission_level($permission_key, $user_id, $division_id);
+        return in_array($level, ['delete', 'manage']);
+    }
+}
+
+if (!function_exists('can_manage')) {
+    /**
+     * Check if user can manage (full access)
+     */
+    function can_manage($permission_key, $user_id = null, $division_id = null)
+    {
+        $level = get_permission_level($permission_key, $user_id, $division_id);
+        return $level === 'manage';
     }
 }
 

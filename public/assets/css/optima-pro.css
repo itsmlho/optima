@@ -6,6 +6,73 @@
  */
 
 /* ==============================
+   TABLE DISABLED STYLING - CENTRALIZED
+   ============================== */
+.table-disabled {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    cursor: not-allowed !important;
+}
+
+.table-disabled tbody tr {
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+.table-disabled tbody tr:hover {
+    background-color: #f8f9fa !important;
+}
+
+.table-disabled tbody tr td {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.table-disabled tbody tr td * {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.table-disabled tbody tr * {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.table-disabled .btn {
+    pointer-events: none !important;
+    opacity: 0.3 !important;
+}
+
+.table-disabled a {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+    color: #6c757d !important;
+    text-decoration: none !important;
+}
+
+.table-disabled a:hover {
+    color: #6c757d !important;
+    text-decoration: none !important;
+}
+
+.table-disabled input, .table-disabled select {
+    pointer-events: none !important;
+    opacity: 0.5 !important;
+}
+
+/* Enhanced table row disabling for View Only users */
+.table-disabled tbody tr {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.table-disabled tbody tr * {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+/* ==============================
    CSS Custom Properties
    ============================== */
 :root {
@@ -149,7 +216,6 @@ body {
     text-align: var(--bs-body-text-align);
     background-color: var(--bs-body-bg);
     /* Prevent automatic font size adjustment on mobile Safari */
-    -webkit-text-size-adjust: 100%;
     /* Remove tap highlight color on mobile WebKit browsers */
     -webkit-tap-highlight-color: transparent;
 }
@@ -200,6 +266,8 @@ body {
     border-right: 1px solid var(--bs-border-color);
     z-index: 1000;
     transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 .sidebar.collapsed {
@@ -264,25 +332,28 @@ body {
 }
 
 .sidebar-nav {
-    padding: 1rem 0;
+    padding: 0.75rem 0;
+    flex: 1;
+    overflow-y: auto;
+    max-height: calc(100vh - 200px);
 }
 
 .sidebar-nav .nav-item {
-    margin-bottom: 0.25rem;
+    margin-bottom: 0.125rem;
 }
 
 /* Section Dividers */
 .sidebar-divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(0, 97, 242, 0.15), transparent);
-    margin: 1.5rem 1rem;
+    margin: 1rem 1rem;
     border: none;
 }
 
 /* Section Headings */
 .sidebar-heading {
-    padding: 1rem 1.5rem 0.5rem 1.5rem;
-    margin-top: 1rem;
+    padding: 0.75rem 1.5rem 0.375rem 1.5rem;
+    margin-top: 0.75rem;
     color: var(--optima-blue);
     font-size: 0.75rem;
     font-weight: 700;
@@ -295,13 +366,13 @@ body {
 .sidebar-nav .nav-link {
     display: flex;
     align-items: center;
-    padding: 0.75rem 1.5rem;
+    padding: 0.625rem 1.5rem;
     color: var(--bs-gray-600);
     text-decoration: none;
     font-weight: 500;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 8px;
-    margin: 0.15rem 0.75rem;
+    margin: 0.1rem 0.75rem;
     position: relative;
     overflow: hidden;
 }
@@ -670,17 +741,7 @@ body {
     transform: translateY(-0.125rem);
 }
 
-.btn-success {
-    background: linear-gradient(135deg, var(--bs-success) 0%, #4dd289 100%);
-    color: white;
-    box-shadow: 0 0.25rem 0.5rem rgba(0, 172, 105, 0.25);
-}
-
-.btn-success:hover {
-    background: linear-gradient(135deg, #008f57 0%, var(--bs-success) 100%);
-    box-shadow: 0 0.5rem 1rem rgba(0, 172, 105, 0.3);
-    transform: translateY(-0.125rem);
-}
+/* btn-success moved to BUTTON ENHANCEMENTS section (line 2052) with shimmer effect */
 
 .btn-warning {
     background: linear-gradient(135deg, var(--bs-warning) 0%, #ffcc47 100%);
@@ -728,38 +789,48 @@ body {
 }
 
 /* ==============================
-   Form Styles
+   Form Styles - Enhanced Override
    ============================== */
 .form-control {
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius);
-    padding: 0.75rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
     font-size: var(--bs-font-size-base);
-    transition: var(--bs-transition);
+    transition: all 0.2s ease;
 }
 
 .form-control:focus {
     border-color: var(--optima-blue);
     box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.25);
+    outline: none;
 }
 
 .form-label {
-    font-weight: 500;
-    color: var(--bs-gray-700);
+    font-weight: 600;
+    color: #495057;
     margin-bottom: 0.5rem;
+    font-size: 0.875rem;
 }
 
 .form-select {
-    border: 1px solid var(--bs-border-color);
-    border-radius: var(--bs-border-radius);
-    padding: 0.75rem 1rem;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
     font-size: var(--bs-font-size-base);
-    transition: var(--bs-transition);
+    transition: all 0.2s ease;
 }
 
 .form-select:focus {
     border-color: var(--optima-blue);
     box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.25);
+    outline: none;
+}
+
+/* Form text helper */
+.form-text {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
 }
 
 .form-check-input {
@@ -850,13 +921,14 @@ body {
 }
 
 /* ==============================
-   Alert Styles
+   Alert Styles - Enhanced
    ============================== */
 .alert {
-    padding: 1rem 1.25rem;
-    border-radius: var(--bs-border-radius-lg);
+    padding: 1rem 1.5rem;
+    border-radius: 10px;
     border: none;
     font-weight: 500;
+    margin-bottom: 1.5rem;
 }
 
 .alert-primary {
@@ -883,6 +955,12 @@ body {
     border-left: 4px solid var(--bs-danger);
 }
 
+.alert-info {
+    background: linear-gradient(135deg, rgba(57, 175, 209, 0.1) 0%, rgba(57, 175, 209, 0.05) 100%);
+    color: #0c5460;
+    border-left: 4px solid var(--bs-info);
+}
+
 /* ==============================
    Modal Styles
    ============================== */
@@ -893,55 +971,83 @@ body {
 }
 
 .modal-header {
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
     border-bottom: 1px solid var(--bs-border-color);
-    padding: 1.5rem;
-    border-top-left-radius: var(--bs-border-radius-xl);
-    border-top-right-radius: var(--bs-border-radius-xl);
+    color: #333;
+    padding: 1.25rem 1.5rem;
+    border-radius: 15px 15px 0 0;
 }
 
 .modal-title {
     font-weight: 600;
+    font-size: 1.1rem;
     color: var(--bs-gray-800);
 }
 
 .modal-body {
-    padding: 2rem;
+    padding: 1.5rem;
 }
 
 .modal-footer {
     background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
     border-top: 1px solid var(--bs-border-color);
-    padding: 1.5rem;
-    border-bottom-left-radius: var(--bs-border-radius-xl);
-    border-bottom-right-radius: var(--bs-border-radius-xl);
+    padding: 1rem 1.5rem;
+}
+
+/* Large modal for complex forms */
+.modal-lg {
+    max-width: 900px;
+}
+
+.modal-xl {
+    max-width: 1140px;
 }
 
 /* ==============================
-   Dropdown Styles
+   Dropdown Styles - Enhanced
    ============================== */
 .dropdown-menu {
-    border: none;
-    border-radius: var(--bs-border-radius-lg);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-radius: 8px;
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
     padding: 0.5rem 0;
+    margin-top: 0.25rem;
 }
 
 .dropdown-item {
-    padding: 0.75rem 1.25rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--bs-gray-700);
-    transition: var(--bs-transition);
+    transition: all 0.15s ease;
 }
 
 .dropdown-item:hover {
-    background-color: rgba(0, 97, 242, 0.05);
+    background-color: rgba(0, 97, 242, 0.08);
     color: var(--optima-blue);
+}
+
+.dropdown-item:active {
+    background-color: var(--optima-blue);
+    color: white;
 }
 
 .dropdown-item.active {
     background-color: var(--optima-blue);
     color: white;
+}
+
+.dropdown-divider {
+    margin: 0.5rem 0;
+}
+
+.dropdown-header {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
 }
 
 /* ==============================
@@ -1806,6 +1912,8 @@ body[data-division] .content-header .breadcrumb-item a:hover,
 .sidebar-nav {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 97, 242, 0.3) transparent;
+    /* Ensure smooth scrolling on touch devices */
+    -webkit-overflow-scrolling: touch;
 }
 
 .sidebar-nav::-webkit-scrollbar {
@@ -1892,4 +2000,1055 @@ button:focus, a:focus, input:focus, select:focus, textarea:focus {
   outline-offset: 2px;
   box-shadow: 0 0 0 2px rgba(0,97,242,0.15);
   z-index: 2;
-} 
+}
+
+/* ==============================
+   OPTIMA UNIVERSAL COMPONENTS
+   Komponen yang digunakan di seluruh aplikasi
+   ============================== */
+
+/* Stats Cards - Universal hover effect */
+.card-stats {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.card-stats:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.card-stats.active {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    border: 2px solid #0d6efd;
+}
+
+/* Table Card - Universal styling */
+.table-card {
+    border: none;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+/* Filter Cards - Interactive cards untuk filter */
+.filter-card {
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.filter-card.active {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    border: 2px solid #fff;
+}
+
+.filter-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25);
+}
+
+/* ==============================
+   TAB NAVIGATION - Universal Style
+   Konsisten di seluruh aplikasi
+   ============================== */
+.nav-tabs {
+    border-bottom: 1px solid #dee2e6;
+    margin-bottom: 0;
+}
+
+.nav-tabs .nav-item {
+    margin-bottom: 0;
+}
+
+.nav-tabs .nav-link {
+    padding: 0.5rem 1rem;
+    border: 1px solid transparent;
+    border-top-left-radius: 0.35rem;
+    border-top-right-radius: 0.35rem;
+    color: #6c757d;
+    transition: all 0.15s ease-in-out;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    font-weight: 600;
+}
+
+.nav-tabs .nav-link:hover {
+    border-color: #e9ecef #e9ecef #dee2e6;
+    isolation: isolate;
+    color: #4e73df;
+}
+
+.nav-tabs .nav-link.active {
+    color: white !important;
+    background-color: #4e73df !important;
+    border-color: #4e73df !important;
+}
+
+.nav-tabs .nav-link i {
+    font-size: 1rem;
+}
+
+.nav-tabs .badge {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+}
+
+.nav-tabs .nav-link.active .badge {
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.nav-tabs .nav-link:not(.active) .badge {
+    background-color: #007bff;
+    color: white;
+    border: none;
+}
+
+/* Tab Content */
+.tab-content {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-top: none;
+    border-radius: 0 0 0.375rem 0.375rem;
+    width: 100%;
+}
+
+.tab-pane {
+    padding: 1.5rem;
+    width: 100%;
+}
+
+/* ==============================
+   BUTTON ENHANCEMENTS
+   Premium button styles
+   ============================== */
+
+/* Button Success - simple and consistent */
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #fff;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: normal;
+    box-shadow: none;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+    color: #fff;
+}
+
+.btn-success:active {
+    background-color: #1e7e34;
+    border-color: #1c7430;
+    box-shadow: none;
+}
+
+.btn-success::before { content: none; }
+
+/* Outline Button Consistent Style */
+.btn-outline-success {
+    background-color: transparent;
+    border: 2px solid #28a745;
+    color: #28a745;
+    font-weight: 600;
+}
+
+.btn-outline-success:hover {
+    background-color: #28a745;
+    border-color: #28a745;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+/* ==============================
+   FORM VALIDATION STYLES
+   Visual feedback untuk form
+   ============================== */
+.form-control.is-valid,
+.form-select.is-valid {
+    border-color: #198754;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%23198754' d='m2.3 6.73.98-.97-.97-.97 1.378-1.38.97.97 2.564-2.565 1.378 1.378-3.942 3.942L2.3 6.73z'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem 1rem;
+    padding-right: 3rem;
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid {
+    border-color: #dc3545;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath d='m5.8 4.6 0.4 0.4 0.4-0.4M5.8 7.4 6.2 7 6.6 7.4'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem 1rem;
+    padding-right: 3rem;
+}
+
+.form-label .text-danger {
+    font-size: 0.875em;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* ==============================
+   TABLE ENHANCEMENTS
+   Clickable rows & sticky headers
+   ============================== */
+.clickable-row {
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.clickable-row:hover {
+    background-color: rgba(0, 123, 255, 0.1) !important;
+}
+
+/* Sticky table header */
+.table thead th {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 5;
+}
+
+/* Responsive table columns hide */
+@media (max-width: 992px) {
+    .table td:nth-child(5),
+    .table th:nth-child(5),
+    .table td:nth-child(6),
+    .table th:nth-child(6),
+    .table td:nth-child(7),
+    .table th:nth-child(7) {
+        display: none;
+    }
+}
+
+/* ==============================
+   MODAL ENHANCEMENTS
+   Note: Modal styling already defined in Modal Styles section (line 910-945)
+   ============================== */
+
+/* ==============================
+   BADGE STATUS STYLING
+   Work order & Status badges
+   ============================== */
+.work-order-badge {
+    font-size: 0.75rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    font-weight: 600;
+}
+
+/* Priority Badges */
+.priority-critical {
+    background-color: #dc3545 !important;
+    color: white;
+}
+
+.priority-high {
+    background-color: #fd7e14 !important;
+    color: white;
+}
+
+.priority-medium {
+    background-color: #17a2b8 !important;
+    color: white;
+}
+
+.priority-low {
+    background-color: #6c757d !important;
+    color: white;
+}
+
+.priority-routine {
+    background-color: #28a745 !important;
+    color: white;
+}
+
+/* Status Badges */
+.status-open {
+    background-color: #17a2b8 !important;
+    color: white;
+}
+
+.status-assigned {
+    background-color: #007bff !important;
+    color: white;
+}
+
+.status-in-progress {
+    background-color: #ffc107 !important;
+    color: #000 !important;
+}
+
+.status-completed {
+    background-color: #28a745 !important;
+    color: white;
+}
+
+.status-closed {
+    background-color: #343a40 !important;
+    color: white;
+}
+
+/* ==============================
+   ACTION BUTTONS GROUP
+   Dynamic action buttons
+   ============================== */
+.btn-group-vertical .btn {
+    margin-bottom: 2px;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.btn-group-vertical .btn:last-child {
+    margin-bottom: 0;
+}
+
+/* ==============================
+   PLACEHOLDER & EMPTY STATES
+   ============================== */
+.placeholder {
+    color: #999;
+    font-style: italic;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    opacity: 0.3;
+    margin-bottom: 1rem;
+}
+
+/* ==============================
+   LOADING & SPINNER STATES
+   ============================== */
+.loading-spinner-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.loading-spinner-overlay .spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+/* ==============================
+   SEARCH & FILTER COMPONENTS
+   ============================== */
+.search-box {
+    position: relative;
+}
+
+.search-box .form-control {
+    padding-right: 2.5rem;
+}
+
+.search-box .search-icon {
+    position: absolute;
+    right: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    pointer-events: none;
+}
+
+/* ==============================
+   PAGINATION CUSTOM STYLE
+   ============================== */
+.pagination .page-link {
+    border-radius: 0.375rem;
+    margin: 0 0.125rem;
+    border: 1px solid #dee2e6;
+    color: #4e73df;
+    font-weight: 500;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #4e73df;
+    border-color: #4e73df;
+}
+
+.pagination .page-link:hover {
+    background-color: rgba(78, 115, 223, 0.1);
+    border-color: #4e73df;
+}
+
+/* ==============================
+   CHART CONTAINERS
+   ============================== */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.chart-container canvas {
+    max-height: 300px;
+}
+
+/* ==============================
+   QUICK ACTION CARDS
+   Dashboard quick actions
+   ============================== */
+.quick-action-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+    border: 1px solid #e9ecef;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    height: 100%;
+}
+
+.quick-action-card:hover {
+    background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
+    color: white;
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 97, 242, 0.25);
+}
+
+.quick-action-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(0, 97, 242, 0.1);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+    font-size: 1.5rem;
+}
+
+.quick-action-card:hover .quick-action-icon {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+/* ==============================
+   ACTIVITY FEED
+   Dashboard activity items
+   ============================== */
+.activity-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    border-bottom: 1px solid #e9ecef;
+    transition: background-color 0.3s ease;
+}
+
+.activity-item:hover {
+    background-color: rgba(0, 97, 242, 0.05);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    font-size: 0.875rem;
+}
+
+.activity-icon.success {
+    background: rgba(0, 172, 105, 0.1);
+    color: #00ac69;
+}
+
+.activity-icon.warning {
+    background: rgba(255, 182, 7, 0.1);
+    color: #ffb607;
+}
+
+.activity-icon.danger {
+    background: rgba(232, 21, 0, 0.1);
+    color: #e81500;
+}
+
+.activity-icon.info {
+    background: rgba(57, 175, 209, 0.1);
+    color: #39afd1;
+}
+
+/* ==============================
+   BORDER LEFT COLORED CARDS
+   Used in dashboards
+   ============================== */
+.border-left-primary {
+    border-left: 4px solid #0061f2 !important;
+}
+
+.border-left-success {
+    border-left: 4px solid #00ac69 !important;
+}
+
+.border-left-warning {
+    border-left: 4px solid #ffb607 !important;
+}
+
+.border-left-danger {
+    border-left: 4px solid #e81500 !important;
+}
+
+.border-left-info {
+    border-left: 4px solid #39afd1 !important;
+}
+
+/* ==============================
+   TEXT UTILITIES
+   ============================== */
+.text-xs {
+    font-size: 0.75rem;
+}
+
+.text-sm {
+    font-size: 0.875rem;
+}
+
+.font-weight-bold {
+    font-weight: 700;
+}
+
+/* ==============================
+   DARK MODE ADJUSTMENTS
+   For new components
+   ============================== */
+[data-bs-theme="dark"] .table-card,
+[data-bs-theme="dark"] .card-stats {
+    background-color: #343a40;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .nav-tabs {
+    border-bottom-color: #495057;
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .nav-tabs .nav-link:hover {
+    color: #4d8cff;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .tab-content {
+    background: #343a40;
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .quick-action-card {
+    background: linear-gradient(135deg, #343a40 0%, #2c3034 100%);
+    border-color: #495057;
+}
+
+[data-bs-theme="dark"] .activity-item {
+    border-bottom-color: #495057;
+}
+
+[data-bs-theme="dark"] .activity-item:hover {
+    background-color: rgba(77, 140, 255, 0.1);
+}
+
+/* ==============================
+   DATATABLES CUSTOMIZATION
+   Styling konsisten untuk DataTables
+   ============================== */
+.dataTables_wrapper {
+    padding-top: 1rem;
+}
+
+.dataTables_wrapper .dataTables_length select {
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    padding: 0.375rem 2rem 0.375rem 0.75rem;
+    margin: 0 0.5rem;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    border: 2px solid #e9ecef;
+    border-radius: 6px;
+    padding: 0.375rem 0.75rem;
+    margin-left: 0.5rem;
+}
+
+.dataTables_wrapper .dataTables_filter input:focus {
+    border-color: var(--optima-blue);
+    outline: none;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 0.375rem 0.75rem;
+    margin: 0 0.125rem;
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #f8f9fa;
+    border-color: var(--optima-blue);
+    color: var(--optima-blue) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: var(--optima-blue) !important;
+    border-color: var(--optima-blue) !important;
+    color: white !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.dataTables_wrapper .dataTables_info {
+    padding-top: 0.85rem;
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* DataTables responsive */
+.dtr-details {
+    width: 100%;
+}
+
+.dtr-details li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+/* Note: Dropdown styling already defined in Dropdown Styles section (line 940-975) */
+
+/* ==============================
+   PERMISSION CARDS
+   Colored border cards untuk permissions
+   ============================== */
+.permission-card {
+    border-left: 4px solid #007bff;
+    margin-bottom: 1rem;
+    transition: all 0.2s ease;
+}
+
+.permission-card:hover {
+    box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.1);
+}
+
+.permission-card.system {
+    border-left-color: #28a745;
+}
+
+.permission-card.custom {
+    border-left-color: #ffc107;
+}
+
+.permission-card.danger {
+    border-left-color: #dc3545;
+}
+
+/* ==============================
+   COMING SOON PAGES
+   Animated coming soon cards
+   ============================== */
+.coming-soon-container {
+    min-height: 80vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.coming-soon-card {
+    background: #fff;
+    border-radius: 1.5rem;
+    padding: 3rem 2rem;
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.1);
+    text-align: center;
+    max-width: 600px;
+    width: 100%;
+    animation: fadeInUp 0.8s ease-in-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.coming-soon-icon {
+    font-size: 4rem;
+    color: var(--optima-blue);
+    margin-bottom: 1.5rem;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+/* ==============================
+   BADGE ENHANCEMENTS
+   Additional badge utilities
+   ============================== */
+.badge.rounded-pill {
+    padding: 0.375rem 0.875rem;
+    border-radius: 50rem;
+}
+
+.badge-soft-primary {
+    background-color: rgba(0, 97, 242, 0.1);
+    color: var(--optima-blue);
+}
+
+.badge-soft-success {
+    background-color: rgba(0, 172, 105, 0.1);
+    color: var(--bs-success);
+}
+
+.badge-soft-warning {
+    background-color: rgba(255, 182, 7, 0.1);
+    color: var(--bs-warning);
+}
+
+.badge-soft-danger {
+    background-color: rgba(232, 21, 0, 0.1);
+    color: var(--bs-danger);
+}
+
+.badge-soft-info {
+    background-color: rgba(57, 175, 209, 0.1);
+    color: var(--bs-info);
+}
+
+/* ==============================
+   INPUT GROUPS
+   Enhanced input group styling
+   ============================== */
+.input-group {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    width: 100%;
+}
+
+.input-group > .form-control,
+.input-group > .form-select {
+    position: relative;
+    flex: 1 1 auto;
+    width: 1%;
+    min-width: 0;
+}
+
+.input-group-text {
+    display: flex;
+    align-items: center;
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: #6c757d;
+    text-align: center;
+    white-space: nowrap;
+    background-color: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+}
+
+.input-group > .form-control:not(:last-child),
+.input-group > .form-select:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.input-group > .form-control:not(:first-child),
+.input-group > .form-select:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+/* ==============================
+   LIST GROUPS
+   Enhanced list group styling
+   ============================== */
+.list-group-item {
+    padding: 0.75rem 1.25rem;
+    border: 1px solid rgba(0, 0, 0, 0.125);
+    transition: all 0.15s ease;
+}
+
+.list-group-item:hover {
+    background-color: #f8f9fa;
+}
+
+.list-group-item.active {
+    background-color: var(--optima-blue);
+    border-color: var(--optima-blue);
+}
+
+.list-group-item-action {
+    cursor: pointer;
+}
+
+.list-group-item-action:hover {
+    background-color: rgba(0, 97, 242, 0.05);
+    color: var(--optima-blue);
+}
+
+/* ==============================
+   BREADCRUMB ENHANCEMENTS
+   Better breadcrumb styling
+   ============================== */
+.breadcrumb {
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+.breadcrumb-item {
+    font-size: 0.875rem;
+}
+
+.breadcrumb-item + .breadcrumb-item::before {
+    content: "›";
+    color: #6c757d;
+    padding: 0 0.5rem;
+}
+
+.breadcrumb-item.active {
+    color: #6c757d;
+}
+
+.breadcrumb-item a {
+    color: var(--optima-blue);
+    text-decoration: none;
+    transition: color 0.15s ease;
+}
+
+.breadcrumb-item a:hover {
+    color: var(--optima-blue-dark);
+    text-decoration: underline;
+}
+
+/* ==============================
+   TOOLTIP & POPOVER
+   Enhanced tooltip styling
+   ============================== */
+.tooltip {
+    font-size: 0.8rem;
+}
+
+.tooltip-inner {
+    padding: 0.5rem 0.75rem;
+    background-color: #343a40;
+    border-radius: 6px;
+}
+
+.popover {
+    border: none;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+}
+
+.popover-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    font-weight: 600;
+    padding: 0.75rem 1rem;
+    border-radius: 8px 8px 0 0;
+}
+
+.popover-body {
+    padding: 1rem;
+}
+
+/* ==============================
+   SPINNER & LOADERS
+   Loading animations
+   ============================== */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+.spinner-border {
+    width: 2rem;
+    height: 2rem;
+    border-width: 0.25em;
+}
+
+.spinner-grow-sm {
+    width: 1rem;
+    height: 1rem;
+}
+
+/* Button spinner */
+.btn .spinner-border,
+.btn .spinner-grow {
+    width: 1rem;
+    height: 1rem;
+    margin-right: 0.5rem;
+}
+
+/* ==============================
+   PRINT OPTIMIZATIONS
+   ============================== */
+@media print {
+    .card-stats,
+    .filter-card,
+    .quick-action-card,
+    .btn,
+    .nav-tabs {
+        box-shadow: none !important;
+        transform: none !important;
+    }
+    
+    .tab-content {
+        border: 1px solid #ddd !important;
+    }
+    
+    .dataTables_wrapper .dataTables_paginate,
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_length {
+        display: none !important;
+    }
+}
+
+/* ==============================
+   PAGINATION STYLING - CENTRALIZED
+   ============================== */
+
+/* Simple Pagination Styles */
+.pagination {
+    margin: 0;
+}
+
+.pagination .page-link {
+    color: #495057;
+    background-color: #fff;
+    border: 1px solid #dee2e6;
+    padding: 0.375rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    border-radius: 0.25rem;
+    margin: 0 2px;
+    text-decoration: none;
+    transition: all 0.15s ease-in-out;
+}
+
+.pagination .page-link:hover {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.pagination .page-item.active .page-link {
+    color: #fff;
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+.pagination .page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: #fff;
+    border-color: #dee2e6;
+    cursor: not-allowed;
+}
+
+.pagination .page-item.disabled .page-link:hover {
+    color: #6c757d;
+    background-color: #fff;
+    border-color: #dee2e6;
+}
+
+/* Table Info Styling */
+.table-info {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+/* Prevent page reload on pagination clicks */
+.pagination .page-link {
+    cursor: pointer;
+    user-select: none;
+}
+
+.pagination .page-link:focus {
+    box-shadow: none;
+    outline: none;
+}
+
+/* ==============================
+   FORM VALIDATION STYLING
+   ============================== */
+
+/* Red outline for invalid fields */
+.form-control.is-invalid,
+.form-select.is-invalid {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+/* Error message styling */
+.invalid-feedback {
+    display: block;
+    width: 100%;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    color: #dc3545;
+}
+
+/* Required field indicator */
+.form-label.required::after {
+    content: " *";
+    color: #dc3545;
+    font-weight: bold;
+}

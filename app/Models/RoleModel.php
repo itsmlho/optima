@@ -13,7 +13,7 @@ class RoleModel extends Model
     protected $useSoftDeletes = false;
     protected $protectFields = true;
     protected $allowedFields = [
-        'name', 'description', 'is_preset', 'level', 'created_at', 'updated_at'
+        'name', 'description', 'is_preset', 'level', 'is_active', 'created_at', 'updated_at'
     ];
 
     // Dates

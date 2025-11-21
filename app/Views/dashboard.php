@@ -1,109 +1,12 @@
 <?= $this->extend('layouts/base') ?>
 
 <?= $this->section('css') ?>
-<!-- Additional CSS for dashboard specific styling -->
+<!-- CSS umum sudah ada di optima-pro.css (stats-card, quick-action-card, activity-item, dll) -->
 <style>
-    .stats-card {
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 1rem 2rem rgba(0, 0, 0, 0.15) !important;
-    }
-    
+    /* Custom dashboard widgets */
     .stats-icon {
         font-size: 2.5rem;
         opacity: 0.8;
-    }
-    
-    .chart-container {
-        position: relative;
-        height: 300px;
-        width: 100%;
-    }
-    
-    .quick-action-card {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        border: 1px solid #e9ecef;
-        border-radius: 0.75rem;
-        padding: 1.5rem;
-        text-align: center;
-        transition: all 0.3s ease;
-        cursor: pointer;
-        height: 100%;
-    }
-    
-    .quick-action-card:hover {
-        background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
-        color: white;
-        transform: translateY(-3px);
-        box-shadow: 0 0.5rem 1rem rgba(0, 97, 242, 0.25);
-    }
-    
-    .quick-action-icon {
-        width: 60px;
-        height: 60px;
-        background: rgba(0, 97, 242, 0.1);
-        border-radius: 50%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 1rem;
-        transition: all 0.3s ease;
-    }
-    
-    .quick-action-card:hover .quick-action-icon {
-        background: rgba(255, 255, 255, 0.2);
-        color: white;
-    }
-    
-    .activity-item {
-        display: flex;
-        align-items: center;
-        padding: 1rem;
-        border-bottom: 1px solid #e9ecef;
-        transition: background-color 0.3s ease;
-    }
-    
-    .activity-item:hover {
-        background-color: rgba(0, 97, 242, 0.05);
-    }
-    
-    .activity-item:last-child {
-        border-bottom: none;
-    }
-    
-    .activity-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 1rem;
-        font-size: 0.875rem;
-    }
-    
-    .activity-icon.success {
-        background: rgba(0, 172, 105, 0.1);
-        color: #00ac69;
-    }
-    
-    .activity-icon.warning {
-        background: rgba(255, 182, 7, 0.1);
-        color: #ffb607;
-    }
-    
-    .activity-icon.danger {
-        background: rgba(232, 21, 0, 0.1);
-        color: #e81500;
-    }
-    
-    .activity-icon.info {
-        background: rgba(57, 175, 209, 0.1);
-        color: #39afd1;
     }
     
     .notification-item {
@@ -209,19 +112,316 @@
         font-weight: 600;
         color: #0061f2;
     }
+    
+    /* OPTIMA Theme - Centralized CSS */
+    
+    /* Color Palette */
+    :root {
+        --optima-primary: #0061f2;
+        --optima-primary-light: #4d7cff;
+        --optima-primary-dark: #0041a3;
+        --optima-success: #00ac69;
+        --optima-success-light: #4dd289;
+        --optima-success-dark: #007a4d;
+        --optima-info: #17a2b8;
+        --optima-info-light: #5bc0de;
+        --optima-info-dark: #117a8b;
+        --optima-warning: #ffb607;
+        --optima-warning-light: #ffc947;
+        --optima-warning-dark: #cc9205;
+        --optima-danger: #e81500;
+        --optima-danger-light: #ff4d4d;
+        --optima-danger-dark: #b30e00;
+        --optima-light: #f8f9fa;
+        --optima-dark: #343a40;
+        --optima-gray: #6c757d;
+        --optima-gray-light: #adb5bd;
+        --optima-gray-dark: #495057;
+    }
+    
+    /* Base Card Styles */
+    .card {
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        border-color: rgba(0, 97, 242, 0.1);
+    }
+    
+    /* Stats Card Styles */
+    .stats-card {
+        border-radius: 16px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        border: none;
+    }
+    
+    .stats-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+        pointer-events: none;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+    }
+    
+    .stats-icon {
+        font-size: 2.5rem;
+        opacity: 0.9;
+        transition: all 0.3s ease;
+    }
+    
+    .stats-card:hover .stats-icon {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+    
+    /* Gradient Backgrounds */
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, var(--optima-primary) 0%, var(--optima-primary-dark) 100%);
+    }
+    
+    .bg-gradient-success {
+        background: linear-gradient(135deg, var(--optima-success) 0%, var(--optima-success-dark) 100%);
+    }
+    
+    .bg-gradient-info {
+        background: linear-gradient(135deg, var(--optima-info) 0%, var(--optima-info-dark) 100%);
+    }
+    
+    .bg-gradient-warning {
+        background: linear-gradient(135deg, var(--optima-warning) 0%, var(--optima-warning-dark) 100%);
+    }
+    
+    .bg-gradient-danger {
+        background: linear-gradient(135deg, var(--optima-danger) 0%, var(--optima-danger-dark) 100%);
+    }
+    
+    /* Division Cards */
+    .division-card {
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        transition: all 0.3s ease;
+        background: #ffffff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    
+    .division-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+        border-color: rgba(0, 97, 242, 0.1);
+    }
+    
+    .division-card .card-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 12px 12px 0 0;
+        padding: 1.25rem 1.5rem;
+    }
+    
+    .division-card .card-body {
+        padding: 1.5rem;
+    }
+    
+    /* Metric Cards */
+    .metric-card {
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        border-radius: 8px;
+        padding: 1rem;
+        transition: all 0.3s ease;
+        text-align: center;
+    }
+    
+    .metric-card:hover {
+        background: rgba(0, 97, 242, 0.02);
+        border-color: rgba(0, 97, 242, 0.1);
+        transform: translateY(-1px);
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--optima-primary);
+        margin-bottom: 0.25rem;
+    }
+    
+    .metric-label {
+        font-size: 0.875rem;
+        color: var(--optima-gray);
+        font-weight: 500;
+    }
+    
+    /* Progress Bars */
+    .progress {
+        border-radius: 8px;
+        overflow: hidden;
+        background: rgba(0, 0, 0, 0.05);
+        height: 8px;
+    }
+    
+    .progress-bar {
+        border-radius: 8px;
+        transition: width 0.6s ease;
+    }
+    
+    /* Badge Styles */
+    .badge {
+        border-radius: 6px;
+        font-weight: 600;
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
+    }
+    
+    /* Button Styles */
+    .btn {
+        border-radius: 8px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        padding: 0.5rem 1rem;
+    }
+    
+    .btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    
+    /* Chart Containers */
+    .chart-container {
+        position: relative;
+        height: 200px;
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 1rem;
+    }
+    
+    /* Activity Items */
+    .activity-item {
+        transition: all 0.3s ease;
+        border-radius: 8px;
+        padding: 0.75rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        background: #ffffff;
+    }
+    
+    .activity-item:hover {
+        background: rgba(0, 97, 242, 0.02);
+        border-color: rgba(0, 97, 242, 0.1);
+        transform: translateX(4px);
+    }
+    
+    /* Quick Action Cards */
+    .quick-action-card {
+        transition: all 0.3s ease;
+        border-radius: 12px;
+        cursor: pointer;
+        padding: 1.5rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        background: #ffffff;
+    }
+    
+    .quick-action-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+        border-color: rgba(0, 97, 242, 0.1);
+    }
+    
+    /* Notification Items */
+    .notification-item {
+        border-radius: 8px;
+        transition: all 0.3s ease;
+        padding: 0.75rem;
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        background: #ffffff;
+    }
+    
+    .notification-item:hover {
+        background: rgba(0, 97, 242, 0.02);
+        border-color: rgba(0, 97, 242, 0.1);
+        transform: translateX(4px);
+    }
+    
+    /* Maintenance Alert */
+    .maintenance-alert {
+        border-radius: 12px;
+        border-left: 4px solid var(--optima-warning);
+        background: linear-gradient(135deg, rgba(255, 182, 7, 0.1) 0%, rgba(255, 182, 7, 0.05) 100%);
+        padding: 1.5rem;
+        margin: 1rem 0;
+    }
+    
+    /* Section Spacing */
+    .row.g-4 > * {
+        margin-bottom: 1.5rem;
+    }
+    
+    /* Typography */
+    .fw-bold {
+        font-weight: 700 !important;
+    }
+    
+    .text-muted {
+        color: var(--optima-gray) !important;
+    }
+    
+    /* Icon Enhancements */
+    .fas, .far, .fab {
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover .fas,
+    .card:hover .far,
+    .card:hover .fab {
+        transform: scale(1.05);
+    }
+    
+    /* Division Specific Colors */
+    .division-operational {
+        border-left: 4px solid var(--optima-primary);
+    }
+    
+    .division-warehouse {
+        border-left: 4px solid var(--optima-success);
+    }
+    
+    .division-maintenance {
+        border-left: 4px solid var(--optima-warning);
+    }
+    
+    .division-delivery {
+        border-left: 4px solid var(--optima-info);
+    }
+    
+    .division-purchase {
+        border-left: 4px solid var(--optima-danger);
+    }
 </style>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<!-- Dashboard Overview -->
-<div class="row g-4 mb-4" aria-label="Statistik utama" role="region">
+<!-- Executive Summary - Director Dashboard -->
+<div class="row g-4 mb-4" aria-label="Executive Summary" role="region">
     <!-- Total Units -->
     <div class="col-xl-3 col-md-6">
-        <div class="card stats-card bg-gradient-primary text-white h-100" onclick="location.href='<?= base_url('/units') ?>'" tabindex="0" role="button" aria-pressed="false" aria-label="Total Unit">
+        <div class="card stats-card bg-gradient-primary text-white h-100 shadow-lg border-0" onclick="location.href='<?= base_url('/units') ?>'" tabindex="0" role="button" aria-pressed="false" aria-label="Total Unit">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stats-value h2 mb-2 fw-bold" data-count="125">0</div>
+                        <div class="stats-value h2 mb-2 fw-bold" data-count="<?= $director_metrics['total_units'] ?>">0</div>
                         <div class="stats-label text-uppercase">Total Unit</div>
                         <div class="small mt-1 opacity-75">
                             <i class="fas fa-arrow-up me-1" aria-hidden="true"></i>12% dari bulan lalu
@@ -235,14 +435,14 @@
         </div>
     </div>
     
-    <!-- Active Rentals -->
+    <!-- Active Contracts -->
     <div class="col-xl-3 col-md-6">
-        <div class="card stats-card bg-gradient-success text-white h-100" onclick="location.href='<?= base_url('/rentals') ?>'">
+        <div class="card stats-card bg-gradient-success text-white h-100 shadow-lg border-0" onclick="location.href='<?= base_url('/kontrak') ?>'">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stats-value h2 mb-2 fw-bold" data-count="87">0</div>
-                        <div class="stats-label text-uppercase">Rental Aktif</div>
+                        <div class="stats-value h2 mb-2 fw-bold" data-count="<?= $director_metrics['active_contracts'] ?>">0</div>
+                        <div class="stats-label text-uppercase">Kontrak Aktif</div>
                         <div class="small mt-1 opacity-75">
                             <i class="fas fa-arrow-up me-1"></i>8% dari bulan lalu
                         </div>
@@ -255,40 +455,40 @@
         </div>
     </div>
     
-    <!-- Monthly Revenue -->
+    <!-- Total Customers -->
     <div class="col-xl-3 col-md-6">
-        <div class="card stats-card bg-gradient-warning text-white h-100" onclick="location.href='<?= base_url('/finance') ?>'">
+        <div class="card stats-card bg-gradient-info text-white h-100 shadow-lg border-0" onclick="location.href='<?= base_url('/customers') ?>'">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stats-value h2 mb-2 fw-bold" data-currency="2750000000">Rp 0</div>
-                        <div class="stats-label text-uppercase">Pendapatan Bulan Ini</div>
+                        <div class="stats-value h2 mb-2 fw-bold" data-count="<?= $director_metrics['total_customers'] ?>">0</div>
+                        <div class="stats-label text-uppercase">Total Customer</div>
                         <div class="small mt-1 opacity-75">
                             <i class="fas fa-arrow-up me-1"></i>15% dari bulan lalu
                         </div>
                     </div>
                     <div class="stats-icon">
-                        <i class="fas fa-chart-line"></i>
+                        <i class="fas fa-users"></i>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Maintenance Due -->
+    <!-- Utilization Rate -->
     <div class="col-xl-3 col-md-6">
-        <div class="card stats-card bg-gradient-danger text-white h-100" onclick="location.href='<?= base_url('/maintenance') ?>'">
+        <div class="card stats-card bg-gradient-warning text-white h-100 shadow-lg border-0" onclick="location.href='<?= base_url('/analytics') ?>'">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stats-value h2 mb-2 fw-bold" data-count="12">0</div>
-                        <div class="stats-label text-uppercase">Perlu Maintenance</div>
+                        <div class="stats-value h2 mb-2 fw-bold"><?= $director_metrics['utilization_rate'] ?>%</div>
+                        <div class="stats-label text-uppercase">Utilisasi</div>
                         <div class="small mt-1 opacity-75">
-                            <i class="fas fa-clock me-1"></i>3 urgent, 9 terjadwal
+                            <i class="fas fa-chart-line me-1"></i>Target: 80%
                         </div>
                     </div>
                     <div class="stats-icon">
-                        <i class="fas fa-wrench"></i>
+                        <i class="fas fa-chart-pie"></i>
                     </div>
                 </div>
             </div>
@@ -296,70 +496,658 @@
     </div>
 </div>
 
-<!-- Charts Row -->
+<!-- Director Dashboard - Main Content -->
 <div class="row g-4 mb-4">
-    <!-- Revenue Chart -->
-    <div class="col-xl-8">
-        <div class="card h-100">
+    <!-- Operational Overview -->
+    <div class="col-12">
+        <div class="card division-card division-operational h-100">
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-area me-2 text-primary"></i>
-                    Tren Pendapatan
+                    <i class="fas fa-tachometer-alt me-2" style="color: var(--optima-primary);"></i>
+                    Overview Operasional
                 </h5>
                 <div class="btn-group" role="group">
-                    <input type="radio" class="btn-check" name="revenueChart" id="revenue7d" autocomplete="off">
-                    <label class="btn btn-outline-primary btn-sm" for="revenue7d">7H</label>
+                    <input type="radio" class="btn-check" name="operationalChart" id="operationalUnits" autocomplete="off" checked>
+                    <label class="btn btn-outline-primary btn-sm" for="operationalUnits">Unit Status</label>
                     
-                    <input type="radio" class="btn-check" name="revenueChart" id="revenue30d" autocomplete="off" checked>
-                    <label class="btn btn-outline-primary btn-sm" for="revenue30d">30H</label>
-                    
-                    <input type="radio" class="btn-check" name="revenueChart" id="revenue12m" autocomplete="off">
-                    <label class="btn btn-outline-primary btn-sm" for="revenue12m">12B</label>
+                    <input type="radio" class="btn-check" name="operationalChart" id="operationalComplaints" autocomplete="off">
+                    <label class="btn btn-outline-primary btn-sm" for="operationalComplaints">Service Complaints</label>
                 </div>
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="revenueChart" class="area-chart"></canvas>
+                <!-- Unit Status Visualization -->
+                <div id="unitStatusSection">
+                    <!-- Detailed Unit Metrics -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card bg-gradient-success">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-truck-loading text-white" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="metric-value text-white"><?= $operational_overview['unit_status'][0]['count'] ?? 87 ?></div>
+                                        <div class="metric-label text-white-50">Unit Disewakan</div>
+                                        <div class="small text-white-50">Aktif dalam kontrak</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card bg-gradient-warning">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-parking text-white" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="metric-value text-white"><?= $operational_overview['unit_status'][1]['count'] ?? 28 ?></div>
+                                        <div class="metric-label text-white-50">Unit Tersedia</div>
+                                        <div class="small text-white-50">Siap untuk disewa</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card bg-gradient-danger">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-tools text-white" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="metric-value text-white"><?= $operational_overview['unit_status'][2]['count'] ?? 10 ?></div>
+                                        <div class="metric-label text-white-50">Dalam Maintenance</div>
+                                        <div class="small text-white-50">Sedang diperbaiki</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card bg-gradient-info">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-chart-line text-white" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="metric-value text-white"><?= $director_metrics['utilization_rate'] ?>%</div>
+                                        <div class="metric-label text-white-50">Tingkat Utilisasi</div>
+                                        <div class="small text-white-50">Efisiensi operasional</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Operational Chart -->
+                    <div class="chart-container mb-4">
+                        <canvas id="operationalChart" style="height: 200px;"></canvas>
+                    </div>
+                    
+                    <!-- Performance Indicators -->
+                    <div class="row g-3">
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="h4 mb-1 text-success"><?= $director_metrics['customer_satisfaction'] ?>/5</div>
+                                        <div class="small text-muted">Customer Satisfaction</div>
+                                        <div class="progress mt-2" style="height: 6px;">
+                                            <div class="progress-bar bg-success" style="width: <?= ($director_metrics['customer_satisfaction']/5)*100 ?>%"></div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-star text-success" style="font-size: 1.5rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="h4 mb-1 text-warning"><?= $director_metrics['on_time_delivery'] ?>%</div>
+                                        <div class="small text-muted">On-Time Delivery</div>
+                                        <div class="progress mt-2" style="height: 6px;">
+                                            <div class="progress-bar bg-warning" style="width: <?= $director_metrics['on_time_delivery'] ?>%"></div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-clock text-warning" style="font-size: 1.5rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="h4 mb-1 text-danger"><?= $director_metrics['downtime_rate'] ?>%</div>
+                                        <div class="small text-muted">Downtime Rate</div>
+                                        <div class="progress mt-2" style="height: 6px;">
+                                            <div class="progress-bar bg-danger" style="width: <?= $director_metrics['downtime_rate'] ?>%"></div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-exclamation-triangle text-danger" style="font-size: 1.5rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="h4 mb-1 text-info"><?= $director_metrics['total_customers'] ?></div>
+                                        <div class="small text-muted">Total Customers</div>
+                                        <div class="small text-success">+5 this month</div>
+                                    </div>
+                                    <i class="fas fa-users text-info" style="font-size: 1.5rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Service Complaints Section (Hidden by default) -->
+                <div id="workOrdersSection" style="display: none;">
+                    <!-- Complaint Overview Cards -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card bg-gradient-danger">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-exclamation-triangle text-white" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="metric-value text-white">12</div>
+                                        <div class="metric-label text-white-50">Critical Issues</div>
+                                        <div class="small text-white-50">Unit breakdown</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card bg-gradient-warning">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-tools text-white" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="metric-value text-white">28</div>
+                                        <div class="metric-label text-white-50">Maintenance</div>
+                                        <div class="small text-white-50">Scheduled repairs</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card bg-gradient-info">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-user-times text-white" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="metric-value text-white">8</div>
+                                        <div class="metric-label text-white-50">Customer Complaints</div>
+                                        <div class="small text-white-50">Service issues</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-md-6">
+                            <div class="metric-card bg-gradient-success">
+                                <div class="d-flex align-items-center">
+                                    <div class="flex-shrink-0">
+                                        <i class="fas fa-check-circle text-white" style="font-size: 2rem;"></i>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <div class="metric-value text-white">85%</div>
+                                        <div class="metric-label text-white-50">Resolution Rate</div>
+                                        <div class="small text-white-50">Issues resolved</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Complaint Categories -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <h6 class="mb-3">
+                                <i class="fas fa-list-alt me-2 text-primary"></i>
+                                Complaint Categories
+                            </h6>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <div class="metric-card">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <div class="h5 mb-1 text-danger">12</div>
+                                                <div class="small text-muted">Mechanical Issues</div>
+                                                <div class="small text-danger">Engine, Hydraulic</div>
+                                            </div>
+                                            <i class="fas fa-cog text-danger"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="metric-card">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <div class="h5 mb-1 text-warning">8</div>
+                                                <div class="small text-muted">Electrical Issues</div>
+                                                <div class="small text-warning">Battery, Wiring</div>
+                                            </div>
+                                            <i class="fas fa-bolt text-warning"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="metric-card">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <div class="h5 mb-1 text-info">6</div>
+                                                <div class="small text-muted">Safety Issues</div>
+                                                <div class="small text-info">Brakes, Lights</div>
+                                            </div>
+                                            <i class="fas fa-shield-alt text-info"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Service Performance Metrics -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-4">
+                            <div class="metric-card">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="h4 mb-1 text-success">2.3 days</div>
+                                        <div class="small text-muted">Avg. Resolution Time</div>
+                                        <div class="progress mt-2" style="height: 6px;">
+                                            <div class="progress-bar bg-success" style="width: 85%"></div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-clock text-success" style="font-size: 1.5rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="metric-card">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="h4 mb-1 text-warning">15%</div>
+                                        <div class="small text-muted">Repeat Issues</div>
+                                        <div class="progress mt-2" style="height: 6px;">
+                                            <div class="progress-bar bg-warning" style="width: 15%"></div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-redo text-warning" style="font-size: 1.5rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="metric-card">
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <div>
+                                        <div class="h4 mb-1 text-info">92%</div>
+                                        <div class="small text-muted">First Call Resolution</div>
+                                        <div class="progress mt-2" style="height: 6px;">
+                                            <div class="progress-bar bg-info" style="width: 92%"></div>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-phone text-info" style="font-size: 1.5rem;"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Service Complaints Chart -->
+                    <div class="chart-container">
+                        <canvas id="workOrderChart" style="height: 200px;"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Unit Status Chart -->
-    <div class="col-xl-4">
-        <div class="card h-100">
+    <!-- Warehouse Insights -->
+    <div class="col-12">
+        <div class="card division-card division-warehouse h-100">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-pie me-2 text-success"></i>
-                    Status Unit
+                    <i class="fas fa-warehouse me-2" style="color: var(--optima-success);"></i>
+                    Warehouse Insights
                 </h5>
             </div>
             <div class="card-body">
-                <div class="chart-container">
-                    <canvas id="unitStatusChart" class="doughnut-chart"></canvas>
+                <!-- Unit Status Chart -->
+                <div class="chart-container mb-4">
+                    <canvas id="warehouseChart" style="height: 200px;"></canvas>
                 </div>
+                
+                <!-- Warehouse Metrics -->
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-success"><?= $warehouse_insights['available_units'] ?></div>
+                            <div class="metric-label">Available</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-warning"><?= $warehouse_insights['preparation_units'] ?></div>
+                            <div class="metric-label">Preparation</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-danger"><?= $warehouse_insights['damaged_units'] ?></div>
+                            <div class="metric-label">Damaged</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-info"><?= $warehouse_insights['warehouse_efficiency'] ?>%</div>
+                            <div class="metric-label">Efficiency</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Location Distribution -->
                 <div class="mt-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-success rounded-circle me-2" style="width: 12px; height: 12px;"></div>
-                            <span class="small">Disewakan</span>
-                        </div>
-                        <span class="small fw-semibold">87 unit</span>
+                    <h6 class="mb-2">Unit Distribution by Location</h6>
+                    <?php foreach($warehouse_insights['units_by_location'] as $location): ?>
+                    <div class="d-flex align-items-center justify-content-between mb-1 p-2 border rounded">
+                        <span class="small"><?= $location['lokasi_unit'] ?></span>
+                        <span class="badge bg-success"><?= $location['count'] ?></span>
                     </div>
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-warning rounded-circle me-2" style="width: 12px; height: 12px;"></div>
-                            <span class="small">Tersedia</span>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Director Dashboard - Critical Information -->
+<div class="row g-4 mb-4">
+    <!-- Work Order Trends -->
+    <div class="col-xl-6">
+        <div class="card division-card division-operational">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar me-2" style="color: var(--optima-info);"></i>
+                    Work Order Trends
+                </h5>
+                <span class="badge bg-info">
+                    <?= $work_order_trends['completion_rate'] ?>% Complete
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Complaint Categories Chart -->
+                <div class="chart-container mb-4">
+                    <canvas id="complaintTrendsChart" style="height: 200px;"></canvas>
+                </div>
+                
+                <!-- Work Order Metrics -->
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-primary"><?= $work_order_trends['avg_resolution_time'] ?>h</div>
+                            <div class="metric-label">Avg Resolution Time</div>
                         </div>
-                        <span class="small fw-semibold">28 unit</span>
                     </div>
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-danger rounded-circle me-2" style="width: 12px; height: 12px;"></div>
-                            <span class="small">Maintenance</span>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-success"><?= $work_order_trends['completion_rate'] ?>%</div>
+                            <div class="metric-label">Completion Rate</div>
                         </div>
-                        <span class="small fw-semibold">10 unit</span>
                     </div>
+                </div>
+                
+                <!-- Priority Distribution -->
+                <div class="mb-3">
+                    <h6 class="mb-2">Priority Distribution</h6>
+                    <?php foreach($work_order_trends['priority_distribution'] as $priority => $count): ?>
+                    <div class="d-flex align-items-center justify-content-between mb-1 p-2 border rounded">
+                        <span class="small"><?= $priority ?></span>
+                        <span class="badge bg-<?= $priority == 'Critical' ? 'danger' : ($priority == 'High' ? 'warning' : 'info') ?>"><?= $count ?></span>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="<?= base_url('/work-orders') ?>" class="btn btn-outline-info">
+                        <i class="fas fa-tools me-1"></i>Lihat Detail Work Orders
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+
+
+<!-- Contract Summary Section -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-file-contract me-2 text-success"></i>
+                    Contract Summary
+                </h5>
+                <span class="badge bg-success"><?= $contract_summary['active'] ?> Active</span>
+            </div>
+            <div class="card-body">
+                <!-- Contract Metrics -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <div class="h4 mb-1 text-success"><?= $contract_summary['active'] ?></div>
+                            <div class="small text-muted">Active Contracts</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <div class="h4 mb-1 text-warning"><?= $contract_summary['expiring_soon'] ?></div>
+                            <div class="small text-muted">Expiring Soon</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <div class="h4 mb-1 text-primary"><?= $contract_summary['new_this_month'] ?></div>
+                            <div class="small text-muted">New This Month</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <div class="h4 mb-1 text-info"><?= $contract_summary['high_value_contracts'] + $contract_summary['medium_value_contracts'] + $contract_summary['standard_contracts'] ?></div>
+                            <div class="small text-muted">Total Value Contracts</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Contract Value Distribution -->
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center justify-content-between p-3 border rounded">
+                            <div>
+                                <div class="fw-semibold">High Value (>Rp 100M)</div>
+                                <div class="small text-muted">Premium contracts</div>
+                            </div>
+                            <span class="badge bg-danger fs-6"><?= $contract_summary['high_value_contracts'] ?></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center justify-content-between p-3 border rounded">
+                            <div>
+                                <div class="fw-semibold">Medium Value (Rp 50-100M)</div>
+                                <div class="small text-muted">Standard contracts</div>
+                            </div>
+                            <span class="badge bg-warning fs-6"><?= $contract_summary['medium_value_contracts'] ?></span>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center justify-content-between p-3 border rounded">
+                            <div>
+                                <div class="fw-semibold">Standard (<Rp 50M)</div>
+                                <div class="small text-muted">Basic contracts</div>
+                            </div>
+                            <span class="badge bg-info fs-6"><?= $contract_summary['standard_contracts'] ?></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-4">
+                    <a href="<?= base_url('/kontrak') ?>" class="btn btn-outline-success">
+                        <i class="fas fa-file-contract me-1"></i>Lihat Semua Kontrak
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delivery & Purchase Order Insights -->
+<div class="row g-4 mb-4">
+    <!-- Delivery Insights -->
+    <div class="col-xl-6">
+        <div class="card division-card division-delivery">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-shipping-fast me-2" style="color: var(--optima-info);"></i>
+                    Delivery Insights
+                </h5>
+                <span class="badge bg-info">
+                    <?= $delivery_insights['on_time_rate'] ?>% On-Time
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- Delivery Status Overview -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-warning"><?= $delivery_insights['pending_deliveries'] ?></div>
+                            <div class="metric-label">Pending</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-info"><?= $delivery_insights['in_transit_deliveries'] ?></div>
+                            <div class="metric-label">In Transit</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-success"><?= $delivery_insights['completed_this_month'] ?></div>
+                            <div class="metric-label">Completed This Month</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-primary"><?= $delivery_insights['avg_delivery_time'] ?>h</div>
+                            <div class="metric-label">Avg Delivery Time</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Delivery Chart -->
+                <div class="chart-container mb-3">
+                    <canvas id="deliveryChart" style="height: 150px;"></canvas>
+                </div>
+                
+                <!-- Delivery Performance -->
+                <div class="mb-3">
+                    <h6 class="mb-2">Delivery Performance</h6>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="small">On-Time Rate</span>
+                        <div class="progress" style="width: 60%; height: 8px;">
+                            <div class="progress-bar bg-success" style="width: <?= $delivery_insights['on_time_rate'] ?>%"></div>
+                        </div>
+                        <span class="small fw-semibold"><?= $delivery_insights['on_time_rate'] ?>%</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="small">Efficiency</span>
+                        <div class="progress" style="width: 60%; height: 8px;">
+                            <div class="progress-bar bg-info" style="width: <?= $delivery_insights['delivery_efficiency'] ?>%"></div>
+                        </div>
+                        <span class="small fw-semibold"><?= $delivery_insights['delivery_efficiency'] ?>%</span>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="<?= base_url('/delivery') ?>" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-shipping-fast me-1"></i>Lihat Detail Delivery
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Purchase Order Insights -->
+    <div class="col-xl-6">
+        <div class="card division-card division-purchase">
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-shopping-cart me-2" style="color: var(--optima-danger);"></i>
+                    Purchase Order Insights
+                </h5>
+                <span class="badge bg-danger">
+                    <?= $purchase_order_insights['approval_rate'] ?>% Approval Rate
+                </span>
+            </div>
+            <div class="card-body">
+                <!-- PO Status Overview -->
+                <div class="row g-3 mb-4">
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-warning"><?= $purchase_order_insights['pending_pos'] ?></div>
+                            <div class="metric-label">Pending POs</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-success"><?= $purchase_order_insights['approved_pos'] ?></div>
+                            <div class="metric-label">Approved POs</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-primary"><?= $purchase_order_insights['po_this_month'] ?></div>
+                            <div class="metric-label">POs This Month</div>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="metric-card">
+                            <div class="metric-value text-info"><?= $purchase_order_insights['avg_processing_time'] ?>h</div>
+                            <div class="metric-label">Avg Processing Time</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Purchase Order Chart -->
+                <div class="chart-container mb-3">
+                    <canvas id="purchaseOrderChart" style="height: 150px;"></canvas>
+                </div>
+                
+                <!-- PO Performance -->
+                <div class="mb-3">
+                    <h6 class="mb-2">PO Performance</h6>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <span class="small">Approval Rate</span>
+                        <div class="progress" style="width: 60%; height: 8px;">
+                            <div class="progress-bar bg-warning" style="width: <?= $purchase_order_insights['approval_rate'] ?>%"></div>
+                        </div>
+                        <span class="small fw-semibold"><?= $purchase_order_insights['approval_rate'] ?>%</span>
+                    </div>
+                    <div class="d-flex align-items-center justify-content-between">
+                        <span class="small">Efficiency</span>
+                        <div class="progress" style="width: 60%; height: 8px;">
+                            <div class="progress-bar bg-success" style="width: <?= $purchase_order_insights['po_efficiency'] ?>%"></div>
+                        </div>
+                        <span class="small fw-semibold"><?= $purchase_order_insights['po_efficiency'] ?>%</span>
+                    </div>
+                </div>
+                
+                <div class="text-center mt-3">
+                    <a href="<?= base_url('/purchase-orders') ?>" class="btn btn-sm btn-outline-warning">
+                        <i class="fas fa-shopping-cart me-1"></i>Lihat Detail Purchase Orders
+                    </a>
                 </div>
             </div>
         </div>
@@ -368,53 +1156,7 @@
 
 <!-- Quick Actions & Activity -->
 <div class="row g-4 mb-4">
-    <!-- Quick Actions -->
-    <div class="col-xl-6">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-bolt me-2 text-warning"></i>
-                    Aksi Cepat
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-3">
-                    <div class="col-6 col-md-3">
-                        <div class="quick-action-card" onclick="location.href='<?= base_url('/rentals/new') ?>'">
-                            <div class="quick-action-icon">
-                                <i class="fas fa-plus text-primary"></i>
-                            </div>
-                            <div class="fw-semibold">Rental Baru</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="quick-action-card" onclick="location.href='<?= base_url('/units/add') ?>'">
-                            <div class="quick-action-icon">
-                                <i class="fas fa-truck text-success"></i>
-                            </div>
-                            <div class="fw-semibold">Tambah Unit</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="quick-action-card" onclick="location.href='<?= base_url('/customers/add') ?>'">
-                            <div class="quick-action-icon">
-                                <i class="fas fa-user-plus text-info"></i>
-                            </div>
-                            <div class="fw-semibold">Customer Baru</div>
-                        </div>
-                    </div>
-                    <div class="col-6 col-md-3">
-                        <div class="quick-action-card" onclick="location.href='<?= base_url('/maintenance/schedule') ?>'">
-                            <div class="quick-action-icon">
-                                <i class="fas fa-calendar text-warning"></i>
-                            </div>
-                            <div class="fw-semibold">Jadwal Service</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+
     
     <!-- Recent Activity -->
     <div class="col-xl-6">
@@ -748,9 +1490,9 @@ function initializeDashboard() {
     // Initialize counters
     initializeCounters();
     
-    // Initialize charts
-    initializeRevenueChart();
-    initializeUnitStatusChart();
+    
+    // Initialize director dashboard
+    initializeDirectorDashboard();
     
     // Initialize real-time updates
     initializeRealTimeUpdates();
@@ -810,146 +1552,7 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-// Revenue Chart
-function initializeRevenueChart() {
-    const ctx = document.getElementById('revenueChart').getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.revenueChartInstance) {
-        window.revenueChartInstance.destroy();
-    }
-    
-    window.revenueChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-            datasets: [{
-                label: 'Pendapatan (Miliar Rp)',
-                data: [2.1, 2.3, 2.8, 2.4, 2.7, 3.1, 2.9, 3.2, 2.8, 3.0, 2.9, 2.7],
-                borderColor: '#0061f2',
-                backgroundColor: 'rgba(0, 97, 242, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: '#0061f2',
-                pointBorderColor: '#ffffff',
-                pointBorderWidth: 3,
-                pointRadius: 6,
-                pointHoverRadius: 8
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#0061f2',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            return 'Pendapatan: Rp ' + context.parsed.y + ' Miliar';
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    display: true,
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: '#69707a'
-                    }
-                },
-                y: {
-                    display: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    },
-                    ticks: {
-                        color: '#69707a',
-                        callback: function(value) {
-                            return 'Rp ' + value + 'M';
-                        }
-                    }
-                }
-            },
-            interaction: {
-                intersect: false,
-                mode: 'index'
-            }
-        }
-    });
-    
-    // Store chart instance for updates
-    window.revenueChart = revenueChart;
-}
 
-// Unit Status Chart
-function initializeUnitStatusChart() {
-    const ctx = document.getElementById('unitStatusChart').getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.unitStatusChartInstance) {
-        window.unitStatusChartInstance.destroy();
-    }
-    
-    window.unitStatusChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Disewakan', 'Tersedia', 'Maintenance'],
-            datasets: [{
-                data: [87, 28, 10],
-                backgroundColor: [
-                    '#00ac69',
-                    '#ffb607',
-                    '#e81500'
-                ],
-                borderWidth: 3,
-                borderColor: '#ffffff',
-                hoverBorderWidth: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#0061f2',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = Math.round((context.parsed / total) * 100);
-                            return context.label + ': ' + context.parsed + ' unit (' + percentage + '%)';
-                        }
-                    }
-                }
-            },
-            cutout: '70%'
-        }
-    });
-    
-    // Store chart instance for updates
-    window.unitStatusChart = unitStatusChart;
-}
 
 // Chart period filters
 function initializeChartFilters() {
@@ -1053,14 +1656,521 @@ function updateNotificationCount() {
         });
 }
 
+// Director Dashboard specific functions
+function initializeDirectorDashboard() {
+    // Initialize operational chart toggles
+    const operationalToggles = document.querySelectorAll('input[name="operationalChart"]');
+    operationalToggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            if (this.id === 'operationalUnits') {
+                document.getElementById('unitStatusSection').style.display = 'block';
+                document.getElementById('workOrdersSection').style.display = 'none';
+            } else if (this.id === 'operationalComplaints') {
+                document.getElementById('unitStatusSection').style.display = 'none';
+                document.getElementById('workOrdersSection').style.display = 'block';
+            }
+        });
+    });
+    
+    // Initialize warehouse chart
+    initializeWarehouseChart();
+    
+    // Initialize work order trends chart
+    initializeWorkOrderTrendsChart();
+    
+    // Initialize operational chart
+    initializeOperationalChart();
+    
+    // Initialize work order chart
+    initializeWorkOrderChart();
+    
+    // Initialize maintenance chart
+    initializeMaintenanceChart();
+    
+    // Initialize delivery chart
+    initializeDeliveryChart();
+    
+    // Initialize purchase order chart
+    initializePurchaseOrderChart();
+}
+
+function initializeWarehouseChart() {
+    const canvas = document.getElementById('warehouseChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.warehouseChartInstance) {
+        window.warehouseChartInstance.destroy();
+    }
+    
+    // Get warehouse data from PHP
+    const warehouseData = <?= json_encode($warehouse_insights['unit_status']) ?>;
+    const labels = warehouseData.map(item => item.nama_status);
+    const values = warehouseData.map(item => item.count);
+    const colors = ['#00ac69', '#ffb607', '#e81500', '#6c757d', '#17a2b8'];
+    
+    window.warehouseChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors.slice(0, values.length),
+                borderWidth: 3,
+                borderColor: '#ffffff',
+                hoverBorderWidth: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#0061f2',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((context.parsed / total) * 100);
+                            return context.label + ': ' + context.parsed + ' unit (' + percentage + '%)';
+                        }
+                    }
+                }
+            },
+            cutout: '70%'
+        }
+    });
+}
+
+function initializeWorkOrderTrendsChart() {
+    const canvas = document.getElementById('complaintTrendsChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.workOrderTrendsChartInstance) {
+        window.workOrderTrendsChartInstance.destroy();
+    }
+    
+    // Get work order trends data from PHP
+    const trendsData = <?= json_encode($work_order_trends['complaint_trends']) ?>;
+    const labels = Object.keys(trendsData);
+    const values = Object.values(trendsData);
+    const colors = ['#0061f2', '#00ac69', '#ffb607', '#e81500', '#6c757d'];
+    
+    window.workOrderTrendsChartInstance = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Work Orders',
+                data: values,
+                backgroundColor: colors.slice(0, values.length),
+                borderColor: colors.slice(0, values.length),
+                borderWidth: 1,
+                borderRadius: 4,
+                borderSkipped: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#0061f2',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.label + ': ' + context.parsed.y + ' work orders';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#69707a',
+                        maxRotation: 45
+                    }
+                },
+                y: {
+                    display: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        color: '#69707a',
+                        beginAtZero: true,
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Operational Chart
+function initializeOperationalChart() {
+    const canvas = document.getElementById('operationalChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.operationalChartInstance) {
+        window.operationalChartInstance.destroy();
+    }
+    
+    window.operationalChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Disewakan', 'Tersedia', 'Maintenance'],
+            datasets: [{
+                data: [87, 28, 10],
+                backgroundColor: [
+                    'rgba(0, 172, 105, 0.8)',
+                    'rgba(255, 182, 7, 0.8)',
+                    'rgba(232, 21, 0, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(0, 172, 105, 1)',
+                    'rgba(255, 182, 7, 1)',
+                    'rgba(232, 21, 0, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 20,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#0061f2',
+                    borderWidth: 1,
+                    cornerRadius: 8
+                }
+            }
+        }
+    });
+}
+
+// Service Complaints Chart
+function initializeWorkOrderChart() {
+    const canvas = document.getElementById('workOrderChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.workOrderChartInstance) {
+        window.workOrderChartInstance.destroy();
+    }
+    
+    window.workOrderChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Mechanical Issues', 'Electrical Issues', 'Safety Issues', 'Customer Complaints'],
+            datasets: [{
+                data: [12, 8, 6, 8],
+                backgroundColor: [
+                    'rgba(232, 21, 0, 0.8)',
+                    'rgba(255, 182, 7, 0.8)',
+                    'rgba(23, 162, 184, 0.8)',
+                    'rgba(108, 117, 125, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(232, 21, 0, 1)',
+                    'rgba(255, 182, 7, 1)',
+                    'rgba(23, 162, 184, 1)',
+                    'rgba(108, 117, 125, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#0061f2',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = Math.round((context.parsed / total) * 100);
+                            return context.label + ': ' + context.parsed + ' issues (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Maintenance Chart
+function initializeMaintenanceChart() {
+    const canvas = document.getElementById('maintenanceChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.maintenanceChartInstance) {
+        window.maintenanceChartInstance.destroy();
+    }
+    
+    window.maintenanceChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Maintenance Requests',
+                data: [12, 8, 15, 10, 18, 14],
+                borderColor: 'rgba(255, 182, 7, 1)',
+                backgroundColor: 'rgba(255, 182, 7, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: 'rgba(255, 182, 7, 1)',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#ffb607',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            return 'Maintenance: ' + context.parsed.y + ' requests';
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6c757d'
+                    }
+                },
+                y: {
+                    display: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        color: '#6c757d',
+                        beginAtZero: true,
+                        stepSize: 5
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Delivery Chart
+function initializeDeliveryChart() {
+    const canvas = document.getElementById('deliveryChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.deliveryChartInstance) {
+        window.deliveryChartInstance.destroy();
+    }
+    
+    window.deliveryChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            datasets: [{
+                label: 'Deliveries',
+                data: [45, 52, 38, 48, 55, 42],
+                borderColor: 'rgba(23, 162, 184, 1)',
+                backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: 'rgba(23, 162, 184, 1)',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 5,
+                pointHoverRadius: 7
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#17a2b8',
+                    borderWidth: 1,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            return 'Deliveries: ' + context.parsed.y;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#6c757d'
+                    }
+                },
+                y: {
+                    display: true,
+                    grid: {
+                        color: 'rgba(0, 0, 0, 0.05)'
+                    },
+                    ticks: {
+                        color: '#6c757d',
+                        beginAtZero: true,
+                        stepSize: 10
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Purchase Order Chart
+function initializePurchaseOrderChart() {
+    const canvas = document.getElementById('purchaseOrderChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    // Destroy existing chart if it exists
+    if (window.purchaseOrderChartInstance) {
+        window.purchaseOrderChartInstance.destroy();
+    }
+    
+    window.purchaseOrderChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Approved', 'Completed'],
+            datasets: [{
+                data: [8, 25, 45],
+                backgroundColor: [
+                    'rgba(255, 182, 7, 0.8)',
+                    'rgba(0, 172, 105, 0.8)',
+                    'rgba(23, 162, 184, 0.8)'
+                ],
+                borderColor: [
+                    'rgba(255, 182, 7, 1)',
+                    'rgba(0, 172, 105, 1)',
+                    'rgba(23, 162, 184, 1)'
+                ],
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: '#e81500',
+                    borderWidth: 1,
+                    cornerRadius: 8
+                }
+            }
+        }
+    });
+}
+
 // Export functions for external use
 window.dashboardFunctions = {
     refreshCharts: function() {
         if (window.revenueChart) window.revenueChart.update();
         if (window.unitStatusChart) window.unitStatusChart.update();
+        if (window.warehouseChartInstance) window.warehouseChartInstance.update();
+        if (window.workOrderTrendsChartInstance) window.workOrderTrendsChartInstance.update();
+        if (window.operationalChartInstance) window.operationalChartInstance.update();
+        if (window.workOrderChartInstance) window.workOrderChartInstance.update();
+        if (window.maintenanceChartInstance) window.maintenanceChartInstance.update();
+        if (window.deliveryChartInstance) window.deliveryChartInstance.update();
+        if (window.purchaseOrderChartInstance) window.purchaseOrderChartInstance.update();
     },
     updateData: updateDashboardData,
-    markNotificationAsRead: markNotificationAsRead
+    markNotificationAsRead: markNotificationAsRead,
+    initializeDirectorDashboard: initializeDirectorDashboard
 };
 </script>
 <?= $this->endSection() ?>

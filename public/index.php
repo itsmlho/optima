@@ -6,6 +6,9 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 // --- END DEBUGGING LINES ---
 
+// Set timezone to Jakarta (GMT+7)
+date_default_timezone_set('Asia/Jakarta');
+
 use CodeIgniter\Boot;
 use Config\Paths;
 

@@ -55,4 +55,157 @@ abstract class BaseController extends Controller
 
         // E.g.: $this->session = service('session');
     }
+
+    /**
+     * Centralized permission check.
+     * Fallbacks to permissive mode if RBAC tables are missing.
+     */
+    protected function hasPermission(string $permissionKey): bool
+    {
+        try {
+            $db = \Config\Database::connect();
+            $userId = session('user_id');
+            if (!$userId) { return false; }
+
+            // Super Administrator shortcut by role name (if present)
+            $super = $db->table('user_roles ur')
+                ->select('1')
+                ->join('roles r', 'r.id = ur.role_id', 'left')
+                ->where('ur.user_id', $userId)
+                ->where('r.name', 'Super Administrator')
+                ->limit(1)->get()->getRowArray();
+            if ($super) return true;
+
+            // Resolve permission id by key
+            $perm = $db->table('permissions')->select('id')->where('key', $permissionKey)->get()->getRowArray();
+            if (!$perm || empty($perm['id'])) {
+                // Permission key not registered yet – do not block
+                return true;
+            }
+            $permissionId = (int)$perm['id'];
+
+            // Check role based permission
+            $has = $db->table('user_roles ur')
+                ->join('role_permissions rp', 'rp.role_id = ur.role_id', 'left')
+                ->where('ur.user_id', $userId)
+                ->where('rp.permission_id', $permissionId)
+                ->select('1')->limit(1)->get()->getRowArray();
+            if ($has) return true;
+
+            // Optional: direct user_permissions table support if exists
+            try {
+                $direct = $db->table('user_permissions')
+                    ->select('1')
+                    ->where('user_id', $userId)
+                    ->where('permission_id', $permissionId)
+                    ->limit(1)->get()->getRowArray();
+                if ($direct) return true;
+            } catch (\Throwable $e) {
+                // table may not exist – ignore
+            }
+
+            return false;
+        } catch (\Throwable $e) {
+            // If anything goes wrong, do not block UI
+            return true;
+        }
+    }
+    
+    /**
+     * Check if user can access a module (view/read)
+     * @param string $module - Module name (admin, marketing, service, etc.)
+     */
+    protected function canAccess(string $module): bool
+    {
+        return $this->hasPermission($module . '.access');
+    }
+    
+    /**
+     * Check if user can manage resources (create/edit)
+     * @param string $module - Module name
+     */
+    protected function canManage(string $module): bool
+    {
+        return $this->hasPermission($module . '.manage');
+    }
+    
+    /**
+     * Check if user can delete resources
+     * @param string $module - Module name
+     */
+    protected function canDelete(string $module): bool
+    {
+        return $this->hasPermission($module . '.delete');
+    }
+    
+    /**
+     * Check if user can export data
+     * @param string $module - Module name
+     */
+    protected function canExport(string $module): bool
+    {
+        return $this->hasPermission($module . '.export');
+    }
+    
+    /**
+     * Require module access or redirect/return error
+     * @param string $module - Module name
+     * @param bool $ajax - Whether this is an AJAX request
+     */
+    protected function requireAccess(string $module, bool $ajax = false)
+    {
+        if (!$this->canAccess($module)) {
+            if ($ajax) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])
+                                      ->setStatusCode(403);
+            }
+            return redirect()->to('/')->with('error', 'Access denied to ' . $module . ' module');
+        }
+        return null;
+    }
+    
+    /**
+     * Require manage permission or return error
+     * @param string $module - Module name
+     */
+    protected function requireManage(string $module)
+    {
+        if (!$this->canManage($module)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'You do not have permission to create/edit'])
+                                      ->setStatusCode(403);
+            }
+            return redirect()->back()->with('error', 'You do not have permission to create/edit');
+        }
+        return null;
+    }
+    
+    /**
+     * Require delete permission or return error
+     * @param string $module - Module name
+     */
+    protected function requireDelete(string $module)
+    {
+        if (!$this->canDelete($module)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'You do not have permission to delete'])
+                                  ->setStatusCode(403);
+        }
+        return null;
+    }
+    
+    /**
+     * Require export permission or return error
+     * @param string $module - Module name
+     */
+    protected function requireExport(string $module)
+    {
+        if (!$this->canExport($module)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'You do not have permission to export'])
+                                      ->setStatusCode(403);
+            }
+            return redirect()->back()->with('error', 'You do not have permission to export');
+        }
+        return null;
+    }
 }

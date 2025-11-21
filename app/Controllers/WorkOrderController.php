@@ -3,32 +3,49 @@
 namespace App\Controllers;
 
 use App\Models\WorkOrderModel;
-use App\Models\AreaStaffAssignmentModel;
-use App\Models\StaffModel;
+use App\Models\WorkOrderAssignmentModel;
+use App\Models\AreaEmployeeAssignmentModel;
+use App\Models\EmployeeModel;
 use App\Models\CustomerModel;
 use App\Models\AreaModel;
+use App\Models\WorkOrderSparepartModel;
+use App\Models\WorkOrderSparepartUsageModel;
 use CodeIgniter\Controller;
 
 class WorkOrderController extends Controller
 {
     protected $workOrderModel;
-    protected $areaStaffModel;
-    protected $staffModel;
+    protected $workOrderAssignmentModel;
+    protected $areaEmployeeModel;
+    protected $employeeModel;
     protected $customerModel;
     protected $areaModel;
+    protected $sparepartModel;
+    protected $sparepartUsageModel;
     
     public function __construct()
     {
         $this->workOrderModel = new WorkOrderModel();
-        $this->areaStaffModel = new AreaStaffAssignmentModel();
-        $this->staffModel = new StaffModel();
+        $this->workOrderAssignmentModel = new WorkOrderAssignmentModel();
+        $this->areaEmployeeModel = new AreaEmployeeAssignmentModel();
+        $this->employeeModel = new EmployeeModel();
         $this->customerModel = new CustomerModel();
         $this->areaModel = new AreaModel();
+        $this->sparepartModel = new WorkOrderSparepartModel();
+        $this->sparepartUsageModel = new WorkOrderSparepartUsageModel();
+        
+        // Load auth helper for division filtering
+        helper('auth');
     }
     
     // Menampilkan halaman daftar work order
     public function index()
     {
+        // Check permission for viewing work orders
+        if (!$this->hasPermission('service.work_orders.view')) {
+            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view work orders');
+        }
+        
         $data = [
             'title' => 'Work Orders Management',
             'workOrders' => $this->workOrderModel->getAllWorkOrders(),
@@ -37,6 +54,7 @@ class WorkOrderController extends Controller
             'categories' => $this->workOrderModel->getCategories(),
             'units' => $this->getUnits(),
             'areas' => $this->areaModel->getActiveAreas(),
+            'spareparts' => $this->getSparepartsForDropdown(),
             'staff' => [
                 'ADMIN' => $this->workOrderModel->getStaff('ADMIN'),
                 'FOREMAN' => $this->workOrderModel->getStaff('FOREMAN'),
@@ -48,17 +66,48 @@ class WorkOrderController extends Controller
         return view('service/work_orders', $data);
     }
     
+    // Get spareparts data for dropdown
+    private function getSparepartsForDropdown()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $spareparts = $db->table('sparepart')
+                ->select('id_sparepart, kode, desc_sparepart')
+                ->where('is_active', 1)
+                ->orderBy('kode', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            // Format data untuk dropdown dengan text yang berisi kode dan nama
+            $formatted = [];
+            foreach ($spareparts as $sparepart) {
+                $formatted[] = [
+                    'id_sparepart' => $sparepart['id_sparepart'],
+                    'kode' => $sparepart['kode'],
+                    'desc_sparepart' => $sparepart['desc_sparepart'],
+                    'text' => $sparepart['kode'] . ' - ' . $sparepart['desc_sparepart']
+                ];
+            }
+            
+            return $formatted;
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting spareparts dropdown: ' . $e->getMessage());
+            return [];
+        }
+    }
+
     // Mendapatkan daftar unit dengan customer dan area info
     private function getUnits()
     {
         $db = \Config\Database::connect();
         $builder = $db->table('inventory_unit iu');
         $builder->select('iu.id_inventory_unit, iu.no_unit, 
-                         COALESCE(c.customer_name, k.pelanggan) as pelanggan,
-                         a.area_name, a.area_code,
+                         COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
+                         a.id as area_id, a.area_name, a.area_code,
                          mu.merk_unit, tu.tipe');
         $builder->join('kontrak k', 'iu.kontrak_id = k.id', 'left');
-        $builder->join('customers c', 'iu.customer_id = c.id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->join('areas a', 'c.area_id = a.id', 'left');
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
         $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
@@ -67,6 +116,231 @@ class WorkOrderController extends Controller
         
         return $builder->get()->getResultArray();
     }
+
+    // Get unit area information for work order form
+    public function getUnitArea()
+    {
+        $unitId = $this->request->getPost('unit_id');
+        
+        if (!$unitId) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Unit ID required'
+            ]);
+        }
+        
+        try {
+            $db = \Config\Database::connect();
+            
+            // Debug: Check if unit exists
+            $unit = $db->table('inventory_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
+            if (!$unit) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit not found'
+                ]);
+            }
+            
+            // Direct approach: inventory_unit already has area_id column!
+            $builder = $db->table('inventory_unit iu');
+            $builder->select('a.id as area_id, a.area_name, a.area_code,
+                             s.staff_name as foreman_name, s.id as foreman_id');
+            $builder->join('areas a', 'iu.area_id = a.id', 'left');
+            $builder->join('area_employee_assignments aea', 'a.id = aea.area_id AND aea.is_active = 1', 'left');
+            $builder->join('work_order_staff_backup_final s', 'aea.employee_id = s.id AND s.staff_role = "FOREMAN" AND s.is_active = 1', 'left');
+            $builder->where('iu.id_inventory_unit', $unitId);
+            
+            $result = $builder->get()->getRowArray();
+            
+            // If still no area found, get any active area as fallback
+            if (!$result || !$result['area_id']) {
+                $fallbackArea = $db->table('areas')
+                    ->select('id as area_id, area_name, area_code')
+                    ->where('is_active', 1)
+                    ->get()
+                    ->getRowArray();
+                
+                if ($fallbackArea) {
+                    // Try to get foreman for this area
+                    $foreman = $db->table('area_staff_assignments asa')
+                        ->select('s.staff_name, s.id as foreman_id')
+                        ->join('staff s', 'asa.staff_id = s.id')
+                        ->where('asa.area_id', $fallbackArea['area_id'])
+                        ->where('asa.is_active', 1)
+                        ->where('s.staff_role', 'FOREMAN')
+                        ->where('s.is_active', 1)
+                        ->get()
+                        ->getRowArray();
+                    
+                    $result = $fallbackArea;
+                    if ($foreman) {
+                        $result['foreman_name'] = $foreman['staff_name'];
+                        $result['foreman_id'] = $foreman['foreman_id'];
+                    } else {
+                        $result['foreman_name'] = 'No Foreman Assigned';
+                        $result['foreman_id'] = null;
+                    }
+                }
+            }
+            
+            if ($result && $result['area_id']) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'data' => $result
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Area information not found for this unit'
+                ]);
+            }
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error retrieving area information: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // Get spareparts dropdown data
+    public function sparepartsDropdown()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $builder = $db->table('sparepart');
+            $builder->select('id_sparepart, kode, desc_sparepart');
+            $builder->orderBy('kode', 'ASC');
+            
+            $spareparts = $builder->get()->getResultArray();
+            
+            // If no spareparts found, return empty array
+            if (empty($spareparts)) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'No spareparts found. Please add sparepart data to database.'
+                ]);
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $spareparts
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error retrieving spareparts: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+
+    // Get staff dropdown data
+    public function staffDropdown()
+    {
+        $staffRole = $this->request->getPost('staff_role');
+        $areaId = $this->request->getPost('area_id');
+        
+        if (!$staffRole) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Staff role required'
+            ]);
+        }
+        
+        try {
+            $db = \Config\Database::connect();
+            
+            if ($areaId) {
+                // Use area_employee_assignments table for area-based filtering
+                $builder = $db->table('work_order_staff_backup_final s');
+                $builder->select('s.id, s.staff_name, s.staff_role');
+                $builder->join('area_employee_assignments aea', 's.id = aea.employee_id');
+                $builder->where('s.staff_role', $staffRole);
+                $builder->where('s.is_active', 1);
+                $builder->where('aea.area_id', $areaId);
+                $builder->where('aea.is_active', 1);
+            } else {
+                // Use work_order_staff_backup_final table for general staff
+                $builder = $db->table('work_order_staff_backup_final');
+                $builder->select('id, staff_name, staff_role');
+                $builder->where('staff_role', $staffRole);
+                $builder->where('is_active', 1);
+            }
+            
+            $builder->orderBy('staff_name', 'ASC');
+            
+            $staff = $builder->get()->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $staff
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error retrieving staff: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get area staff (admin and foreman) for auto-fill
+     */
+    public function getAreaStaff()
+    {
+        $areaId = $this->request->getPost('area_id');
+        
+        if (!$areaId) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Area ID required'
+            ]);
+        }
+        
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get admin for this area
+            $admin = $db->query("
+                SELECT s.id, s.staff_name
+                FROM area_employee_assignments aea
+                JOIN work_order_staff_backup_final s ON aea.employee_id = s.id
+                WHERE aea.area_id = ? AND aea.is_active = 1 
+                AND s.staff_role = 'ADMIN' AND s.is_active = 1
+                LIMIT 1
+            ", [$areaId])->getRowArray();
+            
+            // Get foreman for this area
+            $foreman = $db->query("
+                SELECT s.id, s.staff_name
+                FROM area_employee_assignments aea
+                JOIN work_order_staff_backup_final s ON aea.employee_id = s.id
+                WHERE aea.area_id = ? AND aea.is_active = 1 
+                AND s.staff_role = 'FOREMAN' AND s.is_active = 1
+                LIMIT 1
+            ", [$areaId])->getRowArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'admin' => $admin,
+                    'foreman' => $foreman
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error retrieving area staff: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // Populate sparepart data
     
     // Mendapatkan data work order untuk DataTable
     public function getWorkOrders()
@@ -78,16 +352,30 @@ class WorkOrderController extends Controller
         $searchData = $request->getPost('search');
         $search = isset($searchData['value']) ? $searchData['value'] : '';
         
+        // Tab filter parameter
+        $tab = $request->getPost('tab') ?? $request->getGet('tab') ?? 'progress';
+        
         // Pagination parameters - prevent division by zero
         $length = max(1, $length); // Ensure length is at least 1
         $page = ($start / $length) + 1;
         $perPage = $length;
         
         // Status filter jika ada
-        $status = $request->getPost('status');
-        $priority = $request->getPost('priority');
-        $startDate = $request->getPost('start_date');
-        $endDate = $request->getPost('end_date');
+        $status = $request->getPost('status') ?? $request->getGet('status');
+        $priority = $request->getPost('priority') ?? $request->getGet('priority');
+        $startDate = $request->getPost('start_date') ?? $request->getGet('start_date');
+        $endDate = $request->getPost('end_date') ?? $request->getGet('end_date');
+        $month = $request->getPost('month') ?? $request->getGet('month');
+        
+        // Apply tab-specific filtering
+        if ($tab === 'closed') {
+            $status = 'Closed'; // Force status to Closed for closed tab
+        } elseif ($tab === 'progress') {
+            // For progress tab, exclude closed status
+            if (empty($status)) {
+                $excludeStatus = 'Closed';
+            }
+        }
         
         // Mendapatkan data work order dengan filter
         $workOrders = $this->workOrderModel->searchWorkOrders(
@@ -95,11 +383,36 @@ class WorkOrderController extends Controller
             $status,
             $priority,
             $startDate,
-            $endDate
+            $endDate,
+            $month,
+            isset($excludeStatus) ? $excludeStatus : null
         );
         
+        // Apply division-based department filter using global helper
+        $allowedDepartments = get_user_division_departments();
+        
+        if ($allowedDepartments !== null && is_array($allowedDepartments)) {
+            // Filter work orders by unit's department
+            $db = \Config\Database::connect();
+            $filteredWorkOrders = [];
+            foreach ($workOrders as $wo) {
+                // Get unit's department
+                $unit = $db->table('inventory_unit')
+                    ->select('departemen_id')
+                    ->where('id_inventory_unit', $wo['unit_id'])
+                    ->get()
+                    ->getRowArray();
+                
+                $unitDeptId = $unit['departemen_id'] ?? null;
+                if ($unitDeptId && in_array($unitDeptId, $allowedDepartments)) {
+                    $filteredWorkOrders[] = $wo;
+                }
+            }
+            $workOrders = $filteredWorkOrders;
+        }
+        
         // Hitung total data
-        $totalRecords = $this->workOrderModel->countAllWorkOrders();
+        $totalRecords = $this->workOrderModel->countAllWorkOrders($tab);
         $totalFilteredRecords = count($workOrders);
         
         // Pagination manual
@@ -110,7 +423,7 @@ class WorkOrderController extends Controller
         
         foreach ($workOrders as $wo) {
             // Dynamic action buttons based on status
-            $action = $this->getStatusActionButton($wo['status_code'], $wo['id']);
+            $action = $this->getStatusActionButton($wo['status_code'], $wo['id'], $wo['work_order_number']);
             
             $statusBadge = '<span class="badge bg-'.$wo['status_color'].'">'.$wo['status'].'</span>';
             $priorityBadge = '<span class="badge bg-'.$wo['priority_color'].'">'.$wo['priority'].'</span>';
@@ -128,6 +441,12 @@ class WorkOrderController extends Controller
             $row[] = $wo['category'];
             $row[] = $statusBadge;
             $row[] = $action;
+            
+            // For closed tab, add closed date as 9th column
+            if ($tab === 'closed') {
+                $closedDate = !empty($wo['closed_date']) ? date('d/m/Y H:i', strtotime($wo['closed_date'])) : '-';
+                $row[] = $closedDate;
+            }
             
             // Add data attributes for onclick functionality
             $row['DT_RowAttr'] = [
@@ -150,45 +469,57 @@ class WorkOrderController extends Controller
     }
     
     // Generate dynamic action buttons based on status
-    private function getStatusActionButton($statusCode, $woId)
+    private function getStatusActionButton($statusCode, $woId, $woNumber = null)
     {
         $buttons = [];
+        $woNumberAttr = $woNumber ? ' data-wo-number="'.$woNumber.'"' : '';
         
         switch ($statusCode) {
+            case 'OPEN':
+                $buttons[] = '<button type="button" class="btn btn-sm btn-primary btn-assign" data-id="'.$woId.'"'.$woNumberAttr.'>Start Work</button>';
+                break;
+                
             case 'PENDING':
-                $buttons[] = '<button type="button" class="btn btn-sm btn-primary btn-assign" data-id="'.$woId.'">Assign</button>';
-                $buttons[] = '<button type="button" class="btn btn-sm btn-danger btn-delete-wo" data-id="'.$woId.'" title="Hapus WO">
-                                <i class="fas fa-trash"></i></button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-primary btn-assign" data-id="'.$woId.'"'.$woNumberAttr.'>Continue Work</button>';
                 break;
                 
             case 'ASSIGNED':
-                $buttons[] = '<button type="button" class="btn btn-sm btn-success btn-start" data-id="'.$woId.'">Start Work</button>';
-                $buttons[] = '<button type="button" class="btn btn-sm btn-secondary btn-reassign" data-id="'.$woId.'">Reassign</button>';
-                $buttons[] = '<button type="button" class="btn btn-sm btn-danger btn-delete-wo" data-id="'.$woId.'" title="Hapus WO">
-                                <i class="fas fa-trash"></i></button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-success btn-start" data-id="'.$woId.'"'.$woNumberAttr.'>Continue Work</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-secondary btn-reassign" data-id="'.$woId.'"'.$woNumberAttr.'>Reassign</button>';
                 break;
                 
             case 'IN_PROGRESS':
-                $buttons[] = '<button type="button" class="btn btn-sm btn-warning btn-pause" data-id="'.$woId.'">Pause</button>';
-                $buttons[] = '<button type="button" class="btn btn-sm btn-success btn-complete" data-id="'.$woId.'">Complete</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-warning btn-pause" data-id="'.$woId.'"'.$woNumberAttr.'>Pending</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-success btn-complete" data-id="'.$woId.'"'.$woNumberAttr.'>Complete</button>';
+                break;
+                
+            case 'WAITING_PARTS':
+                $buttons[] = '<button type="button" class="btn btn-sm btn-primary btn-resume" data-id="'.$woId.'"'.$woNumberAttr.'>Resume</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-warning btn-pause" data-id="'.$woId.'"'.$woNumberAttr.'>Pending</button>';
+                break;
+                
+            case 'TESTING':
+                $buttons[] = '<button type="button" class="btn btn-sm btn-success btn-complete" data-id="'.$woId.'"'.$woNumberAttr.'>Complete</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-warning btn-back-to-progress" data-id="'.$woId.'"'.$woNumberAttr.'>Back to Progress</button>';
                 break;
                 
             case 'ON_HOLD':
-                $buttons[] = '<button type="button" class="btn btn-sm btn-primary btn-resume" data-id="'.$woId.'">Resume</button>';
-                $buttons[] = '<button type="button" class="btn btn-sm btn-danger btn-cancel" data-id="'.$woId.'">Cancel</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-primary btn-resume" data-id="'.$woId.'"'.$woNumberAttr.'>Resume</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-danger btn-cancel" data-id="'.$woId.'"'.$woNumberAttr.'>Cancel</button>';
                 break;
                 
             case 'COMPLETED':
-                $buttons[] = '<button type="button" class="btn btn-sm btn-success btn-close-wo" data-id="'.$woId.'">Close</button>';
-                $buttons[] = '<button type="button" class="btn btn-sm btn-warning btn-reopen" data-id="'.$woId.'">Reopen</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-success btn-close-wo" data-id="'.$woId.'"'.$woNumberAttr.'>Close</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-warning btn-complete" data-id="'.$woId.'"'.$woNumberAttr.'>Re-Verif Unit</button>';
                 break;
                 
             case 'CLOSED':
-                $buttons[] = '<button type="button" class="btn btn-sm btn-info btn-reopen" data-id="'.$woId.'">Reopen</button>';
+                // No actions available for closed work orders
+                $buttons[] = '<button type="button" class="btn btn-sm btn-secondary" disabled>Closed</button>';
                 break;
                 
             case 'CANCELLED':
-                $buttons[] = '<button type="button" class="btn btn-sm btn-info btn-reopen" data-id="'.$woId.'">Reopen</button>';
+                $buttons[] = '<button type="button" class="btn btn-sm btn-secondary" disabled>Cancelled</button>';
                 break;
                 
             default:
@@ -215,6 +546,15 @@ class WorkOrderController extends Controller
         }
         
         try {
+            // Get current status before update for history
+            $currentWorkOrder = $this->workOrderModel->find($id);
+            $fromStatusId = null;
+            if ($currentWorkOrder && is_array($currentWorkOrder)) {
+                $fromStatusId = $currentWorkOrder['status_id'];
+            } elseif ($currentWorkOrder && is_object($currentWorkOrder)) {
+                $fromStatusId = $currentWorkOrder->status_id ?? null;
+            }
+            
             // Get status ID based on status code
             $statusData = $this->workOrderModel->getStatusByCode($status);
             if (!$statusData) {
@@ -241,15 +581,26 @@ class WorkOrderController extends Controller
                 case 'CLOSED':
                     $updateData['closed_date'] = date('Y-m-d H:i:s');
                     break;
+                case 'WAITING_PARTS':
+                    // Waiting for spare parts - add hold date if needed
+                    $updateData['hold_date'] = date('Y-m-d H:i:s');
+                    break;
+                case 'ON_HOLD':
+                    // On hold/pending - add hold date if needed
+                    $updateData['hold_date'] = date('Y-m-d H:i:s');
+                    break;
             }
             
             $updated = $this->workOrderModel->update($id, $updateData);
             
             if ($updated) {
-                // Log the status change
-                if ($notes) {
-                    // Add activity log if notes provided
-                    $this->workOrderModel->addActivityLog($id, $status, $notes);
+                // Add status history record with proper from_status_id
+                log_message('debug', "Adding status history: WO ID=$id, From Status=$fromStatusId, To Status={$statusData['id']}, Notes=$notes");
+                $historyResult = $this->workOrderModel->addStatusHistory($id, $statusData['id'], $notes, $fromStatusId);
+                log_message('debug', "Status history result: " . ($historyResult ? 'SUCCESS' : 'FAILED'));
+                
+                if (!$historyResult) {
+                    log_message('error', 'Failed to add status history for work order ' . $id);
                 }
                 
                 return $this->response->setJSON([
@@ -328,7 +679,7 @@ class WorkOrderController extends Controller
                 'order_type' => 'required',
                 'priority_id' => 'required|integer',
                 'category_id' => 'required|integer',
-                'complaint_description' => 'required|min_length[5]'
+                'complaint_description' => 'required|min_length[3]' // Merubah validasi menjadi minimal 3 karakter
             ];
             
             $messages = [
@@ -349,7 +700,7 @@ class WorkOrderController extends Controller
                 ],
                 'complaint_description' => [
                     'required' => 'Deskripsi keluhan harus diisi',
-                    'min_length' => 'Deskripsi keluhan minimal 5 karakter'
+                    'min_length' => 'Deskripsi keluhan minimal 3 karakter' // Merubah pesan error sesuai validasi
                 ]
             ];
             
@@ -371,8 +722,8 @@ class WorkOrderController extends Controller
             
             if (empty($input['complaint_description'])) {
                 $errors['complaint_description'] = 'Deskripsi keluhan harus diisi';
-            } elseif (strlen(trim($input['complaint_description'])) < 5) {
-                $errors['complaint_description'] = 'Deskripsi keluhan minimal 5 karakter';
+            } elseif (strlen(trim($input['complaint_description'])) < 3) { // Merubah validasi menjadi minimal 3 karakter
+                $errors['complaint_description'] = 'Deskripsi keluhan minimal 3 karakter';
             }
             
             // Priority validation - allow auto-generation if not provided
@@ -389,7 +740,9 @@ class WorkOrderController extends Controller
                         $input['priority_id'] = $category->default_priority_id;
                         log_message('debug', 'Auto-assigned priority_id: ' . $input['priority_id']);
                     } else {
-                        $errors['priority_id'] = 'Priority harus dipilih atau kategori harus memiliki priority default';
+                        // Default to priority 1 (LOW) if no default priority set
+                        $input['priority_id'] = 1;
+                        log_message('debug', 'Auto-assigned default priority_id: 1');
                     }
                 }
             }
@@ -433,13 +786,28 @@ class WorkOrderController extends Controller
             // Generate work order number
             $woNumber = $this->generateWorkOrderNumber();
             
-            // Auto assign staff based on unit area (if no manual staff selection)
-            $autoStaffAssignment = $this->autoAssignStaff($input['unit_id']);
-            
-            // Get unit area info for logging
+            // Get unit area info for area-based assignment
             $unitAreaInfo = $this->getUnitAreaInfo($input['unit_id']);
             log_message('debug', 'Unit Area Info: ' . print_r($unitAreaInfo, true));
-            log_message('debug', 'Auto Staff Assignment: ' . print_r($autoStaffAssignment, true));
+            
+            // Only get admin and foreman for initial info display (simplified approach)
+            $areaStaffInfo = $this->getAreaStaffInfo($input['unit_id']);
+            log_message('debug', 'Area Staff Info: ' . print_r($areaStaffInfo, true));
+            
+            // Extract admin and foreman from staff list
+            $adminId = null;
+            $foremanId = null;
+            
+            if ($areaStaffInfo && is_array($areaStaffInfo)) {
+                foreach ($areaStaffInfo as $staff) {
+                    if ($staff['staff_role'] === 'ADMIN' && $adminId === null) {
+                        $adminId = $staff['id'];
+                    }
+                    if ($staff['staff_role'] === 'FOREMAN' && $foremanId === null) {
+                        $foremanId = $staff['id'];
+                    }
+                }
+            }
             
             $data = [
                 'work_order_number' => $woNumber,
@@ -451,35 +819,143 @@ class WorkOrderController extends Controller
                 'category_id' => $input['category_id'] ?? null,
                 'subcategory_id' => $input['subcategory_id'] ?? null,
                 'complaint_description' => $input['complaint_description'] ?? null,
-                'status_id' => $defaultStatus->id, // Set default status
-                // Use manual assignment if provided, otherwise use auto assignment
-                'admin_staff_id' => $input['admin_staff_id'] ?? $autoStaffAssignment['admin_staff_id'],
-                'foreman_staff_id' => $input['foreman_staff_id'] ?? $autoStaffAssignment['foreman_staff_id'],
-                'mechanic_staff_id' => $input['mechanic_staff_id'] ?? $autoStaffAssignment['mechanic_staff_id'],
-                'helper_staff_id' => $input['helper_staff_id'] ?? $autoStaffAssignment['helper_staff_id'],
-                'area' => $input['area'] ?? ($unitAreaInfo['area_name'] ?? null),
-                'created_by' => session()->get('user_id') ?? 1 // Use session user ID or default to 1
+                'status_id' => $defaultStatus->id, // Set default status (OPEN)
+                // Only set admin and foreman initially - mechanic/helper will be assigned later
+                'admin_id' => $adminId,
+                'foreman_id' => $foremanId,
+                'mechanic_id' => null, // Will be assigned during assignment process
+                'helper_id' => null,   // Will be assigned during assignment process
+                'area' => $unitAreaInfo['area_name'] ?? null,
+                'pic' => $input['pic'] ?? null,
+                'hm' => $input['hm'] ?? null,
+                'created_by' => session()->get('user_id') ?? 1
             ];
             
-            $result = $this->workOrderModel->insert($data);
+            // Start transaction for work order and spareparts
+            $db = \Config\Database::connect();
+            $db->transStart();
             
-            if ($result) {
+            try {
+                log_message('debug', 'Inserting work order data: ' . print_r($data, true));
+                $result = $this->workOrderModel->insert($data);
+                log_message('debug', 'Insert result: ' . $result);
+                
+                if (!$result) {
+                    $errors = $this->workOrderModel->errors();
+                    log_message('error', 'Model errors: ' . print_r($errors, true));
+                    throw new \Exception('Gagal menyimpan work order: ' . implode(', ', $errors));
+                }
+
+                // Add initial status history for new work order
+                $this->workOrderModel->addStatusHistory(
+                    $result, 
+                    $defaultStatus->id, 
+                    'Work order created with initial status',
+                    null // from_status_id is null for new work orders
+                );
+                log_message('debug', 'Initial status history added for work order: ' . $result);
+
+                // Handle staff assignment if provided - using direct columns
+                $mechanicIds = $input['mechanic_id'] ?? [];
+                $helperIds = $input['helper_id'] ?? [];
+                
+                if (!empty($mechanicIds) || !empty($helperIds)) {
+                    log_message('debug', 'Assigning staff - Mechanics: ' . print_r($mechanicIds, true) . ', Helpers: ' . print_r($helperIds, true));
+                    
+                    // Get first mechanic and helper (for backward compatibility)
+                    $firstMechanic = null;
+                    $firstHelper = null;
+                    
+                    foreach ($mechanicIds as $mechanicId) {
+                        if (!empty($mechanicId)) {
+                            $firstMechanic = $mechanicId;
+                            break;
+                        }
+                    }
+                    
+                    foreach ($helperIds as $helperId) {
+                        if (!empty($helperId)) {
+                            $firstHelper = $helperId;
+                            break;
+                        }
+                    }
+                    
+                    // Update work order with first mechanic and helper
+                    if ($firstMechanic || $firstHelper) {
+                        $updateData = [];
+                        if ($firstMechanic) $updateData['mechanic_id'] = $firstMechanic;
+                        if ($firstHelper) $updateData['helper_id'] = $firstHelper;
+                        
+                        $this->workOrderModel->update($result, $updateData);
+                        log_message('debug', 'Staff assigned during work order creation');
+                    }
+                }
+                
+                // Handle spareparts if provided
+                if (!empty($input['sparepart_name']) && is_array($input['sparepart_name'])) {
+                    log_message('debug', 'Processing spareparts: ' . print_r($input['sparepart_name'], true));
+                    
+                    // Load work order sparepart model
+                    $sparepartModel = new \App\Models\WorkOrderSparepartModel();
+                    
+                    // Prepare spareparts array
+                    $spareparts = [];
+                    $sparepartNames = $input['sparepart_name'] ?? [];
+                    $sparepartQuantities = $input['sparepart_quantity'] ?? [];
+                    $sparepartUnits = $input['sparepart_unit'] ?? [];
+                    
+                    for ($i = 0; $i < count($sparepartNames); $i++) {
+                        if (!empty($sparepartNames[$i])) {
+                            // Parse sparepart dari format "KODE - NAMA"
+                            $parts = explode(' - ', $sparepartNames[$i], 2);
+                            if (count($parts) >= 2) {
+                                $sparepartCode = trim($parts[0]);
+                                $sparepartName = trim($parts[1]);
+                                
+                                $spareparts[] = [
+                                    'sparepart_code' => $sparepartCode,
+                                    'sparepart_name' => $sparepartName,
+                                    'quantity_brought' => $sparepartQuantities[$i] ?? 1,
+                                    'satuan' => $sparepartUnits[$i] ?? 'pcs'
+                                ];
+                            }
+                        }
+                    }
+                    
+                    if (!empty($spareparts)) {
+                        $sparepartsAdded = $sparepartModel->addSpareparts($result, $spareparts);
+                        if (!$sparepartsAdded) {
+                            throw new \Exception('Gagal menyimpan data sparepart');
+                        }
+                        log_message('debug', 'Spareparts added successfully');
+                    }
+                }
+                
+                $db->transComplete();
+                
+                if ($db->transStatus() === false) {
+                    throw new \Exception('Transaksi database gagal');
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Work Order berhasil dibuat dengan nomor: ' . $woNumber,
                     'data' => [
                         'id' => $result,
                         'work_order_number' => $woNumber,
-                        'auto_assigned_staff' => $autoStaffAssignment['assigned_staff_names'],
-                        'unit_area' => $unitAreaInfo['area_name'] ?? 'Unknown'
+                        'area_staff_info' => $areaStaffInfo,
+                        'unit_area' => $unitAreaInfo['area_name'] ?? 'Unknown',
+                        'spareparts_count' => count($input['sparepart_name'] ?? []),
+                        'assigned_staff' => [
+                            'mechanic_id' => $firstMechanic ?? null,
+                            'helper_id' => $firstHelper ?? null
+                        ]
                     ]
                 ]);
-            } else {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Gagal membuat Work Order',
-                    'errors' => $this->workOrderModel->errors()
-                ]);
+                
+            } catch (\Exception $e) {
+                $db->transRollback();
+                throw $e;
             }
             
         } catch (\Exception $e) {
@@ -492,39 +968,6 @@ class WorkOrderController extends Controller
         }
     }
     
-    // Mendapatkan detail work order
-    public function edit($id)
-    {
-        $workOrder = $this->workOrderModel->find($id);
-        
-        if (!$workOrder) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Work Order tidak ditemukan'
-            ]);
-        }
-        
-        // Mendapatkan subkategori berdasarkan kategori
-        $subcategories = $this->workOrderModel->getSubcategories($workOrder['category_id']);
-        
-        $data = [
-            'title' => 'Edit Work Order',
-            'workOrder' => $workOrder,
-            'statuses' => $this->workOrderModel->getStatuses(),
-            'priorities' => $this->workOrderModel->getPriorities(),
-            'categories' => $this->workOrderModel->getCategories(),
-            'subcategories' => $subcategories,
-            'adminStaff' => $this->workOrderModel->getStaff('ADMIN'),
-            'foremanStaff' => $this->workOrderModel->getStaff('FOREMAN'),
-            'mechanicStaff' => $this->workOrderModel->getStaff('MECHANIC'),
-            'helperStaff' => $this->workOrderModel->getStaff('HELPER')
-        ];
-        
-        return $this->response->setJSON([
-            'success' => true,
-            'data' => $data
-        ]);
-    }
     
     // Menyimpan perubahan data work order
     public function update($id)
@@ -560,10 +1003,10 @@ class WorkOrderController extends Controller
             'subcategory_id' => $this->request->getPost('subcategory_id'),
             'complaint_description' => $this->request->getPost('complaint_description'),
             'status_id' => $newStatusId,
-            'admin_staff_id' => $this->request->getPost('admin_staff_id'),
-            'foreman_staff_id' => $this->request->getPost('foreman_staff_id'),
-            'mechanic_staff_id' => $this->request->getPost('mechanic_staff_id'),
-            'helper_staff_id' => $this->request->getPost('helper_staff_id'),
+            'admin_id' => $this->request->getPost('admin_id'),
+            'foreman_id' => $this->request->getPost('foreman_id'),
+            'mechanic_id' => $this->request->getPost('mechanic_id'),
+            'helper_id' => $this->request->getPost('helper_id'),
             'repair_description' => $this->request->getPost('repair_description'),
             'notes' => $this->request->getPost('notes'),
             'sparepart_used' => $this->request->getPost('sparepart_used'),
@@ -580,7 +1023,7 @@ class WorkOrderController extends Controller
         
         // Jika status berubah, tambahkan riwayat perubahan status
         if ($oldStatusId != $newStatusId) {
-            $this->workOrderModel->addStatusHistory($id, $oldStatusId, $newStatusId, 1, 'Status updated');
+            $this->workOrderModel->addStatusHistory($id, $newStatusId, 'Status updated');
         }
         
         if ($result) {
@@ -727,6 +1170,77 @@ class WorkOrderController extends Controller
         return $this->view($id);
     }
     
+    // Print work order
+    public function print($id)
+    {
+        $workOrder = $this->workOrderModel->getDetailWorkOrder($id);
+        
+        if (!$workOrder) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Work Order tidak ditemukan'
+            ]);
+        }
+        
+        return view('service/print_work_order', [
+            'workOrder' => $workOrder
+        ]);
+    }
+    
+    // Edit work order
+    public function edit($id)
+    {
+        try {
+            // Get work order details
+            $workOrder = $this->workOrderModel->getDetailWorkOrder($id);
+            
+            if (!$workOrder) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order tidak ditemukan'
+                ]);
+            }
+
+            // Get spareparts for this work order
+            $db = \Config\Database::connect();
+            $spareparts = $db->table('work_order_spareparts wos')
+                ->select('wos.sparepart_name, wos.quantity_brought as quantity, wos.satuan as unit, wos.sparepart_code')
+                ->where('wos.work_order_id', $id)
+                ->get()
+                ->getResultArray();
+            
+            // Get form data for editing
+            $data = [
+                'workOrder' => $workOrder,
+                'spareparts' => $spareparts, // Work order specific spareparts
+                'statuses' => $this->workOrderModel->getStatuses(),
+                'priorities' => $this->workOrderModel->getPriorities(),
+                'categories' => $this->workOrderModel->getCategories(),
+                'units' => $this->getUnits(),
+                'areas' => $this->areaModel->getActiveAreas(),
+                'sparepartOptions' => $this->getSparepartsForDropdown(), // All available spareparts for dropdown
+                'staff' => [
+                    'ADMIN' => $this->workOrderModel->getStaff('ADMIN'),
+                    'FOREMAN' => $this->workOrderModel->getStaff('FOREMAN'),
+                    'MECHANIC' => $this->workOrderModel->getStaff('MECHANIC'),
+                    'HELPER' => $this->workOrderModel->getStaff('HELPER')
+                ]
+            ];
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $data
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error in WorkOrderController::edit - ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
     // Mendapatkan statistik work order
     public function getStats()
     {
@@ -739,61 +1253,9 @@ class WorkOrderController extends Controller
     }
     
     /**
-     * Auto assign staff based on unit's area
+     * Auto assign employees based on unit's area
      */
-    private function autoAssignStaff($unitId)
-    {
-        try {
-            $assignedStaff = [
-                'admin_staff_id' => null,
-                'foreman_staff_id' => null,
-                'mechanic_staff_id' => null,
-                'helper_staff_id' => null,
-                'assigned_staff_names' => []
-            ];
-            
-            // Get staff assigned to the unit's area for each role
-            $roles = ['ADMIN', 'FOREMAN', 'MECHANIC', 'HELPER'];
-            
-            foreach ($roles as $role) {
-                $staff = $this->areaStaffModel->getStaffForUnit($unitId, $role);
-                
-                if (!empty($staff)) {
-                    // Get first PRIMARY assignment, or any if no PRIMARY found
-                    $selectedStaff = null;
-                    foreach ($staff as $person) {
-                        if ($person['assignment_type'] === 'PRIMARY') {
-                            $selectedStaff = $person;
-                            break;
-                        }
-                    }
-                    
-                    // If no PRIMARY found, use first available
-                    if (!$selectedStaff && !empty($staff)) {
-                        $selectedStaff = $staff[0];
-                    }
-                    
-                    if ($selectedStaff) {
-                        $staffIdField = strtolower($role) . '_staff_id';
-                        $assignedStaff[$staffIdField] = $selectedStaff['staff_id'];
-                        $assignedStaff['assigned_staff_names'][strtolower($role)] = $selectedStaff['staff_name'];
-                    }
-                }
-            }
-            
-            return $assignedStaff;
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error in autoAssignStaff: ' . $e->getMessage());
-            return [
-                'admin_staff_id' => null,
-                'foreman_staff_id' => null,
-                'mechanic_staff_id' => null,
-                'helper_staff_id' => null,
-                'assigned_staff_names' => []
-            ];
-        }
-    }
+
     
     /**
      * Get unit area information for debugging
@@ -806,12 +1268,17 @@ class WorkOrderController extends Controller
                 SELECT 
                     iu.id_inventory_unit,
                     iu.no_unit,
+                    iu.area_id,
                     c.customer_name,
                     a.area_name,
-                    a.area_code
+                    a.area_code,
+                    d.nama_departemen
                 FROM inventory_unit iu
-                LEFT JOIN customers c ON iu.customer_id = c.id
-                LEFT JOIN areas a ON c.area_id = a.id
+                LEFT JOIN areas a ON iu.area_id = a.id
+                LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+                LEFT JOIN customers c ON cl.customer_id = c.id
+                LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
                 WHERE iu.id_inventory_unit = ?
             ", [$unitId]);
             
@@ -819,6 +1286,53 @@ class WorkOrderController extends Controller
             
         } catch (\Exception $e) {
             log_message('error', 'Error getting unit area info: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Get area staff information for work order assignment
+     */
+    private function getAreaStaffInfo($unitId)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // First get the area_id from the unit through customer relationship
+            $unitQuery = $db->query("
+                SELECT c.area_id 
+                FROM inventory_unit iu
+                JOIN kontrak k ON iu.kontrak_id = k.id
+                JOIN customer_locations cl ON cl.id = k.customer_location_id
+                JOIN customers c ON c.id = cl.customer_id
+                WHERE iu.id_inventory_unit = ?
+            ", [$unitId]);
+            $unit = $unitQuery->getRowArray();
+            
+            if (!$unit || !$unit['area_id']) {
+                return null;
+            }
+            
+            $areaId = $unit['area_id'];
+            
+            // Get staff assigned to this area
+            $query = $db->query("
+                SELECT 
+                    s.id,
+                    s.staff_name,
+                    s.staff_role,
+                    aea.assignment_type,
+                    aea.is_active
+                FROM area_employee_assignments aea
+                JOIN work_order_staff_backup_final s ON aea.employee_id = s.id
+                WHERE aea.area_id = ? AND aea.is_active = 1 AND s.is_active = 1
+                ORDER BY s.staff_role, s.staff_name
+            ", [$areaId]);
+            
+            return $query->getResultArray();
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting area staff info: ' . $e->getMessage());
             return null;
         }
     }
@@ -891,15 +1405,17 @@ class WorkOrderController extends Controller
             $db = \Config\Database::connect();
             $builder = $db->table('inventory_unit iu');
             $builder->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, 
-                            k.pelanggan, k.lokasi, tu.tipe as unit_type, mu.model_unit, mu.merk_unit');
+                            c.customer_name as pelanggan, cl.location_name as lokasi, tu.tipe as unit_type, mu.model_unit, mu.merk_unit');
             $builder->join('kontrak k', 'iu.kontrak_id = k.id', 'left');
-            $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
+            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('tipe_unit tu', 'iu.jenis_unit_id = tu.id_tipe_unit', 'left');
             $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
             $builder->groupStart()
                 ->like('iu.no_unit', $query)
-                ->orLike('k.pelanggan', $query)
+                ->orLike('c.customer_name', $query)
                 ->orLike('iu.serial_number', $query)
-                ->orLike('tu.tipe', $query)
+                ->orLike('tu.jenis', $query)
                 ->orLike('mu.model_unit', $query)
                 ->orLike('mu.merk_unit', $query)
             ->groupEnd();
@@ -922,43 +1438,6 @@ class WorkOrderController extends Controller
         }
     }
     
-    // Search Staff
-    public function searchStaff()
-    {
-        $query = $this->request->getPost('query');
-        $staffType = $this->request->getPost('staff_type');
-        
-        if (empty($query) || empty($staffType)) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Query and staff type are required'
-            ]);
-        }
-        
-        try {
-            $db = \Config\Database::connect();
-            $builder = $db->table('work_order_staff');
-            $builder->select('id, staff_name, staff_role as position');
-            $builder->where('staff_role', strtoupper($staffType));
-            $builder->where('is_active', 1);
-            $builder->like('staff_name', $query);
-            $builder->limit(10);
-            
-            $staff = $builder->get()->getResultArray();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $staff
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', 'Error searching staff: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error searching staff'
-            ]);
-        }
-    }
     
     // Get Priority by ID
     public function getPriority()
@@ -1118,166 +1597,1593 @@ class WorkOrderController extends Controller
     {
         try {
             $db = \Config\Database::connect();
-            $builder = $db->table('inventory_unit iu');
-            $builder->select('iu.id_inventory_unit as id, iu.no_unit, iu.serial_number, 
-                            k.pelanggan, k.lokasi, tu.tipe as unit_type, mu.model_unit, mu.merk_unit');
-            $builder->join('kontrak k', 'iu.kontrak_id = k.id', 'left');
-            $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
-            $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
-            $builder->where('iu.no_unit IS NOT NULL');
-            $builder->orderBy('iu.no_unit', 'ASC');
-            $builder->limit(100); // Limit untuk performance
             
-            $units = $builder->get()->getResultArray();
+            $units = $db->table('inventory_unit iu')
+                ->select('iu.id_inventory_unit as id, 
+                         iu.no_unit,
+                         iu.serial_number,
+                         d.nama_departemen as departemen,
+                         c.customer_name as pelanggan,
+                         cl.location_name as lokasi,
+                         tu.jenis as jenis,
+                         kp.kapasitas_unit as kapasitas,
+                         mu.merk_unit as merk,
+                         mu.model_unit,
+                         c.area_id,
+                         a.area_name')
+                ->join('departemen d', 'iu.departemen_id = d.id_departemen', 'left')
+                ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('areas a', 'a.id = c.area_id', 'left')
+                ->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left')
+                ->join('kapasitas kp', 'iu.kapasitas_unit_id = kp.id_kapasitas', 'left')
+                ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
+                ->where('iu.no_unit IS NOT NULL', null, false)
+                ->orderBy('iu.no_unit', 'ASC')
+                ->limit(100)
+                ->get()
+                ->getResultArray();
+            
+            // Handle null values in result
+            foreach ($units as &$unit) {
+                $unit['pelanggan'] = $unit['pelanggan'] ?? 'N/A';
+                $unit['lokasi'] = $unit['lokasi'] ?? 'N/A';
+                $unit['jenis'] = $unit['jenis'] ?? 'N/A';
+                $unit['kapasitas'] = $unit['kapasitas'] ?? 'N/A';
+                $unit['area_id'] = $unit['area_id'] ?? 0;
+                $unit['area_name'] = $unit['area_name'] ?? 'N/A';
+            }
             
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $units
+                'data' => $units,
+                'count' => count($units)
             ]);
             
         } catch (\Exception $e) {
             log_message('error', 'Error getting units dropdown: ' . $e->getMessage());
+            $errorMsg = $this->getMySQLError($db ?? null);
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error getting units data'
+                'message' => 'Error getting units data: ' . ($errorMsg ?: $e->getMessage())
             ]);
         }
     }
 
-    // Get Staff for Dropdown by Role
-    public function getStaffDropdown()
+    
+    /**
+     * Assign employees to a work order
+     */
+    public function assignEmployees()
     {
-        $staffRole = $this->request->getPost('staff_role');
+        log_message('info', 'assignEmployees function called');
         
-        if (empty($staffRole)) {
+        $workOrderId = $this->request->getPost('work_order_id');
+        $mechanicIds = $this->request->getPost('mechanic_ids');
+        $helperIds = $this->request->getPost('helper_ids');
+        $notes = $this->request->getPost('notes');
+        
+        log_message('info', 'Assignment data: ' . json_encode([
+            'work_order_id' => $workOrderId,
+            'mechanic_ids' => $mechanicIds,
+            'helper_ids' => $helperIds,
+            'notes' => $notes
+        ]));
+        
+        if (!$workOrderId) {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Staff role is required'
+                'message' => 'Work Order ID required'
             ]);
         }
         
+        // Validate mechanic selection
+        if (!$mechanicIds || !is_array($mechanicIds) || count($mechanicIds) == 0) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Minimal satu mekanik harus dipilih'
+            ]);
+        }
+        
+        if (count($mechanicIds) > 2) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Maksimal 2 mekanik dapat dipilih'
+            ]);
+        }
+        
+        // Validate helper selection
+        if ($helperIds && is_array($helperIds) && count($helperIds) > 2) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Maksimal 2 helper dapat dipilih'
+            ]);
+        }
+
         try {
+            // Get work order info
+            $workOrder = $this->workOrderModel->find($workOrderId);
+            if (!$workOrder || !is_array($workOrder)) {
+                log_message('error', 'Work Order not found: ' . $workOrderId);
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order tidak ditemukan'
+                ]);
+            }
+            
+            log_message('info', 'Current work order status: ' . $workOrder['status_id']);
+            
+            // Get primary mechanic (first selected)
+            $primaryMechanicId = $mechanicIds[0];
+            
+            // Start database transaction
             $db = \Config\Database::connect();
-            $staff = $db->table('work_order_staff')
-                ->select('id, staff_name, staff_role')
-                ->where('staff_role', strtoupper($staffRole))
-                ->where('is_active', 1)
-                ->orderBy('staff_name', 'ASC')
-                ->get()
-                ->getResultArray();
+            $db->transBegin();
+            
+            try {
+                // Prepare assignments array
+                $assignments = [];
+                
+                // Add mechanics to assignments
+                foreach ($mechanicIds as $index => $mechanicId) {
+                    $assignments[] = [
+                        'employee_id' => $mechanicId,
+                        'role' => 'MECHANIC',
+                        'assignment_type' => $index === 0 ? 'PRIMARY' : 'SECONDARY',
+                        'notes' => $notes
+                    ];
+                }
+                
+                // Add helpers to assignments
+                foreach ($helperIds as $index => $helperId) {
+                    $assignments[] = [
+                        'employee_id' => $helperId,
+                        'role' => 'HELPER',
+                        'assignment_type' => $index === 0 ? 'PRIMARY' : 'SECONDARY',
+                        'notes' => $notes
+                    ];
+                }
+                
+                log_message('info', 'Assignments to be created: ' . json_encode($assignments));
+                
+                // Get current status before update for history
+                $currentWorkOrder = $this->workOrderModel->find($workOrderId);
+                $fromStatusId = null;
+                if ($currentWorkOrder && is_array($currentWorkOrder)) {
+                    $fromStatusId = $currentWorkOrder['status_id'];
+                } elseif ($currentWorkOrder && is_object($currentWorkOrder)) {
+                    $fromStatusId = $currentWorkOrder->status_id ?? null;
+                }
+
+                // Update work order status FIRST to ensure it exists and is valid
+                $updateData = [
+                    'status_id' => 2, // ASSIGNED status
+                    'mechanic_id' => $mechanicIds[0], // Primary mechanic for backward compatibility
+                    'helper_id' => isset($helperIds[0]) ? $helperIds[0] : null, // Primary helper for backward compatibility
+                    'notes' => $notes
+                ];
+                
+                log_message('info', 'Updating work order with data: ' . json_encode($updateData));
+                
+                // Temporarily disable validation for assignment update
+                $this->workOrderModel->skipValidation(true);
+                $updated = $this->workOrderModel->update($workOrderId, $updateData);
+                $this->workOrderModel->skipValidation(false);
+                
+                if (!$updated) {
+                    // Get validation errors for debugging
+                    $validationErrors = $this->workOrderModel->errors();
+                    log_message('error', 'Work order update failed. Validation errors: ' . json_encode($validationErrors));
+                    log_message('error', 'Work order ID: ' . $workOrderId);
+                    log_message('error', 'Update data: ' . json_encode($updateData));
+                    
+                    // Check if work order exists
+                    $existingWo = $this->workOrderModel->find($workOrderId);
+                    log_message('error', 'Existing work order: ' . json_encode($existingWo));
+                    
+                    throw new \Exception('Failed to update work order. Errors: ' . json_encode($validationErrors));
+                }
+                
+                log_message('info', 'Work order updated successfully');
+                
+                // Now assign multiple employees using assignment model
+                $assignedBy = session()->get('user_id') ?: 1; // Fallback to user 1
+                try {
+                    $this->workOrderAssignmentModel->assignEmployees($workOrderId, $assignments, $assignedBy);
+                    log_message('info', 'Multiple assignments created successfully');
+                } catch (\Exception $e) {
+                    log_message('warning', 'Failed to create assignment records: ' . $e->getMessage());
+                    // Continue anyway as main work order update succeeded
+                }
+                
+                // Add status history with correct parameters
+                $statusHistoryAdded = $this->workOrderModel->addStatusHistory($workOrderId, 2, 'Work order assigned to mechanic and helper', $fromStatusId);
+                
+                if (!$statusHistoryAdded) {
+                    log_message('warning', 'Failed to add status history, but continuing...');
+                }
+                
+                $db->transCommit();
+                
+                log_message('info', 'Assignment completed successfully');
+                
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Berhasil memilih ' . count($mechanicIds) . ' mekanik dan ' . count($helperIds) . ' helper'
+                ]);
+                
+            } catch (\Exception $e) {
+                $db->transRollback();
+                log_message('error', 'Transaction failed: ' . $e->getMessage());
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error assigning employees: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get spareparts for work order
+     */
+    public function getWorkOrderSpareparts($workOrderId)
+    {
+        try {
+            $spareparts = $this->sparepartModel->getSparePartsWithUsage($workOrderId);
             
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $staff
+                'data' => $spareparts
             ]);
-            
+
         } catch (\Exception $e) {
-            log_message('error', 'Error getting staff dropdown: ' . $e->getMessage());
+            log_message('error', 'Error getting work order spareparts: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error getting staff data'
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
             ]);
         }
     }
-    
-    // API endpoints untuk testing
-    public function api($action = null, $id = null)
+
+    /**
+     * Close work order with sparepart usage tracking
+     */
+    public function closeWorkOrder()
     {
-        $response = ['success' => false, 'message' => '', 'data' => null];
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        try {
+            $woId = $this->request->getPost('work_order_id');
+            $sparepartUsage = $this->request->getPost('sparepart_usage'); // Array of usage data
+            $completionNotes = $this->request->getPost('completion_notes');
+
+            if (!$woId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order ID required'
+                ]);
+            }
+
+            $db = \Config\Database::connect();
+            $db->transStart();
+
+            try {
+                // Get current status before update for history
+                $currentWorkOrder = $this->workOrderModel->find($woId);
+                $fromStatusId = null;
+                if ($currentWorkOrder && is_array($currentWorkOrder)) {
+                    $fromStatusId = $currentWorkOrder['status_id'];
+                } elseif ($currentWorkOrder && is_object($currentWorkOrder)) {
+                    $fromStatusId = $currentWorkOrder->status_id ?? null;
+                }
+
+                // Update work order status to COMPLETED
+                $completedStatus = $this->workOrderModel->getStatusByCode('COMPLETED');
+                $updateData = [
+                    'completed_date' => date('Y-m-d H:i:s'),
+                    'completion_notes' => $completionNotes
+                ];
+                
+                if ($completedStatus) {
+                    $updateData['status_id'] = $completedStatus['id'];
+                }
+
+                $this->workOrderModel->update($woId, $updateData);
+
+                // Add status history for completion
+                if ($completedStatus) {
+                    $this->workOrderModel->addStatusHistory($woId, $completedStatus['id'], 'Work order completed', $fromStatusId);
+                }
+
+                // Record sparepart usage if provided
+                if (!empty($sparepartUsage) && is_array($sparepartUsage)) {
+                    $this->sparepartUsageModel->recordMultipleUsage($woId, $sparepartUsage);
+                }
+
+                $db->transComplete();
+
+                if ($db->transStatus() === false) {
+                    throw new \Exception('Transaksi database gagal');
+                }
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Work Order berhasil diselesaikan'
+                ]);
+
+            } catch (\Exception $e) {
+                $db->transRollback();
+                throw $e;
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error closing work order: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Test endpoint to verify routing is working
+     */
+    public function testRouting()
+    {
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Unit verification routing is working!',
+            'timestamp' => date('Y-m-d H:i:s'),
+            'methods_available' => [
+                'getUnitVerificationData',
+                'saveUnitVerification', 
+                'getSparepartUsageData',
+                'saveSparepartUsage'
+            ]
+        ]);
+    }
+
+    /**
+     * Get unit verification data for complete modal
+     */
+    public function getUnitVerificationData()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $workOrderId = $this->request->getPost('work_order_id');
+        
+        if (!$workOrderId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Work Order ID required']);
+        }
+
+        try {
+            // Get work order info
+            $workOrder = $this->workOrderModel->find($workOrderId);
+            if (!$workOrder) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Work Order not found']);
+            }
+
+            // Convert to array if it's an object
+            if (is_object($workOrder)) {
+                $workOrder = (array) $workOrder;
+            }
+
+            // Get unit details with all related data
+            $db = \Config\Database::connect();
+            $unit = $db->query("
+                SELECT 
+                    iu.id_inventory_unit,
+                    iu.no_unit,
+                    iu.serial_number,
+                    iu.tahun_unit,
+                    iu.departemen_id,
+                    iu.keterangan,
+                    iu.tipe_unit_id,
+                    iu.model_unit_id,
+                    iu.kapasitas_unit_id,
+                    iu.model_mast_id,
+                    iu.tinggi_mast,
+                    iu.sn_mast,
+                    iu.model_mesin_id,
+                    iu.sn_mesin,
+                    iu.roda_id,
+                    iu.ban_id,
+                    iu.valve_id,
+                    iu.aksesoris,
+                    tu.tipe as tipe_unit_name,
+                    mu.model_unit as model_unit_name,
+                    mu.merk_unit,
+                    k.kapasitas_unit as kapasitas_name,
+                    tm.tipe_mast as model_mast_name,
+                    m.model_mesin as model_mesin_name,
+                    d.nama_departemen as departemen_name,
+                    jr.tipe_roda as roda_name,
+                    tb.tipe_ban as ban_name,
+                    v.jumlah_valve as valve_name
+                FROM inventory_unit iu
+                LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
+                LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
+                LEFT JOIN kapasitas k ON iu.kapasitas_unit_id = k.id_kapasitas
+                LEFT JOIN tipe_mast tm ON iu.model_mast_id = tm.id_mast
+                LEFT JOIN mesin m ON iu.model_mesin_id = m.id
+                LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
+                LEFT JOIN jenis_roda jr ON iu.roda_id = jr.id_roda
+                LEFT JOIN tipe_ban tb ON iu.ban_id = tb.id_ban
+                LEFT JOIN valve v ON iu.valve_id = v.id_valve
+                WHERE iu.id_inventory_unit = ?
+            ", [$workOrder['unit_id']])->getRowArray();
+
+            if (!$unit) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit not found']);
+            }
+
+            // Get customer data from unit's contract
+            $customerData = $db->query("
+                SELECT 
+                    c.customer_name as pelanggan,
+                    cl.location_name as lokasi
+                FROM inventory_unit iu
+                LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+                LEFT JOIN customers c ON cl.customer_id = c.id
+                WHERE iu.id_inventory_unit = ?
+            ", [$workOrder['unit_id']])->getRowArray();
+            
+            // Add customer data to unit
+            $unit['pelanggan'] = $customerData['pelanggan'] ?? 'N/A';
+            $unit['lokasi'] = $customerData['lokasi'] ?? 'N/A';
+
+            // Get attachment data from inventory_attachment table
+            $attachment = $db->query("
+                SELECT 
+                    ia.tipe_item,
+                    ia.attachment_id,
+                    ia.sn_attachment,
+                    ia.baterai_id,
+                    ia.sn_baterai,
+                    ia.charger_id,
+                    ia.sn_charger,
+                    ia.kondisi_fisik,
+                    ia.kelengkapan,
+                    ia.catatan_fisik,
+                    a.tipe as attachment_name,
+                    a.merk as attachment_merk,
+                    a.model as attachment_model,
+                    b.tipe_baterai as baterai_name,
+                    b.merk_baterai as baterai_merk,
+                    c.tipe_charger as charger_name,
+                    c.merk_charger as charger_merk
+                FROM inventory_attachment ia
+                LEFT JOIN attachment a ON ia.attachment_id = a.id_attachment
+                LEFT JOIN baterai b ON ia.baterai_id = b.id
+                LEFT JOIN charger c ON ia.charger_id = c.id_charger
+                WHERE ia.id_inventory_unit = ?
+            ", [$workOrder['unit_id']])->getRowArray();
+
+            // Get dropdown options
+            $departemenOptions = $db->table('departemen')
+                ->select('id_departemen as id, nama_departemen as name')
+                ->get()
+                ->getResultArray();
+                
+            $tipeUnitOptions = $db->table('tipe_unit')
+                ->select('id_tipe_unit as id, tipe as name, jenis, id_departemen')
+                ->get()
+                ->getResultArray();
+
+            $modelUnitOptions = $db->table('model_unit')
+                ->select('id_model_unit as id, CONCAT(merk_unit, " - ", model_unit) as name')
+                ->get()
+                ->getResultArray();
+
+            $kapasitasOptions = $db->table('kapasitas')
+                ->select('id_kapasitas as id, kapasitas_unit as name')
+                ->get()
+                ->getResultArray();
+
+            $modelMastOptions = $db->table('tipe_mast')
+                ->select('id_mast as id, tipe_mast as name')
+                ->get()
+                ->getResultArray();
+
+            $modelMesinOptions = $db->table('mesin')
+                ->select('id as id, CONCAT(merk_mesin, " - ", model_mesin) as name, departemen_id')
+                ->get()
+                ->getResultArray();
+
+            $rodaOptions = $db->table('jenis_roda')
+                ->select('id_roda as id, tipe_roda as name')
+                ->get()
+                ->getResultArray();
+
+            $banOptions = $db->table('tipe_ban')
+                ->select('id_ban as id, tipe_ban as name')
+                ->get()
+                ->getResultArray();
+
+            $valveOptions = $db->table('valve')
+                ->select('id_valve as id, jumlah_valve as name')
+                ->get()
+                ->getResultArray();
+
+            $attachmentOptions = $db->table('attachment')
+                ->select('id_attachment as id, CONCAT(tipe, " - ", merk) as name')
+                ->get()
+                ->getResultArray();
+
+            $bateraiOptions = $db->table('baterai')
+                ->select('id as id, CONCAT(tipe_baterai, " - ", merk_baterai) as name')
+                ->get()
+                ->getResultArray();
+
+            $chargerOptions = $db->table('charger')
+                ->select('id_charger as id, CONCAT(tipe_charger, " - ", merk_charger) as name')
+                ->get()
+                ->getResultArray();
+
+            // Get unit accessories from inventory_unit.aksesoris field (JSON format)
+            $accessories = [];
+            if (!empty($unit['aksesoris'])) {
+                $accessoriesJson = $unit['aksesoris'];
+                log_message('info', 'Raw accessories data: ' . $accessoriesJson);
+                
+                if (is_string($accessoriesJson)) {
+                    $decodedAccessories = json_decode($accessoriesJson, true);
+                    if ($decodedAccessories && is_array($decodedAccessories)) {
+                        $accessories = $decodedAccessories;
+                    }
+                } elseif (is_array($accessoriesJson)) {
+                    $accessories = $accessoriesJson;
+                }
+                
+                // Convert to expected format for frontend
+                if (!empty($accessories)) {
+                    $accessories = array_map(function($item) {
+                        if (is_string($item)) {
+                            return ['name' => $item];
+                        } elseif (is_array($item)) {
+                            if (isset($item['name'])) {
+                                return ['name' => $item['name']];
+                            } elseif (isset($item['value'])) {
+                                return ['name' => $item['value']];
+                            } elseif (isset($item[0])) {
+                                return ['name' => $item[0]];
+                            }
+                        }
+                        return ['name' => (string)$item];
+                    }, $accessories);
+                }
+                
+                log_message('info', 'Processed accessories for frontend: ' . json_encode($accessories));
+            }
+
+            // Get assigned staff names for verified by
+            $assignedStaff = [];
+            if (!empty($workOrder['mechanic_id'])) {
+                $mechanic = $db->table('employees')->select('staff_name')->where('id', $workOrder['mechanic_id'])->get()->getRowArray();
+                if ($mechanic) $assignedStaff[] = $mechanic['staff_name'];
+            }
+            if (!empty($workOrder['helper_id'])) {
+                $helper = $db->table('employees')->select('staff_name')->where('id', $workOrder['helper_id'])->get()->getRowArray();
+                if ($helper) $assignedStaff[] = $helper['staff_name'];
+            }   
+            $verifiedBy = implode(' & ', $assignedStaff);
+            
+            // If no staff assigned, use current user or default
+            if (empty($verifiedBy)) {
+                $verifiedBy = 'Mekanik Belum Ditentukan';
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'work_order' => $workOrder,
+                    'unit' => $unit,
+                    'attachment' => $attachment,
+                    'options' => [
+                        'departemen' => $departemenOptions,
+                        'tipe_unit' => $tipeUnitOptions,
+                        'model_unit' => $modelUnitOptions,
+                        'kapasitas' => $kapasitasOptions,
+                        'model_mast' => $modelMastOptions,
+                        'model_mesin' => $modelMesinOptions,
+                        'roda' => $rodaOptions,
+                        'ban' => $banOptions,
+                        'valve' => $valveOptions,
+                        'attachment' => $attachmentOptions,
+                        'baterai' => $bateraiOptions,
+                        'charger' => $chargerOptions
+                    ],
+                    'accessories' => $accessories,
+                    'verified_by' => $verifiedBy
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting unit verification data: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Helper method to get MySQL error directly from connection
+     */
+    private function getMySQLError($db)
+    {
+        $mysqlError = '';
+        $mysqlErrno = 0;
         
         try {
-            switch ($action) {
-                case 'units':
-                    $response['data'] = $this->getUnits();
-                    $response['success'] = true;
-                    break;
-                    
-                case 'priorities':
-                    $priorityModel = new \App\Models\WorkOrderPriorityModel();
-                    $response['data'] = $priorityModel->findAll();
-                    $response['success'] = true;
-                    break;
-                    
-                case 'categories':
-                    $categoryModel = new \App\Models\WorkOrderCategoryModel();
-                    $response['data'] = $categoryModel->findAll();
-                    $response['success'] = true;
-                    break;
-                    
-                case 'unit-area-info':
-                    if ($id) {
-                        $unitInfo = $this->getUnitAreaInfo($id);
-                        if ($unitInfo) {
-                            $response['data'] = [
-                                'area_info' => $unitInfo,
-                                'available_staff' => $this->getAreaStaff($unitInfo['area_id'] ?? null)
-                            ];
-                            $response['success'] = true;
-                        } else {
-                            $response['message'] = 'Unit not found or no area assigned';
-                        }
-                    } else {
-                        $response['message'] = 'Unit ID required';
+            $connId = $db->connID;
+            if ($connId && is_object($connId)) {
+                // Try mysqli methods first
+                if (method_exists($connId, 'error')) {
+                    $mysqlError = $connId->error;
+                    $mysqlErrno = $connId->errno ?? 0;
+                } 
+                // Try properties
+                elseif (property_exists($connId, 'error')) {
+                    $mysqlError = $connId->error;
+                    $mysqlErrno = $connId->errno ?? 0;
+                }
+                // Try mysqli_error function
+                elseif (function_exists('mysqli_error') && is_resource($connId)) {
+                    $mysqlError = mysqli_error($connId);
+                    $mysqlErrno = mysqli_errno($connId);
+                }
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting MySQL error: ' . $e->getMessage());
+        }
+        
+        // If we got MySQL error, return it
+        if (!empty($mysqlError)) {
+            return 'MySQL Error (' . $mysqlErrno . '): ' . $mysqlError;
+        }
+        
+        // Fallback to CodeIgniter error
+        $dbError = $db->error();
+        if (is_array($dbError)) {
+            if (!empty($dbError['message'])) {
+                return $dbError['message'];
+            }
+            if (!empty($dbError['code'])) {
+                return 'Database error code: ' . $dbError['code'];
+            }
+        } elseif (!empty($dbError)) {
+            return (string)$dbError;
+        }
+        
+        // If transaction status is false but no error message, check for warnings
+        if ($db->transStatus() === false) {
+            try {
+                $connId = $db->connID;
+                if ($connId && is_object($connId) && method_exists($connId, 'sqlstate')) {
+                    $sqlState = $connId->sqlstate;
+                    if ($sqlState && $sqlState !== '00000') {
+                        return 'SQL State: ' . $sqlState;
                     }
-                    break;
-                    
-                case 'simulate-assignment':
-                    $response = $this->simulateStaffAssignment();
-                    break;
-                    
-                default:
-                    $response['message'] = 'Invalid API action';
+                }
+            } catch (\Exception $e) {
+                // Ignore
+            }
+        }
+        
+        return 'Unknown database error';
+    }
+
+    /**
+     * Save unit verification and complete work order
+     */
+    public function saveUnitVerification()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $workOrderId = $this->request->getPost('work_order_id');
+        $unitId = $this->request->getPost('unit_id');
+
+        if (!$workOrderId || !$unitId) {
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'Data tidak lengkap - Work Order ID atau Unit ID tidak ditemukan'
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Validate work order and unit exist
+            $woExists = $db->table('work_orders')->where('id', $workOrderId)->countAllResults() > 0;
+            if (!$woExists) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work order tidak ditemukan'
+                ]);
             }
             
+            $unitExists = $db->table('inventory_unit')->where('id_inventory_unit', $unitId)->countAllResults() > 0;
+            if (!$unitExists) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit tidak ditemukan'
+                ]);
+            }
+            
+            $db->transStart();
+
+            // Update inventory_unit table with unit verification data
+            $unitUpdateData = [
+                'no_unit' => $this->request->getPost('no_unit'),
+                'serial_number' => $this->request->getPost('serial_number'),
+                'tahun_unit' => $this->request->getPost('tahun_unit'),
+                'departemen_id' => $this->request->getPost('departemen_id') ?: null,
+                'keterangan' => $this->request->getPost('keterangan'),
+                'tipe_unit_id' => $this->request->getPost('tipe_unit_id') ?: null,
+                'model_unit_id' => $this->request->getPost('model_unit_id') ?: null,
+                'kapasitas_unit_id' => $this->request->getPost('kapasitas_unit_id') ?: null,
+                'model_mast_id' => $this->request->getPost('model_mast_id') ?: null,
+                'tinggi_mast' => $this->request->getPost('tinggi_mast'),
+                'sn_mast' => $this->request->getPost('sn_mast'),
+                'model_mesin_id' => $this->request->getPost('model_mesin_id') ?: null,
+                'sn_mesin' => $this->request->getPost('sn_mesin'),
+                'roda_id' => $this->request->getPost('roda_id') ?: null,
+                'ban_id' => $this->request->getPost('ban_id') ?: null,
+                'valve_id' => $this->request->getPost('valve_id') ?: null,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            // Validate foreign keys before update
+            if (!empty($unitUpdateData['departemen_id'])) {
+                $deptExists = $db->table('departemen')->where('id_departemen', $unitUpdateData['departemen_id'])->countAllResults() > 0;
+                if (!$deptExists) {
+                    throw new \Exception('Departemen ID tidak valid: ' . $unitUpdateData['departemen_id']);
+                }
+            }
+            
+            if (!empty($unitUpdateData['tipe_unit_id'])) {
+                $tipeExists = $db->table('tipe_unit')->where('id_tipe_unit', $unitUpdateData['tipe_unit_id'])->countAllResults() > 0;
+                if (!$tipeExists) {
+                    throw new \Exception('Tipe Unit ID tidak valid: ' . $unitUpdateData['tipe_unit_id']);
+                }
+            }
+            
+            if (!empty($unitUpdateData['model_unit_id'])) {
+                $modelExists = $db->table('model_unit')->where('id_model_unit', $unitUpdateData['model_unit_id'])->countAllResults() > 0;
+                if (!$modelExists) {
+                    throw new \Exception('Model Unit ID tidak valid: ' . $unitUpdateData['model_unit_id']);
+                }
+            }
+            
+            if (!empty($unitUpdateData['kapasitas_unit_id'])) {
+                $kapExists = $db->table('kapasitas')->where('id_kapasitas', $unitUpdateData['kapasitas_unit_id'])->countAllResults() > 0;
+                if (!$kapExists) {
+                    throw new \Exception('Kapasitas Unit ID tidak valid: ' . $unitUpdateData['kapasitas_unit_id']);
+                }
+            }
+
+            // Remove empty values
+            $unitUpdateData = array_filter($unitUpdateData, function($value) {
+                return $value !== '' && $value !== null;
+            });
+
+            // Check transaction status before update
+            if ($db->transStatus() === false) {
+                $errorMsg = $this->getMySQLError($db);
+                throw new \Exception('Transaksi gagal sebelum update unit: ' . $errorMsg);
+            }
+
+            $updated = $db->table('inventory_unit')
+                ->where('id_inventory_unit', $unitId)
+                ->update($unitUpdateData);
+
+            // Check transaction status immediately after update
+            if ($db->transStatus() === false) {
+                $errorMsg = $this->getMySQLError($db);
+                log_message('error', 'Transaction failed after inventory_unit update. Unit ID: ' . $unitId . ', Error: ' . $errorMsg);
+                log_message('error', 'Update data: ' . json_encode($unitUpdateData));
+                throw new \Exception('Error update unit: ' . $errorMsg);
+            }
+
+            // Check for MySQL errors
+            $errorMsg = $this->getMySQLError($db);
+            if (!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) {
+                log_message('error', 'MySQL error after inventory_unit update: ' . $errorMsg);
+                throw new \Exception('Error updating unit: ' . $errorMsg);
+            }
+
+            if (!$updated) {
+                $errorMsg = $this->getMySQLError($db);
+                if (!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) {
+                    throw new \Exception('Gagal update data unit: ' . $errorMsg);
+                }
+                throw new \Exception('Gagal update data unit - tidak ada baris yang terupdate');
+            }
+
+            // Handle inventory_attachment table - UPDATE existing records to preserve po_id and catatan_inventory
+            $attachmentId = $this->request->getPost('attachment_id');
+            $chargerId = $this->request->getPost('charger_id');
+            $bateraiId = $this->request->getPost('baterai_id');
+            
+            // Get existing attachment records to preserve po_id and catatan_inventory
+            $existingAttachments = $db->table('inventory_attachment')
+                ->where('id_inventory_unit', $unitId)
+                ->get()->getResultArray();
+            
+            // Create map of existing records by type
+            $existingMap = [];
+            foreach ($existingAttachments as $existing) {
+                $existingMap[$existing['tipe_item']] = $existing;
+            }
+            
+            // Check transaction status before delete
+            if ($db->transStatus() === false) {
+                $errorMsg = $this->getMySQLError($db);
+                log_message('error', 'Transaction failed before deleting inventory_attachment. Error: ' . $errorMsg);
+                throw new \Exception('Transaksi gagal sebelum delete attachment: ' . $errorMsg);
+            }
+
+            // Delete all existing records first
+            $db->table('inventory_attachment')->where('id_inventory_unit', $unitId)->delete();
+            
+            // Check transaction status after delete
+            if ($db->transStatus() === false) {
+                $errorMsg = $this->getMySQLError($db);
+                log_message('error', 'Transaction failed after deleting inventory_attachment. Error: ' . $errorMsg);
+                throw new \Exception('Transaksi gagal setelah delete attachment: ' . $errorMsg);
+            }
+            
+            // Insert/Update attachment record if selected
+            if (!empty($attachmentId)) {
+                // Validate attachment_id exists in attachment table
+                $attachmentExists = $db->table('attachment')
+                    ->where('id_attachment', $attachmentId)
+                    ->countAllResults() > 0;
+                
+                if (!$attachmentExists) {
+                    // Skip if attachment doesn't exist
+                } else {
+                    $attachmentData = [
+                        'id_inventory_unit' => $unitId,
+                        'tipe_item' => 'attachment',
+                        'attachment_id' => $attachmentId,
+                        'sn_attachment' => $this->request->getPost('sn_attachment'),
+                        'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
+                        'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
+                        'catatan_fisik' => $this->request->getPost('catatan_fisik'),
+                        'created_at' => date('Y-m-d H:i:s')
+                    ];
+                
+                // Preserve po_id and catatan_inventory if they existed
+                if (isset($existingMap['attachment'])) {
+                    if (!empty($existingMap['attachment']['po_id'])) {
+                        $attachmentData['po_id'] = $existingMap['attachment']['po_id'];
+                    }
+                    if (!empty($existingMap['attachment']['catatan_inventory'])) {
+                        $attachmentData['catatan_inventory'] = $existingMap['attachment']['catatan_inventory'];
+                    }
+                    // Preserve created_at if updating existing record
+                    if (!empty($existingMap['attachment']['created_at'])) {
+                        $attachmentData['created_at'] = $existingMap['attachment']['created_at'];
+                        $attachmentData['updated_at'] = date('Y-m-d H:i:s');
+                    }
+                }
+                
+                    // Check transaction status before insert
+                    if ($db->transStatus() === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        log_message('error', 'Transaction failed before inserting attachment. Error: ' . $errorMsg);
+                        throw new \Exception('Transaksi gagal sebelum insert attachment: ' . $errorMsg);
+                    }
+
+                    $insertResult = $db->table('inventory_attachment')->insert($attachmentData);
+                    
+                    // Check transaction status immediately after insert
+                    if ($db->transStatus() === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        log_message('error', 'Transaction failed after inserting attachment. Data: ' . json_encode($attachmentData) . ', Error: ' . $errorMsg);
+                        throw new \Exception('Error menyimpan attachment: ' . $errorMsg);
+                    }
+                    
+                    $errorMsg = $this->getMySQLError($db);
+                    if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
+                        log_message('error', 'Failed to insert attachment. Result: ' . ($insertResult ? 'true' : 'false') . ', Error: ' . $errorMsg);
+                        throw new \Exception('Error menyimpan attachment: ' . $errorMsg);
+                    }
+                }
+            }
+            
+            // Insert/Update charger record if selected
+            if (!empty($chargerId)) {
+                // Validate charger_id exists in charger table
+                $chargerExists = $db->table('charger')
+                    ->where('id_charger', $chargerId)
+                    ->countAllResults() > 0;
+                
+                if (!$chargerExists) {
+                    // Skip if charger doesn't exist
+                } else {
+                    $chargerData = [
+                        'id_inventory_unit' => $unitId,
+                        'tipe_item' => 'charger',
+                        'charger_id' => $chargerId,
+                        'sn_charger' => $this->request->getPost('sn_charger'),
+                        'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
+                        'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
+                        'catatan_fisik' => $this->request->getPost('catatan_fisik'),
+                        'created_at' => date('Y-m-d H:i:s')
+                    ];
+                
+                // Preserve po_id and catatan_inventory if they existed
+                if (isset($existingMap['charger'])) {
+                    if (!empty($existingMap['charger']['po_id'])) {
+                        $chargerData['po_id'] = $existingMap['charger']['po_id'];
+                    }
+                    if (!empty($existingMap['charger']['catatan_inventory'])) {
+                        $chargerData['catatan_inventory'] = $existingMap['charger']['catatan_inventory'];
+                    }
+                    // Preserve created_at if updating existing record
+                    if (!empty($existingMap['charger']['created_at'])) {
+                        $chargerData['created_at'] = $existingMap['charger']['created_at'];
+                        $chargerData['updated_at'] = date('Y-m-d H:i:s');
+                    }
+                }
+                
+                    // Check transaction status before insert
+                    if ($db->transStatus() === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        log_message('error', 'Transaction failed before inserting charger. Error: ' . $errorMsg);
+                        throw new \Exception('Transaksi gagal sebelum insert charger: ' . $errorMsg);
+                    }
+
+                    $insertResult = $db->table('inventory_attachment')->insert($chargerData);
+                    
+                    // Check transaction status after insert
+                    if ($db->transStatus() === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        log_message('error', 'Transaction failed after inserting charger. Error: ' . $errorMsg);
+                        throw new \Exception('Error menyimpan charger: ' . $errorMsg);
+                    }
+                    
+                    $errorMsg = $this->getMySQLError($db);
+                    if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
+                        throw new \Exception('Error menyimpan charger: ' . $errorMsg);
+                    }
+                }
+            }
+            
+            // Insert/Update baterai record if selected
+            if (!empty($bateraiId)) {
+                // Validate baterai_id exists in baterai table (primary key is 'id', not 'id_baterai')
+                $bateraiExists = $db->table('baterai')
+                    ->where('id', $bateraiId)
+                    ->countAllResults() > 0;
+                
+                if (!$bateraiExists) {
+                    // Skip if baterai doesn't exist
+                } else {
+                    $bateraiData = [
+                        'id_inventory_unit' => $unitId,
+                        'tipe_item' => 'baterai',
+                        'baterai_id' => $bateraiId,
+                        'sn_baterai' => $this->request->getPost('sn_baterai'),
+                        'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
+                        'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
+                        'catatan_fisik' => $this->request->getPost('catatan_fisik'),
+                        'created_at' => date('Y-m-d H:i:s')
+                    ];
+                
+                // Preserve po_id and catatan_inventory if they existed
+                if (isset($existingMap['baterai'])) {
+                    if (!empty($existingMap['baterai']['po_id'])) {
+                        $bateraiData['po_id'] = $existingMap['baterai']['po_id'];
+                    }
+                    if (!empty($existingMap['baterai']['catatan_inventory'])) {
+                        $bateraiData['catatan_inventory'] = $existingMap['baterai']['catatan_inventory'];
+                    }
+                    // Preserve created_at if updating existing record
+                    if (!empty($existingMap['baterai']['created_at'])) {
+                        $bateraiData['created_at'] = $existingMap['baterai']['created_at'];
+                        $bateraiData['updated_at'] = date('Y-m-d H:i:s');
+                    }
+                }
+                
+                    // Check transaction status before insert
+                    if ($db->transStatus() === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        log_message('error', 'Transaction failed before inserting baterai. Error: ' . $errorMsg);
+                        throw new \Exception('Transaksi gagal sebelum insert baterai: ' . $errorMsg);
+                    }
+
+                    $insertResult = $db->table('inventory_attachment')->insert($bateraiData);
+                    
+                    // Check transaction status after insert
+                    if ($db->transStatus() === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        log_message('error', 'Transaction failed after inserting baterai. Error: ' . $errorMsg);
+                        throw new \Exception('Error menyimpan baterai: ' . $errorMsg);
+                    }
+                    
+                    $errorMsg = $this->getMySQLError($db);
+                    if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
+                        throw new \Exception('Error menyimpan baterai: ' . $errorMsg);
+                    }
+                }
+            }
+
+            // Check transaction status before accessories update
+            if ($db->transStatus() === false) {
+                $errorMsg = $this->getMySQLError($db);
+                log_message('error', 'Transaction failed before accessories update. Error: ' . $errorMsg);
+                throw new \Exception('Transaksi gagal sebelum update accessories: ' . $errorMsg);
+            }
+
+            // Handle unit accessories
+            $accessories = $this->request->getPost('accessories');
+            if (!empty($accessories) && is_array($accessories)) {
+                $accessoriesJson = json_encode($accessories);
+                $db->table('inventory_unit')
+                    ->where('id_inventory_unit', $unitId)
+                    ->update(['aksesoris' => $accessoriesJson]);
+            } else {
+                $db->table('inventory_unit')
+                    ->where('id_inventory_unit', $unitId)
+                    ->update(['aksesoris' => null]);
+            }
+            
+            // Check transaction status after accessories update
+            if ($db->transStatus() === false) {
+                $errorMsg = $this->getMySQLError($db);
+                log_message('error', 'Transaction failed after accessories update. Error: ' . $errorMsg);
+                throw new \Exception('Transaksi gagal setelah update accessories: ' . $errorMsg);
+            }
+            
+            // Get current status before update for history
+            $currentWorkOrder = $db->table('work_orders')
+                ->where('id', $workOrderId)
+                ->get()
+                ->getRowArray();
+            
+            $fromStatusId = $currentWorkOrder['status_id'] ?? null;
+
+            // Get COMPLETED status
+            $statusData = $db->table('work_order_statuses')
+                ->where('status_code', 'COMPLETED')
+                ->where('is_active', 1)
+                ->get()
+                ->getRowArray();
+                
+            if (!$statusData) {
+                throw new \Exception('Status COMPLETED tidak ditemukan');
+            }
+
+            $woUpdateData = [
+                'status_id' => $statusData['id'],
+                'completion_date' => date('Y-m-d H:i:s'),
+                'unit_verified' => 1,
+                'unit_verified_at' => date('Y-m-d H:i:s'),
+                'notes' => $this->request->getPost('catatan_fisik'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            // Update work order
+            $woUpdated = $db->table('work_orders')
+                ->where('id', $workOrderId)
+                ->update($woUpdateData);
+
+            $errorMsg = $this->getMySQLError($db);
+            if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$woUpdated) {
+                throw new \Exception('Error update work order: ' . $errorMsg);
+            }
+            
+            if ($db->transStatus() === false) {
+                $errorMsg = $this->getMySQLError($db);
+                throw new \Exception('Transaksi gagal setelah update work order: ' . $errorMsg);
+            }
+
+            // Insert status history
+            $historyData = [
+                'work_order_id' => $workOrderId,
+                'from_status_id' => $fromStatusId,
+                'to_status_id' => $statusData['id'],
+                'changed_by' => session()->get('user_id') ?: 1,
+                'change_reason' => 'Work order completed with unit verification',
+                'changed_at' => date('Y-m-d H:i:s')
+            ];
+            
+            $db->table('work_order_status_history')->insert($historyData);
+            
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                $errorMsg = $this->getMySQLError($db);
+                throw new \Exception('Transaksi gagal: ' . $errorMsg);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Unit berhasil diverifikasi dan work order diselesaikan'
+            ]);
+
         } catch (\Exception $e) {
-            $response['message'] = $e->getMessage();
-        }
-        
-        return $this->response->setJSON($response);
-    }
-    
-    // Helper method untuk mendapatkan staff di area
-    private function getAreaStaff($areaId)
-    {
-        if (!$areaId) return [];
-        
-        $staffModel = new \App\Models\StaffModel();
-        return $staffModel->getStaffByArea($areaId);
-    }
-    
-    // Simulasi staff assignment
-    private function simulateStaffAssignment()
-    {
-        $unitId = $this->request->getPost('unit_id');
-        $orderType = $this->request->getPost('order_type');
-        $priorityId = $this->request->getPost('priority_id');
-        $categoryId = $this->request->getPost('category_id');
-        $complaint = $this->request->getPost('complaint_description');
-        
-        if (!$unitId || !$orderType || !$priorityId || !$categoryId || !$complaint) {
-            return [
+            if (isset($db) && $db->transStatus() !== false) {
+                $db->transRollback();
+            }
+            
+            $errorMsg = $e->getMessage();
+            if (isset($db)) {
+                $dbError = $this->getMySQLError($db);
+                if (!empty($dbError) && strpos($dbError, 'Unknown database error') === false) {
+                    $errorMsg = $dbError;
+                }
+            }
+            
+            log_message('error', 'Error saving unit verification: ' . $errorMsg);
+            
+            return $this->response->setJSON([
                 'success' => false,
-                'message' => 'All fields are required for simulation'
-            ];
+                'message' => 'Error: ' . $errorMsg
+            ]);
         }
+    }
+
+    /**
+     * Get sparepart validation data
+     */
+    public function getSparepartValidationData()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $workOrderId = $this->request->getGet('work_order_id');
         
-        // Get unit area info
-        $unitInfo = $this->getUnitAreaInfo($unitId);
-        if (!$unitInfo) {
-            return [
+        if (!$workOrderId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Work Order ID required']);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get planned spareparts from work_order_spareparts
+            $usedSpareparts = $db->table('work_order_spareparts wos')
+                ->select('wos.*, wos.sparepart_name, wos.sparepart_code, 
+                         wos.quantity_brought as planned_quantity, 
+                         COALESCE(wos.quantity_used, wos.quantity_brought) as used_quantity,
+                         wos.notes')
+                ->where('wos.work_order_id', $workOrderId)
+                ->where('COALESCE(wos.is_additional, 0) = 0') // Only planned spareparts
+                ->get()
+                ->getResultArray();
+
+            // Get additional spareparts
+            $additionalSpareparts = $db->table('work_order_spareparts wos')
+                ->select('wos.*, wos.sparepart_name, wos.sparepart_code')
+                ->where('wos.work_order_id', $workOrderId)
+                ->where('wos.is_additional = 1') // Only additional spareparts
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'used_spareparts' => $usedSpareparts,
+                    'additional_spareparts' => $additionalSpareparts
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting sparepart validation data: ' . $e->getMessage());
+            return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Unit not found or no area assigned'
-            ];
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
         }
+    }
+
+    /**
+     * Get sparepart master data for dropdown
+     */
+    public function getSparepartMaster()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            $spareparts = $db->table('sparepart')
+                ->select('id_sparepart as id, desc_sparepart as name, kode as code')
+                ->orderBy('desc_sparepart', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $spareparts
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting sparepart master data: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Save sparepart validation and close work order
+     */
+    public function saveSparepartValidation()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $workOrderId = $this->request->getPost('work_order_id');
         
-        // Simulate auto staff assignment
-        $assignedStaff = $this->autoAssignStaff($unitId);
+        if (!$workOrderId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Work Order ID required']);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $db->transStart();
+
+            // Get current work order status for history
+            $currentWorkOrder = $this->workOrderModel->find($workOrderId);
+            $fromStatusId = null;
+            if ($currentWorkOrder && is_array($currentWorkOrder)) {
+                $fromStatusId = $currentWorkOrder['status_id'];
+            } elseif ($currentWorkOrder && is_object($currentWorkOrder)) {
+                $fromStatusId = $currentWorkOrder->status_id ?? null;
+            }
+
+            // Load return model for auto-creating return records
+            $returnModel = new \App\Models\WorkOrderSparepartReturnModel();
+
+            // Update used spareparts quantities and create return records if needed
+            $usedSpareparts = $this->request->getPost('used_spareparts') ?: [];
+            foreach ($usedSpareparts as $sparepart) {
+                if (!empty($sparepart['id'])) {
+                    // Get original sparepart data
+                    $originalSparepart = $db->table('work_order_spareparts')
+                        ->where('id', $sparepart['id'])
+                        ->where('work_order_id', $workOrderId)
+                        ->get()
+                        ->getRowArray();
+
+                    if ($originalSparepart) {
+                        $quantityBrought = (int)($originalSparepart['quantity_brought'] ?? 0);
+                        $quantityUsed = (int)($sparepart['used_quantity'] ?? 0);
+                        $quantityReturn = $quantityBrought - $quantityUsed;
+
+                        // Update used quantity
+                        $updateData = [
+                            'quantity_used' => $quantityUsed,
+                            'notes' => $sparepart['notes'] ?? $originalSparepart['notes'],
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ];
+                        
+                        $db->table('work_order_spareparts')
+                            ->where('id', $sparepart['id'])
+                            ->where('work_order_id', $workOrderId)
+                            ->update($updateData);
+
+                        // Auto-create return record if there's quantity to return
+                        if ($quantityReturn > 0) {
+                            $returnData = [
+                                'work_order_id' => $workOrderId,
+                                'work_order_sparepart_id' => $sparepart['id'],
+                                'sparepart_code' => $originalSparepart['sparepart_code'] ?? '',
+                                'sparepart_name' => $originalSparepart['sparepart_name'] ?? '',
+                                'quantity_brought' => $quantityBrought,
+                                'quantity_used' => $quantityUsed,
+                                'quantity_return' => $quantityReturn,
+                                'satuan' => $originalSparepart['satuan'] ?? 'PCS',
+                                'status' => 'PENDING',
+                                'return_notes' => 'Auto-generated from sparepart validation'
+                            ];
+
+                            $returnModel->insert($returnData);
+                            log_message('info', "Auto-created return record for WO {$workOrderId}, Sparepart: {$originalSparepart['sparepart_name']}, Return Qty: {$quantityReturn}");
+                        }
+                    }
+                }
+            }
+
+            // Save additional spareparts
+            $additionalSpareparts = $this->request->getPost('additional_spareparts') ?: [];
+            foreach ($additionalSpareparts as $sparepart) {
+                if (!empty($sparepart['sparepart_id']) && !empty($sparepart['quantity'])) {
+                    // Get sparepart details from master
+                    $sparepartData = $db->table('sparepart')
+                        ->where('id_sparepart', $sparepart['sparepart_id'])
+                        ->get()
+                        ->getRowArray();
+                    
+                    $additionalData = [
+                        'work_order_id' => $workOrderId,
+                        'sparepart_code' => $sparepartData['kode'] ?? '',
+                        'sparepart_name' => $sparepartData['desc_sparepart'] ?? '',
+                        'quantity_brought' => $sparepart['quantity'],
+                        'quantity_used' => $sparepart['quantity'], // For additional, used = planned
+                        'satuan' => $sparepart['satuan'] ?? 'PCS',
+                        'notes' => $sparepart['notes'] ?? '',
+                        'is_additional' => 1, // Mark as additional sparepart
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                    
+                    $db->table('work_order_spareparts')->insert($additionalData);
+                }
+            }
+
+            // Update work order status to CLOSED after sparepart validation
+            $statusData = $this->workOrderModel->getStatusByCode('CLOSED');
+            if (!$statusData) {
+                throw new \Exception('CLOSED status not found');
+            }
+
+            $woUpdateData = [
+                'status_id' => $statusData['id'],
+                'closed_date' => date('Y-m-d H:i:s'),
+                'sparepart_validated' => 1,
+                'sparepart_validated_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            $this->workOrderModel->skipValidation(true);
+            $woUpdated = $this->workOrderModel->update($workOrderId, $woUpdateData);
+            $this->workOrderModel->skipValidation(false);
+
+            if (!$woUpdated) {
+                throw new \Exception('Failed to update work order status');
+            }
+
+            // Add status history
+            $this->workOrderModel->addStatusHistory($workOrderId, $statusData['id'], 'Work order closed with sparepart validation completed', $fromStatusId);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Sparepart berhasil divalidasi dan work order ditutup'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error saving sparepart validation: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get sparepart usage data for close modal
+     */
+    public function getSparepartUsageData()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $workOrderId = $this->request->getPost('work_order_id');
         
-        return [
-            'success' => true,
-            'message' => 'Staff assignment simulation completed',
-            'unit_info' => $unitInfo,
-            'assigned_staff' => $assignedStaff
-        ];
+        if (!$workOrderId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Work Order ID required']);
+        }
+
+        try {
+            // Get work order info
+            $workOrder = $this->workOrderModel->find($workOrderId);
+            if (!$workOrder) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Work Order not found']);
+            }
+
+            // Convert to array if it's an object
+            if (is_object($workOrder)) {
+                $workOrder = (array) $workOrder;
+            }
+
+            // Get brought spareparts for this work order
+            $broughtSpareparts = $this->sparepartModel->getSparePartsWithUsage($workOrderId);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'work_order' => $workOrder,
+                    'brought_spareparts' => $broughtSpareparts
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting sparepart usage data: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Save sparepart usage and close work order
+     */
+    public function saveSparepartUsage()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $workOrderId = $this->request->getPost('work_order_id');
+        
+        if (!$workOrderId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Work Order ID required']);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $db->transStart();
+
+            // Process brought spareparts usage
+            $broughtSpareparts = $this->request->getPost('brought_spareparts');
+            if ($broughtSpareparts && is_array($broughtSpareparts)) {
+                $usageData = [];
+                foreach ($broughtSpareparts as $item) {
+                    if (isset($item['quantity_used']) && $item['quantity_used'] > 0) {
+                        $quantityBrought = intval($item['quantity_brought']);
+                        $quantityUsed = intval($item['quantity_used']);
+                        $quantityReturned = $quantityBrought - $quantityUsed;
+                        
+                        $usageData[] = [
+                            'sparepart_id' => $item['sparepart_id'],
+                            'quantity_used' => $quantityUsed,
+                            'quantity_returned' => $quantityReturned,
+                            'usage_notes' => $item['usage_notes'] ?? '',
+                            'return_notes' => $quantityReturned > 0 ? 'Sisa dari perbaikan' : ''
+                        ];
+                    }
+                }
+                
+                if (!empty($usageData)) {
+                    $this->sparepartUsageModel->recordMultipleUsage($workOrderId, $usageData);
+                }
+            }
+
+            // Process additional spareparts usage
+            $additionalSpareparts = $this->request->getPost('additional_spareparts');
+            if ($additionalSpareparts && is_array($additionalSpareparts)) {
+                $additionalUsageData = [];
+                foreach ($additionalSpareparts as $item) {
+                    if (!empty($item['sparepart_id']) && $item['quantity_used'] > 0) {
+                        $additionalUsageData[] = [
+                            'sparepart_id' => $item['sparepart_id'],
+                            'quantity_used' => $item['quantity_used'],
+                            'quantity_returned' => 0,
+                            'usage_notes' => ($item['notes'] ?? '') . ' (Sumber: ' . ($item['source'] ?? 'Unknown') . ')'
+                        ];
+                    }
+                }
+                
+                if (!empty($additionalUsageData)) {
+                    $this->sparepartUsageModel->recordMultipleUsage($workOrderId, $additionalUsageData);
+                }
+            }
+
+            // Get current status before update for history
+            $currentWorkOrder = $this->workOrderModel->find($workOrderId);
+            $fromStatusId = null;
+            if ($currentWorkOrder && is_array($currentWorkOrder)) {
+                $fromStatusId = $currentWorkOrder['status_id'];
+            } elseif ($currentWorkOrder && is_object($currentWorkOrder)) {
+                $fromStatusId = $currentWorkOrder->status_id ?? null;
+            }
+
+            // Update work order status to CLOSED
+            $statusData = $this->workOrderModel->getStatusByCode('CLOSED');
+            if (!$statusData) {
+                throw new \Exception('CLOSED status not found');
+            }
+
+            $woUpdateData = [
+                'status_id' => $statusData['id'],
+                'closed_date' => date('Y-m-d H:i:s'),
+                'repair_result' => $this->request->getPost('repair_result'),
+                'unit_status_after_repair' => $this->request->getPost('unit_status'),
+                'completion_time' => $this->request->getPost('completion_time'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            $this->workOrderModel->skipValidation(true);
+            $woUpdated = $this->workOrderModel->update($workOrderId, $woUpdateData);
+            $this->workOrderModel->skipValidation(false);
+
+            if (!$woUpdated) {
+                throw new \Exception('Failed to update work order status');
+            }
+
+            // Add status history with improved tracking
+            $this->workOrderModel->addStatusHistory($workOrderId, $statusData['id'], 'Work order closed with sparepart usage tracking', $fromStatusId);
+
+            // Generate gap alert for admin if there are remaining spareparts
+            $this->generateGapAlertBasedOnUsage($workOrderId);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Sparepart usage berhasil disimpan dan work order ditutup'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error saving sparepart usage: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Generate gap alert for admin about remaining spareparts (updated version)
+     */
+    private function generateGapAlertBasedOnUsage($workOrderId)
+    {
+        try {
+            // Get pending returns (items that were brought but not fully used)
+            $pendingReturns = $this->sparepartUsageModel->getPendingReturns($workOrderId);
+
+            if (!empty($pendingReturns)) {
+                $db = \Config\Database::connect();
+                
+                // Create alert/notification for admin
+                $alertData = [
+                    'work_order_id' => $workOrderId,
+                    'alert_type' => 'SPAREPART_GAP',
+                    'title' => 'Sisa Sparepart Perlu Dikembalikan',
+                    'message' => 'Work Order memiliki sisa sparepart yang perlu dikembalikan ke warehouse',
+                    'remaining_items' => json_encode($pendingReturns),
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'is_read' => 0,
+                    'priority' => 'MEDIUM'
+                ];
+
+                // Check if system_alerts table exists, if not create simple log
+                if ($db->tableExists('system_alerts')) {
+                    $db->table('system_alerts')->insert($alertData);
+                } else {
+                    log_message('info', 'Gap alert for WO ' . $workOrderId . ': ' . json_encode($pendingReturns));
+                }
+                
+                log_message('info', 'Gap alert generated for work order: ' . $workOrderId);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error generating gap alert: ' . $e->getMessage());
+        }
     }
 }

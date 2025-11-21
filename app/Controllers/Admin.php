@@ -11,8 +11,13 @@ class Admin extends BaseController
     use ActivityLoggingTrait;
     public function index()
     {
+        // Check permission for accessing admin dashboard
+        if (!$this->hasPermission('admin.access')) {
+            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to access admin dashboard');
+        }
+        
         $data = [
-            'title' => 'System Administration | OPTIMA',
+            'title' => 'System Administration',
             'page_title' => 'System Administration',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -28,7 +33,7 @@ class Admin extends BaseController
     public function settings()
     {
         $data = [
-            'title' => 'System Settings | OPTIMA',
+            'title' => 'System Settings',
             'page_title' => 'System Settings',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -38,13 +43,14 @@ class Admin extends BaseController
             'settings' => $this->getSystemSettings()
         ];
 
-        return view('admin/settings', $data);
+        // Redirect to admin dashboard (settings view not implemented yet)
+        return redirect()->to('/admin')->with('info', 'Settings page under construction');
     }
 
     public function configuration()
     {
         $data = [
-            'title' => 'System Configuration | OPTIMA',
+            'title' => 'System Configuration',
             'page_title' => 'System Configuration',
             'breadcrumbs' => [
                 '/' => 'Dashboard',

@@ -49,6 +49,11 @@ class AdvancedUserManagement extends BaseController
 
             $data = [
                 'title' => 'Advanced User Management',
+                'breadcrumbs' => [
+                    '/' => 'Dashboard',
+                    '/admin' => 'Administration',
+                    '/admin/advanced_user_management' => 'User Management'
+                ],
                 'stats' => $statsData,
                 'permissions' => $groupedPermissions,
                 'users' => $users,
@@ -84,7 +89,7 @@ class AdvancedUserManagement extends BaseController
      */
     public function create()
     {
-        if (!$this->hasPermission('admin.user_create')) {
+        if (!$this->hasPermission('admin.manage')) {
             return redirect()->to('/admin/advanced-users')->with('error', 'Akses ditolak.');
         }
 
@@ -98,7 +103,7 @@ class AdvancedUserManagement extends BaseController
                 : $this->permissionModel->findAll(),
         ];
 
-        return view('admin/advanced_user_management/create', $data);
+        return view('admin/advanced_user_management/form', $data);
     }
 
     /**
@@ -106,7 +111,13 @@ class AdvancedUserManagement extends BaseController
      */
     public function store()
     {
-        if (!$this->hasPermission('admin.user_create')) {
+        // Debug: Log incoming request
+        log_message('info', 'Create User Request: ' . json_encode($this->request->getPost()));
+        log_message('info', 'Division: ' . $this->request->getPost('division'));
+        log_message('info', 'Role: ' . $this->request->getPost('role'));
+        log_message('info', 'Status: ' . $this->request->getPost('status'));
+        
+        if (!$this->hasPermission('admin.manage')) {
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
             }
@@ -118,16 +129,57 @@ class AdvancedUserManagement extends BaseController
             'last_name' => 'required|min_length[2]|max_length[50]',
             'username' => 'required|min_length[3]|max_length[20]|is_unique[users.username]',
             'email' => 'required|valid_email|is_unique[users.email]',
-            'password' => 'required|min_length[6]',
-            'confirm_password' => 'required|matches[password]',
+            'password' => 'required|min_length[6]|max_length[100]',
+            'password_confirm' => 'required|matches[password]',
             'phone' => 'permit_empty|max_length[20]'
         ]);
 
         if (!$validation) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Validation failed', 'errors' => $this->validator->getErrors()])->setStatusCode(400);
+            $errors = $this->validator->getErrors();
+            log_message('error', 'Validation failed: ' . json_encode($errors));
+            
+            // Create user-friendly error message
+            $errorMessage = 'Validation failed: ';
+            if (isset($errors['username'])) {
+                $errorMessage = 'Username sudah digunakan atau tidak valid';
+            } elseif (isset($errors['email'])) {
+                $errorMessage = 'Email sudah terdaftar atau tidak valid';
+            } elseif (isset($errors['first_name']) || isset($errors['last_name'])) {
+                $errorMessage = 'Nama tidak valid (minimal 2 karakter)';
+            } else {
+                $errorMessage = implode(', ', $errors);
             }
-            return redirect()->back()->withInput()->with('errors', $this->validator->getErrors());
+            
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => $errorMessage, 'errors' => $errors])->setStatusCode(400);
+            }
+            return redirect()->back()->withInput()->with('errors', $errors);
+        }
+
+        // Additional password validation
+        $password = $this->request->getPost('password');
+        $confirmPassword = $this->request->getPost('password_confirm');
+        
+        if ($password !== $confirmPassword) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Password dan Confirm Password tidak sama'])->setStatusCode(400);
+            }
+            return redirect()->back()->withInput()->with('error', 'Password dan Confirm Password tidak sama.');
+        }
+        
+        if (strlen($password) < 6) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Password minimal 6 karakter'])->setStatusCode(400);
+            }
+            return redirect()->back()->withInput()->with('error', 'Password minimal 6 karakter.');
+        }
+
+        // Password strength validation
+        if (!$this->validatePasswordStrength($password)) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Password harus mengandung minimal 1 huruf dan 1 angka'])->setStatusCode(400);
+            }
+            return redirect()->back()->withInput()->with('error', 'Password harus mengandung minimal 1 huruf dan 1 angka.');
         }
 
         $this->db->transStart();
@@ -140,7 +192,7 @@ class AdvancedUserManagement extends BaseController
                 'last_name' => $this->request->getPost('last_name'),
                 'username' => $this->request->getPost('username'),
                 'email' => $this->request->getPost('email'),
-                'password' => $this->request->getPost('password'), // Let model callback handle hashing
+                'password_hash' => password_hash($password, PASSWORD_DEFAULT), // Hash password securely
                 'phone' => $this->request->getPost('phone'),
                 'is_active' => ($status == 'active') ? 1 : 0,
                 'created_at' => date('Y-m-d H:i:s')
@@ -148,8 +200,8 @@ class AdvancedUserManagement extends BaseController
 
             log_message('info', 'Creating user with data: ' . json_encode($userData));
             
-            // Debug: Test password callback directly
-            log_message('debug', 'Password before insert: ' . $userData['password']);
+            // Debug: Check password hash
+            log_message('debug', 'Password hash length: ' . strlen($userData['password_hash']));
             
             $userId = $this->userModel->insert($userData);
 
@@ -165,49 +217,22 @@ class AdvancedUserManagement extends BaseController
             $savedUser = $this->userModel->find($userId);
             log_message('debug', 'Password hash saved: ' . (!empty($savedUser['password_hash']) ? 'YES (length: ' . strlen($savedUser['password_hash']) . ')' : 'NO - EMPTY!'));
 
-            // Assign roles and divisions (combined approach)
-            $roles = $this->request->getPost('roles') ?? [];
-            $divisions = $this->request->getPost('divisions') ?? [];
+            // Assign division and role (division-first approach)
+            $division = $this->request->getPost('division');
+            $role = $this->request->getPost('role');
+            $divisions = [$division]; // Array of divisions for logging
             
-            // If user has both roles and divisions, create combinations
-            if (!empty($roles) && !empty($divisions)) {
-                foreach ($roles as $roleId) {
-                    foreach ($divisions as $divisionId) {
-                        $this->db->table('user_roles')->insert([
-                            'user_id' => $userId,
-                            'role_id' => $roleId,
-                            'division_id' => $divisionId,
-                            'assigned_by' => session()->get('user_id') ?? 1,
-                            'assigned_at' => date('Y-m-d H:i:s'),
-                            'is_active' => 1
-                        ]);
-                    }
-                }
-            } elseif (!empty($roles)) {
-                // Only roles, no specific division
-                foreach ($roles as $roleId) {
-                    $this->db->table('user_roles')->insert([
-                        'user_id' => $userId,
-                        'role_id' => $roleId,
-                        'division_id' => null, // No specific division
-                        'assigned_by' => session()->get('user_id') ?? 1,
-                        'assigned_at' => date('Y-m-d H:i:s'),
-                        'is_active' => 1
-                    ]);
-                }
-            } elseif (!empty($divisions)) {
-                // Only divisions, use default role (e.g., Division Staff)
-                $defaultRoleId = 4; // Division Staff role
-                foreach ($divisions as $divisionId) {
-                    $this->db->table('user_roles')->insert([
-                        'user_id' => $userId,
-                        'role_id' => $defaultRoleId,
-                        'division_id' => $divisionId,
-                        'assigned_by' => session()->get('user_id') ?? 1,
-                        'assigned_at' => date('Y-m-d H:i:s'),
-                        'is_active' => 1
-                    ]);
-                }
+            if (!empty($division) && !empty($role)) {
+                $this->db->table('user_roles')->insert([
+                    'user_id' => $userId,
+                    'role_id' => $role,
+                    'division_id' => $division,
+                    'assigned_by' => session()->get('user_id') ?? 1,
+                    'assigned_at' => date('Y-m-d H:i:s'),
+                    'is_active' => 1
+                ]);
+            } else {
+                throw new \Exception('Division and role are required.');
             }
 
             // Assign permissions (if provided)
@@ -230,7 +255,7 @@ class AdvancedUserManagement extends BaseController
                     'user_id' => $userId,
                     'username' => $userData['username'],
                     'email' => $userData['email'],
-                    'roles' => $roles,
+                    'roles' => [$role],
                     'divisions' => $divisions,
                     'permissions' => $permissions,
                     'created_by' => session()->get('user_id') ?? 1
@@ -239,6 +264,9 @@ class AdvancedUserManagement extends BaseController
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON(['success' => true, 'message' => 'User berhasil dibuat', 'user_id' => $userId]);
                 }
+                
+                // Debug: Log redirect
+                log_message('info', 'Redirecting to advanced-users with success message');
                 return redirect()->to('/admin/advanced-users')->with('success', 'User berhasil dibuat.');
             } else {
                 throw new \Exception('Transaction failed');
@@ -261,7 +289,7 @@ class AdvancedUserManagement extends BaseController
      */
     public function show($userId)
     {
-        if (!$this->hasPermission('admin.user_view')) {
+        if (!$this->hasPermission('admin.access')) {
             return redirect()->to('/admin/advanced-users')->with('error', 'Akses ditolak.');
         }
 
@@ -323,7 +351,7 @@ class AdvancedUserManagement extends BaseController
      */
     public function edit($userId)
     {
-        if (!$this->hasPermission('admin.user_edit')) {
+        if (!$this->hasPermission('admin.manage')) {
             return redirect()->to('/admin/advanced-users')->with('error', 'Akses ditolak.');
         }
 
@@ -356,8 +384,9 @@ class AdvancedUserManagement extends BaseController
         // Get current user divisions (from user_roles)
         try {
             $userDivisions = $this->db->table('user_roles ur')
-                ->join('divisions d', 'd.id = ur.division_id')
+                ->join('divisions d', 'd.id = ur.division_id', 'left')
                 ->where('ur.user_id', $userId)
+                ->where('ur.division_id IS NOT NULL')
                 ->select('d.id, d.name, d.code')
                 ->get()->getResultArray();
         } catch (\Exception $e) {
@@ -375,6 +404,7 @@ class AdvancedUserManagement extends BaseController
             $userPermissions = [];
         }
 
+
         $data = [
             'title' => 'Edit User - ' . $user['first_name'] . ' ' . $user['last_name'],
             'user' => $user,
@@ -388,7 +418,7 @@ class AdvancedUserManagement extends BaseController
                 : $this->permissionModel->findAll(),
         ];
 
-        return view('admin/advanced_user_management/edit', $data);
+        return view('admin/advanced_user_management/form', $data);
     }
 
     /**
@@ -400,7 +430,7 @@ class AdvancedUserManagement extends BaseController
         log_message('debug', 'Update User POST data: ' . json_encode($this->request->getPost()));
         log_message('debug', 'Update User ID: ' . $userId);
         
-        if (!$this->hasPermission('admin.user_edit')) {
+        if (!$this->hasPermission('admin.manage')) {
             if ($this->request->isAJAX()) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
             }
@@ -438,6 +468,39 @@ class AdvancedUserManagement extends BaseController
         $this->db->transStart();
 
         try {
+            // Store old data for logging
+            $oldUserData = [
+                'first_name' => $user['first_name'],
+                'last_name' => $user['last_name'],
+                'username' => $user['username'],
+                'email' => $user['email'],
+                'phone' => $user['phone'] ?? '',
+                'is_active' => $user['is_active']
+            ];
+            
+            // Get old roles and divisions
+            $oldUserRoles = $this->db->table('user_roles ur')
+                ->join('roles r', 'r.id = ur.role_id')
+                ->where('ur.user_id', $userId)
+                ->select('r.id, r.name')
+                ->get()->getResultArray();
+            $oldRoles = array_column($oldUserRoles, 'id');
+            
+            $oldUserDivisions = $this->db->table('user_roles ur')
+                ->join('divisions d', 'd.id = ur.division_id', 'left')
+                ->where('ur.user_id', $userId)
+                ->where('ur.division_id IS NOT NULL')
+                ->select('d.id, d.name')
+                ->get()->getResultArray();
+            $oldDivisions = array_column($oldUserDivisions, 'id');
+            
+            $oldUserPermissions = $this->db->table('user_permissions up')
+                ->join('permissions p', 'p.id = up.permission_id')
+                ->where('up.user_id', $userId)
+                ->select('up.permission_id')
+                ->get()->getResultArray();
+            $oldPermissions = array_column($oldUserPermissions, 'permission_id');
+            
             // Update user data
             $userData = [
                 'first_name' => $this->request->getPost('first_name'),
@@ -452,8 +515,9 @@ class AdvancedUserManagement extends BaseController
             // Update password if provided
             $password = $this->request->getPost('password');
             if (!empty($password)) {
-                // Don't hash here - let the model callback handle it
-                $userData['password'] = $password;
+                // Hash password securely
+                $userData['password_hash'] = password_hash($password, PASSWORD_DEFAULT);
+                log_message('debug', 'Password hashed for user ID: ' . $userId);
             }
 
             $result = $this->userModel->skipValidation(true)->update($userId, $userData);
@@ -468,91 +532,35 @@ class AdvancedUserManagement extends BaseController
             // Clear existing user_roles
             $this->db->table('user_roles')->where('user_id', $userId)->delete();
             
-            // Get roles and divisions
-            $roles = $this->request->getPost('roles') ?? [];
-            $divisions = $this->request->getPost('divisions') ?? [];
+            // Get division and role (division-first approach)
+            $division = $this->request->getPost('division');
+            $role = $this->request->getPost('role');
 
             // Debug logging
-            log_message('debug', 'Update User Roles: ' . json_encode($roles));
-            log_message('debug', 'Update User Divisions: ' . json_encode($divisions));
+            log_message('debug', 'Update User Division: ' . $division);
+            log_message('debug', 'Update User Role: ' . $role);
 
-            // Get default role if no roles selected (role_id cannot be null)
-            if (empty($roles)) {
-                $defaultRole = $this->db->table('roles')->where('name', 'User')->get()->getRow();
-                if ($defaultRole) {
-                    $roles = [$defaultRole->id];
-                    log_message('debug', 'Using default role: ' . $defaultRole->id);
-                } else {
-                    // If no default role exists, create or use first available role
-                    $firstRole = $this->db->table('roles')->limit(1)->get()->getRow();
-                    if ($firstRole) {
-                        $roles = [$firstRole->id];
-                        log_message('debug', 'Using first available role: ' . $firstRole->id);
-                    }
-                }
-            }
-
-            // Create role-division combinations
-            if (!empty($roles) && !empty($divisions)) {
-                // Create combinations of roles and divisions
-                foreach ($roles as $roleId) {
-                    foreach ($divisions as $divisionId) {
-                        $insertData = [
-                            'user_id' => $userId,
-                            'role_id' => $roleId,
-                            'division_id' => $divisionId,
-                            'assigned_by' => session()->get('user_id') ?? 1,
-                            'assigned_at' => date('Y-m-d H:i:s'),
-                            'is_active' => 1
-                        ];
-                        log_message('debug', 'Inserting user_role: ' . json_encode($insertData));
-                        $this->db->table('user_roles')->insert($insertData);
-                    }
-                }
-            } elseif (!empty($roles)) {
-                // Only roles, no specific division
-                foreach ($roles as $roleId) {
-                    $insertData = [
-                        'user_id' => $userId,
-                        'role_id' => $roleId,
-                        'assigned_by' => session()->get('user_id') ?? 1,
-                        'assigned_at' => date('Y-m-d H:i:s'),
-                        'is_active' => 1
-                    ];
-                    log_message('debug', 'Inserting user_role (no division): ' . json_encode($insertData));
-                    $this->db->table('user_roles')->insert($insertData);
-                }
-            } elseif (!empty($divisions)) {
-                // Only divisions, assign default role
-                $defaultRole = $this->db->table('roles')->where('name', 'User')->get()->getRow();
-                if ($defaultRole) {
-                    foreach ($divisions as $divisionId) {
-                        $insertData = [
-                            'user_id' => $userId,
-                            'role_id' => $defaultRole->id,
-                            'division_id' => $divisionId,
-                            'assigned_by' => session()->get('user_id') ?? 1,
-                            'assigned_at' => date('Y-m-d H:i:s'),
-                            'is_active' => 1
-                        ];
-                        log_message('debug', 'Inserting user_role (division only): ' . json_encode($insertData));
-                        $this->db->table('user_roles')->insert($insertData);
-                    }
-                }
+            // Assign division and role
+            $roles = [];
+            $divisions = [];
+            
+            if (!empty($division) && !empty($role)) {
+                $insertData = [
+                    'user_id' => $userId,
+                    'role_id' => $role,
+                    'division_id' => $division,
+                    'assigned_by' => session()->get('user_id') ?? 1,
+                    'assigned_at' => date('Y-m-d H:i:s'),
+                    'is_active' => 1
+                ];
+                log_message('debug', 'Inserting user_role: ' . json_encode($insertData));
+                $this->db->table('user_roles')->insert($insertData);
+                
+                // Prepare arrays for logging
+                $roles = [$role];
+                $divisions = [$division];
             } else {
-                // No roles or divisions specified, assign default role
-                $defaultRole = $this->db->table('roles')->where('name', 'User')->get()->getRow();
-                if ($defaultRole) {
-                    $insertData = [
-                        'user_id' => $userId,
-                        'role_id' => $defaultRole->id,
-                        'assigned_by' => session()->get('user_id') ?? 1,
-                        'assigned_at' => date('Y-m-d H:i:s'),
-                        'is_active' => 1
-                    ];
-                    log_message('debug', 'Inserting default user_role: ' . json_encode($insertData));
-                    $this->db->table('user_roles')->insert($insertData);
-                }
+                throw new \Exception('Division and role are required.');
             }
 
 
@@ -573,19 +581,30 @@ class AdvancedUserManagement extends BaseController
             $this->db->transComplete();
 
             if ($this->db->transStatus()) {
-                // Log user update using trait
-                $this->logUpdate('users', $userId, [
+                // Prepare old and new data for logging
+                $oldData = array_merge($oldUserData, [
+                    'roles' => $oldRoles,
+                    'divisions' => $oldDivisions,
+                    'permissions' => $oldPermissions
+                ]);
+                
+                $newData = [
                     'user_id' => $userId,
                     'username' => $userData['username'],
                     'email' => $userData['email'],
                     'first_name' => $userData['first_name'],
                     'last_name' => $userData['last_name'],
+                    'phone' => $userData['phone'] ?? '',
+                    'is_active' => $userData['is_active'],
                     'roles' => $roles,
                     'divisions' => $divisions,
                     'permissions' => $permissions,
                     'updated_by' => session()->get('user_id') ?? 1,
                     'password_changed' => !empty($password) ? 'Yes' : 'No'
-                ]);
+                ];
+                
+                // Log user update using trait
+                $this->logUpdate('users', $userId, $oldData, $newData);
                 
                 if ($this->request->isAJAX()) {
                     return $this->response->setJSON(['success' => true, 'message' => 'User berhasil diperbarui']);
@@ -611,7 +630,7 @@ class AdvancedUserManagement extends BaseController
      */
     public function delete($userId)
     {
-        if (!$this->hasPermission('admin.user_delete')) {
+        if (!$this->hasPermission('admin.delete')) {
             return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
@@ -677,7 +696,7 @@ class AdvancedUserManagement extends BaseController
      */
     public function export()
     {
-        if (!$this->hasPermission('admin.user_export')) {
+        if (!$this->hasPermission('admin.export')) {
             return redirect()->to('/admin/advanced-users')->with('error', 'Akses ditolak.');
         }
 
@@ -719,7 +738,7 @@ class AdvancedUserManagement extends BaseController
      */
     public function cleanExpired()
     {
-        if (!$this->hasPermission('admin.user_permissions')) {
+        if (!$this->hasPermission('admin.manage')) {
             return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
         }
 
@@ -759,12 +778,7 @@ class AdvancedUserManagement extends BaseController
         }
     }
 
-    private function hasPermission($permission)
-    {
-        // Enhanced permission check - can be replaced with actual implementation
-        // For now, always return true for admin users
-        return true;
-    }
+    // hasPermission method removed - using BaseController's protected method instead
 
     /**
      * Delete User (Legacy method name for backward compatibility)
@@ -779,7 +793,7 @@ class AdvancedUserManagement extends BaseController
      */
     public function quickAssignPermission()
     {
-        if (!$this->hasPermission('admin.user_permissions')) {
+        if (!$this->hasPermission('admin.manage')) {
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 
@@ -1036,7 +1050,7 @@ class AdvancedUserManagement extends BaseController
      */
     public function bulkAssignPermissions()
     {
-        if (!$this->hasPermission('admin.user_permissions')) {
+        if (!$this->hasPermission('admin.manage')) {
             return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized'])->setStatusCode(403);
         }
 
@@ -1383,7 +1397,7 @@ class AdvancedUserManagement extends BaseController
             $orderDir = $this->request->getPost('order')[0]['dir'] ?? 'asc';
 
             // Column mapping for DataTable
-            $columns = ['user_info', 'email', 'roles', 'divisions', 'custom_permissions', 'status', 'actions'];
+            $columns = ['user_info', 'email', 'divisions', 'roles', 'custom_permissions', 'status', 'actions'];
             $orderByColumn = $columns[$orderColumn] ?? 'first_name';
 
             // Build query
@@ -1432,17 +1446,38 @@ class AdvancedUserManagement extends BaseController
                 foreach ($roles as $role) {
                     $rolesHtml .= '<span class="badge bg-primary me-1">' . esc($role['name']) . '</span>';
                 }
+                
 
                 // Divisions
                 $divisions = $this->db->table('user_roles ur')
-                    ->join('divisions d', 'd.id = ur.division_id')
+                    ->join('divisions d', 'd.id = ur.division_id', 'left')
                     ->where('ur.user_id', $user['id'])
+                    ->where('ur.division_id IS NOT NULL')
                     ->select('d.name')
                     ->get()->getResultArray();
                 $divisionsHtml = '';
-                foreach ($divisions as $division) {
-                    $divisionsHtml .= '<span class="badge bg-info me-1">' . esc($division['name']) . '</span>';
+                if (!empty($divisions)) {
+                    foreach ($divisions as $division) {
+                        if (!empty($division['name'])) {
+                            $divisionsHtml .= '<span class="badge bg-info me-1">' . esc($division['name']) . '</span>';
+                        }
+                    }
                 }
+                if (empty($divisionsHtml)) {
+                    // Check if user is Super Administrator
+                    $isSuperAdmin = $this->db->table('user_roles ur')
+                        ->join('roles r', 'r.id = ur.role_id')
+                        ->where('ur.user_id', $user['id'])
+                        ->where('r.name', 'Super Administrator')
+                        ->countAllResults() > 0;
+                    
+                    if ($isSuperAdmin) {
+                        $divisionsHtml = '<span class="badge bg-dark">All Divisions</span>';
+                    } else {
+                        $divisionsHtml = '<span class="text-muted">-</span>';
+                    }
+                }
+                
 
                 // Custom Permissions
                 $customPermCount = $this->db->table('user_permissions')
@@ -1466,8 +1501,8 @@ class AdvancedUserManagement extends BaseController
                 $data[] = [
                     'user_info' => $userInfo,
                     'email' => esc($user['email']),
-                    'roles' => $rolesHtml,
                     'divisions' => $divisionsHtml,
+                    'roles' => $rolesHtml,
                     'custom_permissions' => $customPermHtml,
                     'status' => $statusHtml,
                     'actions' => $actions
@@ -1497,5 +1532,284 @@ class AdvancedUserManagement extends BaseController
         $this->userRoleModel->assignRole($userId, $roleId);
         // Tidak perlu auto-assign permission ke user/division
         // Permission didapat dari role, kecuali ada custom permission (override)
+    }
+
+    /**
+     * Show Change Password Form
+     */
+    public function changePasswordForm($userId)
+    {
+        if (!$this->hasPermission('admin.manage')) {
+            return redirect()->to('/admin/advanced-users')->with('error', 'Akses ditolak.');
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return redirect()->to('/admin/advanced-users')->with('error', 'User tidak ditemukan.');
+        }
+
+        $data = [
+            'title' => 'Change Password - ' . $user['first_name'] . ' ' . $user['last_name'],
+            'user' => $user
+        ];
+
+        return view('admin/advanced_user_management/change_password', $data);
+    }
+
+    /**
+     * Change User Password
+     */
+    public function changePassword($userId)
+    {
+        // Set JSON response header for AJAX requests
+        if ($this->request->isAJAX() || $this->request->getHeaderLine('X-Requested-With') === 'XMLHttpRequest') {
+            $this->response->setContentType('application/json');
+        }
+        
+        if (!$this->hasPermission('admin.manage')) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak'])->setStatusCode(403);
+            }
+            return redirect()->to('/admin/advanced-users')->with('error', 'Akses ditolak.');
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan'])->setStatusCode(404);
+            }
+            return redirect()->to('/admin/advanced-users')->with('error', 'User tidak ditemukan.');
+        }
+
+        $validation = $this->validate([
+            'new_password' => 'required|min_length[6]',
+            'confirm_password' => 'required|matches[new_password]'
+        ]);
+
+        if (!$validation) {
+            $errors = $this->validator->getErrors();
+            $errorMessage = !empty($errors) ? implode(', ', $errors) : 'Validation failed';
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON(['success' => false, 'message' => $errorMessage, 'errors' => $errors])->setStatusCode(400);
+            }
+            return redirect()->back()->withInput()->with('errors', $errors);
+        }
+
+        try {
+            $newPassword = $this->request->getPost('new_password');
+            
+            // Validate password strength
+            if (!$this->validatePasswordStrength($newPassword)) {
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON(['success' => false, 'message' => 'Password harus mengandung minimal 1 huruf dan 1 angka'])->setStatusCode(400);
+                }
+                return redirect()->back()->withInput()->with('error', 'Password harus mengandung minimal 1 huruf dan 1 angka.');
+            }
+            
+            // Store old data for logging
+            $oldData = [
+                'user_id' => $userId,
+                'username' => $user['username'],
+                'email' => $user['email'],
+                'password_hash' => '***' // Don't log actual password hash
+            ];
+            
+            $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+            
+            $result = $this->userModel->update($userId, [
+                'password_hash' => $hashedPassword,
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            if ($result) {
+                // Prepare new data for logging
+                $newData = [
+                    'user_id' => $userId,
+                    'username' => $user['username'],
+                    'email' => $user['email'],
+                    'password_hash' => '***', // Don't log actual password hash
+                    'action' => 'password_changed',
+                    'changed_by' => session()->get('user_id') ?? 1,
+                    'timestamp' => date('Y-m-d H:i:s')
+                ];
+                
+                // Log password change
+                $this->logUpdate('users', $userId, $oldData, $newData);
+
+                if ($this->request->isAJAX()) {
+                    return $this->response->setJSON(['success' => true, 'message' => 'Password berhasil diubah']);
+                }
+                return redirect()->to('/admin/advanced-users')->with('success', 'Password berhasil diubah.');
+            } else {
+                throw new \Exception('Failed to update password');
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Change Password Error: ' . $e->getMessage());
+            log_message('error', 'Change Password Stack: ' . $e->getTraceAsString());
+            
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => false, 
+                    'message' => 'Error: ' . $e->getMessage()
+                ])->setStatusCode(500);
+            }
+            return redirect()->back()->with('error', 'Error: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Validate password strength
+     */
+    private function validatePasswordStrength($password)
+    {
+        // Check minimum length
+        if (strlen($password) < 6) {
+            return false;
+        }
+
+        // Check if contains at least one letter
+        if (!preg_match('/[a-zA-Z]/', $password)) {
+            return false;
+        }
+
+        // Check if contains at least one number
+        if (!preg_match('/[0-9]/', $password)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get all users for notification system
+     */
+    public function getUsers()
+    {
+        try {
+            $userModel = new UserModel();
+            $divisionModel = new DivisionModel();
+            
+            $users = $userModel->select('users.id, users.username, users.email, users.division_id, d.name as division_name')
+                ->join('divisions d', 'd.id = users.division_id', 'left')
+                ->where('users.is_active', 1)
+                ->findAll();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'users' => $users
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading users: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get users by divisions for notification system
+     */
+    public function getUsersByDivisions()
+    {
+        try {
+            $payload = $this->request->getJSON(true) ?? [];
+            $divisions = array_filter(array_map('trim', $payload['divisions'] ?? []));
+            $roles = array_filter(array_map('trim', $payload['roles'] ?? []));
+
+            if (empty($divisions) && empty($roles)) {
+                return $this->getUsers();
+            }
+
+            $builder = $this->db->table('users u')
+                ->distinct()
+                ->select('u.id, u.username, u.email, COALESCE(d.name, "No Division") as division_name')
+                ->join('user_roles ur', 'ur.user_id = u.id', 'left')
+                ->join('divisions d', 'd.id = ur.division_id', 'left')
+                ->join('roles r', 'r.id = ur.role_id', 'left')
+                ->where('u.is_active', 1);
+
+            if (!empty($divisions)) {
+                $builder->groupStart();
+                foreach ($divisions as $division) {
+                    $builder->orWhere('LOWER(d.name)', strtolower($division))
+                            ->orWhere('LOWER(d.code)', strtolower($division));
+                }
+                $builder->groupEnd();
+            }
+
+            if (!empty($roles)) {
+                $builder->groupStart();
+                foreach ($roles as $role) {
+                    $builder->orWhere('LOWER(r.name)', strtolower($role));
+                }
+                $builder->groupEnd();
+            }
+
+            $users = $builder->orderBy('u.username', 'ASC')->get()->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'users' => $users
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading users by divisions: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get users by roles for notification system
+     */
+    public function getUsersByRoles()
+    {
+        try {
+            $payload = $this->request->getJSON(true) ?? [];
+            $roles = array_filter(array_map('trim', $payload['roles'] ?? []));
+            $divisions = array_filter(array_map('trim', $payload['divisions'] ?? []));
+
+            if (empty($roles) && empty($divisions)) {
+                return $this->getUsers();
+            }
+
+            $builder = $this->db->table('users u')
+                ->distinct()
+                ->select('u.id, u.username, u.email, COALESCE(d.name, "No Division") as division_name')
+                ->join('user_roles ur', 'ur.user_id = u.id', 'left')
+                ->join('roles r', 'r.id = ur.role_id', 'left')
+                ->join('divisions d', 'd.id = ur.division_id', 'left')
+                ->where('u.is_active', 1);
+
+            if (!empty($divisions)) {
+                $builder->groupStart();
+                foreach ($divisions as $division) {
+                    $builder->orWhere('LOWER(d.name)', strtolower($division))
+                            ->orWhere('LOWER(d.code)', strtolower($division));
+                }
+                $builder->groupEnd();
+            }
+
+            if (!empty($roles)) {
+                $builder->groupStart();
+                foreach ($roles as $role) {
+                    $builder->orWhere('LOWER(r.name)', strtolower($role));
+                }
+                $builder->groupEnd();
+            }
+
+            $users = $builder->orderBy('u.username', 'ASC')->get()->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'users' => $users
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading users by roles: ' . $e->getMessage()
+            ]);
+        }
     }
 }

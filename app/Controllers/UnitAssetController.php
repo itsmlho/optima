@@ -15,6 +15,9 @@ class UnitAssetController extends BaseController
     {
         ini_set('memory_limit', '1024M');
         $this->unitAssetModel = new UnitAssetModel();
+        
+        // Load auth helper for division filtering
+        helper('auth');
     }
 
     public function index()
@@ -99,17 +102,34 @@ class UnitAssetController extends BaseController
             $lokasiFilter = $this->request->getPost('lokasi_filter');
 
             $builder = $db->table('inventory_unit iu');
-            $builder->select('iu.no_unit, iu.serial_number, iu.lokasi_unit, iu.status_aset, iu.status_unit_id, ' .
-                'CONCAT(mu.merk_unit, " - ", mu.model_unit) AS model_unit_display, ' .
-                'd.nama_departemen AS departemen_name, su.status_unit AS status_unit_name');
+            $builder->select('iu.no_unit, iu.serial_number as serial_number_po, iu.lokasi_unit, iu.status_aset, iu.status_unit_id, iu.kontrak_id, iu.tanggal_masuk, ' .
+                'mu.merk_unit, mu.model_unit, CONCAT("Forklift ", tu.jenis, " ", tu.tipe) as nama_tipe_unit, ' .
+                'd.nama_departemen, su.status_unit AS status_unit_name, ' .
+                'cl.location_name as customer_location_name, cl.city as customer_city, cl.address as customer_address, ' .
+                'c.customer_name as customer_name');
             $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
             $builder->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left');
+            $builder->join('kontrak k', 'k.id = iu.kontrak_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
 
             if ($statusFilter !== null && $statusFilter !== '') {
                 $builder->where('iu.status_unit_id', $statusFilter);
             }
-            if ($departemenFilter) $builder->where('iu.departemen_id', $departemenFilter);
+            
+            // Apply division-based department filter for warehouse assets using global helper
+            $allowedDepartments = get_user_division_departments();
+            
+            if ($allowedDepartments !== null && is_array($allowedDepartments)) {
+                // Override user's manual filter with division-based filter
+                $builder->whereIn('iu.departemen_id', $allowedDepartments);
+            } elseif ($departemenFilter) {
+                // Only apply manual filter if division filter is not active
+                $builder->where('iu.departemen_id', $departemenFilter);
+            }
+            
             if ($lokasiFilter) $builder->like('iu.lokasi_unit', $lokasiFilter);
 
             if ($searchValue) {
@@ -143,12 +163,20 @@ class UnitAssetController extends BaseController
                     .'</div>';
                 $data[] = [
                     'no_unit' => $r['no_unit'],
-                    'serial_number' => $r['serial_number'] ?? '-',
-                    'model_unit' => $r['model_unit_display'] ?? '-',
-                    'departemen' => $r['departemen_name'] ?? '-',
+                    'serial_number_po' => $r['serial_number_po'] ?? '-',
+                    'merk_unit' => $r['merk_unit'] ?? '-',
+                    'model_unit' => $r['model_unit'] ?? '-',
+                    'nama_tipe_unit' => $r['nama_tipe_unit'] ?? '-',
+                    'nama_departemen' => $r['nama_departemen'] ?? '-',
+                    'status_unit_name' => $r['status_unit_name'] ?? 'Unknown',
                     'lokasi_unit' => $r['lokasi_unit'] ?? '-',
-                    'status_unit' => $this->formatStatusBadge($r['status_unit_name'] ?? 'Unknown', 'unit'),
-                    'status_aset' => $this->formatStatusBadge($r['status_aset'] ?? 'Unknown', 'asset'),
+                    'tanggal_masuk' => $r['tanggal_masuk'] ?? '-',
+                    // Metadata for rendering
+                    'status_unit_id' => $r['status_unit_id'] ?? null,
+                    'customer_location_name' => $r['customer_location_name'] ?? null,
+                    'customer_city' => $r['customer_city'] ?? null,
+                    'customer_address' => $r['customer_address'] ?? null,
+                    'customer_name' => $r['customer_name'] ?? null,
                     'actions' => $actions
                 ];
             }

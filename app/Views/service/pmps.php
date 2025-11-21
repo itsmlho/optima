@@ -1,248 +1,262 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('content') ?>
-
-<div class="container-fluid">
-    <!-- Page Heading -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-calendar-check text-primary me-2"></i>
-            PMPS - Preventive Maintenance Planned Service
-        </h1>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPmpsModal">
-            <i class="fas fa-plus me-2"></i>Schedule PMPS
-        </button>
-    </div>
-
-    <!-- PMPS Stats -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Due Today</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">2</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                This Week</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">5</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-calendar-week fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Completed</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">15</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Scheduled</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">22</div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-calendar-alt fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- PMPS Table -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">PMPS Schedule</h6>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered" id="pmpsTable" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>Unit</th>
-                            <th>Service Type</th>
-                            <th>Due Date</th>
-                            <th>Status</th>
-                            <th>Last Service</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if (isset($pmps_data) && is_array($pmps_data)): ?>
-                            <?php foreach ($pmps_data as $pmps): ?>
-                                <tr>
-                                    <td><?= $pmps['unit'] ?></td>
-                                    <td><?= $pmps['type'] ?></td>
-                                    <td><?= date('d/m/Y', strtotime($pmps['due_date'])) ?></td>
-                                    <td>
-                                        <?php
-                                        $today = date('Y-m-d');
-                                        $dueDate = $pmps['due_date'];
-                                        $daysDiff = (strtotime($dueDate) - strtotime($today)) / (60 * 60 * 24);
-                                        
-                                        if ($daysDiff < 0) {
-                                            echo '<span class="badge badge-danger">Overdue</span>';
-                                        } elseif ($daysDiff <= 1) {
-                                            echo '<span class="badge badge-warning">Due Today</span>';
-                                        } elseif ($daysDiff <= 7) {
-                                            echo '<span class="badge badge-info">Due This Week</span>';
-                                        } else {
-                                            echo '<span class="badge badge-success">Scheduled</span>';
-                                        }
-                                        ?>
-                                    </td>
-                                    <td><?= date('d/m/Y', strtotime($pmps['last_service'])) ?></td>
-                                    <td>
-                                        <button class="btn btn-sm btn-primary" onclick="createWorkOrder('<?= $pmps['unit'] ?>')">
-                                            <i class="fas fa-wrench"></i> Create WO
-                                        </button>
-                                        <button class="btn btn-sm btn-warning" onclick="editPmps('<?= $pmps['unit'] ?>')">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="6" class="text-center">No PMPS data found</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add PMPS Modal -->
-<div class="modal fade" id="addPmpsModal" tabindex="-1" aria-labelledby="addPmpsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="addPmpsModalLabel">Schedule New PMPS</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="addPmpsForm">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="pmpsUnit" class="form-label">Unit</label>
-                                <select class="form-select" id="pmpsUnit" required>
-                                    <option value="">Select Unit</option>
-                                    <option value="FL-001">FL-001 - Toyota 8FG25</option>
-                                    <option value="FL-002">FL-002 - Mitsubishi FG25N</option>
-                                    <option value="FL-003">FL-003 - Komatsu FG25T</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="serviceType" class="form-label">Service Type</label>
-                                <select class="form-select" id="serviceType" required>
-                                    <option value="">Select Service Type</option>
-                                    <option value="Monthly Service">Monthly Service</option>
-                                    <option value="3-Month Inspection">3-Month Inspection</option>
-                                    <option value="6-Month Overhaul">6-Month Overhaul</option>
-                                    <option value="Annual Service">Annual Service</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="dueDate" class="form-label">Due Date</label>
-                                <input type="date" class="form-control" id="dueDate" required>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="lastService" class="form-label">Last Service Date</label>
-                                <input type="date" class="form-control" id="lastService" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="notes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="notes" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="savePmps()">Schedule PMPS</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-$(document).ready(function() {
-    $('#pmpsTable').DataTable({
-        responsive: true,
-        pageLength: 10,
-        order: [[2, 'asc']]
-    });
-});
-
-function createWorkOrder(unit) {
-    alert('Create Work Order for unit: ' + unit);
-    // Redirect to work orders page with unit pre-selected
-    window.location.href = '<?= base_url('service/work-orders') ?>?unit=' + unit;
+<?= $this->section('css') ?>
+<style>
+/* ==============================
+   COMING SOON STYLES
+   Professional coming soon page
+   ============================== */
+.coming-soon-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    padding: 2rem 1rem;
 }
 
-function editPmps(unit) {
-    alert('Edit PMPS for unit: ' + unit);
+.coming-soon-card {
+    background: white;
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
 }
 
-function savePmps() {
-    alert('PMPS scheduled successfully!');
-    $('#addPmpsModal').modal('hide');
+.coming-soon-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00ac69);
 }
-</script>
 
+.coming-soon-logos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.coming-soon-logo {
+    height: 40px;
+    width: auto;
+}
+
+.logo-divider {
+    width: 2px;
+    height: 30px;
+    background: linear-gradient(180deg, #007bff, #00ac69);
+    border-radius: 1px;
+}
+
+.coming-soon-icon {
+    font-size: 4rem;
+    color: #007bff;
+    margin-bottom: 1.5rem;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.coming-soon-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.coming-soon-subtitle {
+    font-size: 1.2rem;
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+.coming-soon-divider {
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00ac69);
+    margin: 1.5rem auto;
+    border-radius: 2px;
+}
+
+.coming-soon-description {
+    font-size: 1rem;
+    color: #495057;
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+}
+
+.coming-soon-features {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.feature-item:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.feature-item i {
+    color: #00ac69;
+    font-size: 1.2rem;
+}
+
+.back-btn {
+    margin-top: 2rem;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: none;
+    color: #fff;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.back-btn:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    color: #fff;
+}
+
+/* Dark Mode Support */
+[data-bs-theme="dark"] .coming-soon-card {
+    background: #2c3034;
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .coming-soon-title {
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .coming-soon-subtitle {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .coming-soon-description {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .feature-item {
+    background: #343a40;
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .feature-item:hover {
+    background: #495057;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .coming-soon-container {
+        padding: 1rem;
+    }
+    
+    .coming-soon-card {
+        padding: 2rem 1.5rem;
+    }
+    
+    .coming-soon-title {
+        font-size: 2rem;
+    }
+    
+    .coming-soon-features {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .feature-item {
+        justify-content: center;
+    }
+}
+</style>
 <?= $this->endSection() ?>
 
-<?php $this->section('scripts'); ?>
-
-
-<?php
-$this->endSection();
-?>
+<?= $this->section('content') ?>
+<div class="coming-soon-container">
+    <div class="coming-soon-card">
+        <!-- Company Logos -->
+        <div class="coming-soon-logos">
+            <img src="<?= base_url('assets/images/company-logo.svg') ?>" alt="PT Sarana Mitra Luas Logo" class="coming-soon-logo">
+            <div class="logo-divider"></div>
+            <img src="<?= base_url('logo-optima.ico') ?>" alt="OPTIMA Logo" class="coming-soon-logo">
+        </div>
+        
+        <!-- Coming Soon Icon -->
+        <div class="coming-soon-icon">
+            <i class="fas fa-calendar-check"></i>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="coming-soon-title">Preventive Maintenance (PMPS)</h1>
+        
+        <div class="coming-soon-divider"></div>
+        
+        <!-- Subtitle -->
+        <p class="coming-soon-subtitle">Sistem Pemeliharaan Preventif</p>
+        
+        <!-- Description -->
+        <p class="coming-soon-description">
+            Modul PMPS sedang dalam pengembangan untuk mengelola jadwal pemeliharaan preventif unit forklift. 
+            Fitur ini akan membantu tim service dalam merencanakan dan melacak maintenance rutin.
+        </p>
+        
+        <!-- Features Coming -->
+        <div class="coming-soon-features">
+            <div class="feature-item">
+                <i class="fas fa-calendar-alt"></i>
+                <span>Jadwal Maintenance</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-wrench"></i>
+                <span>Tracking Service</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Analisis Performa</span>
+            </div>
+        </div>
+        
+        <!-- Back Button -->
+        <a href="<?= base_url('/') ?>" class="back-btn">
+            <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
+        </a>
+    </div>
+</div>
+<?= $this->endSection() ?>

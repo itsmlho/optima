@@ -49,4 +49,32 @@ class PermissionModel extends Model
     protected $afterFind = [];
     protected $beforeDelete = [];
     protected $afterDelete = [];
+
+    /**
+     * Seed default core permissions if desired.
+     * Idempotent: will not duplicate existing keys.
+     */
+    public function createDefaultPermissions(): void
+    {
+        $defaults = [
+            ['key' => 'admin.access', 'name' => 'ADMIN ACCESS', 'module' => 'admin', 'category' => 'access'],
+            ['key' => 'admin.user_management', 'name' => 'USER MANAGEMENT', 'module' => 'admin', 'category' => 'management'],
+            ['key' => 'admin.role_management', 'name' => 'ROLE MANAGEMENT', 'module' => 'admin', 'category' => 'management'],
+            ['key' => 'admin.permission_management', 'name' => 'PERMISSION MANAGEMENT', 'module' => 'admin', 'category' => 'management'],
+        ];
+
+        foreach ($defaults as $perm) {
+            $exists = $this->where('key', $perm['key'])->first();
+            if ($exists) continue;
+            $this->insert([
+                'key' => $perm['key'],
+                'name' => $perm['name'],
+                'description' => 'Default system permission',
+                'module' => $perm['module'],
+                'category' => $perm['category'],
+                'is_system_permission' => 1,
+                'is_active' => 1
+            ]);
+        }
+    }
 }

@@ -23,53 +23,17 @@ $placeholder = ($status === 'SUBMITTED');
     <meta name="print-option" content="no-header-footer">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.0.1/css/bootstrap.min.css" integrity="sha512-Ez0cGzNzHR1tYAv56860NLspgUGuQw16GiOOp/I2LuTmpSK9xDXlgJz3XN4cnpXWDmkNBKXR/VDMTCnAaEooxA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
+        /* Page setup for better margins - disable browser headers/footers */
         @page { 
             size: A4; 
-            margin: 15mm;
+            margin: 10mm 8mm 15mm 8mm; /* top right bottom left - further reduced margins for single unit */
         }
         
-        /* Hide browser print headers and footers */
         @media print {
             @page {
-                margin: 10mm;
+                margin: 10mm 8mm 15mm 8mm; /* top right bottom left - further reduced margins for single unit */
                 size: A4;
-            }
-            
-            /* Hide browser generated headers/footers */
-            body {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                margin: 0 !important;
-                padding: 0 !important;
-            }
-            
-            /* Custom footer for each page */
-            .print-footer {
-                position: fixed;
-                bottom: 5mm;
-                left: 0;
-                right: 0;
-                text-align: center;
-                font-size: 9px;
-                color: #666;
-                border-top: 1px solid #ccc;
-                padding-top: 2mm;
-                background: white;
-                z-index: 1000;
-            }
-            
-            /* Hide print instruction when printing */
-            #printInstruction {
-                display: none !important;
-            }
-        }
-        
-        /* Hide browser print headers and footers */
-        @media print {
-            @page {
-                margin: 0;
-                size: A4;
-                /* Try to remove headers and footers */
+                /* Disable browser headers and footers */
                 @top-left { content: ""; }
                 @top-center { content: ""; }
                 @top-right { content: ""; }
@@ -78,40 +42,126 @@ $placeholder = ($status === 'SUBMITTED');
                 @bottom-right { content: ""; }
             }
             
-            /* Hide browser generated headers/footers */
             body {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
-                margin: 15mm !important;
+                margin: 0 !important;
                 padding: 0 !important;
+                font-family: Arial, Helvetica, sans-serif;
+                font-size: 9.5px; /* Further reduced font size for compact layout */
+                color: #222;
+                line-height: 1.15; /* Tighter line height */
             }
             
-            /* Remove any potential browser URL display */
-            * {
-                -webkit-appearance: none;
-                -moz-appearance: none;
-                appearance: none;
+            /* Compact table for print */
+            .table { 
+                margin-bottom: 8px; 
             }
             
-            /* Hide any print-only elements that might show URLs */
-            .print-url, .print-header, .print-footer {
-                display: none !important;
-                visibility: hidden !important;
+            .table th, .table td { 
+                padding: .3rem .4rem; 
+                line-height: 1.2;
             }
             
-            /* Hide print instruction box when printing */
+            /* Custom footer for each page */
+            .print-footer {
+                position: fixed;
+                bottom: 3mm;
+                left: 8mm;
+                right: 8mm;
+                text-align: center;
+                font-size: 8px;
+                color: #666;
+                border-top: 1px solid #ddd;
+                padding-top: 2mm;
+                background: white;
+                z-index: 1000;
+                page-break-inside: avoid;
+                /* Ensure footer doesn't conflict with browser headers */
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+            
+            /* Page break handling */
+            .page-break {
+                page-break-before: always;
+            }
+            
+            /* Ensure content doesn't overlap with footer */
+            .main-content {
+                margin-bottom: 15mm; /* Reduced for single unit */
+            }
+            
+            /* Better spacing for second page content */
+            .prepared-units-section {
+                margin-top: 8px; /* Compact spacing from previous section */
+                page-break-inside: auto; /* Allow section to break if needed */
+            }
+            
+            /* Ensure unit cards don't break awkwardly */
+            .unit-card {
+                page-break-inside: avoid;
+                margin-bottom: 5px;
+                margin-top: 5px;
+            }
+            
+            /* Compact spacing for all SPK types */
+            .prepared-units-section .table {
+                margin-bottom: 8px;
+            }
+            
+            /* Ensure table headers don't get cut off */
+            .table thead {
+                page-break-inside: avoid;
+                page-break-after: avoid;
+            }
+            
+            /* Better spacing for unit details */
+            .unit-detail-section {
+                margin-top: 1mm; /* Reduced for single unit */
+                page-break-inside: avoid;
+            }
+            
+            /* Auto page break for prepared units section if needed */
+            .prepared-units-section:first-of-type {
+                page-break-before: auto;
+            }
+            
+            /* Ensure proper spacing for first unit on new page */
+            .unit-detail-section:first-child {
+                margin-top: 5mm;
+            }
+            
+            /* Hide print instruction when printing */
             #printInstruction {
+                display: none !important;
+            }
+            
+            /* Disable browser headers and footers completely */
+            @page {
+                @top-left { content: ""; }
+                @top-center { content: ""; }
+                @top-right { content: ""; }
+                @bottom-left { content: ""; }
+                @bottom-center { content: ""; }
+                @bottom-right { content: ""; }
+            }
+            
+            /* Ensure no browser-generated content */
+            body::before,
+            body::after {
+                content: none !important;
                 display: none !important;
             }
         }
         
         body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color:#222; }
-        .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
         .table th, .table td { 
             border: 1px solid #9aa1a7; 
-            padding: .5rem .6rem; 
+            padding: .4rem .5rem; 
             vertical-align: top; 
-            line-height: 1.4;
+            line-height: 1.3;
         }
         .table th {
             background-color: #f8f9fa;
@@ -135,7 +185,18 @@ $placeholder = ($status === 'SUBMITTED');
             display: inline-block; 
             margin: 5px 0; 
         }
+        .sig-stamp.approved { 
+            color: #16a34a; 
+            border-color: #16a34a; 
+            background-color: #f0fdf4; 
+        }
+        .sig-stamp.rejected { 
+            color: #dc2626; 
+            border-color: #dc2626; 
+            background-color: #fef2f2; 
+        }
         .sig-name { font-weight: bold; color: #111; }
+        .sig-date { font-size: 9px; color: #666; margin-top: 2px; }
         .title { font-size: 16px; font-weight: bold; margin:0; }
         .subtitle { font-size: 15px; color:#555; margin:0; }
         .k-box { height: 16px; width: 16px; border:1px solid #999; display:inline-block; margin-right:2px; }
@@ -144,23 +205,71 @@ $placeholder = ($status === 'SUBMITTED');
         .val   { color:#111827; font-weight: 600; }
         .grid-2 td { width: 25%; }
         .no-border td { border:none !important; }
-        .logo { max-height: 46px; }
-        .header { display:grid; grid-template-columns:auto 1fr auto; align-items:center; column-gap:10px; }
-        .header-center { text-align:center; }
-        .header-meta { font-size:10px; color:#6b7280; text-align:right; }
+        .logo { max-height: 60px; }
+        .header { 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 10px 0;
+            border-bottom: 2px solid #333;
+        }
+        .header-left { 
+            flex: 0 0 auto; 
+            display: flex; 
+            align-items: center; 
+        }
+        .header-center { 
+            flex: 1; 
+            text-align: center; 
+            padding: 0 20px;
+        }
+        .header-right { 
+            flex: 0 0 auto; 
+            text-align: right; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: flex-end;
+        }
+        .document-info {
+            font-size: 10px;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .doc-number, .doc-spk, .doc-date {
+            margin: 1px 0;
+            font-weight: 500;
+        }
+        .status-badge {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 4px 8px;
+            margin-top: 5px;
+        }
+        .status-label {
+            font-size: 9px;
+            font-weight: bold;
+            color: #495057;
+            text-transform: uppercase;
+        }
+        .header-separator {
+            border: none;
+            border-top: 1px solid #333;
+            margin: 5px 0 15px 0;
+        }
         /* Extra print-friendly blocks for multiple units */
         .unit-card { 
             border:1px solid #9aa1a7; 
-            padding:10px; 
-            margin-bottom:15px; 
-            margin-top:10px;
+            padding:8px; 
+            margin-bottom:8px; 
+            margin-top:5px;
             page-break-inside: avoid;
             clear: both;
         }
         
         /* For second and subsequent units, reduce spacing */
         .unit-card:nth-child(n+2) {
-            margin-top: 15px;
+            margin-top: 5px;
             page-break-before: auto;
         }
         
@@ -174,9 +283,9 @@ $placeholder = ($status === 'SUBMITTED');
         
         /* Reduced spacing */
         .section-separator {
-            margin: 15px 0;
+            margin: 10px 0;
             border-top: 2px solid #dee2e6;
-            padding-top: 15px;
+            padding-top: 10px;
         }
         
         /* Better table spacing inside unit cards */
@@ -210,29 +319,6 @@ $placeholder = ($status === 'SUBMITTED');
             padding-top: 15px;
         }
         
-        /* Print footer styling */
-        .print-footer {
-            display: none;
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            text-align: center;
-            font-size: 9px;
-            color: #666;
-            background: white;
-            border-top: 1px solid #ddd;
-            padding: 5px;
-        }
-        
-        /* Show footer only when printing */
-        @media print {
-            .print-footer {
-                display: block;
-                position: fixed;
-                bottom: 5mm;
-            }
-        }
         
         .specification-header {
             background-color: #f8f9fa !important;
@@ -248,6 +334,48 @@ $placeholder = ($status === 'SUBMITTED');
             padding: 8px !important;
             margin: 20px 0 10px 0 !important;
             font-weight: bold !important;
+        }
+        
+        /* Additional spacing for professional layout */
+        .document-header {
+            margin-bottom: 10px;
+        }
+        
+        .specification-section {
+            margin-bottom: 8px;
+        }
+        
+        /* Ensure proper spacing for multi-page documents */
+        .page-content {
+            min-height: 250mm; /* A4 height minus margins */
+        }
+        
+        /* Better spacing for unit cards */
+        .unit-card {
+            margin-bottom: 8px;
+            border: none;
+            border-radius: 0;
+            overflow: visible;
+        }
+        
+        /* Compact signature section for single unit */
+        .single-unit-optimization .signature-section {
+            margin-top: 10px;
+            padding-top: 8px;
+        }
+        
+        .single-unit-optimization .sig {
+            margin-bottom: 5px;
+        }
+        
+        .single-unit-optimization .sig .muted {
+            font-size: 8px;
+            margin-bottom: 2px;
+        }
+        
+        .single-unit-optimization .sig .approval-stamp {
+            font-size: 8px;
+            padding: 2px 4px;
         }
     </style>
     
@@ -308,48 +436,49 @@ $placeholder = ($status === 'SUBMITTED');
     </script>
 </head>
 <body>
+<div class="main-content">
 
-<!-- Print instruction untuk menghilangkan URL dan footer browser -->
-<div id="printInstruction" style="position: fixed; top: 10px; left: 10px; background: #fff3cd; border: 1px solid #ffeaa7; padding: 10px; border-radius: 5px; font-size: 12px; z-index: 9999; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-    <strong>📝 Panduan Print:</strong><br>
-    • Untuk menghilangkan URL dan tanggal di print, buka <strong>Print Settings</strong><br>
-    • Pilih <strong>"More settings"</strong><br>
-    • Uncheck <strong>"Headers and footers"</strong><br>
-    • Klik <strong>Print</strong>
-    <button onclick="document.getElementById('printInstruction').style.display='none'" style="margin-left: 10px; background: #28a745; color: white; border: none; padding: 2px 8px; border-radius: 3px; cursor: pointer;">OK</button>
-</div>
-
-<div class="container-fluid">
-    <div class="header mb-2">
-        <img src="<?= base_url('assets/images/company-logo.svg') ?>" class="logo" alt="logo"/>
+<div class="container-fluid page-content">
+    <div class="header document-header mb-1">
+        <div class="header-left">
+            <img src="<?= base_url('assets/images/company-logo.svg') ?>" class="logo" alt="logo"/>
+        </div>
         <div class="header-center">
             <div class="title">PT SARANA MITRA LUAS Tbk</div>
-            <div class="subtitle">SPK ( Persiapan Unit )</div>
-            <br/>
+            <div class="subtitle">SURAT PERINTAH KERJA</div>
         </div>
-        <div class="header-meta">
-            <?php if (!empty($spk['created_at'])): ?>Created: <?= esc($spk['created_at']) ?><br><?php endif; ?>
-            <?php if (!empty($spk['updated_at'])): ?>Updated: <?= esc($spk['updated_at']) ?><?php endif; ?>
+        <div class="header-right">
+            <div class="document-info">
+                <div class="doc-number">No <?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? '-') ?></div>
+                <div class="doc-spk">No PO/Kontrak: <?= esc($spk['po_kontrak_nomor'] ?? $spk['kontrak_no'] ?? '-') ?></div>
+                <div class="doc-date">Tanggal: <?= date('d F Y', strtotime($spk['created_at'] ?? $spk['dibuat_pada'] ?? date('Y-m-d'))) ?></div>
+            </div>
+            <div class="status-badge">
+                <?php 
+                    $jenisSpk = $spk['jenis_spk'] ?? 'UNIT';
+                    $statusText = ($jenisSpk === 'ATTACHMENT') ? 'Persiapan Attachment' : 'Persiapan Unit';
+                ?>
+                <span class="status-label"><?= $statusText ?></span>
+            </div>
         </div>
     </div>
-
-    <div class="row mb-1">
-        <div class="col-6"><span class="label">No SPK:</span> <span class="val"><?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? '-') ?></span></div>
-        <div class="col-6"><span class="label">Kontrak/PO:</span> <span class="val"><?= esc($spk['po_kontrak_nomor'] ?? $spk['kontrak_no'] ?? '-') ?></span></div>
-    </div>
+    
+    <!-- Garis pemisah -->
+    <hr class="header-separator">
     <div class="row mb-1">
         <div class="col-6"><span class="label">Nama Perusahaan:</span> <span class="val"><?= esc($spk['pelanggan'] ?? $spk['customer_name'] ?? '-') ?></span></div>
-        <div class="col-6"><span class="label">Lokasi:</span> <span class="val"><?= esc($spk['lokasi'] ?? '-') ?></span></div>
-    </div>
-    <div class="row mb-2">
-        <div class="col-6"><span class="label">PIC:</span> <span class="val"><?= esc($spk['pic'] ?? '-') ?></span></div>
         <div class="col-6"><span class="label">Kontak:</span> <span class="val"><?= esc($spk['kontak'] ?? '-') ?></span></div>
     </div>
-
-    <!-- Keterangan section untuk kontrak spesifikasi -->
-    <div class="mb-2 fw-bold" style="background-color: #f8f9fa; padding: 8px; border: 1px solid #dee2e6;">
-        Permintaan Spesifikasi (Data Kontrak)
+    <div class="row mb-1">
+        <div class="col-6"><span class="label">Lokasi:</span> <span class="val"><?= esc($spk['lokasi'] ?? '-') ?></span></div>
+        <div class="col-6"><span class="label">PIC:</span> <span class="val"><?= esc($spk['pic'] ?? '-') ?></span></div>
     </div>
+    <br />
+    <!-- Keterangan section untuk kontrak spesifikasi -->
+    <div class="specification-section">
+        <div class="mb-1" style="font-style: italic; color: #666;">
+            Permintaan Spesifikasi (Data Kontrak)
+        </div>
 
     <table class="table">
         <thead>
@@ -483,11 +612,6 @@ $placeholder = ($status === 'SUBMITTED');
             </tr>
         </tbody>
     </table>
-
-    <!-- Keterangan section untuk detail unit yang disiapkan -->
-    <div class="mb-2 fw-bold" style="background-color: #e8f5e8; padding: 8px; border: 1px solid #28a745; margin-top: 20px;">
-        Detail Unit yang Disiapkan (Data Aktual SPK Service)
-    </div>
     
     <!-- DEBUG: SPK data -->
     <!-- SPK ID: <?= $spk['id'] ?? 'NULL' ?> -->
@@ -495,47 +619,51 @@ $placeholder = ($status === 'SUBMITTED');
     <!-- Prepared units count: <?= isset($s['prepared_units_detail']) && is_array($s['prepared_units_detail']) ? count($s['prepared_units_detail']) : 'NULL' ?> -->
     
     <?php 
-    // Safe handling for prepared_units_detail
+    // Get prepared units from spk_unit_stages table
     $preparedList = [];
-    if (isset($s['prepared_units_detail']) && is_array($s['prepared_units_detail'])) {
-        $preparedList = $s['prepared_units_detail'];
+    if (isset($spk['prepared_units_detail']) && is_array($spk['prepared_units_detail'])) {
+        $preparedList = $spk['prepared_units_detail'];
     }
+    
+    // Detect if this is single unit for optimization
+    $isSingleUnit = count($preparedList) === 1;
+    $isMultiUnit = count($preparedList) > 1;
+    $optimizationClass = $isSingleUnit ? 'single-unit-optimization compact-layout' : '';
+    $multiUnitClass = $isMultiUnit ? 'multi-unit' : '';
     ?>
+    <!-- Multi-unit display with enhanced formatting -->
+    <br />
+        <div class="prepared-units-section <?= $optimizationClass ?> <?= $multiUnitClass ?>">
+            <div class="mb-2" style="font-style: italic; color: #666; display: flex; justify-content: space-between;">
+                <span>Detail Unit yang Disiapkan (Data Aktual SPK Service)</span>
+                <span>Total Unit Disiapkan: <?= count($preparedList) ?> unit</span>
+            </div>
     <?php if (is_array($preparedList) && count($preparedList) >= 1): ?>
-        <!-- Multi-unit display with enhanced formatting -->
-        <div class="mb-2" style="font-style: italic; color: #666;">
-            Total Unit Disiapkan: <?= count($preparedList) ?> unit
-        </div>
         
         <?php foreach ($preparedList as $i => $rowPrepared): ?>
-            <div class="unit-card" style="page-break-inside: avoid;">
-                <div class="unit-title" style="background:#28a745; color: white; font-size: 12px;">
-                    Unit <?= ($i + 1) ?><?= isset($rowPrepared['unit_label']) ? ' - '.esc($rowPrepared['unit_label']) : '' ?>
-                    <?php if (!empty($rowPrepared['serial_number'])): ?>
-                        (SN: <?= esc($rowPrepared['serial_number']) ?>)
-                    <?php endif; ?>
+            <div class="unit-card unit-detail-section <?= $optimizationClass ?>" style="page-break-inside: avoid;">
+                <div class="mb-2" style="font-style: italic; color: #666; display: flex; justify-content: space-between;">
+                    Unit <?= ($i + 1) ?>
                 </div>
                 <?php
-                    // Build left/right summaries similar to single-unit block, with graceful fallbacks
+                    // Build left/right summaries from spk_unit_stages data
                     $summaryLeft = [
-                        ['ID Unit', $rowPrepared['unit_label'] ?? (isset($rowPrepared['unit_id']) ? '#'.$rowPrepared['unit_id'] : '')],
-                        ['Jenis Unit', $rowPrepared['jenis_unit'] ?? ($s['jenis_unit'] ?? '')],
-                        ['Departemen', $rowPrepared['departemen_name'] ?? ($s['departemen_id'] ?? '')],
-                        ['Attachment', $rowPrepared['sn_attachment_formatted'] ?? ($rowPrepared['attachment_sn'] ?? $rowPrepared['attachment_display'] ?? '')],
-                        ['Baterai', $rowPrepared['sn_baterai_formatted'] ?? ($rowPrepared['baterai_sn'] ?? '')],
-                        ['Valve', $rowPrepared['valve_id_name'] ?? ($s['valve_id_name'] ?? '')],
+                        ['No Unit', $rowPrepared['no_unit'] ?? ''],
+                        ['Jenis Unit', $rowPrepared['jenis_unit'] ?? ''],
+                        ['Departemen', $rowPrepared['departemen_name'] ?? ''],
+                        ['Kapasitas', $rowPrepared['kapasitas_name'] ?? ''],
+                        ['Mast', $rowPrepared['mast_name'] ?? ''],
                     ];
                     $summaryRight = [
-                        ['Serial Number', $rowPrepared['serial_number'] ?? ''],
-                        ['Tipe Unit', $rowPrepared['tipe_jenis'] ?? ($s['tipe_jenis'] ?? '')],
-                        ['Kapasitas', $rowPrepared['kapasitas_name'] ?? ($s['kapasitas_id_name'] ?? '')],
-                        ['Mast', $rowPrepared['mast_id_name'] ?? ($s['mast_id_name'] ?? '')],
-                        ['Charger', $rowPrepared['sn_charger_formatted'] ?? ($rowPrepared['charger_sn'] ?? '')],
+                        ['Charger', $rowPrepared['charger_sn'] ?? ''],
+                        ['Baterai', $rowPrepared['baterai_sn'] ?? ''],
+                        ['Attachment', $rowPrepared['attachment_sn'] ?? ''],
                         ['Roda & Ban', trim(
-                            ($rowPrepared['roda_id_name'] ?? $s['roda_id_name'] ?? '') .
-                            ((!empty($rowPrepared['roda_id_name'] ?? $s['roda_id_name'] ?? '') && !empty($rowPrepared['ban_id_name'] ?? $s['ban_id_name'] ?? '')) ? ' & ' : '') .
-                            ($rowPrepared['ban_id_name'] ?? $s['ban_id_name'] ?? '')
+                            ($rowPrepared['roda_name'] ?? '') .
+                            ((!empty($rowPrepared['roda_name']) && !empty($rowPrepared['ban_name'])) ? ' & ' : '') .
+                            ($rowPrepared['ban_name'] ?? '')
                         )],
+                        ['Valve', $rowPrepared['valve_name'] ?? ''],
                     ];
                 ?>
                 <table class="table grid-2">
@@ -580,142 +708,67 @@ $placeholder = ($status === 'SUBMITTED');
                             </td>
                         </tr>
                         <tr>
-                            <td class="label" style="background-color: #fff3cd;">Processing Info</td>
-                            <td class="val" colspan="3" style="background-color: #fff3cd;">
-                                <?php
-                                // Show processing timeline for this unit
-                                $processInfo = [];
-                                if (!empty($rowPrepared['mekanik'])) $processInfo[] = "Mekanik: " . $rowPrepared['mekanik'];
-                                if (!empty($rowPrepared['timestamp'])) $processInfo[] = "Waktu: " . $rowPrepared['timestamp'];
-                                if (!empty($rowPrepared['status'])) $processInfo[] = "Status: " . $rowPrepared['status'];
-                                echo esc(implode(' | ', $processInfo));
-                                ?>
+                            <td class="label" style="background-color: #f8f9fa;">Catatan</td>
+                            <td class="val" colspan="3" style="background-color: #f8f9fa;">
+                                <?= esc($rowPrepared['combined_notes'] ?? '') ?>
                             </td>
                         </tr>
-                        <?php if (!empty($rowPrepared['catatan'])): ?>
-                        <tr>
-                            <td class="label" style="background-color: #f8f9fa;">Catatan</td>
-                            <td class="val" colspan="3" style="background-color: #f8f9fa;"><?= esc($rowPrepared['catatan']) ?></td>
-                        </tr>
-                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
         <?php endforeach; ?>
-        
-    <?php else: ?>
-        <!-- Single unit display dengan tampilan yang lebih formal -->
-        <div class="mb-2" style="font-style: italic; color: #666;">
-        </div>
-        <?php
-            $unit = $s['selected']['unit'] ?? null; 
-            $attachment = $s['selected']['attachment'] ?? null;
-
-            $summaryLeft = [
-                ['ID Unit', $unit['no_unit'] ?? ''],
-                ['Jenis Unit', $unit['jenis_unit'] ?? $s['jenis_unit'] ?? ''],
-                ['Kapasitas', $unit['kapasitas_name'] ?? $s['kapasitas_id_name'] ?? ''],
-                ['Attachment', $attachment['sn_attachment_formatted'] ?? $unit['attachment_display'] ?? ''],
-                ['Baterai', $unit['sn_baterai_formatted'] ?? ''],
-                ['Valve', $unit['valve'] ?? $s['valve_id_name'] ?? ''],
-            ];
-            $summaryRight = [
-                ['Serial Number', $unit['serial_number'] ?? ''],
-                ['Tipe Unit', $unit['tipe_jenis'] ?? $s['tipe_jenis'] ?? ''],
-                ['Mast', $unit['mast'] ?? $s['mast_id_name'] ?? ''],
-                ['Charger', $unit['sn_charger_formatted'] ?? ''],
-                ['Roda & Ban', ($unit['roda'] ?? $s['roda_id_name'] ?? '') . 
-                   (!empty($unit['roda'] ?? $s['roda_id_name'] ?? '') && !empty($unit['ban'] ?? $s['ban_id_name'] ?? '') ? ' & ' : '') . 
-                   ($unit['ban'] ?? $s['ban_id_name'] ?? '')],
-            ];
-        ?>
-        <table class="table grid-2">
-            <tbody>
-                <?php 
-                    $rows = max(count($summaryLeft), count($summaryRight));
-                    for ($i = 0; $i < $rows; $i++): 
-                        $left = $summaryLeft[$i] ?? ['', ''];
-                        $right = $summaryRight[$i] ?? ['', ''];
-                ?>
-                <tr>
-                    <td class="label"><?= esc($left[0]) ?></td>
-                    <td class="val"><?php 
-                        if ($placeholder) {
-                            echo esc('..............................');
-                        } else {
-                            $value = $left[1];
-                            if (is_callable($value)) {
-                                echo esc($value() ?: '');
-                            } else {
-                                echo esc($value ?: '');
-                            }
-                        }
-                    ?></td>
-                    <td class="label"><?= esc($right[0]) ?></td>
-                    <td class="val"><?= esc($placeholder ? '..............................' : ($right[1] ?: '')) ?></td>
-                </tr>
-                <?php endfor; ?>
-                <!-- Aksesoris row spans across both left and right columns -->
-                <tr>
-                    <td class="label">Aksesoris</td>
-                    <td class="val" colspan="3">
-                        <?php 
-                            if ($placeholder) {
-                                echo esc('..............................');
-                            } else {
-                                // Multiple ways the accessories might be stored
-                                $aksText = '';
-                                if (!empty($s['aksesoris'])) {
-                                    if (is_array($s['aksesoris'])) {
-                                        $aksText = implode(', ', $s['aksesoris']);
-                                    } else if (is_string($s['aksesoris'])) {
-                                        try {
-                                            $aksArray = json_decode($s['aksesoris'], true);
-                                            if (is_array($aksArray) && !empty($aksArray)) {
-                                                $aksText = implode(', ', $aksArray);
-                                            } else {
-                                                $aksText = $s['aksesoris'];
-                                            }
-                                        } catch (Exception $e) {
-                                            $aksText = $s['aksesoris'];
-                                        }
-                                    }
-                                } else if (!empty($spk['persiapan_aksesoris_tersedia'])) {
-                                    $aksText = $spk['persiapan_aksesoris_tersedia'];
-                                }
-                                echo esc($aksText ?: '');
-                            }
-                        ?>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
     <?php endif; ?>
 
-    <div class="row mt-2 signature-section">
+    <div class="row mt-2 signature-section <?= $optimizationClass ?>">
         <div class="col sig">
             <div class="muted">Marketing</div>
             <?php 
                 // Auto-approve untuk marketing karena yang buat SPK adalah marketing
                 $currentUser = session()->get('user_name') ?? session()->get('username') ?? session()->get('nama') ?? null;
                 $createdBy = $spk['created_by_name'] ?? $spk['created_by'] ?? $spk['marketing_name'] ?? $currentUser;
+                $createdAt = $spk['created_at'] ?? $spk['dibuat_pada'] ?? null;
                 
                 // Marketing selalu APPROVED karena mereka yang membuat SPK
-                echo '<div class="sig-stamp">APPROVED</div>';
+                echo '<div class="sig-stamp approved">APPROVED</div>';
                 echo '<br/>';
                 if ($createdBy && $createdBy !== '') {
                     echo '<div class="sig-name">(' . esc($createdBy) . ')</div>';
                 } else {
                     echo '<div class="sig-name">(MARKETING)</div>';
                 }
+                if ($createdAt) {
+                    echo '<div class="sig-date">' . date('d/m/Y H:i', strtotime($createdAt)) . '</div>';
+                }
             ?>
         </div>
         <div class="col sig">
             <div class="muted">Bag.Persiapan Unit</div>
-            <?php if (!empty($spk['persiapan_unit_tanggal_approve'])): ?>
-                <div class="sig-stamp">APPROVED</div>
+            <?php 
+            // Check for persiapan_unit stage approval from spk_unit_stages
+            $persiapanApproved = false;
+            $persiapanMekanik = '';
+            if (isset($spk['stage_status']['unit_stages'])) {
+                foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages) {
+                    if (isset($unitStages['persiapan_unit']) && $unitStages['persiapan_unit']['completed']) {
+                        $persiapanApproved = true;
+                        $persiapanMekanik = $unitStages['persiapan_unit']['mekanik'] ?? '';
+                        break;
+                    }
+                }
+            }
+            ?>
+            <?php if ($persiapanApproved): ?>
+                <div class="sig-stamp approved">APPROVED</div>
                 <br/>
-                <div class="sig-name">(<?= esc($spk['persiapan_unit_mekanik'] ?? '') ?>)</div>
+                <div class="sig-name">(<?= esc($persiapanMekanik ?: '') ?>)</div>
+                <?php if (isset($spk['stage_status']['unit_stages'])): ?>
+                    <?php foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages): ?>
+                        <?php if (isset($unitStages['persiapan_unit']) && $unitStages['persiapan_unit']['completed'] && $unitStages['persiapan_unit']['tanggal_approve']): ?>
+                            <div class="sig-date"><?= date('d/m/Y H:i', strtotime($unitStages['persiapan_unit']['tanggal_approve'])) ?></div>
+                            <?php break; ?>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             <?php else: ?>
                 <br/><br/>
                 <div>(..........................)</div>
@@ -723,10 +776,32 @@ $placeholder = ($status === 'SUBMITTED');
         </div>
         <div class="col sig">
             <div class="muted">Bag.Fabrikasi</div>
-            <?php if (!empty($spk['fabrikasi_tanggal_approve'])): ?>
-                <div class="sig-stamp">APPROVED</div>
+            <?php 
+            // Check for fabrikasi stage approval from spk_unit_stages
+            $fabrikasiApproved = false;
+            $fabrikasiMekanik = '';
+            if (isset($spk['stage_status']['unit_stages'])) {
+                foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages) {
+                    if (isset($unitStages['fabrikasi']) && $unitStages['fabrikasi']['completed']) {
+                        $fabrikasiApproved = true;
+                        $fabrikasiMekanik = $unitStages['fabrikasi']['mekanik'] ?? '';
+                        break;
+                    }
+                }
+            }
+            ?>
+            <?php if ($fabrikasiApproved): ?>
+                <div class="sig-stamp approved">APPROVED</div>
                 <br/>
-                <div class="sig-name">(<?= esc($spk['fabrikasi_mekanik'] ?? '') ?>)</div>
+                <div class="sig-name">(<?= esc($fabrikasiMekanik ?: '') ?>)</div>
+                <?php if (isset($spk['stage_status']['unit_stages'])): ?>
+                    <?php foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages): ?>
+                        <?php if (isset($unitStages['fabrikasi']) && $unitStages['fabrikasi']['completed'] && $unitStages['fabrikasi']['tanggal_approve']): ?>
+                            <div class="sig-date"><?= date('d/m/Y H:i', strtotime($unitStages['fabrikasi']['tanggal_approve'])) ?></div>
+                            <?php break; ?>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             <?php else: ?>
                 <br/><br/>
                 <div>(..........................)</div>
@@ -734,10 +809,32 @@ $placeholder = ($status === 'SUBMITTED');
         </div>
         <div class="col sig">
             <div class="muted">Bag.Painting</div>
-            <?php if (!empty($spk['painting_tanggal_approve'])): ?>
-                <div class="sig-stamp">APPROVED</div>
+            <?php 
+            // Check for painting stage approval from spk_unit_stages
+            $paintingApproved = false;
+            $paintingMekanik = '';
+            if (isset($spk['stage_status']['unit_stages'])) {
+                foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages) {
+                    if (isset($unitStages['painting']) && $unitStages['painting']['completed']) {
+                        $paintingApproved = true;
+                        $paintingMekanik = $unitStages['painting']['mekanik'] ?? '';
+                        break;
+                    }
+                }
+            }
+            ?>
+            <?php if ($paintingApproved): ?>
+                <div class="sig-stamp approved">APPROVED</div>
                 <br/>
-                <div class="sig-name">(<?= esc($spk['painting_mekanik'] ?? '') ?>)</div>
+                <div class="sig-name">(<?= esc($paintingMekanik ?: '') ?>)</div>
+                <?php if (isset($spk['stage_status']['unit_stages'])): ?>
+                    <?php foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages): ?>
+                        <?php if (isset($unitStages['painting']) && $unitStages['painting']['completed'] && $unitStages['painting']['tanggal_approve']): ?>
+                            <div class="sig-date"><?= date('d/m/Y H:i', strtotime($unitStages['painting']['tanggal_approve'])) ?></div>
+                            <?php break; ?>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             <?php else: ?>
                 <br/><br/>
                 <div>(..........................)</div>
@@ -745,10 +842,32 @@ $placeholder = ($status === 'SUBMITTED');
         </div>
         <div class="col sig">
             <div class="muted">Bag. PDI Pengecekan</div>
-            <?php if (!empty($spk['pdi_tanggal_approve'])): ?>
-                <div class="sig-stamp">APPROVED</div>
+            <?php 
+            // Check for pdi stage approval from spk_unit_stages
+            $pdiApproved = false;
+            $pdiMekanik = '';
+            if (isset($spk['stage_status']['unit_stages'])) {
+                foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages) {
+                    if (isset($unitStages['pdi']) && $unitStages['pdi']['completed']) {
+                        $pdiApproved = true;
+                        $pdiMekanik = $unitStages['pdi']['mekanik'] ?? '';
+                        break;
+                    }
+                }
+            }
+            ?>
+            <?php if ($pdiApproved): ?>
+                <div class="sig-stamp approved">APPROVED</div>
                 <br/>
-                <div class="sig-name">(<?= esc($spk['pdi_mekanik'] ?? '') ?>)</div>
+                <div class="sig-name">(<?= esc($pdiMekanik ?: '') ?>)</div>
+                <?php if (isset($spk['stage_status']['unit_stages'])): ?>
+                    <?php foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages): ?>
+                        <?php if (isset($unitStages['pdi']) && $unitStages['pdi']['completed'] && $unitStages['pdi']['tanggal_approve']): ?>
+                            <div class="sig-date"><?= date('d/m/Y H:i', strtotime($unitStages['pdi']['tanggal_approve'])) ?></div>
+                            <?php break; ?>
+                        <?php endif; ?>
+                    <?php endforeach; ?>
+                <?php endif; ?>
             <?php else: ?>
                 <br/><br/>
                 <div>(..........................)</div>
@@ -756,29 +875,7 @@ $placeholder = ($status === 'SUBMITTED');
         </div>
     </div>
 
-    <!-- Document footer -->
-    <div class="mt-3 pt-2" style="border-top: 1px solid #dee2e6; font-size: 9px; color: #666; text-align: center;">
-        <div class="row">
-            <div class="col-4" style="text-align: left;">
-                <strong>SPK No:</strong> <?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? '-') ?>
-            </div>
-            <div class="col-4" style="text-align: center;">
-                PT SARANA MITRA LUAS Tbk
-            </div>
-            <div class="col-4" style="text-align: right;">
-                <strong>Tanggal Cetak:</strong> <?= date('d/m/Y H:i') ?>
-            </div>
-        </div>
-    </div>
 
-    <!-- Optional print footer - visible only when printing -->
-    <div class="print-footer" id="printFooter">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span>PT SARANA MITRA LUAS Tbk</span>
-            <span><strong>SPK (Persiapan Unit)</strong></span>
-            <span>Halaman <span id="currentPage">1</span> dari <span id="totalPages">1</span></span>
-        </div>
-    </div>
 
 </div>
 
@@ -818,8 +915,55 @@ window.addEventListener('beforeprint', function() {
     const spkNumber = '<?= str_replace('/', '-', esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? 'Unknown')) ?>';
     document.title = 'SPK-' + spkNumber;
     togglePrintFooter(true);
+    
+    // Update print date
+    const printDate = document.getElementById('printDate');
+    if (printDate) {
+        const now = new Date();
+        const dateStr = now.toLocaleDateString('id-ID') + ' ' + now.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'});
+        printDate.textContent = 'Tanggal Cetak: ' + dateStr;
+    }
 });
+
+// Handle page numbering
+window.addEventListener('afterprint', function() {
+    togglePrintFooter(false);
+});
+
+// Update page numbers when printing
+let currentPage = 1;
+window.addEventListener('beforeprint', function() {
+    currentPage = 1;
+    updatePageNumbers();
+});
+
+function updatePageNumbers() {
+    const pageInfo = document.getElementById('pageInfo');
+    if (pageInfo) {
+        pageInfo.innerHTML = 'Halaman <span id="currentPage">' + currentPage + '</span>';
+    }
+}
 </script>
+
+</div> <!-- End main-content -->
+
+<!-- Print Footer -->
+<div class="print-footer" id="printFooter" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="text-align: left; font-size: 8px;">
+            <strong>PT SARANA MITRA LUAS Tbk</strong><br>
+            <span style="color: #888;">Sistem OPTIMA - Document Management</span>
+        </div>
+        <div style="text-align: center; font-size: 8px;">
+            <span id="printDate">Tanggal Cetak: <?= date('d/m/Y H:i') ?></span><br>
+            <span style="color: #888;">Dokumen ini dibuat secara otomatis oleh sistem OPTIMA</span>
+        </div>
+        <div style="text-align: right; font-size: 8px;">
+            <span id="pageInfo">Halaman <span id="currentPage">1</span></span><br>
+            <span style="color: #888;">SPK No: <?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? 'Unknown') ?></span>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

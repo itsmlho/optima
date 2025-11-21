@@ -1,270 +1,263 @@
 <?= $this->extend('layouts/base') ?>
 
 <?= $this->section('css') ?>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
 <style>
-    .table-card { border: none; border-radius: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); }
-    .card-stats { 
-        border: none; 
-        border-radius: 15px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        transition: all 0.3s ease;
-        cursor: pointer;
+/* ==============================
+   COMING SOON STYLES
+   Professional coming soon page
+   ============================== */
+.coming-soon-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    padding: 2rem 1rem;
+}
+
+.coming-soon-card {
+    background: white;
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.coming-soon-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00ac69);
+}
+
+.coming-soon-logos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.coming-soon-logo {
+    height: 40px;
+    width: auto;
+}
+
+.logo-divider {
+    width: 2px;
+    height: 30px;
+    background: linear-gradient(180deg, #007bff, #00ac69);
+    border-radius: 1px;
+}
+
+.coming-soon-icon {
+    font-size: 4rem;
+    color: #007bff;
+    margin-bottom: 1.5rem;
+    animation: bounce 2s ease-in-out infinite;
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
     }
-    .card-stats:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+    50% {
+        transform: translateY(-10px);
     }
-    .card-stats.active {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-        border: 2px solid #0d6efd;
+}
+
+.coming-soon-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.coming-soon-subtitle {
+    font-size: 1.2rem;
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+.coming-soon-divider {
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00ac69);
+    margin: 1.5rem auto;
+    border-radius: 2px;
+}
+
+.coming-soon-description {
+    font-size: 1rem;
+    color: #495057;
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+}
+
+.coming-soon-features {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.feature-item:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.feature-item i {
+    color: #00ac69;
+    font-size: 1.2rem;
+}
+
+.back-btn {
+    margin-top: 2rem;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: none;
+    color: #fff;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.back-btn:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    color: #fff;
+}
+
+/* Dark Mode Support */
+[data-bs-theme="dark"] .coming-soon-card {
+    background: #2c3034;
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .coming-soon-title {
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .coming-soon-subtitle {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .coming-soon-description {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .feature-item {
+    background: #343a40;
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .feature-item:hover {
+    background: #495057;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .coming-soon-container {
+        padding: 1rem;
     }
-    .filter-card { background: #f8f9fa; border: none; border-radius: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    
+    .coming-soon-card {
+        padding: 2rem 1.5rem;
+    }
+    
+    .coming-soon-title {
+        font-size: 2rem;
+    }
+    
+    .coming-soon-features {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .feature-item {
+        justify-content: center;
+    }
+}
 </style>
 <?= $this->endSection() ?>
 
+
 <?= $this->section('content') ?>
-
-    <!-- Statistics Cards (Now as Filters) -->
-    <div class="row g-4 mb-4">
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-stats bg-primary text-white h-100" onclick="applyCardFilter('')">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 class="fw-bold mb-1"><?= $stats['total_jenis'] ?? 0 ?></h2>
-                        <h6 class="card-title text-uppercase small opacity-75 fw-semibold">Semua Jenis Item</h6>
-                    </div>
-                    <i class="fas fa-tags fa-3x opacity-50"></i>
-                </div>
-            </div>
+<div class="coming-soon-container">
+    <div class="coming-soon-card">
+        <!-- Company Logos -->
+        <div class="coming-soon-logos">
+            <img src="<?= base_url('assets/images/company-logo.svg') ?>" alt="PT Sarana Mitra Luas Logo" class="coming-soon-logo">
+            <div class="logo-divider"></div>
+            <img src="<?= base_url('logo-optima.ico') ?>" alt="OPTIMA Logo" class="coming-soon-logo">
         </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-stats bg-success text-white h-100" onclick="applyCardFilter('tersedia')">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 class="fw-bold mb-1"><?= $stats['tersedia'] ?? 0 ?></h2>
-                        <h6 class="card-title text-uppercase small opacity-75 fw-semibold">Tersedia</h6>
-                    </div>
-                    <i class="fas fa-check-circle fa-3x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-stats bg-warning text-white h-100" onclick="applyCardFilter('menipis')">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 class="fw-bold mb-1"><?= $stats['stok_menipis'] ?? 0 ?></h2>
-                        <h6 class="card-title text-uppercase small opacity-75 fw-semibold">Stok Menipis</h6>
-                    </div>
-                    <i class="fas fa-exclamation-triangle fa-3x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-        <div class="col-xl-3 col-md-6">
-            <div class="card card-stats bg-danger text-white h-100" onclick="applyCardFilter('kosong')">
-                <div class="card-body d-flex justify-content-between align-items-center">
-                    <div>
-                        <h2 class="fw-bold mb-1"><?= $stats['stok_kosong'] ?? 0 ?></h2>
-                        <h6 class="card-title text-uppercase small opacity-75 fw-semibold">Stok Kosong</h6>
-                    </div>
-                    <i class="fas fa-times-circle fa-3x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Filters -->
-    <!-- <div class="card filter-card mb-4">
-        <div class="card-body">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label for="filterStockStatus" class="form-label">Filter Status Stok</label>
-                    <select id="filterStockStatus" class="form-select">
-                        <option value="">Semua Status</option>
-                        <option value="tersedia">Tersedia</option>
-                        <option value="menipis">Stok Menipis (<= 10)</option>
-                        <option value="kosong">Stok Kosong</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="filterLocation" class="form-label">Filter Lokasi</label>
-                    <select id="filterLocation" class="form-select">
-                        <option value="">Semua Lokasi</option>
-                        <option value="POS 1">POS 1</option>
-                        <option value="POS 2">POS 2</option>
-                        <option value="POS 3">POS 3</option>
-                        <option value="POS 4">POS 4</option>
-                        <option value="POS 5">POS 5</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    </div> -->
-
-
-    <!-- Inventory Table -->
-    <div class="card table-card">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="card-title fw-bold m-0">Daftar Stok Sparepart</h5>
-        </div>
-        <div class="card-body">
-            <table id="inventory-sparepart-table" class="table table-striped table-hover" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Kode Sparepart</th>
-                        <th>Deskripsi</th>
-                        <th>Stok</th>
-                        <th>Lokasi Rak</th>
-                        <th>Terakhir Diperbarui</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- Modal Edit Stok -->
-<div class="modal fade" id="editStockModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Edit Stok Sparepart</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="editStockForm">
-                <div class="modal-body">
-                    <input type="hidden" id="edit_id" name="id">
-                    <div class="mb-3">
-                        <label class="form-label">Kode Sparepart</label>
-                        <input type="text" class="form-control" id="edit_kode" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Deskripsi</label>
-                        <textarea class="form-control" id="edit_deskripsi" readonly rows="3"></textarea>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_stok" class="form-label">Stok</label>
-                        <input type="number" class="form-control" id="edit_stok" name="stok" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_lokasi" class="form-label">Lokasi Rak</label>
-                        <input type="text" class="form-control" id="edit_lokasi" name="lokasi_rak">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-<?= $this->endSection() ?>
-
-<?= $this->section('javascript') ?>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script>
-    let currentStockStatusFilter = '';
-
-    $(document).ready(function() {
-        const table = $('#inventory-sparepart-table').DataTable({
-            processing: true,
-            serverSide: true,
-            ajax: {
-                url: '<?= base_url('warehouse/inventory/invent_sparepart') ?>',
-                type: 'POST',
-                data: function(d) {
-                    // Kirim data filter ke server
-                    d.stock_status = currentStockStatusFilter;
-                    d.lokasi_rak = $('#filterLocation').val();
-                }
-            },
-            columns: [
-                { data: 'id' },
-                { data: 'kode' },
-                { data: 'desc_sparepart' },
-                { data: 'stok' },
-                { data: 'lokasi_rak' },
-                { data: 'updated_at' },
-                {
-                    data: 'id',
-                    orderable: false,
-                    render: function(data, type, row) {
-                        return `<button class="btn btn-sm btn-warning" onclick="editStock(${data})"><i class="fas fa-edit"></i> Edit</button>`;
-                    }
-                }
-            ],
-            order: [[ 5, "desc" ]]
-        });
-
-        // Event listener untuk filter lokasi
-        $('#filterLocation').on('change', function() {
-            table.ajax.reload();
-        });
-
-        $('#editStockForm').on('submit', function(e) {
-            e.preventDefault();
-            const id = $('#edit_id').val();
-            $.ajax({
-                url: `<?= base_url('warehouse/inventory/update_sparepart/') ?>${id}`,
-                type: 'POST',
-                data: $(this).serialize(),
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        $('#editStockModal').modal('hide');
-                        table.ajax.reload(null, false);
-                        Swal.fire('Berhasil!', response.message, 'success');
-                    } else {
-                        Swal.fire('Gagal!', response.message, 'error');
-                    }
-                },
-                error: function() {
-                    Swal.fire('Error!', 'Tidak dapat terhubung ke server.', 'error');
-                }
-            });
-        });
-    });
-
-    function applyCardFilter(status) {
-        // Hapus kelas 'active' dari semua kartu
-        $('.card-stats').removeClass('active');
-        // Tambahkan kelas 'active' ke kartu yang diklik
-        if (status) {
-            $(`.card-stats[onclick="applyCardFilter('${status}')"]`).addClass('active');
-        } else {
-             $(`.card-stats[onclick="applyCardFilter('')"]`).addClass('active');
-        }
         
-        currentStockStatusFilter = status;
-        $('#inventory-sparepart-table').DataTable().ajax.reload();
-    }
-
-    function editStock(id) {
-        $.ajax({
-            url: `<?= base_url('warehouse/inventory/get_sparepart/') ?>${id}`,
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.success) {
-                    const data = response.data;
-                    $('#edit_id').val(data.id);
-                    $('#edit_kode').val(data.kode);
-                    $('#edit_deskripsi').val(data.desc_sparepart);
-                    $('#edit_stok').val(data.stok);
-                    $('#edit_lokasi').val(data.lokasi_rak);
-                    $('#editStockModal').modal('show');
-                } else {
-                    Swal.fire('Gagal!', response.message, 'error');
-                }
-            }
-        });
-    }
-</script>
+        <!-- Coming Soon Icon -->
+        <div class="coming-soon-icon">
+            <i class="fas fa-tools"></i>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="coming-soon-title">Coming Soon</h1>
+        
+        <div class="coming-soon-divider"></div>
+        
+        <!-- Subtitle -->
+        <p class="coming-soon-subtitle">Fitur Dalam Pengembangan</p>
+        
+        <!-- Description -->
+        <p class="coming-soon-description">
+            Tim IT sedang mengembangkan fitur ini untuk meningkatkan efisiensi operasional perusahaan. 
+            Mohon bersabar, halaman ini akan segera tersedia dengan sistem yang lebih baik.
+        </p>
+        
+        <!-- Features Coming -->
+        <div class="coming-soon-features">
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Sistem Terintegrasi</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Proses Lebih Cepat</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-check-circle"></i>
+                <span>Laporan Akurat</span>
+            </div>
+        </div>
+        
+        <!-- Back Button -->
+        <a href="<?= base_url('/') ?>" class="back-btn">
+            <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
+        </a>
+    </div>
+</div>
 <?= $this->endSection() ?>

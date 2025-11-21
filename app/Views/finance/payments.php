@@ -1,420 +1,263 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('content') ?>
+<?= $this->section('css') ?>
+<style>
+/* ==============================
+   COMING SOON STYLES
+   Professional coming soon page
+   ============================== */
+.coming-soon-container {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    padding: 2rem 1rem;
+}
 
-<div class="container-fluid">
-    <!-- Page Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-credit-card me-2"></i>Payment Management
-        </h1>
-        <div class="d-sm-flex align-items-center">
-            <div class="btn-group" role="group">
-                <button class="btn btn-outline-info btn-sm" onclick="refreshPayments()">
-                    <i class="fas fa-sync-alt me-1"></i>Refresh
-                </button>
-                <button class="btn btn-outline-success btn-sm" onclick="exportPayments()">
-                    <i class="fas fa-file-excel me-1"></i>Export
-                </button>
-                <button class="btn btn-primary btn-sm" onclick="recordPayment()">
-                    <i class="fas fa-plus me-1"></i>Record Payment
-                </button>
-            </div>
-        </div>
-    </div>
+.coming-soon-card {
+    background: white;
+    border-radius: 20px;
+    padding: 3rem 2rem;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    max-width: 600px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid #e9ecef;
+}
 
-    <!-- Payment Statistics -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Total Payments</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= count($payments) ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-credit-card fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+.coming-soon-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00ac69);
+}
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Completed Payments</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= count(array_filter($payments, fn($pay) => $pay['status'] == 'Completed')) ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+.coming-soon-logos {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Pending Payments</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= count(array_filter($payments, fn($pay) => $pay['status'] == 'Pending')) ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clock fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+.coming-soon-logo {
+    height: 40px;
+    width: auto;
+}
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Total Amount</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                Rp <?= number_format(array_sum(array_column($payments, 'amount')), 0, ',', '.') ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+.logo-divider {
+    width: 2px;
+    height: 30px;
+    background: linear-gradient(180deg, #007bff, #00ac69);
+    border-radius: 1px;
+}
 
-    <!-- Payment List -->
-    <div class="card shadow mb-4">
-        <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Payment History</h6>
-            <div class="dropdown no-arrow">
-                <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                    <i class="fas fa-ellipsis-v fa-sm fa-fw text-gray-400"></i>
-                </a>
-                <div class="dropdown-menu dropdown-menu-right shadow">
-                    <a class="dropdown-item" href="#" onclick="filterPayments('all')">
-                        <i class="fas fa-list me-2"></i>Show All
-                    </a>
-                    <a class="dropdown-item" href="#" onclick="filterPayments('completed')">
-                        <i class="fas fa-check me-2"></i>Completed Only
-                    </a>
-                    <a class="dropdown-item" href="#" onclick="filterPayments('pending')">
-                        <i class="fas fa-clock me-2"></i>Pending Only
-                    </a>
-                    <a class="dropdown-item" href="#" onclick="filterPayments('failed')">
-                        <i class="fas fa-times me-2"></i>Failed Only
-                    </a>
-                </div>
-            </div>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-bordered" id="paymentsTable" width="100%" cellspacing="0">
-                    <thead>
-                        <tr>
-                            <th>Payment ID</th>
-                            <th>Invoice ID</th>
-                            <th>Customer</th>
-                            <th>Amount</th>
-                            <th>Method</th>
-                            <th>Status</th>
-                            <th>Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($payments as $payment): ?>
-                            <tr>
-                                <td class="font-weight-bold"><?= esc($payment['id']) ?></td>
-                                <td><?= esc($payment['invoice_id']) ?></td>
-                                <td><?= esc($payment['customer']) ?></td>
-                                <td class="text-right">
-                                    Rp <?= number_format($payment['amount'], 0, ',', '.') ?>
-                                </td>
-                                <td><?= esc($payment['method']) ?></td>
-                                <td>
-                                    <?php
-                                    $statusClass = $payment['status'] == 'Completed' ? 'success' : 
-                                                  ($payment['status'] == 'Pending' ? 'warning' : 'danger');
-                                    ?>
-                                    <span class="badge badge-<?= $statusClass ?>">
-                                        <?= $payment['status'] ?>
-                                    </span>
-                                </td>
-                                <td><?= date('d M Y H:i', strtotime($payment['date'])) ?></td>
-                                <td>
-                                    <button class="btn btn-sm btn-info" onclick="viewPayment('<?= $payment['id'] ?>')" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <?php if ($payment['status'] == 'Pending'): ?>
-                                        <button class="btn btn-sm btn-success" onclick="confirmPayment('<?= $payment['id'] ?>')" title="Confirm">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                    <?php endif; ?>
-                                    <button class="btn btn-sm btn-primary" onclick="printReceipt('<?= $payment['id'] ?>')" title="Print Receipt">
-                                        <i class="fas fa-print"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-danger" onclick="deletePayment('<?= $payment['id'] ?>')" title="Delete">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
+.coming-soon-icon {
+    font-size: 4rem;
+    color: #007bff;
+    margin-bottom: 1.5rem;
+    animation: bounce 2s ease-in-out infinite;
+}
 
-<!-- Record Payment Modal -->
-<div class="modal fade" id="recordPaymentModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-plus me-2"></i>Record New Payment
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <form id="recordPaymentForm">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="paymentInvoice" class="form-label">Invoice ID *</label>
-                                <select class="form-select" id="paymentInvoice" required>
-                                    <option value="">Select Invoice</option>
-                                    <option value="INV-2024-001">INV-2024-001 - PT. Maju Jaya</option>
-                                    <option value="INV-2024-002">INV-2024-002 - CV. Sukses Mandiri</option>
-                                    <option value="INV-2024-003">INV-2024-003 - PT. Berkah Selalu</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="paymentAmount" class="form-label">Amount *</label>
-                                <input type="number" class="form-control" id="paymentAmount" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="paymentMethod" class="form-label">Payment Method *</label>
-                                <select class="form-select" id="paymentMethod" required>
-                                    <option value="">Select Method</option>
-                                    <option value="Bank Transfer">Bank Transfer</option>
-                                    <option value="Cash">Cash</option>
-                                    <option value="Check">Check</option>
-                                    <option value="Credit Card">Credit Card</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="paymentDate" class="form-label">Payment Date *</label>
-                                <input type="datetime-local" class="form-control" id="paymentDate" required>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="paymentStatus" class="form-label">Status</label>
-                                <select class="form-select" id="paymentStatus">
-                                    <option value="Completed">Completed</option>
-                                    <option value="Pending">Pending</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="paymentReference" class="form-label">Reference Number</label>
-                                <input type="text" class="form-control" id="paymentReference">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="paymentNotes" class="form-label">Notes</label>
-                        <textarea class="form-control" id="paymentNotes" rows="3"></textarea>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="savePayment()">
-                    <i class="fas fa-save me-2"></i>Record Payment
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
 
+.coming-soon-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.coming-soon-subtitle {
+    font-size: 1.2rem;
+    color: #6c757d;
+    margin-bottom: 1.5rem;
+    font-weight: 500;
+}
+
+.coming-soon-divider {
+    width: 80px;
+    height: 4px;
+    background: linear-gradient(90deg, #007bff, #00ac69);
+    margin: 1.5rem auto;
+    border-radius: 2px;
+}
+
+.coming-soon-description {
+    font-size: 1rem;
+    color: #495057;
+    margin-bottom: 2.5rem;
+    line-height: 1.6;
+}
+
+.coming-soon-features {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin: 2rem 0;
+    flex-wrap: wrap;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #6c757d;
+    font-size: 0.9rem;
+    padding: 0.5rem 1rem;
+    background: #f8f9fa;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.feature-item:hover {
+    background: #e9ecef;
+    transform: translateY(-2px);
+}
+
+.feature-item i {
+    color: #00ac69;
+    font-size: 1.2rem;
+}
+
+.back-btn {
+    margin-top: 2rem;
+    padding: 0.875rem 2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    border: none;
+    color: #fff;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+}
+
+.back-btn:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.4);
+    color: #fff;
+}
+
+/* Dark Mode Support */
+[data-bs-theme="dark"] .coming-soon-card {
+    background: #2c3034;
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .coming-soon-title {
+    color: #e2e8f0;
+}
+
+[data-bs-theme="dark"] .coming-soon-subtitle {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .coming-soon-description {
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .feature-item {
+    background: #343a40;
+    color: #adb5bd;
+}
+
+[data-bs-theme="dark"] .feature-item:hover {
+    background: #495057;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .coming-soon-container {
+        padding: 1rem;
+    }
+    
+    .coming-soon-card {
+        padding: 2rem 1.5rem;
+    }
+    
+    .coming-soon-title {
+        font-size: 2rem;
+    }
+    
+    .coming-soon-features {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .feature-item {
+        justify-content: center;
+    }
+}
+</style>
 <?= $this->endSection() ?>
 
-<?= $this->section('javascript') ?>
-<script>
-$(document).ready(function() {
-    $('#paymentsTable').DataTable({
-        responsive: true,
-        pageLength: 10,
-        order: [[6, 'desc']],
-        dom: 'Bfrtip',
-        buttons: [
-            'copy', 'csv', 'excel', 'pdf', 'print'
-        ]
-    });
-    
-    // Set default payment date to now
-    const now = new Date();
-    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
-    $('#paymentDate').val(now.toISOString().slice(0, 16));
-});
-
-function recordPayment() {
-    $('#recordPaymentModal').modal('show');
-}
-
-function savePayment() {
-    if (!$('#recordPaymentForm')[0].checkValidity()) {
-        $('#recordPaymentForm')[0].reportValidity();
-        return;
-    }
-
-    const formData = {
-        invoice_id: $('#paymentInvoice').val(),
-        amount: $('#paymentAmount').val(),
-        method: $('#paymentMethod').val(),
-        date: $('#paymentDate').val(),
-        status: $('#paymentStatus').val(),
-        reference: $('#paymentReference').val(),
-        notes: $('#paymentNotes').val()
-    };
-
-    $.ajax({
-        url: '<?= base_url('finance/payments/create') ?>',
-        method: 'POST',
-        data: formData,
-        dataType: 'json',
-        headers: {
-            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-        },
-        success: function(response) {
-            if (response.success) {
-                $('#recordPaymentModal').modal('hide');
-                showNotification('Payment recorded successfully!', 'success');
-                setTimeout(() => location.reload(), 1500);
-            } else {
-                showNotification('Failed to record payment: ' + response.message, 'error');
-            }
-        },
-        error: function() {
-            showNotification('Error recording payment', 'error');
-        }
-    });
-}
-
-function viewPayment(paymentId) {
-    showNotification('Opening payment details for ' + paymentId, 'info');
-}
-
-function confirmPayment(paymentId) {
-    if (confirm('Confirm this payment?')) {
-        $.ajax({
-            url: '<?= base_url('finance/payments/update/') ?>' + paymentId,
-            method: 'POST',
-            data: { status: 'Completed' },
-            dataType: 'json',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    showNotification('Payment confirmed!', 'success');
-                    setTimeout(() => location.reload(), 1500);
-                }
-            },
-            error: function() {
-                showNotification('Error confirming payment', 'error');
-            }
-        });
-    }
-}
-
-function printReceipt(paymentId) {
-    showNotification('Printing receipt for payment ' + paymentId, 'info');
-}
-
-function deletePayment(paymentId) {
-    if (confirm('Are you sure you want to delete this payment record?')) {
-        showNotification('Payment ' + paymentId + ' deleted', 'success');
-        setTimeout(() => location.reload(), 1500);
-    }
-}
-
-function refreshPayments() {
-    location.reload();
-}
-
-function exportPayments() {
-    $('#paymentsTable').DataTable().button('.buttons-excel').trigger();
-}
-
-function filterPayments(filter) {
-    const table = $('#paymentsTable').DataTable();
-    
-    switch(filter) {
-        case 'completed':
-            table.column(5).search('Completed').draw();
-            break;
-        case 'pending':
-            table.column(5).search('Pending').draw();
-            break;
-        case 'failed':
-            table.column(5).search('Failed').draw();
-            break;
-        default:
-            table.search('').columns().search('').draw();
-    }
-}
-
-function showNotification(message, type) {
-    const alertClass = type === 'success' ? 'alert-success' : 
-                      type === 'error' ? 'alert-danger' : 
-                      type === 'warning' ? 'alert-warning' : 'alert-info';
-    
-    const notification = `
-        <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-            <strong>${type.charAt(0).toUpperCase() + type.slice(1)}!</strong> ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+<?= $this->section('content') ?>
+<div class="coming-soon-container">
+    <div class="coming-soon-card">
+        <!-- Company Logos -->
+        <div class="coming-soon-logos">
+            <img src="<?= base_url('assets/images/company-logo.svg') ?>" alt="PT Sarana Mitra Luas Logo" class="coming-soon-logo">
+            <div class="logo-divider"></div>
+            <img src="<?= base_url('logo-optima.ico') ?>" alt="OPTIMA Logo" class="coming-soon-logo">
         </div>
-    `;
-    
-    $('.container-fluid').prepend(notification);
-    
-    setTimeout(function() {
-        $('.alert').fadeOut();
-    }, 5000);
-}
-</script>
-<?= $this->endSection() ?> 
+        
+        <!-- Coming Soon Icon -->
+        <div class="coming-soon-icon">
+            <i class="fas fa-credit-card"></i>
+        </div>
+        
+        <!-- Title -->
+        <h1 class="coming-soon-title">Payment Validation</h1>
+        
+        <div class="coming-soon-divider"></div>
+        
+        <!-- Subtitle -->
+        <p class="coming-soon-subtitle">Sistem Validasi Pembayaran</p>
+        
+        <!-- Description -->
+        <p class="coming-soon-description">
+            Modul Payment Validation sedang dalam pengembangan untuk memvalidasi dan melacak pembayaran. 
+            Fitur ini akan membantu tim accounting dalam memverifikasi status pembayaran invoice.
+        </p>
+        
+        <!-- Features Coming -->
+        <div class="coming-soon-features">
+            <div class="feature-item">
+                <i class="fas fa-check-double"></i>
+                <span>Validate Payment</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-clock"></i>
+                <span>Track Status</span>
+            </div>
+            <div class="feature-item">
+                <i class="fas fa-bell"></i>
+                <span>Payment Alerts</span>
+            </div>
+        </div>
+        
+        <!-- Back Button -->
+        <a href="<?= base_url('/') ?>" class="back-btn">
+            <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
+        </a>
+    </div>
+</div>
+<?= $this->endSection() ?>

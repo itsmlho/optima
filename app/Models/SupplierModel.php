@@ -15,12 +15,39 @@ class SupplierModel extends Model
 
     protected $allowedFields    = [
         'id_supplier',
+        'kode_supplier',
         'nama_supplier',
-        'kontak_person',
-        'telepon',
-        'alamat',
+        'alias',
+        'contact_person',
+        'phone',
+        'email',
+        'website',
+        'address',
+        'city',
+        'province',
+        'postal_code',
+        'country',
+        'npwp',
+        'business_type',
+        'payment_terms',
+        'credit_limit',
+        'currency',
+        'product_categories',
+        'rating',
+        'total_orders',
+        'total_value',
+        'on_time_delivery_rate',
+        'quality_score',
+        'bank_name',
+        'bank_account_number',
+        'bank_account_name',
+        'status',
+        'is_verified',
+        'notes',
         'created_at',
-        'updated_at'
+        'updated_at',
+        'created_by',
+        'updated_by'
     ];
 
     protected $useTimestamps = true;   // Auto set created_at & updated_at

@@ -2,7 +2,6 @@
 
 namespace App\Controllers;
 
-use CodeIgniter\Controller;
 use CodeIgniter\Database\BaseBuilder;
 use App\Models\SpkModel;
 use App\Models\KontrakModel;
@@ -16,7 +15,7 @@ use App\Traits\ActivityLoggingTrait;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-class Marketing extends Controller
+class Marketing extends BaseController
 {
     use ActivityLoggingTrait;
     
@@ -45,21 +44,46 @@ class Marketing extends Controller
 
     public function availableUnits()
     {
+        // Check permission for viewing available units
+        if (!$this->hasPermission('marketing.unit_management.view')) {
+            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view available units');
+        }
+        
         return view('marketing/unit_tersedia');
     }
 
-    // Test method for debugging template system
-    public function testTemplate()
+    public function exportKontrak()
     {
-        $data = [
-            'title' => 'Test Template',
-            'breadcrumbs' => [
-                'marketing' => 'Marketing',
-                'marketing/test' => 'Test'
-            ]
-        ];
-        return view('test_template', $data);
+        if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.kontrak')) {
+            return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.kontrak');
+        }
+        // Log EXPORT action
+        if (method_exists($this, 'logActivity')) {
+            $this->logActivity('EXPORT', 'kontrak', 0, 'Export Kontrak CSV', [
+                'module_name' => 'MARKETING',
+                'submenu_item' => 'Kontrak',
+                'business_impact' => 'LOW'
+            ]);
+        }
+        return view('marketing/export_kontrak');
     }
+
+    public function exportCustomer()
+    {
+        if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.customer')) {
+            return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.customer');
+        }
+        if (method_exists($this, 'logActivity')) {
+            $this->logActivity('EXPORT', 'customers', 0, 'Export Customer CSV', [
+                'module_name' => 'MARKETING',
+                'submenu_item' => 'Customer Management',
+                'business_impact' => 'LOW'
+            ]);
+        }
+        return view('marketing/export_customer');
+    }
+
+    // Test method for debugging template system
 
     // Legacy route support (unit-tersedia) jika masih dipakai
     public function unitTersedia()
@@ -70,6 +94,11 @@ class Marketing extends Controller
     // Proxy detail (optional) agar marketing bisa akses tanpa prefix inventory
     public function unitDetail($id)
     {
+        // Check permission for viewing unit details
+        if (!$this->hasPermission('marketing.unit_management.view')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied: You do not have permission to view unit details'])->setStatusCode(403);
+        }
+        
         try {
             $id = (int)$id;
             if ($id <= 0) return $this->response->setJSON(['success'=>false,'message'=>'ID tidak valid']);
@@ -213,24 +242,52 @@ class Marketing extends Controller
     // Placeholder views for Penawaran (Quotations), Booking, and SPK as requested
     public function penawaran()
     {
-        return view('marketing/penawaran');
+        // Load simple_rbac helper
+        helper('simple_rbac');
+        
+        return view('marketing/penawaran', [
+            'can_view_marketing' => can_view('marketing'),
+            'can_create_marketing' => can_create('marketing'),
+            'can_export_marketing' => can_export('marketing'),
+        ]);
     }
 
     public function booking()
     {
+        // Check permission for viewing booking
+        if (!$this->hasPermission('marketing.booking.view')) {
+            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view booking');
+        }
+        
         return view('marketing/booking');
     }
 
     public function spk()
     {
+        // Load simple_rbac helper
+        helper('simple_rbac');
+        
         return view('marketing/spk', [
-            'title' => 'Surat Perintah Kerja (SPK)'
+            'title' => 'Surat Perintah Kerja (SPK)',
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/marketing' => 'Marketing',
+                '/marketing/spk' => 'SPK'
+            ],
+            'can_view_marketing' => can_view('marketing'),
+            'can_create_marketing' => can_create('marketing'),
+            'can_export_marketing' => can_export('marketing'),
         ]);
     }
     public function di()
     {
         return view('marketing/di', [
-            'title' => 'Delivery Instructions (DI)'
+            'title' => 'Delivery Instructions (DI)',
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/marketing' => 'Marketing',
+                '/marketing/di' => 'Delivery Instructions'
+            ]
         ]);
     }
 
@@ -853,10 +910,319 @@ class Marketing extends Controller
                 }
             }
         }
+        
+        // Add stage_status data for print view
+        $stageStatus = $this->getSpkStageStatusData($id);
+        $row['stage_status'] = $stageStatus;
+        
+        // Process prepared units data for print view
+        $preparedUnitsDetail = $this->getPreparedUnitsDetail($id, $stageStatus);
+        $row['prepared_units_detail'] = $preparedUnitsDetail;
+        
         return view('marketing/print_spk', ['spk'=>$row, 'spesifikasi'=>$enriched, 'kontrak_spesifikasi'=>$kontrak_spec]);
     }
 
+    /**
+     * Get prepared units detail for print view
+     */
+    private function getPreparedUnitsDetail($spkId, $stageStatus)
+    {
+        $preparedList = [];
+        
+        if (isset($stageStatus['unit_stages'])) {
+            foreach ($stageStatus['unit_stages'] as $unitIndex => $unitStages) {
+                if (isset($unitStages['persiapan_unit']) && $unitStages['persiapan_unit']['completed']) {
+                    // Get unit details from persiapan_unit stage
+                    $unitData = $unitStages['persiapan_unit'] ?? [];
+                    $unitId = $unitData['unit_id'] ?? null;
+                    
+                    // Get unit details from inventory_unit with joins
+                    $unitDetails = null;
+                    $isInActiveDI = false;
+                    $activeDIInfo = null;
+                    
+                    if ($unitId) {
+                        $unitDetails = $this->db->table('inventory_unit iu')
+                            ->select('iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, tu.tipe as jenis_unit, tu.jenis as jenis_unit_type, k.kapasitas_unit as kapasitas_name, tm.tipe_mast as mast_name, jr.tipe_roda as roda_name, tb.tipe_ban as ban_name, v.jumlah_valve as valve_name, d.nama_departemen as departemen_name')
+                            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                            ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+                            ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                            ->join('tipe_mast tm', 'tm.id_mast = iu.model_mast_id', 'left')
+                            ->join('jenis_roda jr', 'jr.id_roda = iu.roda_id', 'left')
+                            ->join('tipe_ban tb', 'tb.id_ban = iu.ban_id', 'left')
+                            ->join('valve v', 'v.id_valve = iu.valve_id', 'left')
+                            ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+                            ->where('iu.id_inventory_unit', $unitId)
+                            ->get()
+                            ->getRowArray();
+                        
+                        // Check if unit is already in active DI (not SAMPAI_LOKASI or SELESAI)
+                        // Also check delivery_instruction_items as fallback
+                        $activeDI = $this->db->query("
+                            SELECT di.nomor_di, di.status_di, di.pelanggan
+                            FROM delivery_items di_items
+                            INNER JOIN delivery_instructions di ON di.id = di_items.di_id
+                            WHERE di_items.unit_id = ?
+                            AND di.status_di NOT IN ('SAMPAI_LOKASI', 'SELESAI', 'DIBATALKAN')
+                            AND di_items.item_type = 'UNIT'
+                            LIMIT 1
+                        ", [$unitId])->getRowArray();
+                        
+                        if (!$activeDI) {
+                            // Fallback check to delivery_instruction_items
+                            $activeDI = $this->db->query("
+                                SELECT di.nomor_di, di.status_di, di.pelanggan
+                                FROM delivery_instruction_items dii
+                                INNER JOIN delivery_instructions di ON di.id = dii.delivery_instruction_id
+                                WHERE dii.unit_id = ?
+                                AND di.status_di NOT IN ('SAMPAI_LOKASI', 'SELESAI', 'DIBATALKAN')
+                                AND dii.item_type = 'UNIT'
+                                LIMIT 1
+                            ", [$unitId])->getRowArray();
+                        }
+                        
+                        if ($activeDI) {
+                            $isInActiveDI = true;
+                            $activeDIInfo = $activeDI;
+                        }
+                    }
+                    
+                    // Get attachment details from inventory_attachment
+                    $attachmentDetails = null;
+                    if ($unitId) {
+                        $attachmentDetails = $this->db->table('inventory_attachment ia')
+                            ->select('ia.sn_attachment, ia.sn_baterai, ia.sn_charger, a.tipe as attachment_type')
+                            ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
+                            ->where('ia.id_inventory_unit', $unitId)
+                            ->get()
+                            ->getRowArray();
+                    }
+                    
+                    // Get battery and charger details from spk_unit_stages with full names
+                    $batteryDetails = null;
+                    $chargerDetails = null;
+                    $attachmentDetails = null;
+                    
+                    // Get battery and charger from persiapan_unit stage
+                    if (isset($unitStages['persiapan_unit'])) {
+                        $persiapanData = $unitStages['persiapan_unit'];
+                        $batteryId = $persiapanData['battery_inventory_attachment_id'] ?? null;
+                        $chargerId = $persiapanData['charger_inventory_attachment_id'] ?? null;
+                        
+                        if ($batteryId) {
+                            $batteryDetails = $this->db->table('inventory_attachment ia')
+                                ->select('ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+                                ->join('baterai b', 'b.id = ia.baterai_id', 'left')
+                                ->where('ia.id_inventory_attachment', $batteryId)
+                                ->get()
+                                ->getRowArray();
+                        }
+                        
+                        if ($chargerId) {
+                            $chargerDetails = $this->db->table('inventory_attachment ia')
+                                ->select('ia.sn_charger, c.merk_charger, c.tipe_charger')
+                                ->join('charger c', 'c.id_charger = ia.charger_id', 'left')
+                                ->where('ia.id_inventory_attachment', $chargerId)
+                                ->get()
+                                ->getRowArray();
+                        }
+                    }
+                    
+                    // Get attachment from fabrikasi stage
+                    if (isset($unitStages['fabrikasi'])) {
+                        $fabrikasiData = $unitStages['fabrikasi'];
+                        $attachmentId = $fabrikasiData['attachment_inventory_attachment_id'] ?? null;
+                        
+                        // Debug logging
+                        error_log("DEBUG: Fabrikasi data for unit $unitIndex: " . json_encode($fabrikasiData));
+                        error_log("DEBUG: Attachment ID: " . ($attachmentId ?? 'NULL'));
+                        
+                        if ($attachmentId) {
+                            $attachmentDetails = $this->db->table('inventory_attachment ia')
+                                ->select('ia.sn_attachment, a.merk, a.model, a.tipe')
+                                ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
+                                ->where('ia.id_inventory_attachment', $attachmentId)
+                                ->get()
+                                ->getRowArray();
+                            
+                            error_log("DEBUG: Attachment details: " . json_encode($attachmentDetails));
+                        }
+                    }
+                    
+                    // Combine notes from all stages
+                    $combinedNotes = [];
+                    $stageNames = [
+                        'persiapan_unit' => 'Persiapan Unit',
+                        'fabrikasi' => 'Fabrikasi', 
+                        'painting' => 'Painting',
+                        'pdi' => 'PDI'
+                    ];
+                    
+                    foreach ($stageNames as $stageKey => $stageName) {
+                        if (isset($unitStages[$stageKey]) && !empty($unitStages[$stageKey]['catatan'])) {
+                            $combinedNotes[] = $stageName . ': ' . $unitStages[$stageKey]['catatan'];
+                        }
+                    }
+                    
+                    // Format No Unit: [no_unit] (SN: [serial_number])
+                    $noUnitFormatted = '';
+                    if ($unitDetails['no_unit']) {
+                        $noUnitFormatted = $unitDetails['no_unit'];
+                        if ($unitDetails['serial_number']) {
+                            $noUnitFormatted .= ' (SN: ' . $unitDetails['serial_number'] . ')';
+                        }
+                    } else {
+                        $noUnitFormatted = 'Unit-' . $unitId;
+                    }
+                    
+                    // Format Jenis Unit: [jenis] - [merk] ([model])
+                    $jenisUnitFormatted = '';
+                    if ($unitDetails['jenis_unit_type']) {
+                        $jenisUnitFormatted = $unitDetails['jenis_unit_type'];
+                        if ($unitDetails['merk_unit'] && $unitDetails['model_unit']) {
+                            $jenisUnitFormatted .= ' - ' . $unitDetails['merk_unit'] . ' (' . $unitDetails['model_unit'] . ')';
+                        } elseif ($unitDetails['merk_unit']) {
+                            $jenisUnitFormatted .= ' - ' . $unitDetails['merk_unit'];
+                        }
+                    } else {
+                        $jenisUnitFormatted = 'REACH TRUCK';
+                    }
+                    
+                    // Format Charger: [merk] [tipe] (SN: [sn])
+                    $chargerFormatted = '';
+                    if ($chargerDetails && $chargerDetails['merk_charger'] && $chargerDetails['tipe_charger']) {
+                        $chargerFormatted = $chargerDetails['merk_charger'] . ' ' . $chargerDetails['tipe_charger'];
+                        if ($chargerDetails['sn_charger']) {
+                            $chargerFormatted .= ' (SN: ' . $chargerDetails['sn_charger'] . ')';
+                        }
+                    } else {
+                        $chargerFormatted = '-';
+                    }
+                    
+                    // Format Baterai: [merk] [tipe] [jenis] (SN: [sn])
+                    $bateraiFormatted = '';
+                    if ($batteryDetails && $batteryDetails['merk_baterai'] && $batteryDetails['tipe_baterai']) {
+                        $bateraiFormatted = $batteryDetails['merk_baterai'] . ' ' . $batteryDetails['tipe_baterai'];
+                        if ($batteryDetails['jenis_baterai']) {
+                            $bateraiFormatted .= ' ' . $batteryDetails['jenis_baterai'];
+                        }
+                        if ($batteryDetails['sn_baterai']) {
+                            $bateraiFormatted .= ' (SN: ' . $batteryDetails['sn_baterai'] . ')';
+                        }
+                    } else {
+                        $bateraiFormatted = '-';
+                    }
+                    
+                    // Format Attachment: [merk] - [model] [tipe] (SN: [sn])
+                    $attachmentFormatted = '';
+                    if ($attachmentDetails && $attachmentDetails['merk'] && $attachmentDetails['model']) {
+                        $attachmentFormatted = $attachmentDetails['merk'] . ' - ' . $attachmentDetails['model'];
+                        if ($attachmentDetails['tipe']) {
+                            $attachmentFormatted .= ' ' . $attachmentDetails['tipe'];
+                        }
+                        if ($attachmentDetails['sn_attachment']) {
+                            $attachmentFormatted .= ' (SN: ' . $attachmentDetails['sn_attachment'] . ')';
+                        }
+                    } else {
+                        $attachmentFormatted = 'ATT-' . $unitId;
+                    }
+                    
+                    $preparedList[] = [
+                        'unit_index' => $unitIndex,
+                        'unit_id' => $unitId,
+                        'no_unit' => $noUnitFormatted,
+                        'serial_number' => $unitDetails['serial_number'] ?? 'SN-' . $unitId,
+                        'jenis_unit' => $jenisUnitFormatted,
+                        'departemen_name' => $unitDetails['departemen_name'] ?? 'ELECTRIC',
+                        'kapasitas_name' => $unitDetails['kapasitas_name'] ?? '15 Ton',
+                        'mast_name' => $unitDetails['mast_name'] ?? 'Triplex (3-stage FFL) - ZSM450',
+                        'roda_name' => $unitDetails['roda_name'] ?? '3-Wheel',
+                        'ban_name' => $unitDetails['ban_name'] ?? 'Cushion (Ban Bantal)',
+                        'valve_name' => $unitDetails['valve_name'] ?? '3 Valve',
+                        'baterai_sn' => $bateraiFormatted,
+                        'charger_sn' => $chargerFormatted,
+                        'attachment_sn' => $attachmentFormatted,
+                        'aksesoris' => $this->formatAksesoris($unitData['aksesoris_tersedia'] ?? 'LAMPU UTAMA, ROTARY LAMP, SENSOR PARKING, HORN SPEAKER, APAR 1 KG, BEACON'),
+                        'combined_notes' => implode(' | ', $combinedNotes),
+                        'is_in_active_di' => $isInActiveDI,
+                        'active_di_info' => $activeDIInfo
+                    ];
+                }
+            }
+        }
+        
+        return $preparedList;
+    }
 
+    /**
+     * Format aksesoris to remove quotes and brackets
+     */
+    private function formatAksesoris($aksesoris)
+    {
+        if (is_string($aksesoris)) {
+            // If it's a JSON string, decode it first
+            $decoded = json_decode($aksesoris, true);
+            if (is_array($decoded)) {
+                return implode(', ', $decoded);
+            }
+            return $aksesoris;
+        } elseif (is_array($aksesoris)) {
+            return implode(', ', $aksesoris);
+        }
+        return $aksesoris;
+    }
+
+    /**
+     * Get SPK stage status data for internal use (returns array, not Response)
+     */
+    private function getSpkStageStatusData($spkId)
+    {
+        try {
+            $spk = $this->db->table('spk')->where('id', $spkId)->get()->getRowArray();
+            if (!$spk) {
+                return [];
+            }
+
+            $totalUnits = (int) $spk['jumlah_unit'];
+            $unitStages = [];
+
+            // Get stage data for each unit
+            for ($unitIndex = 1; $unitIndex <= $totalUnits; $unitIndex++) {
+                $stages = $this->db->table('spk_unit_stages sus')
+                    ->select('sus.stage_name, sus.tanggal_approve, sus.mekanik, sus.catatan, sus.unit_id, sus.area_id, sus.aksesoris_tersedia, sus.battery_inventory_attachment_id, sus.charger_inventory_attachment_id, sus.attachment_inventory_attachment_id')
+                    ->where('sus.spk_id', $spkId)
+                    ->where('sus.unit_index', $unitIndex)
+                    ->orderBy('sus.stage_name')
+                    ->get()
+                    ->getResultArray();
+
+                $stageStatus = [];
+                foreach ($stages as $stage) {
+                    $stageStatus[$stage['stage_name']] = [
+                        'completed' => !empty($stage['tanggal_approve']),
+                        'mekanik' => $stage['mekanik'] ?? null,
+                        'catatan' => $stage['catatan'] ?? null,
+                        'tanggal_approve' => $stage['tanggal_approve'] ?? null,
+                        'unit_id' => $stage['unit_id'] ?? null,
+                        'area_id' => $stage['area_id'] ?? null,
+                        'aksesoris_tersedia' => $stage['aksesoris_tersedia'] ?? null,
+                        'battery_inventory_attachment_id' => $stage['battery_inventory_attachment_id'] ?? null,
+                        'charger_inventory_attachment_id' => $stage['charger_inventory_attachment_id'] ?? null,
+                        'attachment_inventory_attachment_id' => $stage['attachment_inventory_attachment_id'] ?? null
+                    ];
+                }
+
+                $unitStages[$unitIndex] = $stageStatus;
+            }
+
+            return [
+                'unit_stages' => $unitStages
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'SPK Stage Status Error: ' . $e->getMessage());
+            return [];
+        }
+    }
 
     // --- SPK Minimal APIs for integrated workflow ---
     public function spkList()
@@ -1002,6 +1368,15 @@ class Marketing extends Controller
             }
             $enriched['prepared_units_detail'] = $preparedDetails;
         }
+        // Get actual prepared units from spk_unit_stages (new workflow)
+        $stageStatus = $this->getSpkStageStatusData($id);
+        $preparedUnitsFromStages = $this->getPreparedUnitsDetail($id, $stageStatus);
+        
+        // If we have prepared units from stages, use those instead
+        if (!empty($preparedUnitsFromStages)) {
+            $enriched['prepared_units_detail'] = $preparedUnitsFromStages;
+        }
+        
         // Get kontrak_spesifikasi data if available
         $kontrak_spec = null;
         if (!empty($row['kontrak_spesifikasi_id'])) {
@@ -1035,25 +1410,85 @@ class Marketing extends Controller
         ]);
     }
 
+    // Get units registered in a contract for ATTACHMENT SPK
+    public function kontrakUnits($kontrakId)
+    {
+        try {
+            // Get all units that have been delivered under this contract
+            $units = $this->db->table('inventory_unit iu')
+                ->select('iu.id_inventory_unit, iu.sn_unit, iu.tipe_unit_id, tu.tipe_jenis, mu.merk_unit, mu.model_unit, iu.status_unit_id, su.status_unit')
+                ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('status_unit su', 'su.id_status_unit = iu.status_unit_id', 'left')
+                ->where('iu.kontrak_id', $kontrakId)
+                ->whereIn('iu.status_unit_id', [6, 7, 8]) // DELIVERED, IN_USE, or MAINTENANCE
+                ->orderBy('iu.sn_unit', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'units' => $units,
+                'count' => count($units),
+                'csrf_hash' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    // Get customer locations for dropdown
+    public function customerLocations($customerId)
+    {
+        try {
+            $locations = $this->db->table('customer_locations')
+                ->where('customer_id', $customerId)
+                ->orderBy('location_name', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $locations,
+                'count' => count($locations),
+                'csrf_hash' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
     // Provide kontrak options (Pending) for searchable dropdown
     public function kontrakOptions()
     {
         $q = trim($this->request->getGet('q') ?? '');
         $status = trim($this->request->getGet('status') ?? 'Pending');
-        $builder = $this->kontrakModel
-            ->select('kontrak.id, kontrak.no_kontrak, kontrak.no_po_marketing, kontrak.pelanggan, kontrak.lokasi')
-            ->join('kontrak_spesifikasi ks', 'ks.kontrak_id = kontrak.id', 'inner')
-            ->whereIn('kontrak.status', ['Aktif', 'Pending'])
-            ->groupBy('kontrak.id, kontrak.no_kontrak, kontrak.no_po_marketing, kontrak.pelanggan, kontrak.lokasi');
+        
+        // Use database query builder with proper JOINs
+        $builder = $this->db->table('kontrak k');
+        $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
+        $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+        $builder->join('kontrak_spesifikasi ks', 'ks.kontrak_id = k.id', 'inner');
+        $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name as pelanggan, cl.location_name as lokasi');
+        $builder->whereIn('k.status', ['Aktif', 'Pending']);
+        $builder->groupBy('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name, cl.location_name');
         
         if ($q !== '') {
             $builder->groupStart()
-                ->like('kontrak.no_kontrak', $q)
-                ->orLike('kontrak.no_po_marketing', $q)
-                ->orLike('kontrak.pelanggan', $q)
+                ->like('k.no_kontrak', $q)
+                ->orLike('k.no_po_marketing', $q)
+                ->orLike('c.customer_name', $q)
             ->groupEnd();
         }
-        $rows = $builder->orderBy('kontrak.dibuat_pada', 'DESC')->limit(20)->get()->getResultArray();
+        $rows = $builder->orderBy('k.dibuat_pada', 'DESC')->limit(20)->get()->getResultArray();
         
         // map to simple text for display if needed
         $options = array_map(function($r){
@@ -1070,10 +1505,99 @@ class Marketing extends Controller
         return $this->response->setJSON(['data'=>$options,'csrf_hash'=>csrf_hash()]);
     }
 
+    /**
+     * Get active contracts for SPK creation
+     */
+    public function getActiveContracts()
+    {
+        try {
+            // Get contracts with specifications - using safe column names
+            $builder = $this->db->table('kontrak k');
+            $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
+            $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+            $builder->join('kontrak_spesifikasi ks', 'ks.kontrak_id = k.id', 'inner');
+            
+            // Use safe column selection - only select columns that exist
+            $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name as pelanggan, cl.location_name as lokasi');
+            
+            $builder->whereIn('k.status', ['Aktif', 'Pending']);
+            $builder->groupBy('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name, cl.location_name');
+            $rows = $builder->orderBy('k.dibuat_pada', 'DESC')->get()->getResultArray();
+            
+            $contracts = array_map(function($r){
+                return [
+                    'id' => (int)$r['id'],
+                    'no_kontrak' => $r['no_kontrak'],
+                    'no_po_marketing' => $r['no_po_marketing'],
+                    'pelanggan' => $r['pelanggan'],
+                    'lokasi' => $r['lokasi'],
+                    'pic' => '', // Will be filled separately if needed
+                    'kontak' => '' // Will be filled separately if needed
+                ];
+            }, $rows);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contracts
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get specific contract by ID for SPK creation
+     */
+    public function getKontrak($id)
+    {
+        try {
+            $builder = $this->db->table('kontrak k');
+            $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
+            $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+            
+            // Use safe column selection - only select columns that exist
+            $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name as pelanggan, cl.location_name as lokasi');
+            $builder->where('k.id', $id);
+            $row = $builder->get()->getRowArray();
+            
+            if (!$row) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Contract not found'
+                ]);
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'id' => (int)$row['id'],
+                    'no_kontrak' => $row['no_kontrak'],
+                    'no_po_marketing' => $row['no_po_marketing'],
+                    'pelanggan' => $row['pelanggan'],
+                    'lokasi' => $row['lokasi'],
+                    'pic' => '', // Will be filled separately if needed
+                    'kontak' => '' // Will be filled separately if needed
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading contract: ' . $e->getMessage()
+            ]);
+        }
+    }
+
     // Monitoring: Kontrak → SPK status (simple aggregation)
     public function spkMonitoring()
     {
-        $sql = "SELECT k.id, k.no_kontrak, k.no_po_marketing, k.pelanggan, k.lokasi,
+        $sql = "SELECT k.id, k.no_kontrak, k.no_po_marketing, 
+                       c.customer_name as pelanggan, 
+                       cl.location_name as lokasi,
                    COUNT(s.id) AS total_spk,
                    SUM(CASE WHEN s.status = 'SUBMITTED' THEN 1 ELSE 0 END) AS submitted,
                    SUM(CASE WHEN s.status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress,
@@ -1083,8 +1607,10 @@ class Marketing extends Controller
                    SUM(CASE WHEN s.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
                    MAX(s.diperbarui_pada) AS last_update
             FROM kontrak k
+            LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+            LEFT JOIN customers c ON cl.customer_id = c.id
             LEFT JOIN spk s ON (s.po_kontrak_nomor = k.no_kontrak OR s.po_kontrak_nomor = k.no_po_marketing)
-            GROUP BY k.id
+            GROUP BY k.id, k.no_kontrak, k.no_po_marketing, c.customer_name, cl.location_name
             ORDER BY k.id DESC
             LIMIT 100";
         $rows = $this->db->query($sql)->getResultArray();
@@ -1266,6 +1792,11 @@ class Marketing extends Controller
                     throw new \Exception('Kontrak tidak ditemukan.');
                 }
 
+                // Get jenis_spk from form input, default to 'UNIT' if not provided
+                $jenis = strtoupper(trim((string)$this->request->getPost('jenis_spk') ?: 'UNIT'));
+                $allowedJenis = ['UNIT','ATTACHMENT'];
+                if (!in_array($jenis, $allowedJenis, true)) { $jenis = 'UNIT'; }
+
                 // Build specification array from kontrak_spesifikasi
                 $spec = [
                     'departemen_id' => $spesifikasi['departemen_id'],
@@ -1284,11 +1815,69 @@ class Marketing extends Controller
                     'valve_id' => $spesifikasi['valve_id'],
                     'aksesoris' => []
                 ];
-
-                // Get jenis_spk from form input, default to 'UNIT' if not provided
-                $jenis = strtoupper(trim((string)$this->request->getPost('jenis_spk') ?: 'UNIT'));
-                $allowedJenis = ['UNIT','ATTACHMENT'];
-                if (!in_array($jenis, $allowedJenis, true)) { $jenis = 'UNIT'; }
+                
+                // For ATTACHMENT SPK, add target unit info to spec
+                if ($jenis === 'ATTACHMENT') {
+                    $targetUnitId = $this->request->getPost('target_unit_id');
+                    if (!$targetUnitId) {
+                        throw new \Exception('Unit tujuan wajib dipilih untuk SPK ATTACHMENT');
+                    }
+                    
+                    // Get target unit details - try different approaches
+                    try {
+                        // First try: direct query to inventory_unit
+                        $targetUnitQuery = $this->db->table('inventory_unit')
+                            ->where('id_inventory_unit', $targetUnitId)
+                            ->get();
+                        
+                        if (!$targetUnitQuery) {
+                            throw new \Exception('Gagal mengambil data unit tujuan - query failed');
+                        }
+                        
+                        $targetUnit = $targetUnitQuery->getRowArray();
+                        
+                        if (!$targetUnit) {
+                            // Try alternative: check if unit exists in different table
+                            $altQuery = $this->db->table('units')
+                                ->where('id', $targetUnitId)
+                                ->get();
+                            
+                            if ($altQuery) {
+                                $altUnit = $altQuery->getRowArray();
+                                if ($altUnit) {
+                                    // Map alternative unit data
+                                    $targetUnit = [
+                                        'id_inventory_unit' => $altUnit['id'],
+                                        'sn_unit' => $altUnit['serial_number'] ?? $altUnit['sn_unit'] ?? 'N/A',
+                                        'tipe_jenis' => $altUnit['jenis_unit'] ?? $altUnit['tipe_jenis'] ?? 'N/A',
+                                        'merk_unit' => $altUnit['merk'] ?? $altUnit['merk_unit'] ?? 'N/A',
+                                        'model_unit' => $altUnit['model'] ?? $altUnit['model_unit'] ?? 'N/A'
+                                    ];
+                                } else {
+                                    throw new \Exception('Unit tujuan tidak ditemukan di database');
+                                }
+                            } else {
+                                throw new \Exception('Unit tujuan tidak ditemukan');
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        throw new \Exception('Error: ' . $e->getMessage());
+                    }
+                    
+                    $spec['target_unit_id'] = $targetUnitId;
+                    $spec['target_unit_sn'] = $targetUnit['sn_unit'] ?? $targetUnit['serial_number'] ?? 'N/A';
+                    $spec['target_unit_info'] = [
+                        'tipe' => $targetUnit['tipe_jenis'] ?? $targetUnit['jenis_unit'] ?? 'N/A',
+                        'merk' => $targetUnit['merk_unit'] ?? $targetUnit['merk'] ?? 'N/A',
+                        'model' => $targetUnit['model_unit'] ?? $targetUnit['model'] ?? 'N/A'
+                    ];
+                    $spec['replacement_reason'] = $this->request->getPost('replacement_reason') ?: 'Penggantian attachment';
+                    
+                    log_message('info', 'Marketing::spkCreate - ATTACHMENT SPK target unit: ' . json_encode($spec));
+                    
+                    // Force jumlah_unit to 1 for ATTACHMENT
+                    $jumlahUnit = 1;
+                }
 
                 $payload = [
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
@@ -1414,7 +2003,12 @@ class Marketing extends Controller
             log_message('info', 'Marketing::spkCreate - Payload: ' . json_encode($payload));
             
             // Check if SPK number already exists before insert
-            $existingSpk = $this->db->table('spk')->where('nomor_spk', $payload['nomor_spk'])->get()->getRow();
+            $existingSpkQuery = $this->db->table('spk')->where('nomor_spk', $payload['nomor_spk'])->get();
+            if (!$existingSpkQuery) {
+                throw new \Exception('Gagal mengecek nomor SPK yang sudah ada');
+            }
+            
+            $existingSpk = $existingSpkQuery->getRow();
             if ($existingSpk) {
                 log_message('error', 'Marketing::spkCreate - SPK number already exists: ' . $payload['nomor_spk'] . ' with ID: ' . $existingSpk->id);
                 $this->db->transRollback();
@@ -1587,29 +2181,31 @@ class Marketing extends Controller
     private function sendSpkNotification($nomorSpk, $spkData = [])
     {
         try {
-            // Use new rule-based notification system
-            $notificationModel = new NotificationModel();
+            // Load notification helper
+            helper('notification');
             
-            // Get additional SPK data if available
-            $eventData = array_merge([
-                'nomor_spk' => $nomorSpk,  // Match template variable
-                'spk_number' => $nomorSpk, // Alternative variable name
-                'pelanggan' => $spkData['pelanggan'] ?? 'N/A',  // Match template
-                'client_name' => $spkData['pelanggan'] ?? 'N/A', // Alternative
+            // Prepare event data for notification
+            $eventData = [
+                'nomor_spk' => $nomorSpk,
+                'pelanggan' => $spkData['pelanggan'] ?? 'N/A',
                 'departemen' => $spkData['departemen'] ?? 'N/A',
                 'lokasi' => $spkData['lokasi'] ?? 'N/A',
-                'spk_id' => $spkData['id'] ?? null,
-                'id' => $spkData['id'] ?? null, // Alternative
-                'created_by' => session('user_id'),
-                'timestamp' => date('Y-m-d H:i:s')
-            ], $spkData);
+                'id' => $spkData['id'] ?? null
+            ];
             
-            // Trigger rule-based notification
-            $result = $notificationModel->sendByRule('spk_created', $eventData);
+            // Debug logging
+            log_message('info', "SPK Notification Debug - nomorSpk: {$nomorSpk}");
+            log_message('info', "SPK Notification Debug - spkData: " . json_encode($spkData));
+            log_message('info', "SPK Notification Debug - eventData: " . json_encode($eventData));
             
-            // Log the result for debugging
-            if (!empty($result)) {
-                log_message('info', 'SPK Notification sent: ' . json_encode($result));
+            // Send notification using helper function
+            $result = notify_spk_created($eventData);
+            
+            // Log the result
+            if ($result && isset($result['notifications_sent'])) {
+                log_message('info', "SPK Notification sent: {$result['notifications_sent']} notifications for SPK {$nomorSpk}");
+            } else {
+                log_message('warning', "SPK Notification failed or returned no result for SPK {$nomorSpk}");
             }
             
         } catch (\Throwable $e) {
@@ -1812,6 +2408,154 @@ class Marketing extends Controller
             ->limit(200);
         $rows = $builder->get()->getResultArray();
         return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+    }
+
+    /**
+     * Update SPK data (full update)
+     */
+    public function spkUpdate($id)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
+        }
+
+        $id = (int) $id;
+        
+        // Debug: Log all received data
+        log_message('debug', 'SPK Update - Raw input: ' . json_encode($this->request->getRawInput()));
+        log_message('debug', 'SPK Update - POST data: ' . json_encode($this->request->getPost()));
+        log_message('debug', 'SPK Update - PUT data: ' . json_encode($this->request->getVar()));
+        
+        // Try multiple ways to get data (PUT method compatibility)
+        $data = [
+            'jenis_spk' => $this->request->getPost('jenis_spk') ?: $this->request->getVar('jenis_spk'),
+            'po_kontrak_nomor' => $this->request->getPost('po_kontrak_nomor') ?: $this->request->getVar('po_kontrak_nomor'),
+            'pelanggan' => $this->request->getPost('pelanggan') ?: $this->request->getVar('pelanggan'),
+            'pic' => $this->request->getPost('pic') ?: $this->request->getVar('pic'),
+            'kontak' => $this->request->getPost('kontak') ?: $this->request->getVar('kontak'),
+            'lokasi' => $this->request->getPost('lokasi') ?: $this->request->getVar('lokasi'),
+            'delivery_plan' => $this->request->getPost('delivery_plan') ?: $this->request->getVar('delivery_plan'),
+            'status' => $this->request->getPost('status') ?: $this->request->getVar('status'),
+            'catatan' => $this->request->getPost('catatan') ?: $this->request->getVar('catatan'),
+            'diperbarui_pada' => date('Y-m-d H:i:s')
+        ];
+
+        // Debug: Log processed data
+        log_message('debug', 'SPK Update - Processed data: ' . json_encode($data));
+
+        // Validate required fields
+        if (empty($data['jenis_spk']) || empty($data['po_kontrak_nomor']) || empty($data['pelanggan'])) {
+            log_message('error', 'SPK Update - Validation failed. Data: ' . json_encode($data));
+            return $this->response->setJSON(['success'=>false,'message'=>'Jenis SPK, PO Kontrak, dan Pelanggan wajib diisi. Data received: ' . json_encode($data)]);
+        }
+
+        // Validate status
+        $allowedStatuses = ['DRAFT','SUBMITTED','IN_PROGRESS','READY','COMPLETED','DELIVERED','CANCELLED'];
+        if (!in_array($data['status'], $allowedStatuses, true)) {
+            return $this->response->setJSON(['success'=>false,'message'=>'Status tidak valid']);
+        }
+
+        // Get current SPK data for rollback validation
+        $currentSpk = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
+        if (!$currentSpk) {
+            return $this->response->setJSON(['success'=>false,'message'=>'SPK tidak ditemukan']);
+        }
+
+        $oldStatus = $currentSpk['status'];
+        $newStatus = $data['status'];
+
+        // Business logic for status changes
+        if ($oldStatus !== $newStatus) {
+            // Log status change
+            $this->logStatusChange($id, $oldStatus, $newStatus, 'SPK updated via Marketing');
+            
+            // Handle rollback from READY to IN_PROGRESS
+            if ($oldStatus === 'READY' && $newStatus === 'IN_PROGRESS') {
+                // This is a rollback - reset approval stages
+                $this->handleSpkRollback($id);
+            }
+        }
+
+        // Update SPK
+        $result = $this->db->table('spk')->where('id', $id)->update($data);
+        
+        if ($result) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'SPK berhasil diperbarui',
+                'data' => ['id' => $id, 'status' => $newStatus]
+            ]);
+        } else {
+            return $this->response->setJSON(['success'=>false,'message'=>'Gagal memperbarui SPK']);
+        }
+    }
+
+    /**
+     * Handle SPK rollback from READY to IN_PROGRESS
+     * IMPORTANT: Marketing rollback should NOT reset approval stages
+     * Service should handle granular rollback of specific stages/units
+     */
+    private function handleSpkRollback($spkId)
+    {
+        try {
+            // Marketing rollback should ONLY change status, NOT reset approval stages
+            // This allows Service to do granular rollback of specific stages/units
+            
+            // Log rollback action
+            $this->db->table('spk_rollback_log')->insert([
+                'spk_id' => $spkId,
+                'stage' => 'status_rollback',
+                'action' => 'MARKETING_ROLLBACK',
+                'old_data' => json_encode(['status' => 'READY']),
+                'new_data' => json_encode(['status' => 'IN_PROGRESS']),
+                'reason' => 'Marketing rollback from READY to IN_PROGRESS - Status only, approval stages preserved',
+                'rolled_back_by' => session('user_id') ?: 1
+            ]);
+
+            // IMPORTANT: Clear prepared_units from spesifikasi JSON to avoid confusion
+            // This prevents "Unit 2 dari 1" issue when Service tries to prepare units again
+            $spk = $this->db->table('spk')->where('id', $spkId)->get()->getRowArray();
+            if ($spk && !empty($spk['spesifikasi'])) {
+                $spec = json_decode($spk['spesifikasi'], true);
+                if (is_array($spec)) {
+                    // Clear prepared_units to start fresh
+                    unset($spec['prepared_units']);
+                    unset($spec['fabrikasi_last']);
+                    
+                    // Update spesifikasi
+                    $this->db->table('spk')->where('id', $spkId)->update([
+                        'spesifikasi' => json_encode($spec),
+                        'diperbarui_pada' => date('Y-m-d H:i:s')
+                    ]);
+                    
+                    log_message('info', "SPK $spkId: Cleared prepared_units and fabrikasi_last from spesifikasi after Marketing rollback");
+                }
+            }
+
+            log_message('info', "Marketing rollback for SPK $spkId: Status changed to IN_PROGRESS, approval stages preserved, spesifikasi cleared");
+
+        } catch (\Exception $e) {
+            log_message('error', 'SPK rollback failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Log status change
+     */
+    private function logStatusChange($spkId, $fromStatus, $toStatus, $note = null)
+    {
+        try {
+            $this->db->table('spk_status_history')->insert([
+                'spk_id' => (int)$spkId,
+                'status_from' => $fromStatus,
+                'status_to' => $toStatus,
+                'changed_by' => session('user_id') ?: 1,
+                'note' => $note,
+                'changed_at' => date('Y-m-d H:i:s')
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Status change log failed: ' . $e->getMessage());
+        }
     }
 
     public function spkUpdateStatus($id)
@@ -2023,7 +2767,7 @@ class Marketing extends Controller
             'po_kontrak_nomor' => $poNo,
             'pelanggan' => $pelanggan,
             'lokasi' => $lokasi,
-            'status' => 'SUBMITTED',  // Use English status to match current database enum
+            'status_di' => 'DIAJUKAN',  // Use status_di field to match database column
             'jenis_perintah_kerja_id' => $jenisPerintahKerjaId,
             'tujuan_perintah_kerja_id' => $tujuanPerintahKerjaId,
             'status_eksekusi_workflow_id' => 1, // Default status eksekusi (PENDING atau sesuai workflow)
@@ -2179,52 +2923,92 @@ class Marketing extends Controller
                     }
                 }
                 
-                // Add attachments (battery, charger, attachment) that belong to selected units
-                // Query directly from inventory_attachment based on selected unit IDs
-                if (!empty($unitIds)) {
+                // Add attachments (battery, charger, attachment) from SPK approved data
+                // USE spk_unit_stages as single source of truth (approved by Service team)
+                if (!empty($unitIds) && !empty($spkId)) {
                     foreach ($unitIds as $unitId) {
-                        // Get all attachments (battery, charger, attachment) for this specific unit
-                        $unitAttachments = $this->db->table('inventory_attachment')
-                            ->select('id_inventory_attachment, tipe_item, attachment_id, baterai_id, charger_id, id_inventory_unit')
-                            ->where('id_inventory_unit', (int)$unitId)
-                            ->get()->getResultArray();
+                        // First, get unit_index from persiapan_unit stage
+                        $persiapanStage = $this->db->table('spk_unit_stages')
+                            ->select('unit_index, battery_inventory_attachment_id, charger_inventory_attachment_id')
+                            ->where('spk_id', $spkId)
+                            ->where('unit_id', $unitId)
+                            ->where('stage_name', 'persiapan_unit')
+                            ->where('tanggal_approve IS NOT NULL')
+                            ->get()->getRowArray();
                         
-                        foreach ($unitAttachments as $attachment) {
-                            $targetId = null;
-                            $keterangan = '';
+                        if (!$persiapanStage) continue; // Skip if unit not found in SPK
+                        
+                        $unitIndex = $persiapanStage['unit_index'];
+                        
+                        // Get attachment from fabrikasi stage using unit_index (because unit_id might be NULL)
+                        $fabrikasiStage = $this->db->table('spk_unit_stages')
+                            ->select('attachment_inventory_attachment_id')
+                            ->where('spk_id', $spkId)
+                            ->where('unit_index', $unitIndex)
+                            ->where('stage_name', 'fabrikasi')
+                            ->where('tanggal_approve IS NOT NULL')
+                            ->get()->getRowArray();
+                        
+                        // Insert battery if approved
+                        if (!empty($persiapanStage['battery_inventory_attachment_id'])) {
+                            $batteryId = $persiapanStage['battery_inventory_attachment_id'];
+                            // Get actual battery_id from inventory_attachment
+                            $invBattery = $this->db->table('inventory_attachment')
+                                ->select('baterai_id')
+                                ->where('id_inventory_attachment', $batteryId)
+                                ->get()->getRowArray();
                             
-                            // Determine which ID to use based on tipe_item
-                            switch ($attachment['tipe_item']) {
-                                case 'attachment':
-                                    $targetId = $attachment['attachment_id'];
-                                    $keterangan = 'Attachment for Unit ' . $unitId;
-                                    break;
-                                case 'battery':
-                                    $targetId = $attachment['baterai_id'];
-                                    $keterangan = 'Battery for Unit ' . $unitId;
-                                    break;
-                                case 'charger':
-                                    $targetId = $attachment['charger_id'];
-                                    $keterangan = 'Charger for Unit ' . $unitId;
-                                    break;
-                            }
-                            
-                            if ($targetId) {
-                                $attachmentPayload = [
+                            if ($invBattery && $invBattery['baterai_id']) {
+                                $itemResult = $this->diItemModel->insert([
                                     'di_id' => $diId,
                                     'item_type' => 'ATTACHMENT',
-                                    'attachment_id' => $targetId,
-                                    'parent_unit_id' => $unitId, // Link attachment to its unit
-                                    'keterangan' => $keterangan
-                                ];
-                                
-                                $itemResult = $this->diItemModel->insert($attachmentPayload);
-                                if (!$itemResult) {
-                                    $errors = $this->diItemModel->errors();
-                                    throw new \Exception("Failed to insert {$attachment['tipe_item']} for unit $unitId: " . implode(', ', $errors));
-                                }
-                                
-                                error_log("DI Create - Added {$attachment['tipe_item']} (ID: $targetId) for unit $unitId");
+                                    'attachment_id' => $invBattery['baterai_id'],
+                                    'parent_unit_id' => $unitId,
+                                    'keterangan' => 'Battery (Approved in SPK Persiapan Unit)'
+                                ]);
+                                error_log("DI Create - Added approved battery (ID: {$invBattery['baterai_id']}) for unit $unitId");
+                            }
+                        }
+                        
+                        // Insert charger if approved
+                        if (!empty($persiapanStage['charger_inventory_attachment_id'])) {
+                            $chargerId = $persiapanStage['charger_inventory_attachment_id'];
+                            // Get actual charger_id from inventory_attachment
+                            $invCharger = $this->db->table('inventory_attachment')
+                                ->select('charger_id')
+                                ->where('id_inventory_attachment', $chargerId)
+                                ->get()->getRowArray();
+                            
+                            if ($invCharger && $invCharger['charger_id']) {
+                                $itemResult = $this->diItemModel->insert([
+                                    'di_id' => $diId,
+                                    'item_type' => 'ATTACHMENT',
+                                    'attachment_id' => $invCharger['charger_id'],
+                                    'parent_unit_id' => $unitId,
+                                    'keterangan' => 'Charger (Approved in SPK Persiapan Unit)'
+                                ]);
+                                error_log("DI Create - Added approved charger (ID: {$invCharger['charger_id']}) for unit $unitId");
+                            }
+                        }
+                        
+                        // Insert attachment if approved
+                        if (!empty($fabrikasiStage['attachment_inventory_attachment_id'])) {
+                            $attachmentId = $fabrikasiStage['attachment_inventory_attachment_id'];
+                            // Get actual attachment_id from inventory_attachment
+                            $invAttachment = $this->db->table('inventory_attachment')
+                                ->select('attachment_id')
+                                ->where('id_inventory_attachment', $attachmentId)
+                                ->get()->getRowArray();
+                            
+                            if ($invAttachment && $invAttachment['attachment_id']) {
+                                $itemResult = $this->diItemModel->insert([
+                                    'di_id' => $diId,
+                                    'item_type' => 'ATTACHMENT',
+                                    'attachment_id' => $invAttachment['attachment_id'],
+                                    'parent_unit_id' => $unitId,
+                                    'keterangan' => 'Attachment (Approved in SPK Fabrikasi)'
+                                ]);
+                                error_log("DI Create - Added approved attachment (ID: {$invAttachment['attachment_id']}) for unit $unitId");
                             }
                         }
                     }
@@ -2392,6 +3176,14 @@ class Marketing extends Controller
             // Transaction successful, commit it
             $this->db->transCommit();
             
+            // Update SPK status to COMPLETED when DI is created
+            if ($spkId > 0) {
+                $this->db->table('spk')
+                    ->where('id', $spkId)
+                    ->update(['status' => 'COMPLETED', 'diperbarui_pada' => date('Y-m-d H:i:s')]);
+                error_log("SPK {$spkId}: Status updated to COMPLETED after DI creation");
+            }
+            
             // Log DI creation using trait
             $this->logCreate('delivery_instruction', $diId, [
                 'di_id' => $diId,
@@ -2427,35 +3219,6 @@ class Marketing extends Controller
         return view('marketing/kontrak', $data);
     }
 
-    // Get active contracts that have specifications for SPK creation
-    public function getActiveContracts()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
-        }
-
-        try {
-            $kontraks = $this->kontrakModel
-                ->select('kontrak.id, kontrak.no_kontrak, kontrak.pelanggan')
-                ->join('kontrak_spesifikasi ks', 'ks.kontrak_id = kontrak.id', 'inner')
-                ->whereIn('kontrak.status', ['Aktif', 'Pending'])
-                ->groupBy('kontrak.id, kontrak.no_kontrak, kontrak.pelanggan')
-                ->orderBy('kontrak.dibuat_pada', 'DESC')
-                ->findAll();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $kontraks,
-                'csrf_hash' => csrf_hash()
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal mengambil data kontrak: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ]);
-        }
-    }
 
     public function getDataTable()
     {
@@ -2469,9 +3232,14 @@ class Marketing extends Controller
             $length = (int)($this->request->getPost('length') ?? 10);
             $searchValue = trim($this->request->getPost('search')['value'] ?? '');
 
-            // Base query
+            // Base query with JOIN to customer_locations and customers
             $builder = $this->db->table('kontrak k');
+            $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
+            $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+            
             $countBuilder = $this->db->table('kontrak k');
+            $countBuilder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
+            $countBuilder->join('customers c', 'cl.customer_id = c.id', 'left');
 
             // Status filter functionality
             $statusFilter = trim($this->request->getPost('statusFilter') ?? 'all');
@@ -2492,19 +3260,21 @@ class Marketing extends Controller
                 }
             }
 
-            // Search functionality
+            // Search functionality with new database structure
             if ($searchValue !== '') {
                 $builder->groupStart()
                     ->like('k.no_kontrak', $searchValue)
-                    ->orLike('k.pelanggan', $searchValue)
-                    ->orLike('k.lokasi', $searchValue)
+                    ->orLike('c.customer_name', $searchValue) // Search customer name
+                    ->orLike('cl.location_name', $searchValue) // Search location name
+                    ->orLike('cl.address', $searchValue) // Search address
                     ->orLike('k.no_po_marketing', $searchValue)
                 ->groupEnd();
 
                 $countBuilder->groupStart()
                     ->like('k.no_kontrak', $searchValue)
-                    ->orLike('k.pelanggan', $searchValue)
-                    ->orLike('k.lokasi', $searchValue)
+                    ->orLike('c.customer_name', $searchValue)
+                    ->orLike('cl.location_name', $searchValue)
+                    ->orLike('cl.address', $searchValue)
                     ->orLike('k.no_po_marketing', $searchValue)
                 ->groupEnd();
             }
@@ -2513,8 +3283,23 @@ class Marketing extends Controller
             $recordsTotal = $this->db->table('kontrak')->countAllResults();
             $recordsFiltered = $countBuilder->countAllResults();
 
-            // Get total_units from inventory_unit table based on kontrak_id
-            $builder->select('k.*, 
+            // Select with proper field mapping from new database structure
+            $builder->select('k.id, 
+                            k.no_kontrak, 
+                            k.no_po_marketing, 
+                            k.jenis_sewa,
+                            k.tanggal_mulai, 
+                            k.tanggal_berakhir, 
+                            k.status,
+                            k.total_units,
+                            k.nilai_total,
+                            k.dibuat_pada,
+                            k.diperbarui_pada,
+                            c.customer_name as pelanggan,
+                            cl.location_name as lokasi,
+                            cl.contact_person as pic,
+                            cl.phone as kontak,
+                            cl.address as alamat,
                             (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as calculated_total_units,
                             COALESCE(k.nilai_total, 
                                     (SELECT SUM(jumlah_dibutuhkan * harga_per_unit_bulanan) FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id), 
@@ -2532,7 +3317,21 @@ class Marketing extends Controller
                 if ($totalCheck > 0) {
                     log_message('debug', 'Marketing::getDataTable primary query returned empty, running fallback simple select');
                     $kontrakData = $this->db->table('kontrak k')
-                        ->select('k.*, 
+                        ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+                        ->join('customers c', 'cl.customer_id = c.id', 'left')
+                        ->select('k.id, 
+                                k.no_kontrak, 
+                                k.no_po_marketing, 
+                                k.jenis_sewa,
+                                k.tanggal_mulai, 
+                                k.tanggal_berakhir, 
+                                k.status,
+                                k.total_units,
+                                k.nilai_total,
+                                c.customer_name as pelanggan,
+                                cl.location_name as lokasi,
+                                cl.contact_person as pic,
+                                cl.phone as kontak,
                                 (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as calculated_total_units,
                                 COALESCE(k.nilai_total, 
                                         (SELECT SUM(jumlah_dibutuhkan * harga_per_unit_bulanan) FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id), 
@@ -2570,6 +3369,10 @@ class Marketing extends Controller
 
             // Calculate statistics
             $stats = $this->getKontrakStats();
+            
+            // Debug logging
+            log_message('debug', 'Marketing::getDataTable - Data count: ' . count($data));
+            log_message('debug', 'Marketing::getDataTable - Record counts: total=' . $recordsTotal . ', filtered=' . $recordsFiltered);
 
             return $this->response->setJSON([
                 'draw' => $draw,
@@ -2695,13 +3498,14 @@ class Marketing extends Controller
         try {
             $db = \Config\Database::connect();
             
-            // Get all kontrak data with joined information
+            // Get all kontrak data with joined information from new database structure
             $query = "
                 SELECT 
                     k.id,
                     k.no_kontrak,
                     k.no_po_marketing,
-                    k.pelanggan,
+                    c.customer_name as pelanggan,
+                    cl.location_name as lokasi,
                     k.tanggal_mulai,
                     k.tanggal_berakhir as tanggal_selesai,
                     k.status,
@@ -2710,6 +3514,8 @@ class Marketing extends Controller
                     k.dibuat_pada as created_at,
                     k.diperbarui_pada as updated_at
                 FROM kontrak k
+                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+                LEFT JOIN customers c ON cl.customer_id = c.id
                 ORDER BY k.id DESC
             ";
             
@@ -2774,76 +3580,25 @@ class Marketing extends Controller
         }
     }
 
-    public function storeKontrak()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
-        }
+    // Method storeKontrak removed - using Kontrak::store instead for consistency
 
-        try {
-            // Use KontrakModel for proper validation
-            $data = [
-                'no_kontrak' => trim((string)$this->request->getPost('contract_number')),
-                'no_po_marketing' => $this->request->getPost('po_number'),
-                'pelanggan' => $this->request->getPost('client_name'),
-                'lokasi' => $this->request->getPost('project_name'),
-                'tanggal_mulai' => $this->request->getPost('start_date'),
-                'tanggal_berakhir' => $this->request->getPost('end_date'),
-                'status' => $this->request->getPost('status'),
-                'dibuat_oleh' => 1, // TODO: Get from session
-            ];
-
-            // Validate using KontrakModel
-            if (!$this->kontrakModel->save($data)) {
-                $errors = $this->kontrakModel->errors();
-                $existingId = null;
-
-                // Check if it's a duplicate contract number
-                if (!empty($errors['no_kontrak']) && strpos($errors['no_kontrak'], 'sudah digunakan') !== false) {
-                    $contractNumber = trim((string)$this->request->getPost('contract_number'));
-                    if ($contractNumber !== '') {
-                        $existing = $this->kontrakModel->where('no_kontrak', $contractNumber)->first();
-                        if ($existing) {
-                            $existingId = is_array($existing) ? ($existing['id'] ?? null) : ($existing->id ?? null);
-                        }
-                    }
-                }
-
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Validasi gagal.',
-                    'errors' => $errors,
-                    'duplicate' => $existingId ? true : false,
-                    'existing_id' => $existingId,
-                    'csrf_hash' => csrf_hash()
-                ]);
-            }
-
-            $newId = $this->kontrakModel->getInsertID();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Kontrak berhasil ditambahkan',
-                'data' => ['id' => $newId],
-                'csrf_hash' => csrf_hash()
-            ]);
-
-        } catch (\Throwable $e) {
-            return $this->response->setStatusCode(500)->setJSON([
-                'success' => false,
-                'message' => 'Gagal menyimpan kontrak: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ]);
-        }
-    }
-
-    public function detailKontrak($id)
+    // Method detailKontrak removed - unused due to route priority (Kontrak::detail is called instead)
+    public function detailKontrakRemoved($id)
     {
         try {
-            $kontrak = $this->db->table('kontrak')
-                ->where('id', $id)
-                ->get()
-                ->getRowArray();
+            // Get contract with customer and location data using JOIN
+            $kontrak = $this->db->query("SELECT k.*, 
+                                               c.customer_name,
+                                               cl.location_name,
+                                               cl.contact_person,
+                                               cl.phone,
+                                               cl.address,
+                                               CONCAT(u.first_name, ' ', u.last_name) as dibuat_oleh_nama
+                                        FROM kontrak k 
+                                        LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id 
+                                        LEFT JOIN customers c ON cl.customer_id = c.id 
+                                        LEFT JOIN users u ON k.dibuat_oleh = u.id 
+                                        WHERE k.id = ?", [$id])->getRowArray();
 
             if (!$kontrak) {
                 return $this->response->setJSON([
@@ -2852,9 +3607,17 @@ class Marketing extends Controller
                 ]);
             }
 
+            // Add backward compatibility aliases for SPK modal
+            $kontrak['pelanggan'] = $kontrak['customer_name'];
+            $kontrak['pic'] = $kontrak['contact_person'];
+            $kontrak['kontak'] = $kontrak['phone'];
+            $kontrak['lokasi'] = $kontrak['location_name'];
+            $kontrak['alamat'] = $kontrak['address'];
+
             return $this->response->setJSON([
                 'success' => true,
                 'data' => $kontrak,
+                'source' => 'Marketing::detailKontrak',
                 'csrf_hash' => csrf_hash()
             ]);
 
@@ -2866,64 +3629,9 @@ class Marketing extends Controller
         }
     }
 
-    public function updateKontrak($id)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
-        }
+    // Method updateKontrak moved to Kontrak controller
 
-        try {
-            $data = [
-                'no_kontrak' => $this->request->getPost('contract_number'),
-                'no_po_marketing' => $this->request->getPost('po_number'),
-                'pelanggan' => $this->request->getPost('client_name'),
-                'lokasi' => $this->request->getPost('project_name'),
-                'tanggal_mulai' => $this->request->getPost('start_date'),
-                'tanggal_berakhir' => $this->request->getPost('end_date'),
-                'status' => $this->request->getPost('status'),
-                'diperbarui_pada' => date('Y-m-d H:i:s')
-            ];
-
-            $this->db->table('kontrak')->where('id', $id)->update($data);
-
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Kontrak berhasil diperbarui',
-                'csrf_hash' => csrf_hash()
-            ]);
-
-        } catch (\Throwable $e) {
-            return $this->response->setStatusCode(500)->setJSON([
-                'success' => false,
-                'message' => 'Gagal memperbarui kontrak: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ]);
-        }
-    }
-
-    public function deleteKontrak($id)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
-        }
-
-        try {
-            $this->db->table('kontrak')->where('id', $id)->delete();
-
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Kontrak berhasil dihapus',
-                'csrf_hash' => csrf_hash()
-            ]);
-
-        } catch (\Throwable $e) {
-            return $this->response->setStatusCode(500)->setJSON([
-                'success' => false,
-                'message' => 'Gagal menghapus kontrak: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ]);
-        }
-    }
+    // Method deleteKontrak moved to Kontrak controller
 
     private function getKontrakStats()
     {
@@ -3105,12 +3813,56 @@ class Marketing extends Controller
     }
 
     /**
-     * Get contract details by ID
+     * Get contract details by ID with customer and location info
      */
-    public function getKontrak($id)
-    {
+    // Method getKontrak moved to Kontrak controller
+    public function getKontrakRemoved($id)
+    {        
         try {
-            $contract = $this->kontrakModel->find((int)$id);
+            // Test 1: Simple kontrak query first
+            $kontrak = $this->db->table('kontrak')->where('id', (int)$id)->get()->getRowArray();
+            if (!$kontrak) {
+                return $this->response->setStatusCode(404)->setJSON([
+                    'success' => false,
+                    'message' => 'Kontrak tidak ditemukan',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+            
+            // Get customer location if exists
+            $customer_location = null;
+            if (!empty($kontrak['customer_location_id'])) {
+                $locationId = (int)$kontrak['customer_location_id'];
+                $customer_location = $this->db->query("SELECT cl.*, c.customer_name 
+                                                     FROM customer_locations cl 
+                                                     LEFT JOIN customers c ON cl.customer_id = c.id 
+                                                     WHERE cl.id = ?", 
+                                                     [$locationId])->getRowArray();
+            }
+
+            // Get user info
+            $user = null;
+            if ($kontrak['dibuat_oleh']) {
+                $user = $this->db->table('users')->where('id', $kontrak['dibuat_oleh'])->get()->getRowArray();
+            }
+
+            // Merge data
+            $contract = $kontrak;
+            if ($customer_location) {
+                $contract['customer_name'] = $customer_location['customer_name'];
+                $contract['pelanggan'] = $customer_location['customer_name'];
+                $contract['location_name'] = $customer_location['location_name'];
+                $contract['lokasi'] = $customer_location['location_name'];
+                $contract['contact_person'] = $customer_location['contact_person'];
+                $contract['pic'] = $customer_location['contact_person'];
+                $contract['phone'] = $customer_location['phone'];
+                $contract['kontak'] = $customer_location['phone'];
+                $contract['address'] = $customer_location['address'];
+                $contract['alamat'] = $customer_location['address'];
+            }
+            if ($user) {
+                $contract['dibuat_oleh_nama'] = ($user['first_name'] . ' ' . $user['last_name']);
+            }
             
             if (!$contract) {
                 return $this->response->setStatusCode(404)->setJSON([
@@ -3467,4 +4219,207 @@ class Marketing extends Controller
             ]);
         }
     }
+    
+    /**
+     * Get contract detail for modal view (alias for getKontrak)
+     */
+    // Method kontrakDetail moved to Kontrak controller
+    
+    /**
+     * Get customer locations for dropdown in contract forms
+     */
+    public function getCustomerLocations()
+    {
+        
+        try {
+            $builder = $this->db->table('customer_locations cl');
+            $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+            $builder->select('cl.id, 
+                            cl.location_name, 
+                            cl.address,
+                            cl.contact_person,
+                            cl.phone,
+                            c.customer_name,
+                            c.customer_code');
+            $builder->where('cl.is_active', 1);
+            $builder->orderBy('c.customer_name', 'ASC');
+            $builder->orderBy('cl.is_primary', 'DESC'); // Primary locations first
+            
+            $locations = $builder->get()->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $locations,
+                'csrf_hash' => csrf_hash()
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading customer locations: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+    
+    /**
+     * Get customers list for dropdown
+     */
+    // Method getCustomers moved to Kontrak controller for better structure
+    
+    /**
+     * Get customer locations by customer ID
+     */
+    // Method getLocationsByCustomer moved to Kontrak controller for better structure
+
+    /**
+     * Show customer detail (sesuai dengan alur yang sudah ada)
+     */
+    public function showCustomer($customerId)
+    {
+        try {
+            $customerId = (int)$customerId;
+            log_message('info', 'Marketing::showCustomer - Requested customer ID: ' . $customerId);
+            
+            if (!$customerId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid customer ID'
+                ]);
+            }
+            
+            // Get customer data with area information
+            $customer = $this->db->table('customers c')
+                ->select('c.*, a.area_name')
+                ->join('areas a', 'a.id = c.area_id', 'left')
+                ->where('c.id', $customerId)
+                ->get()
+                ->getRowArray();
+                
+            if (!$customer) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Customer not found'
+                ]);
+            }
+            
+            // Get customer locations
+            $locations = $this->db->table('customer_locations')
+                ->where('customer_id', $customerId)
+                ->where('is_active', 1)
+                ->get()
+                ->getResultArray();
+                
+            // Get customer contracts
+            $contracts = $this->db->table('kontrak')
+                ->where('pelanggan', $customer['customer_name'])
+                ->get()
+                ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'customer' => $customer,
+                    'locations' => $locations,
+                    'contracts' => $contracts
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::showCustomer - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load customer details'
+            ]);
+        }
+    }
+
+    /**
+     * Get customer detail by ID (untuk kompatibilitas)
+     */
+    public function getCustomerDetail($customerId)
+    {
+        try {
+            $customerId = (int)$customerId;
+            log_message('info', 'Marketing::getCustomerDetail - Requested customer ID: ' . $customerId);
+            
+            if (!$customerId) {
+                log_message('error', 'Marketing::getCustomerDetail - Invalid customer ID: ' . $customerId);
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid customer ID'
+                ]);
+            }
+            
+            // Check if customers table exists and has data
+            $customersCount = $this->db->table('customers')->countAllResults();
+            log_message('info', 'Marketing::getCustomerDetail - Total customers in database: ' . $customersCount);
+            
+            // Get customer data with area information
+            $customer = $this->db->table('customers c')
+                ->select('c.*, a.area_name')
+                ->join('areas a', 'a.id = c.area_id', 'left')
+                ->where('c.id', $customerId)
+                ->get()
+                ->getRowArray();
+                
+            log_message('info', 'Marketing::getCustomerDetail - Customer query result: ' . json_encode($customer));
+                
+            if (!$customer) {
+                log_message('error', 'Marketing::getCustomerDetail - Customer not found for ID: ' . $customerId);
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Customer not found'
+                ]);
+            }
+            
+            // Get customer locations count
+            $locationsCount = $this->db->table('customer_locations')
+                ->where('customer_id', $customerId)
+                ->where('is_active', 1)
+                ->countAllResults();
+                
+            // Get contracts count - simplified approach
+            try {
+                $contractsCount = $this->db->table('kontrak')
+                    ->where('pelanggan', $customer['customer_name'])
+                    ->countAllResults();
+                log_message('info', 'Marketing::getCustomerDetail - Contracts count: ' . $contractsCount);
+            } catch (\Exception $e) {
+                log_message('error', 'Marketing::getCustomerDetail - Error getting contracts count: ' . $e->getMessage());
+                $contractsCount = 0;
+            }
+                
+            // Get PO count - simplified approach
+            try {
+                $poCount = $this->db->table('kontrak')
+                    ->where('pelanggan', $customer['customer_name'])
+                    ->where('no_po_marketing IS NOT NULL')
+                    ->where('no_po_marketing !=', '')
+                    ->countAllResults();
+                log_message('info', 'Marketing::getCustomerDetail - PO count: ' . $poCount);
+            } catch (\Exception $e) {
+                log_message('error', 'Marketing::getCustomerDetail - Error getting PO count: ' . $e->getMessage());
+                $poCount = 0;
+            }
+            
+            // Add additional data
+            $customer['locations_count'] = $locationsCount;
+            $customer['contracts_count'] = $contractsCount;
+            $customer['po_count'] = $poCount;
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $customer
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getCustomerDetail - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load customer details'
+            ]);
+        }
+    }
+
 }

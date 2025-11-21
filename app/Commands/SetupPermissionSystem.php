@@ -21,6 +21,10 @@ class SetupPermissionSystem extends BaseCommand
         CLI::write('🚀 Memulai setup sistem permission...', 'green');
 
         try {
+            // 0. Scan codebase for permission keys and sync DB
+            CLI::write('🔍 Mensinkronkan permissions dari kode...', 'yellow');
+            $this->syncPermissionsFromCode();
+            CLI::write('✅ Sinkronisasi permissions dari kode selesai', 'green');
             // 1. Create default permissions
             CLI::write('📝 Membuat default permissions...', 'yellow');
             $this->createDefaultPermissions();
@@ -56,6 +60,64 @@ class SetupPermissionSystem extends BaseCommand
         }
     }
 
+    /**
+     * Scan controller files for hasPermission('key') usage
+     * and ensure the permission keys exist in DB.
+     */
+    private function syncPermissionsFromCode(): void
+    {
+        $permissionModel = new PermissionModel();
+        $basePath = realpath(APPPATH . 'Controllers');
+        if (!$basePath) return;
+
+        $rii = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($basePath));
+        $foundKeys = [];
+        foreach ($rii as $file) {
+            if ($file->isDir()) continue;
+            if (pathinfo($file->getFilename(), PATHINFO_EXTENSION) !== 'php') continue;
+            $content = @file_get_contents($file->getPathname());
+            if ($content === false) continue;
+            // Match hasPermission('key') and hasPermission("key")
+            if (preg_match_all("/hasPermission\(\s*['\"]([^'\"]+)['\"]\s*\)/", $content, $m)) {
+                foreach ($m[1] as $key) {
+                    $foundKeys[$key] = true;
+                }
+            }
+        }
+
+        if (empty($foundKeys)) return;
+
+        foreach (array_keys($foundKeys) as $key) {
+            $exists = $permissionModel->where('key', $key)->first();
+            if ($exists) continue;
+            // Try infer module & category from key prefix
+            $module = 'system';
+            if (str_starts_with($key, 'marketing.')) $module = 'marketing';
+            elseif (str_starts_with($key, 'service.')) $module = 'service';
+            elseif (str_starts_with($key, 'purchasing.')) $module = 'purchasing';
+            elseif (str_starts_with($key, 'warehouse.') || str_starts_with($key, 'inventory.') || str_starts_with($key, 'export.inventory')) $module = 'warehouse';
+            elseif (str_starts_with($key, 'admin.')) $module = 'admin';
+            elseif (str_starts_with($key, 'export.')) $module = 'export';
+
+            $category = 'access';
+            if (str_contains($key, '.create')) $category = 'create';
+            elseif (str_contains($key, '.edit')) $category = 'edit';
+            elseif (str_contains($key, '.delete')) $category = 'delete';
+            elseif (str_starts_with($key, 'export.')) $category = 'export';
+            elseif (str_contains($key, '.view')) $category = 'view';
+
+            $permissionModel->insert([
+                'key' => $key,
+                'name' => strtoupper(str_replace('.', ' ', $key)),
+                'description' => 'Auto-synced from code usage',
+                'module' => $module,
+                'category' => $category,
+                'is_system_permission' => 1,
+                'is_active' => 1
+            ]);
+        }
+    }
+
     private function createDefaultPermissions()
     {
         $permissionModel = new PermissionModel();
@@ -67,93 +129,70 @@ class SetupPermissionSystem extends BaseCommand
         $roleModel = new RoleModel();
         $permissionModel = new PermissionModel();
 
-        $presetRoles = [
-            [
-                'name' => 'Super Administrator',
-                'description' => 'Akses penuh ke seluruh sistem',
-                'is_preset' => 1,
-                'permissions' => [
-                    'dashboard.view', 'dashboard.export',
-                    'users.view', 'users.create', 'users.edit', 'users.delete',
-                    'roles.view', 'roles.create', 'roles.edit', 'roles.delete',
-                    'permissions.view', 'permissions.manage',
-                    'divisions.view', 'divisions.create', 'divisions.edit', 'divisions.delete',
-                    'projects.view', 'projects.create', 'projects.edit', 'projects.delete',
-                    'rentals.view', 'rentals.create', 'rentals.edit', 'rentals.delete', 'rentals.approve',
-                    'forklifts.view', 'forklifts.create', 'forklifts.edit', 'forklifts.delete',
-                    'reports.view', 'reports.export',
-                    'settings.view', 'settings.edit',
-                    'logs.view', 'logs.export'
-                ]
-            ],
-            [
-                'name' => 'Management',
-                'description' => 'Akses penuh ke data lintas divisi kecuali panel kontrol permission',
-                'is_preset' => 1,
-                'permissions' => [
-                    'dashboard.view', 'dashboard.export',
-                    'users.view', 'users.create', 'users.edit',
-                    'divisions.view',
-                    'projects.view', 'projects.create', 'projects.edit',
-                    'rentals.view', 'rentals.create', 'rentals.edit', 'rentals.approve',
-                    'forklifts.view', 'forklifts.create', 'forklifts.edit',
-                    'reports.view', 'reports.export',
-                    'settings.view',
-                    'logs.view'
-                ]
-            ],
-            [
-                'name' => 'Head Divisi',
-                'description' => 'Akses terbatas pada divisinya dengan kemampuan filter data',
-                'is_preset' => 1,
-                'permissions' => [
-                    'dashboard.view',
-                    'users.view',
-                    'divisions.view',
-                    'projects.view', 'projects.create', 'projects.edit',
-                    'rentals.view', 'rentals.create', 'rentals.edit', 'rentals.approve',
-                    'forklifts.view', 'forklifts.create', 'forklifts.edit',
-                    'reports.view',
-                    'logs.view'
-                ]
-            ],
-            [
-                'name' => 'Admin',
-                'description' => 'Akses terbatas hanya pada data yang ditandai dengan identifikasi admin',
-                'is_preset' => 1,
-                'permissions' => [
-                    'dashboard.view',
-                    'rentals.view', 'rentals.create', 'rentals.edit',
-                    'forklifts.view', 'forklifts.create', 'forklifts.edit',
-                    'reports.view'
-                ]
-            ],
-            [
-                'name' => 'Staff',
-                'description' => 'Akses sangat terbatas, hanya pada data dan fitur yang diberikan',
-                'is_preset' => 1,
-                'permissions' => [
-                    'dashboard.view',
-                    'rentals.view', 'rentals.create',
-                    'forklifts.view'
-                ]
-            ]
+        // Roles requested by company
+        $roles = [
+            'Super Administrator',
+            'Head Marketing', 'Staff Marketing',
+            'Head Operational', 'Staff Operational',
+            'Head Service Diesel', 'Staff Service Diesel' ,
+            'Head Service Electric', 'Staff Service Electric',
+            'Head Purchasing', 'Staff Purchasing',
+            'Head Accounting', 'Staff Accounting',
+            'Head HRD', 'Staff HRD',
+            'Head Warehouse', 'Staff Warehouse'
         ];
 
-        foreach ($presetRoles as $presetRole) {
-            $permissions = $presetRole['permissions'];
-            unset($presetRole['permissions']);
+        // Remove roles not in the new list (keep referential integrity by avoiding truncate)
+        $roleModel->whereNotIn('name', $roles)->delete();
 
-            // Get permission IDs
-            $permissionIds = [];
-            foreach ($permissions as $permissionKey) {
-                $permission = $permissionModel->where('key', $permissionKey)->first();
-                if ($permission) {
-                    $permissionIds[] = $permission['permission_id'];
-                }
+        // Ensure each role exists (idempotent)
+        foreach ($roles as $roleName) {
+            $existing = $roleModel->where('name', $roleName)->first();
+            if (!$existing) {
+                $roleModel->insert([
+                    'name' => $roleName,
+                    'description' => $roleName,
+                    'is_preset' => 1
+                ]);
+                $existing = $roleModel->where('name', $roleName)->first();
             }
 
-            $roleModel->createRoleWithPermissions($presetRole, $permissionIds);
+            // Assign export permissions for Head roles only
+            if (str_starts_with($roleName, 'Head')) {
+                $exportKeys = [
+                    'export.customer', 'export.kontrak',
+                    'export.service_area', 'export.service_employee', 'export.workorder',
+                    'export.purchasing_progres', 'export.purchasing_delivery', 'export.purchasing_completed',
+                    'export.inventory_unit', 'export.inventory_attachment', 'export.inventory_battery', 'export.inventory_charger'
+                ];
+                $permissionIds = [];
+                foreach ($exportKeys as $key) {
+                    $perm = $permissionModel->where('key', $key)->first();
+                    if (!$perm) {
+                        $permissionModel->insert([
+                            'key' => $key,
+                            'name' => strtoupper(str_replace('_',' ', $key)),
+                            'description' => 'Export permission',
+                            'module' => 'SYSTEM',
+                            'category' => 'EXPORT',
+                            'is_system_permission' => 1,
+                            'is_active' => 1
+                        ]);
+                        $perm = $permissionModel->where('key', $key)->first();
+                    }
+                    if ($perm) $permissionIds[] = $perm['id'] ?? ($perm['permission_id'] ?? null);
+                }
+                $permissionIds = array_filter($permissionIds);
+                if (!empty($permissionIds)) {
+                    // attach to pivot
+                    foreach ($permissionIds as $pid) {
+                        $roleModel->db->table('role_permissions')->ignore(true)->insert([
+                            'role_id' => $existing['role_id'] ?? $existing['id'] ?? null,
+                            'permission_id' => $pid
+                        ]);
+                    }
+                }
+            }
         }
     }
 
@@ -162,71 +201,71 @@ class SetupPermissionSystem extends BaseCommand
         $divisionModel = new DivisionModel();
 
         $divisions = [
-            [
-                'name' => 'Finance',
-                'description' => 'Divisi Keuangan'
-            ],
-            [
-                'name' => 'Human Resources',
-                'description' => 'Divisi Sumber Daya Manusia'
-            ],
-            [
-                'name' => 'Information Technology',
-                'description' => 'Divisi Teknologi Informasi'
-            ],
-            [
-                'name' => 'Operations',
-                'description' => 'Divisi Operasional'
-            ],
-            [
-                'name' => 'Marketing',
-                'description' => 'Divisi Pemasaran'
-            ],
-            [
-                'name' => 'Sales',
-                'description' => 'Divisi Penjualan'
-            ],
-            [
-                'name' => 'Customer Service',
-                'description' => 'Divisi Layanan Pelanggan'
-            ],
-            [
-                'name' => 'Legal',
-                'description' => 'Divisi Hukum'
-            ]
+            ['name' => 'Marketing', 'description' => 'Divisi Marketing'],
+            ['name' => 'Operational', 'description' => 'Divisi Operational'],
+            ['name' => 'Purchasing', 'description' => 'Divisi Purchasing'],
+            ['name' => 'Warehouse', 'description' => 'Divisi Warehouse'],
+            ['name' => 'Service Diesel', 'description' => 'Divisi Service Diesel'],
+            ['name' => 'Service Electric', 'description' => 'Divisi Service Electric'],
+            ['name' => 'Accounting', 'description' => 'Divisi Accounting'],
+            ['name' => 'HRD', 'description' => 'Divisi HRD'],
+            ['name' => 'HO', 'description' => 'Head Office']
         ];
 
+        $allowed = array_column($divisions, 'name');
+        // Remove divisions not in the new list
+        $divisionModel->whereNotIn('name', $allowed)->delete();
+
+        // Determine PK field (division_id vs id)
+        $pk = 'division_id';
+        $sample = $divisionModel->orderBy('name','ASC')->first();
+        if ($sample && array_key_exists('id', $sample)) { $pk = 'id'; }
+
+        // Upsert new divisions
         foreach ($divisions as $division) {
-            $divisionModel->insert($division);
+            $existing = $divisionModel->where('name', $division['name'])->first();
+            if ($existing) {
+                $divisionModel->update($existing[$pk], $division);
+            } else {
+                $divisionModel->insert($division);
+            }
         }
     }
 
     private function createDefaultPositions()
     {
-        $positionModel = new PositionModel();
+        $positionModel = new \App\Models\PositionModel();
 
         $positions = [
-            // Management Level (1-3)
-            ['name' => 'CEO', 'level' => 1, 'description' => 'Chief Executive Officer'],
-            ['name' => 'Director', 'level' => 2, 'description' => 'Direktur'],
-            ['name' => 'Manager', 'level' => 3, 'description' => 'Manajer'],
+            // Management Level
+            ['name' => 'CEO', 'code' => 'CEO', 'description' => 'Chief Executive Officer'],
+            ['name' => 'Director', 'code' => 'DIR', 'description' => 'Direktur'],
+            ['name' => 'Manager', 'code' => 'MGR', 'description' => 'Manajer'],
             
-            // Head Division Level (4-5)
-            ['name' => 'Head of Division', 'level' => 4, 'description' => 'Kepala Divisi'],
-            ['name' => 'Assistant Manager', 'level' => 5, 'description' => 'Asisten Manajer'],
+            // Department Heads
+            ['name' => 'Head Marketing', 'code' => 'HMKT', 'description' => 'Kepala Divisi Marketing'],
+            ['name' => 'Head Service', 'code' => 'HSVC', 'description' => 'Kepala Divisi Service'],
+            ['name' => 'Head Purchasing', 'code' => 'HPUR', 'description' => 'Kepala Divisi Purchasing'],
+            ['name' => 'Head Warehouse', 'code' => 'HWH', 'description' => 'Kepala Divisi Warehouse'],
+            ['name' => 'Head Accounting', 'code' => 'HACC', 'description' => 'Kepala Divisi Accounting'],
+            ['name' => 'Head HRD', 'code' => 'HHRD', 'description' => 'Kepala Divisi HRD'],
             
-            // Admin Level (6-7)
-            ['name' => 'Senior Admin', 'level' => 6, 'description' => 'Admin Senior'],
-            ['name' => 'Admin', 'level' => 7, 'description' => 'Admin'],
+            // Staff Level
+            ['name' => 'Staff Marketing', 'code' => 'SMKT', 'description' => 'Staff Divisi Marketing'],
+            ['name' => 'Staff Service', 'code' => 'SSVC', 'description' => 'Staff Divisi Service'],
+            ['name' => 'Staff Purchasing', 'code' => 'SPUR', 'description' => 'Staff Divisi Purchasing'],
+            ['name' => 'Staff Warehouse', 'code' => 'SWH', 'description' => 'Staff Divisi Warehouse'],
+            ['name' => 'Staff Accounting', 'code' => 'SACC', 'description' => 'Staff Divisi Accounting'],
+            ['name' => 'Staff HRD', 'code' => 'SHRD', 'description' => 'Staff Divisi HRD'],
             
-            // Staff Level (8-10)
-            ['name' => 'Senior Staff', 'level' => 8, 'description' => 'Staff Senior'],
-            ['name' => 'Staff', 'level' => 9, 'description' => 'Staff'],
-            ['name' => 'Junior Staff', 'level' => 10, 'description' => 'Staff Junior']
+            // Operational Level
+            ['name' => 'Technician', 'code' => 'TECH', 'description' => 'Teknisi'],
+            ['name' => 'Operator', 'code' => 'OPR', 'description' => 'Operator'],
+            ['name' => 'Helper', 'code' => 'HELP', 'description' => 'Helper']
         ];
 
         foreach ($positions as $position) {
-            $positionModel->insert($position);
+            $positionModel->createOrUpdatePosition($position);
         }
     }
 

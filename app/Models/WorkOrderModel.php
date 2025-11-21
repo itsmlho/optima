@@ -24,16 +24,18 @@ class WorkOrderModel extends Model
         'subcategory_id',
         'complaint_description',
         'status_id',
-        'admin_staff_id',
-        'foreman_staff_id',
-        'mechanic_staff_id',
-        'helper_staff_id',
+        'admin_id',
+        'foreman_id',
+        'mechanic_id',
+        'helper_id',
         'repair_description',
         'notes',
         'sparepart_used',
         'time_to_repair',
         'completion_date',
         'area',
+        'pic',
+        'hm',
         'created_by'
     ];
 
@@ -143,7 +145,7 @@ class WorkOrderModel extends Model
     {
         $stats = $this->db->table('work_orders wo')
             ->select('
-                COUNT(*) as total_work_orders,
+                COUNT(CASE WHEN wo.status_id NOT IN (SELECT id FROM work_order_statuses WHERE status_name = "Closed") THEN 1 END) as total_work_orders,
                 COUNT(CASE WHEN wo.status_id IN (SELECT id FROM work_order_statuses WHERE status_name = "Open") THEN 1 END) as open_work_orders,
                 COUNT(CASE WHEN wo.status_id IN (SELECT id FROM work_order_statuses WHERE status_name = "In Progress") THEN 1 END) as in_progress_work_orders,
                 COUNT(CASE WHEN wo.status_id IN (SELECT id FROM work_order_statuses WHERE status_name = "Completed") THEN 1 END) as completed_work_orders
@@ -272,10 +274,10 @@ class WorkOrderModel extends Model
                        ->getResultArray();
     }
 
-    // Get work order staff by role
+    // Get employees by role
     public function getStaffByRole($role = null)
     {
-        $builder = $this->db->table('work_order_staff')
+        $builder = $this->db->table('employees')
                            ->where('is_active', 1);
         
         if ($role) {
@@ -291,11 +293,13 @@ class WorkOrderModel extends Model
     public function getAvailableUnits($search = '')
     {
         $builder = $this->db->table('inventory_unit iu')
-                           ->select('iu.id_inventory_unit as id, iu.no_unit, mu.merk_unit, mu.model_unit, tu.tipe, kap.kapasitas_unit, k.pelanggan')
+                           ->select('iu.id_inventory_unit as id, iu.no_unit, mu.merk_unit, mu.model_unit, tu.tipe, kap.kapasitas_unit, c.customer_name as pelanggan')
                            ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
                            ->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left')
                            ->join('kapasitas kap', 'iu.kapasitas_unit_id = kap.id_kapasitas', 'left')
                            ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+                           ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                           ->join('customers c', 'c.id = cl.customer_id', 'left')
                            ->where('iu.status_unit', 'AVAILABLE'); // Only available units
         
         if (!empty($search)) {
@@ -303,7 +307,7 @@ class WorkOrderModel extends Model
                     ->like('iu.no_unit', $search)
                     ->orLike('mu.merk_unit', $search)
                     ->orLike('mu.model_unit', $search)
-                    ->orLike('k.pelanggan', $search)
+                    ->orLike('c.customer_name', $search)
                     ->groupEnd();
         }
         
@@ -354,7 +358,7 @@ class WorkOrderModel extends Model
     /**
      * Search work orders for DataTable
      */
-    public function searchWorkOrders($search = '', $status = null, $priority = null, $startDate = null, $endDate = null)
+    public function searchWorkOrders($search = '', $status = null, $priority = null, $startDate = null, $endDate = null, $month = null, $excludeStatus = null)
     {
         $builder = $this->db->table($this->table . ' wo');
         $builder->select('wo.*, 
@@ -366,25 +370,28 @@ class WorkOrderModel extends Model
                           woc.category_name as category,
                           wosc.subcategory_name as subcategory,
                           iu.no_unit,
-                          COALESCE(k.pelanggan, "Belum Ada Kontrak") as pelanggan,
-                          COALESCE(k.lokasi, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
+                          COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
+                          COALESCE(cl.location_name, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
                           COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                           COALESCE(mu.model_unit, "Unknown") as model_unit,
                           admin.staff_name as admin_staff,
                           foreman.staff_name as foreman_staff,
                           mechanic.staff_name as mechanic_staff,
-                          helper.staff_name as helper_staff')
+                          helper.staff_name as helper_staff,
+                          wo.completion_date as closed_date')
                 ->join('work_order_statuses wos', 'wo.status_id = wos.id', 'left')
                 ->join('work_order_priorities wop', 'wo.priority_id = wop.id', 'left')
                 ->join('work_order_categories woc', 'wo.category_id = woc.id', 'left')
                 ->join('work_order_subcategories wosc', 'wo.subcategory_id = wosc.id', 'left')
                 ->join('inventory_unit iu', 'wo.unit_id = iu.id_inventory_unit', 'left')
                 ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
                 ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
-                ->join('work_order_staff admin', 'wo.admin_staff_id = admin.id', 'left')
-                ->join('work_order_staff foreman', 'wo.foreman_staff_id = foreman.id', 'left')
-                ->join('work_order_staff mechanic', 'wo.mechanic_staff_id = mechanic.id', 'left')
-                ->join('work_order_staff helper', 'wo.helper_staff_id = helper.id', 'left');
+                ->join('employees admin', 'wo.admin_id = admin.id', 'left')
+                ->join('employees foreman', 'wo.foreman_id = foreman.id', 'left')
+                ->join('employees mechanic', 'wo.mechanic_id = mechanic.id', 'left')
+                ->join('employees helper', 'wo.helper_id = helper.id', 'left');
 
         // Exclude soft deleted records
         $builder->where('wo.deleted_at', null);
@@ -395,19 +402,36 @@ class WorkOrderModel extends Model
                     ->like('wo.work_order_number', $search)
                     ->orLike('wo.complaint_description', $search)
                     ->orLike('iu.no_unit', $search)
-                    ->orLike('k.pelanggan', $search)
+                    ->orLike('c.customer_name', $search)
                     ->orLike('wos.status_name', $search)
                     ->groupEnd();
         }
 
         // Apply status filter
         if (!empty($status)) {
-            $builder->where('wo.status_id', $status);
+            if (is_numeric($status)) {
+                $builder->where('wo.status_id', $status);
+            } else {
+                $builder->where('wos.status_name', $status);
+            }
+        }
+
+        // Apply exclude status filter (for progress tab)
+        if (!empty($excludeStatus)) {
+            if (is_numeric($excludeStatus)) {
+                $builder->where('wo.status_id !=', $excludeStatus);
+            } else {
+                $builder->where('wos.status_name !=', $excludeStatus);
+            }
         }
 
         // Apply priority filter
         if (!empty($priority)) {
-            $builder->where('wo.priority_id', $priority);
+            if (is_numeric($priority)) {
+                $builder->where('wo.priority_id', $priority);
+            } else {
+                $builder->where('wop.priority_name', $priority);
+            }
         }
 
         // Apply date range filter
@@ -416,6 +440,11 @@ class WorkOrderModel extends Model
         }
         if (!empty($endDate)) {
             $builder->where('DATE(wo.report_date) <=', $endDate);
+        }
+
+        // Apply month filter (for closed work orders)
+        if (!empty($month)) {
+            $builder->where('MONTH(wo.completion_date)', $month);
         }
 
         $builder->orderBy('wo.report_date', 'DESC');
@@ -434,9 +463,21 @@ class WorkOrderModel extends Model
     /**
      * Count all work orders
      */
-    public function countAllWorkOrders()
+    public function countAllWorkOrders($tab = null)
     {
-        return $this->countAllResults();
+        $builder = $this->db->table($this->table . ' wo');
+        $builder->select('COUNT(*) as count')
+                ->join('work_order_statuses wos', 'wo.status_id = wos.id', 'left')
+                ->where('wo.deleted_at', null);
+        
+        if ($tab === 'closed') {
+            $builder->where('wos.status_name', 'Closed');
+        } elseif ($tab === 'progress') {
+            $builder->where('wos.status_name !=', 'Closed');
+        }
+        
+        $result = $builder->get()->getRowArray();
+        return $result['count'] ?? 0;
     }
 
     /**
@@ -444,7 +485,7 @@ class WorkOrderModel extends Model
      */
     public function getStaff($role)
     {
-        return $this->db->table('work_order_staff')
+        return $this->db->table('employees')
                        ->where('staff_role', $role)
                        ->where('is_active', 1)
                        ->orderBy('staff_name', 'ASC')
@@ -492,17 +533,23 @@ class WorkOrderModel extends Model
         $result = $builder
             ->select('wo.*, 
                       iu.no_unit as unit_number, 
-                      iu.tahun_unit, 
+                      iu.tahun_unit as unit_year, 
                       iu.serial_number as unit_serial, 
                       iu.lokasi_unit as unit_location,
                       iu.aksesoris as unit_accessories,
+                      iu.sn_mesin as unit_engine_sn,
+                      iu.sn_mast as unit_mast_sn,
+                      iu.tinggi_mast as unit_mast_height,
                       mu.merk_unit as unit_brand, 
                       mu.model_unit,
                       COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as unit_type,
-                      k.pelanggan as unit_customer, 
-                      k.lokasi,
+                      kap.kapasitas_unit as unit_capacity,
+                      c.customer_name as unit_customer, 
+                      cl.location_name as lokasi,
                       sus.status_unit as unit_status,
                       d.nama_departemen as unit_departemen,
+                      m.model_mesin as unit_engine,
+                      tm.tipe_mast as unit_mast,
                       wop.priority_name, wop.priority_color,
                       woc.category_name, wosc.subcategory_name,
                       wos.status_name, wos.status_color, wos.status_code,
@@ -513,17 +560,22 @@ class WorkOrderModel extends Model
             ->join('inventory_unit iu', 'wo.unit_id = iu.id_inventory_unit', 'left')
             ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
             ->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left')
+            ->join('kapasitas kap', 'iu.kapasitas_unit_id = kap.id_kapasitas', 'left')
+            ->join('mesin m', 'iu.model_mesin_id = m.id', 'left')
+            ->join('tipe_mast tm', 'iu.model_mast_id = tm.id_mast', 'left')
             ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+            ->join('customers c', 'c.id = cl.customer_id', 'left')
             ->join('status_unit sus', 'iu.status_unit_id = sus.id_status', 'left')
             ->join('departemen d', 'iu.departemen_id = d.id_departemen', 'left')
             ->join('work_order_priorities wop', 'wo.priority_id = wop.id', 'left')
             ->join('work_order_categories woc', 'wo.category_id = woc.id', 'left')
             ->join('work_order_subcategories wosc', 'wo.subcategory_id = wosc.id', 'left')
             ->join('work_order_statuses wos', 'wo.status_id = wos.id', 'left')
-            ->join('work_order_staff as', 'wo.admin_staff_id = as.id', 'left')
-            ->join('work_order_staff fs', 'wo.foreman_staff_id = fs.id', 'left')
-            ->join('work_order_staff ms', 'wo.mechanic_staff_id = ms.id', 'left')
-            ->join('work_order_staff hs', 'wo.helper_staff_id = hs.id', 'left')
+            ->join('employees as', 'wo.admin_id = as.id', 'left')
+            ->join('employees fs', 'wo.foreman_id = fs.id', 'left')
+            ->join('employees ms', 'wo.mechanic_id = ms.id', 'left')
+            ->join('employees hs', 'wo.helper_id = hs.id', 'left')
             ->where('wo.id', $id)
             ->get()
             ->getRowArray();
@@ -540,15 +592,26 @@ class WorkOrderModel extends Model
             $result['unit_brand'] = $result['unit_brand'] ?? 'Unknown';
             $result['model_unit'] = $result['model_unit'] ?? 'Unknown';
             $result['unit_type'] = $result['unit_type'] ?? 'Unknown';
+            $result['unit_capacity'] = $result['unit_capacity'] ?? 'Unknown';
             $result['unit_serial'] = $result['unit_serial'] ?? '-';
             $result['unit_location'] = $result['unit_location'] ?? '-';
             $result['unit_customer'] = $result['unit_customer'] ?? 'Belum Ada Kontrak';
             $result['unit_status'] = $result['unit_status'] ?? 'Unknown';
+            $result['unit_departemen'] = $result['unit_departemen'] ?? '-';
+            $result['unit_year'] = $result['unit_year'] ?? '-';
+            $result['unit_engine'] = $result['unit_engine'] ?? '-';
+            $result['unit_engine_sn'] = $result['unit_engine_sn'] ?? '-';
+            $result['unit_mast'] = $result['unit_mast'] ?? '-';
+            $result['unit_mast_sn'] = $result['unit_mast_sn'] ?? '-';
+            $result['unit_mast_height'] = $result['unit_mast_height'] ?? '-';
             
             // Get unit components (attachments, batteries, chargers)
             $result['unit_attachments'] = $this->getUnitAttachments($result['unit_id']);
             $result['unit_batteries'] = $this->getUnitBatteries($result['unit_id']);
             $result['unit_chargers'] = $this->getUnitChargers($result['unit_id']);
+            
+            // Get work order spareparts
+            $result['spareparts'] = $this->getWorkOrderSpareparts($id);
             
             // Format dates
             if ($result['report_date']) {
@@ -609,6 +672,82 @@ class WorkOrderModel extends Model
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'charger')
             ->where('ia.charger_id IS NOT NULL')
+            ->get()
+            ->getResultArray();
+    }
+    
+    /**
+     * Delete existing work order assignments
+     */
+    public function deleteWorkOrderAssignments($workOrderId)
+    {
+        $db = \Config\Database::connect();
+        return $db->table('work_order_assignments')
+            ->where('work_order_id', $workOrderId)
+            ->delete();
+    }
+    
+    /**
+     * Insert a work order assignment
+     */
+    public function insertWorkOrderAssignment($data)
+    {
+        $db = \Config\Database::connect();
+        return $db->table('work_order_assignments')->insert($data);
+    }
+    
+    /**
+     * Add status history for a work order
+     */
+    public function addStatusHistory($workOrderId, $toStatusId, $notes = null, $fromStatusId = null)
+    {
+        // If fromStatusId is not provided, get current status from work order
+        if ($fromStatusId === null) {
+            $currentWorkOrder = $this->find($workOrderId);
+            $fromStatusId = $currentWorkOrder ? $currentWorkOrder['status_id'] : null;
+            log_message('debug', "addStatusHistory: fromStatusId was null, retrieved from DB: $fromStatusId");
+        }
+        
+        $data = [
+            'work_order_id' => $workOrderId,
+            'from_status_id' => $fromStatusId,
+            'to_status_id' => $toStatusId,
+            'changed_by' => session()->get('user_id') ?: 1, // Fallback to user 1 if no session
+            'change_reason' => $notes,
+            'changed_at' => date('Y-m-d H:i:s')
+        ];
+        
+        log_message('debug', 'addStatusHistory data: ' . print_r($data, true));
+        
+        $db = \Config\Database::connect();
+        $result = $db->table('work_order_status_history')->insert($data);
+        
+        log_message('debug', 'addStatusHistory insert result: ' . ($result ? 'SUCCESS' : 'FAILED'));
+        if (!$result) {
+            log_message('error', 'addStatusHistory insert error: ' . print_r($db->error(), true));
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Get spareparts for work order
+     */
+    public function getWorkOrderSpareparts($workOrderId)
+    {
+        $db = \Config\Database::connect();
+        
+        return $db->table('work_order_spareparts wos')
+            ->select('
+                wos.*,
+                wos.sparepart_code as code,
+                wos.sparepart_name as name,
+                wos.quantity_brought as qty,
+                wos.satuan,
+                wos.notes
+            ')
+            ->where('wos.work_order_id', $workOrderId)
+            ->orderBy('wos.id', 'ASC')
             ->get()
             ->getResultArray();
     }

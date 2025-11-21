@@ -1,3 +1,9 @@
+<?php 
+// All helpers disabled to avoid errors
+// helper('rbac');
+// helper('simple_rbac');
+// helper('global_permission');
+?>
 <!DOCTYPE html>
 <html lang="id" data-bs-theme="light">
 <head>
@@ -50,6 +56,13 @@
     
     <!-- Custom CSS -->
     <link href="<?= base_url('assets/css/optima-pro.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <!-- Global Permission CSS -->
+    <link href="<?= base_url('assets/css/global-permission.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <!-- Notification Popup CSS -->
+    <link href="<?= base_url('assets/css/notification-popup.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    
+    <!-- Sidebar Scroll Management -->
+    <script src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= time() ?>"></script>
    
     <!-- Page Specific CSS -->
     <?= $this->renderSection('css') ?>
@@ -511,8 +524,93 @@
         }
         @keyframes ot-progress { from {width:100%} to {width:0} }
         @keyframes fadeIn { from {opacity:0; transform: translateY(-6px);} to {opacity:1; transform:translateY(0);} }
+        
+        /* SweetAlert2 Spacing Fix */
+        .swal2-popup {
+            margin: 1rem !important;
+        }
+        .swal2-container {
+            padding: 1rem !important;
+        }
+        .swal2-toast {
+            margin: 0.5rem !important;
+        }
+        
+        /* Notification Dropdown Styles */
+        .notification-item {
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        
+        .notification-item:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .notification-item.unread {
+            background-color: #e3f2fd;
+            border-left: 3px solid #2196f3;
+        }
+        
+        .notification-item.unread:hover {
+            background-color: #bbdefb;
+        }
+        
+        .unread-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #2196f3;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .avatar-sm {
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+        
+        .bg-soft {
+            opacity: 0.2;
+        }
     </style>
     <script>
+        // Global function for mark all as read
+        window.markAllAsRead = function() {
+            if (window.optimaSSENotifications) {
+                window.optimaSSENotifications.markAllAsRead();
+            }
+        };
+        
+        // Global function for handling notification clicks
+        window.handleNotificationClick = function(notificationId, url) {
+            console.log('🔔 SSE notification clicked:', notificationId, url);
+            
+            // Mark as read first
+            if (window.optimaSSENotifications) {
+                window.optimaSSENotifications.markAsRead(notificationId);
+            }
+            
+            // Navigate to URL if not '#'
+            if (url && url !== '#') {
+                // Close dropdown first
+                const dropdown = document.querySelector('[data-bs-toggle="dropdown"]');
+                if (dropdown) {
+                    const bsDropdown = bootstrap.Dropdown.getInstance(dropdown);
+                    if (bsDropdown) {
+                        bsDropdown.hide();
+                    }
+                }
+                
+                // Navigate after a short delay
+                setTimeout(() => {
+                    window.location.href = url;
+                }, 100);
+            }
+        };
+        
         // Global toast creator (Bootstrap toast style like notifications/index.php)
         window.createOptimaToast = function({type='info', title='Info', message='', duration=5000} = {}) {
             const color = (type==='success') ? 'success' : (type==='warning') ? 'warning' : (type==='error' || type==='danger') ? 'danger' : 'info';
@@ -605,25 +703,26 @@
                                 <span class="notification-count" data-realtime="notification_count">0</span>
                             </span>
                         </button>
-                        <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end" style="min-width: 320px;">
-                            <li><h6 class="dropdown-header">Notifikasi</h6></li>
+                        <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end" style="min-width: 350px; max-height: 400px; overflow-y: auto;">
+                            <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
+                                <span>Notifikasi</span>
+                                <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()" style="font-size: 0.7rem;">
+                                    <i class="fas fa-check-double me-1"></i>Mark All
+                                </button>
+                            </h6></li>
                             <li><hr class="dropdown-divider"></li>
                             <li class="notification-item">
-                                <a class="dropdown-item" href="#">
-                                    <div class="d-flex">
-                                        <div class="flex-shrink-0">
-                                            <i class="fas fa-info-circle text-info"></i>
-                                        </div>
-                                        <div class="flex-grow-1 ms-3">
-                                            <div class="fw-semibold">Pemeliharaan Terjadwal</div>
-                                            <div class="text-muted small">Unit FL-001 memerlukan pemeliharaan</div>
-                                            <div class="text-muted small">2 jam yang lalu</div>
-                                        </div>
+                                <div class="text-center py-3">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
                                     </div>
-                                </a>
+                                    <p class="text-muted mb-0 small mt-2">Memuat notifikasi...</p>
+                                </div>
                             </li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-center" href="<?= base_url('/notifications') ?>">Lihat Semua Notifikasi</a></li>
+                            <li><a class="dropdown-item text-center" href="<?= base_url('/notifications') ?>">
+                                <i class="fas fa-bell me-2"></i>Lihat Semua Notifikasi
+                            </a></li>
                         </ul>
                     </div>
                     
@@ -639,12 +738,22 @@
                     
                     <!-- User Profile -->
                     <div class="dropdown">
-                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?>">
-                            <?php if (session()->get('avatar')): ?>
-                                <img src="<?= session()->get('avatar') ?>" alt="Avatar" class="rounded-circle" width="24" height="24" style="object-fit: cover;">
+                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?>" style="padding: 4px 8px; border-radius: 20px;">
+                            <?php 
+                            // Get avatar from session or database
+                            $userAvatar = session()->get('avatar');
+                            if ($userAvatar) {
+                                // Handle both relative and absolute avatar URLs
+                                if (!filter_var($userAvatar, FILTER_VALIDATE_URL)) {
+                                    $userAvatar = base_url($userAvatar);
+                                }
+                            }
+                            ?>
+                            <?php if ($userAvatar): ?>
+                                <img src="<?= $userAvatar ?>" alt="Avatar" class="rounded-circle" width="40" height="40" style="object-fit: cover; border: 2px solid #e3e6f0;">
                             <?php else: ?>
-                                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
-                                    <i class="fas fa-user text-white" style="font-size: 12px;"></i>
+                                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border: 2px solid #e3e6f0;">
+                                    <i class="fas fa-user text-white" style="font-size: 18px;"></i>
                                 </div>
                             <?php endif; ?>
                         </button>
@@ -774,8 +883,14 @@
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
     
+    <!-- Notification Sound Generator -->
+    <script src="<?= base_url('assets/js/notification-sound-generator.js') ?>?v=<?= time() ?>"></script>
+    
     <!-- OPTIMA SPA Main System (Single File) -->
     <script src="<?= base_url('assets/js/optima-spa-main.js') ?>?v=<?= time() ?>"></script>
+    
+    <!-- Global Permission System -->
+    <script src="<?= base_url('assets/js/global-permission.js') ?>?v=<?= time() ?>"></script>
     
     
     
@@ -791,6 +906,15 @@
             email: '<?= session()->get('email') ?>',
             role: '<?= session()->get('role') ?>',
             avatar: '<?= session()->get('avatar') ?: base_url('assets/images/default-avatar.svg') ?>'
+        };
+        
+        // Global permissions for JavaScript
+        window.globalPermissions = {
+            view: true,
+            create: true,
+            edit: true,
+            delete: true,
+            export: true
         };
         
         // Hide loading screen when page is fully loaded
@@ -991,214 +1115,9 @@
     })();
     </script>
 
-    <!-- Enhanced Notification System -->
-    <script>
-// Real-time notification system
-function updateNotificationCount() {
-    fetch('<?= base_url('notifications/getCount') ?>', {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': window.csrfToken
-        }
-    })
-        .then(response => response.json())
-        .then(data => {
-            const count = data.count || 0;
-            
-            // Update header notification badge
-            const headerBadge = document.querySelector('.notification-count');
-            const badgeContainer = document.getElementById('notificationBadge');
-            
-            if (headerBadge) {
-                headerBadge.textContent = count;
-            }
-            
-            if (badgeContainer) {
-                if (count > 0) {
-                    badgeContainer.style.display = 'inline-block';
-                } else {
-                    badgeContainer.style.display = 'none';
-                }
-            }
-            
-            // Update sidebar notification badge
-            const sidebarBadge = document.getElementById('sidebarNotificationCount');
-            if (sidebarBadge) {
-                sidebarBadge.textContent = count;
-                sidebarBadge.style.display = count > 0 ? 'inline' : 'none';
-            }
-        })
-        .catch(error => console.log('Notification count update failed:', error));
-}
-
-function fetchRecentNotifications() {
-    fetch('<?= base_url('notifications/recent') ?>', {
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': window.csrfToken
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data && data.success && data.notifications) {
-            updateNotificationDropdown(data.notifications.slice(0, 5)); // Show last 5
-        }
-    })
-    .catch(error => console.warn('Recent notifications fetch failed:', error));
-}
-
-// LIGHTWEIGHT NOTIFICATION SYSTEM - SSE DISABLED for performance
-(function(){
-    console.log('🚀 Starting LIGHTWEIGHT notification system (SSE disabled)');
-    
-    let pollIntervalId = null;
-    let isPolling = false;
-
-    function startLightweightPolling() {
-        if (pollIntervalId || isPolling) return;
-        
-        isPolling = true;
-        console.log('📡 Starting lightweight notification polling (every 2 minutes)');
-        
-        // LIGHTWEIGHT: Only update count, not full notifications
-        pollIntervalId = setInterval(() => {
-            updateNotificationCount();
-        }, 120000); // 2 minutes instead of 30 seconds
-    }
-
-    function stopLightweightPolling() {
-        if (pollIntervalId) {
-            clearInterval(pollIntervalId);
-            pollIntervalId = null;
-        }
-        isPolling = false;
-        console.log('⏹️ Stopped lightweight notification polling');
-    }
-
-    // Start lightweight polling immediately
-    startLightweightPolling();
-
-    // Expose for debugging
-    window.__OptimaNotificationSystem = {
-        isPolling: () => !!pollIntervalId,
-        stop: stopLightweightPolling,
-        start: startLightweightPolling
-    };
-})();
-
-function updateNotificationDropdown(notifications) {
-    const dropdown = document.getElementById('notificationDropdownMenu');
-    if (!dropdown) return;
-    
-    // Clear existing notifications (keep header and footer)
-    const items = dropdown.querySelectorAll('.notification-item');
-    items.forEach(item => item.remove());
-    
-    // Find insertion point (after divider)
-    const divider = dropdown.querySelector('.dropdown-divider');
-    if (!divider) return;
-    
-    if (notifications.length === 0) {
-        const emptyItem = document.createElement('li');
-        emptyItem.className = 'notification-item';
-        emptyItem.innerHTML = `
-            <div class="dropdown-item text-center text-muted">
-                <i class="fas fa-bell-slash me-2"></i>Tidak ada notifikasi baru
-            </div>
-        `;
-        divider.insertAdjacentElement('afterend', emptyItem);
-        return;
-    }
-    
-    // Add notifications
-    notifications.forEach(notification => {
-        const item = document.createElement('li');
-        item.className = 'notification-item';
-        
-        const iconClass = getNotificationIcon(notification.type || 'info');
-        const timeAgo = formatTimeAgo(notification.created_at);
-        
-        item.innerHTML = `
-            <a class="dropdown-item" href="<?= base_url('notifications') ?>">
-                <div class="d-flex">
-                    <div class="flex-shrink-0">
-                        <i class="fas fa-${iconClass} text-${getNotificationColor(notification.type)}"></i>
-                    </div>
-                    <div class="flex-grow-1 ms-3">
-                        <div class="fw-semibold">${escapeHtml(notification.title || 'Notifikasi')}</div>
-                        <div class="text-muted small">${escapeHtml(notification.message || '').substring(0, 60)}${notification.message && notification.message.length > 60 ? '...' : ''}</div>
-                        <div class="text-muted small">${timeAgo}</div>
-                    </div>
-                </div>
-            </a>
-        `;
-        
-        divider.insertAdjacentElement('afterend', item);
-    });
-}
-
-function getNotificationIcon(type) {
-    switch(type) {
-        case 'success': return 'check-circle';
-        case 'warning': return 'exclamation-triangle';
-        case 'error': return 'times-circle';
-        case 'critical': return 'exclamation-circle';
-        default: return 'info-circle';
-    }
-}
-
-function getNotificationColor(type) {
-    switch(type) {
-        case 'success': return 'success';
-        case 'warning': return 'warning';
-        case 'error': return 'danger';
-        case 'critical': return 'danger';
-        default: return 'info';
-    }
-}
-
-function formatTimeAgo(datetime) {
-    const now = new Date();
-    const time = new Date(datetime);
-    const diff = Math.floor((now - time) / 1000);
-    
-    if (diff < 60) return 'baru saja';
-    if (diff < 3600) return Math.floor(diff / 60) + ' menit lalu';
-    if (diff < 86400) return Math.floor(diff / 3600) + ' jam lalu';
-    if (diff < 2592000) return Math.floor(diff / 86400) + ' hari lalu';
-    
-    return time.toLocaleDateString('id-ID');
-}
-
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// Initialize notification system
-document.addEventListener('DOMContentLoaded', function() {
-    // Initial load
-    updateNotificationCount();
-    fetchRecentNotifications();
-    
-    // Update every 30 seconds
-    setInterval(() => {
-        updateNotificationCount();
-        fetchRecentNotifications();
-    }, 30000);
-    
-    // Update when dropdown is opened
-    const notificationDropdown = document.querySelector('[data-bs-toggle="dropdown"]');
-    if (notificationDropdown) {
-        notificationDropdown.addEventListener('click', function() {
-            setTimeout(() => {
-                fetchRecentNotifications();
-            }, 100);
-        });
-    }
-});
-    </script>
+    <!-- ==================================================================== -->
+    <!-- LIGHTWEIGHT POLLING NOTIFICATION SYSTEM -->
+    <!-- ==================================================================== -->
+    <script src="<?= base_url('assets/js/notification-lightweight.js') ?>"></script>
 </body>
 </html>

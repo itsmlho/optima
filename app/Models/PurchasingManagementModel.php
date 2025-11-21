@@ -93,7 +93,7 @@ class PurchasingManagementModel extends Model
             $itemTable = 'po_sparepart_items';
             $itemIdColumn = 'id';
         } elseif ($tipe === 'Attachment & Battery') {
-            $itemTable = 'po_items';
+            $itemTable = 'po_attachment';
             $itemIdColumn = 'id_po_item';
         } elseif ($tipe === 'Unit') {
             $itemTable = 'po_units';

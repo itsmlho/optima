@@ -38,23 +38,15 @@
                 </a>
             </li>
 
-            <!-- Tracking Work Orders -->
-            <li class="nav-item">
-                <a class="nav-link <?= strpos(service('router')->getMatchedRoute()[0], 'tracking') !== false ? 'active' : '' ?>" href="<?= base_url('/tracking-wo') ?>"
-                   data-search-terms="tracking work orders wo">
-                    <i class="fas fa-clipboard-list"></i>
-                    <span class="nav-link-text">Tracking Work Orders</span>
-                </a>
-            </li>
 
             <!-- MARKETING DIVISION -->
-            <?php if (can_access('marketing.access')): ?>
+            <?php if (can_view('marketing')): ?>
             <li class="nav-divider">
                 <div class="sidebar-heading">MARKETING</div>
             </li>
 
             <!-- Buat Penawaran -->
-            <?php if (can_access('marketing.penawaran.create')): ?>
+            <?php if (can_view('marketing')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/marketing/penawaran') ?>"
                    data-search-terms="marketing penawaran buat proposal">
@@ -64,20 +56,19 @@
             </li>
             <?php endif; ?>
 
-            <!-- Kontrak & PO -->
-            <?php if (can_access('marketing.kontrak.manage')): ?>
+            <!-- Customer Management -->
+            <?php if (can_view('marketing')): ?>
             <li class="nav-item">
-                <a class="nav-link <?= strpos(current_url(), 'marketing/kontrak') !== false ? 'active' : '' ?>" 
-                   href="<?= base_url('/marketing/kontrak') ?>"
-                   data-search-terms="kontrak po rental">
-                    <i class="fas fa-handshake"></i>
-                    <span class="nav-link-text">Kontrak/PO Rental</span>
+                <a class="nav-link <?= (strpos(current_url(), 'customer-management') !== false) ? 'active' : '' ?>" href="<?= base_url('/marketing/customer-management') ?>"
+                   data-search-terms="customer management marketing">
+                    <i class="fas fa-users"></i>
+                    <span class="nav-link-text">Customer Management</span>
                 </a>
             </li>
             <?php endif; ?>
 
             <!-- SPK -->
-            <?php if (can_access('marketing.spk.manage')): ?>
+            <?php if (can_view('marketing')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= strpos(current_url(), 'marketing/spk') !== false ? 'active' : '' ?>" 
                    href="<?= base_url('/marketing/spk') ?>"
@@ -88,19 +79,8 @@
             </li>
             <?php endif; ?>
 
-            <!-- Customer Management -->
-            <?php if (can_access('marketing.access')): ?>
-            <li class="nav-item">
-                <a class="nav-link <?= (strpos(current_url(), 'customer-management') !== false) ? 'active' : '' ?>" href="<?= base_url('/marketing/customer-management') ?>"
-                   data-search-terms="customer management marketing">
-                    <i class="fas fa-users"></i>
-                    <span class="nav-link-text">Customer Management</span>
-                </a>
-            </li>
-            <?php endif; ?>
-
             <!-- Delivery Instructions -->
-            <?php if (can_access('marketing.di.manage')): ?>
+            <?php if (can_view('marketing')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/marketing/di') ?>"
                    data-search-terms="delivery instructions di">
@@ -109,36 +89,16 @@
                 </a>
             </li>
             <?php endif; ?>
-
-            <!-- List Unit -->
-            <!-- <?php if (can_access('marketing.list_unit.view')): ?>
-            <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/marketing/list-unit') ?>"
-                   data-search-terms="list unit available">
-                    <i class="fas fa-list"></i>
-                    <span class="nav-link-text">List Unit</span>
-                </a>
-            </li> -->
-            <?php endif; ?>
-
-            <!-- Unit Tersedia -->
-            <!-- <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/marketing/available-units') ?>"
-                   data-search-terms="unit tersedia available">
-                    <i class="fas fa-check-circle"></i>
-                    <span class="nav-link-text">Unit Tersedia</span>
-                </a>
-            </li> -->
             <?php endif; ?>
 
             <!-- SERVICE DIVISION -->
-            <?php if (can_access('service.access')): ?>
+            <?php if (can_view('service')): ?>
             <li class="nav-divider">
                 <div class="sidebar-heading">SERVICE</div>
             </li>
 
             <!-- SPK Service -->
-            <?php if (can_access('service.spk.view')): ?>
+            <?php if (can_view('service')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/spk_service') ?>"
                    data-search-terms="spk service penyiapan unit">
@@ -149,7 +109,7 @@
             <?php endif; ?>
 
             <!-- PMPS -->
-            <?php if (can_access('service.pmps.view')): ?>
+            <?php if (can_view('service')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/pmps') ?>"
                    data-search-terms="pmps preventive maintenance">
@@ -160,7 +120,7 @@
             <?php endif; ?>
             
             <!-- Workorders -->
-            <?php if (can_access('service.work_orders.view')): ?>
+            <?php if (can_view('service')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/work-orders') ?>"
                    data-search-terms="workorder complaint keluhan">
@@ -171,7 +131,7 @@
             <?php endif; ?>
 
             <!-- Area & Employee Management -->
-            <?php if (can_access('service.access')): ?>
+            <?php if (can_view('service')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= (strpos(current_url(), 'service/area-management') !== false) ? 'active' : '' ?>" href="<?= base_url('/service/area-management') ?>"
                    data-search-terms="area staff employee management service">
@@ -181,26 +141,17 @@
             </li>
             <?php endif; ?>
 
-            <!-- Data Unit -->
-            <?php if (can_access('service.data_unit.view')): ?>
-            <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/service/data-unit') ?>"
-                   data-search-terms="data unit service">
-                    <i class="fas fa-database"></i>
-                    <span class="nav-link-text">Data Unit</span>
-                </a>
-            </li>
-            <?php endif; ?>
+
             <?php endif; ?>
 
             <!-- OPERATIONAL DIVISION -->
-            <?php if (can_access('operational.access')): ?>
+            <?php if (can_view('operational')): ?>
             <li class="nav-divider">
                 <div class="sidebar-heading">OPERATIONAL</div>
             </li>
 
             <!-- Delivery Process -->
-            <?php if (can_access('operational.delivery_instructions.view')): ?>
+            <?php if (can_view('operational')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/operational/delivery') ?>"
                    data-search-terms="delivery process pengiriman">
@@ -212,13 +163,13 @@
             <?php endif; ?>
 
             <!-- ACCOUNTING DIVISION -->
-            <?php if (can_access('accounting.access')): ?>
+            <?php if (can_view('accounting')): ?>
             <li class="nav-divider">
                 <div class="sidebar-heading">ACCOUNTING</div>
             </li>
 
             <!-- Invoice Management -->
-            <?php if (can_access('invoices.view')): ?>
+            <?php if (can_view('accounting')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/finance/invoices') ?>"
                    data-search-terms="invoice management tagihan">
@@ -230,7 +181,7 @@
 
             <!-- Payment Validation -->
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/finance/payment-validation') ?>"
+                <a class="nav-link" href="<?= base_url('/finance/invoices') ?>"
                    data-search-terms="payment validation pembayaran">
                     <i class="fas fa-check-circle"></i>
                     <span class="nav-link-text">Payment Validation</span>
@@ -239,58 +190,60 @@
             <?php endif; ?>
             
             <!-- PURCHASING DIVISION -->
-            <?php if (can_access('purchasing.access')): ?>
+            <?php if (can_view('purchasing')): ?>
             <li class="nav-divider">
                 <div class="sidebar-heading">PURCHASING</div>
             </li>
 
-            <!-- Form PO -->
+            <!-- PO Unit & Attachment -->
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/purchasing/form-po') ?>" 
-                   data-search-terms="purchase order buat form po">
-                    <i class="fas fa-plus-circle"></i>
-                    <span class="nav-link-text">Buat PO</span>
+                <a class="nav-link <?= strpos(current_url(), 'purchasing') !== false && strpos(current_url(), 'sparepart') === false && strpos(current_url(), 'supplier') === false ? 'active' : '' ?>" 
+                   href="<?= base_url('/purchasing') ?>"
+                   data-search-terms="purchasing po unit attachment battery charger">
+                    <i class="fas fa-truck"></i>
+                    <span class="nav-link-text">PO Unit & Attachment</span>
                 </a>
             </li>
 
-            <!-- Purchase Orders - Dropdown -->
+            <!-- PO Sparepart -->
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#purchaseOrdersSubmenu" 
-                   data-search-terms="purchasing purchase order po unit attachment sparepart">
-                    <i class="fas fa-shopping-cart"></i>
-                    <span class="nav-link-text">Purchase Orders</span>
-                    <i class="fas fa-chevron-down ms-auto collapse-icon"></i>
+                <a class="nav-link <?= strpos(current_url(), 'po-sparepart') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/purchasing/po-sparepart-list') ?>"
+                   data-search-terms="purchasing po sparepart parts">
+                    <i class="fas fa-tools"></i>
+                    <span class="nav-link-text">PO Sparepart</span>
                 </a>
-                <div class="collapse" id="purchaseOrdersSubmenu">
-                    <div class="nav-submenu">
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/purchasing/po-unit') ?>"
-                           data-search-terms="po unit purchase order unit">
-                            <i class="fas fa-truck"></i>
-                            PO Unit
-                        </a>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/purchasing/po-attachment') ?>"
-                           data-search-terms="po attachment battery purchase order">
-                            <i class="fas fa-battery-full"></i>
-                            PO Attachment & Battery
-                        </a>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/purchasing/po-sparepart') ?>"
-                           data-search-terms="po sparepart purchase order spare part">
-                            <i class="fas fa-cogs"></i>
-                            PO Sparepart
-                        </a>
-                    </div>
-                </div>
+            </li>
+
+            <!-- PO Reject -->
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(current_url(), 'rejected-items') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/warehouse/purchase-orders/rejected-items') ?>"
+                   data-search-terms="po reject rejection">
+                    <i class="fas fa-times"></i>
+                    <span class="nav-link-text">PO Reject</span>
+                </a>
+            </li>
+
+            <!-- Supplier Management -->
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(current_url(), 'supplier-management') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/purchasing/supplier-management-page') ?>"
+                   data-search-terms="supplier vendor management">
+                    <i class="fas fa-building"></i>
+                    <span class="nav-link-text">Supplier Management</span>
+                </a>
             </li>
             <?php endif; ?>
 
             <!-- WAREHOUSE DIVISION -->
-            <?php if (can_access('warehouse.access')): ?>
+            <?php if (can_view('warehouse')): ?>
             <li class="nav-divider">
                 <div class="sidebar-heading">WAREHOUSE & ASSETS</div>
             </li>
 
             <!-- Inventory -->
-            <?php if (can_access('warehouse.access')): ?>
+            <?php if (can_view('warehouse')): ?>
             <!-- Unit Inventory -->
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/warehouse/inventory/invent_unit') ?>"
@@ -319,46 +272,39 @@
             </li>
             <?php endif; ?>
 
-            <!-- PO Verification - Dropdown -->
+            <!-- Sparepart Usage & Returns -->
             <li class="nav-item">
-                <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#poVerificationSubmenu"
-                   data-search-terms="po verification verify purchase order">
+                <a class="nav-link <?= strpos(current_url(), 'warehouse/sparepart-usage') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/warehouse/sparepart-usage') ?>"
+                   data-search-terms="sparepart usage pemakaian pengembalian warehouse">
+                    <i class="fas fa-tools me-2"></i>
+                    <span class="nav-link-text">Sparepart Usage & Returns</span>
+                </a>
+            </li>
+            <?php endif; ?>
+
+            <!-- PO Verification -->
+            <?php if (can_view('warehouse')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(current_url(), 'warehouse/purchase-orders/wh-verification') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/warehouse/purchase-orders/wh-verification') ?>"
+                   data-search-terms="po verification verify purchase order warehouse">
                     <i class="fas fa-clipboard-check"></i>
                     <span class="nav-link-text">PO Verification</span>
-                    <i class="fas fa-chevron-down ms-auto collapse-icon"></i>
                 </a>
-                <div class="collapse" id="poVerificationSubmenu">
-                    <div class="nav-submenu">
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/purchase-orders/po-unit') ?>"
-                           data-search-terms="po verification unit">
-                            <i class="fas fa-truck-loading"></i>
-                            PO Unit
-                        </a>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/purchase-orders/po-attachment') ?>"
-                           data-search-terms="po verification attachment battery">
-                            <i class="fas fa-battery-full"></i>
-                            PO Attachment & Battery
-                        </a>
-                        <a class="nav-link nav-submenu-item" href="<?= base_url('/warehouse/purchase-orders/po-sparepart') ?>"
-                           data-search-terms="po verification sparepart">
-                            <i class="fas fa-tools"></i>
-                            PO Sparepart
-                        </a>
-                    </div>
-                </div>
             </li>
             <?php endif; ?>
 
             <!-- PERIZINAN DIVISION -->
-            <?php if (can_access('perizinan.access')): ?>
+            <?php if (can_view('perizinan')): ?>
             <li class="nav-divider">
                 <div class="sidebar-heading">PERIZINAN</div>
             </li>
 
             <!-- SILO -->
-            <?php if (can_access('perizinan.manage')): ?>
+            <?php if (can_view('perizinan')): ?>
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/perizinan/form-silo') ?>"
+                <a class="nav-link" href="<?= base_url('/perizinan/silo') ?>"
                    data-search-terms="silo izin layak operasi">
                     <i class="fa-solid fa-shield-halved"></i>
                     <span class="nav-link-text">SILO (Surat Izin Layak Operasi)</span>
@@ -367,104 +313,33 @@
 
             <!-- EMISI -->
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/perizinan/form-emisi') ?>"
+                <a class="nav-link" href="<?= base_url('/perizinan/emisi') ?>"
                    data-search-terms="emisi gas buang izin">
-                    <i class="fa-solid fa-shield-halved"></i>
+                    <i class="fas fa-leaf"></i>
                     <span class="nav-link-text">EMISI (Surat Izin Emisi Gas Buang)</span>
                 </a>
             </li>
             <?php endif; ?>
             <?php endif; ?>
 
-            <!-- Divider -->
+            <!-- Administration -->
+            <?php if (can_view('admin')): ?>
             <li class="nav-divider">
                 <div class="sidebar-heading">ADMINISTRATION</div>
             </li>
 
-            <!-- Administration -->
-            <?php if (can_access('admin.access')): ?>
-            <!-- User Management -->
-            <?php if (can_access('admin.user_management')): ?>
-            <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/admin/advanced-users') ?>"
-                   data-search-terms="user management pengguna">
-                    <i class="fas fa-users-cog"></i>
-                    <span class="nav-link-text">User Management</span>
-                </a>
-            </li>
-            <?php endif; ?>
-
-            <!-- Role Management -->
-            <?php if (can_access('admin.role_management')): ?>
-            <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/admin/roles') ?>"
-                   data-search-terms="role management peran">
-                    <i class="fas fa-user-tag"></i>
-                    <span class="nav-link-text">Role Management</span>
-                </a>
-            </li>
-            <?php endif; ?>
-
-            <!-- Permission Management -->
-            <?php if (can_access('admin.permission_management')): ?>
-            <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/admin/permissions') ?>"
-                   data-search-terms="permission management izin akses">
-                    <i class="fas fa-key"></i>
-                    <span class="nav-link-text">Permission Management</span>
-                </a>
-            </li>
-            <?php endif; ?>
-
-            <!-- System Settings -->
-            <?php if (can_access('admin.system_settings')): ?>
+            <!-- Admin Dashboard -->
             <li class="nav-item">
                 <a class="nav-link <?= (strpos(current_url(), '/admin') !== false && strpos(current_url(), 'activity-log') === false && strpos(current_url(), 'advanced-users') === false && strpos(current_url(), 'roles') === false && strpos(current_url(), 'permissions') === false) ? 'active' : '' ?>" 
                    href="<?= base_url('/admin') ?>"
-                   data-search-terms="system settings pengaturan">
-                    <i class="fas fa-cog"></i>
-                    <span class="nav-link-text">System Settings</span>
+                   data-search-terms="admin dashboard system administration">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span class="nav-link-text">Administration</span>
                 </a>
             </li>
-            <?php endif; ?>
-
-            <!-- Activity Log -->
-            <?php if (can_access('admin.activity_log')): ?>
-            <li class="nav-item">
-                <a class="nav-link <?= strpos(current_url(), 'activity-log') !== false ? 'active' : '' ?>" 
-                   href="<?= base_url('/admin/activity-log') ?>"
-                   data-search-terms="activity log aktivitas user audit trail">
-                    <i class="fas fa-history"></i>
-                    <span class="nav-link-text">Activity Log</span>
-                </a>
-            </li>
-            <?php endif; ?>
-
-            <!-- Notification Center -->
-            <li class="nav-item">
-                <a class="nav-link <?= strpos(current_url(), 'notifications') !== false ? 'active' : '' ?>" 
-                   href="<?= base_url('/notifications') ?>"
-                   data-search-terms="notifications notifikasi alert pemberitahuan">
-                    <i class="fas fa-bell"></i>
-                    <span class="nav-link-text">Notification Center</span>
-                    <span class="badge bg-warning ms-2 notification-badge" id="sidebarNotificationCount" style="display: none;">0</span>
-                </a>
-            </li>
-
-            <!-- Notification Rules (Super Admin Only) -->
-            <?php if (session()->get('role') === 'super_admin'): ?>
-            <li class="nav-item">
-                <a class="nav-link <?= strpos(current_url(), 'notifications/admin') !== false ? 'active' : '' ?>" 
-                   href="<?= base_url('notifications/admin') ?>"
-                   data-search-terms="notification rules aturan notifikasi admin">
-                    <i class="fas fa-cogs"></i>
-                    <span class="nav-link-text">Notification Rules</span>
-                </a>
-            </li>
-            <?php endif; ?>
 
             <!-- Configuration -->
-            <?php if (can_access('admin.configuration')): ?>
+            <?php if (can_view('admin')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/settings') ?>"
                    data-search-terms="configuration konfigurasi">

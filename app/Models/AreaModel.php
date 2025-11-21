@@ -10,7 +10,7 @@ class AreaModel extends Model
     protected $primaryKey = 'id';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
-    protected $useSoftDeletes = false;
+    protected $useSoftDeletes = true; // Aktivkan softDeletes setelah kolom deleted_at ditambahkan
     protected $protectFields = true;
     
     protected $allowedFields = [
@@ -81,7 +81,8 @@ class AreaModel extends Model
     public function getAreasWithStats()
     {
         return $this->select('areas.*, COUNT(DISTINCT customers.id) as customer_count')
-                   ->join('customers', 'customers.area_id = areas.id AND customers.is_active = 1', 'left')
+                   ->join('customer_locations cl', 'cl.area_id = areas.id', 'left')
+                   ->join('customers', 'customers.id = cl.customer_id AND customers.is_active = 1', 'left')
                    ->where('areas.is_active', 1)
                    ->groupBy('areas.id')
                    ->findAll();

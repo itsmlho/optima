@@ -6,17 +6,12 @@ class Home extends BaseController
 {
     public function index(): string
     { 
-        $data = [ 
-            'title' => 'Dashboard', 
-        ]; 
-        return view('dashboard', $data); 
+        // Redirect to Dashboard controller instead
+        return redirect()->to(base_url('dashboard'))->send();
     }
     
     public function debugTopbar(): string
     {
-        $data = [
-            'title' => 'Debug Topbar',
-        ];
-        return view('dashboard', $data);
+        return redirect()->to(base_url('dashboard'))->send();
     }
 }

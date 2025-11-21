@@ -90,7 +90,8 @@ class CustomerContractModel extends Model
     {
         return $this->select('customer_contracts.*, customers.*, areas.area_name')
                    ->join('customers', 'customers.id = customer_contracts.customer_id')
-                   ->join('areas', 'areas.id = customers.area_id')
+                   ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
+                   ->join('areas', 'areas.id = cl.area_id', 'left')
                    ->where('customer_contracts.kontrak_id', $kontrakId)
                    ->findAll();
     }
@@ -145,7 +146,8 @@ class CustomerContractModel extends Model
                     ')
                        ->join('customers', 'customers.id = customer_contracts.customer_id')
                        ->join('kontrak', 'kontrak.id = customer_contracts.kontrak_id')
-                       ->join('areas', 'areas.id = customers.area_id');
+                       ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
+                       ->join('areas', 'areas.id = cl.area_id', 'left');
                        
         if ($customerId) {
             $builder->where('customer_contracts.customer_id', $customerId);

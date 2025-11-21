@@ -52,7 +52,7 @@ if (empty($unit_items)) {
         
         @media print {
             @page {
-                margin: 10mm;
+                margin: 10mm 8mm 15mm 8mm;
                 size: A4;
                 @top-left { content: ""; }
                 @top-center { content: ""; }
@@ -76,6 +76,24 @@ if (empty($unit_items)) {
             .no-print {
                 display: none !important;
             }
+            
+            /* Print footer */
+            .print-footer {
+                position: fixed;
+                bottom: 3mm;
+                left: 8mm;
+                right: 8mm;
+                text-align: center;
+                font-size: 8px;
+                color: #666;
+                border-top: 1px solid #ddd;
+                padding-top: 2mm;
+                background: white;
+                z-index: 1000;
+                page-break-inside: avoid;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
         
         body { 
@@ -93,14 +111,14 @@ if (empty($unit_items)) {
             page-break-inside: avoid;
         }
         
-        /* Header */
+        /* Header - Simplified for single page */
         .document-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 15px;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #000;
+            padding-bottom: 6px;
         }
         
         .company-info {
@@ -153,110 +171,112 @@ if (empty($unit_items)) {
             color: #666;
         }
         
-        /* Content Sections */
+        /* Content Sections - Simplified for single page */
         .info-section {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         
         .section-title {
             background: #f8f9fa;
             border: 1px solid #000;
-            padding: 8px 12px;
+            padding: 4px 8px;
             font-weight: bold;
-            font-size: 13px;
-            margin-bottom: 10px;
+            font-size: 12px;
+            margin-bottom: 5px;
             text-align: center;
         }
         
         .info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 15px;
+            gap: 8px;
+            margin-bottom: 8px;
         }
         
         .info-item {
             display: flex;
-            margin-bottom: 8px;
+            margin-bottom: 3px;
         }
         
         .info-label {
-            width: 140px;
+            width: 120px;
             font-weight: bold;
             flex-shrink: 0;
+            font-size: 11px;
         }
         
         .info-value {
             flex: 1;
             border-bottom: 1px dotted #ccc;
-            min-height: 18px;
-            padding-left: 8px;
+            min-height: 16px;
+            padding-left: 4px;
+            font-size: 11px;
         }
         
         .info-full {
             grid-column: 1 / -1;
         }
         
-        /* Unit Details */
+        /* Unit Details - Simplified for single page */
         .unit-section {
-            border: 2px solid #000;
-            padding: 15px;
-            margin: 20px 0;
+            border: 1px solid #000;
+            padding: 8px;
+            margin: 15px 0;
         }
         
         .unit-header {
             background: #e8f4fd;
             border: 1px solid #0ea5e9;
-            padding: 10px;
-            margin: -15px -15px 15px -15px;
+            padding: 4px;
+            margin: -8px -8px 8px -8px;
             font-weight: bold;
             text-align: center;
-            font-size: 14px;
+            font-size: 12px;
         }
         
-        /* Approval Section */
+        /* Approval Section - Simplified for single page */
         .approval-section {
-            margin-top: 20px;
+            margin-top: 15px;
             page-break-inside: avoid;
         }
         
         .approval-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 20px;
-            margin-top: 15px;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            margin-top: 5px;
         }
         
         .approval-box {
             text-align: center;
             border: 1px solid #000;
-            padding: 15px 10px;
-            min-height: 100px;
+            padding: 6px 4px;
+            min-height: 60px;
         }
         
         .approval-title {
             font-weight: bold;
-            font-size: 11px;
-            margin-bottom: 8px;
+            font-size: 10px;
+            margin-bottom: 3px;
             text-transform: uppercase;
         }
         
         .approval-subtitle {
-            font-size: 9px;
+            font-size: 8px;
             color: #666;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
         }
         
         .approval-status {
-            margin: 10px 0;
-            min-height: 30px;
+            margin: 4px 0;
+            min-height: 15px;
         }
         
         .approved-stamp {
             color: #059669;
-            border: 2px solid #059669;
-            padding: 3px 8px;
-            font-size: 10px;
+            border: 1px solid #059669;
+            padding: 2px 4px;
+            font-size: 9px;
             font-weight: bold;
             display: inline-block;
             transform: rotate(-15deg);
@@ -264,24 +284,25 @@ if (empty($unit_items)) {
         
         .signature-line {
             border-bottom: 1px solid #000;
-            margin: 10px 20px 5px 20px;
+            margin: 4px 8px 2px 8px;
         }
         
         .signature-label {
-            font-size: 9px;
+            font-size: 8px;
             color: #666;
         }
         
-        /* Notes */
+        /* Notes - Simplified for single page */
         .notes-section {
-            margin-top: 20px;
+            margin-top: 15px;
             border: 1px solid #000;
-            padding: 15px;
+            padding: 6px;
         }
         
         .notes-title {
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 4px;
+            font-size: 11px;
         }
         
         .placeholder {
@@ -289,13 +310,33 @@ if (empty($unit_items)) {
             font-style: italic;
         }
         
-        /* Footer */
+        /* SPK-style table classes */
+        .table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        .table th, .table td { 
+            border: 1px solid #9aa1a7; 
+            padding: .4rem .5rem; 
+            vertical-align: top; 
+            line-height: 1.3;
+        }
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            text-align: center;
+        }
+        .table td {
+            min-height: 25px;
+        }
+        .label { color:#374151; }
+        .val   { color:#111827; font-weight: 600; }
+        .grid-2 td { width: 25%; }
+        
+        /* Footer - Simplified for single page */
         .document-footer {
-            margin-top: 20px;
-            padding-top: 10px;
+            margin-top: 8px;
+            padding-top: 4px;
             border-top: 1px solid #ccc;
             text-align: center;
-            font-size: 10px;
+            font-size: 9px;
             color: #666;
         }
     </style> 
@@ -355,26 +396,22 @@ if (empty($unit_items)) {
             <div class="info-grid">
                 <div>
                     <div class="info-item">
-                        <span class="info-label">No. DI:</span>
-                        <span class="info-value"><?= esc($di['nomor_di'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">No. SPK:</span>
-                        <span class="info-value"><?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
                         <span class="info-label">Kontrak/PO:</span>
                         <span class="info-value"><?= esc($di['po_kontrak_nomor'] ?? $spk['po_kontrak_nomor'] ?? $spk['kontrak_no'] ?? '-') ?></span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Tanggal Kirim:</span>
-                        <span class="info-value"><?= esc($di['tanggal_kirim'] ?? '-') ?></span>
+                        <span class="info-label">Nama Perusahaan:</span>
+                        <span class="info-value"><?= esc($di['pelanggan'] ?? $spk['pelanggan'] ?? $spk['customer_name'] ?? '-') ?></span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Alamat Pengiriman:</span>
+                        <span class="info-value"><?= esc($di['lokasi'] ?? $spk['lokasi'] ?? '-') ?></span>
                     </div>
                 </div>
                 <div>
                     <div class="info-item">
-                        <span class="info-label">Nama Perusahaan:</span>
-                        <span class="info-value"><?= esc($di['pelanggan'] ?? $spk['pelanggan'] ?? $spk['customer_name'] ?? '-') ?></span>
+                        <span class="info-label">Tanggal Kirim:</span>
+                        <span class="info-value"><?= esc($di['tanggal_kirim'] ?? '-') ?></span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">PIC:</span>
@@ -383,16 +420,6 @@ if (empty($unit_items)) {
                     <div class="info-item">
                         <span class="info-label">Contact Person:</span>
                         <span class="info-value"><?= esc($spk['kontak'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Status DI:</span>
-                        <span class="info-value"><?= esc($status) ?></span>
-                    </div>
-                </div>
-                <div class="info-full">
-                    <div class="info-item">
-                        <span class="info-label">Alamat Pengiriman:</span>
-                        <span class="info-value"><?= esc($di['lokasi'] ?? $spk['lokasi'] ?? '-') ?></span>
                     </div>
                 </div>
             </div>
@@ -442,82 +469,92 @@ if (empty($unit_items)) {
                 <?php endif; ?>
             </div>
 
-            <div class="info-grid">
-                <div>
-                    <div class="info-item">
-                        <span class="info-label">ID Unit:</span>
-                        <span class="info-value"><?= esc($current_unit['no_unit'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Merk Unit:</span>
-                        <span class="info-value"><?= esc($current_unit['merk_unit'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Model Unit:</span>
-                        <span class="info-value"><?= esc($current_unit['model_unit'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Jenis Unit:</span>
-                        <span class="info-value"><?= esc($current_unit['jenis_unit'] ?? $s['jenis_unit'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Tipe Unit:</span>
-                        <span class="info-value"><?php
-                            // Gabungkan Tipe Unit dengan Departemen
-                            $tipeUnit = $current_unit['tipe_jenis'] ?? $s['tipe_jenis'] ?? '';
-                            $departemen = $current_unit['departemen_name'] ?? $s['departemen_id_name'] ?? $k['departemen_name'] ?? '';
-                            $combinedTipe = [];
-                            if (!empty($tipeUnit)) $combinedTipe[] = $tipeUnit;
-                            if (!empty($departemen)) $combinedTipe[] = $departemen;
-                            echo esc(!empty($combinedTipe) ? implode(' ', $combinedTipe) : '-');
-                        ?></span>
-                    </div>
-                </div>
-                <div>
-                    <div class="info-item">
-                        <span class="info-label">Serial Number:</span>
-                        <span class="info-value"><?= esc($current_unit['serial_number'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Kapasitas:</span>
-                        <span class="info-value"><?= esc($current_unit['kapasitas_name'] ?? $s['kapasitas_id_name'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Mast:</span>
-                        <span class="info-value"><?= esc($s['mast_id_name'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Attachment:</span>
-                        <span class="info-value"><?= esc($current_unit['attachment_merk'] ?? $s['attachment_tipe'] ?? $k['attachment_tipe'] ?? $k['attachment_name'] ?? '-') ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Baterai:</span>
-                        <span class="info-value"><?php
-                            // Format: Merk Model (SN)
-                            $batteryMerk = $k['jenis_baterai'] ?? $k['baterai_type'] ?? '';
-                            $batterySN = $current_unit['sn_baterai'] ?? '';
-                            if (!empty($batteryMerk)) {
-                                echo esc($batteryMerk . (!empty($batterySN) ? ' (' . $batterySN . ')' : ''));
-                            } else {
-                                echo '-';
-                            }
-                        ?></span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Charger:</span>
-                        <span class="info-value"><?php
-                            // Format: Merk Model (SN)
-                            $chargerMerk = $k['kontrak_charger_model'] ?? $k['charger_model'] ?? '';
-                            $chargerSN = $current_unit['sn_charger'] ?? '';
-                            if (!empty($chargerMerk)) {
-                                echo esc($chargerMerk . (!empty($chargerSN) ? ' (' . $chargerSN . ')' : ''));
-                            } else {
-                                echo '-';
-                            }
-                        ?></span>
-                    </div>
-                </div>
-            </div>
+            <!-- Unit Details Table (exact same format as SPK) -->
+            <?php
+                // Get prepared units data from SPK (same as print_spk.php)
+                $preparedList = [];
+                if (isset($spk['prepared_units_detail']) && is_array($spk['prepared_units_detail'])) {
+                    $preparedList = $spk['prepared_units_detail'];
+                }
+                
+                // Use first prepared unit data (same as SPK)
+                $rowPrepared = !empty($preparedList) ? $preparedList[0] : $current_unit;
+                
+                // Debug: Check if we have prepared units data
+                if (empty($preparedList)) {
+                    // Fallback: try to get data from current_unit with proper field mapping
+                    $rowPrepared = $current_unit;
+                }
+                
+                // Build left/right summaries exactly like SPK
+                $summaryLeft = [
+                    ['No Unit', $rowPrepared['no_unit'] ?? ''],
+                    ['Jenis Unit', $rowPrepared['jenis_unit'] ?? ''],
+                    ['Departemen', $rowPrepared['departemen_name'] ?? ''],
+                    ['Kapasitas', $rowPrepared['kapasitas_name'] ?? ''],
+                    ['Mast', $rowPrepared['mast_name'] ?? ''],
+                ];
+                $summaryRight = [
+                    ['Charger', $rowPrepared['charger_sn'] ?? ''],
+                    ['Baterai', $rowPrepared['baterai_sn'] ?? ''],
+                    ['Attachment', $rowPrepared['attachment_sn'] ?? ''],
+                    ['Roda & Ban', trim(
+                        ($rowPrepared['roda_name'] ?? '') .
+                        ((!empty($rowPrepared['roda_name']) && !empty($rowPrepared['ban_name'])) ? ' & ' : '') .
+                        ($rowPrepared['ban_name'] ?? '')
+                    )],
+                    ['Valve', $rowPrepared['valve_name'] ?? ''],
+                ];
+            ?>
+            <table class="table grid-2">
+                <tbody>
+                    <?php 
+                        $rows = max(count($summaryLeft), count($summaryRight));
+                        for ($ri = 0; $ri < $rows; $ri++): 
+                            $left = $summaryLeft[$ri] ?? ['', ''];
+                            $right = $summaryRight[$ri] ?? ['', ''];
+                    ?>
+                    <tr>
+                        <td class="label"><?= esc($left[0]) ?></td>
+                        <td class="val"><?= esc($left[1] ?: '') ?></td>
+                        <td class="label"><?= esc($right[0]) ?></td>
+                        <td class="val"><?= esc($right[1] ?: '') ?></td>
+                    </tr>
+                    <?php endfor; ?>
+                    <tr>
+                        <td class="label" style="background-color: #f0f8ff;">Aksesoris</td>
+                        <td class="val" colspan="3" style="background-color: #f0f8ff;">
+                            <?php
+                                // Prefer per-row accessories if provided; fallback to global SPK/spec (same as SPK)
+                                $aksText = '';
+                                if (!empty($rowPrepared['aksesoris'])) {
+                                    if (is_array($rowPrepared['aksesoris'])) {
+                                        $aksText = implode(', ', $rowPrepared['aksesoris']);
+                                    } else {
+                                        $aksText = (string) $rowPrepared['aksesoris'];
+                                    }
+                                } elseif (!empty($s['aksesoris'])) {
+                                    if (is_array($s['aksesoris'])) {
+                                        $aksText = implode(', ', $s['aksesoris']);
+                                    } else {
+                                        $try = json_decode((string)$s['aksesoris'], true);
+                                        $aksText = is_array($try) ? implode(', ', $try) : (string)$s['aksesoris'];
+                                    }
+                                } elseif (!empty($spk['persiapan_aksesoris_tersedia'])) {
+                                    $aksText = (string) $spk['persiapan_aksesoris_tersedia'];
+                                }
+                                echo esc($aksText);
+                            ?>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="label" style="background-color: #f8f9fa;">Catatan</td>
+                        <td class="val" colspan="3" style="background-color: #f8f9fa;">
+                            <?= esc($rowPrepared['combined_notes'] ?? '') ?>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         <!-- Special Notes -->
@@ -532,7 +569,7 @@ if (empty($unit_items)) {
         <div class="approval-section">
             <div class="section-title">PERSETUJUAN & TANDA TANGAN</div>
             
-            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 15px; margin-top: 15px;">
                 <div style="text-align: center;">
                     <div style="font-weight: bold; margin-bottom: 5px;">MARKETING</div>
                     <div style="font-size: 10px; color: #666; margin-bottom: 10px;">Pembuat DI</div>
@@ -549,8 +586,20 @@ if (empty($unit_items)) {
                         <div style="font-size: 9px; color: #666;">(...........................)</div>
                     <?php endif; ?>
                     <div style="font-size: 9px; color: #666; margin-top: 5px;">
-                        <?php if (!empty($di['created_at'])): ?>
-                            Tanggal: <?= date('d/m/Y', strtotime($di['created_at'])) ?>
+                        <?php 
+                            // Try multiple sources for marketing approval date
+                            $marketingDate = '';
+                            if (!empty($di['created_at'])) {
+                                $marketingDate = $di['created_at'];
+                            } elseif (!empty($spk['created_at'])) {
+                                $marketingDate = $spk['created_at'];
+                            } elseif (!empty($spk['dibuat_pada'])) {
+                                $marketingDate = $spk['dibuat_pada'];
+                            }
+                            
+                            if (!empty($marketingDate)): 
+                        ?>
+                            Tanggal: <?= date('d/m/Y', strtotime($marketingDate)) ?>
                         <?php else: ?>
                             Tanggal: __________
                         <?php endif; ?>
@@ -560,22 +609,38 @@ if (empty($unit_items)) {
                 <div style="text-align: center;">
                     <div style="font-weight: bold; margin-bottom: 5px;">BAG. PDI</div>
                     <div style="font-size: 10px; color: #666; margin-bottom: 10px;">Pengecekan Unit</div>
-                    <?php if (!empty($spk['pdi_tanggal_approve'])): ?>
+                    <?php 
+                    // Check for pdi stage approval from spk_unit_stages (copied from print_spk.php)
+                    $pdiApproved = false;
+                    $pdiMekanik = '';
+                    if (isset($spk['stage_status']['unit_stages'])) {
+                        foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages) {
+                            if (isset($unitStages['pdi']) && $unitStages['pdi']['completed']) {
+                                $pdiApproved = true;
+                                $pdiMekanik = $unitStages['pdi']['mekanik'] ?? '';
+                                break;
+                            }
+                        }
+                    }
+                    ?>
+                    <?php if ($pdiApproved): ?>
                         <div style="color: #059669; border: 2px solid #059669; padding: 3px 8px; font-size: 10px; font-weight: bold; display: inline-block; transform: rotate(-15deg); margin: 10px 0;">APPROVED</div>
                         <br/>
-                        <div style="font-size: 10px; margin-top: 5px;">(<?= esc($spk['pdi_mekanik'] ?? 'PDI Team') ?>)</div>
+                        <div style="font-size: 10px; margin-top: 5px;">(<?= esc($pdiMekanik ?: '') ?>)</div>
+                        <?php if (isset($spk['stage_status']['unit_stages'])): ?>
+                            <?php foreach ($spk['stage_status']['unit_stages'] as $unitIndex => $unitStages): ?>
+                                <?php if (isset($unitStages['pdi']) && $unitStages['pdi']['completed'] && $unitStages['pdi']['tanggal_approve']): ?>
+                                    <div style="font-size: 9px; color: #666; margin-top: 5px;">Tanggal: <?= date('d/m/Y', strtotime($unitStages['pdi']['tanggal_approve'])) ?></div>
+                                    <?php break; ?>
+                                <?php endif; ?>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
                     <?php else: ?>
                         <br/><br/>
                         <div style="border-bottom: 1px solid #000; margin: 10px 20px 5px 20px;"></div>
                         <div style="font-size: 9px; color: #666;">(...........................)</div>
+                        <div style="font-size: 9px; color: #666; margin-top: 5px;">Tanggal: __________</div>
                     <?php endif; ?>
-                    <div style="font-size: 9px; color: #666; margin-top: 5px;">
-                        <?php if (!empty($spk['pdi_tanggal_approve'])): ?>
-                            Tanggal: <?= date('d/m/Y', strtotime($spk['pdi_tanggal_approve'])) ?>
-                        <?php else: ?>
-                            Tanggal: __________
-                        <?php endif; ?>
-                    </div>
                 </div>
 
                 <div style="text-align: center;">
@@ -593,6 +658,27 @@ if (empty($unit_items)) {
                     <div style="font-size: 9px; color: #666; margin-top: 5px;">
                         <?php if (!empty($di['perencanaan_tanggal_approve'])): ?>
                             Tanggal: <?= date('d/m/Y', strtotime($di['perencanaan_tanggal_approve'])) ?>
+                        <?php else: ?>
+                            Tanggal: __________
+                        <?php endif; ?>
+                    </div>
+                </div>
+
+                <div style="text-align: center;">
+                    <div style="font-weight: bold; margin-bottom: 5px;">BERANGKAT</div>
+                    <div style="font-size: 10px; color: #666; margin-bottom: 10px;">Keberangkatan</div>
+                    <?php if (!empty($di['berangkat_tanggal_approve'])): ?>
+                        <div style="color: #059669; border: 2px solid #059669; padding: 3px 8px; font-size: 10px; font-weight: bold; display: inline-block; transform: rotate(-15deg); margin: 10px 0;">APPROVED</div>
+                        <br/>
+                        <div style="font-size: 10px; margin-top: 5px;">(Delivery Team)</div>
+                    <?php else: ?>
+                        <br/><br/>
+                        <div style="border-bottom: 1px solid #000; margin: 10px 20px 5px 20px;"></div>
+                        <div style="font-size: 9px; color: #666;">(...........................)</div>
+                    <?php endif; ?>
+                    <div style="font-size: 9px; color: #666; margin-top: 5px;">
+                        <?php if (!empty($di['berangkat_tanggal_approve'])): ?>
+                            Tanggal: <?= date('d/m/Y', strtotime($di['berangkat_tanggal_approve'])) ?>
                         <?php else: ?>
                             Tanggal: __________
                         <?php endif; ?>
@@ -622,14 +708,48 @@ if (empty($unit_items)) {
             </div>
         </div>
 
-        <!-- Document Footer -->
-        <div class="document-footer">
-            <div>PT. Sarana Mitra Luas - Delivery Instruction <?= esc($di['nomor_di'] ?? '') ?>-U0<?= $unit_index + 1 ?> - Unit ke-<?= $unit_index + 1 ?></div>
-            <div>Dicetak pada: <?= date('d/m/Y H:i:s') ?></div>
-        </div>
     </div>
 
 <?php endforeach; ?>
+
+<!-- Print Footer (consistent with SPK) -->
+<div class="print-footer" id="printFooter" style="display: none;">
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="text-align: left; font-size: 8px;">
+            <strong>PT SARANA MITRA LUAS Tbk</strong><br>
+            <span style="color: #888;">Sistem OPTIMA - Document Management</span>
+        </div>
+        <div style="text-align: center; font-size: 8px;">
+            <span id="printDate">Tanggal Cetak: <?= date('d/m/Y H:i') ?></span><br>
+            <span style="color: #888;">Dokumen ini dibuat secara otomatis oleh sistem OPTIMA</span>
+        </div>
+        <div style="text-align: right; font-size: 8px;">
+            <span id="pageInfo">Halaman <span id="currentPage">1</span></span><br>
+            <span style="color: #888;">DI No: <?= esc($di['nomor_di'] ?? 'Unknown') ?></span>
+        </div>
+    </div>
+</div>
+
+<script>
+// Show footer when printing
+window.addEventListener('beforeprint', () => {
+    const footer = document.getElementById('printFooter');
+    if (footer) footer.style.display = 'block';
+});
+
+window.addEventListener('afterprint', () => {
+    const footer = document.getElementById('printFooter');
+    if (footer) footer.style.display = 'none';
+});
+
+// Auto print on load
+window.addEventListener('load', () => {
+    const diNumber = '<?= str_replace('/', '-', esc($di['nomor_di'] ?? 'Unknown')) ?>';
+    document.title = 'DI-' + diNumber;
+    const footer = document.getElementById('printFooter');
+    if (footer) footer.style.display = 'block';
+});
+</script>
 
 </body>
 </html>

@@ -1,21 +1,22 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php 
+// Load global permission helper
+helper('global_permission');
+
+// Get permissions for marketing module
+$permissions = get_global_permission('marketing');
+$can_view = $permissions['view'];
+$can_create = $permissions['create'];
+$can_edit = $permissions['edit'];
+$can_delete = $permissions['delete'];
+$can_export = $permissions['export'];
+?>
+
 <?= $this->section('css') ?>
+<!-- CSS umum sudah ada di optima-pro.css -->
 <style>
-  /* Match marketing/spk.php */
-  .card-stats:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15); }
-  .table-card, .card-stats { border: none; border-radius: 15px; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1); }
-  .modal-header { background: linear-gradient(135deg, #e9ecef 0%, #e9ecef 100%); color: white; border-radius: 15px 15px 0 0; }
-  .filter-card.active { 
-    transform: translateY(-3px); 
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2); 
-    border: 2px solid #fff; 
-  }
-  .filter-card:hover { 
-    transform: translateY(-5px); 
-    box-shadow: 0 10px 35px rgba(0, 0, 0, 0.25); 
-  }
-  /* Unit selection list */
+  /* Custom DI page - Unit selection list */
   .unit-list { max-height: 260px; overflow: auto; border: 1px solid #e5e7eb; border-radius: .5rem; padding:.5rem; }
   .unit-item { display:flex; align-items:flex-start; gap:.5rem; padding:.25rem .25rem; border-bottom:1px dashed #e5e7eb; }
   .unit-item:last-child{ border-bottom: none; }
@@ -24,7 +25,6 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-
 
 <!-- Statistics Cards - Modern Dashboard Style -->
 <div class="row g-4 mb-4">
@@ -94,6 +94,26 @@
         </button>
       </div>
     </div>
+    
+    <!-- Filter Tabs -->
+    <ul class="nav nav-tabs mb-3" id="filterTabs">
+      <li class="nav-item">
+        <a class="nav-link active filter-tab" href="#" data-filter="all">All</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED">Submitted</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS">In Progress</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab" href="#" data-filter="DELIVERED">Delivered</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab" href="#" data-filter="CANCELLED">Cancelled</a>
+      </li>
+    </ul>
+    
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
@@ -842,25 +862,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
   function updateStatistics() {
     const total = allDIData.length;
     
-    // Update statistik menggunakan status utama (setelah optimasi)
+    // Update statistik menggunakan status_di
     const direncanakan = allDIData.filter(item => {
-      const status = (item.status || '').toUpperCase();
-      return status === 'DIAJUKAN' || status === 'SUBMITTED';
+      const status = (item.status_di || '').toUpperCase();
+      return status === 'DIAJUKAN';
     }).length;
     
     const persiapanUnit = allDIData.filter(item => {
-      const status = (item.status || '').toUpperCase();
+      const status = (item.status_di || '').toUpperCase();
       return status === 'DISETUJUI' || status === 'PERSIAPAN_UNIT' || status === 'SIAP_KIRIM';
     }).length;
     
     const dalamPerjalanan = allDIData.filter(item => {
-      const status = (item.status || '').toUpperCase();
-      return status === 'DALAM_PERJALANAN' || status === 'SHIPPED';
+      const status = (item.status_di || '').toUpperCase();
+      return status === 'DALAM_PERJALANAN';
     }).length;
     
     const selesai = allDIData.filter(item => {
-      const status = (item.status || '').toUpperCase();
-      return status === 'SELESAI' || status === 'SAMPAI_LOKASI' || status === 'DELIVERED';
+      const status = (item.status_di || '').toUpperCase();
+      return status === 'SELESAI' || status === 'SAMPAI_LOKASI';
     }).length;
     
     document.getElementById('totalDI').textContent = total;
@@ -872,33 +892,36 @@ document.addEventListener('DOMContentLoaded', ()=>{
   function applyFilters() {
     const searchTerm = document.getElementById('diSearch').value.toLowerCase();
     
-    // Filter berdasarkan status utama (setelah optimasi)
+    // Filter berdasarkan status_di - map between English and Indonesian status terms
     let filtered;
     if (currentFilter === 'all') {
       filtered = [...allDIData];
-    } else if (currentFilter === 'DIRENCANAKAN') {
+    } else if (currentFilter === 'SUBMITTED') {
       filtered = allDIData.filter(item => {
-        const status = (item.status || '').toUpperCase();
-        return status === 'DIAJUKAN' || status === 'SUBMITTED';
+        const status = (item.status_di || '').toUpperCase();
+        return status === 'DIAJUKAN';
       });
-    } else if (currentFilter === 'DALAM_PERJALANAN') {
+    } else if (currentFilter === 'INPROGRESS') {
       filtered = allDIData.filter(item => {
-        const status = (item.status || '').toUpperCase();
-        return status === 'DALAM_PERJALANAN' || status === 'SHIPPED';
+        const status = (item.status_di || '').toUpperCase();
+        return status === 'DISETUJUI' || 
+               status === 'PERSIAPAN_UNIT' ||
+               status === 'SIAP_KIRIM' ||
+               status === 'DALAM_PERJALANAN';
       });
-    } else if (currentFilter === 'SELESAI') {
+    } else if (currentFilter === 'DELIVERED') {
       filtered = allDIData.filter(item => {
-        const status = (item.status || '').toUpperCase();
-        return status === 'SELESAI' || status === 'SAMPAI_LOKASI' || status === 'DELIVERED';
+        const status = (item.status_di || '').toUpperCase();
+        return status === 'SAMPAI_LOKASI' || status === 'SELESAI';
       });
-    } else if (currentFilter === 'DIBATALKAN') {
+    } else if (currentFilter === 'CANCELLED') {
       filtered = allDIData.filter(item => {
-        const status = (item.status || '').toUpperCase();
-        return status === 'DIBATALKAN' || status === 'CANCELLED';
+        const status = (item.status_di || '').toUpperCase();
+        return status === 'DIBATALKAN';
       });
     } else {
       // Exact match untuk filter status spesifik
-      filtered = allDIData.filter(item => (item.status || '').toUpperCase() === currentFilter);
+      filtered = allDIData.filter(item => (item.status_di || '').toUpperCase() === currentFilter);
     }
     
     // Filter by search term
@@ -929,17 +952,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
     tb.innerHTML = '';
     dataToShow.forEach(r=>{
       const tr = document.createElement('tr');
-      // Display Indonesian status values with appropriate badge colors
+      // Display status values with appropriate badge colors
       const getStatusDisplay = (status) => {
         const statusUpper = (status || '').toUpperCase();
         const statusMap = {
-          'DIAJUKAN': { text: 'Diajukan', color: 'secondary' },
-          'DIPROSES': { text: 'Diproses', color: 'info' },
-          'DIKIRIM': { text: 'Dikirim', color: 'warning' },
-          'SAMPAI': { text: 'Sampai', color: 'success' },
-          'DIBATALKAN': { text: 'Dibatalkan', color: 'danger' }
+          'DIAJUKAN': { text: 'DIAJUKAN', color: 'secondary' },
+          'DISETUJUI': { text: 'DISETUJUI', color: 'info' },
+          'PERSIAPAN_UNIT': { text: 'PERSIAPAN_UNIT', color: 'warning' },
+          'SIAP_KIRIM': { text: 'SIAP_KIRIM', color: 'primary' },
+          'DALAM_PERJALANAN': { text: 'DALAM_PERJALANAN', color: 'warning' },
+          'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', color: 'success' },
+          'SELESAI': { text: 'SELESAI', color: 'success' },
+          'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' }
         };
-        const mapped = statusMap[statusUpper] || { text: status || 'Diajukan', color: 'secondary' };
+        const mapped = statusMap[statusUpper] || { text: status || 'DIAJUKAN', color: 'secondary' };
         return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
       };
       
@@ -979,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <td>${r.jenis_perintah || '-'}</td>
         <td>${r.tujuan_perintah || '-'}</td>
         <td>${r.tanggal_kirim||'-'}</td>
-        <td>${getStatusDisplay(r.status)}</td>`;
+        <td>${getStatusDisplay(r.status_di)}</td>`;
       tb.appendChild(tr);
     });
     
@@ -1047,6 +1073,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // Update active card
       document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
       this.classList.add('active');
+      
+      applyFilters();
+    });
+  });
+  
+  // Add filter tab click listeners
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.addEventListener('click', function(e) {
+      e.preventDefault();
+      const filter = this.dataset.filter;
+      currentFilter = filter;
+      
+      // Update active tab
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      
+      // Update active card
+      document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+      const correspondingCard = document.querySelector(`[data-filter="${filter}"]`);
+      if (correspondingCard) {
+        correspondingCard.classList.add('active');
+      }
       
       applyFilters();
     });
@@ -1397,10 +1445,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
             attachmentText = ` &nbsp; • &nbsp; ${it.attachment_label}`;
           }
           
+          // Check if unit is in active DI
+          const isInActiveDI = it.is_in_active_di || false;
+          const activeDI = it.active_di_info || null;
+          const disabled = isInActiveDI ? 'disabled' : '';
+          const checked = isInActiveDI ? '' : 'checked';
+          const warningBadge = isInActiveDI && activeDI ? ` <span class="badge bg-warning text-dark">Sudah di ${activeDI.nomor_di}</span>` : '';
+          
           wrap.innerHTML = `
-            <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${unitId}" checked>
+            <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${unitId}" ${checked} ${disabled}>
             <label for="${idSafe}" class="form-check-label">
-              <div><strong>${it.unit_label || ('Unit #' + (idx+1))}</strong></div>
+              <div><strong>${it.unit_label || ('Unit #' + (idx+1))}</strong>${warningBadge}</div>
               <div class="unit-note">SN: ${it.serial_number || '-'}${attachmentText}</div>
             </label>`;
           list.appendChild(wrap);
@@ -1408,8 +1463,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const updateSel = ()=>{ const n = list.querySelectorAll('.unit-check:checked').length; selCount.textContent = String(n); };
         list.querySelectorAll('.unit-check').forEach(cb=> cb.addEventListener('change', updateSel));
         updateSel();
-        document.getElementById('btnSelectAll').onclick = ()=>{ list.querySelectorAll('.unit-check').forEach(cb=> cb.checked=true); selCount.textContent = String(list.querySelectorAll('.unit-check:checked').length); };
-        document.getElementById('btnClearAll').onclick = ()=>{ list.querySelectorAll('.unit-check').forEach(cb=> cb.checked=false); selCount.textContent = '0'; };
+        document.getElementById('btnSelectAll').onclick = ()=>{ list.querySelectorAll('.unit-check:not(:disabled)').forEach(cb=> cb.checked=true); selCount.textContent = String(list.querySelectorAll('.unit-check:checked').length); };
+        document.getElementById('btnClearAll').onclick = ()=>{ list.querySelectorAll('.unit-check:not(:disabled)').forEach(cb=> cb.checked=false); selCount.textContent = '0'; };
       }
     });
   });

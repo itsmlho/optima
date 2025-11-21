@@ -15,10 +15,7 @@ class KontrakModel extends Model
     protected $allowedFields = [
         'no_kontrak',
         'no_po_marketing', 
-        'pelanggan',
-        'pic',
-        'kontak',
-        'lokasi',
+        'customer_location_id',
         'nilai_total',
         'total_units',
         'jenis_sewa',
@@ -38,7 +35,7 @@ class KontrakModel extends Model
     // Validation
     protected $validationRules = [
         'no_kontrak' => 'required|max_length[100]|is_unique[kontrak.no_kontrak]',
-        'pelanggan' => 'required|max_length[255]',
+        'customer_location_id' => 'required|is_natural_no_zero',
         'tanggal_mulai' => 'required|valid_date',
         'tanggal_berakhir' => 'required|valid_date',
         'status' => 'permit_empty|in_list[Aktif,Berakhir,Pending,Dibatalkan]'
@@ -49,8 +46,9 @@ class KontrakModel extends Model
             'required' => 'Nomor kontrak harus diisi.',
             'is_unique' => 'Nomor kontrak sudah digunakan.'
         ],
-        'pelanggan' => [
-            'required' => 'Nama pelanggan harus diisi.'
+        'customer_location_id' => [
+            'required' => 'Customer location harus dipilih.',
+            'is_natural_no_zero' => 'Customer location harus berupa angka yang valid.'
         ],
         'tanggal_mulai' => [
             'required' => 'Tanggal mulai harus diisi.',
@@ -96,19 +94,22 @@ class KontrakModel extends Model
     {
         $builder = $this->db->table($this->table . ' k');
         
-        // Join with users table for counting
+        // Join with customer_locations, customers, and users table for counting
+        $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
+        $builder->join('customers c', 'cl.customer_id = c.id', 'left');
         $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
         
         // Filter out invalid IDs (0 or null)
         $builder->where('k.id >', 0);
         $builder->where('k.id IS NOT NULL', null, false);
         
-        // Search functionality for counting
+        // Search functionality for counting with new database structure
         if (!empty($search)) {
             $builder->groupStart()
                     ->like('k.no_kontrak', $search)
-                    ->orLike('k.pelanggan', $search)
-                    ->orLike('k.lokasi', $search)
+                    ->orLike('c.customer_name', $search)
+                    ->orLike('cl.location_name', $search)
+                    ->orLike('cl.address', $search)
                     ->orLike('k.status', $search)
                     ->groupEnd();
         }
@@ -119,8 +120,18 @@ class KontrakModel extends Model
         // Reset builder for actual data query
         $builder = $this->db->table($this->table . ' k');
         
-        // Explicitly select all columns we need with dynamic calculations and user name
-        $builder->select('k.id, k.no_kontrak, k.no_po_marketing, k.pelanggan, k.pic, k.kontak, k.lokasi, k.jenis_sewa,
+        // Join again for data query
+        $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
+        $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+        $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
+        
+        // Explicitly select all columns we need with dynamic calculations and user name from new structure
+        $builder->select('k.id, k.no_kontrak, k.no_po_marketing, 
+                         c.customer_name as pelanggan, 
+                         cl.contact_person as pic, 
+                         cl.phone as kontak, 
+                         cl.location_name as lokasi, 
+                         k.jenis_sewa,
                          (SELECT COALESCE(SUM(harga_sewa_bulanan), 0) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as nilai_total,
                          (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as total_units,
                          k.tanggal_mulai, k.tanggal_berakhir, k.status, k.dibuat_pada, k.diperbarui_pada,
@@ -137,14 +148,15 @@ class KontrakModel extends Model
         if (!empty($search)) {
             $builder->groupStart()
                     ->like('k.no_kontrak', $search)
-                    ->orLike('k.pelanggan', $search)
-                    ->orLike('k.lokasi', $search)
+                    ->orLike('c.customer_name', $search)
+                    ->orLike('cl.location_name', $search)
+                    ->orLike('cl.address', $search)
                     ->orLike('k.status', $search)
                     ->groupEnd();
         }
 
-        // Order
-        $columns = ['k.no_kontrak', 'k.pelanggan', 'k.tanggal_mulai', 'k.tanggal_berakhir', 'k.status'];
+        // Order with new database structure
+        $columns = ['k.no_kontrak', 'c.customer_name', 'k.tanggal_mulai', 'k.tanggal_berakhir', 'k.status'];
         if (isset($columns[$orderColumn])) {
             $builder->orderBy($columns[$orderColumn], $orderDir);
         } else {
@@ -209,12 +221,15 @@ class KontrakModel extends Model
             return $this->countAll();
         }
 
-        $builder = $this->db->table($this->table);
+        $builder = $this->db->table($this->table . ' k');
+        $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
+        $builder->join('customers c', 'cl.customer_id = c.id', 'left');
         $builder->groupStart()
-                ->like('no_kontrak', $searchValue)
-                ->orLike('pelanggan', $searchValue)
-                ->orLike('lokasi', $searchValue)
-                ->orLike('status', $searchValue)
+                ->like('k.no_kontrak', $searchValue)
+                ->orLike('c.customer_name', $searchValue)
+                ->orLike('cl.location_name', $searchValue)
+                ->orLike('cl.address', $searchValue)
+                ->orLike('k.status', $searchValue)
                 ->groupEnd();
 
         return $builder->countAllResults();
@@ -280,12 +295,19 @@ class KontrakModel extends Model
      */
     public function findWithDynamicCalculation($id)
     {
-        // First get the basic contract data with user information
+        // First get the basic contract data with user, customer, and location information
         $contract = $this->db->table($this->table . ' k')
             ->select('
                 k.*,
+                c.customer_name,
+                cl.location_name,
+                cl.contact_person,
+                cl.phone,
+                cl.address,
                 CONCAT(u.first_name, " ", u.last_name) as dibuat_oleh_nama
             ')
+            ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+            ->join('customers c', 'cl.customer_id = c.id', 'left')
             ->join('users u', 'k.dibuat_oleh = u.id', 'left')
             ->where('k.id', $id)
             ->get()

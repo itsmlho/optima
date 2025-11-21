@@ -251,6 +251,12 @@ class KontrakSpesifikasiModel extends Model
             $finalHargaBulanan = $hargaBulanan ?? $spek['harga_per_unit_bulanan'];
             $finalHargaHarian = $hargaHarian ?? $spek['harga_per_unit_harian'];
 
+            // Validate that harga is provided for unit specifications (not attachments)
+            if (empty($finalHargaBulanan) && empty($spek['attachment_tipe'])) {
+                log_message('error', "Cannot assign unit {$unitId} to specification {$spesifikasiId}: harga_per_unit_bulanan is required for unit specifications");
+                throw new \Exception("Harga sewa bulanan harus diisi untuk spesifikasi unit");
+            }
+
             // Get kontrak status to determine appropriate unit status
             $kontrakStatus = $kontrak['status'] ?? 'Pending';
             

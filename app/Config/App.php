@@ -4,6 +4,11 @@ namespace Config;
 
 use CodeIgniter\Config\BaseConfig;
 
+// Load date helper early
+if (file_exists(APPPATH . 'Helpers/date_helper.php')) {
+    require_once APPPATH . 'Helpers/date_helper.php';
+}
+
 class App extends BaseConfig
 {
     /**
@@ -151,7 +156,7 @@ class App extends BaseConfig
      * @see https://www.php.net/manual/en/timezones.php for list of timezones
      *      supported by PHP.
      */
-    public string $appTimezone = 'UTC';
+    public string $appTimezone = 'Asia/Jakarta';
 
     /**
      * --------------------------------------------------------------------------

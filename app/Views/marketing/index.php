@@ -425,6 +425,13 @@ function viewContract(contractNumber) {
     showNotification('Opening contract ' + contractNumber, 'info');
 }
 
+// Ensure viewContract exists for compatibility with other views/scripts
+if (typeof viewContract === 'undefined') {
+    function viewContract(contractNumber) {
+        window.location.href = '<?= base_url('marketing/kontrak') ?>?no_kontrak=' + encodeURIComponent(contractNumber);
+    }
+}
+
 function editContract(contractNumber) {
     showNotification('Editing contract ' + contractNumber, 'info');
 }

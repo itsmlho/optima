@@ -10,7 +10,7 @@ class Finance extends BaseController
     public function index()
     {
         $data = [
-            'title' => 'Financial Management | OPTIMA',
+            'title' => 'Financial Management',
             'page_title' => 'Financial Management',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -27,7 +27,7 @@ class Finance extends BaseController
     public function invoices()
     {
         $data = [
-            'title' => 'Invoice Management | OPTIMA',
+            'title' => 'Invoice Management',
             'page_title' => 'Invoice Management',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -43,7 +43,7 @@ class Finance extends BaseController
     public function payments()
     {
         $data = [
-            'title' => 'Payment Management | OPTIMA',
+            'title' => 'Payment Management',
             'page_title' => 'Payment Management',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -59,7 +59,7 @@ class Finance extends BaseController
     public function expenses()
     {
         $data = [
-            'title' => 'Expense Management | OPTIMA',
+            'title' => 'Expense Management',
             'page_title' => 'Expense Management',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -75,7 +75,7 @@ class Finance extends BaseController
     public function reports()
     {
         $data = [
-            'title' => 'Financial Reports | OPTIMA',
+            'title' => 'Financial Reports',
             'page_title' => 'Financial Reports',
             'breadcrumbs' => [
                 '/' => 'Dashboard',

@@ -10,7 +10,7 @@ class Customers extends BaseController
     public function index()
     {
         $data = [
-            'title' => 'Customer Management | OPTIMA',
+            'title' => 'Customer Management',
             'page_title' => 'Customer Management',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -26,7 +26,7 @@ class Customers extends BaseController
     public function create()
     {
         $data = [
-            'title' => 'Add New Customer | OPTIMA',
+            'title' => 'Add New Customer',
             'page_title' => 'Add New Customer',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -76,7 +76,7 @@ class Customers extends BaseController
         }
 
         $data = [
-            'title' => 'Edit Customer | OPTIMA',
+            'title' => 'Edit Customer',
             'page_title' => 'Edit Customer',
             'breadcrumbs' => [
                 '/' => 'Dashboard',

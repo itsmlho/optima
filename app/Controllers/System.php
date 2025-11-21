@@ -6,12 +6,17 @@ use App\Controllers\BaseController;
 
 class System extends BaseController
 {
+    public function __construct()
+    {
+        helper('form');
+    }
+    
     public function profile()
     {
         $userProfile = $this->getUserProfile();
         
         $data = [
-            'title' => 'Profil Saya | OPTIMA',
+            'title' => 'Profil Saya',
             'page_title' => 'Profil Pengguna',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -19,15 +24,212 @@ class System extends BaseController
             ],
             'user_data' => $userProfile,
             'user_email' => $userProfile['email'] ?? 'admin@optima.com',
+            'divisions' => $this->getDivisions(),
+            'locations' => $this->getLocations(),
+            'supervisors' => $this->getSupervisors(),
+            'profile_logs' => $this->getProfileLogs($userProfile['id'] ?? 0)
         ];
+        
+        // Ensure session avatar is set
+        if (!session()->get('avatar') && !empty($userProfile['avatar'])) {
+            session()->set('avatar', $userProfile['avatar']);
+            log_message('debug', 'Session avatar set from database: ' . $userProfile['avatar']);
+        }
+        
+        // Ensure session position is set
+        if (!session()->get('position') && !empty($userProfile['position'])) {
+            session()->set('position', $userProfile['position']);
+            log_message('debug', 'Session position set from database: ' . $userProfile['position']);
+        }
+        
+        // Ensure session division is set
+        if (!session()->get('division_id') && !empty($userProfile['division_id'])) {
+            session()->set('division_id', $userProfile['division_id']);
+            log_message('debug', 'Session division_id set from database: ' . $userProfile['division_id']);
+        }
 
-        return view('system/profile', $data);
+        return view('admin/advanced_user_management/profile', $data);
+    }
+    
+    public function updateProfile()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method']);
+        }
+        
+        // Debug: Log all received data
+        log_message('debug', 'Profile update - POST data: ' . json_encode($this->request->getPost()));
+        log_message('debug', 'Profile update - Session user_id: ' . session()->get('user_id'));
+        
+        $validation = \Config\Services::validation();
+        // Only validate fields that are editable in the simplified profile
+        $validation->setRules([
+            'first_name' => 'required|min_length[2]|max_length[50]',
+            'last_name'  => 'required|min_length[2]|max_length[50]',
+            'phone'      => 'permit_empty|max_length[20]',
+            'bio'        => 'permit_empty|max_length[500]'
+        ]);
+        
+        if (!$validation->withRequest($this->request)->run()) {
+            $errors = $validation->getErrors();
+            log_message('error', 'Profile validation failed: ' . json_encode($errors));
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $errors
+            ]);
+        }
+        
+        try {
+            $userId = session()->get('user_id');
+            if (!$userId) {
+                return $this->response->setJSON(['success' => false, 'message' => 'User not authenticated']);
+            }
+            
+            $userModel = new \App\Models\UserModel();
+            // Bypass model-level validation; we already validated fields above
+            if (method_exists($userModel, 'skipValidation')) { $userModel->skipValidation(true); }
+            $updateData = [
+                'first_name' => $this->request->getPost('first_name'),
+                'last_name'  => $this->request->getPost('last_name'),
+                'phone'      => $this->request->getPost('phone') ?: null,
+                'bio'        => $this->request->getPost('bio') ?: null,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            log_message('debug', 'Profile update data: ' . json_encode($updateData));
+            
+            if ($userModel->update($userId, $updateData)) {
+                // Update session data
+                session()->set([
+                    'first_name' => $updateData['first_name'],
+                    'last_name' => $updateData['last_name']
+                ]);
+                
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Profile updated successfully'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to update profile',
+                    'errors'  => method_exists($userModel, 'errors') ? ($userModel->errors() ?: null) : null
+                ]);
+            }
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    public function uploadAvatar()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request method']);
+        }
+        
+        // Debug: Log avatar upload attempt
+        log_message('debug', 'Avatar upload - Session user_id: ' . session()->get('user_id'));
+        log_message('debug', 'Avatar upload - File data: ' . json_encode($_FILES));
+
+        $validation = \Config\Services::validation();
+        $validation->setRules([
+            'avatar' => [
+                'label' => 'Avatar Image',
+                'rules' => 'uploaded[avatar]|is_image[avatar]|mime_in[avatar,image/jpg,image/jpeg,image/png,image/gif,image/webp]|max_size[avatar,2048]'
+            ]
+        ]);
+
+        if (!$validation->withRequest($this->request)->run()) {
+            $errors = $validation->getErrors();
+            $errorMessage = 'Invalid image file. ';
+            
+            // Custom error messages
+            if (isset($errors['avatar'])) {
+                if (strpos($errors['avatar'], 'mime_in') !== false) {
+                    $errorMessage = 'Unsupported image format. Please use JPG, PNG, GIF, or WebP format.';
+                } elseif (strpos($errors['avatar'], 'max_size') !== false) {
+                    $errorMessage = 'Image file is too large. Maximum size is 2MB.';
+                } elseif (strpos($errors['avatar'], 'is_image') !== false) {
+                    $errorMessage = 'Please select a valid image file.';
+                } else {
+                    $errorMessage = 'Invalid image file: ' . $errors['avatar'];
+                }
+            }
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $errorMessage,
+                'errors'  => $errors
+            ]);
+        }
+
+        try {
+            $userId = session()->get('user_id');
+            if (!$userId) {
+                return $this->response->setJSON(['success' => false, 'message' => 'User not authenticated']);
+            }
+
+            $file = $this->request->getFile('avatar');
+            if (!$file || !$file->isValid()) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Invalid file']);
+            }
+
+            $uploadPath = FCPATH . 'uploads/avatars/';
+            if (!is_dir($uploadPath)) { 
+                @mkdir($uploadPath, 0777, true); 
+                @chmod($uploadPath, 0777);
+            }
+
+            $newName = 'avatar_' . $userId . '_' . time() . '.' . $file->getExtension();
+            if (!$file->move($uploadPath, $newName)) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Failed to move uploaded file']);
+            }
+            
+            // Set proper permissions for uploaded file
+            @chmod($uploadPath . $newName, 0666);
+
+            // Generate avatar URL - use relative path for better compatibility
+            $avatarUrl = 'uploads/avatars/' . $newName;
+            log_message('debug', 'Avatar upload - Generated URL: ' . $avatarUrl);
+            
+            $userModel = new \App\Models\UserModel();
+            if (method_exists($userModel, 'skipValidation')) { $userModel->skipValidation(true); }
+            
+            $updateData = ['avatar' => $avatarUrl, 'updated_at' => date('Y-m-d H:i:s')];
+            log_message('debug', 'Avatar upload - Update data: ' . json_encode($updateData));
+            
+            if ($userModel->update($userId, $updateData)) {
+                log_message('info', 'Avatar uploaded and saved to database successfully for user ' . $userId);
+                
+                // Update session avatar
+                session()->set('avatar', $avatarUrl);
+                log_message('debug', 'Session avatar updated to: ' . $avatarUrl);
+                
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Avatar uploaded successfully',
+                    'avatar_url' => $avatarUrl
+                ]);
+            }
+
+            log_message('error', 'Failed to update avatar in database for user ' . $userId);
+            return $this->response->setJSON(['success' => false, 'message' => 'Failed to update avatar in database']);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
     }
 
     public function settings()
     {
         $data = [
-            'title' => 'Pengaturan | OPTIMA',
+            'title' => 'Pengaturan',
             'page_title' => 'Pengaturan Sistem',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -49,7 +251,7 @@ class System extends BaseController
         $notifications = $this->getNotificationsForUser($db);
         
         $data = [
-            'title' => 'Notifikasi | OPTIMA',
+            'title' => 'Notifikasi',
             'page_title' => 'Pusat Notifikasi',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -65,7 +267,7 @@ class System extends BaseController
     public function help()
     {
         $data = [
-            'title' => 'Bantuan | OPTIMA',
+            'title' => 'Bantuan',
             'page_title' => 'Pusat Bantuan',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -86,21 +288,165 @@ class System extends BaseController
 
     private function getUserProfile()
     {
-        // Mock user profile data
+        $userId = session()->get('user_id');
+        
+        if (!$userId) {
+            return [
+                'id' => 0,
+                'username' => 'guest',
+                'first_name' => 'Guest',
+                'last_name' => 'User',
+                'email' => 'guest@example.com',
+                'role' => 'guest',
+                'department' => 'N/A',
+                'phone' => '',
+                'address' => '',
+                'joined_date' => date('Y-m-d'),
+                'last_login' => date('Y-m-d H:i:s'),
+                'avatar' => base_url('assets/images/default-avatar.svg')
+            ];
+        }
+        
+        // Get user data from database
+        $userModel = new \App\Models\UserModel();
+        $user = $userModel->find($userId);
+        
+        if (!$user) {
+            return [
+                'id' => 0,
+                'username' => 'unknown',
+                'first_name' => 'Unknown',
+                'last_name' => 'User',
+                'email' => 'unknown@example.com',
+                'role' => 'unknown',
+                'department' => 'N/A',
+                'phone' => '',
+                'address' => '',
+                'joined_date' => date('Y-m-d'),
+                'last_login' => date('Y-m-d H:i:s'),
+                'avatar' => base_url('assets/images/default-avatar.svg')
+            ];
+        }
+        
+        // Get division and role info
+        $db = \Config\Database::connect();
+        
+        // Get division info
+        $divisionInfo = $db->table('users u')
+            ->select('d.name as division_name')
+            ->join('divisions d', 'd.id = u.division_id', 'left')
+            ->where('u.id', $userId)
+            ->get()
+            ->getRowArray();
+        
+        // Get role info
+        $roleInfo = $db->table('user_roles ur')
+            ->select('r.name as role_name')
+            ->join('roles r', 'r.id = ur.role_id', 'left')
+            ->where('ur.user_id', $userId)
+            ->get()
+            ->getRowArray();
+        
         return [
-            'id' => 1,
-            'username' => 'admin',
-            'first_name' => 'Administrator',
-            'last_name' => 'System',
-            'email' => 'admin@optima.com',
-            'role' => 'admin',
-            'department' => 'IT',
-            'phone' => '+62 812-3456-7890',
-            'address' => 'Jakarta, Indonesia',
-            'joined_date' => '2023-01-15',
-            'last_login' => '2024-01-15 08:30:00',
-            'avatar' => base_url('assets/images/default-avatar.svg')
+            'id' => $user['id'],
+            'username' => $user['username'],
+            'first_name' => $user['first_name'],
+            'last_name' => $user['last_name'],
+            'email' => $user['email'],
+            'phone' => $user['phone'] ?? '',
+            'position' => $user['position'] ?? '',
+            'division_name' => $divisionInfo['division_name'] ?? 'No Division',
+            'role_name' => $roleInfo['role_name'] ?? 'No Role',
+            'location' => $user['location'] ?? '',
+            'bio' => $user['bio'] ?? '',
+            'avatar' => $user['avatar'] ?? base_url('assets/images/default-avatar.svg'),
+            'created_at' => $user['created_at'],
+            'updated_at' => $user['updated_at']
         ];
+    }
+
+    private function getDivisions()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $divisions = $db->table('divisions')
+                ->select('id, name')
+                ->where('is_active', 1)
+                ->get()
+                ->getResultArray();
+            
+            $divisionMap = [];
+            foreach ($divisions as $division) {
+                $divisionMap[$division['id']] = $division['name'];
+            }
+            
+            return $divisionMap;
+        } catch (\Exception $e) {
+            // Fallback to hardcoded divisions
+            return [
+                'service' => 'Service Division',
+                'rolling_unit' => 'Rolling Unit Division',
+                'marketing' => 'Marketing Division',
+                'warehouse' => 'Warehouse & Assets Division',
+                'finance' => 'Finance Division',
+                'hr' => 'Human Resources',
+                'it' => 'Information Technology',
+                'management' => 'Management'
+            ];
+        }
+    }
+    
+    private function getLocations()
+    {
+        return [
+            'jakarta_pusat' => 'Jakarta Pusat',
+            'jakarta_utara' => 'Jakarta Utara',
+            'jakarta_selatan' => 'Jakarta Selatan',
+            'jakarta_timur' => 'Jakarta Timur',
+            'jakarta_barat' => 'Jakarta Barat',
+            'bogor' => 'Bogor',
+            'depok' => 'Depok',
+            'tangerang' => 'Tangerang',
+            'bekasi' => 'Bekasi',
+            'bandung' => 'Bandung',
+            'surabaya' => 'Surabaya',
+            'medan' => 'Medan',
+            'semarang' => 'Semarang',
+            'palembang' => 'Palembang',
+            'makassar' => 'Makassar'
+        ];
+    }
+    
+    private function getSupervisors()
+    {
+        try {
+            $userModel = new \App\Models\UserModel();
+            return $userModel->where('role', 'manager')
+                              ->orWhere('role', 'supervisor')
+                              ->findAll();
+        } catch (\Exception $e) {
+            return [];
+        }
+    }
+    
+    private function getProfileLogs($userId)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            if (!$db->tableExists('profile_logs')) {
+                return [];
+            }
+            
+            return $db->table('profile_logs')
+                      ->where('user_id', $userId)
+                      ->orderBy('created_at', 'DESC')
+                      ->limit(50)
+                      ->get()
+                      ->getResultArray();
+        } catch (\Exception $e) {
+            return [];
+        }
     }
 
     private function getSystemSettings()

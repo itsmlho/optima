@@ -49,6 +49,7 @@ class Auth extends BaseController
                         'last_name' => $user['last_name'] ?? '',
                         'department' => $user['department'] ?? '',
                         'position' => $user['position'] ?? '',
+                        'avatar' => $user['avatar'] ?? null,
                         'role' => $this->getUserRole($user['id']),
                         'is_active' => $user['is_active'] ?? 1
                     ];
@@ -124,6 +125,7 @@ class Auth extends BaseController
             'last_name' => $user['last_name'] ?? '',
             'division_id' => $user['division_id'] ?? null,
             'position' => $user['position'] ?? '',
+            'avatar' => $user['avatar'] ?? null,
             'role' => $this->getUserRole($user['id']),
             'is_active' => $user['is_active'] ?? 1,
             'is_super_admin' => $user['is_super_admin'] ?? 0

@@ -13,12 +13,14 @@ class InventoryAttachmentModel extends Model
     protected $useSoftDeletes = false;
     protected $protectFields = true;
     protected $allowedFields = [
+        'tipe_item',
         'po_id',
         'attachment_id','sn_attachment',
         'baterai_id','sn_baterai',
         'charger_id','sn_charger',
         'id_inventory_unit','status_unit','lokasi_penyimpanan',
         'kondisi_fisik','kelengkapan','tanggal_masuk','catatan_inventory',
+        'attachment_status',
     ];
 
     // Dates
@@ -85,19 +87,19 @@ class InventoryAttachmentModel extends Model
     protected $skipValidation = false;
     protected $cleanValidationRules = true;
 
-    /** Check if an attachment is available (status_unit in [7,8] = stock). */
+    /** Check if an attachment is available (attachment_status = 'AVAILABLE'). */
     public function isAvailable(int $inventoryAttachmentId): bool
     {
-        $row = $this->select('status_unit')->where('id_inventory_attachment', $inventoryAttachmentId)->first();
+        $row = $this->select('attachment_status')->where('id_inventory_attachment', $inventoryAttachmentId)->first();
         if (!$row) return false;
-        return in_array((int)$row['status_unit'], [7,8], true);
+        return $row['attachment_status'] === 'AVAILABLE';
     }
 
-    /** Mark an attachment as used on the specified unit, recording a lokasi_penyimpanan note and setting status_unit=3. */
+    /** Mark an attachment as used on the specified unit, recording a lokasi_penyimpanan note and setting attachment_status='USED'. */
     public function markUsedOnUnit(int $inventoryAttachmentId, string $unitLabel): bool
     {
         return (bool)$this->update($inventoryAttachmentId, [
-            'status_unit' => 3,
+            'attachment_status' => 'USED',
             'lokasi_penyimpanan' => 'Digunakan pada unit ' . $unitLabel,
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
@@ -144,12 +146,16 @@ class InventoryAttachmentModel extends Model
         
         $builder = $this->db->table($this->table . ' ia');
         
-        // Select fields
+        // Select fields with proper aliases
         $builder->select('
             ia.id_inventory_attachment,
+            ia.tipe_item,
             ia.po_id,
+            ia.id_inventory_unit,
             ia.attachment_id,
             ia.sn_attachment,
+            ia.baterai_id,
+            ia.sn_baterai,
             ia.charger_id,
             ia.sn_charger,
             ia.kondisi_fisik,
@@ -157,10 +163,19 @@ class InventoryAttachmentModel extends Model
             ia.catatan_fisik,
             ia.lokasi_penyimpanan,
             ia.status_unit,
+            ia.attachment_status,
             ia.tanggal_masuk,
             ia.catatan_inventory,
             ia.created_at,
-            ia.updated_at
+            ia.updated_at,
+            a.merk as attachment_merk,
+            a.tipe as attachment_tipe,
+            a.model as attachment_model,
+            b.merk_baterai,
+            b.tipe_baterai,
+            b.jenis_baterai,
+            c.merk_charger,
+            c.tipe_charger
         ');
 
         // Add status_unit_name if status_unit table exists
@@ -184,9 +199,28 @@ class InventoryAttachmentModel extends Model
             ');
         }
 
+        // Add unit number if linked to a unit
+        $builder->select('iu.no_unit');
+        $builder->join('inventory_unit iu', 'ia.id_inventory_unit = iu.id_inventory_unit', 'left');
+
+        // Join with attachment, charger, and baterai tables
+        $builder->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left');
+        $builder->join('charger c', 'ia.charger_id = c.id_charger', 'left');
+        $builder->join('baterai b', 'ia.baterai_id = b.id', 'left');
+
+        // Filter by tipe_item if provided
+        if (!empty($request['tipe_item'])) {
+            $builder->where('ia.tipe_item', $request['tipe_item']);
+        }
+
         // Filter by status if provided
         if (!empty($request['status_unit'])) {
             $builder->where('ia.status_unit', $request['status_unit']);
+        }
+
+        // Filter by attachment_status if provided (for tab filter)
+        if (!empty($request['status_filter']) && $request['status_filter'] !== 'all') {
+            $builder->where('ia.attachment_status', $request['status_filter']);
         }
 
         // Search functionality
@@ -213,14 +247,16 @@ class InventoryAttachmentModel extends Model
         // Ordering
         if (!empty($request['order'])) {
             $orderMap = [
-                0 => 'ia.id_inventory_attachment',
-                1 => 'ia.sn_attachment',
-                2 => 'ia.sn_charger',
-                3 => 'ia.kondisi_fisik',
-                4 => 'ia.kelengkapan',
-                5 => 'status_unit_name',
-                6 => 'ia.lokasi_penyimpanan',
-                7 => 'ia.tanggal_masuk'
+                0 => 'ia.id_inventory_attachment', // ID
+                1 => 'ia.tipe_item',               // Tipe Item
+                2 => 'a.merk',                     // Merk (attachment.merk)
+                3 => 'a.tipe',                     // Tipe (attachment.tipe)
+                4 => 'b.jenis_baterai',            // Jenis (only for battery)
+                5 => 'a.model',                    // Model (only for attachment)
+                6 => 'ia.sn_attachment',           // SN (dynamic based on tipe_item)
+                7 => 'ia.kondisi_fisik',           // Kondisi Fisik
+                8 => 'ia.attachment_status',       // Status
+                9 => 'ia.lokasi_penyimpanan'       // Lokasi
             ];
 
             $orderColumnIndex = $request['order'][0]['column'];
@@ -404,13 +440,14 @@ class InventoryAttachmentModel extends Model
 
     public function getAvailableForAttachment(int $attachmentId): array
     {
-        return $this->select('inventory_attachment.*, a.tipe, a.merk, a.model')
+        return $this->select('inventory_attachment.*, a.tipe, a.merk, a.model, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
             ->join('attachment a', 'a.id_attachment = inventory_attachment.attachment_id', 'left')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = inventory_attachment.id_inventory_unit', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->where([
                 'inventory_attachment.attachment_id' => $attachmentId,
                 'inventory_attachment.tipe_item'     => 'attachment',
-                'inventory_attachment.attachment_status' => 'AVAILABLE', // Using new ENUM
-            ])->where('inventory_attachment.id_inventory_unit', null)
+            ])->whereIn('inventory_attachment.status_unit', [1, 11]) // available_stock (1) dan stock_non_aset (11)
               ->where('inventory_attachment.attachment_id IS NOT NULL')
               ->orderBy('inventory_attachment.tanggal_masuk','ASC')
               ->findAll(100);
@@ -418,26 +455,42 @@ class InventoryAttachmentModel extends Model
 
     public function getAvailableChargers(): array
     {
-        // Ambil inventory yang punya charger_id dan tipe_item = 'charger', status AVAILABLE
-        return $this->select('inventory_attachment.*, c.merk_charger, c.tipe_charger')
+        // Ambil inventory yang punya charger_id dan tipe_item = 'charger'
+        // Include AVAILABLE (status 1, 11) dan USED (untuk kanibal, hanya jika status_unit = 1 atau 11)
+        return $this->select('inventory_attachment.*, c.merk_charger, c.tipe_charger, 
+                             iu.no_unit as installed_unit_no, iu.serial_number as installed_unit_sn, 
+                             mu.merk_unit as installed_unit_merk, mu.model_unit as installed_unit_model')
             ->join('charger c', 'c.id_charger = inventory_attachment.charger_id', 'left')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = inventory_attachment.id_inventory_unit', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->where('inventory_attachment.tipe_item', 'charger')
-            ->where('inventory_attachment.attachment_status', 'AVAILABLE') // Using new ENUM
-            ->where('(inventory_attachment.id_inventory_unit IS NULL OR inventory_attachment.id_inventory_unit = 0)')
+            ->groupStart()
+                ->where('inventory_attachment.attachment_status', 'AVAILABLE')
+                ->orWhere('(inventory_attachment.attachment_status = "USED" AND inventory_attachment.status_unit IN (1, 11))')
+            ->groupEnd()
             ->where('inventory_attachment.charger_id IS NOT NULL')
+            ->orderBy('inventory_attachment.attachment_status', 'ASC') // AVAILABLE first, then USED
             ->orderBy('inventory_attachment.tanggal_masuk','ASC')
             ->findAll(100);
     }
 
     public function getAvailableBatteries(): array
     {
-        // Ambil inventory yang punya baterai_id dan tipe_item = 'battery', status AVAILABLE
-        return $this->select('inventory_attachment.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+        // Ambil inventory yang punya baterai_id dan tipe_item = 'battery'
+        // Include AVAILABLE (status 1, 11) dan USED (untuk kanibal, hanya jika status_unit = 1 atau 11)
+        return $this->select('inventory_attachment.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai, 
+                             iu.no_unit as installed_unit_no, iu.serial_number as installed_unit_sn, 
+                             mu.merk_unit as installed_unit_merk, mu.model_unit as installed_unit_model')
             ->join('baterai b', 'b.id = inventory_attachment.baterai_id', 'left')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = inventory_attachment.id_inventory_unit', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->where('inventory_attachment.tipe_item', 'battery')
-            ->where('inventory_attachment.attachment_status', 'AVAILABLE') // Using new ENUM
-            ->where('(inventory_attachment.id_inventory_unit IS NULL OR inventory_attachment.id_inventory_unit = 0)')
+            ->groupStart()
+                ->where('inventory_attachment.attachment_status', 'AVAILABLE')
+                ->orWhere('(inventory_attachment.attachment_status = "USED" AND inventory_attachment.status_unit IN (1, 11))')
+            ->groupEnd()
             ->where('inventory_attachment.baterai_id IS NOT NULL')
+            ->orderBy('inventory_attachment.attachment_status', 'ASC') // AVAILABLE first, then USED
             ->orderBy('inventory_attachment.tanggal_masuk','ASC')
             ->findAll(100);
     }
@@ -469,16 +522,41 @@ class InventoryAttachmentModel extends Model
     }
 
     /**
+     * Get unit's current attachment info
+     */
+    public function getUnitAttachment($unitId): ?array
+    {
+        return $this->select('inventory_attachment.*, a.tipe, a.merk, a.model')
+            ->join('attachment a', 'a.id_attachment = inventory_attachment.attachment_id', 'left')
+            ->where('inventory_attachment.tipe_item', 'attachment')
+            ->where('inventory_attachment.id_inventory_unit', $unitId)
+            ->where('inventory_attachment.attachment_id IS NOT NULL')
+            ->whereIn('inventory_attachment.attachment_status', ['AVAILABLE', 'USED'])
+            ->first();
+    }
+
+    /**
      * Detach battery/charger from unit and return to stock
      */
-    public function detachFromUnit($attachmentId): bool
+    public function detachFromUnit($attachmentId, $reason = 'Detached'): bool
     {
+        // Tentukan status dan lokasi berdasarkan alasan
+        $newStatus = 'AVAILABLE';
+        $newLocation = 'Workshop';
+        
+        if (stripos($reason, 'rusak') !== false || stripos($reason, 'broken') !== false) {
+            $newStatus = 'BROKEN';
+        } elseif (stripos($reason, 'maintenance') !== false || stripos($reason, 'repair') !== false) {
+            $newStatus = 'MAINTENANCE';
+        }
+        
         return $this->update($attachmentId, [
             'id_inventory_unit' => null,
-            'status_unit' => 7, // Return to STOCK ASET
-            'lokasi_penyimpanan' => 'WAREHOUSE',
+            'attachment_status' => $newStatus,
+            'lokasi_penyimpanan' => $newLocation,
             'updated_at' => date('Y-m-d H:i:s')
         ]);
+        // Note: status_unit akan otomatis sinkronisasi dengan trigger (menjadi 7 = STOCK ASET)
     }
 
     /**
@@ -486,13 +564,66 @@ class InventoryAttachmentModel extends Model
      */
     public function attachToUnit($attachmentId, $unitId, $unitNumber = null): bool
     {
-        $locationNote = $unitNumber ? "Terpasang pada unit {$unitNumber}" : "Terpasang pada unit ID {$unitId}";
+        $locationNote = $unitNumber ? "Terpasang di Unit {$unitNumber}" : "Terpasang di Unit ID {$unitId}";
         
         return $this->update($attachmentId, [
             'id_inventory_unit' => $unitId,
-            'status_unit' => 3, // IN USE/ASSIGNED
+            'attachment_status' => 'IN_USE', // Auto set to IN_USE when attached
             'lokasi_penyimpanan' => $locationNote,
             'updated_at' => date('Y-m-d H:i:s')
         ]);
+        // Note: status_unit akan otomatis sinkronisasi dengan trigger berdasarkan unit status
+    }
+
+    /**
+     * Swap attachment between units (untuk backup/emergency)
+     * @param int $attachmentId - ID attachment yang akan dipindah
+     * @param int $fromUnitId - Unit asal
+     * @param int $toUnitId - Unit tujuan
+     * @param string $reason - Alasan swap (backup, repair, dll)
+     * @return bool
+     */
+    public function swapAttachmentBetweenUnits($attachmentId, $fromUnitId, $toUnitId, $reason = 'Swap for backup'): bool
+    {
+        $db = \Config\Database::connect();
+        $db->transStart();
+        
+        try {
+            // Get unit numbers
+            $fromUnit = $db->table('inventory_unit')
+                ->select('no_unit')
+                ->where('id_inventory_unit', $fromUnitId)
+                ->get()->getRowArray();
+                
+            $toUnit = $db->table('inventory_unit')
+                ->select('no_unit')
+                ->where('id_inventory_unit', $toUnitId)
+                ->get()->getRowArray();
+            
+            // Update attachment ke unit baru
+            $this->update($attachmentId, [
+                'id_inventory_unit' => $toUnitId,
+                'attachment_status' => 'IN_USE', // Tetap IN_USE
+                'lokasi_penyimpanan' => 'Terpasang di Unit ' . ($toUnit['no_unit'] ?? $toUnitId),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            // Log swap activity
+            $db->table('inventory_item_unit_log')->insert([
+                'id_inventory_attachment' => $attachmentId,
+                'id_inventory_unit' => $toUnitId,
+                'action' => 'swap',
+                'catatan' => "Swap from Unit {$fromUnit['no_unit']} to Unit {$toUnit['no_unit']}. Reason: {$reason}",
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            $db->transComplete();
+            return $db->transStatus();
+            
+        } catch (\Exception $e) {
+            $db->transRollback();
+            log_message('error', 'Swap attachment error: ' . $e->getMessage());
+            return false;
+        }
     }
 }

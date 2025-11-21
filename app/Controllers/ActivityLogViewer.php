@@ -10,7 +10,7 @@ class ActivityLogViewer extends BaseController
     public function index()
     {
         $data = [
-            'title' => 'Activity Log | OPTIMA',
+            'title' => 'Activity Log',
             'page_title' => 'System Activity Log',
             'breadcrumbs' => [
                 '/' => 'Dashboard',

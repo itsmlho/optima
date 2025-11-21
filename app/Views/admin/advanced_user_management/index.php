@@ -2,6 +2,23 @@
 
 <?= $this->section('content') ?>
 
+<!-- Success/Error Messages -->
+<?php if (session()->getFlashdata('success')): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="fas fa-check-circle me-2"></i>
+        <?= session()->getFlashdata('success') ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
+<?php if (session()->getFlashdata('error')): ?>
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="fas fa-exclamation-circle me-2"></i>
+        <?= session()->getFlashdata('error') ?>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+<?php endif; ?>
+
 <!-- Stats Cards -->
 <div class="row mb-4">
     <div class="col-md-3">
@@ -74,7 +91,7 @@
             <small class="text-muted">Assign roles, divisions, and manage user access</small>
         </div>
         <div class="d-flex gap-2">
-            <a href="<?= base_url('admin/advanced-users/create') ?>" class="btn btn-success">
+            <a href="<?= base_url('admin/advanced-users/create') ?>" class="btn btn-primary">
                 <i class="fas fa-plus"></i> Create User
             </a>
             <div class="dropdown">
@@ -103,8 +120,8 @@
                             <tr>
                                 <th>User</th>
                                 <th>Email</th>
-                                <th>Roles</th>
                                 <th>Divisions</th>
+                                <th>Roles</th>
                                 <th>Custom Permissions</th>
                                 <th>Status</th>
                                 <th>Actions</th>
@@ -297,8 +314,8 @@ $(document).ready(function() {
         columns: [
             { data: 'user_info' },
             { data: 'email' },
-            { data: 'roles' },
             { data: 'divisions' },
+            { data: 'roles' },
             { data: 'custom_permissions', defaultContent: '<span class="text-muted">-</span>' },
             { data: 'status' },
             { data: 'actions', orderable: false }

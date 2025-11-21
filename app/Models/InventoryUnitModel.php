@@ -14,12 +14,11 @@ class InventoryUnitModel extends Model
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
-    'serial_number',
-    'no_unit', // nomor aset manual (nullable & unik) diisi saat konversi jadi aset
+        'serial_number',
+        'no_unit', // nomor aset manual (nullable & unik) diisi saat konversi jadi aset
         'id_po',
         'tahun_unit',
         'status_unit_id',
-        'status_aset',
         'lokasi_unit',
         'departemen_id',
         'tanggal_kirim',
@@ -27,6 +26,9 @@ class InventoryUnitModel extends Model
         'harga_sewa_bulanan', // Harga sewa per bulan untuk kontrak
         'harga_sewa_harian',  // Harga sewa per hari untuk kontrak
         'kontrak_id',  // Foreign key ke tabel kontrak
+        'customer_id',
+        'customer_location_id',
+        'area_id',
         'kontrak_spesifikasi_id', // Foreign key ke kontrak_spesifikasi
         'tipe_unit_id',
         'model_unit_id',
@@ -36,15 +38,16 @@ class InventoryUnitModel extends Model
         'sn_mast',
         'model_mesin_id',
         'sn_mesin',
-        'model_attachment_id',
-        'sn_attachment',
-        'model_baterai_id',
-        'sn_baterai',
-        'model_charger_id',
-        'sn_charger',
         'roda_id',
         'ban_id',
         'valve_id',
+        'aksesoris',
+        'spk_id',
+        'delivery_instruction_id',
+        'di_workflow_id',
+        'workflow_status',
+        'contract_disconnect_date',
+        'contract_disconnect_stage',
     ];
 
     protected $useTimestamps = true;
@@ -65,6 +68,26 @@ class InventoryUnitModel extends Model
     ];
     protected $skipValidation     = false;
     protected $cleanValidationRules = true;
+
+    /**
+     * Apply status filter (supports single or multiple comma-separated values)
+     */
+    private function applyStatusFilter($builder, $statusFilter)
+    {
+        if ($statusFilter !== null && $statusFilter !== '') {
+            // Support multiple status IDs separated by comma
+            if (strpos($statusFilter, ',') !== false) {
+                $statusIds = array_map('trim', explode(',', $statusFilter));
+                $statusIds = array_filter($statusIds, 'is_numeric'); // Only numeric values
+                if (!empty($statusIds)) {
+                    $builder->whereIn('iu.status_unit_id', $statusIds);
+                }
+            } else {
+                $builder->where('iu.status_unit_id', $statusFilter);
+            }
+        }
+        return $builder;
+    }
 
     // Mapping lama->baru untuk kompatibilitas (dipakai di SELECT alias)
     // id_inventory_unit -> no_unit, serial_number_po -> serial_number, status_unit -> status_unit_id, tanggal_masuk -> created_at
@@ -103,7 +126,7 @@ class InventoryUnitModel extends Model
         return (bool)$this->update($unitId, $payload);
     }
 
-    public function getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter = null, $departemenFilter = null, $lokasiFilter = null)
+    public function getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter = null, $departemenFilter = null)
     {
         try {
             $builder = $this->db->table($this->table . ' as iu');
@@ -112,27 +135,40 @@ class InventoryUnitModel extends Model
                               iu.no_unit as nomor_aset,
                               iu.serial_number as serial_number_po,
                               iu.status_unit_id as status_unit,
-                              COALESCE(k.pelanggan, "Belum Ada Kontrak") as pelanggan,
-                              COALESCE(k.lokasi, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
+                              iu.status_unit_id as status_unit_id,
+                              COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
+                              COALESCE(cl.location_name, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
                               COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                               COALESCE(mu.model_unit, "Unknown") as model_unit,
                               COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as nama_tipe_unit,
                               COALESCE(su.status_unit, CASE 
-                                  WHEN iu.status_unit_id = 7 THEN "STOCK ASET"
-                                  WHEN iu.status_unit_id = 3 THEN "RENTAL"
-                                  WHEN iu.status_unit_id = 9 THEN "JUAL"
-                                  WHEN iu.status_unit_id = 2 THEN "WORKSHOP-RUSAK"
+                                  WHEN iu.status_unit_id = 1 THEN "AVAILABLE_STOCK"
+                                  WHEN iu.status_unit_id = 2 THEN "STOCK_NON_ASET"
+                                  WHEN iu.status_unit_id = 3 THEN "BOOKED"
+                                  WHEN iu.status_unit_id = 4 THEN "IN_PREPARATION"
+                                  WHEN iu.status_unit_id = 5 THEN "READY_TO_DELIVER"
+                                  WHEN iu.status_unit_id = 6 THEN "IN_DELIVERY"
+                                  WHEN iu.status_unit_id = 7 THEN "RENTAL_ACTIVE"
+                                  WHEN iu.status_unit_id = 8 THEN "MAINTENANCE"
+                                  WHEN iu.status_unit_id = 9 THEN "RETURNED"
+                                  WHEN iu.status_unit_id = 10 THEN "SOLD"
+                                  WHEN iu.status_unit_id = 11 THEN "RENTAL_INACTIVE"
                                   ELSE CONCAT("Status ", iu.status_unit_id)
                               END) as status_unit_name,
                               iu.departemen_id,
                               COALESCE(d.nama_departemen, "-") as nama_departemen,
                               iu.lokasi_unit as lokasi_unit_internal,
-                              iu.created_at as tanggal_masuk');
+                              iu.lokasi_unit,
+                              iu.created_at as tanggal_masuk,
+                              c.customer_name,
+                              cl.location_name as customer_location_name');
             $tableExists = $this->checkTablesExist(['model_unit', 'tipe_unit', 'status_unit', 'departemen', 'kontrak']);
             
             // Join with kontrak table for pelanggan and lokasi
             if ($tableExists['kontrak']) {
-                $builder->join('kontrak as k', 'k.id = iu.kontrak_id', 'left');
+                $builder->join('kontrak as k', 'k.id = iu.kontrak_id', 'left')
+                        ->join('customer_locations as cl', 'cl.id = iu.customer_location_id', 'left')
+                        ->join('customers as c', 'c.id = iu.customer_id', 'left');
             }
             if ($tableExists['model_unit']) {
                 $builder->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
@@ -166,15 +202,10 @@ class InventoryUnitModel extends Model
                 }
                 $builder->groupEnd();
             }
-            if ($statusFilter !== null && $statusFilter !== '') {
-                $builder->where('iu.status_unit_id', $statusFilter);
-            }
+            // Apply status filter (supports multi-status)
+            $this->applyStatusFilter($builder, $statusFilter);
             if ($departemenFilter !== null && $departemenFilter !== '') {
                 $builder->where('iu.departemen_id', $departemenFilter);
-            }
-            if ($lokasiFilter !== null && $lokasiFilter !== '') {
-                // gunakan LIKE untuk fleksibilitas (mis: POS 1, POS 2)
-                $builder->like('iu.lokasi_unit', $lokasiFilter);
             }
             // Whitelist order column to prevent SQL error
             // Kolom order disesuaikan: nama_tipe_unit tidak fisik -> gunakan tu.tipe sebagai fallback
@@ -199,7 +230,7 @@ class InventoryUnitModel extends Model
         return $this->db->table($this->table)->countAllResults();
     }
 
-    public function countFiltered($searchValue, $statusFilter = null, $departemenFilter = null, $lokasiFilter = null)
+    public function countFiltered($searchValue, $statusFilter = null, $departemenFilter = null)
     {
         try {
             $builder = $this->db->table($this->table . ' as iu');
@@ -236,14 +267,10 @@ class InventoryUnitModel extends Model
                 }
                 $builder->groupEnd();
             }
-            if ($statusFilter !== null && $statusFilter !== '') {
-                $builder->where('iu.status_unit_id', $statusFilter);
-            }
+            // Apply status filter (supports multi-status)
+            $this->applyStatusFilter($builder, $statusFilter);
             if ($departemenFilter !== null && $departemenFilter !== '') {
                 $builder->where('iu.departemen_id', $departemenFilter);
-            }
-            if ($lokasiFilter !== null && $lokasiFilter !== '') {
-                $builder->like('iu.lokasi_unit', $lokasiFilter);
             }
             return $builder->countAllResults();
         } catch (\Throwable $e) {
@@ -297,12 +324,14 @@ class InventoryUnitModel extends Model
                           iu.no_unit, 
                           iu.serial_number,
                           iu.lokasi_unit,
-                          COALESCE(k.pelanggan, "Belum Ada Kontrak") as pelanggan,
-                          COALESCE(k.lokasi, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
+                          COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
+                          COALESCE(cl.location_name, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
                           COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                           COALESCE(mu.model_unit, "Unknown") as model_unit,
                           COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe')
                 ->join('kontrak as k', 'k.id = iu.kontrak_id', 'left')
+                ->join('customer_locations as cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers as c', 'c.id = cl.customer_id', 'left')
                 ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
                 ->where('iu.status_unit_id !=', 2) // Exclude WORKSHOP-RUSAK
@@ -323,15 +352,17 @@ class InventoryUnitModel extends Model
                           iu.lokasi_unit as lokasi_unit_internal,
                           iu.kontrak_id,
                           k.no_kontrak,
-                          k.pelanggan,
-                          k.lokasi as lokasi_kontrak,
-                          k.pic as pic_kontrak,
-                          COALESCE(k.lokasi, iu.lokasi_unit) as lokasi,
+                          c.customer_name as pelanggan,
+                          cl.location_name as lokasi_kontrak,
+                          cl.contact_person as pic_kontrak,
+                          COALESCE(cl.location_name, iu.lokasi_unit) as lokasi,
                           COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                           COALESCE(mu.model_unit, "Unknown") as model_unit,
                           COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe,
                           COALESCE(ku.kapasitas, "Unknown") as kapasitas')
                 ->join('kontrak as k', 'k.id = iu.kontrak_id', 'left')
+                ->join('customer_locations as cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers as c', 'c.id = cl.customer_id', 'left')
                 ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
                 ->join('kapasitas_unit as ku', 'ku.id_kapasitas = iu.kapasitas_unit_id', 'left')

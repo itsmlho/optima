@@ -30,10 +30,316 @@ class Operational extends Controller
         $this->diService = new DeliveryInstructionService();
     }
 
+    /**
+     * Tracking search endpoint
+     */
+    public function trackingSearch()
+    {
+        // Check permission for tracking search
+        if (!$this->hasPermission('operational.tracking.view')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied: You do not have permission to search tracking'])->setStatusCode(403);
+        }
+        
+        // Allow both AJAX and regular POST requests for testing
+        if (!$this->request->isAJAX() && !$this->request->is('post')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $searchType = $this->request->getJSON(true)['search_type'] ?? '';
+        $searchValue = $this->request->getJSON(true)['search_value'] ?? '';
+
+        log_message('info', 'Tracking search request - Type: ' . $searchType . ', Value: ' . $searchValue);
+
+        if (empty($searchValue)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Search value required']);
+        }
+
+        try {
+            // Auto-detect search type if not provided
+            if (empty($searchType)) {
+                $searchType = $this->detectSearchType($searchValue);
+                log_message('info', 'Auto-detected search type: ' . $searchType);
+            }
+
+            switch ($searchType) {
+                case 'kontrak':
+                    return $this->searchByKontrak($searchValue);
+                case 'spk':
+                    return $this->searchBySPK($searchValue);
+                case 'di':
+                    return $this->searchByDI($searchValue);
+                default:
+                    return $this->response->setJSON(['success' => false, 'message' => 'Invalid search type: ' . $searchType]);
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Tracking search error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'message' => 'Search failed: ' . $e->getMessage()]);
+        }
+    }
+
+    private function detectSearchType($value)
+    {
+        // Auto-detect based on format
+        if (preg_match('/^SPK\//i', $value)) {
+            return 'spk';
+        } elseif (preg_match('/^DI\//i', $value)) {
+            return 'di';
+        } elseif (is_numeric($value)) {
+            // If numeric, try as ID (could be SPK or DI ID)
+            // Check SPK first
+            $spk = $this->db->table('spk')->where('id', $value)->get()->getRowArray();
+            if ($spk) return 'spk';
+            
+            // Then check DI
+            $di = $this->db->table('delivery_instructions')->where('id', $value)->get()->getRowArray();
+            if ($di) return 'di';
+            
+            return 'kontrak';
+        } else {
+            // Default to kontrak (e.g., LG-9812310)
+            return 'kontrak';
+        }
+    }
+
+    private function searchByKontrak($kontrakNo)
+    {
+        log_message('info', 'Searching for kontrak: ' . $kontrakNo);
+        
+        // Try different search methods
+        $kontrak = null;
+        
+        // Method 1: Search by no_kontrak
+        $kontrak = $this->kontrakModel->where('no_kontrak', $kontrakNo)->first();
+        
+        if (!$kontrak) {
+            // Method 2: Search by po_kontrak_nomor in SPK table
+            $spk = $this->db->table('spk')
+                ->where('po_kontrak_nomor', $kontrakNo)
+                ->get()
+                ->getRowArray();
+            
+            if ($spk) {
+                log_message('info', 'Found SPK with po_kontrak_nomor: ' . $kontrakNo);
+                // Get kontrak from SPK
+                $kontrak = $this->kontrakModel->where('id', $spk['kontrak_id'])->first();
+            }
+        }
+        
+        if (!$kontrak) {
+            log_message('info', 'Kontrak not found: ' . $kontrakNo);
+            return $this->response->setJSON(['success' => false, 'message' => 'Kontrak not found']);
+        }
+
+        log_message('info', 'Kontrak found: ' . json_encode($kontrak));
+
+        // Get all SPKs for this kontrak with creator name
+        $spks = $this->db->table('spk s')
+            ->select('s.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, s.dibuat_oleh) as created_by_name')
+            ->join('users u', 'u.id = s.dibuat_oleh', 'left')
+            ->where('s.kontrak_id', $kontrak['id'])
+            ->get()
+            ->getResultArray();
+
+        log_message('info', 'Found ' . count($spks) . ' SPKs for kontrak: ' . $kontrakNo);
+
+        if (count($spks) > 1) {
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'search_type' => 'kontrak',
+                    'multiple_spks' => true,
+                    'spks' => $spks,
+                    'kontrak' => $kontrak
+                ]
+            ]);
+        } else {
+            // Single SPK, get its DI
+            $spk = $spks[0] ?? null;
+            if (!$spk) {
+                return $this->response->setJSON(['success' => false, 'message' => 'No SPK found for this kontrak']);
+            }
+
+            $dis = $this->db->table('delivery_instructions')
+                ->where('spk_id', $spk['id'])
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'search_type' => 'kontrak',
+                    'kontrak' => $kontrak,
+                    'spk' => $spk,
+                    'di' => $dis[0] ?? null,
+                    'multiple_spks' => false
+                ]
+            ]);
+        }
+    }
+
+    private function searchBySPK($spkNo)
+    {
+        log_message('info', 'Searching for SPK: ' . $spkNo);
+        
+        // Search for SPK by ID or nomor_spk
+        $spk = $this->db->table('spk')
+            ->where('id', $spkNo)
+            ->orWhere('nomor_spk', $spkNo)
+            ->get()
+            ->getRowArray();
+
+        if (!$spk) {
+            log_message('info', 'SPK not found: ' . $spkNo);
+            return $this->response->setJSON(['success' => false, 'message' => 'SPK not found']);
+        }
+
+        log_message('info', 'SPK found: ' . json_encode($spk));
+
+        // Add stage_status and prepared_units_detail data (same as SPK print and DI print)
+        $stageStatus = $this->getSpkStageStatusData($spk['id']);
+        $spk['stage_status'] = $stageStatus;
+        
+        $preparedUnitsDetail = $this->getPreparedUnitsDetail($spk['id'], $stageStatus);
+        $spk['prepared_units_detail'] = $preparedUnitsDetail;
+
+        log_message('info', 'SPK enriched with prepared_units_detail: ' . count($preparedUnitsDetail));
+
+        // Get all DIs for this SPK
+        $dis = $this->db->table('delivery_instructions')
+            ->where('spk_id', $spk['id'])
+            ->get()
+            ->getResultArray();
+
+        log_message('info', 'Found ' . count($dis) . ' DIs for SPK: ' . $spkNo);
+
+        if (count($dis) > 1) {
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'search_type' => 'spk',
+                    'multiple_dis' => true,
+                    'dis' => $dis,
+                    'spk' => $spk
+                ]
+            ]);
+        } else {
+            // Single DI, return tracking data
+            $di = $dis[0] ?? null;
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'search_type' => 'spk',
+                    'spk' => $spk,
+                    'di' => $di,
+                    'multiple_dis' => false
+                ]
+            ]);
+        }
+    }
+
+    private function searchByDI($diNo)
+    {
+        log_message('info', 'Searching for DI: ' . $diNo);
+        
+        // Search for DI
+        $di = $this->db->table('delivery_instructions')
+            ->where('nomor_di', $diNo)
+            ->get()
+            ->getRowArray();
+
+        if (!$di) {
+            log_message('info', 'DI not found: ' . $diNo);
+            return $this->response->setJSON(['success' => false, 'message' => 'DI not found']);
+        }
+
+        log_message('info', 'DI found: ' . json_encode($di));
+
+        // Get SPK for this DI with enriched data
+        $spk = $this->db->table('spk')
+            ->where('id', $di['spk_id'])
+            ->get()
+            ->getRowArray();
+
+        if ($spk) {
+            // Add stage_status and prepared_units_detail data (same as SPK print and DI print)
+            $stageStatus = $this->getSpkStageStatusData($spk['id']);
+            $spk['stage_status'] = $stageStatus;
+            
+            $preparedUnitsDetail = $this->getPreparedUnitsDetail($spk['id'], $stageStatus);
+            $spk['prepared_units_detail'] = $preparedUnitsDetail;
+        }
+
+        log_message('info', 'SPK found for DI with prepared_units_detail: ' . count($spk['prepared_units_detail'] ?? []));
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => [
+                'search_type' => 'di',
+                'spk' => $spk,
+                'di' => $di,
+                'multiple_dis' => false
+            ]
+        ]);
+    }
+
+    /**
+     * Test endpoint for debugging
+     */
+    public function testDatabase()
+    {
+        try {
+            $kontrakCount = $this->db->table('kontrak')->countAllResults();
+            $spkCount = $this->db->table('spk')->countAllResults();
+            $diCount = $this->db->table('delivery_instructions')->countAllResults();
+            
+            $sampleKontrak = $this->db->table('kontrak')->limit(1)->get()->getRowArray();
+            $sampleSPK = $this->db->table('spk')->limit(1)->get()->getRowArray();
+            
+            // Find kontrak with multiple SPKs
+            $kontrakWithMultipleSPK = $this->db->table('spk')
+                ->select('kontrak_id, COUNT(*) as spk_count')
+                ->where('kontrak_id IS NOT NULL')
+                ->groupBy('kontrak_id')
+                ->having('spk_count > 1')
+                ->limit(1)
+                ->get()
+                ->getRowArray();
+            
+            if ($kontrakWithMultipleSPK) {
+                $kontrak = $this->db->table('kontrak')->where('id', $kontrakWithMultipleSPK['kontrak_id'])->get()->getRowArray();
+                $spks = $this->db->table('spk')->where('kontrak_id', $kontrakWithMultipleSPK['kontrak_id'])->get()->getResultArray();
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'kontrak_count' => $kontrakCount,
+                    'spk_count' => $spkCount,
+                    'di_count' => $diCount,
+                    'sample_kontrak' => $sampleKontrak,
+                    'sample_spk' => $sampleSPK,
+                    'kontrak_with_multiple_spk' => $kontrakWithMultipleSPK,
+                    'kontrak_data' => $kontrak ?? null,
+                    'spks_data' => $spks ?? null
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
     public function delivery()
     {
         return view('operational/delivery', [
-            'title' => 'Delivery Instructions'
+            'title' => 'Delivery Instructions',
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/operational' => 'Operational',
+                '/operational/delivery' => 'Delivery Process'
+            ]
         ]);
 
     }
@@ -66,7 +372,7 @@ class Operational extends Controller
             
         // Add items information for each DI
         foreach ($rows as &$row) {
-            // Get items for this DI
+            // Try delivery_items first
             $items = $this->diItemModel
                 ->select('
                     delivery_items.*, 
@@ -82,6 +388,9 @@ class Operational extends Controller
                 ->join('attachment a', 'a.id_attachment = delivery_items.attachment_id', 'left')
                 ->where('delivery_items.di_id', $row['id'])
                 ->findAll();
+            
+            // Note: If delivery_items is empty, items will be empty array
+            // This is expected behavior - DI may not have items assigned yet
                 
             // Format item labels for operational view
             $itemLabels = [];
@@ -110,6 +419,11 @@ class Operational extends Controller
 
     public function diUpdateStatus($id)
     {
+        // Check permission for updating DI status
+        if (!$this->hasPermission('operational.delivery_instructions.edit')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied: You do not have permission to update DI status'])->setStatusCode(403);
+        }
+        
         if (!$this->request->isAJAX()) {
             return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
         }
@@ -131,23 +445,27 @@ class Operational extends Controller
                     $updateData['no_sim_supir'] = $this->request->getPost('no_sim_supir');
                     $updateData['kendaraan'] = $this->request->getPost('kendaraan');
                     $updateData['no_polisi_kendaraan'] = $this->request->getPost('no_polisi_kendaraan');
-                    $updateData['status'] = 'PROCESSED';
+                    $updateData['status_di'] = 'SIAP_KIRIM';
                     break;
                     
                 case 'approve_departure':
                     $updateData['berangkat_tanggal_approve'] = date('Y-m-d');
                     $updateData['catatan_berangkat'] = $this->request->getPost('catatan_berangkat');
-                    $updateData['status'] = 'SHIPPED';
+                    $updateData['status_di'] = 'DALAM_PERJALANAN';
                     break;
                     
                 case 'confirm_arrival':
                     $updateData['sampai_tanggal_approve'] = date('Y-m-d');
                     $updateData['catatan_sampai'] = $this->request->getPost('catatan_sampai');
-                    $updateData['status'] = 'DELIVERED';
+                    $updateData['status_di'] = 'SAMPAI_LOKASI';
+                    break;
+                    
+                case 'complete_delivery':
+                    $updateData['status_di'] = 'SELESAI';
                     break;
                     
                 case 'cancel':
-                    $updateData['status'] = 'CANCELLED';
+                    $updateData['status_di'] = 'DIBATALKAN';
                     break;
                     
                 default:
@@ -164,8 +482,8 @@ class Operational extends Controller
                 $this->logUpdate('delivery_instruction', $id, $oldDi, $updateData, [
                     'di_id' => $id,
                     'action' => $action,
-                    'old_status' => $di['status'] ?? null,
-                    'new_status' => $updateData['status'] ?? null
+                    'old_status' => $di['status_di'] ?? null,
+                    'new_status' => $updateData['status_di'] ?? null
                 ]);
                 
                 return $this->response->setJSON([
@@ -302,9 +620,11 @@ class Operational extends Controller
                 ];
                 
                 // Get attachments for this specific unit with detailed information
+                // Use DISTINCT to avoid duplicates from delivery_items
                 $unitAttachments = $this->db->query("
-                    SELECT
-                        di.*,
+                    SELECT DISTINCT
+                        di.attachment_id,
+                        di.item_type,
                         ia.tipe_item,
                         CASE ia.tipe_item
                             WHEN 'battery' THEN b.merk_baterai
@@ -513,32 +833,25 @@ class Operational extends Controller
             if ($kendaraan) $updateData['kendaraan'] = $kendaraan;
             if ($nopolKendaraan) $updateData['no_polisi_kendaraan'] = $nopolKendaraan;
             if ($catatanPerencanaan) $updateData['catatan'] = $catatanPerencanaan;
+            // After perencanaan, status still SIAP_KIRIM (already set by Proses DI)
 
         } elseif ($stage === 'berangkat') {
             // Berangkat hanya menyimpan catatan keberangkatan
             $catatanBerangkat = $this->request->getPost('catatan_berangkat');
             if ($catatanBerangkat) $updateData['catatan_berangkat'] = $catatanBerangkat;
-            // On departure, mark status_eksekusi to DISPATCHED
-            $updateData['status_eksekusi'] = 'DISPATCHED';
+            // On departure, update status_di
+            $updateData['status_di'] = 'DALAM_PERJALANAN';
 
         } elseif ($stage === 'sampai') {
             $catatanSampai = $this->request->getPost('catatan_sampai');
             if ($catatanSampai) $updateData['catatan_sampai'] = $catatanSampai;
             
-            // After sampai approval, update status to DELIVERED
-            $updateData['status'] = 'DELIVERED';
-            $updateData['status_eksekusi'] = 'DELIVERED';
+            // After sampai approval, update status_di to SAMPAI_LOKASI
+            $updateData['status_di'] = 'SAMPAI_LOKASI';
         }
 
-        // Log for debugging
-        log_message('debug', 'Updating DI ' . $id . ' with data: ' . json_encode($updateData));
-        
         // Update the DI
         try {
-            // If perencanaan approved and not yet dispatched, use READY nomenclature
-            if ($stage === 'perencanaan' && empty($di['berangkat_tanggal_approve']) && empty($di['sampai_tanggal_approve'])) {
-                $updateData['status_eksekusi'] = 'READY';
-            }
             
             $oldDi = $this->diModel->find((int)$id);
             if ($oldDi && !is_array($oldDi)) { $oldDi = (array)$oldDi; }
@@ -560,26 +873,50 @@ class Operational extends Controller
             ]);
         }
 
-    // If status becomes DELIVERED, update SPK status to COMPLETED
+    // Check if all units in SPK have been delivered before marking as COMPLETED
     if ($stage === 'sampai' && !empty($di['spk_id'])) {
-            $this->db->table('spk')->where('id', $di['spk_id'])->update([
-                'status' => 'COMPLETED',
-                'diperbarui_pada' => date('Y-m-d H:i:s')
-            ]);
+            $spkId = $di['spk_id'];
             
-            // Log status history
-            try {
-                $this->db->table('spk_status_history')->insert([
-                    'spk_id' => $di['spk_id'],
-                    'status_from' => 'IN_PROGRESS',
-                    'status_to' => 'COMPLETED',
-                    'changed_by' => session('user_id') ?: 1,
-                    'note' => 'DI delivered: ' . $di['nomor_di'],
-                    'created_at' => date('Y-m-d H:i:s')
+            // Get total prepared units from SPK
+            $totalUnitsInSpk = $this->db->table('spk_unit_stages')
+                ->where('spk_id', $spkId)
+                ->where('stage_name', 'persiapan_unit')
+                ->where('tanggal_approve IS NOT NULL')
+                ->countAllResults();
+            
+            // Get total units that have been delivered (all DI with SAMPAI_LOKASI or SELESAI)
+            $deliveredUnits = $this->db->query("
+                SELECT COUNT(DISTINCT di_items.unit_id) as total
+                FROM delivery_items di_items
+                INNER JOIN delivery_instructions di ON di.id = di_items.di_id
+                WHERE di.spk_id = ?
+                AND di.status_di IN ('SAMPAI_LOKASI', 'SELESAI')
+                AND di_items.item_type = 'UNIT'
+                AND di_items.unit_id IS NOT NULL
+            ", [$spkId])->getRowArray();
+            
+            $totalDelivered = $deliveredUnits['total'] ?? 0;
+            
+            // Only mark SPK as COMPLETED if all units are delivered
+            if ($totalDelivered >= $totalUnitsInSpk && $totalUnitsInSpk > 0) {
+                $this->db->table('spk')->where('id', $spkId)->update([
+                    'status' => 'COMPLETED',
+                    'diperbarui_pada' => date('Y-m-d H:i:s')
                 ]);
-            } catch (\Exception $e) {
-                // Continue if history logging fails (best effort)
-                log_message('error', 'Failed to log SPK status history: ' . $e->getMessage());
+                
+                // Log status history
+                try {
+                    $this->db->table('spk_status_history')->insert([
+                        'spk_id' => $spkId,
+                        'status_from' => 'IN_PROGRESS',
+                        'status_to' => 'COMPLETED',
+                        'changed_by' => session('user_id') ?: 1,
+                        'note' => 'All units delivered: ' . $di['nomor_di'] . " ($totalDelivered/$totalUnitsInSpk units)",
+                        'created_at' => date('Y-m-d H:i:s')
+                    ]);
+                } catch (\Exception $e) {
+                    log_message('error', 'Failed to log SPK status history: ' . $e->getMessage());
+                }
             }
         }
 
@@ -745,7 +1082,7 @@ class Operational extends Controller
             return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
         }
 
-        // Get items untuk DI ini
+        // Get items untuk DI ini - try delivery_items first
         $items = $this->db->table('delivery_items di')
             ->select('di.*, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, 
                       a.tipe as att_tipe, a.merk as att_merk, a.model as att_model')
@@ -754,6 +1091,9 @@ class Operational extends Controller
             ->join('attachment a', 'a.id_attachment = di.attachment_id', 'left')
             ->where('di.di_id', $id)
             ->get()->getResultArray();
+        
+        // Note: If delivery_items is empty, items will be empty array
+        // This is expected behavior - DI may not have items assigned yet
 
         // Jika ada unit items, generate PDF per unit
         $unitItems = array_filter($items, function($item) {
@@ -792,7 +1132,7 @@ class Operational extends Controller
             return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
         }
 
-        // Get items untuk DI ini
+        // Get items untuk DI ini - try delivery_items first
         $items = $this->db->table('delivery_items di')
             ->select('di.*, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, 
                       a.tipe as att_tipe, a.merk as att_merk, a.model as att_model')
@@ -801,6 +1141,9 @@ class Operational extends Controller
             ->join('attachment a', 'a.id_attachment = di.attachment_id', 'left')
             ->where('di.di_id', $id)
             ->get()->getResultArray();
+        
+        // Note: If delivery_items is empty, items will be empty array
+        // This is expected behavior - DI may not have items assigned yet
 
         // Filter hanya unit items
         $unitItems = array_filter($items, function($item) {
@@ -867,6 +1210,15 @@ class Operational extends Controller
                 if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
                     $spesifikasi = $decoded;
                 }
+            }
+            
+            // Add stage_status and prepared_units_detail data (same as SPK print)
+            if ($spk) {
+                $stageStatus = $this->getSpkStageStatusData($spk['id']);
+                $spk['stage_status'] = $stageStatus;
+                
+                $preparedUnitsDetail = $this->getPreparedUnitsDetail($spk['id'], $stageStatus);
+                $spk['prepared_units_detail'] = $preparedUnitsDetail;
             }
         }
 
@@ -1074,195 +1426,9 @@ class Operational extends Controller
         }
     }
 
-    public function trackingSearch()
-    {
-        // Allow both AJAX and regular POST requests
-        if (!$this->request->isAJAX() && !$this->request->is('post')) {
-            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
-        }
 
-        try {
-            // Handle different input methods
-            $input = null;
-            $contentType = $this->request->getHeaderLine('Content-Type');
-            
-            if (strpos($contentType, 'application/json') !== false) {
-                $rawInput = $this->request->getBody();
-                log_message('info', 'Raw JSON input: ' . $rawInput);
-                $input = json_decode($rawInput, true);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    log_message('error', 'JSON decode error: ' . json_last_error_msg());
-                    return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid JSON data']);
-                }
-            } else {
-                $input = $this->request->getPost();
-            }
 
-            if (!$input) {
-                log_message('error', 'No input data received');
-                return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid input data']);
-            }
 
-            $searchType = $input['search_type'] ?? '';
-            $searchValue = trim($input['search_value'] ?? '');
-
-            log_message('info', 'Search request - Type: ' . $searchType . ', Value: ' . $searchValue);
-
-            if (empty($searchValue)) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Nomor pencarian wajib diisi']);
-            }
-
-            $result = null;
-
-            switch ($searchType) {
-                case 'kontrak':
-                    $result = $this->searchByKontrak($searchValue);
-                    break;
-                case 'spk':
-                    $result = $this->searchBySpk($searchValue);
-                    break;
-                case 'di':
-                    $result = $this->searchByDi($searchValue);
-                    break;
-                default:
-                    return $this->response->setJSON(['success' => false, 'message' => 'Tipe pencarian tidak valid']);
-            }
-
-            if ($result) {
-                return $this->response->setJSON([
-                    'success' => true,
-                    'data' => $result
-                ]);
-            } else {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Data tidak ditemukan'
-                ]);
-            }
-
-        } catch (\Exception $e) {
-            log_message('error', 'Tracking search error: ' . $e->getMessage() . ' | File: ' . $e->getFile() . ' | Line: ' . $e->getLine());
-            return $this->response->setStatusCode(500)->setJSON([
-                'success' => false, 
-                'message' => 'Terjadi kesalahan sistem: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    private function searchByKontrak($kontrakNo)
-    {
-        try {
-            // Search SPK by kontrak number
-            $spk = $this->db->table('spk')
-                ->where('po_kontrak_nomor', $kontrakNo)
-                ->orWhere('nomor_spk LIKE', '%' . $kontrakNo . '%')
-                ->get()->getRowArray();
-
-            if (!$spk) {
-                log_message('info', 'SPK not found for kontrak: ' . $kontrakNo);
-                return null;
-            }
-
-            log_message('info', 'SPK found for kontrak: ' . json_encode($spk));
-
-            // Get related DI
-            $di = $this->db->table('delivery_instructions')
-                ->where('spk_id', $spk['id'])
-                ->orWhere('po_kontrak_nomor', $kontrakNo)
-                ->get()->getRowArray();
-
-            if ($di) {
-                log_message('info', 'DI found for kontrak: ' . json_encode($di));
-            }
-
-            return [
-                'po_kontrak_nomor' => $spk['po_kontrak_nomor'] ?? $kontrakNo,
-                'spk' => $spk,
-                'di' => $di
-            ];
-
-        } catch (\Exception $e) {
-            log_message('error', 'searchByKontrak error: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    private function searchBySpk($spkNo)
-    {
-        try {
-            // Simple SPK search first to avoid complex join issues
-            $spk = $this->db->table('spk')
-                ->where('nomor_spk', $spkNo)
-                ->orWhere('nomor_spk LIKE', '%' . $spkNo . '%')
-                ->get()->getRowArray();
-
-            if (!$spk) {
-                log_message('info', 'SPK not found: ' . $spkNo);
-                return null;
-            }
-
-            log_message('info', 'SPK found: ' . json_encode($spk));
-
-            // Get related DI 
-            $di = $this->db->table('delivery_instructions')
-                ->where('spk_id', $spk['id'])
-                ->get()->getRowArray();
-
-            if ($di) {
-                log_message('info', 'DI found: ' . json_encode($di));
-            }
-
-            return [
-                'po_kontrak_nomor' => $spk['po_kontrak_nomor'] ?? '',
-                'spk' => $spk,
-                'di' => $di
-            ];
-
-        } catch (\Exception $e) {
-            log_message('error', 'searchBySpk error: ' . $e->getMessage());
-            throw $e;
-        }
-    }
-
-    private function searchByDi($diNo)
-    {
-        try {
-            // Simple DI search first
-            $di = $this->db->table('delivery_instructions')
-                ->where('nomor_di', $diNo)
-                ->orWhere('nomor_di LIKE', '%' . $diNo . '%')
-                ->get()->getRowArray();
-
-            if (!$di) {
-                log_message('info', 'DI not found: ' . $diNo);
-                return null;
-            }
-
-            log_message('info', 'DI found: ' . json_encode($di));
-
-            // Get related SPK
-            $spk = null;
-            if (!empty($di['spk_id'])) {
-                $spk = $this->db->table('spk')
-                    ->where('id', $di['spk_id'])
-                    ->get()->getRowArray();
-                
-                if ($spk) {
-                    log_message('info', 'Related SPK found: ' . json_encode($spk));
-                }
-            }
-
-            return [
-                'po_kontrak_nomor' => $di['po_kontrak_nomor'] ?? ($spk['po_kontrak_nomor'] ?? ''),
-                'spk' => $spk,
-                'di' => $di
-            ];
-
-        } catch (\Exception $e) {
-            log_message('error', 'searchByDi error: ' . $e->getMessage());
-            throw $e;
-        }
-    }
 
     /**
      * Get audit trail data for units
@@ -1812,5 +1978,249 @@ class Operational extends Controller
         ];
 
         return $messages[$jenisKode] ?? 'Menampilkan unit yang sesuai dengan jenis perintah';
+    }
+
+    /**
+     * Get SPK stage status data (copied from Marketing controller)
+     */
+    private function getSpkStageStatusData($spkId)
+    {
+        try {
+            $spk = $this->db->table('spk')->where('id', $spkId)->get()->getRowArray();
+            if (!$spk) {
+                return [];
+            }
+
+            $totalUnits = (int) $spk['jumlah_unit'];
+            $unitStages = [];
+
+            // Get stage data for each unit
+            for ($unitIndex = 1; $unitIndex <= $totalUnits; $unitIndex++) {
+                $stages = $this->db->table('spk_unit_stages sus')
+                    ->select('sus.stage_name, sus.tanggal_approve, sus.mekanik, sus.catatan, sus.unit_id, sus.area_id, sus.aksesoris_tersedia, sus.battery_inventory_attachment_id, sus.charger_inventory_attachment_id, sus.attachment_inventory_attachment_id')
+                    ->where('sus.spk_id', $spkId)
+                    ->where('sus.unit_index', $unitIndex)
+                    ->orderBy('sus.stage_name')
+                    ->get()
+                    ->getResultArray();
+
+                $stageStatus = [];
+                foreach ($stages as $stage) {
+                    $stageStatus[$stage['stage_name']] = [
+                        'completed' => !empty($stage['tanggal_approve']),
+                        'mekanik' => $stage['mekanik'] ?? null,
+                        'catatan' => $stage['catatan'] ?? null,
+                        'tanggal_approve' => $stage['tanggal_approve'] ?? null,
+                        'unit_id' => $stage['unit_id'] ?? null,
+                        'area_id' => $stage['area_id'] ?? null,
+                        'aksesoris_tersedia' => $stage['aksesoris_tersedia'] ?? null,
+                        'battery_inventory_attachment_id' => $stage['battery_inventory_attachment_id'] ?? null,
+                        'charger_inventory_attachment_id' => $stage['charger_inventory_attachment_id'] ?? null,
+                        'attachment_inventory_attachment_id' => $stage['attachment_inventory_attachment_id'] ?? null
+                    ];
+                }
+
+                $unitStages[$unitIndex] = $stageStatus;
+            }
+
+            return [
+                'unit_stages' => $unitStages
+            ];
+        } catch (\Exception $e) {
+            log_message('error', 'SPK Stage Status Error: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    /**
+     * Get prepared units detail (copied from Marketing controller)
+     */
+    private function getPreparedUnitsDetail($spkId, $stageStatus)
+    {
+        $preparedList = [];
+        
+        if (isset($stageStatus['unit_stages'])) {
+            foreach ($stageStatus['unit_stages'] as $unitIndex => $unitStages) {
+                if (isset($unitStages['persiapan_unit']) && $unitStages['persiapan_unit']['completed']) {
+                    // Get unit details from persiapan_unit stage
+                    $unitData = $unitStages['persiapan_unit'] ?? [];
+                    $unitId = $unitData['unit_id'] ?? null;
+                    
+                    // Get unit details from inventory_unit with joins
+                    $unitDetails = null;
+                    if ($unitId) {
+                        $unitDetails = $this->db->table('inventory_unit iu')
+                            ->select('iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, tu.tipe as jenis_unit, tu.jenis as jenis_unit_type, k.kapasitas_unit as kapasitas_name, tm.tipe_mast as mast_name, jr.tipe_roda as roda_name, tb.tipe_ban as ban_name, v.jumlah_valve as valve_name, d.nama_departemen as departemen_name')
+                            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                            ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+                            ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                            ->join('tipe_mast tm', 'tm.id_mast = iu.model_mast_id', 'left')
+                            ->join('jenis_roda jr', 'jr.id_roda = iu.roda_id', 'left')
+                            ->join('tipe_ban tb', 'tb.id_ban = iu.ban_id', 'left')
+                            ->join('valve v', 'v.id_valve = iu.valve_id', 'left')
+                            ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+                            ->where('iu.id_inventory_unit', $unitId)
+                            ->get()
+                            ->getRowArray();
+                    }
+                    
+                    // Get battery and charger details from persiapan_unit stage
+                    $batteryDetails = null;
+                    $chargerDetails = null;
+                    $attachmentDetails = null;
+                    
+                    if (isset($unitStages['persiapan_unit'])) {
+                        $persiapanData = $unitStages['persiapan_unit'];
+                        $batteryId = $persiapanData['battery_inventory_attachment_id'] ?? null;
+                        $chargerId = $persiapanData['charger_inventory_attachment_id'] ?? null;
+                        
+                        if ($batteryId) {
+                            $batteryDetails = $this->db->table('inventory_attachment ia')
+                                ->select('ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+                                ->join('baterai b', 'b.id = ia.baterai_id', 'left')
+                                ->where('ia.id_inventory_attachment', $batteryId)
+                                ->get()
+                                ->getRowArray();
+                        }
+                        
+                        if ($chargerId) {
+                            $chargerDetails = $this->db->table('inventory_attachment ia')
+                                ->select('ia.sn_charger, c.merk_charger, c.tipe_charger')
+                                ->join('charger c', 'c.id_charger = ia.charger_id', 'left')
+                                ->where('ia.id_inventory_attachment', $chargerId)
+                                ->get()
+                                ->getRowArray();
+                        }
+                    }
+                    
+                    // Get attachment from fabrikasi stage (same as SPK)
+                    if (isset($unitStages['fabrikasi'])) {
+                        $fabrikasiData = $unitStages['fabrikasi'];
+                        $attachmentId = $fabrikasiData['attachment_inventory_attachment_id'] ?? null;
+                        
+                        if ($attachmentId) {
+                            $attachmentDetails = $this->db->table('inventory_attachment ia')
+                                ->select('ia.sn_attachment, a.merk, a.model, a.tipe')
+                                ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
+                                ->where('ia.id_inventory_attachment', $attachmentId)
+                                ->get()
+                                ->getRowArray();
+                        }
+                    }
+                    
+                    // Format No Unit: [no_unit] (SN: [serial_number]) - same as SPK
+                    $noUnitFormatted = '';
+                    if ($unitDetails['no_unit']) {
+                        $noUnitFormatted = $unitDetails['no_unit'];
+                        if ($unitDetails['serial_number']) {
+                            $noUnitFormatted .= ' (SN: ' . $unitDetails['serial_number'] . ')';
+                        }
+                    } else {
+                        $noUnitFormatted = 'Unit-' . $unitId;
+                    }
+                    
+                    // Format Jenis Unit: [jenis] - [merk] ([model]) - same as SPK
+                    $jenisUnitFormatted = '';
+                    if ($unitDetails['jenis_unit_type']) {
+                        $jenisUnitFormatted = $unitDetails['jenis_unit_type'];
+                        if ($unitDetails['merk_unit'] && $unitDetails['model_unit']) {
+                            $jenisUnitFormatted .= ' - ' . $unitDetails['merk_unit'] . ' (' . $unitDetails['model_unit'] . ')';
+                        } elseif ($unitDetails['merk_unit']) {
+                            $jenisUnitFormatted .= ' - ' . $unitDetails['merk_unit'];
+                        }
+                    } else {
+                        $jenisUnitFormatted = 'REACH TRUCK';
+                    }
+                    
+                    // Format Charger: [merk] [tipe] (SN: [sn]) - same as SPK
+                    $chargerFormatted = '';
+                    if ($chargerDetails && $chargerDetails['merk_charger'] && $chargerDetails['tipe_charger']) {
+                        $chargerFormatted = $chargerDetails['merk_charger'] . ' ' . $chargerDetails['tipe_charger'];
+                        if ($chargerDetails['sn_charger']) {
+                            $chargerFormatted .= ' (SN: ' . $chargerDetails['sn_charger'] . ')';
+                        }
+                    } else {
+                        $chargerFormatted = '-';
+                    }
+                    
+                    // Format Baterai: [merk] [tipe] [jenis] (SN: [sn]) - same as SPK
+                    $bateraiFormatted = '';
+                    if ($batteryDetails && $batteryDetails['merk_baterai'] && $batteryDetails['tipe_baterai']) {
+                        $bateraiFormatted = $batteryDetails['merk_baterai'] . ' ' . $batteryDetails['tipe_baterai'];
+                        if ($batteryDetails['jenis_baterai']) {
+                            $bateraiFormatted .= ' ' . $batteryDetails['jenis_baterai'];
+                        }
+                        if ($batteryDetails['sn_baterai']) {
+                            $bateraiFormatted .= ' (SN: ' . $batteryDetails['sn_baterai'] . ')';
+                        }
+                    } else {
+                        $bateraiFormatted = '-';
+                    }
+                    
+                    // Format Attachment: [merk] - [model] [tipe] (SN: [sn]) - same as SPK
+                    $attachmentFormatted = '';
+                    if ($attachmentDetails && $attachmentDetails['merk'] && $attachmentDetails['model']) {
+                        $attachmentFormatted = $attachmentDetails['merk'] . ' - ' . $attachmentDetails['model'];
+                        if ($attachmentDetails['tipe']) {
+                            $attachmentFormatted .= ' ' . $attachmentDetails['tipe'];
+                        }
+                        if ($attachmentDetails['sn_attachment']) {
+                            $attachmentFormatted .= ' (SN: ' . $attachmentDetails['sn_attachment'] . ')';
+                        }
+                    } else {
+                        $attachmentFormatted = 'ATT-' . $unitId;
+                    }
+                    
+                    // Combine notes from all stages (same as SPK)
+                    $combinedNotes = [];
+                    $stageNames = [
+                        'persiapan_unit' => 'Persiapan Unit',
+                        'fabrikasi' => 'Fabrikasi', 
+                        'painting' => 'Painting',
+                        'pdi' => 'PDI'
+                    ];
+                    
+                    foreach ($stageNames as $stageKey => $stageName) {
+                        if (isset($unitStages[$stageKey]) && !empty($unitStages[$stageKey]['catatan'])) {
+                            $combinedNotes[] = $stageName . ': ' . $unitStages[$stageKey]['catatan'];
+                        }
+                    }
+                    
+                    // Add DI stage notes (perencanaan, berangkat, sampai)
+                    $diStageNames = [
+                        'perencanaan' => 'Perencanaan',
+                        'berangkat' => 'Berangkat',
+                        'sampai' => 'Sampai'
+                    ];
+                    
+                    foreach ($diStageNames as $stageKey => $stageName) {
+                        if (isset($unitStages[$stageKey]) && !empty($unitStages[$stageKey]['catatan'])) {
+                            $combinedNotes[] = $stageName . ': ' . $unitStages[$stageKey]['catatan'];
+                        }
+                    }
+                    
+                    // Build prepared unit data with formatted values (same as SPK)
+                    $preparedUnit = [
+                        'no_unit' => $noUnitFormatted,
+                        'jenis_unit' => $jenisUnitFormatted,
+                        'departemen_name' => $unitDetails['departemen_name'] ?? 'ELECTRIC',
+                        'kapasitas_name' => $unitDetails['kapasitas_name'] ?? '15 Ton',
+                        'mast_name' => $unitDetails['mast_name'] ?? 'Triplex (3-stage FFL) - ZSM450',
+                        'roda_name' => $unitDetails['roda_name'] ?? '3-Wheel',
+                        'ban_name' => $unitDetails['ban_name'] ?? 'Cushion (Ban Bantal)',
+                        'valve_name' => $unitDetails['valve_name'] ?? '3 Valve',
+                        'charger_sn' => $chargerFormatted,
+                        'baterai_sn' => $bateraiFormatted,
+                        'attachment_sn' => $attachmentFormatted,
+                        'aksesoris' => $persiapanData['aksesoris_tersedia'] ?? 'LAMPU UTAMA, ROTARY LAMP, SENSOR PARKING, HORN SPEAKER, APAR 1 KG, BEACON',
+                        'combined_notes' => implode(' | ', $combinedNotes)
+                    ];
+                    
+                    $preparedList[] = $preparedUnit;
+                }
+            }
+        }
+        
+        return $preparedList;
     }
 }

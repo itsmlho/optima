@@ -44,11 +44,13 @@ class InventoryApi extends BaseController
         $m = new InventoryAttachmentModel();
         $battery = $m->getUnitBattery($unitId);
         $charger = $m->getUnitCharger($unitId);
+            $attachment = $m->getUnitAttachment($unitId);
 
         return $this->response->setJSON([
             'unit_id' => $unitId,
             'battery' => $battery,
-            'charger' => $charger
+            'charger' => $charger,
+            'attachment' => $attachment
         ]);
     }
 

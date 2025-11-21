@@ -32,8 +32,14 @@ class Kontrak extends BaseController
      */
     public function index()
     {
+        // Load simple_rbac helper
+        helper('simple_rbac');
+        
         $data = [
             'title' => 'Manajemen Kontrak Rental',
+            'can_view_marketing' => can_view('marketing'),
+            'can_create_marketing' => can_create('marketing'),
+            'can_export_marketing' => can_export('marketing'),
         ];
         return view('marketing/kontrak', $data);
     }
@@ -214,14 +220,11 @@ class Kontrak extends BaseController
         // Load simple logging helper
         helper('simple_activity_log');
         
-        // Validasi input menggunakan model validation
+        // Validasi input menggunakan model validation dengan struktur database baru
         $data = [
             'no_kontrak'        => trim((string)$this->request->getPost('contract_number')),
             'no_po_marketing'   => $this->request->getPost('po_number'),
-            'pelanggan'         => $this->request->getPost('client_name'),
-            'pic'               => $this->request->getPost('pic') ?: null,
-            'kontak'            => $this->request->getPost('kontak') ?: null,
-            'lokasi'            => $this->request->getPost('lokasi') ?: null,
+            'customer_location_id' => (int)$this->request->getPost('customer_location_id'),
             'nilai_total'       => 0, // Akan dihitung otomatis dari spesifikasi
             'total_units'       => 0, // Akan dihitung otomatis dari spesifikasi
             'jenis_sewa'        => strtoupper($this->request->getPost('jenis_sewa') ?: 'BULANAN'),
@@ -291,9 +294,21 @@ class Kontrak extends BaseController
 
         $newId = $this->kontrakModel->getInsertID();
 
+        // Get customer name for logging
+        $customerInfo = '';
+        if (!empty($data['customer_location_id'])) {
+            $customerLocation = $this->db->query("SELECT c.customer_name, cl.location_name 
+                                                 FROM customer_locations cl 
+                                                 LEFT JOIN customers c ON cl.customer_id = c.id 
+                                                 WHERE cl.id = ?", [$data['customer_location_id']])->getRowArray();
+            if ($customerLocation) {
+                $customerInfo = $customerLocation['customer_name'] . ' - ' . $customerLocation['location_name'];
+            }
+        }
+
         // Log successful creation with trait
         $this->logCreate('kontrak', $newId, $data, [
-            'description' => 'Kontrak created: ' . $data['no_kontrak'] . ' (Client: ' . $data['pelanggan'] . ')',
+            'description' => 'Kontrak created: ' . $data['no_kontrak'] . ' (Client: ' . $customerInfo . ')',
             'submenu_item' => 'Data Kontrak',
             'workflow_stage' => 'DRAFT',
             'business_impact' => 'MEDIUM',
@@ -320,9 +335,9 @@ class Kontrak extends BaseController
         log_message('debug', "Contract ID from URL: $id");
         log_message('debug', "POST data: " . json_encode($this->request->getPost()));
         
-        // Validate required fields first
+        // Validate required fields first with new database structure
         $rules = [
-            'client_name'     => 'required',
+            'customer_location_id' => 'required|is_natural_no_zero',
             'start_date'      => 'required|valid_date',
             'end_date'        => 'required|valid_date',
             'status'          => 'required|in_list[Aktif,Pending,Berakhir,Dibatalkan]'
@@ -387,10 +402,7 @@ class Kontrak extends BaseController
         $data = [
             'no_kontrak'        => $contractNumber,
             'no_po_marketing'   => $this->request->getPost('po_number'),
-            'pelanggan'         => $this->request->getPost('client_name'),
-            'pic'               => $this->request->getPost('pic') ?: null,
-            'kontak'            => $this->request->getPost('kontak') ?: null,
-            'lokasi'            => $this->request->getPost('lokasi'),
+            'customer_location_id' => (int)$this->request->getPost('customer_location_id'),
             'nilai_total'       => $this->request->getPost('contract_value') ?: 0,
             'total_units'       => $this->request->getPost('total_units') ?: 0,
             'tanggal_mulai'     => $this->request->getPost('start_date'),
@@ -430,8 +442,20 @@ class Kontrak extends BaseController
                 }
             }
             
+            // Get customer info for logging
+            $customerInfo = '';
+            if (!empty($data['customer_location_id'])) {
+                $customerLocation = $this->db->query("SELECT c.customer_name, cl.location_name 
+                                                     FROM customer_locations cl 
+                                                     LEFT JOIN customers c ON cl.customer_id = c.id 
+                                                     WHERE cl.id = ?", [$data['customer_location_id']])->getRowArray();
+                if ($customerLocation) {
+                    $customerInfo = $customerLocation['customer_name'] . ' - ' . $customerLocation['location_name'];
+                }
+            }
+
             $this->logUpdate('kontrak', $contractId, $oldData, $data, [
-                'description' => 'Kontrak updated: ' . $data['no_kontrak'] . ' (Client: ' . $data['pelanggan'] . ')',
+                'description' => 'Kontrak updated: ' . $data['no_kontrak'] . ' (Client: ' . $customerInfo . ')',
                 'submenu_item' => 'Data Kontrak',
                 'workflow_stage' => 'UPDATED',
                 'business_impact' => 'MEDIUM',
@@ -509,8 +533,20 @@ class Kontrak extends BaseController
                 // Log the deletion activity using trait
                 $relations = ['kontrak' => [$id]];
                 
+                // Get customer info for logging
+                $customerInfo = 'Unknown';
+                if (!empty($contract['customer_location_id'])) {
+                    $customerLocation = $this->db->query("SELECT c.customer_name, cl.location_name 
+                                                         FROM customer_locations cl 
+                                                         LEFT JOIN customers c ON cl.customer_id = c.id 
+                                                         WHERE cl.id = ?", [$contract['customer_location_id']])->getRowArray();
+                    if ($customerLocation) {
+                        $customerInfo = $customerLocation['customer_name'] . ' - ' . $customerLocation['location_name'];
+                    }
+                }
+
                 $this->logDelete('kontrak', $id, $contract, [
-                    'description' => 'Kontrak deleted: ' . $contract['no_kontrak'] . ' (Client: ' . ($contract['pelanggan'] ?? 'Unknown') . ')',
+                    'description' => 'Kontrak deleted: ' . $contract['no_kontrak'] . ' (Client: ' . $customerInfo . ')',
                     'submenu_item' => 'Data Kontrak',
                     'workflow_stage' => 'DELETE_CONFIRMED',
                     'business_impact' => 'HIGH',
@@ -568,6 +604,13 @@ class Kontrak extends BaseController
 
         $contract = $this->kontrakModel->findWithDynamicCalculation($id);
         if ($contract) {
+            // Add backward compatibility aliases for SPK modal
+            $contract['pelanggan'] = $contract['customer_name'] ?? '';
+            $contract['pic'] = $contract['contact_person'] ?? '';
+            $contract['kontak'] = $contract['phone'] ?? '';
+            $contract['lokasi'] = $contract['location_name'] ?? '';
+            $contract['alamat'] = $contract['address'] ?? '';
+            
             return $this->response->setJSON([
                 'success' => true, 
                 'data' => $contract
@@ -932,6 +975,20 @@ class Kontrak extends BaseController
                 ]);
             }
 
+            // Validate required fields for unit specifications (not attachment)
+            $attachmentTipe = $this->request->getPost('attachment_tipe');
+            if (empty($attachmentTipe)) {
+                // This is a unit specification, harga_per_unit_bulanan is required
+                $hargaBulanan = $this->request->getPost('harga_per_unit_bulanan');
+                if (empty($hargaBulanan) || $hargaBulanan <= 0) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Harga sewa bulanan per unit harus diisi dan lebih besar dari 0 untuk spesifikasi unit',
+                        'csrf_hash' => csrf_hash()
+                    ]);
+                }
+            }
+
             $data = [
                 'kontrak_id' => $kontrakId,
                 'spek_kode' => $spekKode,
@@ -1118,6 +1175,20 @@ class Kontrak extends BaseController
                 'aksesoris' => $this->request->getPost('aksesoris') ? json_encode($this->request->getPost('aksesoris')) : null
             ];
 
+            // Validate required fields for unit specifications (not attachment)
+            $attachmentTipe = $this->request->getPost('attachment_tipe') ?: $spesifikasi['attachment_tipe'];
+            if (empty($attachmentTipe)) {
+                // This is a unit specification, harga_per_unit_bulanan is required
+                $hargaBulanan = $this->request->getPost('harga_per_unit_bulanan') ?: $spesifikasi['harga_per_unit_bulanan'];
+                if (empty($hargaBulanan) || $hargaBulanan <= 0) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Harga sewa bulanan per unit harus diisi dan lebih besar dari 0 untuk spesifikasi unit',
+                        'csrf_hash' => csrf_hash()
+                    ]);
+                }
+            }
+
             // Remove null values to avoid overwriting existing data
             $data = array_filter($data, function($value) {
                 return $value !== null && $value !== '';
@@ -1140,6 +1211,13 @@ class Kontrak extends BaseController
                     log_message('error', 'Failed to log kontrak spesifikasi update: ' . $logError->getMessage());
                 }
                 
+                // Recalculate kontrak nilai_total after spesifikasi update
+                try {
+                    $this->recalculateKontrakValue($spesifikasi['kontrak_id']);
+                } catch (\Exception $e) {
+                    log_message('error', 'Kontrak::updateSpesifikasi - recalc error: ' . $e->getMessage());
+                }
+
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Spesifikasi berhasil diperbarui'
@@ -1461,6 +1539,13 @@ class Kontrak extends BaseController
                 ]);
             }
 
+            // Recalculate kontrak nilai_total after units assignment
+            try {
+                $this->recalculateKontrakValue($spesifikasi['kontrak_id']);
+            } catch (\Exception $e) {
+                log_message('error', 'Kontrak::assignUnitsToSpesifikasi - recalc error: ' . $e->getMessage());
+            }
+
             $successCount = count($unitIds);
 
             return $this->response->setJSON([
@@ -1675,6 +1760,98 @@ class Kontrak extends BaseController
                 'success' => false,
                 'message' => 'Error during bulk fix: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Get customers list for dropdown
+     */
+    public function getCustomers()
+    {
+        try {
+            $builder = $this->db->table('customers');
+            $builder->select('id, customer_code, customer_name');
+            $builder->where('is_active', 1);
+            $builder->orderBy('customer_name', 'ASC');
+            
+            $customers = $builder->get()->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $customers,
+                'csrf_hash' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Error loading customers: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+    
+    /**
+     * Get customer locations by customer ID
+     */
+    public function getLocationsByCustomer($customerId)
+    {
+        try {
+            $builder = $this->db->table('customer_locations');
+            $builder->select('id, location_name, address, contact_person, phone, is_primary');
+            $builder->where('customer_id', (int)$customerId);
+            $builder->where('is_active', 1);
+            $builder->orderBy('is_primary', 'DESC');
+            $builder->orderBy('location_name', 'ASC');
+            
+            $locations = $builder->get()->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $locations,
+                'csrf_hash' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Error loading locations: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    /**
+     * Recalculate and persist kontrak.nilai_total from inventory_unit prices
+     * Sums harga_sewa_bulanan and harga_sewa_harian for units linked to the kontrak
+     */
+    private function recalculateKontrakValue($kontrakId)
+    {
+        $kontrakId = (int)$kontrakId;
+        if ($kontrakId <= 0) return false;
+
+        // Sum monthly and daily prices for units related to this kontrak
+        $row = $this->db->query(
+            "SELECT
+                COALESCE(SUM(iu.harga_sewa_bulanan), 0) as sum_bulanan,
+                COALESCE(SUM(iu.harga_sewa_harian), 0) as sum_harian
+            FROM inventory_unit iu
+            LEFT JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+            WHERE ks.kontrak_id = ?",
+            [$kontrakId]
+        )->getRowArray();
+
+        $sumBulanan = isset($row['sum_bulanan']) ? (float)$row['sum_bulanan'] : 0.0;
+        $sumHarian = isset($row['sum_harian']) ? (float)$row['sum_harian'] : 0.0;
+
+        // Decide how to combine daily and monthly; for now we add them both as requested
+        $total = $sumBulanan + $sumHarian;
+
+        try {
+            $this->db->table('kontrak')->where('id', $kontrakId)->update(['nilai_total' => $total]);
+            log_message('info', "Kontrak::recalculateKontrakValue updated kontrak {$kontrakId} => nilai_total={$total}");
+            return true;
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::recalculateKontrakValue Error: ' . $e->getMessage());
+            return false;
         }
     }
 }

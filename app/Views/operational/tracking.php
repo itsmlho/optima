@@ -1,1007 +1,1295 @@
 <?= $this->extend('layouts/base') ?>
 <?= $this->section('content') ?>
   
-  <!-- Search Form -->
-  <div class="card mb-4 shadow-sm border-0">
-    <div class="card-header">
-      <h6 class="mb-0"><i class="fas fa-search me-2"></i>Pencarian Tracking Pengiriman</h6>
-    </div>
-    <div class="card-body bg-light">
-      <form id="trackingSearchForm" class="row g-3 align-items-end">
-        <div class="col-md-4">
-          <label for="searchType" class="form-label fw-bold">Cari berdasarkan:</label>
-          <select class="form-select form-select-lg" id="searchType" name="search_type">
-            <option value="kontrak"><i class="fas fa-file-contract"></i> No. Kontrak/PO</option>
-            <option value="spk"><i class="fas fa-clipboard-list"></i> No. SPK</option>
-            <option value="di"><i class="fas fa-truck-loading"></i> No. DI</option>
-          </select>
-        </div>
-        <div class="col-md-6">
-          <label for="searchValue" class="form-label fw-bold">Nomor:</label>
-          <div class="input-group input-group-lg">
-            <span class="input-group-text"></span>
-            <input type="text" class="form-control" id="searchValue" name="search_value" 
-                   placeholder="Masukkan nomor yang ingin dilacak..." autocomplete="off">
-          </div>
-        </div>
-        <div class="col-md-2">
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-search me-2"></i> Lacak
-          </button>
-        </div>
-      </form>
-      
-      <!-- Quick Search Examples -->
-      <div class="mt-3">
-        <small class="text-muted">
-          <strong>Contoh:</strong> 
-          <span class="badge bg-secondary me-2">SPK/202508/001</span>
-          <span class="badge bg-secondary me-2">DI/202508/001</span>
-          <span class="badge bg-secondary">PO-CL-0488</span>
-        </small>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tracking Results -->
-  <div id="trackingResults" style="display: none;">
-    <!-- Summary Info -->
-    <div class="card mb-4 shadow-sm border-0">
-        <div class="card-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="fas fa-info-circle me-2"></i>Ringkasan Informasi</h6>
-            </div>
-        </div>
-        <div class="card-body">
-            <div id="summaryInfo" class="row"></div>
-        </div>
-    </div>
-
-    <!-- Progress Timeline -->
-    <div class="card mb-4 shadow-sm border-0">
-      <div class="card-header">
-        <h6 class="mb-0"><i class="fas fa-route me-2"></i>Timeline Pengiriman</h6>
-      </div>
-      <div class="card-body">
-        <div id="progressTimeline"></div>
-      </div>
-    </div>
-
-    <!-- Detailed Steps -->
-    <div class="card shadow-sm border-0">
-      <div class="card-header">
-        <h6 class="mb-0"><i class="fas fa-list-ol me-2"></i>Detail Tahapan Tracking</h6>
-      </div>
-      <div class="card-body">
-        <div class="accordion" id="trackingAccordion"></div>
-      </div>
-    </div>
-
-    <!-- Audit Trail Section -->
-    <div class="card shadow-sm border-0">
-      <div class="card-header">
-        <h6 class="mb-0"><i class="fas fa-history me-2"></i>Audit Trail & Activity Log</h6>
-      </div>
-      <div class="card-body">
-        <div id="auditTrailContent" class="table-responsive"></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- No Results or Loading -->
-  <div id="infoState" class="alert alert-warning" style="display: none;"></div>
-</div>
-
 <style>
-/* Elegant White Theme - Clean & Professional */
-.tracking-timeline { 
-  position: relative; 
-  padding: 30px 0; 
-  background: white; 
-  border: 1px solid #e9ecef; 
-  border-radius: 12px; 
-  margin: 20px 0; 
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-}
-
-.timeline-container { 
-  display: flex; 
-  justify-content: space-between; 
-  position: relative; 
-  margin: 30px 20px; 
-}
-
-.timeline-step { 
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  position: relative; 
-  flex: 1; 
-  text-align: center; 
-}
-
-.timeline-icon {
-  width: 60px; 
-  height: 60px; 
-  border-radius: 50%; 
-  display: flex; 
-  align-items: center; 
-  justify-content: center; 
-  font-size: 24px;
-  margin-bottom: 15px; 
-  position: relative; 
-  z-index: 2; 
-  border: 3px solid #e9ecef; 
+/* Modern Tab-Based Tracking System - Clean Design */
+.tracking-header {
   background: white;
-  color: #6c757d;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
-  cursor: pointer; 
-  transition: all 0.3s ease;
+  border: 1px solid #dee2e6;
+  padding: 25px;
+  border-radius: 8px;
+  margin-bottom: 25px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-.timeline-icon:hover { 
-  transform: scale(1.05); 
-  box-shadow: 0 4px 15px rgba(0,0,0,0.12); 
-}
-
-.timeline-icon.completed { 
-  background: #28a745; 
-  color: white;
-  border-color: #28a745;
-  box-shadow: 0 4px 15px rgba(40, 167, 69, 0.2);
-}
-
-.timeline-icon.current { 
-  background: #007bff; 
-  color: white;
-  border-color: #007bff;
-  box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2);
-  animation: currentPulse 2s infinite;
-}
-
-.timeline-icon.pending { 
-  background: white; 
-  color: #adb5bd;
-  border-color: #e9ecef;
-}
-
-@keyframes currentPulse {
-  0% { box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2), 0 0 0 0 rgba(0, 123, 255, 0.4); }
-  70% { box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2), 0 0 0 10px rgba(0, 123, 255, 0); }
-  100% { box-shadow: 0 4px 15px rgba(0, 123, 255, 0.2), 0 0 0 0 rgba(0, 123, 255, 0); }
-}
-
-.timeline-line { 
-  position: absolute; 
-  top: 30px; 
-  left: 50%; 
-  right: -50%; 
-  height: 3px; 
-  background: #e9ecef; 
-  z-index: 1; 
-  border-radius: 2px;
-  transition: all 0.5s ease;
-}
-
-.timeline-step:first-child .timeline-line { left: 50%; }
-.timeline-step:last-child .timeline-line { right: 50%; }
-.timeline-line.completed { background: #28a745; }
-
-.timeline-title { 
-  font-weight: 600; 
-  font-size: 13px; 
-  margin-bottom: 8px; 
-  color: #495057; 
-}
-
-.timeline-subtitle { 
-  font-size: 12px; 
-  color: #6c757d; 
-  margin-bottom: 5px; 
-}
-
-.timeline-date { 
-  font-size: 11px; 
-  color: #007bff; 
-  font-weight: 500; 
-  background: #f8f9fa; 
-  padding: 3px 8px; 
-  border-radius: 6px; 
-  border: 1px solid #e9ecef;
-}
-
-/* Elegant Accordion Styles */
-.accordion-button { 
-  font-size: 1rem; 
-  padding: 1.25rem; 
-  border: none; 
-  background: white;
-  color: #495057;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  border-bottom: 1px solid #e9ecef;
-}
-
-.accordion-button:not(.collapsed) { 
-  background: #f8f9fa; 
-  color: #495057; 
-  box-shadow: none;
-  border-bottom: 1px solid #dee2e6;
-}
-
-.accordion-button:focus {
-  box-shadow: 0 0 0 0.25rem rgba(108, 117, 125, 0.25);
-}
-
-.accordion-body { 
-  background: white; 
-  border-top: 1px solid #e9ecef; 
-}
-
-.accordion-body .row { 
-  font-size: 0.9rem; 
-  margin-bottom: 1rem; 
-}
-
-.detail-label { 
-  color: #6c757d; 
-  font-weight: 500; 
-  font-size: 0.85rem; 
-  text-transform: uppercase; 
-  letter-spacing: 0.5px; 
-}
-
-.detail-value { 
-  font-weight: 400; 
-  color: #495057; 
-  padding: 8px 12px; 
-  background: #f8f9fa; 
-  border-radius: 6px; 
-  margin-top: 4px; 
-  border: 1px solid #e9ecef;
-}
-
-.delay-positive { 
-  color: #dc3545; 
-  font-weight: 500; 
-  background: #f8d7da; 
-  padding: 4px 8px; 
-  border-radius: 4px; 
-  border: 1px solid #f5c6cb;
-}
-
-.delay-negative { 
-  color: #28a745; 
-  font-weight: 500; 
-  background: #d4edda; 
-  padding: 4px 8px; 
-  border-radius: 4px; 
-  border: 1px solid #c3e6cb;
-}
-
-/* Elegant Info Cards */
-.info-pair { 
-  background: white; 
-  padding: 15px; 
-  border-radius: 8px; 
-  border: 1px solid #e9ecef; 
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
-}
-
-.info-pair .label { 
-  font-size: 0.85rem; 
-  color: #6c757d; 
-  font-weight: 500; 
-  text-transform: uppercase; 
-  letter-spacing: 0.5px; 
-}
-
-.info-pair .value { 
-  font-size: 1.1rem; 
-  color: #495057; 
-  font-weight: 500; 
-  margin-top: 5px; 
-  display: block; 
-}
-
-/* Enhanced Responsive */
-@media (max-width: 768px) {
-  .timeline-container { 
-    flex-direction: column; 
-    gap: 25px; 
-    margin: 20px 10px; 
-  }
-  
-  .timeline-line { display: none; }
-  
-  .timeline-step { 
-    width: 100%; 
-    flex-direction: row; 
-    text-align: left; 
-    justify-content: flex-start; 
-    gap: 20px; 
-    background: white; 
-    padding: 15px; 
-    border-radius: 10px; 
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    border: 1px solid #e9ecef;
-  }
-  
-  .timeline-icon { 
-    margin-bottom: 0; 
-    width: 50px; 
-    height: 50px; 
-    font-size: 20px; 
-  }
-  
-  .timeline-content { flex: 1; }
-  .tracking-timeline { padding: 20px 10px; }
-}
-
-/* Loading Animation */
-.loading-spinner {
-  display: inline-block; 
-  width: 20px; 
-  height: 20px;
-  border: 2px solid #f3f3f3; 
-  border-top: 2px solid #6c757d;
-  border-radius: 50%; 
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-/* Clean Status Badges */
-.status-badge-completed { 
-  background: #d4edda !important; 
-  color: #155724 !important;
-  border: 1px solid #c3e6cb !important;
-}
-
-.status-badge-current { 
-  background: #cce7ff !important; 
-  color: #004085 !important;
-  border: 1px solid #99d6ff !important;
-}
-
-.status-badge-pending { 
-  background: #f8f9fa !important; 
-  color: #6c757d !important;
-  border: 1px solid #e9ecef !important;
-}
-
-/* Audit Trail Styles */
-.audit-trail-table {
-  font-size: 14px;
-}
-
-.audit-trail-table th {
-  background: #f8f9fa;
-  border-bottom: 2px solid #dee2e6;
+.tracking-header h4 {
+  margin: 0 0 8px 0;
   font-weight: 600;
   color: #495057;
 }
 
-.audit-trail-table td {
-  vertical-align: middle;
-  border-bottom: 1px solid #dee2e6;
+.tracking-header .tracking-id {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #007bff;
 }
 
-.activity-type-badge {
-  font-size: 11px;
-  padding: 4px 8px;
+/* Progress Bar */
+.progress-overview {
+  background: white; 
+  padding: 25px;
+  border-radius: 12px; 
+  margin-bottom: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+}
+
+.progress-bar-container {
+  height: 12px;
+  background: #e9ecef;
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #28a745;
+  border-radius: 10px;
+  transition: width 0.6s ease;
+}
+
+.progress-text {
+  display: flex; 
+  justify-content: space-between; 
+  margin-top: 10px;
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+/* Compact Timeline */
+.compact-timeline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 0;
+  overflow-x: visible;
+  position: relative;
+}
+
+.timeline-node {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  border: 3px solid #e9ecef;
+  background: white;
+  color: #adb5bd;
+  position: relative;
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.timeline-node:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 10;
+}
+
+.timeline-node.completed {
+  background: #28a745; 
+  border-color: #28a745;
+  color: white;
+}
+
+.timeline-node.current {
+  background: #007bff; 
+  border-color: #007bff;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+/* Tooltip for timeline nodes */
+.timeline-node-tooltip {
+  position: absolute;
+  top: calc(100% + 15px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 18px;
+  background: #2c3e50;
+  color: white;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  white-space: normal;
+  min-width: 280px;
+  max-width: 320px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  z-index: 9999;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  text-align: left;
+}
+
+.timeline-node-tooltip::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-bottom-color: #2c3e50;
+}
+
+/* Fix untuk tooltip di ujung kiri (Marketing) */
+.timeline-node:first-child .timeline-node-tooltip {
+  left: 0;
+  transform: none;
+}
+
+.timeline-node:first-child .timeline-node-tooltip::before {
+  left: 30px;
+  transform: translateX(0);
+}
+
+/* Fix untuk tooltip di ujung kanan (Sampai/Berangkat - 2 node terakhir) */
+.timeline-node:nth-last-child(-n+2) .timeline-node-tooltip {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+.timeline-node:nth-last-child(-n+2) .timeline-node-tooltip::before {
+  left: auto;
+  right: 30px;
+  transform: translateX(0);
+}
+
+.timeline-node:hover .timeline-node-tooltip {
+  opacity: 1;
+}
+
+.timeline-node:first-child:hover .timeline-node-tooltip {
+  opacity: 1;
+  transform: translateY(2px);
+}
+
+.timeline-node:nth-last-child(-n+2):hover .timeline-node-tooltip {
+  opacity: 1;
+  transform: translateY(2px);
+}
+
+/* Tooltip tengah tetap centered */
+.timeline-node:not(:first-child):not(:nth-last-child(-n+2)):hover .timeline-node-tooltip {
+  transform: translateX(-50%) translateY(2px);
+}
+
+.timeline-connector {
+  flex: 1;
+  height: 3px;
+  background: #e9ecef;
+  margin: 0;
+}
+
+.timeline-connector.completed {
+  background: #28a745;
+}
+
+@media (max-width: 1200px) {
+  .timeline-node {
+    width: 55px;
+    height: 55px;
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 992px) {
+  .timeline-node {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+  }
+  
+  .timeline-node-tooltip {
+    min-width: 240px;
+    max-width: 280px;
+    font-size: 0.8rem;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(0, 123, 255, 0.4); }
+  50% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(0, 123, 255, 0); }
+}
+
+/* Tab Navigation */
+.nav-tabs-custom {
+  border-bottom: 2px solid #e9ecef;
+  margin-bottom: 25px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.nav-tabs-custom .nav-link {
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6c757d; 
+  font-weight: 600;
+  padding: 12px 20px;
+  transition: all 0.3s ease;
+  background: transparent;
+  border-radius: 8px 8px 0 0;
+}
+
+.nav-tabs-custom .nav-link:hover {
+  color: #007bff; 
+  background: #f8f9fa; 
+}
+
+.nav-tabs-custom .nav-link.active {
+  color: #007bff;
+  border-bottom-color: #007bff;
+  background: white;
+}
+
+.nav-tabs-custom .nav-link i {
+  margin-right: 8px;
+}
+
+/* Tab Content */
+.tab-content-card {
+  background: white;
   border-radius: 12px;
-  font-weight: 500;
+  padding: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  min-height: 400px;
 }
 
-.activity-type-created { background: #d1ecf1; color: #0c5460; }
-.activity-type-updated { background: #d4edda; color: #155724; }
-.activity-type-status { background: #fff3cd; color: #856404; }
-.activity-type-location { background: #f8d7da; color: #721c24; }
-.activity-type-price { background: #e2e3e5; color: #383d41; }
+/* Info Cards */
+.info-card {
+  background: white; 
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  height: 100%;
+  transition: all 0.3s ease;
+}
 
-.user-info {
-  font-size: 12px;
+.info-card:hover {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  transform: translateY(-2px);
+}
+
+.info-card-title {
+  font-size: 0.85rem; 
   color: #6c757d;
+  text-transform: uppercase; 
+  letter-spacing: 0.5px; 
+  margin-bottom: 15px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.timestamp-info {
-  font-size: 11px;
+.info-card-title i {
+  color: #007bff;
+}
+
+.info-item {
+  margin-bottom: 12px;
+}
+
+.info-label {
+  font-size: 0.85rem;
   color: #6c757d;
-  white-space: nowrap;
+  margin-bottom: 4px;
 }
 
-/* Clean Card Headers */
-.bg-gradient-primary { 
-  background: #495057 !important; 
-  color: white !important;
+.info-value {
+  font-size: 1rem;
+  color: #212529;
+  font-weight: 500; 
 }
 
-.bg-gradient-info { 
-  background: #6c757d !important; 
-  color: white !important;
+.info-value.large {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #007bff;
 }
 
-.bg-gradient-success { 
-  background: #28a745 !important; 
-  color: white !important;
+/* Simple Table */
+.detail-table {
+  width: 100%;
+  margin-top: 15px;
 }
 
-.bg-gradient-warning { 
-  background: #ffc107 !important; 
-  color: #212529 !important;
+.detail-table tr:not(:last-child) td {
+  border-bottom: 1px solid #f0f0f0;
 }
 
-/* Print Styles */
-@media print {
-  .no-print { display: none !important; }
-  .card { 
-    border: 1px solid #dee2e6 !important; 
-    box-shadow: none !important; 
+.detail-table td {
+  padding: 12px;
+}
+
+.detail-table td:first-child {
+  width: 200px;
+  color: #6c757d; 
+  font-weight: 500; 
+}
+
+.detail-table td:last-child {
+  color: #212529;
+  font-weight: 500; 
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.status-badge.success { background: #d4edda; color: #155724; }
+.status-badge.primary { background: #cce7ff; color: #004085; }
+.status-badge.warning { background: #fff3cd; color: #856404; }
+.status-badge.danger { background: #f8d7da; color: #721c24; }
+.status-badge.secondary { background: #e9ecef; color: #6c757d; }
+
+/* Search Form */
+.search-card {
+    background: white; 
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  margin-bottom: 25px;
+}
+
+.search-card h6 {
+  margin-bottom: 20px;
+  color: #495057;
+  font-weight: 600;
+}
+
+/* Loading State */
+.loading-spinner {
+  display: inline-block; 
+  width: 20px; 
+  height: 20px;
+  border: 3px solid rgba(0,123,255,.3);
+  border-radius: 50%; 
+  border-top-color: #007bff;
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .tracking-header {
+    padding: 20px;
   }
-  .bg-gradient-primary, .bg-gradient-info, .bg-gradient-success, .bg-gradient-warning { 
-    background: #f8f9fa !important; 
-    color: #000 !important; 
+  
+  .nav-tabs-custom .nav-link {
+    font-size: 0.85rem;
+    padding: 10px 15px;
   }
+  
+  .compact-timeline {
+    justify-content: flex-start;
+  }
+  
+  .timeline-node {
+    width: 35px;
+    height: 35px;
+  font-size: 14px;
+}
 }
 </style>
 
+<!-- Search Form -->
+<div class="search-card">
+  <h6><i class="fas fa-search me-2"></i>Pencarian Tracking Pengiriman</h6>
+  <form id="trackingSearchForm">
+    <!-- Step 1: Initial Search -->
+    <div id="searchStep1" class="search-step">
+      <div class="row g-3">
+        <div class="col-md-10">
+          <div class="input-group input-group-lg">
+            <span class="input-group-text"><i class="fas fa-search"></i></span>
+            <input type="text" class="form-control" id="searchValue" name="search_value" 
+                   placeholder="Masukkan No. Kontrak, SPK, atau DI..." autocomplete="off">
+          </div>
+          <small class="text-muted">
+            <i class="fas fa-info-circle me-1"></i>
+            Sistem akan otomatis mendeteksi jenis dokumen
+          </small>
+        </div>
+        <div class="col-md-2">
+          <button type="button" class="btn btn-primary btn-lg w-100" onclick="performSearch()">
+            <i class="fas fa-search me-2"></i> Cari
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: SPK Selection (if multiple) -->
+    <div id="searchStep2" class="search-step" style="display: none;">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label fw-bold">Pilih SPK:</label>
+          <select class="form-select form-select-lg" id="spkSelect">
+            <option value="">-- Pilih SPK --</option>
+          </select>
+          <small class="text-muted">Kontrak ini memiliki beberapa SPK, pilih salah satu</small>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">&nbsp;</label>
+          <button type="button" class="btn btn-secondary btn-lg w-100" onclick="backToStep1()">
+            <i class="fas fa-arrow-left me-2"></i> Kembali
+          </button>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">&nbsp;</label>
+          <button type="button" class="btn btn-primary btn-lg w-100" onclick="proceedWithSPK()">
+            Lanjut <i class="fas fa-arrow-right ms-2"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: DI Selection (if multiple) -->
+    <div id="searchStep3" class="search-step" style="display: none;">
+      <div class="row g-3">
+        <div class="col-md-8">
+          <label class="form-label fw-bold">Pilih DI:</label>
+          <select class="form-select form-select-lg" id="diSelect">
+            <option value="">-- Pilih DI --</option>
+          </select>
+          <small class="text-muted">SPK ini memiliki beberapa DI, pilih salah satu</small>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">&nbsp;</label>
+          <button type="button" class="btn btn-secondary btn-lg w-100" onclick="backToStep2()">
+            <i class="fas fa-arrow-left me-2"></i> Kembali
+          </button>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">&nbsp;</label>
+          <button type="button" class="btn btn-primary btn-lg w-100" onclick="proceedWithDI()">
+            Lacak <i class="fas fa-search ms-2"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<!-- Tracking Results (Hidden by default) -->
+<div id="trackingResults" style="display: none;">
+  <!-- Header with Progress -->
+  <div class="tracking-header">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div>
+        <h4><i class="fas fa-route me-2"></i>Tracking Pengiriman</h4>
+        <div class="tracking-id" id="trackingId">-</div>
+      </div>
+      <button class="btn btn-light btn-sm" onclick="resetSearch()">
+        <i class="fas fa-times me-1"></i> Tutup
+      </button>
+    </div>
+    
+    <!-- Compact Timeline -->
+    <div class="compact-timeline" id="compactTimeline"></div>
+  </div>
+
+  <!-- Progress Overview -->
+  <div class="progress-overview">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <strong>Progress Keseluruhan</strong>
+      <span id="progressPercent" class="text-primary fw-bold">0%</span>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
+    </div>
+    <div class="progress-text">
+      <span id="progressSteps">0 dari 9 tahap selesai</span>
+      <span id="progressStatus">Dalam Proses</span>
+    </div>
+  </div>
+
+  <!-- Tab Navigation -->
+  <ul class="nav nav-tabs-custom" id="trackingTabs" role="tablist">
+    <li class="nav-item">
+      <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ringkasan">
+        <i class="fas fa-chart-pie"></i> Ringkasan
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-kontrak">
+        <i class="fas fa-file-contract"></i> Kontrak
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-spk">
+        <i class="fas fa-clipboard-list"></i> SPK
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unit">
+        <i class="fas fa-box"></i> Unit
+      </button>
+    </li>
+    <li class="nav-item">
+      <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-delivery">
+        <i class="fas fa-truck"></i> Pengiriman
+      </button>
+    </li>
+  </ul>
+
+  <!-- Tab Content -->
+  <div class="tab-content">
+    <!-- Tab: Ringkasan -->
+    <div class="tab-pane fade show active" id="tab-ringkasan">
+      <div class="tab-content-card">
+        <div class="row" id="ringkasanContent">
+          <div class="col-md-12 text-center text-muted">
+            <div class="loading-spinner me-2"></div> Memuat data...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Kontrak -->
+    <div class="tab-pane fade" id="tab-kontrak">
+      <div class="tab-content-card">
+        <h5 class="mb-4"><i class="fas fa-file-contract me-2 text-primary"></i>Detail Kontrak</h5>
+        <div id="kontrakContent">
+          <p class="text-muted">Memuat data kontrak...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: SPK -->
+    <div class="tab-pane fade" id="tab-spk">
+      <div class="tab-content-card">
+        <h5 class="mb-4"><i class="fas fa-clipboard-list me-2 text-primary"></i>Detail SPK</h5>
+        <div id="spkContent">
+          <p class="text-muted">Memuat data SPK...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Unit -->
+    <div class="tab-pane fade" id="tab-unit">
+      <div class="tab-content-card">
+        <h5 class="mb-4"><i class="fas fa-box me-2 text-primary"></i>Detail Unit</h5>
+        <div id="unitContent">
+          <p class="text-muted">Memuat data unit...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Pengiriman -->
+    <div class="tab-pane fade" id="tab-delivery">
+      <div class="tab-content-card">
+        <h5 class="mb-4"><i class="fas fa-truck me-2 text-primary"></i>Detail Pengiriman</h5>
+        <div id="deliveryContent">
+          <p class="text-muted">Memuat data pengiriman...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-  const searchForm = document.getElementById('trackingSearchForm');
-  const resultsDiv = document.getElementById('trackingResults');
-  const infoStateDiv = document.getElementById('infoState');
-  const summaryDiv = document.getElementById('summaryInfo');
-  const timelineDiv = document.getElementById('progressTimeline');
-  const accordionDiv = document.getElementById('trackingAccordion');
+// Global variables
+let currentTrackingData = null;
 
-  // Auto-focus search input
-  document.getElementById('searchValue').focus();
-
-  // Keyboard shortcuts
-  document.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.key === 'f') {
-      e.preventDefault();
-      document.getElementById('searchValue').focus();
+// Search function with multi-step
+function performSearch() {
+  const searchValue = document.getElementById('searchValue').value.trim();
+  
+  if (!searchValue) {
+    alert('Mohon masukkan nomor kontrak, SPK, atau DI');
+    return;
+  }
+  
+  // Fetch data
+  fetch('<?= base_url('operational/tracking-search') ?>', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: JSON.stringify({ search_value: searchValue })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success && result.data) {
+      handleSearchResponse(result.data);
+    } else {
+      alert(result.message || 'Data tidak ditemukan');
     }
+  })
+  .catch(error => {
+    console.error('Error:', error);
+    alert('Terjadi kesalahan saat mengambil data');
   });
+}
 
-  // Search form validation and submission
-  searchForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    const searchValue = document.getElementById('searchValue').value.trim();
-    if (!searchValue) {
-      showAlert('Mohon masukkan nomor yang ingin dilacak', 'warning');
-      return;
-    }
-    
-    const requestData = {
-      search_type: document.getElementById('searchType').value,
-      search_value: searchValue
-    };
-    
-    console.log('Sending request:', requestData);
-    
-    showInfoState('<div class="text-center"><div class="loading-spinner me-2"></div>Mencari data tracking...</div>', 'alert-info');
-    
-    fetch(`<?= base_url('operational/tracking-search') ?>`, {
+function handleSearchResponse(data) {
+  console.log('Handling search response:', data);
+  
+  // Check if multiple SPKs
+  if (data.multiple_spks && data.spks && data.spks.length > 1) {
+    console.log('Multiple SPKs found, showing selection');
+    showSPKSelection(data.spks);
+    return;
+  }
+  
+  // Check if multiple DIs
+  if (data.multiple_dis && data.dis && data.dis.length > 1) {
+    console.log('Multiple DIs found, showing selection');
+    showDISelection(data.dis);
+    return;
+  }
+  
+  // Single result - show directly
+  console.log('Single result, rendering tracking data');
+  currentTrackingData = data;
+  renderTrackingData(data);
+}
+
+function showSPKSelection(spks) {
+  const select = document.getElementById('spkSelect');
+  select.innerHTML = '<option value="">-- Pilih SPK --</option>';
+  
+  spks.forEach(spk => {
+    const option = document.createElement('option');
+    option.value = spk.id;
+    option.textContent = `${spk.nomor_spk} - ${spk.jenis_spk}`;
+    select.appendChild(option);
+  });
+  
+  document.getElementById('searchStep1').style.display = 'none';
+  document.getElementById('searchStep2').style.display = 'block';
+}
+
+function showDISelection(dis) {
+  const select = document.getElementById('diSelect');
+  select.innerHTML = '<option value="">-- Pilih DI --</option>';
+  
+  dis.forEach(di => {
+    const option = document.createElement('option');
+    option.value = di.id;
+    option.textContent = `${di.nomor_di} - ${di.status || 'N/A'}`;
+    select.appendChild(option);
+  });
+  
+  document.getElementById('searchStep2').style.display = 'none';
+  document.getElementById('searchStep3').style.display = 'block';
+}
+
+function proceedWithSPK() {
+  const spkId = document.getElementById('spkSelect').value;
+  
+  if (!spkId) {
+    alert('Mohon pilih SPK');
+    return;
+  }
+  
+  console.log('Proceeding with SPK ID:', spkId);
+  
+  // Search by SPK ID
+  fetch('<?= base_url('operational/tracking-search') ?>', {
       method: 'POST',
       headers: { 
         'Content-Type': 'application/json', 
         'X-Requested-With': 'XMLHttpRequest'
       },
-      body: JSON.stringify(requestData)
-    })
-    .then(response => {
-      console.log('Response status:', response.status);
-      console.log('Response headers:', response.headers);
-      
-      if (!response.ok) {
-        return response.text().then(text => {
-          console.error('Error response body:', text);
-          throw new Error(`HTTP error! status: ${response.status}, body: ${text}`);
-        });
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log('Response data:', data);
-      if (data.success && data.data) {
-        resultsDiv.style.display = 'block';
-        infoStateDiv.style.display = 'none';
-        renderTrackingResults(data.data);
-        
-        // Scroll to results
-        resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        showAlert('Data tracking berhasil ditemukan!', 'success');
+    body: JSON.stringify({ search_value: spkId, search_type: 'spk' })
+  })
+  .then(response => response.json())
+  .then(result => {
+    console.log('SPK search result:', result);
+    if (result.success && result.data) {
+      handleSearchResponse(result.data);
       } else {
-        showInfoState(`
-          <div class="text-center">
-            <i class="fas fa-search-minus fa-3x text-muted mb-3"></i>
-            <h5>Data tidak ditemukan</h5>
-            <p class="mb-0">Pastikan nomor yang Anda masukkan sudah benar.</p>
-            <small class="text-muted">Coba gunakan nomor lengkap atau periksa kembali penulisan.</small>
-          </div>
-        `, 'alert-warning');
+      alert('SPK tidak ditemukan: ' + (result.message || 'Unknown error'));
       }
     })
     .catch(error => {
-      console.error('Fetch Error:', error);
-      showInfoState(`
-        <div class="text-center">
-          <i class="fas fa-exclamation-triangle fa-3x text-danger mb-3"></i>
-          <h5>Terjadi kesalahan</h5>
-          <p class="mb-0">Gagal memuat data tracking. Silakan coba lagi.</p>
-          <small class="text-muted">Error: ${error.message}</small>
-        </div>
-      `, 'alert-danger');
-    });
+    console.error('Error in proceedWithSPK:', error);
+    alert('Terjadi kesalahan: ' + error.message);
   });
+}
 
-  function showInfoState(message, alertClass) {
-    resultsDiv.style.display = 'none';
-    infoStateDiv.className = `alert ${alertClass}`;
-    infoStateDiv.innerHTML = message;
-    infoStateDiv.style.display = 'block';
+function proceedWithDI() {
+  const diId = document.getElementById('diSelect').value;
+  
+  if (!diId) {
+    alert('Mohon pilih DI');
+    return;
   }
+  
+  // Search by DI ID
+  fetch('<?= base_url('operational/tracking-search') ?>', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Requested-With': 'XMLHttpRequest'
+    },
+    body: JSON.stringify({ search_value: diId, search_type: 'di' })
+  })
+  .then(response => response.json())
+  .then(result => {
+    if (result.success && result.data) {
+      currentTrackingData = result.data;
+      renderTrackingData(result.data);
+    } else {
+      alert('DI tidak ditemukan');
+    }
+  });
+}
 
-  function showAlert(message, type) {
-    // Create toast notification
-    const toast = document.createElement('div');
-    toast.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
-    toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-    toast.innerHTML = `
-      ${message}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    document.body.appendChild(toast);
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-      if (toast.parentNode) {
-        toast.remove();
-      }
-    }, 5000);
+function backToStep1() {
+  document.getElementById('searchStep2').style.display = 'none';
+  document.getElementById('searchStep1').style.display = 'block';
+}
+
+function backToStep2() {
+  document.getElementById('searchStep3').style.display = 'none';
+  document.getElementById('searchStep2').style.display = 'block';
+}
+
+function resetSearch() {
+  document.getElementById('trackingResults').style.display = 'none';
+  document.getElementById('searchStep1').style.display = 'block';
+  document.getElementById('searchStep2').style.display = 'none';
+  document.getElementById('searchStep3').style.display = 'none';
+  document.getElementById('searchValue').value = '';
+  currentTrackingData = null;
+}
+
+function renderTrackingData(data) {
+  console.log('renderTrackingData called with:', data);
+  
+  // Hide search steps, show results
+  document.getElementById('searchStep1').style.display = 'none';
+  document.getElementById('searchStep2').style.display = 'none';
+  document.getElementById('searchStep3').style.display = 'none';
+  document.getElementById('trackingResults').style.display = 'block';
+  
+  // Set tracking ID
+  document.getElementById('trackingId').textContent = 
+    data.di?.nomor_di || data.spk?.nomor_spk || '-';
+  
+  console.log('Rendering compact timeline...');
+  renderCompactTimeline(data);
+  
+  console.log('Rendering progress...');
+  renderProgress(data);
+  
+  console.log('Rendering ringkasan...');
+  renderRingkasan(data);
+  
+  console.log('Tracking data rendered successfully');
+}
+
+function renderCompactTimeline(data) {
+  console.log('renderCompactTimeline - data:', data);
+  const container = document.getElementById('compactTimeline');
+  if (!container) {
+    console.error('compactTimeline container not found!');
+    return;
   }
-
-  function renderTrackingResults(data) {
-    renderSummary(data);
-    renderTimeline(data);
-    renderAccordion(data);
-    
-    // Load audit trail for units involved
-    loadAuditTrail(data);
-
-    // Re-initialize popovers after rendering new elements
-    const newPopoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
-    newPopoverTriggerList.forEach(el => new bootstrap.Popover(el, { html: true, trigger: 'hover focus' }));
-  }
-
-  function renderSummary(data) {
-    const picInfo = data.spk?.pic ? `${data.spk.pic}${data.spk.kontak ? ' (' + data.spk.kontak + ')' : ''}` : '-';
-    const unitInfo = getUnitInfo(data); // Assuming this function exists
-    const numbersInfo = `
-        <span class="text-muted">PO:</span> <strong class="me-3">${data.po_kontrak_nomor || '-'}</strong>
-        <span class="text-muted">SPK:</span> <strong class="me-3">${data.spk?.nomor_spk || '-'}</strong>
-        <span class="text-muted">DI:</span> <strong>${data.di?.nomor_di || '-'}</strong>
-    `;
-
-
-    summaryDiv.innerHTML = `
-        <div class="row align-items-center">
-            <div class="col-lg-7 mb-3">
-                <div class="info-pair">
-                    <span class="label">Pelanggan & Lokasi</span>
-                    <h6 class="value mb-0">${data.di?.pelanggan || data.spk?.pelanggan || '-'}</h6>
-                    <small class="text-muted">${data.di?.lokasi || data.spk?.lokasi || '-'}</small>
-                </div>
-            </div>
-            <div class="col-lg-5 mb-3">
-                <div class="info-pair">
-                    <span class="label">Informasi Unit & PIC</span>
-                    <h6 class="value mb-0">${unitInfo}</h6>
-                    <small class="text-muted">PIC: ${picInfo}</small>
-                </div>
-            </div>
-            <div class="col-12"><hr class="my-2"></div>
-            <div class="col-12">
-                 <div class="info-pair text-center">
-                    <small class="value">${numbersInfo}</small>
-                 </div>
-            </div>
-        </div>
-    `;
-  }
-
-
-  function renderTimeline(data) {
+  
     const steps = getStepsConfig(data);
-    let timelineHtml = '<div class="tracking-timeline"><div class="timeline-container">';
+  console.log('Steps config:', steps);
     
-    steps.forEach((step, index) => {
-      const isCompleted = step.actualDate && step.actualDate !== '-';
-      const isCurrent = !isCompleted && (index === 0 || (steps[index-1].actualDate && steps[index-1].actualDate !== '-'));
-      const statusClass = isCompleted ? 'completed' : (isCurrent ? 'current' : 'pending');
+  let html = '';
+  steps.forEach((step, index) => {
+    const isCompleted = step.actualDate && step.actualDate !== '-';
+    const isCurrent = !isCompleted && (index === 0 || (steps[index-1].actualDate && steps[index-1].actualDate !== '-'));
+    
+    let className = 'timeline-node';
+    if (isCompleted) className += ' completed';
+    else if (isCurrent) className += ' current';
+    
+    // Create comprehensive tooltip with stage-specific details
+    const tooltipText = getTooltipContent(step, index, data, isCompleted);
+    
+    html += `
+      <div class="${className}">
+        <i class="${step.icon}"></i>
+        <div class="timeline-node-tooltip">${tooltipText}</div>
+      </div>
+    `;
+    
+    if (index < steps.length - 1) {
+      html += `<div class="timeline-connector ${isCompleted ? 'completed' : ''}"></div>`;
+    }
+  });
+    
+  container.innerHTML = html;
+  console.log('Compact timeline rendered');
+}
+
+function getTooltipContent(step, stepIndex, data, isCompleted) {
+  const stageStatus = data.spk?.stage_status || {};
+  const unitStages = stageStatus.unit_stages || {};
+  const firstUnitKey = Object.keys(unitStages)[0];
+  const stages = firstUnitKey ? unitStages[firstUnitKey] : {};
+  const preparedUnits = data.spk?.prepared_units_detail || [];
+  const firstUnit = preparedUnits[0] || {};
+  
+  let tooltip = `<strong>${step.step}</strong><br>`;
+  tooltip += `<small>${step.event}</small><br>`;
+  tooltip += `<hr style="margin: 8px 0; border-color: rgba(255,255,255,0.2);">`;
+  
+  if (!isCompleted) {
+    tooltip += `<span style="color: #ffc107;">○ Belum selesai</span>`;
+    if (step.estimatedCompletion && step.estimatedCompletion !== '-') {
+      tooltip += `<br><small>Est: ${step.estimatedCompletion}</small>`;
+    }
+    return tooltip;
+  }
+  
+  // Completed - show details based on step
+  tooltip += `<span style="color: #20c997;">✓ ${formatDateTime(step.actualDate)}</span><br>`;
+  
+  switch(stepIndex) {
+    case 0: // SPK Dibuat
+      tooltip += `<strong>Dibuat oleh:</strong> ${data.spk?.created_by_name || 'Marketing'}<br>`;
+      tooltip += `<strong>Jenis:</strong> ${data.spk?.jenis_spk || '-'}<br>`;
+      tooltip += `<strong>Pelanggan:</strong> ${data.spk?.pelanggan || '-'}`;
+      break;
       
-      timelineHtml += `
-        <div class="timeline-step">
-          ${index > 0 ? `<div class="timeline-line ${isCompleted || isCurrent ? 'completed' : ''}"></div>` : ''}
-          <div class="timeline-icon ${statusClass}" 
-               data-bs-toggle="popover" 
-               title="${step.step}" 
-               data-bs-content="${step.popoverContent}">
-            <i class="${step.icon}"></i>
-          </div>
-          <div class="timeline-content">
-            <div class="timeline-title">${step.step}</div>
-            <div class="timeline-subtitle">${step.event}</div>
-            ${isCompleted ? `<div class="timeline-date">${formatDateTime(step.actualDate)}</div>` : ''}
-          </div>
-        </div>
-      `;
-    });
-    
-    timelineHtml += '</div></div>';
-    timelineDiv.innerHTML = timelineHtml;
+    case 1: // Persiapan Unit
+      const persiapan = stages.persiapan_unit || {};
+      tooltip += `<strong>Mekanik:</strong> ${persiapan.mekanik || step.pic || '-'}<br>`;
+      const noUnit = persiapan.no_unit || firstUnit.no_unit || '-';
+      tooltip += `<strong>No Unit:</strong> ${noUnit !== '-' ? noUnit.split('(SN:')[0].trim() : '-'}<br>`;
+      if (persiapan.aksesoris_tersedia) {
+        tooltip += `<strong>Aksesoris:</strong> ${persiapan.aksesoris_tersedia}`;
+      }
+      break;
+      
+    case 2: // Fabrikasi
+      const fabrikasi = stages.fabrikasi || {};
+      tooltip += `<strong>Mekanik:</strong> ${fabrikasi.mekanik || step.pic || '-'}<br>`;
+      if (firstUnit.attachment_sn && firstUnit.attachment_sn !== '-') {
+        tooltip += `<strong>Attachment:</strong> ${firstUnit.attachment_sn.split('(SN:')[0].trim()}<br>`;
+      }
+      if (fabrikasi.catatan) {
+        tooltip += `<strong>Catatan:</strong> ${fabrikasi.catatan}`;
+      }
+      break;
+      
+    case 3: // Painting
+      const painting = stages.painting || {};
+      tooltip += `<strong>Mekanik:</strong> ${painting.mekanik || step.pic || '-'}<br>`;
+      if (painting.catatan) {
+        tooltip += `<strong>Catatan:</strong> ${painting.catatan}`;
+      }
+      break;
+      
+    case 4: // PDI Check
+      const pdi = stages.pdi || {};
+      tooltip += `<strong>Inspector:</strong> ${pdi.mekanik || step.pic || '-'}<br>`;
+      if (pdi.catatan) {
+        tooltip += `<strong>Hasil:</strong> ${pdi.catatan}<br>`;
+      }
+      tooltip += `<strong>Status:</strong> <span style="color: #20c997;">PASS ✓</span>`;
+      break;
+      
+    case 5: // DI Dibuat
+      tooltip += `<strong>Dibuat oleh:</strong> ${data.di?.dibuat_oleh_name || 'Operational'}<br>`;
+      tooltip += `<strong>No DI:</strong> ${data.di?.nomor_di || '-'}<br>`;
+      tooltip += `<strong>Tujuan:</strong> ${data.di?.lokasi || '-'}`;
+      break;
+      
+    case 6: // Persiapan Kirim
+      tooltip += `<strong>Supir:</strong> ${data.di?.nama_supir || '-'}<br>`;
+      tooltip += `<strong>HP:</strong> ${data.di?.no_hp_supir || '-'}<br>`;
+      tooltip += `<strong>Kendaraan:</strong> ${data.di?.kendaraan || '-'} ${data.di?.no_polisi_kendaraan ? '(' + data.di.no_polisi_kendaraan + ')' : ''}<br>`;
+      tooltip += `<strong>Jadwal:</strong> ${formatDateTime(data.di?.tanggal_kirim)}`;
+      break;
+      
+    case 7: // Berangkat
+      tooltip += `<strong>Supir:</strong> ${data.di?.nama_supir || '-'}<br>`;
+      tooltip += `<strong>Kendaraan:</strong> ${data.di?.kendaraan || '-'}<br>`;
+      tooltip += `<strong>Est. Sampai:</strong> ${formatDateTime(data.di?.estimasi_sampai)}`;
+      if (data.di?.catatan_berangkat) {
+        tooltip += `<br><strong>Catatan:</strong> ${data.di.catatan_berangkat}`;
+      }
+      break;
+      
+    case 8: // Sampai
+      tooltip += `<strong>Diterima:</strong> ${formatDateTime(data.di?.sampai_tanggal_approve)}<br>`;
+      tooltip += `<strong>Lokasi:</strong> ${data.di?.lokasi || '-'}<br>`;
+      tooltip += `<strong>PIC Penerima:</strong> ${data.di?.pic || '-'}`;
+      if (data.di?.catatan_sampai) {
+        tooltip += `<br><strong>Catatan:</strong> ${data.di.catatan_sampai}`;
+      }
+      break;
+      
+    default:
+      if (step.pic) tooltip += `<strong>PIC:</strong> ${step.pic}`;
   }
+  
+  return tooltip;
+}
 
-  function renderAccordion(data) {
+function renderProgress(data) {
+  console.log('renderProgress - data:', data);
     const steps = getStepsConfig(data);
-    let accordionHtml = '';
+  const completedSteps = steps.filter(s => s.actualDate && s.actualDate !== '-').length;
+  const progress = Math.round((completedSteps / steps.length) * 100);
+  
+  console.log('Progress calculated:', progress + '%', completedSteps, 'of', steps.length);
+  
+  const progressBar = document.getElementById('progressBar');
+  const progressPercent = document.getElementById('progressPercent');
+  const progressSteps = document.getElementById('progressSteps');
+  const progressStatus = document.getElementById('progressStatus');
+  
+  if (progressBar) progressBar.style.width = progress + '%';
+  if (progressPercent) progressPercent.textContent = progress + '%';
+  if (progressSteps) progressSteps.textContent = `${completedSteps} dari ${steps.length} tahap selesai`;
+  if (progressStatus) progressStatus.textContent = progress === 100 ? 'Selesai' : 'Dalam Proses';
+  
+  console.log('Progress rendered');
+}
 
-    steps.forEach((step, index) => {
-        const isCompleted = step.actualDate && step.actualDate !== '-';
-        const isCurrent = !isCompleted && (index === 0 || (steps[index-1].actualDate && steps[index-1].actualDate !== '-'));
-        const statusBadge = isCompleted ? 
-          '<span class="badge status-badge-completed">✓ Selesai</span>' : 
-          (isCurrent ? '<span class="badge status-badge-current">⟳ Proses</span>' : 
-          '<span class="badge status-badge-pending">○ Menunggu</span>');
-        
-        accordionHtml += `
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="heading-${index}">
-                <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${index}" aria-expanded="${index === 0}" aria-controls="collapse-${index}">
-                    <div class="d-flex w-100 align-items-center">
-                        <i class="${step.icon} me-3 text-primary"></i>
-                        ${statusBadge}
-                        <strong class="mx-3">${step.step}</strong>
-                        <small class="ms-auto text-muted">${isCompleted ? formatDateTime(step.actualDate) : (step.estimatedTime || '')}</small>
+function renderRingkasan(data) {
+  console.log('renderRingkasan - data:', data);
+  const container = document.getElementById('ringkasanContent');
+  
+  if (!container) {
+    console.error('ringkasanContent container not found!');
+    return;
+  }
+  
+  const html = `
+    <div class="col-md-4 mb-3">
+      <div class="info-card">
+        <div class="info-card-title">
+          <i class="fas fa-building"></i>
+          <span>Informasi Pelanggan</span>
                     </div>
-                </button>
-            </h2>
-            <div id="collapse-${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" aria-labelledby="heading-${index}">
-                <div class="accordion-body">
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <div class="detail-label"><i class="fas fa-user me-1"></i>Penanggung Jawab</div>
-                            <div class="detail-value">${step.pic || 'Belum ditentukan'}</div>
+        <div class="info-item">
+          <div class="info-label">Nama Perusahaan</div>
+          <div class="info-value large">${data.spk?.pelanggan || '-'}</div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="detail-label"><i class="fas fa-calendar-plus me-1"></i>Tanggal Rencana</div>
-                            <div class="detail-value">${formatDateTime(step.plannedDate)}</div>
+        <div class="info-item">
+          <div class="info-label">PIC</div>
+          <div class="info-value">${data.spk?.pic || '-'}</div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="detail-label"><i class="fas fa-calendar-check me-1"></i>Tanggal Aktual</div>
-                            <div class="detail-value">${formatDateTime(step.actualDate)}</div>
+        <div class="info-item">
+          <div class="info-label">Kontak</div>
+          <div class="info-value">${data.spk?.kontak || '-'}</div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="detail-label"><i class="fas fa-clock me-1"></i>Status Waktu</div>
-                            <div class="detail-value">${step.delay || 'Belum selesai'}</div>
+        <div class="info-item">
+          <div class="info-label">Lokasi</div>
+          <div class="info-value">${data.spk?.lokasi || '-'}</div>
                         </div>
                     </div>
-                    <hr>
-                    <div class="row">
-                        <div class="col-md-8">
-                            <div class="detail-label"><i class="fas fa-info-circle me-1"></i>Detail & Catatan</div>
-                            <div class="detail-value">${step.details || 'Tidak ada catatan tambahan'}</div>
-                            ${step.requirements ? `
-                            <div class="detail-label mt-3"><i class="fas fa-tasks me-1"></i>Persyaratan</div>
-                            <div class="detail-value">${step.requirements}</div>
-                            ` : ''}
                         </div>
-                        <div class="col-md-4">
-                            <div class="detail-label"><i class="fas fa-chart-pie me-1"></i>Informasi Status</div>
-                            <div class="detail-value">
-                                ${isCompleted ? 
-                                  `<span class="badge bg-success">Tahap Selesai</span><br><small class="text-muted">Dilanjutkan ke tahap berikutnya</small>` :
-                                  (isCurrent ? 
-                                    `<span class="badge bg-primary">Sedang Dikerjakan</span><br><small class="text-muted">Tahap sedang dalam proses</small>` :
-                                    `<span class="badge bg-secondary">Menunggu</span><br><small class="text-muted">Menunggu tahap sebelumnya selesai</small>`
-                                  )
-                                }
+    
+    <div class="col-md-4 mb-3">
+      <div class="info-card">
+        <div class="info-card-title">
+          <i class="fas fa-box"></i>
+          <span>Informasi Unit</span>
                             </div>
-                            ${step.estimatedCompletion ? `
-                            <div class="detail-label mt-2"><i class="fas fa-hourglass-half me-1"></i>Estimasi Selesai</div>
-                            <div class="detail-value">${step.estimatedCompletion}</div>
-                            ` : ''}
+        <div class="info-item">
+          <div class="info-label">Jenis SPK</div>
+          <div class="info-value">${data.spk?.jenis_spk || '-'}</div>
                         </div>
+        <div class="info-item">
+          <div class="info-label">Nomor SPK</div>
+          <div class="info-value">${data.spk?.nomor_spk || '-'}</div>
                     </div>
+        <div class="info-item">
+          <div class="info-label">Spesifikasi</div>
+          <div class="info-value">${getUnitSummary(data)}</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4 mb-3">
+      <div class="info-card">
+        <div class="info-card-title">
+          <i class="fas fa-truck"></i>
+          <span>Status Pengiriman</span>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Nomor DI</div>
+          <div class="info-value">${data.di?.nomor_di || '-'}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Status Terakhir</div>
+          <div class="info-value">${getCurrentStatus(data)}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Tanggal Kirim</div>
+          <div class="info-value">${formatDateTime(data.di?.tanggal_kirim)}</div>
+        </div>
+        <div class="info-item">
+          <div class="info-label">Lokasi Tujuan</div>
+          <div class="info-value">${data.di?.lokasi || '-'}</div>
                 </div>
             </div>
         </div>
         `;
-    });
-    accordionDiv.innerHTML = accordionHtml;
+  
+  container.innerHTML = html;
+  console.log('Ringkasan rendered successfully');
+}
+
+function getUnitSummary(data) {
+  const units = data.spk?.prepared_units_detail || [];
+  if (units.length === 0) return '-';
+  
+  const unit = units[0];
+  const parts = [];
+  
+  if (unit.jenis_unit) parts.push(unit.jenis_unit);
+  if (unit.kapasitas_name) parts.push(unit.kapasitas_name);
+  if (unit.departemen_name) parts.push(unit.departemen_name);
+  
+  return parts.join(' | ') || '-';
+}
+
+function getCurrentStatus(data) {
+  if (data.di?.sampai_tanggal_approve) return 'Selesai Diterima';
+  if (data.di?.berangkat_tanggal_approve) return 'Dalam Perjalanan';
+  if (data.di?.perencanaan_tanggal_approve) return 'Siap Kirim';
+  if (data.di?.dibuat_pada) return 'DI Dibuat';
+  return 'Dalam Persiapan';
   }
 
   function getStepsConfig(data) {
-    const spkSpecs = data.spk?.spesifikasi ? JSON.parse(data.spk.spesifikasi) : {};
+  const stageStatus = data.spk?.stage_status || {};
+  const unitStages = stageStatus.unit_stages || {};
+  const firstUnitKey = Object.keys(unitStages)[0];
+  const stages = firstUnitKey ? unitStages[firstUnitKey] : {};
+  
+  const persiapanUnit = stages.persiapan_unit || {};
+  const fabrikasi = stages.fabrikasi || {};
+  const painting = stages.painting || {};
+  const pdi = stages.pdi || {};
     
     return [
-      {
-        step: 'SPK Dibuat', event: 'Marketing', icon: 'fas fa-file-signature',
-        plannedDate: data.spk?.created_at, actualDate: data.spk?.created_at,
-        pic: data.spk?.created_by_name || 'Marketing',
-        details: `Pelanggan: ${data.spk?.pelanggan || '-'}. PIC: ${data.spk?.pic || '-'}. Kontak: ${data.spk?.kontak || '-'}`,
-        requirements: 'Dokumen kontrak dan spesifikasi unit telah lengkap',
-        estimatedCompletion: formatDateTime(data.spk?.created_at),
-        popoverContent: `Dibuat oleh: <strong>${data.spk?.created_by_name || '-'}</strong><br>Tanggal: ${formatDateTime(data.spk?.created_at)}<br>Jenis: ${data.spk?.jenis_spk || '-'}`
-      },
-      {
-        step: 'Persiapan Unit', event: 'Service Team', icon: 'fas fa-tools',
-        plannedDate: data.spk?.persiapan_unit_estimasi_mulai, actualDate: data.spk?.persiapan_unit_tanggal_approve,
-        pic: data.spk?.persiapan_unit_mekanik || 'Tim Service',
-        delay: calculateDelay(data.spk?.persiapan_unit_estimasi_selesai, data.spk?.persiapan_unit_tanggal_approve),
-        details: `Unit ID: ${spkSpecs.selected?.unit_id || '-'}. Aksesoris: ${data.spk?.persiapan_aksesoris_tersedia ? JSON.parse(data.spk.persiapan_aksesoris_tersedia).join(', ') : 'Tidak ada data'}`,
-        requirements: 'Unit tersedia di inventory dan dalam kondisi baik',
-        estimatedCompletion: formatDateTime(data.spk?.persiapan_unit_estimasi_selesai),
-        popoverContent: `Mekanik: <strong>${data.spk?.persiapan_unit_mekanik || '-'}</strong><br>Estimasi: ${formatDateTime(data.spk?.persiapan_unit_estimasi_selesai)}`
-      },
-      {
-        step: 'Fabrikasi', event: 'Workshop', icon: 'fas fa-hammer',
-        plannedDate: data.spk?.fabrikasi_estimasi_mulai, actualDate: data.spk?.fabrikasi_tanggal_approve,
-        pic: data.spk?.fabrikasi_mekanik || 'Tim Fabrikasi',
-        delay: calculateDelay(data.spk?.fabrikasi_estimasi_selesai, data.spk?.fabrikasi_tanggal_approve),
-        details: `Attachment ID: ${data.spk?.fabrikasi_attachment_id || '-'}. Merk: ${spkSpecs.attachment_merk || '-'}. Tipe: ${spkSpecs.attachment_tipe || '-'}`,
-        requirements: 'Fabrikasi attachment dan modifikasi sesuai spesifikasi',
-        estimatedCompletion: formatDateTime(data.spk?.fabrikasi_estimasi_selesai),
-        popoverContent: `Mekanik: <strong>${data.spk?.fabrikasi_mekanik || '-'}</strong><br>Target: ${formatDateTime(data.spk?.fabrikasi_estimasi_selesai)}`
-      },
-      {
-        step: 'Painting', event: 'Finishing', icon: 'fas fa-paint-brush',
-        plannedDate: data.spk?.painting_estimasi_mulai, actualDate: data.spk?.painting_tanggal_approve,
-        pic: data.spk?.painting_mekanik || 'Tim Painting',
-        delay: calculateDelay(data.spk?.painting_estimasi_selesai, data.spk?.painting_tanggal_approve),
-        details: `Finishing dan pengecatan sesuai standar. Departemen: ${spkSpecs.departemen_id || '-'}`,
-        requirements: 'Pengecatan dan finishing sesuai spesifikasi pelanggan',
-        estimatedCompletion: formatDateTime(data.spk?.painting_estimasi_selesai),
-        popoverContent: `Mekanik: <strong>${data.spk?.painting_mekanik || '-'}</strong><br>Selesai: ${formatDateTime(data.spk?.painting_estimasi_selesai)}`
-      },
-      {
-        step: 'PDI Check', event: 'Quality Control', icon: 'fas fa-check-circle',
-        plannedDate: data.spk?.pdi_estimasi_mulai, actualDate: data.spk?.pdi_tanggal_approve,
-        pic: data.spk?.pdi_mekanik || 'QC Inspector',
-        delay: calculateDelay(data.spk?.pdi_estimasi_selesai, data.spk?.pdi_tanggal_approve),
-        details: `Catatan PDI: ${data.spk?.pdi_catatan || 'Pemeriksaan standar kualitas'}. Kapasitas: ${spkSpecs.kapasitas_id || '-'}`,
-        requirements: 'Unit lulus semua pemeriksaan kualitas dan safety',
-        estimatedCompletion: formatDateTime(data.spk?.pdi_estimasi_selesai),
-        popoverContent: `Inspector: <strong>${data.spk?.pdi_mekanik || '-'}</strong><br>Hasil: Unit siap kirim`
-      },
-      {
-        step: 'DI Dibuat', event: 'Operational', icon: 'fas fa-file-invoice',
-        plannedDate: data.spk?.pdi_tanggal_approve, actualDate: data.di?.dibuat_pada,
-        pic: data.di?.dibuat_oleh_name || 'Tim Operational',
-        delay: calculateDelay(data.spk?.pdi_tanggal_approve, data.di?.dibuat_pada),
-        details: `Nomor DI: ${data.di?.nomor_di || '-'}. Status: ${data.di?.status || '-'}. Catatan: ${data.di?.catatan || 'Tidak ada catatan'}`,
-        requirements: 'SPK telah selesai dan siap untuk pengiriman',
-        estimatedCompletion: 'Segera setelah PDI selesai',
-        popoverContent: `Dibuat oleh: <strong>${data.di?.dibuat_oleh_name || '-'}</strong><br>Tujuan: ${data.di?.lokasi || '-'}`
-      },
-      {
-        step: 'Persiapan Kirim', event: 'Logistics', icon: 'fas fa-calendar-alt',
-        plannedDate: data.di?.dibuat_pada, actualDate: data.di?.status === 'DISPATCHED' || data.di?.status === 'ARRIVED' ? data.di?.diperbarui_pada : null,
-        pic: 'Tim Logistik',
-        delay: calculateDelay(data.di?.tanggal_kirim, data.di?.diperbarui_pada),
-        details: `Tanggal Kirim: ${formatDateTime(data.di?.tanggal_kirim)}. Driver: ${data.di?.driver || '-'}. Kendaraan: ${data.di?.vehicle || '-'}`,
-        requirements: 'Penjadwalan driver dan kendaraan angkut',
-        estimatedTime: formatDateTime(data.di?.tanggal_kirim),
-        popoverContent: `Dijadwalkan: ${formatDateTime(data.di?.tanggal_kirim)}<br>Status: Persiapan pengiriman`
-      },
-      {
-        step: 'Berangkat', event: 'On The Way', icon: 'fas fa-truck',
-        plannedDate: data.di?.tanggal_kirim, actualDate: data.di?.status === 'DISPATCHED' || data.di?.status === 'ARRIVED' ? data.di?.diperbarui_pada : null,
-        pic: data.di?.driver || 'Driver',
-        delay: calculateDelay(data.di?.tanggal_kirim, data.di?.diperbarui_pada),
-        details: `Kendaraan: ${data.di?.vehicle || '-'}. No. Polisi: ${data.di?.license_plate || '-'}. Rute: ${data.di?.route || 'Standar'}`,
-        requirements: 'Unit telah dimuat dan siap dikirim ke lokasi pelanggan',
-        estimatedTime: 'Sesuai jadwal pengiriman',
-        popoverContent: `Driver: <strong>${data.di?.driver || '-'}</strong><br>Kendaraan: ${data.di?.vehicle || '-'}`
-      },
-      {
-        step: 'Sampai di Tujuan', event: 'Delivered', icon: 'fas fa-flag-checkered',
-        plannedDate: data.di?.estimated_arrival, actualDate: data.di?.status === 'ARRIVED' ? data.di?.diperbarui_pada : null,
-        pic: data.di?.receiver || 'Penerima',
-        delay: calculateDelay(data.di?.estimated_arrival, data.di?.status === 'ARRIVED' ? data.di?.diperbarui_pada : null),
-        details: `Diterima oleh: ${data.di?.receiver || 'Belum ada konfirmasi'}. Kondisi: ${data.di?.delivery_condition || 'Baik'}. Lokasi: ${data.di?.lokasi || '-'}`,
-        requirements: 'Unit diterima pelanggan dalam kondisi baik dan sesuai spesifikasi',
-        estimatedTime: 'Sesuai estimasi perjalanan',
-        popoverContent: `Penerima: <strong>${data.di?.receiver || 'Belum konfirmasi'}</strong><br>Lokasi: ${data.di?.lokasi || '-'}`
-      }
+    {step: 'SPK Dibuat', icon: 'fas fa-file-signature', actualDate: data.spk?.dibuat_pada},
+    {step: 'Persiapan Unit', icon: 'fas fa-tools', actualDate: persiapanUnit.tanggal_approve},
+    {step: 'Fabrikasi', icon: 'fas fa-hammer', actualDate: fabrikasi.tanggal_approve},
+    {step: 'Painting', icon: 'fas fa-paint-brush', actualDate: painting.tanggal_approve},
+    {step: 'PDI Check', icon: 'fas fa-check-circle', actualDate: pdi.tanggal_approve},
+    {step: 'DI Dibuat', icon: 'fas fa-file-invoice', actualDate: data.di?.dibuat_pada},
+    {step: 'Persiapan Kirim', icon: 'fas fa-calendar-alt', actualDate: data.di?.perencanaan_tanggal_approve},
+    {step: 'Berangkat', icon: 'fas fa-truck', actualDate: data.di?.berangkat_tanggal_approve},
+    {step: 'Sampai', icon: 'fas fa-flag-checkered', actualDate: data.di?.sampai_tanggal_approve}
     ];
   }
 
   function formatDateTime(dateStr) {
     if (!dateStr || dateStr === '-') return '-';
-    try {
       const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return dateStr;
-      
-      const now = new Date();
-      const diffMs = now - date;
-      const diffDays = Math.floor(diffMs / 86400000);
-      
-      let formatted = date.toLocaleString('id-ID', {
-        day: '2-digit', month: 'short', year: 'numeric', 
-        hour: '2-digit', minute: '2-digit'
-      }).replace('.', ':');
-      
-      // Add relative time for recent dates
-      if (diffDays === 0) {
-        formatted += ' (Hari ini)';
-      } else if (diffDays === 1) {
-        formatted += ' (Kemarin)';
-      } else if (diffDays > 1 && diffDays <= 7) {
-        formatted += ` (${diffDays} hari lalu)`;
-      }
-      
-      return formatted;
-    } catch (e) { 
-      return dateStr; 
+  return date.toLocaleDateString('id-ID', {day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'});
+}
+
+// Lazy load tabs
+document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+  tab.addEventListener('shown.bs.tab', function(e) {
+    const targetId = e.target.getAttribute('data-bs-target');
+    
+    if (!currentTrackingData) return;
+    
+    switch(targetId) {
+      case '#tab-kontrak':
+        if (!document.getElementById('kontrakContent').hasAttribute('data-loaded')) {
+          renderKontrak(currentTrackingData);
+          document.getElementById('kontrakContent').setAttribute('data-loaded', 'true');
+        }
+        break;
+      case '#tab-spk':
+        if (!document.getElementById('spkContent').hasAttribute('data-loaded')) {
+          renderSPK(currentTrackingData);
+          document.getElementById('spkContent').setAttribute('data-loaded', 'true');
+        }
+        break;
+      case '#tab-unit':
+        if (!document.getElementById('unitContent').hasAttribute('data-loaded')) {
+          renderUnit(currentTrackingData);
+          document.getElementById('unitContent').setAttribute('data-loaded', 'true');
+        }
+        break;
+      case '#tab-delivery':
+        if (!document.getElementById('deliveryContent').hasAttribute('data-loaded')) {
+          renderDelivery(currentTrackingData);
+          document.getElementById('deliveryContent').setAttribute('data-loaded', 'true');
+        }
+        break;
     }
-  }
+  });
+});
 
-  function calculateDelay(plannedStr, actualStr) {
-    if (!plannedStr || !actualStr || plannedStr === '-' || actualStr === '-') return '-';
-    try {
-      const planned = new Date(plannedStr);
-      const actual = new Date(actualStr);
-      const diffMs = actual - planned;
-      
-      const diffDays = Math.floor(diffMs / 86400000); // days
-      const diffHrs = Math.floor((diffMs % 86400000) / 3600000); // hours
-      const diffMins = Math.round(((diffMs % 86400000) % 3600000) / 60000); // minutes
+function renderKontrak(data) {
+  const container = document.getElementById('kontrakContent');
+  
+  // Use kontrak data if available, otherwise fallback to SPK
+  const kontrakDate = data.kontrak?.created_at || data.kontrak?.tanggal_kontrak || data.spk?.created_at;
+  
+  container.innerHTML = `
+    <table class="detail-table">
+      <tr>
+        <td>Nomor Kontrak/PO</td>
+        <td><strong>${data.spk?.po_kontrak_nomor || data.kontrak?.no_kontrak || '-'}</strong></td>
+      </tr>
+      <tr>
+        <td>Tanggal Kontrak</td>
+        <td><strong>${formatDateTime(kontrakDate)}</strong></td>
+      </tr>
+      <tr>
+        <td>Pelanggan</td>
+        <td>${data.spk?.pelanggan || data.kontrak?.nama_pelanggan || '-'}</td>
+      </tr>
+      <tr>
+        <td>PIC</td>
+        <td>${data.spk?.pic || '-'}</td>
+      </tr>
+      <tr>
+        <td>Kontak</td>
+        <td>${data.spk?.kontak || '-'}</td>
+      </tr>
+      <tr>
+        <td>Lokasi</td>
+        <td>${data.spk?.lokasi || '-'}</td>
+      </tr>
+    </table>
+  `;
+}
 
-      let result = '';
-      if (diffMs < 0) {
-        result = `Lebih cepat `;
-        if (Math.abs(diffDays) > 0) result += `${Math.abs(diffDays)} hari `;
-        if (Math.abs(diffHrs) > 0) result += `${Math.abs(diffHrs)} jam `;
-        return `<span class="delay-negative">${result.trim()}</span>`;
-      } else if (diffMs > 0) {
-        result = `Terlambat `;
-        if (diffDays > 0) result += `${diffDays} hari `;
-        if (diffHrs > 0) result += `${diffHrs} jam `;
-        if (diffDays === 0 && diffHrs === 0) result += `${diffMins} menit`;
-        return `<span class="delay-positive">${result.trim()}</span>`;
-      } else {
-        return 'Tepat Waktu';
-      }
-    } catch (e) { return '-'; }
-  }
+function renderSPK(data) {
+  const container = document.getElementById('spkContent');
+  
+  // Get creator name like in print_spk.php
+  const createdBy = data.spk?.created_by_name || data.spk?.created_by || data.spk?.marketing_name || 'Marketing';
+  
+  container.innerHTML = `
+    <table class="detail-table">
+      <tr>
+        <td>Nomor SPK</td>
+        <td><strong>${data.spk?.nomor_spk || '-'}</strong></td>
+      </tr>
+      <tr>
+        <td>Jenis SPK</td>
+        <td>${data.spk?.jenis_spk || '-'}</td>
+      </tr>
+      <tr>
+        <td>Tanggal Dibuat</td>
+        <td>${formatDateTime(data.spk?.dibuat_pada || data.spk?.created_at)}</td>
+      </tr>
+      <tr>
+        <td>Dibuat Oleh</td>
+        <td><strong>${createdBy}</strong></td>
+      </tr>
+      <tr>
+        <td>Nomor PO/Kontrak</td>
+        <td>${data.spk?.po_kontrak_nomor || '-'}</td>
+      </tr>
+      <tr>
+        <td>Status SPK</td>
+        <td><span class="status-badge primary">Aktif</span></td>
+      </tr>
+    </table>
+  `;
+}
 
-  function getUnitInfo(data) {
-    const spkSpecs = data.spk?.spesifikasi ? JSON.parse(data.spk.spesifikasi) : {};
-    const merk = spkSpecs.merk_unit || '-';
-    const tipe = spkSpecs.tipe_jenis || '-';
-    const kapasitas = spkSpecs.kapasitas_id || '-';
-    return `${merk} ${tipe} (${kapasitas})`;
-  }
-
-  function calculateProgress(data) {
-    const steps = getStepsConfig(data);
-    const completedSteps = steps.filter(step => step.actualDate && step.actualDate !== '-').length;
-    return Math.round((completedSteps / steps.length) * 100);
-  }
-
-  // Load audit trail for tracking data
-  function loadAuditTrail(data) {
-    const auditDiv = document.getElementById('auditTrailContent');
-    auditDiv.innerHTML = '<div class="text-center"><div class="loading-spinner me-2"></div>Loading audit trail...</div>';
-    
-    // Collect unit IDs from tracking data
-    let unitIds = [];
-    
-    // From SPK units
-    if (data.spk && data.spk.units) {
-      unitIds = unitIds.concat(data.spk.units.map(unit => unit.unit_id).filter(Boolean));
-    }
-    
-    // From DI units
-    if (data.di && data.di.units) {
-      unitIds = unitIds.concat(data.di.units.map(unit => unit.unit_id).filter(Boolean));
-    }
-    
-    // Remove duplicates
-    unitIds = [...new Set(unitIds)];
-    
-    if (unitIds.length === 0) {
-      auditDiv.innerHTML = '<div class="text-center text-muted">No unit data available for audit trail</div>';
+function renderUnit(data) {
+  const container = document.getElementById('unitContent');
+  const units = data.spk?.prepared_units_detail || [];
+  
+  if (units.length === 0) {
+    container.innerHTML = '<p class="text-muted">Data unit tidak tersedia</p>';
       return;
     }
     
-    // Fetch audit trail data
-    fetch(`<?= base_url('operational/audit-trail') ?>`, {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'X-Requested-With': 'XMLHttpRequest'
-      },
-      body: JSON.stringify({ unit_ids: unitIds })
-    })
-    .then(response => response.json())
-    .then(auditData => {
-      if (auditData.success && auditData.data && auditData.data.length > 0) {
-        renderAuditTrail(auditData.data);
-      } else {
-        auditDiv.innerHTML = '<div class="text-center text-muted">No audit trail data found</div>';
-      }
-    })
-    .catch(error => {
-      console.error('Error loading audit trail:', error);
-      auditDiv.innerHTML = '<div class="text-center text-danger">Error loading audit trail data</div>';
-    });
-  }
-  
-  function renderAuditTrail(auditData) {
-    const auditDiv = document.getElementById('auditTrailContent');
-    
-    let html = `
-      <table class="table table-sm audit-trail-table">
-        <thead>
-          <tr>
-            <th>Unit</th>
-            <th>Activity</th>
-            <th>Description</th>
-            <th>User</th>
-            <th>Date & Time</th>
+  const unit = units[0];
+  container.innerHTML = `
+    <table class="detail-table">
+      <tr>
+        <td>No Unit</td>
+        <td><strong>${unit.no_unit ? unit.no_unit.split('(SN:')[0].trim() : '-'}</strong></td>
+      </tr>
+      <tr>
+        <td>Jenis Unit</td>
+        <td>${unit.jenis_unit || '-'}</td>
+      </tr>
+      <tr>
+        <td>Departemen</td>
+        <td>${unit.departemen_name || '-'}</td>
+      </tr>
+      <tr>
+        <td>Kapasitas</td>
+        <td>${unit.kapasitas_name || '-'}</td>
+      </tr>
+      <tr>
+        <td>Attachment</td>
+        <td>${unit.attachment_sn ? unit.attachment_sn.split('(SN:')[0].trim() : '-'}</td>
+      </tr>
+      <tr>
+        <td>Mast</td>
+        <td>${unit.mast_name || '-'}</td>
+      </tr>
+      <tr>
+        <td>Roda</td>
+        <td>${unit.roda_name || '-'}</td>
+      </tr>
+    </table>
+  `;
+}
+
+function renderDelivery(data) {
+  const container = document.getElementById('deliveryContent');
+  container.innerHTML = `
+    <table class="detail-table">
+      <tr>
+        <td>Nomor DI</td>
+        <td><strong>${data.di?.nomor_di || '-'}</strong></td>
           </tr>
-        </thead>
-        <tbody>
-    `;
-    
-    auditData.forEach(log => {
-      const activityClass = getActivityTypeClass(log.activity_type);
-      const formattedDate = formatDateTime(log.created_at);
-      
-      html += `
-        <tr>
-          <td><strong>Unit ${log.unit_id}</strong></td>
-          <td>
-            <span class="activity-type-badge ${activityClass}">
-              ${log.activity_type.replace('_', ' ')}
-            </span>
-          </td>
-          <td>${log.activity_description}</td>
-          <td>
-            <div>${log.user_name}</div>
-            <div class="user-info">${log.user_role}</div>
-          </td>
-          <td class="timestamp-info">${formattedDate}</td>
-        </tr>
-      `;
-    });
-    
-    html += '</tbody></table>';
-    auditDiv.innerHTML = html;
-  }
-  
-  function getActivityTypeClass(activityType) {
-    const typeClasses = {
-      'CREATED': 'activity-type-created',
-      'UPDATED': 'activity-type-updated', 
-      'STATUS_CHANGED': 'activity-type-status',
-      'LOCATION_CHANGED': 'activity-type-location',
-      'PRICE_CHANGED': 'activity-type-price',
-      'KONTRAK_ASSIGNED': 'activity-type-updated',
-      'SPK_ASSIGNED': 'activity-type-updated'
-    };
-    return typeClasses[activityType] || 'activity-type-updated';
-  }
-});
+      <tr>
+        <td>Tanggal Kirim</td>
+        <td>${formatDateTime(data.di?.tanggal_kirim)}</td>
+      </tr>
+      <tr>
+        <td>Supir</td>
+        <td>${data.di?.nama_supir || '-'}</td>
+      </tr>
+      <tr>
+        <td>No HP Supir</td>
+        <td>${data.di?.no_hp_supir || '-'}</td>
+      </tr>
+      <tr>
+        <td>Kendaraan</td>
+        <td>${data.di?.kendaraan || '-'} ${data.di?.no_polisi_kendaraan ? '(' + data.di.no_polisi_kendaraan + ')' : ''}</td>
+      </tr>
+      <tr>
+        <td>Lokasi Tujuan</td>
+        <td>${data.di?.lokasi || '-'}</td>
+      </tr>
+      <tr>
+        <td>Status</td>
+        <td>${getCurrentStatus(data)}</td>
+      </tr>
+    </table>
+  `;
+}
+
+// Timeline tab removed - info available in compact timeline tooltips
 </script>
 
 <?= $this->endSection() ?>
+

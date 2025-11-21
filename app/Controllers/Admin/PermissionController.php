@@ -36,6 +36,11 @@ class PermissionController extends BaseController
 
             $data = [
                 'title' => 'Permission Management',
+                'breadcrumbs' => [
+                    '/' => 'Dashboard',
+                    '/admin' => 'Administration',
+                    '/admin/permissions' => 'Permission Management'
+                ],
                 'permissions' => $permissions,
                 'stats' => $stats
             ];
@@ -605,10 +610,5 @@ class PermissionController extends BaseController
         }
     }
 
-    private function hasPermission($permission)
-    {
-        // Enhanced permission check - can be replaced with actual implementation
-        // For now, always return true for admin users
-        return true;
-    }
+    // hasPermission method removed - using BaseController's protected method instead
 }

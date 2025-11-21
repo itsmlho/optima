@@ -5,12 +5,9 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  */
-$routes->get('/', 'Home::index');
-$routes->get('test', 'Test::index');
-$routes->get('test-logging', 'TestLogging::index');
-$routes->get('test-notification', 'TestNotification::index');
-$routes->get('test-notification/rule', 'TestNotification::testRule');
-$routes->get('debug-session', 'DebugSession::index');
+$routes->get('/', 'Dashboard::index');
+$routes->get('/comingsoon', '::index');
+
 
 // Authentication Routes
 $routes->group('auth', static function ($routes) {
@@ -38,13 +35,14 @@ $routes->group('dashboard', static function ($routes) {
     $routes->get('warehouse', 'Dashboard::warehouse');
 }); 
 
-$routes->get('/profile', 'System::profile');
 // System routes for topbar functionality
 $routes->get('/profile', 'System::profile');
+$routes->post('/profile/update', 'System::updateProfile');
+$routes->post('/profile/change-password', 'System::changePassword');
+$routes->post('/profile/upload-avatar', 'System::uploadAvatar');
 
 
 $routes->get('/settings', 'System::settings');
-$routes->get('/notifications', 'System::notifications');
 $routes->get('/help', 'System::help');
 $routes->get('/logout', 'System::logout');
 
@@ -96,6 +94,8 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('detail/(:num)', 'Kontrak::detail/$1');
         $routes->get('get/(:num)', 'Kontrak::get/$1');
         $routes->get('units/(:num)', 'Kontrak::getContractUnits/$1');
+        $routes->get('customers', 'Kontrak::getCustomers');
+        $routes->get('locations/(:num)', 'Kontrak::getLocationsByCustomer/$1');
         
         // Spesifikasi management
         $routes->get('spesifikasi/(:num)', 'Kontrak::spesifikasi/$1');
@@ -128,6 +128,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('spk/monitoring', 'Marketing::spkMonitoring');
     $routes->get('spk/detail/(:num)', 'Marketing::spkDetail/$1');
     $routes->post('spk/create', 'Marketing::spkCreate');
+    $routes->post('spk/update/(:num)', 'Marketing::spkUpdate/$1');
     $routes->post('spk/update-status/(:num)', 'Marketing::spkUpdateStatus/$1');
     $routes->post('spk/delete/(:num)', 'Marketing::spkDelete/$1');
     $routes->post('spk/cleanup-zero', 'Marketing::cleanupSpkZero');
@@ -159,26 +160,50 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('kontrak', 'Marketing::kontrak');
     $routes->get('kontrak/getData', 'Marketing::getData');
     $routes->post('kontrak/getDataTable', 'Marketing::getDataTable');
-    $routes->post('kontrak/store', 'Marketing::storeKontrak');
-    $routes->get('kontrak/detail/(:num)', 'Marketing::detailKontrak/$1');
-    $routes->post('kontrak/update/(:num)', 'Marketing::updateKontrak/$1');
-    $routes->post('kontrak/delete/(:num)', 'Marketing::deleteKontrak/$1');
+    $routes->get('kontrak/units/(:num)', 'Marketing::kontrakUnits/$1');
+    $routes->get('kontrak/customer-locations/(:num)', 'Marketing::customerLocations/$1');
+    // Route removed - handled by kontrak/detail/(:num) in kontrak group (Kontrak::detail)
+    // All kontrak CRUD operations moved to Kontrak controller for better structure
+    // Routes: marketing/kontrak/customers -> kontrak/customers
+    // Routes: marketing/kontrak/locations/(:num) -> kontrak/locations/(:num)
+    // Routes: marketing/kontrak/store -> kontrak/store
+    // Routes: marketing/kontrak/update/(:num) -> kontrak/update/(:num)
+    // Routes: marketing/kontrak/delete/(:num) -> kontrak/delete/(:num)
+    
+    // SPK routes in marketing
+    $routes->post('spk/create', 'Marketing::spkCreate');
 
     // Customer Management Routes
     $routes->group('customer-management', static function ($routes) {
         $routes->get('/', 'CustomerManagementController::index');
         // Customers
         $routes->post('getCustomers', 'CustomerManagementController::getCustomers');
+        $routes->get('getCustomerStats', 'CustomerManagementController::getCustomerStats');
+        $routes->get('getAreas', 'CustomerManagementController::getAreas');
+        // Dropdown data for spesifikasi
+        $routes->get('getDepartemen', 'CustomerManagementController::getDepartemen');
+        $routes->get('getTipeUnit', 'CustomerManagementController::getTipeUnit');
+        $routes->get('getKapasitas', 'CustomerManagementController::getKapasitas');
+        $routes->get('getMerkUnit', 'CustomerManagementController::getMerkUnit');
+        $routes->get('getJenisBaterai', 'CustomerManagementController::getJenisBaterai');
+        $routes->get('getCharger', 'CustomerManagementController::getCharger');
+        $routes->get('getAttachmentTipe', 'CustomerManagementController::getAttachmentTipe');
+        $routes->get('getValve', 'CustomerManagementController::getValve');
+        $routes->get('getMast', 'CustomerManagementController::getMast');
+        $routes->get('getBan', 'CustomerManagementController::getBan');
+        $routes->get('getRoda', 'CustomerManagementController::getRoda');
+        $routes->get('getCustomerContracts/(:num)', 'CustomerManagementController::getCustomerContracts/$1');
+        $routes->get('getCustomerLocations/(:num)', 'CustomerManagementController::getCustomerLocations/$1');
         $routes->get('showCustomer/(:num)', 'CustomerManagementController::showCustomer/$1');
+        $routes->get('getCustomerDetail/(:num)', 'CustomerManagementController::getCustomerDetail/$1');
         $routes->post('storeCustomer', 'CustomerManagementController::storeCustomer');
         $routes->post('updateCustomer/(:num)', 'CustomerManagementController::updateCustomer/$1');
         $routes->delete('deleteCustomer/(:num)', 'CustomerManagementController::deleteCustomer/$1');
         $routes->post('deleteCustomer/(:num)', 'CustomerManagementController::deleteCustomer/$1'); // Fallback
         // Customer Locations
-        $routes->post('getCustomerLocations', 'CustomerManagementController::getCustomerLocations');
-        $routes->get('showCustomerLocation/(:num)', 'CustomerManagementController::showCustomerLocation/$1');
         $routes->post('storeCustomerLocation', 'CustomerManagementController::storeCustomerLocation');
         $routes->post('updateCustomerLocation/(:num)', 'CustomerManagementController::updateCustomerLocation/$1');
+        $routes->get('showCustomerLocation/(:num)', 'CustomerManagementController::showCustomerLocation/$1');
         $routes->delete('deleteCustomerLocation/(:num)', 'CustomerManagementController::deleteCustomerLocation/$1');
         $routes->post('deleteCustomerLocation/(:num)', 'CustomerManagementController::deleteCustomerLocation/$1'); // Fallback
         // Customer Contracts
@@ -189,9 +214,16 @@ $routes->group('marketing',  static function ($routes) {
         $routes->delete('deleteCustomerContract/(:num)', 'CustomerManagementController::deleteCustomerContract/$1');
         $routes->post('deleteCustomerContract/(:num)', 'CustomerManagementController::deleteCustomerContract/$1'); // Fallback
         
+        // PDF Generation
+        $routes->get('generatePDF/(:num)', 'CustomerManagementController::generateCustomerPDF/$1');
+        
         // Locations
         $routes->get('getLocations/(:num)', 'CustomerManagementController::getLocations/$1');
         $routes->get('getLocation/(:num)', 'CustomerManagementController::getLocation/$1');
+        $routes->post('storeLocation', 'CustomerManagementController::storeLocation');
+        $routes->post('updateLocation/(:num)', 'CustomerManagementController::updateLocation/$1');
+        $routes->delete('deleteLocation/(:num)', 'CustomerManagementController::deleteLocation/$1');
+        $routes->post('deleteLocation/(:num)', 'CustomerManagementController::deleteLocation/$1'); // Fallback
         
         // Stats & Dropdown
         $routes->get('getStats', 'CustomerManagementController::getStats');
@@ -199,15 +231,69 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('getAreasDropdown', 'CustomerManagementController::getAreasDropdown');
     });
 
+    // Routes removed - functionality moved to CustomerManagementController
+
+    // Export routes
+    $routes->get('export_kontrak', 'Marketing::exportKontrak');
+    $routes->get('export_customer', 'Marketing::exportCustomer');
+
 });
 
 // Service Division Routes
 $routes->group('service', static function ($routes) {
     $routes->get('/', 'Service::index');
     $routes->get('work-orders', 'Service::workOrders');
+    $routes->post('work-orders/data', 'WorkOrderController::getWorkOrders');
+    $routes->get('work-orders/stats', 'WorkOrderController::getStats');
+    $routes->post('work-orders/update-status', 'WorkOrderController::updateStatus');
     $routes->get('work-orders/history', 'Service::workOrderHistory');
+    // Work Order CRUD routes
+    $routes->post('work-orders/store', 'WorkOrderController::store');
+    $routes->get('work-orders/view/(:num)', 'WorkOrderController::view/$1');
+    $routes->get('work-orders/edit/(:num)', 'WorkOrderController::edit/$1');
+    $routes->get('work-orders/print/(:num)', 'WorkOrderController::print/$1');
+    $routes->post('work-orders/update/(:num)', 'WorkOrderController::update/$1');
+    $routes->delete('work-orders/delete/(:num)', 'WorkOrderController::delete/$1');
+    // Work Order assignment routes
+    $routes->post('work-orders/assign-employees', 'WorkOrderController::assignEmployees');
+    $routes->post('work-orders/close', 'WorkOrderController::closeWorkOrder');
+    // Work Order sparepart routes
+    $routes->get('work-orders/spareparts/(:num)', 'WorkOrderController::getWorkOrderSpareparts/$1');
+    // Work Order utility routes
+    $routes->get('work-orders/generate-number', 'WorkOrderController::generateNumber');
+    $routes->post('work-orders/get-subcategories', 'WorkOrderController::getSubcategories');
+    $routes->post('service/work-orders/get-subcategories', 'WorkOrderController::getSubcategories'); // Menambahkan route dengan prefix service
+    $routes->get('work-orders/units-dropdown', 'WorkOrderController::getUnitsDropdown');
+    $routes->get('service/work-orders/units-dropdown', 'WorkOrderController::getUnitsDropdown');
+    $routes->post('work-orders/search-units', 'WorkOrderController::searchUnits');
+    $routes->post('work-orders/get-subcategory-priority', 'WorkOrderController::getSubcategoryPriority');
+    $routes->post('service/work-orders/get-subcategory-priority', 'WorkOrderController::getSubcategoryPriority');
+    $routes->post('work-orders/get-priority', 'WorkOrderController::getPriority');
+    $routes->post('service/work-orders/get-priority', 'WorkOrderController::getPriority');
+    $routes->get('work-orders/print/(:num)', 'WorkOrderController::print/$1');
+    $routes->get('work-orders/export', 'WorkOrderController::export');
+    // Work Order area and sparepart endpoints
+    $routes->post('work-orders/get-unit-area', 'WorkOrderController::getUnitArea');
+    $routes->get('work-orders/spareparts-dropdown', 'WorkOrderController::sparepartsDropdown');
+    // Unit Verification and Sparepart Usage endpoints
+    $routes->get('work-orders/test-routing', 'WorkOrderController::testRouting');
+    $routes->post('work-orders/get-unit-verification-data', 'WorkOrderController::getUnitVerificationData');
+    $routes->post('work-orders/save-unit-verification', 'WorkOrderController::saveUnitVerification');
+    $routes->get('work-orders/print-verification', 'Service::printVerification');
+    $routes->get('print-verification', 'Service::printVerification'); // Add direct route
+    $routes->post('work-orders/get-sparepart-usage-data', 'WorkOrderController::getSparepartUsageData');
+    $routes->post('work-orders/save-sparepart-usage', 'WorkOrderController::saveSparepartUsage');
+    // Sparepart Validation endpoints
+    $routes->get('work-orders/get-sparepart-validation-data', 'WorkOrderController::getSparepartValidationData');
+    $routes->get('work-orders/get-sparepart-master', 'WorkOrderController::getSparepartMaster');
+    $routes->post('work-orders/save-sparepart-validation', 'WorkOrderController::saveSparepartValidation');
+    $routes->post('work-orders/staff-dropdown', 'WorkOrderController::staffDropdown');
+    $routes->post('work-orders/get-area-staff', 'WorkOrderController::getAreaStaff');
+    $routes->post('service/work-orders/get-area-staff', 'WorkOrderController::getAreaStaff');
+    // PMP and other service pages
     $routes->get('pmps', 'Service::pmps');
-    $routes->get('data-unit', 'Service::dataUnit');
+        $routes->get('data-unit', 'Service::dataUnit');
+        $routes->get('areas', 'Service::areas');
     // Data Unit (Service) AJAX endpoints
     $routes->post('data-unit/data', 'Service::dataUnitData');
     $routes->get('data-unit/detail/(:num)', 'Service::unitDetail/$1');
@@ -221,11 +307,27 @@ $routes->group('service', static function ($routes) {
     $routes->get('spk/print/(:num)', 'Service::spkPrint/$1');
     $routes->post('spk/update-status/(:num)', 'Service::spkUpdateStatus/$1');
     $routes->post('spk/approve-stage/(:num)', 'Service::spkApproveStage/$1');
+    $routes->post('spk/approve-fabrikasi', 'Service::approveFabrikasi');
+    $routes->post('spk/assign-items', 'Service::assignItems');
+    $routes->get('spk/stage-status/(:num)', 'Service::getSpkStageStatus/$1');
+    $routes->get('spk/units-with-edit/(:num)', 'Service::getSpkUnitsWithEdit/$1');
     $routes->post('spk/confirm-ready/(:num)', 'Service::spkConfirmReady/$1');
+    
+    // Edit system routes
+    $routes->get('spk/edit-options/(:num)', 'Service::getSpkEditOptions/$1');
+    $routes->post('spk/edit-stage/(:num)', 'Service::editSpkStage/$1');
+    $routes->post('spk/change-unit/(:num)', 'Service::changeSpkUnit/$1');
+    $routes->get('spk/units-with-edit/(:num)', 'Service::getSpkUnitsWithEdit/$1');
     // Simple unit search (for DI prepare)
     $routes->get('data-unit/simple', 'Service::dataUnitSimple');
     // Attachment simple search
     $routes->get('data-attachment/simple', 'Service::dataAttachmentSimple');
+    // Add new inventory attachment
+    $routes->post('add-inventory-attachment', 'Service::addInventoryAttachment');
+    // Master data endpoints for modal dropdowns
+    $routes->get('master-attachment', 'Service::getMasterAttachment');
+    $routes->get('master-baterai', 'Service::getMasterBaterai');
+    $routes->get('master-charger', 'Service::getMasterCharger');
     // Check if no_unit already exists
     $routes->post('check-no-unit-exists', 'Service::checkNoUnitExists');
     // Smart Component Management - Unit component data endpoint
@@ -240,14 +342,15 @@ $routes->group('service', static function ($routes) {
         // Areas
         $routes->post('getAreas', 'ServiceAreaManagementController::getAreas');
         $routes->get('showArea/(:num)', 'ServiceAreaManagementController::showArea/$1');
-        $routes->post('storeArea', 'ServiceAreaManagementController::storeArea');
+        $routes->post('saveArea', 'ServiceAreaManagementController::saveArea');
         $routes->post('updateArea/(:num)', 'ServiceAreaManagementController::updateArea/$1');
         $routes->delete('deleteArea/(:num)', 'ServiceAreaManagementController::deleteArea/$1');
         $routes->post('deleteArea/(:num)', 'ServiceAreaManagementController::deleteArea/$1'); // Fallback
         // Employees
         $routes->post('getEmployees', 'ServiceAreaManagementController::getEmployees');
+        $routes->get('getEmployeeDetail/(:num)', 'ServiceAreaManagementController::getEmployeeDetail/$1');
         $routes->get('showEmployee/(:num)', 'ServiceAreaManagementController::showEmployee/$1');
-        $routes->post('storeEmployee', 'ServiceAreaManagementController::storeEmployee');
+        $routes->post('saveEmployee', 'ServiceAreaManagementController::saveEmployee');
         $routes->post('updateEmployee/(:num)', 'ServiceAreaManagementController::updateEmployee/$1');
         $routes->delete('deleteEmployee/(:num)', 'ServiceAreaManagementController::deleteEmployee/$1');
         $routes->post('deleteEmployee/(:num)', 'ServiceAreaManagementController::deleteEmployee/$1'); // Fallback
@@ -258,11 +361,17 @@ $routes->group('service', static function ($routes) {
         $routes->post('updateAssignment/(:num)', 'ServiceAreaManagementController::updateAssignment/$1');
         $routes->delete('deleteAssignment/(:num)', 'ServiceAreaManagementController::deleteAssignment/$1');
         $routes->post('deleteAssignment/(:num)', 'ServiceAreaManagementController::deleteAssignment/$1'); // Fallback
+        $routes->post('toggleAssignmentStatus/(:num)', 'ServiceAreaManagementController::toggleAssignmentStatus/$1');
         $routes->get('showAssignment/(:num)', 'ServiceAreaManagementController::showAssignment/$1');
         // Availability
         $routes->get('getAvailableEmployees/(:num)', 'ServiceAreaManagementController::getAvailableEmployees/$1');
         $routes->get('getAvailableEmployees/(:num)/(:segment)', 'ServiceAreaManagementController::getAvailableEmployees/$1/$2');
     });
+
+    // Export routes
+    $routes->get('export_workorder', 'Service::exportWorkorder');
+    $routes->get('export_employee', 'Service::exportEmployee');
+    $routes->get('export_area', 'Service::exportArea');
 });
 
 // Operational Routes (Delivery)
@@ -277,6 +386,7 @@ $routes->group('operational', static function ($routes) {
     $routes->get('tracking', 'Operational::tracking');
     $routes->post('tracking-search', 'Operational::trackingSearch');
     $routes->post('audit-trail', 'Operational::auditTrail');
+    $routes->get('test-database', 'Operational::testDatabase');
     
     // DI Workflow Logic API Routes
     $routes->get('api/jenis-perintah-kerja', 'Operational::getJenisPerintahKerja');
@@ -295,28 +405,21 @@ $routes->group('warehouse', static function ($routes) {
     $routes->get('/', 'Warehouse::index');
     // $routes->get('sparepart', 'Warehouse::sparepart');
     
-    // Unit Assets Management
-    $routes->group('unit-assets', static function ($routes) {
-        $routes->get('/', 'UnitAssetController::index');
-        $routes->get('create', 'UnitAssetController::create');
-        $routes->post('store', 'UnitAssetController::store');
-        $routes->get('show/(:segment)', 'UnitAssetController::show/$1');
-        $routes->get('edit/(:segment)', 'UnitAssetController::edit/$1');
-        $routes->post('update/(:segment)', 'UnitAssetController::update/$1');
-        $routes->post('delete/(:segment)', 'UnitAssetController::delete/$1');
-        $routes->post('datatable', 'UnitAssetController::getDataTable');
-        $routes->get('simple-data', 'UnitAssetController::getSimpleData');
-        $routes->post('test-datatable', 'UnitAssetController::testDataTable');
-        $routes->post('update-status', 'UnitAssetController::updateStatus');
-        $routes->get('export', 'UnitAssetController::export');
-        $routes->get('check-status', 'UnitAssetController::checkStatus');
-        $routes->get('debug', 'UnitAssetController::debugData');
-        $routes->post('confirm-to-asset/(:num)', 'UnitAssetController::confirmToAsset/$1');
-    });
-
     // Purchase Order Verification Routes for Warehouse
     $routes->group('purchase-orders', static function ($routes) {
         $routes->get('/', 'WarehousePO::index');
+        // Unified PO Verification Page
+        $routes->get('wh-verification', 'WarehousePO::whVerification');
+        // Rejected Items Page
+        $routes->get('rejected-items', 'WarehousePO::rejectedItems');
+        // Re-verification routes
+        $routes->post('reverify-unit', 'WarehousePO::reverifyUnit');
+        $routes->post('reverify-attachment', 'WarehousePO::reverifyAttachment');
+        $routes->post('reverify-sparepart', 'WarehousePO::reverifySparepart');
+        // Get unit verification options for dropdowns
+        $routes->get('get-unit-verification-options', 'WarehousePO::getUnitVerificationOptions');
+        
+        // Individual PO Pages (masih bisa diakses langsung)
         $routes->get('po-unit', 'WarehousePO::poUnit');
         $routes->get('print-po-units', 'WarehousePO::printPOUnits');
         $routes->get('po-attachment', 'WarehousePO::poAttachment');
@@ -325,6 +428,17 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('verify-po-attachment', 'WarehousePO::verifyPoAttachment');
         $routes->post('verify-po-sparepart', 'WarehousePO::verifyPoSparepart');
         $routes->post('update-verification', 'WarehousePO::updateVerification');
+        $routes->get('get-unit-verification-options', 'WarehousePO::getUnitVerificationOptions');
+    });
+
+    // Sparepart Usage & Returns Routes (Combined)
+    $routes->group('sparepart-usage', static function ($routes) {
+        $routes->get('/', 'Warehouse\SparepartUsageController::index');
+        $routes->post('get-usage', 'Warehouse\SparepartUsageController::getUsage');
+        $routes->get('get-usage-detail/(:num)', 'Warehouse\SparepartUsageController::getUsageDetail/$1');
+        $routes->post('get-returns', 'Warehouse\SparepartUsageController::getReturns');
+        $routes->get('get-return-detail/(:num)', 'Warehouse\SparepartUsageController::getReturnDetail/$1');
+        $routes->post('confirm-return/(:num)', 'Warehouse\SparepartUsageController::confirmReturn/$1');
     });
 
     // PERBAIKAN: Grup baru untuk Inventory, sejajar dengan purchase-orders
@@ -332,8 +446,26 @@ $routes->group('warehouse', static function ($routes) {
         // ATTACHMENT
         $routes->get('invent_attachment', 'Warehouse::inventAttachment');
         $routes->post('invent_attachment', 'Warehouse::inventAttachment'); // Untuk AJAX DataTable
+        
+        // Separate data endpoints for each item type
+        $routes->post('attachment-data', 'Warehouse::attachmentData');
+        $routes->post('battery-data', 'Warehouse::batteryData');
+        $routes->post('charger-data', 'Warehouse::chargerData');
+        
         $routes->get('get-attachment-detail/(:num)', 'Warehouse::getAttachmentDetail/$1'); // Untuk mengambil detail attachment
         $routes->post('update-attachment/(:num)', 'Warehouse::updateAttachment/$1'); // Untuk update attachment
+        
+        // Master data API endpoints
+        $routes->get('master-merk/(:segment)', 'Warehouse::masterMerk/$1');
+        $routes->get('master-tipe/(:segment)', 'Warehouse::masterTipe/$1');
+        $routes->get('master-jenis/(:segment)', 'Warehouse::masterJenis/$1');
+        $routes->get('master-model/(:segment)', 'Warehouse::masterModel/$1');
+        $routes->post('save-master-merk/(:segment)', 'Warehouse::saveMasterMerk/$1');
+        $routes->post('save-master-tipe/(:segment)', 'Warehouse::saveMasterTipe/$1');
+        $routes->post('save-master-jenis/(:segment)', 'Warehouse::saveMasterJenis/$1');
+        $routes->post('save-master-model/(:segment)', 'Warehouse::saveMasterModel/$1');
+        $routes->post('save-master-data/(:segment)', 'Warehouse::saveMasterData/$1');
+        $routes->post('add-inventory-item', 'Warehouse::addInventoryItem');
 
         //SPAREPART
         $routes->get('invent_sparepart', 'Warehouse::inventSparepart');
@@ -349,6 +481,10 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('update-unit/(:num)', 'Warehouse::updateUnit/$1');
         $routes->post('delete-unit/(:num)', 'Warehouse::deleteUnit/$1');
     $routes->get('export-invent-unit', 'Warehouse::exportInventUnit');
+    $routes->get('export_unit_inventory', 'Warehouse::exportUnitInventory');
+    $routes->get('export_attachment_inventory', 'Warehouse::exportAttachmentInventory');
+    $routes->get('export_battery_inventory', 'Warehouse::exportBatteryInventory');
+    $routes->get('export_charger_inventory', 'Warehouse::exportChargerInventory');
     $routes->post('confirm-to-asset/(:num)', 'Warehouse::confirmUnitToAsset/$1');
         $routes->get('debug-invent-unit', 'Warehouse::debugInventUnit'); // Debug endpoint
     });
@@ -356,7 +492,18 @@ $routes->group('warehouse', static function ($routes) {
 
 // Purchasing Division Routes
 $routes->group('purchasing', static function ($routes) {
-    $routes->get('/', 'Purchasing::index');
+    $routes->get('/', 'Purchasing::index'); // Main entry point (redirects to purchasingHub)
+    
+    // --- Unified Purchasing Hub ---
+    $routes->get('purchasing-hub', 'Purchasing::purchasingHub'); // Alias for hub
+    
+    // --- Supplier Management ---
+    $routes->get('supplier-management', 'Purchasing::supplierManagement'); // Supplier DataTable AJAX
+    $routes->post('supplier-management', 'Purchasing::supplierManagement'); // Supplier DataTable AJAX
+    $routes->get('supplier-form', 'Purchasing::supplierForm'); // Add supplier form
+    $routes->get('supplier-form/(:num)', 'Purchasing::supplierForm/$1'); // Edit supplier form (AJAX)
+    $routes->post('store-supplier', 'Purchasing::storeSupplier'); // Store/update supplier
+    $routes->delete('delete-supplier/(:num)', 'Purchasing::deleteSupplier/$1'); // Delete supplier
     
     // --- Purchase Order Unit Routes ---
     $routes->get('po-unit', 'Purchasing::poUnit'); // Menampilkan halaman utama
@@ -384,6 +531,49 @@ $routes->group('purchasing', static function ($routes) {
     $routes->get('view-po-attachment/(:num)', 'Purchasing::viewPoAttachment/$1'); // View Detail
     $routes->get('api/po-unit/(:num)', 'Purchasing::getDetailPOAPI/$1');
     $routes->match(['get', 'post'], 'api/get-data-po/(:any)', 'Purchasing::getDataPOAPI/$1');
+    
+    // Unified PO System Routes
+    $routes->get('create-po-unified', 'Purchasing::createUnifiedPO'); // Show unified PO form (Unit & Attachment)
+    $routes->match(['get', 'post'], 'api/get-unified-po-data', 'Purchasing::getUnifiedPOData');
+    $routes->post('store-unified-po', 'Purchasing::storeUnifiedPO');
+    
+    // PO Sparepart Routes
+    $routes->get('po-sparepart-list', 'Purchasing::poSparepartList'); // Show PO Sparepart list page
+    $routes->get('create-po-sparepart', 'Purchasing::createPOSparepart'); // Show PO Sparepart form
+    $routes->post('store-po-sparepart-unified', 'Purchasing::storePOSparepartUnified');
+    $routes->get('api/get-sparepart-po-data', 'Purchasing::getSparepartPOData'); // API for DataTable
+    $routes->get('export-sparepart-po', 'Purchasing::exportSparepartPO');
+    
+    // Supplier Management Routes
+    $routes->get('supplier-management-page', 'Purchasing::supplierManagementPage'); // Show Supplier Management page
+    $routes->get('generate-supplier-code', 'Purchasing::generateSupplierCode'); // Generate supplier code
+    $routes->get('suppliers-list', 'Purchasing::suppliersList'); // Get suppliers list for AJAX
+    $routes->post('store-supplier', 'Purchasing::storeSupplier'); // Store new supplier
+    $routes->get('get-supplier/(:num)', 'Purchasing::getSupplier/$1'); // Get single supplier
+    $routes->post('update-supplier/(:num)', 'Purchasing::updateSupplier/$1'); // Update supplier
+    $routes->post('update-supplier-status/(:num)', 'Purchasing::updateSupplierStatus/$1'); // Update supplier status
+    $routes->post('delete-supplier/(:num)', 'Purchasing::deleteSupplier/$1'); // Delete supplier
+    $routes->get('export-suppliers', 'Purchasing::exportSuppliers');
+    $routes->get('view-po/(:num)', 'Purchasing::viewPO/$1');
+    $routes->get('api/po-detail/(:num)', 'Purchasing::getPODetail/$1');
+    $routes->post('reverify-po/(:num)', 'Purchasing::reverifyPO/$1');
+    $routes->post('cancel-po/(:num)', 'Purchasing::cancelPO/$1');
+    $routes->post('complete-po/(:num)', 'Purchasing::completePO/$1');
+    $routes->delete('delete-po/(:num)', 'Purchasing::deletePO/$1');
+    $routes->post('update-delivery-status', 'Purchasing::updateDeliveryStatus');
+    $routes->post('verify-delivery-items', 'Purchasing::verifyDeliveryItems');
+    $routes->get('api/get-item-form/(:any)', 'Purchasing::getItemForm/$1');
+    $routes->get('api/get-model-units', 'Purchasing::getModelUnits');
+    $routes->get('api/get-tipe-units/(:num)', 'Purchasing::getTipeUnits/$1');
+    $routes->get('api/get-jenis-units/(:num)', 'Purchasing::getJenisUnits/$1');
+    $routes->get('api/get-attachment-merks', 'Purchasing::getAttachmentMerks');
+    $routes->get('api/get-attachment-models', 'Purchasing::getAttachmentModels');
+    $routes->get('api/get-battery-merks', 'Purchasing::getBatteryMerks');
+    $routes->get('api/get-battery-jenis', 'Purchasing::getBatteryJenis');
+    $routes->get('api/get-battery-tipes', 'Purchasing::getBatteryTipes'); // NEW - for jenis + merk query
+    $routes->get('api/get-charger-merks', 'Purchasing::getChargerMerks');
+    $routes->get('api/get-charger-models', 'Purchasing::getChargerModels');
+    
     $routes->get('api/get_model_unit_merk', 'Purchasing::getModelUnitMerk');
     // Added route for tipe & jenis cascading dropdown
     $routes->get('api/get-tipe-units', 'Purchasing::apiGetTipeUnits');
@@ -419,9 +609,19 @@ $routes->group('purchasing', static function ($routes) {
     $routes->get('export-po-sparepart', 'Purchasing::exportPoSparepart');
     $routes->post('resolve-po-sparepart/(:num)', 'Purchasing::resolvePoSparepart/$1'); //resolve
     
-    // Notification Routes
-    $routes->get('notifications', 'Purchasing::getNotifications');
-    $routes->post('mark-notification-read/(:num)', 'Purchasing::markNotificationRead/$1');
+    // Notification Routes (moved to global notifications group)
+    
+    // Export routes
+    $routes->get('export_po', 'Purchasing::exportPO');
+    $routes->get('export_supplier', 'Purchasing::exportSupplier');
+    $routes->get('export_po_progres', 'Purchasing::exportPOProgres');
+    $routes->get('export_po_delivery', 'Purchasing::exportPODelivery');
+    $routes->get('export_po_completed', 'Purchasing::exportPOCompleted');
+    
+    // --- Print Routes ---
+    $routes->get('print_po/(:num)', 'Purchasing::printPO/$1');
+    $routes->get('print-po/(:num)', 'Purchasing::printPO/$1');
+    $routes->get('print-packing-list', 'Purchasing::printPackingList');
     
 });
 
@@ -436,6 +636,12 @@ $routes->group('finance', static function ($routes) {
     $routes->get('reports', 'Finance::reports');
     $routes->post('invoices/create', 'Finance::createInvoice');
     $routes->post('payments/update/(:num)', 'Finance::updatePaymentStatus/$1');
+});
+
+// Perizinan Management Routes
+$routes->group('perizinan', static function ($routes) {
+    $routes->get('silo', 'Perizinan::silo');
+    $routes->get('emisi', 'Perizinan::emisi');
 });
 
 // Reports Routes
@@ -506,9 +712,16 @@ $routes->group('admin', static function ($routes) {
         $routes->put('update/(:num)', 'Admin\AdvancedUserManagement::update/$1');
         $routes->delete('delete/(:num)', 'Admin\AdvancedUserManagement::delete/$1');
         $routes->post('delete/(:num)', 'Admin\AdvancedUserManagement::delete/$1'); // Alternative for compatibility
+        $routes->get('change-password/(:num)', 'Admin\AdvancedUserManagement::changePasswordForm/$1');
+        $routes->post('change-password/(:num)', 'Admin\AdvancedUserManagement::changePassword/$1');
         $routes->get('export', 'Admin\AdvancedUserManagement::export');
         $routes->post('clean-expired', 'Admin\AdvancedUserManagement::cleanExpired');
         $routes->get('user-matrix/(:num)', 'Admin\AdvancedUserManagement::userMatrix/$1');
+        
+        // API endpoints for notification system
+        $routes->get('get-users', 'Admin\AdvancedUserManagement::getUsers');
+        $routes->post('get-users-by-divisions', 'Admin\AdvancedUserManagement::getUsersByDivisions');
+        $routes->post('get-users-by-roles', 'Admin\AdvancedUserManagement::getUsersByRoles');
         // // Permission management routes
         
         // $routes->post('quick-assign-permission', 'Admin\AdvancedUserManagement::quickAssignPermission');
@@ -531,6 +744,15 @@ $routes->group('admin', static function ($routes) {
         $routes->get('positions/json', 'Admin\AdvancedUserManagement::getPositionsJson');
         $routes->get('permissions/json', 'Admin\AdvancedUserManagement::getPermissionsJson');
         $routes->get('export/users', 'Admin\AdvancedUserManagement::exportUsers');
+    });
+    
+    // Role Management Routes (Simple RBAC)
+    $routes->group('roles', static function ($routes) {
+        $routes->get('/', 'Admin\RoleController::index');
+        $routes->get('get-roles', 'Admin\RoleController::getRoles');
+        $routes->get('get-role/(:num)', 'Admin\RoleController::getRole/$1');
+        $routes->get('get-permissions', 'Admin\RoleController::getPermissions');
+        $routes->post('save-role', 'Admin\RoleController::saveRole');
     });
     
     // Activity Log Routes - DEPRECATED: Use ActivityLogViewer instead  
@@ -577,6 +799,8 @@ $routes->group('admin', static function ($routes) {
         $routes->post('update/(:num)', 'Admin\RoleController::update/$1');
         $routes->delete('delete/(:num)', 'Admin\RoleController::delete/$1');
         $routes->post('getDataTable', 'Admin\RoleController::getDataTable');
+        $routes->get('getCounts', 'Admin\RoleController::getCounts');
+        $routes->get('getRoleDetail/(:num)', 'Admin\RoleController::getRoleDetail/$1');
     });
     
     // Activity Log Routes
@@ -653,12 +877,7 @@ $routes->group('api', static function ($routes) {
     $routes->get('dropdown/(:segment)', 'ApiController::getDropdownData/$1');
 });
 
-// System Routes (duplicate cleanup)
-$routes->get('profile', 'System::profile');
-$routes->get('settings', 'System::settings');
-$routes->get('notifications', 'System::notifications');
-$routes->get('help', 'System::help');
-$routes->get('logout', 'System::logout');
+// System Routes (duplicate cleanup) - REMOVED
 
 // API Routes for Form Data
 $routes->group('api', ['namespace' => 'App\Controllers'], function($routes) {
@@ -668,42 +887,10 @@ $routes->group('api', ['namespace' => 'App\Controllers'], function($routes) {
     $routes->get('dropdown/(:segment)', 'ApiController::getDropdownData/$1');
 });
 
-// Notifications Routes
-$routes->group('notifications', ['namespace' => 'App\Controllers'], function($routes) {
-    $routes->get('/', 'Notifications::index');
-    $routes->get('admin', 'Notifications::admin');
-    $routes->post('createRule', 'Notifications::createRule');
-    $routes->get('getRule/(:num)', 'Notifications::getRule/$1');
-    $routes->put('updateRule/(:num)', 'Notifications::updateRule/$1');
-    $routes->post('updateRule/(:num)', 'Notifications::updateRule/$1'); // Fallback for browsers that don't support PUT
-    $routes->delete('deleteRule/(:num)', 'Notifications::deleteRule/$1');
-    $routes->post('deleteRule/(:num)', 'Notifications::deleteRule/$1'); // Fallback for browsers that don't support DELETE
-    $routes->post('testRule/(:num)', 'Notifications::testRule/$1');
-    $routes->post('sendByRule', 'Notifications::sendByRule');
-    $routes->get('analytics', 'Notifications::analytics');
-    $routes->get('teststream', 'Notifications::testStream');
-    $routes->get('preferences', 'Notifications::getPreferences');
-    $routes->post('preferences', 'Notifications::updatePreferences');
-    
-    // Existing routes
-    $routes->get('stream', 'Notifications::stream');
-    $routes->post('create', 'Notifications::create');
-    $routes->post('mark-read/(:num)', 'Notifications::markAsRead/$1');
-    $routes->post('mark-all-read', 'Notifications::markAllAsRead');
-    $routes->post('archive/(:num)', 'Notifications::archive/$1');
-    $routes->delete('delete/(:num)', 'Notifications::delete/$1');
-    $routes->get('count', 'Notifications::getCount');
-    $routes->get('getCount', 'Notifications::getCount'); // Alternative endpoint name
-    $routes->post('update/(:num)', 'Notifications::update/$1'); // Update notification status/action
-    $routes->get('recent', 'Notifications::recent'); // JSON recent notifications for header
-    $routes->get('getUsers', 'Notifications::getUsers'); // Get users for rule targeting
-});
-
-$routes->group('api', function($routes) {
-    $routes->get('notifications', 'Api\NotificationController::index');
-    $routes->post('notifications/read/(:num)', 'Api\NotificationController::markAsRead/$1');
-    $routes->get('notifications/count', 'Api\NotificationController::getCount');
-});
+// ============================================================================
+// NOTIFICATION SYSTEM ROUTES (CONSOLIDATED)
+// ============================================================================
+// Routes moved to consolidated section below
 
 // SPK PDF routes (top-level)
 $routes->get('marketing/spk/pdf/(:num)', 'Marketing::spkPdf/$1');
@@ -719,13 +906,16 @@ $routes->group('warehouse/inventory', static function($r){
     $r->get('available-batteries', 'Warehouse\InventoryApi::availableBatteries');
     $r->get('unit-components', 'Warehouse\InventoryApi::getUnitComponents');
     $r->post('replace-component', 'Warehouse\InventoryApi::replaceComponent');
+    
+    // Manual attach/detach/swap routes
+    $r->get('get-available-units', 'Warehouse::getAvailableUnits');
+    $r->post('attach-to-unit', 'Warehouse::attachToUnit');
+    $r->post('swap-unit', 'Warehouse::swapUnit');
+    $r->post('detach-from-unit', 'Warehouse::detachFromUnit');
 });
 
 // Test Route for Activity Log
 $routes->get('test-activity-log', 'TestActivityLog::index');
-
-// Test Area Staff Integration
-$routes->get('test-area-staff-integration', 'TestAreaStaffIntegration::index');
 
 // Activity Log Viewer Routes - Activated for detailed descriptions
 $routes->group('admin', static function ($routes) {
@@ -734,6 +924,62 @@ $routes->group('admin', static function ($routes) {
     $routes->get('activity-log/details/(:num)', 'ActivityLogViewer::getDetails/$1');
 });
 
+// Additional routes outside group to ensure they work
+$routes->get('kontrak/customers', 'Kontrak::getCustomers');
+$routes->get('kontrak/locations/(:num)', 'Kontrak::getLocationsByCustomer/$1');
+$routes->post('kontrak/store', 'Kontrak::store');
+$routes->post('kontrak/update/(:num)', 'Kontrak::update/$1');
+$routes->post('kontrak/delete/(:num)', 'Kontrak::delete/$1');
 
+// ======================================================================
+// DELIVERY WORKFLOW ROUTES
+// ======================================================================
 
+// Delivery Data API
+$routes->post('purchasing/api/get-delivery-data', 'Purchasing::getDeliveryData');
+
+// Delivery Management API
+$routes->post('purchasing/api/create-delivery', 'Purchasing::createDelivery');
+$routes->get('purchasing/api/delivery-items/(:num)', 'Purchasing::getDeliveryItems/$1');
+$routes->post('purchasing/api/assign-sn', 'Purchasing::assignSerialNumbers');
+$routes->post('purchasing/api/update-delivery-status', 'Purchasing::updateDeliveryStatus');
+
+// ========================================================================
+// NOTIFICATION SYSTEM API
+// ========================================================================
+$routes->group('notifications', function($routes) {
+    // User notification center
+    $routes->get('/', 'NotificationController::index');
+    
+    // API endpoints
+    $routes->get('get', 'NotificationController::getNotifications');
+    $routes->get('count', 'NotificationController::getCount');
+    $routes->get('poll', 'NotificationController::poll');
+    $routes->post('mark-as-read/(:num)', 'NotificationController::markAsRead/$1');
+    $routes->post('mark-all-as-read', 'NotificationController::markAllAsRead');
+    $routes->delete('delete/(:num)', 'NotificationController::delete/$1');
+    
+    // Options data for admin panel
+    $routes->get('options/event-types', 'NotificationController::eventTypeOptions');
+    $routes->get('options/divisions', 'NotificationController::divisionOptions');
+    $routes->get('options/roles', 'NotificationController::roleOptions');
+    $routes->get('options/metadata', 'NotificationController::optionsMetadata');
+    
+    // Real-time SSE streaming
+    $routes->get('stream', 'SSEController::stream');
+    $routes->get('test', 'SSEController::test');
+    
+    // Admin panel
+    $routes->get('admin', 'NotificationController::admin');
+    $routes->get('rules', 'NotificationController::rules');
+    $routes->get('getRule/(:num)', 'NotificationController::getRule/$1');
+    $routes->get('get-rule/(:num)', 'NotificationController::getRule/$1');
+    $routes->post('rules/create', 'NotificationController::createRule');
+    $routes->post('rules/update/(:num)', 'NotificationController::updateRule/$1');
+    $routes->post('admin/create-rule', 'NotificationController::createRule');
+    $routes->post('admin/update-rule/(:num)', 'NotificationController::updateRule/$1');
+    $routes->post('admin/toggle-status/(:num)', 'NotificationController::toggleStatus/$1');
+    $routes->post('admin/delete-rule/(:num)', 'NotificationController::deleteRule/$1');
+    $routes->delete('rules/delete/(:num)', 'NotificationController::deleteRule/$1');
+});
 

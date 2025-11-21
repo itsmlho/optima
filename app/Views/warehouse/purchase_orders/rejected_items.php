@@ -1,0 +1,616 @@
+<?= $this->extend('layouts/base') ?>
+
+<?php 
+// Load helpers
+helper('global_permission');
+helper('date');
+
+// Get permissions for warehouse module
+$permissions = get_global_permission('warehouse');
+$can_view = $permissions['view'];
+$can_create = $permissions['create'];
+$can_edit = $permissions['edit'];
+$can_delete = $permissions['delete'];
+$can_export = $permissions['export'];
+?>
+
+<?= $this->section('css') ?>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+<style>
+    .card.border-start {
+        transition: all 0.2s ease;
+    }
+    .card.border-start:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    /* Ensure tab panes are properly hidden */
+    .tab-content .tab-pane {
+        display: none;
+    }
+    .tab-content .tab-pane.show.active {
+        display: block !important;
+    }
+    /* Ensure tab buttons are clickable */
+    #rejectedTabs button {
+        cursor: pointer;
+        pointer-events: auto;
+    }
+    .stat-card {
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+    .stat-card.unit { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .stat-card.attachment { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .stat-card.sparepart { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .stat-card.total { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+</style>
+<?= $this->endSection() ?>
+
+<?= $this->section('content') ?>
+
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stat-card unit text-white">
+                <h5 class="mb-0">Unit</h5>
+                <h2 class="mb-0 mt-2"><?= count($rejected_units) ?></h2>
+                <small>Item ditolak</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card attachment text-white">
+                <h5 class="mb-0">Attachment</h5>
+                <h2 class="mb-0 mt-2"><?= count($rejected_attachments) ?></h2>
+                <small>Item ditolak</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card sparepart text-white">
+                <h5 class="mb-0">Sparepart</h5>
+                <h2 class="mb-0 mt-2"><?= count($rejected_spareparts) ?></h2>
+                <small>Item ditolak</small>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card total text-white">
+                <h5 class="mb-0">Total</h5>
+                <h2 class="mb-0 mt-2"><?= $total_rejected ?></h2>
+                <small>Semua item ditolak</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-4" id="rejectedTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="unit-tab" data-tab="unit" type="button" role="tab" onclick="switchRejectedTab('unit', this)">
+                <i class="fas fa-truck me-1"></i>Unit (<?= count($rejected_units) ?>)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="attachment-tab" data-tab="attachment" type="button" role="tab" onclick="switchRejectedTab('attachment', this)">
+                <i class="fas fa-puzzle-piece me-1"></i>Attachment (<?= count($rejected_attachments) ?>)
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="sparepart-tab" data-tab="sparepart" type="button" role="tab" onclick="switchRejectedTab('sparepart', this)">
+                <i class="fas fa-cogs me-1"></i>Sparepart (<?= count($rejected_spareparts) ?>)
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="rejectedTabsContent">
+        <!-- Unit Tab -->
+        <div class="tab-pane fade show active" id="unit-rejected" role="tabpanel" aria-labelledby="unit-tab">
+            <?php if (empty($rejected_units)): ?>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>Tidak ada unit yang ditolak.
+                </div>
+            <?php else: ?>
+                <div class="row">
+                    <?php foreach ($rejected_units as $unit): ?>
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-start border-danger border-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1"><?= esc($unit['no_po']) ?></h6>
+                                            <small class="text-muted"><?= esc($unit['merk_unit'] ?? '') ?> <?= esc($unit['model_unit'] ?? '') ?></small>
+                                        </div>
+                                        <span class="badge bg-danger">Unit</span>
+                                    </div>
+                                    
+                                    <!-- Informasi Tambahan -->
+                                    <div class="row g-2 mb-2 small">
+                                        <?php if (!empty($unit['packing_list_no'])): ?>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Packing List:</small>
+                                            <strong><?= esc($unit['packing_list_no']) ?></strong>
+                                        </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($unit['tanggal_sampai'])): ?>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Tanggal Sampai:</small>
+                                            <strong><?= date('d/m/Y', strtotime($unit['tanggal_sampai'])) ?></strong>
+                                        </div>
+                                        <?php endif; ?>
+                                        
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Tanggal Verifikasi:</small>
+                                            <strong><?= format_date_jakarta($unit['tanggal_verifikasi'] ?? null) ?></strong>
+                                        </div>
+                                        
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Diverifikasi oleh:</small>
+                                            <strong>
+                                                <?php 
+                                                $verifierName = trim(($unit['verified_by_name'] ?? '') . ' ' . ($unit['verified_by_lastname'] ?? ''));
+                                                if (!empty($verifierName)): 
+                                                    echo esc($verifierName);
+                                                else: 
+                                                    echo '<span class="text-muted">-</span>';
+                                                endif; 
+                                                ?>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Serial Numbers -->
+                                    <?php if (!empty($unit['sn_unit']) || !empty($unit['sn_mesin']) || !empty($unit['sn_mast']) || !empty($unit['sn_baterai'])): ?>
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block mb-1">Serial Number:</small>
+                                        <div class="small">
+                                            <?php if (!empty($unit['sn_unit'])): ?>
+                                                <span class="badge bg-secondary me-1">SN Unit: <?= esc($unit['sn_unit']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($unit['sn_mesin'])): ?>
+                                                <span class="badge bg-secondary me-1">SN Mesin: <?= esc($unit['sn_mesin']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($unit['sn_mast'])): ?>
+                                                <span class="badge bg-secondary me-1">SN Mast: <?= esc($unit['sn_mast']) ?></span>
+                                            <?php endif; ?>
+                                            <?php if (!empty($unit['sn_baterai'])): ?>
+                                                <span class="badge bg-secondary me-1">SN Baterai: <?= esc($unit['sn_baterai']) ?></span>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                    
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block">Alasan Reject:</small>
+                                        <div class="text-danger small"><?= esc($unit['catatan_verifikasi'] ?? 'Tidak ada catatan') ?></div>
+                                    </div>
+                                    
+                                    <?php if (isset($discrepancies['unit_' . $unit['id_po_unit']])): ?>
+                                        <div class="mb-2">
+                                            <small class="text-muted d-block mb-1">Ketidaksesuaian:</small>
+                                            <?php foreach ($discrepancies['unit_' . $unit['id_po_unit']] as $disc): ?>
+                                                <div class="small mb-1">
+                                                    <span class="badge bg-<?= $disc['discrepancy_type'] === 'Major' ? 'danger' : ($disc['discrepancy_type'] === 'Missing' ? 'info' : 'warning') ?> me-1">
+                                                        <?= esc($disc['discrepancy_type']) ?>
+                                                    </span>
+                                                    <strong><?= esc($disc['field_name']) ?>:</strong>
+                                                    DB: <span class="text-muted"><?= esc($disc['database_value'] ?? '-') ?></span> | 
+                                                    Real: <span class="text-danger"><?= esc($disc['real_value'] ?? '-') ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <div class="d-flex justify-content-end mt-2 pt-2 border-top">
+                                        <button class="btn btn-sm btn-primary" 
+                                                onclick="reverifyUnit(<?= $unit['id_po_unit'] ?>, <?= $unit['po_id'] ?>)">
+                                            <i class="fas fa-redo me-1"></i>Re-verify
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Attachment Tab -->
+        <div class="tab-pane fade" id="attachment-rejected" role="tabpanel" aria-labelledby="attachment-tab">
+            <?php if (empty($rejected_attachments)): ?>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>Tidak ada attachment yang ditolak.
+                </div>
+            <?php else: ?>
+                <div class="row">
+                    <?php foreach ($rejected_attachments as $att): ?>
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-start border-danger border-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1"><?= esc($att['no_po']) ?></h6>
+                                            <small class="text-muted"><?= esc(ucfirst($att['item_type'] ?? 'Attachment')) ?></small>
+                                        </div>
+                                        <span class="badge bg-danger">Attachment</span>
+                                    </div>
+                                    
+                                    <!-- Informasi Tambahan -->
+                                    <div class="row g-2 mb-2 small">
+                                        <?php if (!empty($att['packing_list_no'])): ?>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Packing List:</small>
+                                            <strong><?= esc($att['packing_list_no']) ?></strong>
+                                        </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($att['tanggal_sampai'])): ?>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Tanggal Sampai:</small>
+                                            <strong><?= date('d/m/Y', strtotime($att['tanggal_sampai'])) ?></strong>
+                                        </div>
+                                        <?php endif; ?>
+                                        
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Tanggal Verifikasi:</small>
+                                            <strong><?= format_date_jakarta($att['tanggal_verifikasi'] ?? null) ?></strong>
+                                        </div>
+                                        
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Diverifikasi oleh:</small>
+                                            <strong>
+                                                <?php 
+                                                $verifierName = trim(($att['verified_by_name'] ?? '') . ' ' . ($att['verified_by_lastname'] ?? ''));
+                                                if (!empty($verifierName)): 
+                                                    echo esc($verifierName);
+                                                else: 
+                                                    echo '<span class="text-muted">-</span>';
+                                                endif; 
+                                                ?>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Serial Number -->
+                                    <?php if (!empty($att['sn'])): ?>
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block mb-1">Serial Number:</small>
+                                        <span class="badge bg-secondary"><?= esc($att['sn']) ?></span>
+                                    </div>
+                                    <?php endif; ?>
+                                    
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block">Alasan Reject:</small>
+                                        <div class="text-danger small"><?= esc($att['catatan_verifikasi'] ?? 'Tidak ada catatan') ?></div>
+                                    </div>
+                                    
+                                    <?php if (isset($discrepancies['attachment_' . $att['id_po_attachment']])): ?>
+                                        <div class="mb-2">
+                                            <small class="text-muted d-block mb-1">Ketidaksesuaian:</small>
+                                            <?php foreach ($discrepancies['attachment_' . $att['id_po_attachment']] as $disc): ?>
+                                                <div class="small mb-1">
+                                                    <span class="badge bg-<?= $disc['discrepancy_type'] === 'Major' ? 'danger' : ($disc['discrepancy_type'] === 'Missing' ? 'info' : 'warning') ?> me-1">
+                                                        <?= esc($disc['discrepancy_type']) ?>
+                                                    </span>
+                                                    <strong><?= esc($disc['field_name']) ?>:</strong>
+                                                    DB: <span class="text-muted"><?= esc($disc['database_value'] ?? '-') ?></span> | 
+                                                    Real: <span class="text-danger"><?= esc($disc['real_value'] ?? '-') ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    <?php endif; ?>
+                                    
+                                    <div class="d-flex justify-content-end mt-2 pt-2 border-top">
+                                        <button class="btn btn-sm btn-primary" onclick="reverifyAttachment(<?= $att['id_po_attachment'] ?>, <?= $att['po_id'] ?>)">
+                                            <i class="fas fa-redo me-1"></i>Re-verify
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- Sparepart Tab -->
+        <div class="tab-pane fade" id="sparepart-rejected" role="tabpanel" aria-labelledby="sparepart-tab">
+            <?php if (empty($rejected_spareparts)): ?>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>Tidak ada sparepart yang ditolak.
+                </div>
+            <?php else: ?>
+                <div class="row">
+                    <?php foreach ($rejected_spareparts as $sp): ?>
+                        <div class="col-md-6 mb-3">
+                            <div class="card border-start border-danger border-3">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div>
+                                            <h6 class="mb-1"><?= esc($sp['no_po']) ?></h6>
+                                            <small class="text-muted"><?= esc($sp['kode'] ?? '') ?> - <?= esc($sp['desc_sparepart'] ?? '') ?></small>
+                                        </div>
+                                        <span class="badge bg-danger">Sparepart</span>
+                                    </div>
+                                    
+                                    <!-- Informasi Tambahan -->
+                                    <div class="row g-2 mb-2 small">
+                                        <?php if (!empty($sp['packing_list_no'])): ?>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Packing List:</small>
+                                            <strong><?= esc($sp['packing_list_no']) ?></strong>
+                                        </div>
+                                        <?php endif; ?>
+                                        
+                                        <?php if (!empty($sp['tanggal_sampai'])): ?>
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Tanggal Sampai:</small>
+                                            <strong><?= date('d/m/Y', strtotime($sp['tanggal_sampai'])) ?></strong>
+                                        </div>
+                                        <?php endif; ?>
+                                        
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Tanggal Verifikasi:</small>
+                                            <strong><?= format_date_jakarta($sp['tanggal_verifikasi'] ?? null) ?></strong>
+                                        </div>
+                                        
+                                        <div class="col-6">
+                                            <small class="text-muted d-block">Diverifikasi oleh:</small>
+                                            <strong>
+                                                <?php 
+                                                $verifierName = trim(($sp['verified_by_name'] ?? '') . ' ' . ($sp['verified_by_lastname'] ?? ''));
+                                                if (!empty($verifierName)): 
+                                                    echo esc($verifierName);
+                                                else: 
+                                                    echo '<span class="text-muted">-</span>';
+                                                endif; 
+                                                ?>
+                                            </strong>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <small class="text-muted">Qty: </small>
+                                        <strong><?= esc($sp['qty'] ?? 0) ?></strong>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <small class="text-muted d-block">Alasan Reject:</small>
+                                        <div class="text-danger small"><?= esc($sp['catatan_verifikasi'] ?? 'Tidak ada catatan') ?></div>
+                                    </div>
+                                    
+                                    <div class="d-flex justify-content-end mt-2 pt-2 border-top">
+                                        <button class="btn btn-sm btn-primary" onclick="reverifySparepart(<?= $sp['id'] ?>, <?= $sp['po_id'] ?>)">
+                                            <i class="fas fa-redo me-1"></i>Re-verify
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+<?= $this->endSection() ?>
+
+<?= $this->section('javascript') ?>
+<script>
+    // Tab switching function - Simple and direct (works with or without jQuery)
+    // Define in global scope to ensure onclick can access it
+    window.switchRejectedTab = function(tabName, buttonElement) {
+        const targetPaneId = tabName + '-rejected';
+        const targetPane = document.getElementById(targetPaneId);
+        
+        if (!targetPane) {
+            console.error('Tab pane not found:', targetPaneId);
+            return false;
+        }
+        
+        // Remove active from all buttons
+        const allButtons = document.querySelectorAll('#rejectedTabs button');
+        allButtons.forEach(btn => btn.classList.remove('active'));
+        
+        // Add active to clicked button
+        if (buttonElement) {
+            buttonElement.classList.add('active');
+        }
+        
+        // Hide all panes
+        const allPanes = document.querySelectorAll('#rejectedTabsContent .tab-pane');
+        allPanes.forEach(pane => {
+            pane.style.display = 'none';
+            pane.classList.remove('show', 'active');
+        });
+        
+        // Show target pane
+        targetPane.style.display = 'block';
+        targetPane.classList.add('show', 'active');
+        
+        return false;
+    };
+    
+    // Initialize on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Hide all tab panes except Unit on initial load
+        const allPanes = document.querySelectorAll('#rejectedTabsContent .tab-pane');
+        allPanes.forEach(pane => {
+            if (pane.id !== 'unit-rejected') {
+                pane.style.display = 'none';
+                pane.classList.remove('show', 'active');
+            } else {
+                pane.style.display = 'block';
+                pane.classList.add('show', 'active');
+            }
+        });
+    });
+
+    // Re-verification functions
+    function reverifyUnit(idUnit, poId) {
+        Swal.fire({
+            title: 'Re-verifikasi Unit?',
+            text: 'Apakah barang baru sudah datang dari vendor? Status akan direset ke "Belum Dicek" untuk verifikasi ulang.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Reset untuk Re-verify',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '<?= base_url('warehouse/purchase-orders/reverify-unit') ?>',
+                    type: 'POST',
+                    data: {
+                        id_unit: idUnit,
+                        po_id: poId,
+                        '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+                    },
+                    dataType: 'JSON',
+                    beforeSend: () => Swal.showLoading(),
+                    success: function(r) {
+                        Swal.close();
+                        if (r.statusCode == 200) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: r.message || 'Status unit telah direset. Silakan lakukan verifikasi ulang.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: r.message || 'Gagal reset status unit.'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Terjadi kesalahan saat reset status unit.'
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    function reverifyAttachment(idAttachment, poId) {
+        Swal.fire({
+            title: 'Re-verifikasi Attachment?',
+            text: 'Apakah barang baru sudah datang dari vendor? Status akan direset ke "Belum Dicek" untuk verifikasi ulang.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Reset untuk Re-verify',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '<?= base_url('warehouse/purchase-orders/reverify-attachment') ?>',
+                    type: 'POST',
+                    data: {
+                        id_attachment: idAttachment,
+                        po_id: poId,
+                        '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+                    },
+                    dataType: 'JSON',
+                    beforeSend: () => Swal.showLoading(),
+                    success: function(r) {
+                        Swal.close();
+                        if (r.statusCode == 200) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: r.message || 'Status attachment telah direset.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: r.message || 'Gagal reset status attachment.'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Terjadi kesalahan saat reset status attachment.'
+                        });
+                    }
+                });
+            }
+        });
+    }
+
+    function reverifySparepart(idSparepart, poId) {
+        Swal.fire({
+            title: 'Re-verifikasi Sparepart?',
+            text: 'Apakah barang baru sudah datang dari vendor? Status akan direset ke "Belum Dicek" untuk verifikasi ulang.',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Ya, Reset untuk Re-verify',
+            cancelButtonText: 'Batal'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '<?= base_url('warehouse/purchase-orders/reverify-sparepart') ?>',
+                    type: 'POST',
+                    data: {
+                        id_sparepart: idSparepart,
+                        po_id: poId,
+                        '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+                    },
+                    dataType: 'JSON',
+                    beforeSend: () => Swal.showLoading(),
+                    success: function(r) {
+                        Swal.close();
+                        if (r.statusCode == 200) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil',
+                                text: r.message || 'Status sparepart telah direset.',
+                                timer: 2000,
+                                showConfirmButton: false
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: r.message || 'Gagal reset status sparepart.'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        Swal.close();
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Terjadi kesalahan saat reset status sparepart.'
+                        });
+                    }
+                });
+            }
+        });
+    }
+</script>
+<?= $this->endSection() ?>
+

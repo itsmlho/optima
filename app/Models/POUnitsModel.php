@@ -23,6 +23,7 @@ class POUnitsModel extends Model
         'tahun_po',
         'kapasitas_id',
         'mast_id',
+        'tinggi_mast_po',  // Added for consistency with inventory_unit.tinggi_mast
         'sn_mast_po',
         'mesin_id',
         'sn_mesin_po',
@@ -56,6 +57,7 @@ class POUnitsModel extends Model
         'status_penjualan'  => 'permit_empty|in_list[Baru,Bekas,Rekondisi]',
         'status_verifikasi' => 'permit_empty|in_list[Belum Dicek,Sesuai,Tidak Sesuai]',
         'mast_id'           => 'permit_empty|integer',
+        'tinggi_mast_po'    => 'permit_empty|max_length[50]',
         'mesin_id'          => 'permit_empty|integer',
         'attachment_id'     => 'permit_empty|integer',
         'baterai_id'        => 'permit_empty|integer',

@@ -317,4 +317,5 @@ trait ActivityLoggingTrait
         
         return $this->logActivity('WORKFLOW_CHANGE', $tableName, $recordId, $description, $finalOptions);
     }
+
 }

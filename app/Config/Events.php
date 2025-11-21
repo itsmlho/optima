@@ -24,6 +24,9 @@ use CodeIgniter\HotReloader\HotReloader;
  */
 
 Events::on('pre_system', static function (): void {
+    // Set PHP default timezone to Jakarta (WIB - GMT+7)
+    date_default_timezone_set('Asia/Jakarta');
+    
     if (ENVIRONMENT !== 'testing') {
         if (ini_get('zlib.output_compression')) {
             throw FrameworkException::forEnabledZlibOutputCompression();
@@ -51,5 +54,15 @@ Events::on('pre_system', static function (): void {
                 (new HotReloader())->run();
             });
         }
+    }
+});
+
+// Set MySQL timezone to Jakarta when database connection is established
+Events::on('post_controller_constructor', static function (): void {
+    try {
+        $db = \Config\Database::connect();
+        $db->query("SET time_zone = '+07:00'");
+    } catch (\Exception $e) {
+        // Silently fail if database is not available
     }
 });

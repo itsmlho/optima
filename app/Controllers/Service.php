@@ -28,6 +28,41 @@ class Service extends BaseController
         $this->attModel = new InventoryAttachmentModel();
         $this->spkModel = new SpkModel();
         $this->componentFormatter = new UnitComponentFormatter();
+        
+        // Load auth helper for division filtering
+        helper('auth');
+    }
+
+    /**
+     * Print verification page
+     */
+    public function printVerification($workOrderId = null)
+    {
+        // Check permission for viewing service verification
+        if (!$this->hasPermission('service.work_orders.view')) {
+            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view service verification');
+        }
+        
+        $data = [];
+        
+        // Get work order ID from parameter or GET request
+        if (!$workOrderId) {
+            $workOrderId = $this->request->getGet('wo_id');
+        }
+        
+        if ($workOrderId) {
+            // Load WorkOrderModel untuk mendapatkan data work order
+            $workOrderModel = new \App\Models\WorkOrderModel();
+            $workOrder = $workOrderModel->getDetailWorkOrder($workOrderId);
+            
+            if ($workOrder) {
+                $data['workOrder'] = $workOrder;
+                // Also pass work order ID for JavaScript
+                $data['workOrderId'] = $workOrderId;
+            }
+        }
+        
+        return view('service/print_verification', $data);
     }
 
     /**
@@ -67,13 +102,13 @@ class Service extends BaseController
             $components['charger'] = $charger;
         }
 
-        // Get attachment info
+        // Get attachment info - include both available and used for the unit
         $attachment = $this->db->table('inventory_attachment ia')
             ->select('ia.id_inventory_attachment, ia.attachment_id, ia.sn_attachment, a.tipe, a.merk, a.model')
             ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'attachment')
-            ->where('ia.attachment_status', 'USED') // In use
+            ->whereIn('ia.attachment_status', ['AVAILABLE', 'USED']) // Available or In use for this unit
             ->get()->getRowArray();
 
         if ($attachment) {
@@ -88,6 +123,11 @@ class Service extends BaseController
      */
     public function spkPrint($id)
     {
+        // Check permission for printing SPK
+        if (!$this->hasPermission('service.spk_service.view')) {
+            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to print SPK');
+        }
+        
         return redirect()->to(base_url('marketing/spk/print/' . $id));
     }
 
@@ -102,21 +142,20 @@ class Service extends BaseController
         $this->db->table('inventory_attachment')
             ->where('id_inventory_unit', $unitId)
             ->where('tipe_item', $componentType)
-            ->where('status_unit', 8)
             ->update([
-                'status_unit' => 7, // Available
                 'id_inventory_unit' => null,
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
+        // Note: status_unit akan otomatis sinkronisasi dengan trigger (menjadi 7 = Available)
 
         // Then assign the new component
         $this->db->table('inventory_attachment')
             ->where('id_inventory_attachment', $inventoryAttachmentId)
             ->update([
-                'status_unit' => 8, // In use
                 'id_inventory_unit' => $unitId,
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
+        // Note: status_unit akan otomatis sinkronisasi dengan trigger berdasarkan unit status
 
         return $this->db->affectedRows() > 0;
     }
@@ -128,11 +167,7 @@ class Service extends BaseController
             'breadcrumbs' => [
                 '/' => 'Dashboard',
                 '/service' => 'Service Division'
-            ],
-            'service_stats' => $this->getServiceStats(),
-            'recent_work_orders' => $this->getRecentWorkOrders(),
-            'maintenance_alerts' => $this->getMaintenanceAlerts(),
-            'technicians' => $this->getTechnicians()
+            ]
         ];
 
         return view('service/index', $data);
@@ -144,8 +179,10 @@ class Service extends BaseController
         $statusModel = new \App\Models\WorkOrderStatusModel();
         $priorityModel = new \App\Models\WorkOrderPriorityModel();
         $categoryModel = new \App\Models\WorkOrderCategoryModel();
-        $staffModel = new \App\Models\WorkOrderStaffModel();
+        $staffModel = new \App\Models\EmployeeModel();
         $inventoryModel = new \App\Models\InventoryUnitModel();
+        $areaModel = new \App\Models\AreaModel();
+        $sparepartModel = new \App\Models\SparepartModel();
 
         $data = [
             'title' => 'Work Orders | OPTIMA',
@@ -155,7 +192,6 @@ class Service extends BaseController
                 '/service' => 'Service',
                 '/service/work-orders' => 'Work Orders'
             ],
-            'workorders' => $this->getWorkOrders(),
             'mode' => 'active',
             'active_statuses' => ['OPEN', 'KENDALA', 'PENDING'],
             // Required data for view
@@ -163,7 +199,9 @@ class Service extends BaseController
             'priorities' => $priorityModel->getActivePriorities(),
             'categories' => $categoryModel->getActiveCategories(),
             'staff' => $staffModel->getStaffByRole(),
-            'units' => $inventoryModel->getUnitsForDropdown()
+            'units' => $inventoryModel->getUnitsForDropdown(),
+            'areas' => $areaModel->getActiveAreas(),
+            'spareparts' => $sparepartModel->getActiveSpareparts()
         ];
 
         return view('service/work_orders', $data);
@@ -180,13 +218,14 @@ class Service extends BaseController
                 '/service/work-orders' => 'Work Orders',
                 '/service/work-orders/history' => 'History'
             ],
-            'work_order_history' => $this->getWorkOrderHistory(),
             'mode' => 'history',
             'history_statuses' => ['CLOSED'],
         ];
 
         return view('service/work_order_history', $data);
     }
+
+    // REMOVED: getWorkOrdersData() - using WorkOrderController::getWorkOrders() instead
 
     public function pmps()
     {
@@ -197,11 +236,48 @@ class Service extends BaseController
                 '/' => 'Dashboard',
                 '/service' => 'Service',
                 '/service/pmps' => 'PMPS'
-            ],
-            'pmps_data' => $this->getPmpsData(),
+            ]
         ];
 
         return view('service/pmps', $data);
+    }
+
+    public function exportWorkorder()
+    {
+        if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.workorder')) {
+            return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.workorder');
+        }
+        return view('service/export_workorder');
+    }
+
+    public function exportEmployee()
+    {
+        if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.service_employee')) {
+            return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.service_employee');
+        }
+        if (method_exists($this, 'logActivity')) {
+            $this->logActivity('EXPORT', 'employees', 0, 'Export Employee CSV', [
+                'module_name' => 'SERVICE',
+                'submenu_item' => 'Area & Employee Management',
+                'business_impact' => 'LOW'
+            ]);
+        }
+        return view('service/export_employee');
+    }
+
+    public function exportArea()
+    {
+        if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.service_area')) {
+            return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.service_area');
+        }
+        if (method_exists($this, 'logActivity')) {
+            $this->logActivity('EXPORT', 'areas', 0, 'Export Area CSV', [
+                'module_name' => 'SERVICE',
+                'submenu_item' => 'Area & Employee Management',
+                'business_impact' => 'LOW'
+            ]);
+        }
+        return view('service/export_area');
     }
 
     // --- SPK Service Handlers ---
@@ -210,15 +286,149 @@ class Service extends BaseController
         $data = [
             'title' => 'SPK Service | OPTIMA',
             'page_title' => 'SPK dari Marketing',
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/service' => 'Service',
+                '/service/spk_service' => 'SPK Service'
+            ]
         ];
     // Use single view (modular content merged into spk_service.php)
     return view('service/spk_service', $data);
     }
 
+    // Get areas for SPK Service dropdown
+    public function areas()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $areas = $db->table('areas a')
+                         ->select('a.id, a.area_code, a.area_name, d.nama_departemen')
+                         ->join('departemen d', 'a.departemen_id = d.id_departemen', 'left')
+                         ->where('a.is_active', 1)
+                         ->orderBy('d.nama_departemen', 'ASC')
+                         ->orderBy('a.area_name', 'ASC')
+                         ->get()
+                         ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $areas
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading areas: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading areas'
+            ]);
+        }
+    }
+    
+    /**
+     * Generate unique unit number for STOCK_NON_ASET units
+     */
+    private function generateUnitNumber()
+    {
+        // Get the highest unit number
+        $maxUnit = $this->db->table('inventory_unit')
+                           ->selectMax('no_unit')
+                           ->where('no_unit IS NOT NULL')
+                           ->where('no_unit !=', '')
+                           ->get()
+                           ->getRowArray();
+        
+        $nextNumber = 1;
+        if ($maxUnit && $maxUnit['no_unit']) {
+            $nextNumber = (int)$maxUnit['no_unit'] + 1;
+        }
+        
+        // Ensure the number doesn't exist
+        while ($this->db->table('inventory_unit')->where('no_unit', $nextNumber)->countAllResults() > 0) {
+            $nextNumber++;
+        }
+        
+        return $nextNumber;
+    }
+
     public function spkList()
     {
-        $list = $this->db->table('spk')->orderBy('id','DESC')->get()->getResultArray();
-        return $this->response->setJSON(['data'=>$list,'csrf_hash'=>csrf_hash()]);
+        try {
+            $userId = session()->get('user_id');
+            
+            // SIMPLE FILTER: Cek divisi user
+            // Service Diesel (division_id = 1) -> hanya lihat DIESEL (1) & GASOLINE (3)
+            // Service Electric (division_id = 2) -> hanya lihat ELECTRIC (2)
+            $allowedDeptIds = null; // null = tampilkan semua
+            
+            // Use global helper function for division-based filtering
+            $allowedDeptIds = get_user_division_departments();
+            
+            // Get all SPK
+            $list = $this->db->table('spk')->orderBy('id','DESC')->get()->getResultArray();
+            log_message('debug', 'Total SPK found: ' . count($list) . ', Filter: ' . ($allowedDeptIds ? json_encode($allowedDeptIds) : 'none'));
+            
+            // Filter berdasarkan departemen_id di JSON spesifikasi
+            $filteredList = [];
+            foreach ($list as $spk) {
+                try {
+                    // Add stage status (with error handling)
+                    try {
+                        $stageStatus = $this->getSpkStageStatusData($spk['id']);
+                        if ($stageStatus) {
+                            $spk['stage_status'] = $stageStatus;
+                        }
+                    } catch (\Exception $e) {
+                        // Skip stage status if error, continue with SPK data
+                        log_message('debug', 'Error getting stage status for SPK ' . $spk['id'] . ': ' . $e->getMessage());
+                    }
+                    
+                    // Apply filter jika ada
+                    if ($allowedDeptIds !== null && is_array($allowedDeptIds)) {
+                        // Decode JSON spesifikasi
+                        $spesifikasi = [];
+                        if (!empty($spk['spesifikasi'])) {
+                            $decoded = json_decode($spk['spesifikasi'], true);
+                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                $spesifikasi = $decoded;
+                            }
+                        }
+                        
+                        // Cek departemen_id
+                        $spkDeptId = null;
+                        if (isset($spesifikasi['departemen_id'])) {
+                            // Handle both string and integer
+                            $deptId = $spesifikasi['departemen_id'];
+                            $spkDeptId = is_numeric($deptId) ? (int)$deptId : null;
+                        }
+                        
+                        // Jika departemen_id sesuai dengan yang diizinkan, tambahkan ke list
+                        if ($spkDeptId && in_array($spkDeptId, $allowedDeptIds)) {
+                            $filteredList[] = $spk;
+                        }
+                        // SPK tanpa departemen_id atau tidak sesuai -> EXCLUDE (jangan tampilkan)
+                        // SPK tanpa departemen_id atau tidak sesuai -> skip
+                    } else {
+                        // Tidak ada filter, tambahkan semua
+                        $filteredList[] = $spk;
+                    }
+                } catch (\Exception $e) {
+                    // Log error but continue processing other SPKs
+                    log_message('error', 'Error processing SPK ' . ($spk['id'] ?? 'unknown') . ': ' . $e->getMessage());
+                    continue;
+                }
+            }
+            
+            log_message('debug', 'Filtered SPK count: ' . count($filteredList));
+            return $this->response->setJSON(['success'=>true,'data'=>$filteredList,'csrf_hash'=>csrf_hash()]);
+        } catch (\Exception $e) {
+            log_message('error', 'SPK List Error: ' . $e->getMessage());
+            log_message('error', 'SPK List Trace: ' . $e->getTraceAsString());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success' => false,
+                'message' => 'Error loading SPK list: ' . $e->getMessage(),
+                'data' => []
+            ]);
+        }
     }
 
     public function spkDetail($id)
@@ -226,6 +436,12 @@ class Service extends BaseController
         $row = $this->db->table('spk')->where('id', (int)$id)->get()->getRowArray();
         if (!$row) {
             return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'SPK tidak ditemukan']);
+        }
+        
+        // Get stage status from new spk_unit_stages table
+        $stageStatus = $this->getSpkStageStatusData($id);
+        if ($stageStatus) {
+            $row['stage_status'] = $stageStatus;
         }
         $spec = [];
         if (!empty($row['spesifikasi'])) {
@@ -534,12 +750,49 @@ class Service extends BaseController
             }
         }
 
-        // Attach prepared_units progress if any
+        // Calculate prepared_units from new spk_unit_stages structure
         $preparedUnits = [];
-        if (!empty($enriched['prepared_units']) && is_array($enriched['prepared_units'])) {
-            $preparedUnits = $enriched['prepared_units'];
-        } elseif (!empty($spec['prepared_units']) && is_array($spec['prepared_units'])) {
-            $preparedUnits = $spec['prepared_units'];
+        $spkId = (int) $id;
+        $totalUnits = (int) $row['jumlah_unit'];
+        
+        // Get units that have completed persiapan_unit stage
+        for ($unitIndex = 1; $unitIndex <= $totalUnits; $unitIndex++) {
+            $persiapanStage = $this->db->table('spk_unit_stages')
+                ->where('spk_id', $spkId)
+                ->where('unit_index', $unitIndex)
+                ->where('stage_name', 'persiapan_unit')
+                ->where('tanggal_approve IS NOT NULL')
+                ->get()
+                ->getRowArray();
+                
+            if ($persiapanStage) {
+                $preparedUnits[] = [
+                    'unit_index' => $unitIndex,
+                    'unit_id' => $persiapanStage['unit_id'],
+                    'area_id' => $persiapanStage['area_id'],
+                    'aksesoris_tersedia' => $persiapanStage['aksesoris_tersedia'],
+                    'timestamp' => $persiapanStage['tanggal_approve']
+                ];
+            }
+        }
+        
+        // Debug log
+        log_message('info', "SPK {$spkId}: Found " . count($preparedUnits) . " prepared units from spk_unit_stages");
+        
+        // IMPORTANT: If SPK status is IN_PROGRESS and no approval stages are completed,
+        // clear prepared_units to avoid confusion after Marketing 
+        if ($row['status'] === 'IN_PROGRESS') {
+            // Check if any stages are completed using new spk_unit_stages structure
+            $anyStageCompleted = $this->db->table('spk_unit_stages')
+                ->where('spk_id', $spkId)
+                ->where('tanggal_approve IS NOT NULL')
+                ->countAllResults() > 0;
+            
+            // If no stages are completed, clear prepared_units
+            if (!$anyStageCompleted) {
+                $preparedUnits = [];
+                log_message('info', "SPK {$row['id']}: Cleared prepared_units due to Marketing rollback - no approval stages completed");
+            }
         }
 
         // Enrich prepared_units into prepared_units_detail for distinct display in Service detail
@@ -644,541 +897,1040 @@ class Service extends BaseController
         return $this->response->setJSON(['success'=>true,'message'=>'Status SPK berhasil diperbarui','csrf_hash'=>csrf_hash()]);
     }
 
-    public function spkApproveStage($id)
+    public function spkApproveStageOld($id)
     {
+        // Log request details for debugging
+        $this->logSpkApprovalRequest($id);
+        
         if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
         }
 
+        try {
+            // This method is deprecated - use the refactored version below
+            throw new \Exception('Method deprecated - use refactored implementation');
+            
+        } catch (\Exception $e) {
+            log_message('error', 'SPK Approval Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Log SPK approval request details for debugging
+     */
+    private function logSpkApprovalRequest($id)
+    {
+        log_message('info', "=== SPK APPROVE STAGE METHOD CALLED ===");
+        log_message('info', "ID: $id, Method: " . $this->request->getMethod());
+        log_message('info', "Is AJAX: " . ($this->request->isAJAX() ? 'true' : 'false'));
+        log_message('info', "POST Data: " . json_encode($this->request->getPost()));
+    }
+
+    public function spkApproveStage($id)
+    {
+        try {
+            // Extract and validate request data
+            $approvalData = $this->validateAndExtractApprovalData();
+            
+            // Prepare base stage data
+            $stageData = $this->prepareBaseStageData($id, $approvalData);
+            
+            // Handle stage-specific data
+            $this->handleStageSpecificData($approvalData['stage'], $stageData, $approvalData);
+            
+            // Save the approval
+            $this->saveStageApproval($stageData, $approvalData);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Stage ' . $approvalData['stage'] . ' berhasil di-approve'
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'SPK Approval Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Approve Fabrikasi stage (legacy method for compatibility)
+     */
+    public function approveFabrikasi()
+    {
+        try {
+            $spkId = $this->request->getPost('spk_id');
+            $mekanik = $this->request->getPost('mekanik');
+            $estimasi_mulai = $this->request->getPost('estimasi_mulai');
+            $estimasi_selesai = $this->request->getPost('estimasi_selesai');
+            $attachment_id = $this->request->getPost('attachment_inventory_attachment_id');
+            $transfer_attachment = $this->request->getPost('transfer_attachment') === 'true';
+            $unitIndex = (int) $this->request->getPost('unit_index') ?: 1;
+
+            if (!$spkId || !$mekanik) {
+                throw new \Exception('SPK ID dan Mekanik harus diisi');
+            }
+
+            // Prepare approval data
+            $approvalData = [
+                'stage' => 'fabrikasi',
+                'unitIndex' => $unitIndex,
+                'mekanik' => $mekanik,
+                'estimasi_mulai' => $estimasi_mulai,
+                'estimasi_selesai' => $estimasi_selesai,
+                'attachment_id' => $attachment_id,
+                'transfer_attachment' => $transfer_attachment
+            ];
+
+            // Prepare base stage data
+            $stageData = $this->prepareBaseStageData($spkId, $approvalData);
+            
+            // Handle stage-specific data
+            $this->handleStageSpecificData('fabrikasi', $stageData, $approvalData);
+            
+            // Save the approval
+            $this->saveStageApproval($stageData, $approvalData);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Fabrikasi berhasil di-approve'
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Fabrikasi Approval Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Assign items to SPK (legacy method for compatibility)
+     */
+    public function assignItems()
+    {
+        try {
+            $spkId = $this->request->getPost('spk_id');
+            $unitId = $this->request->getPost('unit_id');
+            $attachmentId = $this->request->getPost('inventory_attachment_id');
+
+            if (!$spkId || !$unitId) {
+                throw new \Exception('SPK ID dan Unit ID harus diisi');
+            }
+
+            // Update SPK with assigned unit (using correct field names)
+            $updateData = [
+                'status' => 'READY'
+            ];
+            
+            // Store unit and attachment info in spesifikasi field as JSON
+            $spesifikasi = [];
+            if ($unitId) {
+                $spesifikasi['unit_id'] = $unitId;
+            }
+            if ($attachmentId) {
+                $spesifikasi['attachment_id'] = $attachmentId;
+            }
+            
+            if (!empty($spesifikasi)) {
+                $updateData['spesifikasi'] = json_encode($spesifikasi);
+            }
+            
+            $this->db->table('spk')->where('id', $spkId)->update($updateData);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Item berhasil di-assign ke SPK'
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Assign Items Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Change SPK unit (for rollback system)
+     */
+    public function changeSpkUnit($spkId)
+    {
+        try {
+            $newUnitId = $this->request->getPost('unit_id');
+            $unitIndex = (int) $this->request->getPost('unit_index') ?: 1;
+            $reason = $this->request->getPost('reason');
+
+            if (!$newUnitId || !$reason) {
+                throw new \Exception('Unit ID dan alasan harus diisi');
+            }
+
+            // Update SPK unit (store in spesifikasi field)
+            $spesifikasi = json_decode($this->db->table('spk')->where('id', $spkId)->get()->getRowArray()['spesifikasi'] ?? '{}', true);
+            $spesifikasi['unit_id'] = $newUnitId;
+            
+            $this->db->table('spk')->where('id', $spkId)->update([
+                'spesifikasi' => json_encode($spesifikasi)
+            ]);
+
+            // Log the change
+            log_message('info', "SPK {$spkId} unit changed to {$newUnitId} for unit index {$unitIndex}. Reason: {$reason}");
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Unit berhasil diubah'
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Change SPK Unit Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Validate and extract approval request data
+     */
+    private function validateAndExtractApprovalData()
+    {
         $stage = $this->request->getPost('stage');
-        $mekanik = $this->request->getPost('mekanik');
+        $unitIndex = (int) $this->request->getPost('unit_index') ?: 1;
+        $mekanik = trim($this->request->getPost('mekanik'));
         $estimasi_mulai = $this->request->getPost('estimasi_mulai');
         $estimasi_selesai = $this->request->getPost('estimasi_selesai');
+        $attachment_id = $this->request->getPost('attachment_inventory_attachment_id');
+        $transfer_attachment = $this->request->getPost('transfer_attachment') === 'true';
 
-        if (!$stage || !$mekanik || !$estimasi_mulai || !$estimasi_selesai) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Semua field harus diisi']);
+        // Basic validation
+        if (!$mekanik) {
+            throw new \Exception('Mekanik harus diisi');
+        }
+
+        // Stage-specific validation
+        if (in_array($stage, ['fabrikasi', 'painting']) && (!$estimasi_mulai || !$estimasi_selesai)) {
+            throw new \Exception('Estimasi mulai dan estimasi selesai harus diisi untuk stage ' . $stage);
         }
 
         // Validate allowed stages
         $allowedStages = ['persiapan_unit', 'fabrikasi', 'painting', 'pdi'];
         if (!in_array($stage, $allowedStages)) {
-            return $this->response->setJSON(['success'=>false,'message'=>'Stage tidak valid']);
+            throw new \Exception('Stage tidak valid');
         }
 
-        $updateData = [
-            $stage . '_mekanik' => $mekanik,
-            $stage . '_estimasi_mulai' => $estimasi_mulai,
-            $stage . '_estimasi_selesai' => $estimasi_selesai,
-            $stage . '_tanggal_approve' => date('Y-m-d H:i:s'),
-            'diperbarui_pada' => date('Y-m-d H:i:s')
-        ];
-
-        // Handle stage-specific data
-        if ($stage === 'persiapan_unit') {
-            $unit_id = $this->request->getPost('unit_id');
-            // We now process one unit at a time, so unit_id should be a single value
-            
-            $aksesoris_tersedia = $this->request->getPost('aksesoris_tersedia'); // JSON array of checked accessories
-            // Handle case where aksesoris_tersedia comes as array from browser form
-            if (is_array($aksesoris_tersedia)) {
-                // If it's array of arrays, take the first one, otherwise encode the array
-                if (!empty($aksesoris_tersedia) && is_array($aksesoris_tersedia[0])) {
-                    $aksesoris_tersedia = json_encode($aksesoris_tersedia[0]);
-                } else {
-                    $aksesoris_tersedia = json_encode($aksesoris_tersedia);
-                }
-            }
-            
-            $update_no_unit = $this->request->getPost('update_no_unit');
-            $no_unit_action = $this->request->getPost('no_unit_action');
-            $battery_inventory_id = $this->request->getPost('battery_inventory_id');
-            $charger_inventory_id = $this->request->getPost('charger_inventory_id');
-            
-            // Enhanced component management data
-            $enhanced_component_data = $this->request->getPost('enhanced_component_data');
-            $component_data = null;
-            if ($enhanced_component_data) {
-                $decoded_component_data = json_decode($enhanced_component_data, true);
-                // Debug: Log the received component data
-                log_message('debug', 'Enhanced component data received: ' . $enhanced_component_data);
-                
-                if ($decoded_component_data) {
-                    log_message('debug', 'Decoded component data type: ' . gettype($decoded_component_data));
-                    
-                    // Handle both array of objects and single object
-                    if (is_array($decoded_component_data)) {
-                        // Check if it's array of objects (multiple units) or single object (one unit)
-                        if (isset($decoded_component_data['unit_id'])) {
-                            // Single object case
-                            if ($decoded_component_data['unit_id'] == $unit_id) {
-                                $component_data = $decoded_component_data;
-                            }
-                        } else {
-                            // Array of objects case
-                            foreach ($decoded_component_data as $unit_component_data) {
-                                if (isset($unit_component_data['unit_id']) && $unit_component_data['unit_id'] == $unit_id) {
-                                    $component_data = $unit_component_data;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                log_message('debug', 'Unit ID from POST: ' . (is_array($unit_id) ? json_encode($unit_id) : $unit_id) . ', Component data found: ' . ($component_data ? 'yes' : 'no'));
-            }
-
-            if (!$unit_id) {
-                return $this->response->setJSON(['success'=>false,'message'=>'Unit harus dipilih']);
-            }
-
-            // Get unit with status and department information
-            $unit = $this->db->table('inventory_unit')
-                ->select('no_unit, status_unit_id, departemen_id')
-                ->where('id_inventory_unit', $unit_id)
-                ->get()->getRowArray();
-            if (!$unit) {
-                return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak ditemukan']);
-            }
-
-            // Robust duplicate check: scan active SPKs (not READY/DELIVERED/CANCEL) and verify JSON precisely
-            $activeSpks = $this->db->table('spk')
-                ->select('id, nomor_spk, spesifikasi, jumlah_unit, status, persiapan_unit_id, persiapan_unit_tanggal_approve, fabrikasi_tanggal_approve')
-                ->where('id !=', $id)
-                ->where('pdi_tanggal_approve IS NULL', null, false)
-                ->groupStart()
-                    ->where('status IS NULL', null, false)
-                    ->orWhereNotIn('status', ['READY','DELIVERED','CANCEL','CANCELLED'])
-                ->groupEnd()
-                ->get()->getResultArray();
-
-            $existing_usage = null;
-            $unitIdStr = (string) $unit_id;
-            foreach ($activeSpks as $cand) {
-                // Direct column reservation via persiapan approval
-                if (!empty($cand['persiapan_unit_id']) && (string)$cand['persiapan_unit_id'] === $unitIdStr && !empty($cand['persiapan_unit_tanggal_approve'])) {
-                    $existing_usage = $cand; break;
-                }
-
-                // Decode JSON safely
-                $spec = [];
-                if (!empty($cand['spesifikasi'])) {
-                    $decoded = json_decode($cand['spesifikasi'], true);
-                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                        $spec = $decoded;
-                    }
-                }
-
-                // JSON: persiapan_unit_id (considered reserved only after persiapan approve)
-                if (isset($spec['persiapan_unit_id']) && (string)$spec['persiapan_unit_id'] === $unitIdStr && !empty($cand['persiapan_unit_tanggal_approve'])) {
-                    $existing_usage = $cand; break;
-                }
-
-                // JSON: fabrikasi_last.unit_id (considered reserved after fabrikasi approve)
-                if (!empty($cand['fabrikasi_tanggal_approve']) && isset($spec['fabrikasi_last']['unit_id']) && (string)$spec['fabrikasi_last']['unit_id'] === $unitIdStr) {
-                    $existing_usage = $cand; break;
-                }
-
-                // Note: do NOT block on prepared_units; it's typically filled near completion/PDI
-            }
-
-            log_message('debug', 'Duplicate check for unit ' . $unit_id . ' among ' . count($activeSpks) . ' active SPKs -> ' . ($existing_usage ? ('hit in SPK ' . $existing_usage['id']) : 'none'));
-
-            if ($existing_usage) {
-                log_message('debug', 'Found existing usage in SPK ID ' . $existing_usage['id'] . ': ' . print_r($existing_usage, true));
-                
-                // Tambahan untuk debug - periksa jenis duplikasi
-                if ($existing_usage['persiapan_unit_id'] == $unit_id) {
-                    log_message('debug', 'Unit used in persiapan_unit_id column');
-                } else {
-                    // Periksa dalam JSON
-                    $spesifikasi = json_decode($existing_usage['spesifikasi'], true);
-                    if ($spesifikasi && isset($spesifikasi['persiapan_unit_id']) && $spesifikasi['persiapan_unit_id'] == $unit_id) {
-                        log_message('debug', 'Unit used in persiapan_unit_id JSON field');
-                    } else if ($spesifikasi && isset($spesifikasi['prepared_units']) && is_array($spesifikasi['prepared_units'])) {
-                        // Periksa dalam prepared_units
-                        foreach ($spesifikasi['prepared_units'] as $index => $pu) {
-                            if (isset($pu['unit_id']) && $pu['unit_id'] == $unit_id) {
-                                log_message('debug', 'Unit found in prepared_units array at index ' . $index);
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                return $this->response->setJSON(['success'=>false,'message'=>'Unit ' . $unit['no_unit'] . ' sudah digunakan dalam SPK lain yang sedang dalam proses (SPK ID: ' . $existing_usage['id'] . ')']);
-            } else {
-                log_message('debug', 'No existing usage found for unit ' . $unit_id);
-            }
-
-            // Get unit components from inventory_attachment (single source of truth)
-            $unitComponents = $this->getUnitComponents($unit_id);
-            $unit['model_baterai_id'] = $unitComponents['battery']['baterai_id'] ?? null;
-            $unit['sn_baterai'] = $unitComponents['battery']['sn_baterai'] ?? null;
-            $unit['model_charger_id'] = $unitComponents['charger']['charger_id'] ?? null;
-            $unit['sn_charger'] = $unitComponents['charger']['sn_charger'] ?? null;
-            $unit['model_attachment_id'] = $unitComponents['attachment']['attachment_id'] ?? null;
-            $unit['sn_attachment'] = $unitComponents['attachment']['sn_attachment'] ?? null;
-
-            // Load current spesifikasi JSON to update it
-            $current = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
-            $spec = [];
-            if (!empty($current['spesifikasi'])) {
-                $dec = json_decode($current['spesifikasi'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) $spec = $dec;
-            }
-
-            // Check Electric department requirement (id=2)
-            if ($unit['departemen_id'] == 2) {
-                $finalBatteryId = null;
-                $finalChargerId = null;
-                
-                // Handle enhanced component management for battery
-                if ($component_data && isset($component_data['components']['battery'])) {
-                    $batteryComponent = $component_data['components']['battery'];
-                    
-                    if (($batteryComponent['action'] === 'keep' || $batteryComponent['action'] === 'use_existing') && $batteryComponent['keep_existing'] === true) {
-                        // Keep existing battery - check if unit actually has one
-                        if ($unit['model_baterai_id']) {
-                            $finalBatteryId = $unit['model_baterai_id'];
-                            $spec['persiapan_battery_action'] = 'keep_existing';
-                            $spec['persiapan_battery_id'] = $finalBatteryId;
-                            log_message('debug', 'Keeping existing battery: ' . $finalBatteryId);
-                        } else {
-                            // Unit doesn't have existing battery, this is an error state
-                            return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak memiliki battery existing untuk di-keep']);
-                        }
-                    } else if ($batteryComponent['action'] === 'keep' && $batteryComponent['keep_existing'] === false) {
-                        // User wants to keep but unit doesn't have existing battery - need to assign one
-                        if (!$unit['model_baterai_id'] && $batteryComponent['new_inventory_attachment_id']) {
-                            $finalBatteryId = $batteryComponent['new_inventory_attachment_id'];
-                            $spec['persiapan_battery_action'] = 'assign';
-                            $spec['persiapan_battery_id'] = $finalBatteryId;
-                            log_message('debug', 'Auto-assigning battery (keep with no existing): ' . $finalBatteryId);
-                        } else if (!$unit['model_baterai_id']) {
-                            // No existing battery and no new one provided
-                            return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak memiliki battery, silakan pilih battery baru']);
-                        } else {
-                            // Has existing battery, but keep_existing is false - this shouldn't happen
-                            $finalBatteryId = $unit['model_baterai_id'];
-                            $spec['persiapan_battery_action'] = 'keep_existing';
-                            $spec['persiapan_battery_id'] = $finalBatteryId;
-                            log_message('debug', 'Fallback: keeping existing battery despite keep_existing=false: ' . $finalBatteryId);
-                        }
-                    } else if ($batteryComponent['action'] === 'replace' && $batteryComponent['new_inventory_attachment_id']) {
-                        // Replace existing battery
-                        $finalBatteryId = $batteryComponent['new_inventory_attachment_id'];
-                        $spec['persiapan_battery_action'] = 'replace';
-                        $spec['persiapan_battery_old_id'] = $unit['model_baterai_id'];
-                        $spec['persiapan_battery_id'] = $finalBatteryId;
-                    } else if ($batteryComponent['action'] === 'assign' && $batteryComponent['new_inventory_attachment_id']) {
-                        // Assign new battery to unit that doesn't have one
-                        $finalBatteryId = $batteryComponent['new_inventory_attachment_id'];
-                        $spec['persiapan_battery_action'] = 'assign';
-                        $spec['persiapan_battery_id'] = $finalBatteryId;
-                    }
-                } else {
-                    // Fallback to legacy behavior
-                    if (!$battery_inventory_id) {
-                        return $this->response->setJSON(['success'=>false,'message'=>'Unit Electric memerlukan Battery']);
-                    }
-                    $finalBatteryId = $battery_inventory_id;
-                    $spec['persiapan_battery_action'] = 'legacy';
-                    $spec['persiapan_battery_id'] = $finalBatteryId;
-                }
-                
-                // Handle enhanced component management for charger
-                if ($component_data && isset($component_data['components']['charger'])) {
-                    $chargerComponent = $component_data['components']['charger'];
-                    
-                    log_message('debug', 'Processing charger component: ' . print_r($chargerComponent, true));
-                    
-                    if (($chargerComponent['action'] === 'keep' || $chargerComponent['action'] === 'use_existing') && $chargerComponent['keep_existing'] === true) {
-                        // Keep existing charger - check if unit actually has one
-                        if ($unit['model_charger_id']) {
-                            $finalChargerId = $unit['model_charger_id'];
-                            $spec['persiapan_charger_action'] = 'keep_existing';
-                            $spec['persiapan_charger_id'] = $finalChargerId;
-                            log_message('debug', 'Keeping existing charger: ' . $finalChargerId);
-                        } else {
-                            // Unit doesn't have existing charger, this is an error state
-                            return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak memiliki charger existing untuk di-keep']);
-                        }
-                    } else if ($chargerComponent['action'] === 'keep' && $chargerComponent['keep_existing'] === false) {
-                        // User wants to keep but unit doesn't have existing charger - need to assign one
-                        if (!$unit['model_charger_id'] && $chargerComponent['new_inventory_attachment_id']) {
-                            $finalChargerId = $chargerComponent['new_inventory_attachment_id'];
-                            $spec['persiapan_charger_action'] = 'assign';
-                            $spec['persiapan_charger_id'] = $finalChargerId;
-                            log_message('debug', 'Auto-assigning charger (keep with no existing): ' . $finalChargerId);
-                        } else if (!$unit['model_charger_id']) {
-                            // No existing charger and no new one provided
-                            return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak memiliki charger, silakan pilih charger baru']);
-                        } else {
-                            // Has existing charger, but keep_existing is false - this shouldn't happen
-                            $finalChargerId = $unit['model_charger_id'];
-                            $spec['persiapan_charger_action'] = 'keep_existing';
-                            $spec['persiapan_charger_id'] = $finalChargerId;
-                            log_message('debug', 'Fallback: keeping existing charger despite keep_existing=false: ' . $finalChargerId);
-                        }
-                    } else if ($chargerComponent['action'] === 'replace' && $chargerComponent['new_inventory_attachment_id']) {
-                        // Replace existing charger
-                        $finalChargerId = $chargerComponent['new_inventory_attachment_id'];
-                        $spec['persiapan_charger_action'] = 'replace';
-                        $spec['persiapan_charger_old_id'] = $unit['model_charger_id'];
-                        $spec['persiapan_charger_id'] = $finalChargerId;
-                        log_message('debug', 'Replacing charger with: ' . $finalChargerId);
-                    } else if ($chargerComponent['action'] === 'assign' && $chargerComponent['new_inventory_attachment_id']) {
-                        // Assign new charger to unit that doesn't have one
-                        $finalChargerId = $chargerComponent['new_inventory_attachment_id'];
-                        $spec['persiapan_charger_action'] = 'assign';
-                        $spec['persiapan_charger_id'] = $finalChargerId;
-                        log_message('debug', 'Assigning new charger: ' . $finalChargerId);
-                    } else {
-                        log_message('debug', 'No valid charger action found. Action: ' . ($chargerComponent['action'] ?? 'null') . ', new_inventory_attachment_id: ' . ($chargerComponent['new_inventory_attachment_id'] ?? 'null'));
-                    }
-                } else {
-                    log_message('debug', 'Component data not found or charger component missing. Component data exists: ' . ($component_data ? 'yes' : 'no') . ', charger component exists: ' . (isset($component_data['components']['charger']) ? 'yes' : 'no'));
-                    // Fallback to legacy behavior
-                    if (!$charger_inventory_id) {
-                        return $this->response->setJSON(['success'=>false,'message'=>'Unit Electric memerlukan Charger']);
-                    }
-                    $finalChargerId = $charger_inventory_id;
-                    $spec['persiapan_charger_action'] = 'legacy';
-                    $spec['persiapan_charger_id'] = $finalChargerId;
-                    log_message('debug', 'Using legacy charger: ' . $finalChargerId);
-                }
-                
-                // Validate that we have both components
-                log_message('debug', 'Final validation - Battery ID: ' . ($finalBatteryId ?? 'null') . ', Charger ID: ' . ($finalChargerId ?? 'null'));
-                if (!$finalBatteryId || !$finalChargerId) {
-                    return $this->response->setJSON(['success'=>false,'message'=>'Unit Electric memerlukan Battery dan Charger']);
-                }
-                
-                // Process component inventory updates
-                log_message('debug', 'Calling processComponentInventoryUpdates with unit_id: ' . $unit_id . ', component_data type: ' . gettype($component_data) . ', has components: ' . (isset($component_data['components']) ? 'yes' : 'no'));
-                $this->processComponentInventoryUpdates($unit_id, $component_data, $unit);
-            }
-
-            // Hanya Non Aset (status 8) yang boleh generate/update no_unit
-            if ($unit['status_unit_id'] == 8) {
-                // Proses generate/update no_unit jika diminta
-                if ($update_no_unit === 'true') {
-                    if (empty($unit['no_unit']) || $unit['no_unit'] == 0) {
-                        if ($no_unit_action === 'AUTO_GENERATE') {
-                            // Generate new no_unit
-                            $newNoUnit = $this->generateNoUnit();
-                        } else if (!empty($no_unit_action) && $no_unit_action !== 'AUTO_GENERATE') {
-                            // Use manual input (should be integer)
-                            $newNoUnit = intval($no_unit_action);
-                            // Validate it's a positive integer
-                            if ($newNoUnit < 1) {
-                                return $this->response->setJSON(['success'=>false,'message'=>'No Unit harus berupa angka positif']);
-                            }
-                            // Validate uniqueness
-                            $existing = $this->db->table('inventory_unit')
-                                ->where('no_unit', $newNoUnit)
-                                ->where('id_inventory_unit !=', $unit_id)
-                                ->countAllResults();
-                            if ($existing > 0) {
-                                return $this->response->setJSON(['success'=>false,'message'=>"No Unit '$newNoUnit' sudah digunakan. Silakan gunakan nomor lain."]);
-                            }
-                        }
-                        if (isset($newNoUnit)) {
-                            // Update the unit with new no_unit
-                            $this->db->table('inventory_unit')
-                                ->where('id_inventory_unit', $unit_id)
-                                ->update([
-                                    'no_unit' => $newNoUnit,
-                                    'status_unit_id' => 3 // RENTAL status
-                                ]);
-                            $unit['no_unit'] = $newNoUnit;
-                        }
-                    }
-                }
-                // Store id_inventory_unit untuk Non Aset
-                $updateData['persiapan_unit_id'] = $unit_id;
-            } else {
-                // Untuk status 7 (Aset), tidak perlu generate/update no_unit
-                $updateData['persiapan_unit_id'] = $unit_id;
-            }
-            
-            // Properly encode array data to JSON to prevent "Array to string conversion" error
-            $updateData['persiapan_aksesoris_tersedia'] = is_array($aksesoris_tersedia) ? json_encode($aksesoris_tersedia, JSON_UNESCAPED_UNICODE) : $aksesoris_tersedia;
-            
-            // Save updated spesifikasi JSON
-            $updateData['spesifikasi'] = json_encode($spec, JSON_UNESCAPED_UNICODE);
-            
-            // Apply departmental rules for all units (GASOLINE/DIESEL should not have battery/charger)
-            $this->applyDepartmentalRules($unit_id);
-            
-            // Trigger unit status update based on contract status
-            $this->triggerUnitStatusUpdate($unit_id);
-        }
-        elseif ($stage === 'fabrikasi') {
-            $attachment_id = $this->request->getPost('attachment_id');
-            
-            // Load current spesifikasi JSON to update it
-            $current = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
-            $spec = [];
-            if (!empty($current['spesifikasi'])) {
-                $dec = json_decode($current['spesifikasi'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) $spec = $dec;
-            }
-            
-            if ($attachment_id) {
-                // Store attachment selection in JSON spesifikasi
-                $spec['fabrikasi_attachment_id'] = $attachment_id;
-                
-                // Get unit ID from persiapan_unit_id
-                $unit_id = $current['persiapan_unit_id'];
-                if ($unit_id) {
-                    // Link attachment to unit via FK and update status
-                    $inventoryAttachmentModel = new \App\Models\InventoryAttachmentModel();
-                    $result = $inventoryAttachmentModel->assignToUnit($attachment_id, $unit_id);
-                    
-                    if ($result) {
-                        log_message('info', "Successfully linked attachment {$attachment_id} to unit {$unit_id} during fabrikasi");
-                    } else {
-                        log_message('error', "Failed to link attachment {$attachment_id} to unit {$unit_id} during fabrikasi");
-                    }
-                    
-                    // Get contract status to determine appropriate component status
-                    $kontrak = $this->db->query("
-                        SELECT k.status 
-                        FROM kontrak k
-                        JOIN kontrak_spesifikasi ks ON k.id = ks.kontrak_id
-                        JOIN inventory_unit iu ON ks.id = iu.kontrak_spesifikasi_id
-                        WHERE iu.id_inventory_unit = ?
-                    ", [$unit_id])->getRowArray();
-                    
-                    $targetStatus = ($kontrak && $kontrak['status'] === 'Aktif') ? 3 : 7; // RENTAL or STOCK ASET
-                    
-                    // Update attachment status to match contract status
-                    $this->db->query("
-                        UPDATE inventory_attachment 
-                        SET attachment_status = CASE 
-                            WHEN ? = 3 THEN 'USED'
-                            ELSE 'AVAILABLE'
-                        END
-                        WHERE id_inventory_attachment = ?
-                    ", [$targetStatus, $attachment_id]);
-                    
-                    log_message('info', "Updated attachment {$attachment_id} status to {$targetStatus} based on contract status");
-                }
-            }
-            
-            // Save updated spesifikasi JSON
-            $updateData['spesifikasi'] = json_encode($spec, JSON_UNESCAPED_UNICODE);
-        } elseif ($stage === 'pdi') {
-            $catatan = $this->request->getPost('catatan');
-            if (!$catatan) {
-                return $this->response->setJSON(['success'=>false,'message'=>'Catatan PDI harus diisi']);
-            }
-
-            // Load current SPK to accumulate prepared units for multi-unit SPK
-            $current = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
-            $spec = [];
-            if (!empty($current['spesifikasi'])) {
-                $dec = json_decode($current['spesifikasi'], true);
-                if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) $spec = $dec;
-            }
-            $prepared = isset($spec['prepared_units']) && is_array($spec['prepared_units']) ? $spec['prepared_units'] : [];
-
-            // Append current cycle result - include battery/charger/attachment IDs from JSON spesifikasi
-            $prepared[] = [
-                'unit_id' => $current['persiapan_unit_id'] ?? null,
-                'battery_inventory_id' => $spec['persiapan_battery_id'] ?? null,
-                'charger_inventory_id' => $spec['persiapan_charger_id'] ?? null,
-                'attachment_inventory_id' => $spec['fabrikasi_attachment_id'] ?? null,
-                'aksesoris_tersedia' => $current['persiapan_aksesoris_tersedia'] ?? null,
-                'mekanik' => $mekanik,
-                'catatan' => $catatan,
-                'timestamp' => date('Y-m-d H:i:s')
-            ];
-            $spec['prepared_units'] = $prepared;
-
-            // Determine status: READY only when all units prepared
-            $totalUnits = (int)($current['jumlah_unit'] ?? 1);
-            $isComplete = count($prepared) >= max(1, $totalUnits);
-
-            // Save updated spec JSON
-            $updateData['spesifikasi'] = json_encode($spec, JSON_UNESCAPED_UNICODE);
-            $updateData['pdi_catatan'] = $catatan;
-            $updateData['status'] = $isComplete ? 'READY' : 'IN_PROGRESS';
-
-            if (!$isComplete) {
-                // Reset stage fields to allow next unit cycle
-                $updateData = array_merge($updateData, [
-                    'persiapan_unit_id' => null,
-                    'persiapan_unit_mekanik' => null,
-                    'persiapan_unit_estimasi_mulai' => null,
-                    'persiapan_unit_estimasi_selesai' => null,
-                    'persiapan_unit_tanggal_approve' => null,
-                    'persiapan_aksesoris_tersedia' => null,
-                    'fabrikasi_attachment_id' => null,
-                    'fabrikasi_mekanik' => null,
-                    'fabrikasi_estimasi_mulai' => null,
-                    'fabrikasi_estimasi_selesai' => null,
-                    'fabrikasi_tanggal_approve' => null,
-                    'painting_mekanik' => null,
-                    'painting_estimasi_mulai' => null,
-                    'painting_estimasi_selesai' => null,
-                    'painting_tanggal_approve' => null,
-                    'pdi_mekanik' => null,
-                    'pdi_estimasi_mulai' => null,
-                    'pdi_estimasi_selesai' => null,
-                    'pdi_tanggal_approve' => null
-                ]);
-            }
-        }
-
-        $oldSpk = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
-        
-        $this->db->table('spk')->where('id', $id)->update($updateData);
-
-        // Log stage approval using trait
-        $this->logUpdate('spk', $id, $oldSpk, $updateData, [
-            'spk_id' => $id,
+        return [
             'stage' => $stage,
+            'unitIndex' => $unitIndex,
             'mekanik' => $mekanik,
             'estimasi_mulai' => $estimasi_mulai,
-            'estimasi_selesai' => $estimasi_selesai
-        ]);
-
-        $message = ($stage === 'pdi') ? 'PDI selesai, SPK siap untuk delivery' : 'Approval berhasil disimpan';
-        return $this->response->setJSON(['success'=>true,'message'=>$message,'csrf_hash'=>csrf_hash()]);
+            'estimasi_selesai' => $estimasi_selesai,
+            'attachment_id' => $attachment_id,
+            'transfer_attachment' => $transfer_attachment
+        ];
     }
 
-    private function generateNoUnit()
+    /**
+     * Prepare base stage data for approval
+     */
+    private function prepareBaseStageData($id, $approvalData)
     {
-        // Generate no_unit with integer format (highest + 1)
-        // Only consider Aset units (status 3=RENTAL, 7=STOCK ASET)
+        return [
+            'spk_id' => $id,
+            'unit_index' => $approvalData['unitIndex'],
+            'stage_name' => $approvalData['stage'],
+            'mekanik' => $approvalData['mekanik'],
+            'estimasi_mulai' => $approvalData['estimasi_mulai'],
+            'estimasi_selesai' => $approvalData['estimasi_selesai'],
+            'tanggal_approve' => date('Y-m-d H:i:s')
+        ];
+    }
+
+    /**
+     * Handle stage-specific data processing
+     */
+    private function handleStageSpecificData($stage, &$stageData, $approvalData)
+    {
+        switch ($stage) {
+            case 'persiapan_unit':
+                $this->handlePersiapanUnitStage($stageData, $approvalData);
+                break;
+            case 'pdi':
+                $this->handlePdiStage($stageData, $approvalData);
+                break;
+            default:
+                // For fabrikasi and painting stages, no additional data needed
+                break;
+        }
+    }
+
+    /**
+     * Handle persiapan unit stage specific data
+     */
+    private function handlePersiapanUnitStage(&$stageData, $approvalData)
+    {
+        $unit_id = $this->request->getPost('unit_id');
+        $area_id = $this->request->getPost('area_id');
+        $aksesoris_tersedia = $this->request->getPost('aksesoris_tersedia');
+        $battery_id = $this->request->getPost('battery_inventory_attachment_id');
+        $charger_id = $this->request->getPost('charger_inventory_attachment_id');
+        $no_unit_action = $this->request->getPost('no_unit_action');
+        $update_no_unit = $this->request->getPost('update_no_unit');
         
-        // Find the highest existing no_unit from Aset units only
-        $query = $this->db->table('inventory_unit')
-            ->select('no_unit')
-            ->where('no_unit IS NOT NULL')
-            ->where('no_unit >', 0)
-            ->whereIn('status_unit_id', [3, 7]) // Only Aset units
-            ->orderBy('no_unit', 'DESC')
-            ->limit(1)
-            ->get();
-            
-        $lastNoUnit = $query->getRowArray();
+        // Debug logging
+        log_message('info', "SPK Approval Debug - Unit: $unit_id, Battery: $battery_id, Charger: $charger_id");
+        log_message('info', "SPK Approval Debug - All POST data: " . json_encode($this->request->getPost()));
         
-        if ($lastNoUnit && $lastNoUnit['no_unit']) {
-            // Increment the highest number
-            $newNumber = intval($lastNoUnit['no_unit']) + 1;
-        } else {
-            // Start from 1 if no existing numbers
-            $newNumber = 1;
+        // Validation
+        if (!$unit_id || !$area_id) {
+            throw new \Exception('Unit dan Area harus dipilih');
         }
         
-        return $newNumber;
+        // Update stage data
+        $stageData['unit_id'] = $unit_id;
+        $stageData['area_id'] = $area_id;
+        $stageData['aksesoris_tersedia'] = is_array($aksesoris_tersedia) ? json_encode($aksesoris_tersedia) : $aksesoris_tersedia;
+        $stageData['battery_inventory_attachment_id'] = $battery_id ?: null;
+        $stageData['charger_inventory_attachment_id'] = $charger_id ?: null;
+        $stageData['no_unit_action'] = $no_unit_action;
+        $stageData['update_no_unit'] = $update_no_unit;
+        
+        // Update inventory_unit
+        $this->updateInventoryUnit($unit_id, $area_id, $no_unit_action, $update_no_unit);
+        
+        // Handle component attachments
+        $this->handleComponentAttachments($unit_id, $battery_id, $charger_id);
     }
 
-    /** Simple list for unit picking (BOOKING and STOCK units: status 6, 7 & 8) */
+    /**
+     * Handle PDI stage specific data
+     */
+    private function handlePdiStage(&$stageData, $approvalData)
+    {
+        $catatan = $this->request->getPost('catatan');
+        if (!$catatan) {
+            throw new \Exception('Catatan PDI harus diisi');
+        }
+        
+        $stageData['catatan'] = $catatan;
+        
+        // Check if this is ATTACHMENT SPK (skip persiapan unit)
+        $spkData = $this->db->table('spk')
+            ->where('id', $stageData['spk_id'])
+            ->get()
+            ->getRowArray();
+            
+        if ($spkData && $spkData['jenis_spk'] === 'ATTACHMENT') {
+            // For ATTACHMENT SPK, get target_unit_id from spesifikasi field
+            if (isset($spkData['spesifikasi'])) {
+                $spesifikasi = json_decode($spkData['spesifikasi'], true);
+                if (isset($spesifikasi['target_unit_id'])) {
+                    $stageData['unit_id'] = $spesifikasi['target_unit_id'];
+                    log_message('info', "ATTACHMENT SPK #{$stageData['spk_id']} PDI - Target unit: {$stageData['unit_id']}");
+                } elseif (isset($spesifikasi['unit_id'])) {
+                    // Fallback for old data
+                    $stageData['unit_id'] = $spesifikasi['unit_id'];
+                    log_message('info', "ATTACHMENT SPK #{$stageData['spk_id']} PDI - Using fallback unit_id: {$stageData['unit_id']}");
+                } else {
+                    throw new \Exception('Target Unit ID tidak ditemukan untuk SPK ATTACHMENT');
+                }
+            } else {
+                throw new \Exception('Data spesifikasi tidak ditemukan untuk SPK ATTACHMENT');
+            }
+        } else {
+            // For UNIT SPK, get unit_id from persiapan stage
+            $persiapanStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
+            if (!$persiapanStage || !$persiapanStage['unit_id']) {
+                throw new \Exception('Data persiapan unit tidak ditemukan');
+            }
+            
+            $stageData['unit_id'] = $persiapanStage['unit_id'];
+        }
+        
+        // Update unit status to READY_TO_DELIVER
+        $this->db->table('inventory_unit')
+            ->where('id_inventory_unit', $stageData['unit_id'])
+            ->update(['status_unit_id' => 5, 'updated_at' => date('Y-m-d H:i:s')]);
+        
+        // Check if all units are completed
+        $this->checkAndUpdateSpkStatus($stageData['spk_id']);
+    }
+
+    /**
+     * Update inventory unit data
+     */
+    private function updateInventoryUnit($unit_id, $area_id, $no_unit_action, $update_no_unit)
+    {
+        $updateData = [
+            'area_id' => $area_id, 
+            'status_unit_id' => 4, // IN_PREPARATION
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+        
+        // Handle no_unit update if requested
+        if ($update_no_unit === 'true' && $no_unit_action) {
+            if ($no_unit_action === 'AUTO_GENERATE') {
+                // Auto-generate no_unit: ambil max no_unit + 1
+                $maxNoUnit = $this->db->table('inventory_unit')
+                    ->selectMax('no_unit')
+                    ->get()
+                    ->getRowArray();
+                
+                $newNoUnit = ($maxNoUnit['no_unit'] ?? 0) + 1;
+                $updateData['no_unit'] = $newNoUnit;
+                
+                log_message('info', "Auto-generated no_unit: $newNoUnit for unit: $unit_id");
+            } else {
+                // Manual no_unit
+                $updateData['no_unit'] = (int)$no_unit_action;
+                log_message('info', "Manual no_unit: {$no_unit_action} for unit: $unit_id");
+            }
+        }
+        
+        $this->db->table('inventory_unit')
+            ->where('id_inventory_unit', $unit_id)
+            ->update($updateData);
+    }
+
+    /**
+     * Handle component attachments (battery & charger)
+     */
+    private function handleComponentAttachments($unit_id, $battery_id, $charger_id)
+    {
+        // Handle enhanced component data (battery & charger replacement)
+        $enhancedComponentData = $this->request->getPost('enhanced_component_data');
+        if ($enhancedComponentData) {
+            $this->processEnhancedComponentData($enhancedComponentData, $unit_id);
+        } else {
+            // Fallback: Legacy single field approach
+            $this->processLegacyComponentData($unit_id, $battery_id, $charger_id);
+        }
+    }
+
+    /**
+     * Process enhanced component data for replacements
+     */
+    private function processEnhancedComponentData($enhancedComponentData, $unit_id)
+    {
+        $componentData = json_decode($enhancedComponentData, true);
+        
+        // Handle array of units or single unit object
+        $units = is_array($componentData) && isset($componentData[0]) ? $componentData : [$componentData];
+        
+        foreach ($units as $unitComponentData) {
+            if (isset($unitComponentData['components'])) {
+                $this->processUnitComponents($unitComponentData['components'], $unit_id);
+            }
+        }
+    }
+
+    /**
+     * Process unit components (battery/charger)
+     */
+    private function processUnitComponents($components, $unit_id)
+    {
+        // Handle Battery
+        if (isset($components['battery'])) {
+            $batteryComp = $components['battery'];
+            $this->handleComponentReplacement($batteryComp, $unit_id, 'battery');
+        }
+        
+        // Handle Charger
+        if (isset($components['charger'])) {
+            $chargerComp = $components['charger'];
+            $this->handleComponentReplacement($chargerComp, $unit_id, 'charger');
+        }
+    }
+
+    /**
+     * Handle component replacement (battery or charger)
+     */
+    private function handleComponentReplacement($componentData, $unit_id, $type)
+    {
+        // If action is 'replace', detach old component first
+        if ($componentData['action'] === 'replace' && !empty($componentData['existing_model_id'])) {
+            $this->db->table('inventory_attachment')
+                ->where('id_inventory_attachment', $componentData['existing_model_id'])
+                ->update([
+                    'id_inventory_unit' => null,
+                    'attachment_status' => 'AVAILABLE',
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+        }
+        
+        // Attach new component
+        if (!empty($componentData['new_inventory_attachment_id'])) {
+            $this->db->table('inventory_attachment')
+                ->where('id_inventory_attachment', $componentData['new_inventory_attachment_id'])
+                ->update([
+                    'id_inventory_unit' => $unit_id,
+                    'attachment_status' => 'USED',
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+        }
+    }
+
+    /**
+     * Process legacy component data (single fields)
+     */
+    private function processLegacyComponentData($unit_id, $battery_id, $charger_id)
+    {
+        // Update battery attachment
+        if ($battery_id) {
+            $this->db->table('inventory_attachment')
+                ->where('id_inventory_attachment', $battery_id)
+                ->update([
+                    'id_inventory_unit' => $unit_id, 
+                    'attachment_status' => 'USED', 
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+        }
+        
+        // Update charger attachment
+        if ($charger_id) {
+            $this->db->table('inventory_attachment')
+                ->where('id_inventory_attachment', $charger_id)
+                ->update([
+                    'id_inventory_unit' => $unit_id, 
+                    'attachment_status' => 'USED', 
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+        }
+    }
+
+    /**
+     * Get persiapan unit stage data
+     */
+    private function getPersiapanStage($spk_id, $unit_index)
+    {
+        // First try to get from spk_unit_stages table
+        $persiapanStage = $this->db->table('spk_unit_stages')
+            ->where('spk_id', $spk_id)
+            ->where('unit_index', $unit_index)
+            ->where('stage_name', 'persiapan_unit')
+            ->get()
+            ->getRowArray();
+            
+        if ($persiapanStage) {
+            return $persiapanStage;
+        }
+        
+        // If not found, try to get from SPK table directly (fallback)
+        $spkData = $this->db->table('spk')
+            ->where('id', $spk_id)
+            ->get()
+            ->getRowArray();
+            
+        if ($spkData && isset($spkData['spesifikasi'])) {
+            $spesifikasi = json_decode($spkData['spesifikasi'], true);
+            if (isset($spesifikasi['unit_id'])) {
+                return [
+                    'unit_id' => $spesifikasi['unit_id'],
+                    'spk_id' => $spk_id,
+                    'unit_index' => $unit_index,
+                    'stage_name' => 'persiapan_unit'
+                ];
+            }
+        }
+        
+        return null;
+    }
+
+    /**
+     * Save stage approval data
+     */
+    private function saveStageApproval($stageData, $approvalData)
+    {
+        $this->db->transStart();
+        
+        try {
+            // Handle stage-specific logic for fabrikasi, painting stages
+            if (in_array($approvalData['stage'], ['fabrikasi', 'painting'])) {
+                $this->handleProductionStage($stageData, $approvalData);
+            }
+            
+            // Insert or update stage data
+            $existingStage = $this->db->table('spk_unit_stages')
+                ->where('spk_id', $stageData['spk_id'])
+                ->where('unit_index', $stageData['unit_index'])
+                ->where('stage_name', $stageData['stage_name'])
+                ->get()
+                ->getRowArray();
+            
+            log_message('info', 'Stage data to save: ' . json_encode($stageData));
+            log_message('info', 'Existing stage: ' . json_encode($existingStage));
+            
+            if ($existingStage) {
+                $this->db->table('spk_unit_stages')
+                    ->where('id', $existingStage['id'])
+                    ->update($stageData);
+                log_message('info', 'Updated existing stage with ID: ' . $existingStage['id']);
+            } else {
+                $this->db->table('spk_unit_stages')->insert($stageData);
+                log_message('info', 'Inserted new stage data');
+            }
+            
+            $this->db->transComplete();
+            
+            // Handle attachment updates for fabrikasi stage
+            if ($approvalData['stage'] === 'fabrikasi' && $approvalData['attachment_id']) {
+                $this->handleFabrikasiAttachment($stageData, $approvalData);
+            }
+            
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            throw $e;
+        }
+    }
+
+    /**
+     * Handle production stages (fabrikasi, painting)
+     */
+    private function handleProductionStage(&$stageData, $approvalData)
+    {
+        // Check if this is ATTACHMENT SPK (skip persiapan unit)
+        $spkData = $this->db->table('spk')
+            ->where('id', $stageData['spk_id'])
+            ->get()
+            ->getRowArray();
+            
+        if ($spkData && $spkData['jenis_spk'] === 'ATTACHMENT') {
+            // For ATTACHMENT SPK, get target_unit_id from spesifikasi field
+            if (isset($spkData['spesifikasi'])) {
+                $spesifikasi = json_decode($spkData['spesifikasi'], true);
+                if (isset($spesifikasi['target_unit_id'])) {
+                    $stageData['unit_id'] = $spesifikasi['target_unit_id'];
+                    log_message('info', "ATTACHMENT SPK #{$stageData['spk_id']} - Target unit: {$stageData['unit_id']} ({$spesifikasi['target_unit_sn']})");
+                } elseif (isset($spesifikasi['unit_id'])) {
+                    // Fallback for old data
+                    $stageData['unit_id'] = $spesifikasi['unit_id'];
+                    log_message('info', "ATTACHMENT SPK #{$stageData['spk_id']} - Using fallback unit_id: {$stageData['unit_id']}");
+                } else {
+                    throw new \Exception('Target Unit ID tidak ditemukan untuk SPK ATTACHMENT. Pastikan unit tujuan sudah dipilih saat pembuatan SPK.');
+                }
+            } else {
+                throw new \Exception('Data spesifikasi tidak ditemukan untuk SPK ATTACHMENT');
+            }
+        } else {
+            // For UNIT SPK, get unit_id from persiapan stage
+            $persiapanStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
+            
+            if (!$persiapanStage || !$persiapanStage['unit_id']) {
+                throw new \Exception('Data persiapan unit tidak ditemukan');
+            }
+            
+            $stageData['unit_id'] = $persiapanStage['unit_id'];
+        }
+        
+        // Handle fabrikasi specific logic
+        if ($approvalData['stage'] === 'fabrikasi') {
+            $this->validateFabrikasiAttachment($stageData, $approvalData);
+        }
+    }
+
+    /**
+     * Validate fabrikasi attachment
+     */
+    private function validateFabrikasiAttachment($stageData, $approvalData)
+    {
+        log_message('info', 'Fabrikasi stage data: attachment_id=' . $approvalData['attachment_id'] . ', transfer_attachment=' . ($approvalData['transfer_attachment'] ? 'true' : 'false'));
+        
+        // Debug: Check if attachment exists and is valid
+        if ($approvalData['attachment_id']) {
+            $attachmentCheck = $this->db->table('inventory_attachment')
+                ->where('id_inventory_attachment', $approvalData['attachment_id'])
+                ->get()
+                ->getRowArray();
+            
+            if (!$attachmentCheck) {
+                log_message('error', 'Attachment not found: ' . $approvalData['attachment_id']);
+                throw new \Exception('Attachment tidak ditemukan');
+            }
+            
+            log_message('info', 'Attachment found: ' . json_encode($attachmentCheck));
+        }
+        
+        // Check if attachment is required (only if not editing existing stage)
+        $existingStage = $this->db->table('spk_unit_stages')
+            ->where('spk_id', $stageData['spk_id'])
+            ->where('unit_index', $stageData['unit_index'])
+            ->where('stage_name', 'fabrikasi')
+            ->get()
+            ->getRowArray();
+        
+        if (!$existingStage && !$approvalData['attachment_id']) {
+            throw new \Exception('Attachment harus dipilih');
+        }
+        
+        if ($approvalData['attachment_id']) {
+            $stageData['attachment_inventory_attachment_id'] = $approvalData['attachment_id'];
+        }
+    }
+
+    /**
+     * Handle fabrikasi attachment update
+     */
+    private function handleFabrikasiAttachment($stageData, $approvalData)
+    {
+        // Get unit_id from persiapan stage for immediate attachment update
+        $persiapanStage = $this->getPersiapanStage($stageData['spk_id'], $stageData['unit_index']);
+        
+        if ($persiapanStage && $persiapanStage['unit_id']) {
+            try {
+                log_message('info', "=== BACKGROUND ATTACHMENT UPDATE ===");
+                log_message('info', "Attachment ID: {$approvalData['attachment_id']}");
+                log_message('info', "Target Unit ID: {$persiapanStage['unit_id']}");
+                log_message('info', "Transfer Mode: " . ($approvalData['transfer_attachment'] ? 'KANIBAL' : 'NORMAL'));
+                
+                // Create and execute background attachment update
+                $this->executeBackgroundAttachmentUpdate($approvalData['attachment_id'], $persiapanStage['unit_id'], $approvalData['transfer_attachment']);
+                
+            } catch (\Exception $e) {
+                log_message('error', 'Background attachment update failed: ' . $e->getMessage());
+                // Don't throw exception as main approval already succeeded
+            }
+        }
+    }
+
+    /**
+     * Execute background attachment update
+     */
+    private function executeBackgroundAttachmentUpdate($attachment_id, $unit_id, $transfer_attachment)
+    {
+        // Get database config for script generation
+        $dbConfig = config('Database');
+        $defaultConfig = $dbConfig->default;
+        
+        // Create background update script
+        $updateScript = WRITEPATH . 'update_attachment_' . $attachment_id . '_' . time() . '.php';
+        
+        // Build script content with proper escaping
+        $hostname = $defaultConfig['hostname'];
+        $username = $defaultConfig['username'];  
+        $password = $defaultConfig['password'];
+        $database = $defaultConfig['database'];
+        $transferModeStr = $transfer_attachment ? 'true' : 'false';
+        
+        $scriptContent = <<<'EOF'
+<?php
+// Background attachment update script
+$attachment_id = %ATTACHMENT_ID%;
+$unit_id = %UNIT_ID%;
+$transfer_mode = %TRANSFER_MODE%;
+
+// Wait 5 seconds to ensure main transaction is complete
+sleep(5);
+
+// Database connection
+$mysqli = new mysqli('%HOSTNAME%', '%USERNAME%', '%PASSWORD%', '%DATABASE%');
+
+if ($mysqli->connect_error) {
+    error_log('Background update connection failed: ' . $mysqli->connect_error);
+    exit(1);
+}
+
+// Execute update
+$sql = "UPDATE inventory_attachment 
+        SET id_inventory_unit = $unit_id, 
+            attachment_status = 'USED', 
+            updated_at = '" . date('Y-m-d H:i:s') . "' 
+        WHERE id_inventory_attachment = $attachment_id";
+
+$result = $mysqli->query($sql);
+$affected_rows = $mysqli->affected_rows;
+
+if ($result && $affected_rows > 0) {
+    error_log('✅ BACKGROUND ' . ($transfer_mode ? 'KANIBAL' : 'NORMAL') . ' SUCCESS: Attachment ' . $attachment_id . ' ' . ($transfer_mode ? 'transferred to' : 'assigned to') . ' unit ' . $unit_id . ' (affected rows: ' . $affected_rows . ')');
+} else {
+    error_log('❌ BACKGROUND UPDATE FAILED: Attachment ' . $attachment_id . ' update failed (result: ' . ($result ? 'true' : 'false') . ', affected_rows: ' . $affected_rows . ')');
+}
+
+$mysqli->close();
+
+// Clean up script
+unlink(__FILE__);
+?>
+EOF;
+        
+        // Replace placeholders
+        $scriptContent = str_replace([
+            '%ATTACHMENT_ID%',
+            '%UNIT_ID%',
+            '%TRANSFER_MODE%',
+            '%HOSTNAME%',
+            '%USERNAME%',
+            '%PASSWORD%',
+            '%DATABASE%'
+        ], [
+            $attachment_id,
+            $unit_id,
+            $transferModeStr,
+            $hostname,
+            $username,
+            $password,
+            $database
+        ], $scriptContent);
+        
+        file_put_contents($updateScript, $scriptContent);
+        
+        // Execute background script
+        if (PHP_OS_FAMILY === 'Windows') {
+            pclose(popen('start /B php ' . $updateScript, 'r'));
+        } else {
+            exec('php ' . $updateScript . ' > /dev/null 2>&1 &');
+        }
+        
+        log_message('info', "🚀 BACKGROUND UPDATE STARTED: Script created and executed");
+    }
+    
+    // Method untuk mendapatkan stage status data (untuk internal use)
+    private function getSpkStageStatusData($spkId) {
+        $spkId = (int) $spkId;
+
+        // Get SPK basic info
+        $spk = $this->db->table('spk')
+            ->where('id', $spkId)
+            ->get()
+            ->getRowArray();
+
+        if (!$spk) {
+            return null;
+        }
+
+        // Get stage status for each unit
+        $stages = $this->db->table('spk_unit_stages sus')
+            ->select('sus.unit_index, sus.stage_name, sus.tanggal_approve, sus.mekanik')
+            ->where('sus.spk_id', $spkId)
+            ->orderBy('sus.unit_index, sus.stage_name')
+            ->get()
+            ->getResultArray();
+
+        // Organize by unit
+        $unitStages = [];
+        foreach ($stages as $stage) {
+            $unitIndex = $stage['unit_index'];
+            if (!isset($unitStages[$unitIndex])) {
+                $unitStages[$unitIndex] = [];
+            }
+            $unitStages[$unitIndex][$stage['stage_name']] = [
+                'completed' => !empty($stage['tanggal_approve']),
+                'tanggal_approve' => $stage['tanggal_approve'],
+                'mekanik' => $stage['mekanik']
+            ];
+        }
+
+        return [
+            'spk' => $spk,
+            'unit_stages' => $unitStages
+        ];
+    }
+    
+    /**
+     * Get SPK edit options for multi-unit SPK editing
+     */
+    public function getSpkEditOptions($spkId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $spkId = (int) $spkId;
+        
+        // Get SPK basic info
+        $spk = $this->db->table('spk')
+            ->where('id', $spkId)
+            ->get()
+            ->getRowArray();
+        
+        if (!$spk) {
+            return $this->response->setJSON(['success' => false, 'message' => 'SPK tidak ditemukan']);
+        }
+
+        // Get stage status data
+        $stageStatus = $this->getSpkStageStatusData($spkId);
+        
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => [
+                'spk' => $spk,
+                'stage_status' => $stageStatus
+            ]
+        ]);
+    }
+    
+    private function checkAndUpdateSpkStatus($spkId) {
+        try {
+            // Check if all units have completed PDI
+            $spk = $this->db->table('spk')->where('id', $spkId)->get()->getRowArray();
+            if (!$spk) return;
+            
+            $totalUnits = (int) $spk['jumlah_unit'];
+            $completedUnits = $this->db->table('spk_unit_stages')
+                ->where('spk_id', $spkId)
+                ->where('stage_name', 'pdi')
+                ->where('tanggal_approve IS NOT NULL')
+                ->countAllResults();
+            
+            log_message('info', "SPK {$spkId}: Total units: {$totalUnits}, Completed PDI: {$completedUnits}");
+            
+            if ($completedUnits >= $totalUnits) {
+                $this->db->table('spk')
+                    ->where('id', $spkId)
+                    ->update(['status' => 'READY', 'diperbarui_pada' => date('Y-m-d H:i:s')]);
+                log_message('info', "SPK {$spkId}: Status updated to READY");
+            }
+        } catch (\Exception $e) {
+            log_message('error', "SPK Status Update Error: " . $e->getMessage());
+        }
+    }
+
+    // =====================================================
+    // METHODS BARU UNTUK SPK_UNIT_STAGES
+    // =====================================================
+
+    // Method untuk mendapatkan SPK units dengan data edit
+    public function getSpkUnitsWithEdit($spkId) {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $spkId = (int) $spkId;
+
+        // Get SPK basic info
+        $spk = $this->db->table('spk')
+            ->select('id, nomor_spk, status, jumlah_unit')
+            ->where('id', $spkId)
+            ->get()
+            ->getRowArray();
+
+        if (!$spk) {
+            return $this->response->setJSON(['success' => false, 'message' => 'SPK tidak ditemukan']);
+        }
+
+        // Get units with their stages
+        $units = [];
+        for ($unitIndex = 1; $unitIndex <= $spk['jumlah_unit']; $unitIndex++) {
+            // Get unit info from persiapan stage
+            $persiapanStage = $this->db->table('spk_unit_stages sus')
+                ->select('sus.unit_id, sus.area_id, sus.aksesoris_tersedia, sus.battery_inventory_attachment_id, sus.charger_inventory_attachment_id')
+                ->where('sus.spk_id', $spkId)
+                ->where('sus.unit_index', $unitIndex)
+                ->where('sus.stage_name', 'persiapan_unit')
+                ->get()
+                ->getRowArray();
+
+            $unitInfo = null;
+            if ($persiapanStage && $persiapanStage['unit_id']) {
+                $unitInfo = $this->db->table('inventory_unit iu')
+                    ->select('iu.*, mu.merk_unit, mu.model_unit, a.area_name')
+                    ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
+                    ->join('areas a', 'iu.area_id = a.id', 'left')
+                    ->where('iu.id_inventory_unit', $persiapanStage['unit_id'])
+                    ->get()
+                    ->getRowArray();
+            }
+
+            // Get all stages for this unit
+            $stages = $this->db->table('spk_unit_stages sus')
+                ->select('sus.stage_name, sus.tanggal_approve, sus.mekanik, sus.catatan, sus.attachment_inventory_attachment_id')
+                ->where('sus.spk_id', $spkId)
+                ->where('sus.unit_index', $unitIndex)
+                ->orderBy('sus.stage_name')
+                ->get()
+                ->getResultArray();
+
+            // Organize stage status
+            $stageStatus = [];
+            $stageOrder = ['persiapan_unit', 'fabrikasi', 'painting', 'pdi'];
+            foreach ($stageOrder as $stageName) {
+                $stageData = array_filter($stages, function($s) use ($stageName) {
+                    return $s['stage_name'] === $stageName;
+                });
+                $stageData = reset($stageData);
+                $stageStatus[$stageName] = [
+                    'completed' => !empty($stageData['tanggal_approve']),
+                    'mekanik' => $stageData['mekanik'] ?? null,
+                    'catatan' => $stageData['catatan'] ?? null,
+                    'tanggal_approve' => $stageData['tanggal_approve'] ?? null,
+                    'attachment_inventory_attachment_id' => $stageData['attachment_inventory_attachment_id'] ?? null
+                ];
+            }
+
+            $units[] = [
+                'unit_index' => $unitIndex,
+                'unit_info' => $unitInfo,
+                'persiapan_data' => $persiapanStage,
+                'stages' => $stageStatus
+            ];
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => [
+                'spk' => $spk,
+                'units' => $units
+            ]
+        ]);
+    }
+
+    // Method untuk mendapatkan stage status
+    public function getSpkStageStatus($spkId) {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $spkId = (int) $spkId;
+
+        // Get SPK basic info
+        $spk = $this->db->table('spk')
+            ->where('id', $spkId)
+            ->get()
+            ->getRowArray();
+
+        if (!$spk) {
+            return $this->response->setJSON(['success' => false, 'message' => 'SPK tidak ditemukan']);
+        }
+
+        // Get stage status for each unit
+        $stages = $this->db->table('spk_unit_stages sus')
+            ->select('sus.unit_index, sus.stage_name, sus.tanggal_approve, sus.mekanik')
+            ->where('sus.spk_id', $spkId)
+            ->orderBy('sus.unit_index, sus.stage_name')
+            ->get()
+            ->getResultArray();
+
+        // Organize by unit
+        $unitStages = [];
+        foreach ($stages as $stage) {
+            $unitIndex = $stage['unit_index'];
+            if (!isset($unitStages[$unitIndex])) {
+                $unitStages[$unitIndex] = [];
+            }
+            $unitStages[$unitIndex][$stage['stage_name']] = [
+                'completed' => !empty($stage['tanggal_approve']),
+                'tanggal_approve' => $stage['tanggal_approve'],
+                'mekanik' => $stage['mekanik']
+            ];
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => [
+                'spk' => $spk,
+                'unit_stages' => $unitStages
+            ]
+        ]);
+    }
+
+    /** Simple list for unit picking (AVAILABLE_STOCK and STOCK_NON_ASET units: status 1 & 2) */
     public function dataUnitSimple()
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
@@ -1187,9 +1939,9 @@ class Service extends BaseController
         if (!$allowed) { return $this->response->setJSON(['success'=>true,'data'=>[],'csrf_hash'=>csrf_hash()]); }
         
         $qb = $this->serviceBaseQuery($allowed)
-            ->select('iu.id_inventory_unit as id, iu.no_unit, mu.merk_unit, mu.model_unit, iu.lokasi_unit, iu.status_unit_id')
-            ->select('d.nama_departemen, iu.departemen_id')
-            ->whereIn('iu.status_unit_id', [6, 7, 8]) // BOOKING (6), STOCK ASET (7) and STOCK NON ASET (8)
+            ->select('iu.id_inventory_unit as id, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, iu.status_unit_id')
+            ->select('d.nama_departemen, iu.departemen_id, tu.tipe')
+            ->whereIn('iu.status_unit_id', [1, 2]) // AVAILABLE_STOCK (1) and STOCK_NON_ASET (2)
             ->orderBy('iu.no_unit','ASC')
             ->limit(50);
 
@@ -1208,17 +1960,18 @@ class Service extends BaseController
         // Get assigned units for the specified SPK if exclude_spk_id is provided
         $assignedUnits = [];
         if (!empty($excludeSpkId) && is_numeric($excludeSpkId)) {
-            $assignedRows = $this->db->table('spk_units su')
-                ->select('su.unit_id')
-                ->where('su.spk_id', $excludeSpkId)
+            $assignedRows = $this->db->table('spk_unit_stages sus')
+                ->select('sus.unit_id')
+                ->where('sus.spk_id', $excludeSpkId)
+                ->where('sus.unit_id IS NOT NULL')
                 ->get()->getResultArray();
             $assignedUnits = array_column($assignedRows, 'unit_id');
         }
         
         $data = array_map(function($r) use ($assignedUnits) {
-            // Check if unit needs no_unit (only for STOCK ASET - status 7)
-            $needsNoUnit = ($r['status_unit_id'] == 7 && (empty($r['no_unit']) || $r['no_unit'] == 0));
-            $noUnitDisplay = $r['no_unit'] ?: ($r['status_unit_id'] == 8 ? '[Non Aset]' : '[Akan di-generate]');
+            // Check if unit needs no_unit (only for STOCK_NON_ASET - status 2)
+            $needsNoUnit = ($r['status_unit_id'] == 2 && (empty($r['no_unit']) || $r['no_unit'] == 0));
+            $noUnitDisplay = $r['no_unit'] ?: ($r['status_unit_id'] == 2 ? '[Non Aset]' : '[Akan di-generate]');
             
             // Check if this unit is already assigned to the current SPK
             $isAssignedInSpk = in_array($r['id'], $assignedUnits);
@@ -1229,16 +1982,31 @@ class Service extends BaseController
                 $deptDisplay = ' - (' . $r['nama_departemen'] . ')';
             }
             
-            // Create label with department: [Non Aset] - (departemen) or 3 - (departemen)
+            // Create informative label with serial number and type
             $labelBase = $noUnitDisplay . $deptDisplay;
+            $mainLabel = trim($labelBase." - ".($r['merk_unit']?:'-')." ".($r['model_unit']?:''));
+            
+            // Add serial number and type as additional info
+            $serialParts = [];
+            if (!empty($r['tipe'])) {
+                $serialParts[] = $r['tipe'];
+            }
+            if (!empty($r['serial_number'])) {
+                $serialParts[] = 'SN: ' . $r['serial_number'];
+            } else {
+                $serialParts[] = 'SN: -';
+            }
+            $serialInfo = implode(' | ', $serialParts);
             
             return [
                 'id' => (int)$r['id'],
-                'label' => trim($labelBase." - ".($r['merk_unit']?:'-')." ".($r['model_unit']?:'')." @ ".($r['lokasi_unit']?:'-')),
+                'label' => $mainLabel,
+                'serial_info' => $serialInfo,
                 'no_unit' => $r['no_unit'],
+                'serial_number' => $r['serial_number'],
                 'merk_unit' => $r['merk_unit'],
                 'model_unit' => $r['model_unit'],
-                'lokasi_unit' => $r['lokasi_unit'],
+                'tipe_unit' => $r['tipe'],
                 'status_unit_id' => $r['status_unit_id'],
                 'departemen_id' => $r['departemen_id'],
                 'departemen_name' => $r['nama_departemen'],
@@ -1249,629 +2017,119 @@ class Service extends BaseController
         return $this->response->setJSON(['success'=>true,'data'=>$data,'csrf_hash'=>csrf_hash()]);
     }
 
-    /** Simple list for attachment picking from inventory (statuses: AVAILABLE) - only tipe_item = 'attachment' */
+    /** Simple list for attachment picking from inventory (statuses: AVAILABLE) - supports all types */
     public function dataAttachmentSimple()
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
+        $type = trim((string)($this->request->getGet('type') ?? 'attachment'));
+        
+        // Validate type
+        if (!in_array($type, ['attachment', 'battery', 'charger'])) {
+            $type = 'attachment';
+        }
+        
         $qb = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment as id, a.tipe, a.merk, a.model, ia.sn_attachment, ia.lokasi_penyimpanan, ia.status_attachment_id, sa.nama_status')
+            ->select('ia.id_inventory_attachment as id, ia.tipe_item, ia.sn_attachment, ia.sn_baterai, ia.sn_charger, ia.lokasi_penyimpanan, ia.kondisi_fisik, ia.kelengkapan, ia.id_inventory_unit, ia.attachment_status, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
+            ->select('a.tipe as attachment_tipe, a.merk as attachment_merk, a.model as attachment_model')
+            ->select('b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+            ->select('c.merk_charger, c.tipe_charger')
+            ->select('su.status_unit as status_unit_name')
             ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
-            ->join('status_attachment sa', 'ia.status_attachment_id = sa.id_status_attachment', 'left')
-            ->where('ia.tipe_item', 'attachment')  // Only attachment items
-            ->where('ia.status_attachment_id', 1) // Only AVAILABLE attachments
+            ->join('baterai b', 'b.id = ia.baterai_id', 'left')
+            ->join('charger c', 'c.id_charger = ia.charger_id', 'left')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = ia.id_inventory_unit', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+            ->join('status_unit su', 'su.id_status = ia.status_unit', 'left')
+            ->where('ia.tipe_item', $type)  // Filter by requested type
+            ->groupStart()
+                // Filter: status AVAILABLE dengan status_unit AVAILABLE_STOCK atau STOCK NON ASET
+                ->groupStart()
+                    ->where('ia.attachment_status', 'AVAILABLE')
+                    ->whereIn('ia.status_unit', [7, 11]) // 7=AVAILABLE_STOCK, 11=STOCK NON ASET
+                ->groupEnd()
+                // OR status USED dengan status_unit AVAILABLE_STOCK atau STOCK NON ASET
+                ->orGroupStart()
+                    ->where('ia.attachment_status', 'USED')
+                    ->whereIn('ia.status_unit', [7, 11]) // 7=AVAILABLE_STOCK, 11=STOCK NON ASET
+                ->groupEnd()
+            ->groupEnd()
             ->orderBy('ia.id_inventory_attachment','DESC')
             ->limit(50);
+            
         if ($q !== '') {
-            $qb->groupStart()
-                ->like('a.tipe', $q)
-                ->orLike('a.merk', $q)
-                ->orLike('a.model', $q)
-                ->orLike('ia.sn_attachment', $q)
-                ->orLike('ia.lokasi_penyimpanan', $q)
-            ->groupEnd();
+            $qb->groupStart();
+            
+            if ($type === 'attachment') {
+                $qb->like('a.tipe', $q)
+                   ->orLike('a.merk', $q)
+                   ->orLike('a.model', $q)
+                   ->orLike('ia.sn_attachment', $q);
+            } elseif ($type === 'battery') {
+                $qb->like('b.merk_baterai', $q)
+                   ->orLike('b.tipe_baterai', $q)
+                   ->orLike('b.jenis_baterai', $q)
+                   ->orLike('ia.sn_baterai', $q);
+            } elseif ($type === 'charger') {
+                $qb->like('c.merk_charger', $q)
+                   ->orLike('c.tipe_charger', $q)
+                   ->orLike('ia.sn_charger', $q);
+            }
+            
+            $qb->orLike('ia.lokasi_penyimpanan', $q)
+               ->groupEnd();
         }
+        
         $rows = $qb->get()->getResultArray();
-        $data = array_map(function($r){
-            $label = trim(($r['tipe'] ?: '-') . ' ' . ($r['merk'] ?: '') . ' ' . ($r['model'] ?: ''));
+        $data = array_map(function($r) use ($type){
+            $isUsed = !empty($r['id_inventory_unit']);
+            $label = '';
+            $serialNumber = '';
+            
+            // Build label and serial number based on type
+            if ($type === 'attachment') {
+                $label = trim(($r['attachment_tipe'] ?: '-') . ' ' . ($r['attachment_merk'] ?: '') . ' ' . ($r['attachment_model'] ?: ''));
+                $serialNumber = $r['sn_attachment'];
+            } elseif ($type === 'battery') {
+                $label = trim(($r['merk_baterai'] ?: '-') . ' ' . ($r['tipe_baterai'] ?: ''));
+                if (!empty($r['jenis_baterai'])) {
+                    $label .= ' (' . $r['jenis_baterai'] . ')';
+                }
+                $serialNumber = $r['sn_baterai'];
+            } elseif ($type === 'charger') {
+                $label = trim(($r['merk_charger'] ?: '-') . ' ' . ($r['tipe_charger'] ?: ''));
+                $serialNumber = $r['sn_charger'];
+            }
+            
             $suffix = [];
-            if (!empty($r['sn_attachment'])) $suffix[] = 'SN: '.$r['sn_attachment'];
+            if (!empty($serialNumber)) $suffix[] = 'SN: '.$serialNumber;
             if (!empty($r['lokasi_penyimpanan'])) $suffix[] = '@ '.$r['lokasi_penyimpanan'];
             if ($suffix) $label .= ' ['.implode(', ', $suffix).']';
-            return ['id'=>(int)$r['id'],'label'=>$label];
-        }, $rows);
-        return $this->response->setJSON(['success'=>true,'data'=>$data,'csrf_hash'=>csrf_hash()]);
-    }
-
-    /** Assign chosen unit and (optional) inventory attachment to SPK, then mark READY */
-    public function spkAssignItems()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
-        }
-        $spkId = (int)($this->request->getPost('spk_id') ?? 0);
-        $unitId = (int)($this->request->getPost('unit_id') ?? 0);
-        $invAttachmentId = (int)($this->request->getPost('inventory_attachment_id') ?? 0);
-        if ($spkId<=0 || $unitId<=0) {
-            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'SPK dan Unit wajib dipilih']);
-        }
-        $spk = $this->db->table('spk')->where('id',$spkId)->get()->getRowArray();
-        if (!$spk) return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'SPK tidak ditemukan']);
-        // Validate unit availability (status 7/8)
-        $unit = $this->db->table('inventory_unit')->select('id_inventory_unit, status_unit_id')->where('id_inventory_unit',$unitId)->get()->getRowArray();
-        if (!$unit || !in_array((int)$unit['status_unit_id'], [7,8], true)) {
-            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Unit tidak tersedia (bukan stok aset/non aset)']);
-        }
-        // Validate attachment inventory if provided
-        $invAtt = null;
-        if ($invAttachmentId > 0) {
-            $invAtt = $this->db->table('inventory_attachment')->select('id_inventory_attachment, status_attachment_id')->where('id_inventory_attachment',$invAttachmentId)->get()->getRowArray();
-            if (!$invAtt || (int)$invAtt['status_attachment_id'] !== 1) { // Must be AVAILABLE
-                return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Attachment inventory tidak tersedia (harus status AVAILABLE)']);
-            }
-        }
-        // Merge into spesifikasi JSON: add selected items
-        $spec = [];
-        if (!empty($spk['spesifikasi'])) {
-            $dec = json_decode($spk['spesifikasi'], true);
-            if (json_last_error() === JSON_ERROR_NONE && is_array($dec)) $spec = $dec;
-        }
-        $spec['selected'] = [
-            'unit_id' => $unitId,
-            'inventory_attachment_id' => $invAttachmentId ?: null,
-        ];
-        $this->db->transStart();
-        $prevStatus = $spk['status'] ?? null;
-        $this->db->table('spk')->where('id',$spkId)->update([
-            'spesifikasi' => json_encode($spec),
-            'status' => 'READY',
-            'diperbarui_pada' => date('Y-m-d H:i:s'),
-        ]);
-        // If an inventory attachment is selected, attach to the unit and mark the attachment as used
-        if ($invAtt) {
-            try {
-                // Get selected unit basic info (no_unit)
-                $unitInfo = $this->db->table('inventory_unit iu')
-                    ->select('iu.no_unit')
-                    ->where('iu.id_inventory_unit', $unitId)
-                    ->get()->getRowArray();
-                // Get attachment fields (attachment_id, sn)
-                $attInfo = $this->db->table('inventory_attachment ia')
-                    ->select('ia.attachment_id, ia.sn_attachment')
-                    ->where('ia.id_inventory_attachment', $invAttachmentId)
-                    ->get()->getRowArray();
-                if ($attInfo) {
-                    // Update unit to record attached attachment (model + SN)
-                    $this->db->table('inventory_unit')->where('id_inventory_unit', $unitId)->update([
-                        'model_attachment_id' => $attInfo['attachment_id'] ?? null,
-                        'sn_attachment' => $attInfo['sn_attachment'] ?? null,
-                        'updated_at' => date('Y-m-d H:i:s'),
-                    ]);
-                }
-                // Mark attachment as used and note which unit
-                $note = 'Digunakan pada unit ' . (($unitInfo['no_unit'] ?? '') ?: ('#'.$unitId));
-                $this->db->table('inventory_attachment')->where('id_inventory_attachment', $invAttachmentId)->update([
-                    'status_unit' => 3, // move from stock (7/8) to non-available state
-                    'lokasi_penyimpanan' => $note,
-                    'updated_at' => date('Y-m-d H:i:s'),
-                ]);
-            } catch (\Throwable $e) {
-                // best-effort; do not fail the whole transaction if this linkage fails
-            }
-        }
-        if ($prevStatus && $prevStatus !== 'READY') {
-            $this->db->table('spk_status_history')->insert([
-                'spk_id' => $spkId,
-                'status_from' => $prevStatus,
-                'status_to' => 'READY',
-                'changed_by' => session('user_id') ?: 1,
-                'note' => 'Items assigned by Service',
-                'changed_at' => date('Y-m-d H:i:s'),
-            ]);
-        }
-        $this->db->transComplete();
-        if ($this->db->transStatus() === false) {
-            return $this->response->setStatusCode(500)->setJSON(['success'=>false,'message'=>'Gagal menetapkan item']);
-        }
-        
-        // Log SPK item assignment using trait
-        $this->logActivity('spk_item_assignment', 'SPK Items Assigned', [
-            'spk_id' => $spkId,
-            'unit_id' => $unitId, 
-            'inventory_attachment_id' => $invAttachmentId ?: null,
-            'previous_status' => $prevStatus,
-            'new_status' => 'READY'
-        ]);
-        
-        // Notify Marketing role that SPK is READY
-        try {
-            if ($this->db->tableExists('notifications')) {
-                // Ensure schema (target_role/url) exists
-                try { (new \App\Controllers\Notifications())->index(); } catch (\Throwable $e) { /* ignore */ }
-                $notif = [
-                    'title' => 'SPK READY',
-                    'message' => 'SPK ' . ($spk['nomor_spk'] ?? ('#'.$spkId)) . ' siap untuk dibuat DI oleh Marketing.',
-                    'type' => 'success',
-                    'user_id' => null,
-                    'target_role' => 'marketing',
-                    'url' => base_url('marketing/di'),
-                    'is_read' => 0,
-                    'created_at' => date('Y-m-d H:i:s'),
-                ];
-                $this->db->table('notifications')->insert($notif);
-            }
-        } catch (\Throwable $e) { /* best-effort only */ }
-        return $this->response->setJSON(['success'=>true,'message'=>'Item ditetapkan dan SPK READY','csrf_hash'=>csrf_hash()]);
-    }
-
-    /** Service prepares DI from an SPK: creates DI + delivery_items (UNIT) and marks SPK COMPLETED */
-    public function diPrepare()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
-        }
-        $spkId = (int)($this->request->getPost('spk_id') ?? 0);
-        $unitId = (int)($this->request->getPost('unit_id') ?? 0);
-        $tanggalKirim = $this->request->getPost('tanggal_kirim') ?: null;
-        $catatan = $this->request->getPost('catatan') ?: null;
-        if ($spkId<=0 || $unitId<=0) {
-            return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'SPK dan Unit wajib dipilih']);
-        }
-        // Load SPK
-        $spk = $this->db->table('spk')->where('id',$spkId)->get()->getRowArray();
-        if (!$spk) { return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'SPK tidak ditemukan']); }
-        // Create DI
-        $diPayload = [
-            'nomor_di' => $this->generateDiNumber(),
-            'spk_id' => $spkId,
-            'jenis_spk' => $spk['jenis_spk'] ?? 'UNIT', // Copy jenis_spk from SPK
-            'po_kontrak_nomor' => $spk['po_kontrak_nomor'],
-            'pelanggan' => $spk['pelanggan'],
-            'lokasi' => $spk['lokasi'],
-            'tanggal_kirim' => $tanggalKirim,
-            'catatan' => $catatan,
-            'status' => 'SUBMITTED',
-            'dibuat_oleh' => session('user_id') ?: 1,
-            'dibuat_pada' => date('Y-m-d H:i:s'),
-        ];
-        $this->db->transStart();
-        $this->db->table('delivery_instructions')->insert($diPayload);
-        $diId = (int)$this->db->insertID();
-        // Insert items (UNIT)
-        $this->db->table('delivery_items')->insert([
-            'di_id' => $diId,
-            'item_type' => 'UNIT',
-            'unit_id' => $unitId,
-            'attachment_id' => null,
-            'keterangan' => null,
-        ]);
-        // Mark SPK COMPLETED and log history
-        $prevStatus = $spk['status'] ?? null;
-        $this->db->table('spk')->where('id',$spkId)->update(['status'=>'COMPLETED','diperbarui_pada'=>date('Y-m-d H:i:s')]);
-        if ($prevStatus) {
-            $this->db->table('spk_status_history')->insert([
-                'spk_id' => $spkId,
-                'status_from' => $prevStatus,
-                'status_to' => 'COMPLETED',
-                'changed_by' => session('user_id') ?: 1,
-                'note' => 'DI prepared by Service',
-                'changed_at' => date('Y-m-d H:i:s'),
-            ]);
             
-            // Trigger inventory status update after SPK completion
-            $kontrakId = $spk['kontrak_spesifikasi']['kontrak_id'] ?? null;
-            if ($kontrakId) {
-                try {
-                    $inventoryStatusModel = new \App\Models\InventoryStatusModel();
-                    $result = $inventoryStatusModel->updateStatusAfterSPKWorkflow($kontrakId);
-                    log_message('info', "Triggered inventory status update for contract {$kontrakId} after SPK {$spkId} completion: " . ($result ? 'SUCCESS' : 'FAILED'));
-                } catch (\Exception $e) {
-                    log_message('error', "Failed to trigger inventory status update after SPK {$spkId} completion: " . $e->getMessage());
-                }
+            if ($isUsed) {
+                $unitInfo = trim(($r['no_unit']?:'Unit-'.$r['id_inventory_unit']).' ('.($r['merk_unit']?:'').' '.($r['model_unit']?:'').')');
+                $label .= ' [TERPASANG: ' . $unitInfo . ']';
             }
-        }
-        $this->db->transComplete();
-        if ($this->db->transStatus() === false) {
-            return $this->response->setStatusCode(500)->setJSON(['success'=>false,'message'=>'Gagal menyiapkan DI']);
-        }
-        return $this->response->setJSON(['success'=>true,'message'=>'DI dibuat','di_id'=>$diId,'nomor'=>$diPayload['nomor_di'],'csrf_hash'=>csrf_hash()]);
-    }
-
-    private function generateDiNumber(): string
-    {
-        $prefix = 'DI/'.date('Ym').'/';
-        $last = $this->db->table('delivery_instructions')->like('nomor_di',$prefix)->orderBy('id','DESC')->get()->getRowArray();
-        $seq = 1;
-        if ($last && isset($last['nomor_di'])) {
-            $parts = explode('/', $last['nomor_di']);
-            $seq = isset($parts[2]) ? (int)$parts[2] + 1 : 1;
-        }
-        return $prefix . str_pad((string)$seq,3,'0',STR_PAD_LEFT);
-    }
-
-    public function dataUnit()
-    {
-        // View now uses DataTables (AJAX). We only pass meta & (optional) user dept capability.
-        $allowed = $this->getAllowedServiceDepartemenIds();
-        $departemenOptions = $this->getDepartemenOptions($allowed);
-        $lokasiOptions = $this->getLokasiOptions($allowed);
-        $statusOptions = $this->getStatusOptions();
-        // Component option lists for full edit
-        $modelUnitOptions = $this->getModelUnitOptions();
-        $tipeUnitOptions = $this->getTipeUnitOptions();
-        $kapasitasOptions = $this->getKapasitasOptions();
-        $mastOptions = $this->getMastOptions();
-        $mesinOptions = $this->getMesinOptions();
-        $bateraiOptions = $this->getBateraiOptions();
-        $banOptions = $this->getBanOptions();
-        $rodaOptions = $this->getRodaOptions();
-        $valveOptions = $this->getValveOptions();
-    $attachmentOptions = $this->getAttachmentOptions();
-    $chargerOptions = $this->getChargerOptions();
-        $data = [
-            'title' => 'Data Unit Service | OPTIMA',
-            'page_title' => 'Data Unit Service',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/service' => 'Service',
-                '/service/data-unit' => 'Data Unit'
-            ],
-            'can_view_both_departments' => count($allowed) > 1,
-            'departemen_options' => $departemenOptions,
-            'lokasi_options' => $lokasiOptions,
-            'status_options' => $statusOptions,
-            'model_unit_options' => $modelUnitOptions,
-            'tipe_unit_options' => $tipeUnitOptions,
-            'kapasitas_options' => $kapasitasOptions,
-            'mast_options' => $mastOptions,
-            'mesin_options' => $mesinOptions,
-            'baterai_options' => $bateraiOptions,
-            'ban_options' => $banOptions,
-            'roda_options' => $rodaOptions,
-            'valve_options' => $valveOptions,
-            'attachment_options' => $attachmentOptions,
-            'charger_options' => $chargerOptions,
-        ];
-        return view('service/data_unit', $data);
-    }
-
-    /**
-     * Server-side data for Service Data Unit table.
-     * Filters: status(optional), departemen scope limited to ELECTRIC (id=2) and DIESEL & GASOLINE (id=1,3)
-     */
-    public function dataUnitData()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON([
-                'success' => false,
-                'message' => 'Bad request',
-                'csrf_hash' => csrf_hash()
-            ]);
-        }
-
-        $draw   = (int)($this->request->getPost('draw') ?? 0);
-        $start  = (int)($this->request->getPost('start') ?? 0);
-        $length = (int)($this->request->getPost('length') ?? 25);
-        if ($length <= 0) { $length = 25; }
-        if ($length === -1) { $length = null; }
-
-        // Robust status & search extraction
-        $rawStatus = $this->request->getPost('status');
-        $statusFilter = trim((string)($rawStatus ?? ''));
-        if ($statusFilter === 'undefined') { $statusFilter = ''; }
-
-        $searchArr = $this->request->getPost('search');
-        $searchValue = '';
-        if (is_array($searchArr)) {
-            $searchValue = trim((string)($searchArr['value'] ?? ''));
-        }
-
-        $departemenId = trim((string)($this->request->getPost('departemen_id') ?? ''));
-        $lokasiFilter = trim((string)($this->request->getPost('lokasi_unit') ?? ''));
-
-        try {
-            $allowed = $this->getAllowedServiceDepartemenIds();
-            $base = $this->serviceBaseQuery($allowed);
-            $countQ = $this->serviceBaseQuery($allowed);
-
-            // Apply filters (except status for counts base)
-            if ($departemenId !== '') {
-                $ids = array_values(array_intersect(array_map('intval', explode(',', $departemenId)), $allowed));
-                if ($ids) { $base->whereIn('iu.departemen_id', $ids); $countQ->whereIn('iu.departemen_id', $ids); }
-            }
-            if ($lokasiFilter !== '') {
-                $base->like('iu.lokasi_unit', $lokasiFilter);
-                $countQ->like('iu.lokasi_unit', $lokasiFilter);
-            }
-            if ($searchValue !== '') {
-                $base->groupStart()
-                    ->like('iu.no_unit', $searchValue)
-                    ->orLike('iu.serial_number', $searchValue)
-                    ->orLike('mu.merk_unit', $searchValue)
-                    ->orLike('mu.model_unit', $searchValue)
-                    ->orLike('tu.tipe', $searchValue)
-                    ->orLike('tu.jenis', $searchValue)
-                    ->orLike('iu.lokasi_unit', $searchValue)
-                ->groupEnd();
-                $countQ->groupStart()
-                    ->like('iu.no_unit', $searchValue)
-                    ->orLike('iu.serial_number', $searchValue)
-                    ->orLike('mu.merk_unit', $searchValue)
-                    ->orLike('mu.model_unit', $searchValue)
-                    ->orLike('tu.tipe', $searchValue)
-                    ->orLike('tu.jenis', $searchValue)
-                    ->orLike('iu.lokasi_unit', $searchValue)
-                ->groupEnd();
-            }
-            // recordsTotal (no search / lokasi / manual dept): full scope allowed
-            $recordsTotal = $this->serviceBaseQuery($allowed)->countAllResults();
-            // recordsFiltered (without status filter yet)
-            $recordsFiltered = null; // compute after optional status
-            if ($statusFilter !== '') {
-                $base->where('iu.status_unit_id', (int)$statusFilter);
-                $countQ->where('iu.status_unit_id', (int)$statusFilter);
-            }
-            $recordsFiltered = $countQ->countAllResults();
-
-            // Status counts using fresh builders (avoid cloning issues)
-            $statusList = [7,8,3,2];
-            $statusCounts = [];
-            foreach ($statusList as $st) {
-                $sQB = $this->serviceBaseQuery($allowed);
-                if ($departemenId !== '') {
-                    $ids = array_values(array_intersect(array_map('intval', explode(',', $departemenId)), $allowed));
-                    if ($ids) { $sQB->whereIn('iu.departemen_id', $ids); }
-                }
-                if ($lokasiFilter !== '') { $sQB->like('iu.lokasi_unit', $lokasiFilter); }
-                // do not apply search to counts (can change if needed); keep consistent with other modules? choose not to include search for broad counts.
-                $statusCounts[$st] = $sQB->where('iu.status_unit_id',$st)->countAllResults();
-            }
-
-            $base->orderBy('iu.no_unit','ASC')->orderBy('iu.id_inventory_unit','ASC');
-            if ($length !== null) { $base->limit($length, $start); }
-            $rows = $base->get()->getResultArray();
-
-            $data = [];
-            foreach ($rows as $r) {
-                $id = (int)$r['id_inventory_unit'];
-                $data[] = [
-                    'id' => $id,
+            
+            return [
+                'id'=>(int)$r['id'],
+                'label'=>$label,
+                'sn_attachment' => $r['sn_attachment'],
+                'sn_baterai' => $r['sn_baterai'], 
+                'sn_charger' => $r['sn_charger'],
+                'tipe_item' => $r['tipe_item'],
+                'kondisi_fisik' => $r['kondisi_fisik'],
+                'kelengkapan' => $r['kelengkapan'],
+                'is_used' => $isUsed,
+                'installed_unit' => $isUsed ? [
+                    'unit_id' => $r['id_inventory_unit'],
                     'no_unit' => $r['no_unit'],
                     'serial_number' => $r['serial_number'],
                     'merk_unit' => $r['merk_unit'],
-                    'model_unit' => $r['model_unit'],
-                    'tipe_full' => $r['tipe_full'],
-                    'kapasitas_unit' => $r['kapasitas_unit'],
-                    'status_unit_id' => $r['status_unit_id'],
-                    'status_unit_name' => strtoupper($r['status_unit_name']),
-                    'lokasi_unit' => $r['lokasi_unit'],
-                    'nama_departemen' => $r['nama_departemen'],
-                    'actions' => $this->buildServiceActions($id)
-                ];
-            }
-
-            return $this->response->setJSON([
-                'draw'=>$draw,
-                'recordsTotal'=>$recordsTotal,
-                'recordsFiltered'=>$recordsFiltered,
-                'data'=>$data,
-                'stats'=>[ 'status_counts'=>$statusCounts ],
-                'csrf_hash'=>csrf_hash(),
-            ]);
-        } catch (\Throwable $e) {
-            return $this->response->setStatusCode(500)->setJSON([
-                'draw' => $draw,
-                'recordsTotal' => 0,
-                'recordsFiltered' => 0,
-                'data' => [],
-                'error' => $e->getMessage(),
-                'csrf_hash' => csrf_hash(),
-            ]);
-        }
-    }
-
-    /** Detail unit (service) — reuse marketing style but may append future maintenance info */
-    public function unitDetail($id)
-    {
-        $id = (int)$id; if($id<=0) return $this->response->setJSON(['success'=>false,'message'=>'ID tidak valid','csrf_hash'=>csrf_hash()]);
-        try {
-            $allowed = $this->getAllowedServiceDepartemenIds();
-            if (!$allowed) { return $this->response->setJSON(['success'=>false,'message'=>'Akses departemen ditolak','csrf_hash'=>csrf_hash()]); }
-            $sql = 'SELECT 
-                iu.id_inventory_unit, iu.no_unit, iu.serial_number as serial_number_po,
-                iu.status_unit_id as status_unit, iu.status_unit_id as status_unit_id,
-                COALESCE(mu.merk_unit, "Unknown") as merk_unit,
-                COALESCE(mu.model_unit, "Unknown") as model_unit,
-                iu.lokasi_unit, iu.keterangan,
-                iu.departemen_id as departemen_id,
-                iu.model_unit_id as model_unit_id,
-                iu.tipe_unit_id as tipe_unit_id,
-                iu.tahun_unit as tahun_po,
-                iu.kapasitas_unit_id as kapasitas_unit_id,
-                iu.model_mast_id as model_mast_id, iu.tinggi_mast, iu.sn_mast as sn_mast_po,
-                iu.model_mesin_id as model_mesin_id, iu.sn_mesin as sn_mesin_po,
-                iu.model_baterai_id as model_baterai_id, iu.sn_baterai as sn_baterai_po,
-                iu.ban_id as ban_id, iu.roda_id as roda_id, iu.valve_id as valve_id,
-                iu.model_attachment_id as model_attachment_id, iu.sn_attachment as sn_attachment_po,
-                iu.model_charger_id as model_charger_id, iu.sn_charger as sn_charger_po,
-                COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as nama_tipe_unit,
-                COALESCE(su.status_unit, "Unknown") as status_unit_name,
-                COALESCE(d.nama_departemen, "Unknown") as nama_departemen,
-                COALESCE(k.kapasitas_unit, 0) as kapasitas_unit,
-                COALESCE(tm.tipe_mast, "-") as tipe_mast,
-                COALESCE(m.merk_mesin, "-") as merk_mesin,
-                COALESCE(m.model_mesin, "-") as model_mesin,
-                COALESCE(b.tipe_baterai, "-") as tipe_baterai,
-                COALESCE(b.merk_baterai, "-") as merk_baterai,
-                COALESCE(tb.tipe_ban, "-") as tipe_ban,
-                COALESCE(jr.tipe_roda, "-") as tipe_roda,
-                COALESCE(v.jumlah_valve, "-") as jumlah_valve,
-                "Sesuai" as status_verifikasi,
-                "Verifikasi berhasil" as catatan_verifikasi
-            FROM inventory_unit iu
-                LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
-                LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
-                LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
-                LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
-                LEFT JOIN kapasitas k ON k.id_kapasitas = iu.kapasitas_unit_id
-                LEFT JOIN tipe_mast tm ON tm.id_mast = iu.model_mast_id
-                LEFT JOIN mesin m ON m.id = iu.model_mesin_id
-                LEFT JOIN baterai b ON b.id = iu.model_baterai_id
-                LEFT JOIN attachment at ON at.id_attachment = iu.model_attachment_id
-                LEFT JOIN charger ch ON ch.id_charger = iu.charger_id
-                LEFT JOIN tipe_ban tb ON tb.id_ban = iu.ban_id
-                LEFT JOIN jenis_roda jr ON jr.id_roda = iu.roda_id
-                LEFT JOIN valve v ON v.id_valve = iu.valve_id
-            WHERE iu.id_inventory_unit = ? AND iu.departemen_id IN ('.implode(',', $allowed).')';
-            $row = $this->db->query($sql, [$id])->getRowArray();
-            if(!$row) return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak ditemukan','csrf_hash'=>csrf_hash()]);
-            return $this->response->setJSON(['success'=>true,'data'=>$row,'csrf_hash'=>csrf_hash()]);
-        } catch (\Throwable $e) {
-            return $this->response->setStatusCode(500)->setJSON(['success'=>false,'message'=>$e->getMessage(),'csrf_hash'=>csrf_hash()]);
-        }
-    }
-
-    /** Update editable fields for a unit (all components except no_unit) */
-    public function unitUpdate($id)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad Request','csrf_hash'=>csrf_hash()]);
-        }
-        $id = (int)$id; if($id<=0) return $this->response->setJSON(['success'=>false,'message'=>'ID tidak valid','csrf_hash'=>csrf_hash()]);
-        $lokasi = trim((string)$this->request->getPost('lokasi_unit'));
-        $status = (int)$this->request->getPost('status_unit_id');
-        $keterangan = trim((string)$this->request->getPost('keterangan'));
-        $serial = trim((string)$this->request->getPost('serial_number'));
-        $snMast = trim((string)$this->request->getPost('sn_mast'));
-        $snMesin = trim((string)$this->request->getPost('sn_mesin'));
-        $snBaterai = trim((string)$this->request->getPost('sn_baterai'));
-        $tahun = trim((string)$this->request->getPost('tahun_unit'));
-    // Foreign key component IDs
-    $modelUnitId = (int)$this->request->getPost('model_unit_id');
-    $tipeUnitId = (int)$this->request->getPost('tipe_unit_id');
-    $kapasitasId = (int)$this->request->getPost('kapasitas_unit_id');
-    $mastId = (int)$this->request->getPost('model_mast_id');
-    $tinggiMast = trim((string)$this->request->getPost('tinggi_mast'));
-    $mesinId = (int)$this->request->getPost('model_mesin_id');
-    $bateraiId = (int)$this->request->getPost('model_baterai_id');
-    $attachmentId = (int)$this->request->getPost('model_attachment_id');
-    $chargerId = (int)$this->request->getPost('model_charger_id');
-    $banId = (int)$this->request->getPost('ban_id');
-    $rodaId = (int)$this->request->getPost('roda_id');
-    $valveId = (int)$this->request->getPost('valve_id');
-    $departemenIdNew = (int)$this->request->getPost('departemen_id');
-    $snAttachment = trim((string)$this->request->getPost('sn_attachment'));
-    $snCharger = trim((string)$this->request->getPost('sn_charger'));
-        try {
-            $allowed = $this->getAllowedServiceDepartemenIds();
-            // Ensure unit exists & belongs to allowed departemen
-            $unit = $this->db->table('inventory_unit')
-                ->select('id_inventory_unit, departemen_id')
-                ->where('id_inventory_unit',$id)
-                ->get()->getRowArray();
-            if(!$unit) return $this->response->setJSON(['success'=>false,'message'=>'Unit tidak ditemukan','csrf_hash'=>csrf_hash()]);
-            if(!in_array((int)$unit['departemen_id'],$allowed,true)) return $this->response->setJSON(['success'=>false,'message'=>'Akses ditolak','csrf_hash'=>csrf_hash()]);
-
-            $dataUpdate = [];
-            if($lokasi !== '') { $dataUpdate['lokasi_unit'] = $lokasi; }
-            if($status > 0) { $dataUpdate['status_unit_id'] = $status; }
-            $dataUpdate['keterangan'] = $keterangan !== '' ? $keterangan : null;
-            if($serial !== '') { $dataUpdate['serial_number'] = $serial; }
-            if($snMast !== '') { $dataUpdate['sn_mast'] = $snMast; }
-            if($snMesin !== '') { $dataUpdate['sn_mesin'] = $snMesin; }
-            if($snBaterai !== '') { $dataUpdate['sn_baterai'] = $snBaterai; }
-            if($tahun !== '') { $dataUpdate['tahun_unit'] = $tahun; }
-            if($modelUnitId>0) { $dataUpdate['model_unit_id'] = $modelUnitId; }
-            if($tipeUnitId>0) { $dataUpdate['tipe_unit_id'] = $tipeUnitId; }
-            if($kapasitasId>0) { $dataUpdate['kapasitas_unit_id'] = $kapasitasId; }
-            if($mastId>0) { $dataUpdate['model_mast_id'] = $mastId; }
-            if($tinggiMast !== '') { $dataUpdate['tinggi_mast'] = $tinggiMast; }
-            if($mesinId>0) { $dataUpdate['model_mesin_id'] = $mesinId; }
-            if($bateraiId>0) { $dataUpdate['model_baterai_id'] = $bateraiId; }
-            if($attachmentId>0) { $dataUpdate['model_attachment_id'] = $attachmentId; }
-            if($chargerId>0) { $dataUpdate['model_charger_id'] = $chargerId; }
-            if($banId>0) { $dataUpdate['ban_id'] = $banId; }
-            if($rodaId>0) { $dataUpdate['roda_id'] = $rodaId; }
-            if($valveId>0) { $dataUpdate['valve_id'] = $valveId; }
-            if($departemenIdNew>0 && in_array($departemenIdNew,$allowed,true)) { $dataUpdate['departemen_id'] = $departemenIdNew; }
-            if($snAttachment !== '') { $dataUpdate['sn_attachment'] = $snAttachment; }
-            if($snCharger !== '') { $dataUpdate['sn_charger'] = $snCharger; }
-            if(!$dataUpdate) { return $this->response->setJSON(['success'=>false,'message'=>'Tidak ada perubahan','csrf_hash'=>csrf_hash()]); }
-            // Fetch old data for diff (minimal select)
-            $old = $this->db->table('inventory_unit')->select('*')->where('id_inventory_unit',$id)->get()->getRowArray();
-            $this->db->table('inventory_unit')->where('id_inventory_unit',$id)->update($dataUpdate);
-            if($this->db->affectedRows()>=0){
-                $new = $this->db->table('inventory_unit')->select('*')->where('id_inventory_unit',$id)->get()->getRowArray();
-                $changes=[]; if($old && $new){ foreach($dataUpdate as $k=>$v){ $oldVal=$old[$k]??null; $newVal=$new[$k]??null; if($oldVal!=$newVal){ $changes[$k]=['old'=>$oldVal,'new'=>$newVal]; } } }
-                
-                // Log using trait method
-                $this->logUpdate('inventory_unit', $id, $old, $new, [
-                    'unit_id' => $id,
-                    'changes' => $changes
-                ]);
-                
-                return $this->response->setJSON(['success'=>true,'message'=>'Berhasil disimpan','csrf_hash'=>csrf_hash(),'updated'=>$dataUpdate,'changes'=>$changes]);
-            }
-            return $this->response->setJSON(['success'=>false,'message'=>'Gagal update','csrf_hash'=>csrf_hash()]);
-        } catch (\Throwable $e) {
-            return $this->response->setStatusCode(500)->setJSON(['success'=>false,'message'=>$e->getMessage(),'csrf_hash'=>csrf_hash()]);
-        }
-    }
-
-    /** Export CSV of current filtered units (simple, client can call with query params) */
-    public function exportDataUnits()
-    {
-        $allowed = $this->getAllowedServiceDepartemenIds();
-        $status  = $this->request->getGet('status');
-        $depart  = $this->request->getGet('departemen_id');
-        $search  = $this->request->getGet('q');
-
-        $qb = $this->serviceBaseQuery($allowed);
-        if ($status !== null && $status !== '') { $qb->where('iu.status_unit_id', (int)$status); }
-        if ($depart) {
-            $ids = array_values(array_intersect(array_map('intval', explode(',', $depart)), $allowed));
-            if ($ids) { $qb->whereIn('iu.departemen_id', $ids); }
-        }
-        if ($search) {
-            $qb->groupStart()
-                ->like('iu.no_unit', $search)
-                ->orLike('iu.serial_number', $search)
-                ->orLike('mu.merk_unit', $search)
-                ->orLike('mu.model_unit', $search)
-                ->orLike('tu.tipe', $search)
-                ->orLike('tu.jenis', $search)
-            ->groupEnd();
-        }
-        $qb->orderBy('iu.no_unit','ASC');
-        $rows = $qb->get()->getResultArray();
-
-        $filename = 'service_units_'.date('Ymd_His').'.csv';
-        $output = fopen('php://temp', 'w');
-        fputcsv($output, ['NoUnit','Serial','Merk','Model','Tipe','Kapasitas','Status','Lokasi','Departemen']);
-        foreach ($rows as $r) {
-            fputcsv($output, [
-                $r['no_unit'], $r['serial_number'], $r['merk_unit'], $r['model_unit'], $r['tipe_full'],
-                $r['kapasitas_unit'], $r['status_unit_name'], $r['lokasi_unit'], $r['nama_departemen']
-            ]);
-        }
-        rewind($output);
-        $csv = stream_get_contents($output);
-        fclose($output);
-        return $this->response->setHeader('Content-Type','text/csv')
-            ->setHeader('Content-Disposition','attachment; filename="'.$filename.'"')
-            ->setBody($csv);
-    }
-
-    /** Basic maintenance history stub (replace with real joins later) */
-    public function maintenanceHistory($id)
-    {
-        $id = (int)$id; if($id<=0) return $this->response->setJSON(['success'=>false,'message'=>'ID tidak valid','csrf_hash'=>csrf_hash()]);
-        // Placeholder static rows; adapt to actual maintenance tables when ready.
-        $history = [
-            ['date'=>'2025-07-01','type'=>'PM Monthly','notes'=>'Routine check OK','downtime_hours'=>1.5],
-            ['date'=>'2025-05-15','type'=>'Repair','notes'=>'Ganti seal hydraulic','downtime_hours'=>6],
-            ['date'=>'2025-03-10','type'=>'PM Quarterly','notes'=>'Tune-up + filter','downtime_hours'=>3]
-        ];
-        return $this->response->setJSON(['success'=>true,'data'=>$history,'csrf_hash'=>csrf_hash()]);
+                    'model_unit' => $r['model_unit']
+                ] : null
+            ];
+        }, $rows);
+        return $this->response->setJSON(['success'=>true,'data'=>$data,'csrf_hash'=>csrf_hash()]);
     }
 
     private function serviceBaseQuery(array $allowed = [1,2,3]): \CodeIgniter\Database\BaseBuilder
@@ -1907,1061 +2165,446 @@ class Service extends BaseController
         }
         return $default;
     }
-
-    private function buildServiceActions(int $id): string
-    {
-        // Use JS function svcView() defined in the view
-        $woUrl = base_url('service/work-orders') . '?unit=' . $id;
-        return '<div class="dropdown">'
-            . '<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>'
-            . '<ul class="dropdown-menu">'
-            . '<li><a class="dropdown-item" href="#" onclick="svcView(' . $id . ')"><i class="fas fa-eye me-2 text-info"></i>Lihat</a></li>'
-            . '<li><a class="dropdown-item" href="#" onclick="svcEdit(' . $id . ')"><i class="fas fa-edit me-2 text-primary"></i>Edit</a></li>'
-            . '<li><a class="dropdown-item" href="' . $woUrl . '"><i class="fas fa-wrench me-2 text-warning"></i>Work Order</a></li>'
-            . '</ul></div>';
-    }
-
-    private function getDepartemenOptions(array $allowed): array
-    {
-        if (!$allowed) return [];
-        return $this->db->table('departemen')
-            ->select('id_departemen, nama_departemen')
-            ->whereIn('id_departemen', $allowed)
-            ->orderBy('nama_departemen','ASC')
-            ->get()->getResultArray();
-    }
-
-    private function getLokasiOptions(array $allowed): array
-    {
-        if (!$allowed) return [];
-        $rows = $this->db->table('inventory_unit')
-            ->distinct()
-            ->select('lokasi_unit')
-            ->whereIn('departemen_id', $allowed)
-            ->where('lokasi_unit IS NOT NULL')
-            ->where('lokasi_unit <>','')
-            ->orderBy('lokasi_unit','ASC')
-            ->get()->getResultArray();
-        return array_values(array_filter(array_map(fn($r)=> $r['lokasi_unit'] ?? '', $rows)));
-    }
-
-    private function getStatusOptions(): array
-    {
-        // Basic status list used in Service module (can be filtered later)
-        $rows = $this->db->table('status_unit')
-            ->select('id_status as id, status_unit as name')
-            ->orderBy('status_unit','ASC')
-            ->get()->getResultArray();
-        return $rows ?: [];
-    }
-
-    private function getModelUnitOptions(): array
-    {
-        return $this->db->table('model_unit')
-            ->select('id_model_unit as id, CONCAT(COALESCE(merk_unit,"-")," / ",COALESCE(model_unit,"")) as name')
-            ->orderBy('merk_unit','ASC')->orderBy('model_unit','ASC')
-            ->limit(500)->get()->getResultArray();
-    }
-    private function getTipeUnitOptions(): array
-    {
-        return $this->db->table('tipe_unit')
-            ->select('id_tipe_unit as id, CONCAT(COALESCE(tipe,"-")," ",COALESCE(jenis,"")) as name')
-            ->orderBy('tipe','ASC')->orderBy('jenis','ASC')
-            ->limit(500)->get()->getResultArray();
-    }
-    private function getKapasitasOptions(): array
-    {
-        return $this->db->table('kapasitas')
-            ->select('id_kapasitas as id, kapasitas_unit as name')
-            ->orderBy('kapasitas_unit','ASC')
-            ->get()->getResultArray();
-    }
-    private function getMastOptions(): array
-    {
-        return $this->db->table('tipe_mast')
-            ->select('id_mast as id, tipe_mast as name')
-            ->orderBy('tipe_mast','ASC')->get()->getResultArray();
-    }
-    private function getMesinOptions(): array
-    {
-        return $this->db->table('mesin')
-            ->select('id as id, CONCAT(COALESCE(merk_mesin,"-")," ",COALESCE(model_mesin,"")) as name')
-            ->orderBy('merk_mesin','ASC')->orderBy('model_mesin','ASC')->limit(500)->get()->getResultArray();
-    }
-    private function getBateraiOptions(): array
-    {
-        return $this->db->table('baterai')
-            ->select('id as id, CONCAT(COALESCE(merk_baterai,"-")," ",COALESCE(tipe_baterai,"")) as name')
-            ->orderBy('merk_baterai','ASC')->orderBy('tipe_baterai','ASC')->limit(500)->get()->getResultArray();
-    }
-    private function getBanOptions(): array
-    {
-        return $this->db->table('tipe_ban')
-            ->select('id_ban as id, tipe_ban as name')
-            ->orderBy('tipe_ban','ASC')->get()->getResultArray();
-    }
-    private function getRodaOptions(): array
-    {
-        return $this->db->table('jenis_roda')
-            ->select('id_roda as id, tipe_roda as name')
-            ->orderBy('tipe_roda','ASC')->get()->getResultArray();
-    }
-    private function getValveOptions(): array
-    {
-        return $this->db->table('valve')
-            ->select('id_valve as id, jumlah_valve as name')
-            ->orderBy('jumlah_valve','ASC')->get()->getResultArray();
-    }
-    private function getAttachmentOptions(): array
-    {
-        return $this->db->table('attachment')
-            // Table 'attachment' columns: id_attachment, tipe, merk, model
-            ->select('id_attachment as id, CONCAT(COALESCE(merk,"-")," / ",COALESCE(model,"")) as name')
-            ->orderBy('merk','ASC')->orderBy('model','ASC')->limit(500)->get()->getResultArray();
-    }
-    private function getChargerOptions(): array
-    {
-        return $this->db->table('charger')
-            // Table 'charger' columns: id_charger, merk_charger, tipe_charger (no model_charger column)
-            ->select('id_charger as id, CONCAT(COALESCE(merk_charger,"-")," ",COALESCE(tipe_charger,"")) as name')
-            ->orderBy('merk_charger','ASC')->orderBy('tipe_charger','ASC')->limit(500)->get()->getResultArray();
-    }
-
-    private function logActivity(string $action, string $description, array $details = []): void
-    {
-        try {
-            $db = \Config\Database::connect();
-            $userId = null; // adapt if session user id available
-            $sess = session();
-            if($sess && $sess->has('user_id')) { $userId = (int)$sess->get('user_id'); }
-            $db->table('system_activity_log')->insert([
-                'user_id' => $userId,
-                'action' => $action,
-                'entity_type' => 'inventory_unit',
-                'entity_id' => $details['unit_id'] ?? null,
-                'description' => $description,
-                'details' => $details ? json_encode($details) : null,
-                'ip_address' => service('request')->getIPAddress(),
-                'user_agent' => service('request')->getUserAgent()->getAgentString(),
-                'created_at' => date('Y-m-d H:i:s')
-            ]);
-        } catch (\Throwable $e) {
-            // Silently ignore logging errors
-        }
-    }
-
-    // Private methods untuk data
-    private function getWorkOrders()
-    {
-        return [
-            [
-                'id' => 'WO-2024-001',
-                'unit' => 'FL-003',
-                'type' => 'Engine Maintenance',
-                'status' => 'In Progress',
-                'priority' => 'High',
-                'assigned_to' => 'John Doe',
-                'created_at' => '2024-01-15 08:00:00'
-            ],
-            [
-                'id' => 'WO-2024-002',
-                'unit' => 'FL-007',
-                'type' => 'Hydraulic System',
-                'status' => 'Pending',
-                'priority' => 'Medium',
-                'assigned_to' => 'Jane Smith',
-                'created_at' => '2024-01-15 09:30:00'
-            ],
-            [
-                'id' => 'WO-2024-003',
-                'unit' => 'FL-012',
-                'type' => 'Brake Inspection',
-                'status' => 'Completed',
-                'priority' => 'Low',
-                'assigned_to' => 'Mike Johnson',
-                'created_at' => '2024-01-15 10:15:00'
-            ],
-        ];
-    }
-
-    private function getWorkOrderHistory()
-    {
-        return [
-            [
-                'id' => 'WO-2024-003',
-                'unit' => 'FL-012',
-                'type' => 'Brake Inspection',
-                'status' => 'Completed',
-                'assigned_to' => 'Mike Johnson',
-                'completed_at' => '2024-01-15 16:00:00',
-                'duration' => '6 hours'
-            ],
-            [
-                'id' => 'WO-2024-004',
-                'unit' => 'FL-002',
-                'type' => 'Oil Change',
-                'status' => 'Completed',
-                'assigned_to' => 'John Doe',
-                'completed_at' => '2024-01-14 14:30:00',
-                'duration' => '2 hours'
-            ],
-        ];
-    }
-
-    private function getPmpsData()
-    {
-        return [
-            [
-                'unit' => 'FL-001',
-                'type' => 'Monthly Service',
-                'due_date' => '2024-01-16',
-                'status' => 'Due Tomorrow',
-                'last_service' => '2023-12-16'
-            ],
-            [
-                'unit' => 'FL-005',
-                'type' => '3-Month Inspection',
-                'due_date' => '2024-01-22',
-                'status' => 'Due Next Week',
-                'last_service' => '2023-10-22'
-            ],
-        ];
-    }
-
-    private function getServiceUnits()
-    {
-        return [
-            [
-                'unit_code' => 'FL-001',
-                'brand' => 'Toyota',
-                'model' => '8FG25',
-                'year' => '2020',
-                'status' => 'Available',
-                'last_service' => '2023-12-16'
-            ],
-            [
-                'unit_code' => 'FL-002',
-                'brand' => 'Mitsubishi',
-                'model' => 'FG25N',
-                'year' => '2019',
-                'status' => 'In Service',
-                'last_service' => '2023-12-14'
-            ],
-        ];
-    }
     
-    // API Methods untuk Work Orders
-    public function workOrderList()
-    {
-        $data = [
-            [
-                'id' => 1,
-                'wo_number' => 'WO-2024-001',
-                'unit' => 'Forklift-001',
-                'description' => 'Engine maintenance and oil change',
-                'status' => 'OPEN',
-                'priority' => 'MEDIUM',
-                'assigned_to' => 'John Doe',
-                'created_at' => '2024-01-15',
-                'due_date' => '2024-01-20',
-                'estimated_hours' => 8
-            ],
-            [
-                'id' => 2,
-                'wo_number' => 'WO-2024-002',
-                'unit' => 'Forklift-002',
-                'description' => 'Brake system inspection',
-                'status' => 'KENDALA',
-                'priority' => 'HIGH',
-                'assigned_to' => 'Jane Smith',
-                'created_at' => '2024-01-14',
-                'due_date' => '2024-01-18',
-                'estimated_hours' => 4
-            ],
-            [
-                'id' => 3,
-                'wo_number' => 'WO-2024-003',
-                'unit' => 'Forklift-003',
-                'description' => 'Hydraulic system repair',
-                'status' => 'PENDING',
-                'priority' => 'LOW',
-                'assigned_to' => 'Mike Johnson',
-                'created_at' => '2024-01-13',
-                'due_date' => '2024-01-25',
-                'estimated_hours' => 6
-            ]
-        ];
-
-        $stats = [
-            'total' => count($data),
-            'open' => 1,
-            'kendala' => 1,
-            'pending' => 1,
-            'completed' => 0
-        ];
-
-        return $this->response->setJSON([
-            'success' => true,
-            'data' => $data,
-            'stats' => $stats,
-            'token' => csrf_hash()
-        ]);
-    }
-
-    public function workOrderCreate()
-    {
-        return $this->response->setJSON([
-            'success' => true,
-            'message' => 'Work order created successfully',
-            'token' => csrf_hash()
-        ]);
-    }
-
-    public function workOrderGet($id)
-    {
-        $workOrder = [
-            'wo_id' => $id,
-            'wo_number' => 'WO-2024-' . str_pad($id, 3, '0', STR_PAD_LEFT),
-            'unit' => 'Forklift-' . str_pad($id, 3, '0', STR_PAD_LEFT),
-            'description' => 'Engine maintenance and oil change',
-            'status' => 'OPEN',
-            'priority' => 'MEDIUM',
-            'assigned_to' => 'John Doe',
-            'due_date' => '2024-01-20',
-            'estimated_hours' => 8
-        ];
-
-        return $this->response->setJSON([
-            'success' => true,
-            'data' => $workOrder,
-            'token' => csrf_hash()
-        ]);
-    }
-
-    public function workOrderUpdate()
-    {
-        return $this->response->setJSON([
-            'success' => true,
-            'message' => 'Work order updated successfully',
-            'token' => csrf_hash()
-        ]);
-    }
-
-    public function workOrderDelete()
-    {
-        return $this->response->setJSON([
-            'success' => true,
-            'message' => 'Work order deleted successfully',
-            'token' => csrf_hash()
-        ]);
-    }
-
-    private function getServiceStats()
-    {
-        return [
-            'active_work_orders' => 24,
-            'completed_today' => 8,
-            'overdue_pmps' => 3,
-            'units_in_service' => 12,
-            'completion_rate' => 92,
-            'on_time_delivery' => 85,
-            'customer_satisfaction' => 88
-        ];
-    }
-
-    private function getRecentWorkOrders()
-    {
-        return [
-            [
-                'id' => 'WO-2024-001',
-                'type' => 'Engine Maintenance',
-                'unit' => 'FL-003',
-                'assigned_to' => 'John Doe',
-                'status' => 'In Progress',
-                'created_at' => '2024-01-15 14:30:00'
-            ],
-            [
-                'id' => 'WO-2024-002',
-                'type' => 'Hydraulic System',
-                'unit' => 'FL-007',
-                'assigned_to' => 'Jane Smith',
-                'status' => 'Pending',
-                'created_at' => '2024-01-15 12:15:00'
-            ],
-            [
-                'id' => 'WO-2024-003',
-                'type' => 'Brake Inspection',
-                'unit' => 'FL-012',
-                'assigned_to' => 'Mike Johnson',
-                'status' => 'Completed',
-                'created_at' => '2024-01-14 16:45:00'
-            ]
-        ];
-    }
-
-    private function getMaintenanceAlerts()
-    {
-        return [
-            [
-                'unit' => 'FL-001',
-                'service_type' => 'Monthly Service',
-                'due_date' => '2024-01-16',
-                'status' => 'Overdue',
-                'last_service' => '2023-12-16'
-            ],
-            [
-                'unit' => 'FL-005',
-                'service_type' => '3-Month Inspection',
-                'due_date' => '2024-01-22',
-                'status' => 'Due Soon',
-                'last_service' => '2023-10-22'
-            ],
-            [
-                'unit' => 'FL-008',
-                'service_type' => 'Oil Change',
-                'due_date' => '2024-01-30',
-                'status' => 'Scheduled',
-                'last_service' => '2023-11-15'
-            ]
-        ];
-    }
-
-    private function getTechnicians()
-    {
-        return [
-            [
-                'name' => 'John Doe',
-                'position' => 'Senior Technician',
-                'status' => 'Available',
-                'avatar' => 'https://via.placeholder.com/80x80'
-            ],
-            [
-                'name' => 'Jane Smith',
-                'position' => 'Hydraulic Specialist',
-                'status' => 'Busy',
-                'avatar' => 'https://via.placeholder.com/80x80'
-            ],
-            [
-                'name' => 'Mike Johnson',
-                'position' => 'Engine Specialist',
-                'status' => 'Available',
-                'avatar' => 'https://via.placeholder.com/80x80'
-            ],
-            [
-                'name' => 'Sarah Wilson',
-                'position' => 'Electrical Specialist',
-                'status' => 'Off Duty',
-                'avatar' => 'https://via.placeholder.com/80x80'
-            ]
-        ];
-    }
-
-    /**
-     * Check if no_unit already exists in database
-     */
-    public function checkNoUnitExists()
+    /** Add new inventory attachment via unit verification modal */
+    public function addInventoryAttachment()
     {
         if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['error' => 'Invalid request method']);
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid request']);
         }
 
-        try {
-            $input = json_decode($this->request->getBody(), true);
-            $noUnit = $input['no_unit'] ?? null;
-
-            if (!$noUnit || !is_numeric($noUnit)) {
-                return $this->response->setJSON([
-                    'exists' => false,
-                    'message' => 'Invalid no_unit format'
-                ]);
-            }
-
-            // Check in inventory_unit table
-            $query = $this->db->table('inventory_unit')
-                              ->where('no_unit', (int)$noUnit)
-                              ->countAllResults();
-
-            $exists = ($query > 0);
-
-            return $this->response->setJSON([
-                'exists' => $exists,
-                'no_unit' => (int)$noUnit,
-                'message' => $exists ? "No Unit {$noUnit} sudah digunakan" : "No Unit {$noUnit} tersedia"
-            ]);
-
-        } catch (\Exception $e) {
-            log_message('error', 'Error checking no_unit exists: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'exists' => false,
-                'error' => 'Database error occurred'
-            ]);
-        }
-    }
-
-    public function approveFabrikasi()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['message'=>'Bad request']);
-        }
-
-        $spkId   = (int) $this->request->getPost('spk_id');
-        $unitId  = (int) $this->request->getPost('unit_id'); // dari persiapan
-        $invAttId = (int) $this->request->getPost('attachment_inventory_id'); // wajib kalau ada attachment
-        $invChgId = (int) $this->request->getPost('charger_inventory_id');    // wajib jika departemen ELECTRIC
-        $mekanik  = (string) $this->request->getPost('mekanik');
-
-        $db = db_connect();
-        $spk = $db->table('spk')->where('id',$spkId)->get()->getRowArray();
-        if (!$spk) return $this->response->setStatusCode(404)->setJSON(['message'=>'SPK tidak ditemukan']);
-
-        $spec = json_decode($spk['spesifikasi'] ?? '{}', true) ?: [];
-        $departemenId = (int) ($spec['departemen_id'] ?? 0);
-
-        $model = new InventoryAttachmentModel();
-
-        // Assign attachment fisik (jika dipilih)
-        if ($invAttId) {
-            $userId = (int) (session('user_id') ?? 0);
-            $ok = $model->assignToUnit($invAttId, $unitId, $userId, "Fabrikasi SPK #$spkId");
-            if (!$ok) return $this->response->setStatusCode(500)->setJSON(['message'=>'Gagal assign attachment']);
-
-            // Update inventory_unit dengan data attachment
-            $attachmentData = $db->table('inventory_attachment')
-                ->select('attachment_id, sn_attachment')
-                ->where('id_inventory_attachment', $invAttId)
-                ->get()->getRowArray();
-
-            if ($attachmentData) {
-                $db->table('inventory_unit')->where('id_inventory_unit', $unitId)->update([
-                    'model_attachment_id' => $attachmentData['attachment_id'],
-                    'sn_attachment' => $attachmentData['sn_attachment'],
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
-            }
-        }
-
-        // Jika departemen electric dan user pilih charger (inventory dengan charger_id)
-        if ($departemenId === 2 && $invChgId) {
-            $userId = (int) (session('user_id') ?? 0);
-            $ok = $model->assignToUnit($invChgId, $unitId, $userId, "Fabrikasi (charger) SPK #$spkId");
-            if (!$ok) return $this->response->setStatusCode(500)->setJSON(['message'=>'Gagal assign charger']);
-
-            // Update inventory_unit dengan data charger
-            $chargerData = $db->table('inventory_attachment')
-                ->select('charger_id, sn_charger')
-                ->where('id_inventory_attachment', $invChgId)
-                ->get()->getRowArray();
-
-            if ($chargerData) {
-                $db->table('inventory_unit')->where('id_inventory_unit', $unitId)->update([
-                    'model_charger_id' => $chargerData['charger_id'],
-                    'sn_charger' => $chargerData['sn_charger'],
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
-            }
+        $type = $this->request->getPost('tipe_item');
+        $kondisiFisik = $this->request->getPost('kondisi_fisik');
+        $kelengkapan = $this->request->getPost('kelengkapan');
+        
+        // Get serial number based on type
+        $serialNumber = '';
+        switch ($type) {
+            case 'attachment':
+                $serialNumber = trim($this->request->getPost('sn_attachment'));
+                break;
+            case 'battery':
+                $serialNumber = trim($this->request->getPost('sn_baterai'));
+                break;
+            case 'charger':
+                $serialNumber = trim($this->request->getPost('sn_charger'));
+                break;
         }
         
-        // Apply departmental rules: GASOLINE/DIESEL units should not have battery/charger
-        $departmentName = $spec['departemen_name'] ?? '';
-        if (in_array($departmentName, ['GASOLINE', 'DIESEL'])) {
-            // Auto-detach any existing battery/charger from GASOLINE/DIESEL units
-            try {
-                $inventoryStatusModel = new \App\Models\InventoryStatusModel();
-                $kontrakId = $spec['kontrak_id'] ?? null;
-                if ($kontrakId) {
-                    // This will apply departmental rules automatically
-                    $result = $inventoryStatusModel->handleDepartmentAttachmentRules($kontrakId);
-                    log_message('info', "Applied departmental rules for {$departmentName} unit in fabrikasi process");
-                }
-            } catch (\Exception $e) {
-                log_message('error', "Failed to apply departmental rules in fabrikasi: " . $e->getMessage());
-            }
+        // Debug logging
+        log_message('info', 'Add Inventory Attachment Debug:');
+        log_message('info', 'Type: ' . $type);
+        log_message('info', 'Serial Number: ' . $serialNumber);
+        log_message('info', 'All POST data: ' . json_encode($this->request->getPost()));
+
+        // Validation
+        if (empty($type) || !in_array($type, ['attachment', 'battery', 'charger'])) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid type: ' . $type]);
         }
 
-        // Simpan jejak pilihan fabrikasi terakhir ke JSON (akan dipush ke prepared_units saat PDI)
-        $spec['fabrikasi_last'] = [
-            'unit_id'                  => $unitId,
-            'attachment_inventory_id'  => $invAttId ?: null,
-            'charger_inventory_id'     => ($departemenId === 2 ? ($invChgId ?: null) : null),
-            'mekanik'                  => $mekanik,
-            'timestamp'                => date('Y-m-d H:i:s'),
-        ];
-
-        $db->table('spk')->where('id',$spkId)->update([
-            'fabrikasi_mekanik'        => $mekanik ?: null,
-            'fabrikasi_tanggal_approve'=> date('Y-m-d H:i:s'),
-            'spesifikasi'              => json_encode($spec, JSON_UNESCAPED_UNICODE),
-            // status tetap IN_PROGRESS
-        ]);
-
-        return $this->response->setJSON(['success'=>true]);
-    }
-    
-    /**
-     * Get unit component data for smart component selection
-     * Endpoint: /service/unit-component-data/{unit_id}
-     */
-    public function unitComponentData($unitId = null)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['message' => 'Bad request']);
-        }
-
-        if (!$unitId) {
-            return $this->response->setStatusCode(400)->setJSON([
-                'success' => false,
-                'message' => 'Unit ID is required'
-            ]);
+        if (empty($serialNumber)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Serial number is required']);
         }
 
         try {
-            $db = \Config\Database::connect();
+            $data = [
+                'tipe_item' => $type,
+                'kondisi_fisik' => $kondisiFisik ?: 'Baik',
+                'kelengkapan' => $kelengkapan ?: 'Lengkap',
+                'status_unit' => 7, // AVAILABLE_STOCK
+                'attachment_status' => 'AVAILABLE',
+                'po_id' => 1, // default PO, you might want to make this dynamic
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
 
-            // Get unit data (basic info only, no component columns)
-            $unit = $db->table('inventory_unit')
-                ->select('
-                    id_inventory_unit,
-                    no_unit,
-                    serial_number,
-                    departemen_id,
-                    status_unit_id
-                ')
+            // Set specific fields based on type
+            switch ($type) {
+                case 'attachment':
+                    $data['sn_attachment'] = $serialNumber;
+                    $attachmentId = $this->request->getPost('attachment_id');
+                    if (!empty($attachmentId)) {
+                        $data['attachment_id'] = $attachmentId;
+                    }
+                    break;
+                case 'battery':
+                    $data['sn_baterai'] = $serialNumber;
+                    $bateraiId = $this->request->getPost('baterai_id');
+                    if (!empty($bateraiId)) {
+                        $data['baterai_id'] = $bateraiId;
+                    }
+                    break;
+                case 'charger':
+                    $data['sn_charger'] = $serialNumber;
+                    $chargerId = $this->request->getPost('charger_id');
+                    if (!empty($chargerId)) {
+                        $data['charger_id'] = $chargerId;
+                    }
+                    break;
+            }
+
+            // Check if serial number already exists for this type
+            $existingCheck = $this->attModel->where('tipe_item', $type);
+            switch ($type) {
+                case 'attachment':
+                    $existingCheck->where('sn_attachment', $serialNumber);
+                    break;
+                case 'battery':
+                    $existingCheck->where('sn_baterai', $serialNumber);
+                    break;
+                case 'charger':
+                    $existingCheck->where('sn_charger', $serialNumber);
+                    break;
+            }
+            
+            $existing = $existingCheck->first();
+            if ($existing) {
+                return $this->response->setJSON([
+                    'success' => false, 
+                    'message' => 'Serial number already exists for this type'
+                ]);
+            }
+
+            // Insert new record
+            $insertId = $this->attModel->insert($data);
+            
+            if ($insertId) {
+                // Get the newly created record for dropdown
+                $newRecord = $this->attModel->find($insertId);
+                
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Attachment added successfully',
+                    'data' => $newRecord,
+                    'csrf_hash' => csrf_hash()
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to add attachment'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error adding inventory attachment: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'An error occurred while adding attachment'
+            ]);
+        }
+    }
+
+    /** Get master data for attachment dropdown in modal */
+    public function getMasterAttachment()
+    {
+        $q = trim((string)($this->request->getGet('q') ?? ''));
+        
+        $qb = $this->db->table('attachment')
+            ->select('id_attachment as id, tipe, merk, model')
+            ->orderBy('tipe, merk, model')
+            ->limit(50);
+            
+        if ($q !== '') {
+            $qb->groupStart()
+                ->like('tipe', $q)
+                ->orLike('merk', $q)
+                ->orLike('model', $q)
+                ->groupEnd();
+        }
+        
+        $rows = $qb->get()->getResultArray();
+        $data = array_map(function($r){
+            $label = trim(($r['tipe'] ?: '') . ' ' . ($r['merk'] ?: '') . ' ' . ($r['model'] ?: ''));
+            return [
+                'id' => (int)$r['id'],
+                'text' => $label,
+                'tipe' => $r['tipe'],
+                'merk' => $r['merk'],
+                'model' => $r['model']
+            ];
+        }, $rows);
+        
+        return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
+    }
+
+    /** Get master data for baterai dropdown in modal */
+    public function getMasterBaterai()
+    {
+        $q = trim((string)($this->request->getGet('q') ?? ''));
+        
+        $qb = $this->db->table('baterai')
+            ->select('id, merk_baterai, tipe_baterai, jenis_baterai')
+            ->orderBy('merk_baterai, tipe_baterai')
+            ->limit(50);
+            
+        if ($q !== '') {
+            $qb->groupStart()
+                ->like('merk_baterai', $q)
+                ->orLike('tipe_baterai', $q)
+                ->orLike('jenis_baterai', $q)
+                ->groupEnd();
+        }
+        
+        $rows = $qb->get()->getResultArray();
+        $data = array_map(function($r){
+            $label = trim(($r['merk_baterai'] ?: '') . ' ' . ($r['tipe_baterai'] ?: ''));
+            if (!empty($r['jenis_baterai'])) {
+                $label .= ' (' . $r['jenis_baterai'] . ')';
+            }
+            return [
+                'id' => (int)$r['id'],
+                'text' => $label,
+                'merk_baterai' => $r['merk_baterai'],
+                'tipe_baterai' => $r['tipe_baterai'],
+                'jenis_baterai' => $r['jenis_baterai']
+            ];
+        }, $rows);
+        
+        return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
+    }
+
+    /** Get master data for charger dropdown in modal */
+    public function getMasterCharger()
+    {
+        $q = trim((string)($this->request->getGet('q') ?? ''));
+        
+        $qb = $this->db->table('charger')
+            ->select('id_charger as id, merk_charger, tipe_charger')
+            ->orderBy('merk_charger, tipe_charger')
+            ->limit(50);
+            
+        if ($q !== '') {
+            $qb->groupStart()
+                ->like('merk_charger', $q)
+                ->orLike('tipe_charger', $q)
+                ->groupEnd();
+        }
+        
+        $rows = $qb->get()->getResultArray();
+        $data = array_map(function($r){
+            $label = trim(($r['merk_charger'] ?: '') . ' ' . ($r['tipe_charger'] ?: ''));
+            return [
+                'id' => (int)$r['id'],
+                'text' => $label,
+                'merk_charger' => $r['merk_charger'],
+                'tipe_charger' => $r['tipe_charger']
+            ];
+        }, $rows);
+        
+        return $this->response->setJSON(['success' => true, 'data' => $data, 'csrf_hash' => csrf_hash()]);
+    }
+    
+    /**
+     * Save unit verification data from service work order
+     */
+    public function saveUnitVerification()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        try {
+            // Debug logging
+            log_message('info', 'Save Unit Verification Debug:');
+            log_message('info', 'All POST data: ' . json_encode($this->request->getPost()));
+            // Get form data
+            $workOrderId = $this->request->getPost('work_order_id');
+            $unitId = $this->request->getPost('unit_id');
+            
+            // Validation
+            if (empty($workOrderId) || empty($unitId)) {
+                throw new \Exception('Work Order ID dan Unit ID wajib diisi');
+            }
+
+            // Get old attachment data before update
+            $oldUnit = $db->table('inventory_unit')
+                ->select('attachment_inventory_attachment_id, baterai_inventory_attachment_id, charger_inventory_attachment_id')
                 ->where('id_inventory_unit', $unitId)
                 ->get()
                 ->getRowArray();
 
-            if (!$unit) {
-                return $this->response->setStatusCode(404)->setJSON([
-                    'success' => false,
-                    'message' => 'Unit not found'
-                ]);
+            // Prepare unit update data
+            $unitData = [
+                'no_unit' => $this->request->getPost('no_unit'),
+                'pelanggan' => $this->request->getPost('pelanggan'),
+                'lokasi' => $this->request->getPost('lokasi'),
+                'serial_number' => $this->request->getPost('serial_number'),
+                'tahun_unit' => $this->request->getPost('tahun_unit'),
+                'departemen_id' => $this->request->getPost('departemen_id'),
+                'tipe_unit_id' => $this->request->getPost('tipe_unit_id'),
+                'model_unit_id' => $this->request->getPost('model_unit_id'),
+                'kapasitas_unit_id' => $this->request->getPost('kapasitas_unit_id'),
+                'model_mesin_id' => $this->request->getPost('model_mesin_id'),
+                'sn_mesin' => $this->request->getPost('sn_mesin'),
+                'model_mast_id' => $this->request->getPost('model_mast_id'),
+                'sn_mast' => $this->request->getPost('sn_mast'),
+                'tinggi_mast' => $this->request->getPost('tinggi_mast'),
+                'keterangan' => $this->request->getPost('keterangan'),
+            ];
+
+            // Handle attachment data
+            $newAttachmentId = $this->request->getPost('attachment_id');
+            $newBateraiId = $this->request->getPost('baterai_id');
+            $newChargerId = $this->request->getPost('charger_id');
+
+            // Update attachment relationships
+            if (!empty($newAttachmentId)) {
+                $unitData['attachment_inventory_attachment_id'] = $newAttachmentId;
+                $unitData['sn_attachment'] = $this->request->getPost('sn_attachment');
+                
+                // Release old attachment if changed
+                if (!empty($oldUnit['attachment_inventory_attachment_id']) && 
+                    $oldUnit['attachment_inventory_attachment_id'] != $newAttachmentId) {
+                    $this->releaseAttachment($oldUnit['attachment_inventory_attachment_id']);
+                }
+                
+                // Attach new attachment to unit
+                $this->attachToUnit($newAttachmentId, $unitId);
             }
 
-            // Get component details from inventory_attachment (single source of truth)
-            $componentDetails = [];
-
-            // Get battery component from inventory_attachment
-            $battery = $db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.baterai_id, ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
-                ->join('baterai b', 'ia.baterai_id = b.id', 'left')
-                ->where('ia.id_inventory_unit', $unitId)
-                ->where('ia.tipe_item', 'battery')
-                ->where('ia.attachment_status', 'USED') // In use
-                ->get()
-                ->getRowArray();
-
-            if ($battery) {
-                $componentDetails['battery'] = $battery;
-                // Add legacy compatibility fields for frontend
-                $unit['model_baterai_id'] = $battery['baterai_id'];
-                $unit['sn_baterai'] = $battery['sn_baterai'];
-                $unit['model_baterai_name'] = trim(($battery['merk_baterai'] ?? '') . ' ' . ($battery['tipe_baterai'] ?? '') . ' ' . ($battery['jenis_baterai'] ?? ''));
+            if (!empty($newBateraiId)) {
+                $unitData['baterai_inventory_attachment_id'] = $newBateraiId;
+                $unitData['sn_baterai'] = $this->request->getPost('sn_baterai');
+                
+                // Release old baterai if changed
+                if (!empty($oldUnit['baterai_inventory_attachment_id']) && 
+                    $oldUnit['baterai_inventory_attachment_id'] != $newBateraiId) {
+                    $this->releaseAttachment($oldUnit['baterai_inventory_attachment_id']);
+                }
+                
+                // Attach new baterai to unit
+                $this->attachToUnit($newBateraiId, $unitId);
             }
 
-            // Get charger component from inventory_attachment
-            $charger = $db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.charger_id, ia.sn_charger, c.merk_charger, c.tipe_charger')
-                ->join('charger c', 'ia.charger_id = c.id_charger', 'left')
-                ->where('ia.id_inventory_unit', $unitId)
-                ->where('ia.tipe_item', 'charger')
-                ->where('ia.attachment_status', 'USED') // In use
-                ->get()
-                ->getRowArray();
-
-            if ($charger) {
-                $componentDetails['charger'] = $charger;
-                // Add legacy compatibility fields for frontend
-                $unit['model_charger_id'] = $charger['charger_id'];
-                $unit['sn_charger'] = $charger['sn_charger'];
-                $unit['model_charger_name'] = trim(($charger['merk_charger'] ?? '') . ' ' . ($charger['tipe_charger'] ?? ''));
+            if (!empty($newChargerId)) {
+                $unitData['charger_inventory_attachment_id'] = $newChargerId;
+                $unitData['sn_charger'] = $this->request->getPost('sn_charger');
+                
+                // Release old charger if changed
+                if (!empty($oldUnit['charger_inventory_attachment_id']) && 
+                    $oldUnit['charger_inventory_attachment_id'] != $newChargerId) {
+                    $this->releaseAttachment($oldUnit['charger_inventory_attachment_id']);
+                }
+                
+                // Attach new charger to unit
+                $this->attachToUnit($newChargerId, $unitId);
             }
 
-            // Get attachment component from inventory_attachment
-            $attachment = $db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.attachment_id, ia.sn_attachment, a.tipe, a.merk, a.model')
-                ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
-                ->where('ia.id_inventory_unit', $unitId)
-                ->where('ia.tipe_item', 'attachment')
-                ->where('ia.attachment_status', 'USED') // In use
-                ->get()
-                ->getRowArray();
+            // Update unit data
+            log_message('info', 'Updating unit data: ' . json_encode($unitData));
+            $updateResult = $db->table('inventory_unit')
+                ->where('id_inventory_unit', $unitId)
+                ->update($unitData);
+            
+            if (!$updateResult) {
+                throw new \Exception('Failed to update inventory_unit');
+            }
+            log_message('info', 'Unit data updated successfully');
 
-            if ($attachment) {
-                $componentDetails['attachment'] = $attachment;
-                // Add legacy compatibility fields for frontend
-                $unit['model_attachment_id'] = $attachment['attachment_id'];
-                $unit['sn_attachment'] = $attachment['sn_attachment'];
-                $unit['model_attachment_name'] = trim(($attachment['tipe'] ?? '') . ' ' . ($attachment['merk'] ?? '') . ' ' . ($attachment['model'] ?? ''));
+            // Handle accessories - check if table exists first
+            $accessories = $this->request->getPost('accessories');
+            if (is_array($accessories) && count($accessories) > 0) {
+                try {
+                    // Check if unit_aksesoris table exists
+                    $db->query("SELECT 1 FROM unit_aksesoris LIMIT 1");
+                    
+                    // Delete old accessories
+                    $db->table('unit_aksesoris')
+                        ->where('id_inventory_unit', $unitId)
+                        ->delete();
+
+                    // Insert new accessories
+                    foreach ($accessories as $accessory) {
+                        $db->table('unit_aksesoris')->insert([
+                            'id_inventory_unit' => $unitId,
+                            'accessory_name' => $accessory,
+                            'created_at' => date('Y-m-d H:i:s')
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    // If table doesn't exist, just log and continue
+                    log_message('info', 'unit_aksesoris table not found, skipping accessories: ' . $e->getMessage());
+                }
+            }
+
+            // Update work order status to COMPLETED
+            $verificationData = [
+                'verified_by' => $this->request->getPost('verified_by'),
+                'verification_date' => $this->request->getPost('verification_date'),
+                'status' => 'COMPLETED',
+                'completed_at' => date('Y-m-d H:i:s')
+            ];
+
+            log_message('info', 'Updating work order ID: ' . $workOrderId);
+            log_message('info', 'Verification data: ' . json_encode($verificationData));
+            
+            $workOrderUpdate = $db->table('service_work_orders')
+                ->where('id_service_work_orders', $workOrderId)
+                ->update($verificationData);
+            
+            if (!$workOrderUpdate) {
+                throw new \Exception('Failed to update service_work_orders');
+            }
+            log_message('info', 'Work order updated successfully');
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \Exception('Gagal menyimpan data verifikasi');
             }
 
             return $this->response->setJSON([
                 'success' => true,
-                'unit' => $unit,
-                'component_details' => $componentDetails,
-                'message' => 'Unit component data retrieved successfully'
+                'message' => 'Verifikasi berhasil disimpan',
+                'csrf_hash' => csrf_hash()
             ]);
 
         } catch (\Exception $e) {
-            log_message('error', 'Error in unitComponentData: ' . $e->getMessage());
-
-            return $this->response->setStatusCode(500)->setJSON([
+            $db->transRollback();
+            log_message('error', 'Error saving unit verification: ' . $e->getMessage());
+            return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Internal server error',
-                'error' => $e->getMessage()
+                'message' => $e->getMessage(),
+                'csrf_hash' => csrf_hash()
             ]);
         }
     }
-    
+
     /**
-     * Process component inventory updates untuk handle replace/assign actions
+     * Release attachment from unit (set id_inventory_unit to NULL and status to AVAILABLE)
      */
-    private function processComponentInventoryUpdates($unitId, $componentData, $unitInfo)
-    {
-        if (!$componentData || !isset($componentData['components'])) {
-            return;
-        }
-
-        $db = \Config\Database::connect();
-
-        // Get contract status to determine appropriate component status
-        $kontrak = $db->query("
-            SELECT k.status 
-            FROM kontrak k
-            JOIN kontrak_spesifikasi ks ON k.id = ks.kontrak_id
-            JOIN inventory_unit iu ON ks.id = iu.kontrak_spesifikasi_id
-            WHERE iu.id_inventory_unit = ?
-        ", [$unitId])->getRowArray();
-        
-        $targetStatus = ($kontrak && $kontrak['status'] === 'Aktif') ? 3 : 7; // RENTAL or STOCK ASET
-
-        // Get unit department to apply departmental rules
-        $unit = $db->query("
-            SELECT iu.departemen_id, d.nama_departemen
-            FROM inventory_unit iu
-            LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
-            WHERE iu.id_inventory_unit = ?
-        ", [$unitId])->getRowArray();
-        
-        $isGasolineOrDiesel = ($unit && in_array($unit['nama_departemen'], ['GASOLINE', 'DIESEL']));
-
-        // Process battery component
-        if (isset($componentData['components']['battery'])) {
-            $battery = $componentData['components']['battery'];
-
-            if ($isGasolineOrDiesel) {
-                // GASOLINE/DIESEL units should not have battery - detach any existing
-                if ($battery['existing_model_id']) {
-                    $db->table('inventory_attachment')
-                        ->where('id_inventory_attachment', $battery['existing_model_id'])
-                        ->update([
-                            'attachment_status' => 'AVAILABLE', // Return to inventory
-                            'id_inventory_unit' => null,
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ]);
-                    log_message('info', "Detached battery {$battery['existing_model_id']} from GASOLINE/DIESEL unit {$unitId}");
-                }
-            } else {
-                // Electric units can have battery
-                if ($battery['action'] === 'replace' && $battery['new_inventory_attachment_id'] && $battery['existing_model_id']) {
-                    // Return old battery to inventory
-                    $db->table('inventory_attachment')
-                        ->where('id_inventory_attachment', $battery['existing_model_id'])
-                        ->update([
-                            'status_attachment_id' => 1, // AVAILABLE
-                            'id_inventory_unit' => null,
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ]);
-
-                    // Assign new battery from inventory
-                    $db->table('inventory_attachment')
-                        ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
-                        ->update([
-                            'status_unit' => $targetStatus, // RENTAL or STOCK ASET based on contract
-                            'id_inventory_unit' => $unitId,
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ]);
-
-                } else if ($battery['action'] === 'assign' && $battery['new_inventory_attachment_id']) {
-                    // Assign battery to unit that doesn't have one
-                    $db->table('inventory_attachment')
-                        ->where('id_inventory_attachment', $battery['new_inventory_attachment_id'])
-                        ->update([
-                            'status_unit' => $targetStatus, // RENTAL or STOCK ASET based on contract
-                            'id_inventory_unit' => $unitId,
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ]);
-                }
-            }
-        }
-
-        // Process charger component
-        if (isset($componentData['components']['charger'])) {
-            $charger = $componentData['components']['charger'];
-
-            if ($isGasolineOrDiesel) {
-                // GASOLINE/DIESEL units should not have charger - detach any existing
-                if ($charger['existing_model_id']) {
-                    $db->table('inventory_attachment')
-                        ->where('id_inventory_attachment', $charger['existing_model_id'])
-                        ->update([
-                            'status_unit' => 7, // STOCK ASET (returned to inventory)
-                            'id_inventory_unit' => null,
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ]);
-                    log_message('info', "Detached charger {$charger['existing_model_id']} from GASOLINE/DIESEL unit {$unitId}");
-                }
-            } else {
-                // Electric units can have charger
-                if ($charger['action'] === 'replace' && $charger['new_inventory_attachment_id'] && $charger['existing_model_id']) {
-                    // Return old charger to inventory
-                    $db->table('inventory_attachment')
-                        ->where('id_inventory_attachment', $charger['existing_model_id'])
-                        ->update([
-                            'status_unit' => 7, // STOCK ASET (available)
-                            'id_inventory_unit' => null,
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ]);
-
-                    // Assign new charger from inventory
-                    $db->table('inventory_attachment')
-                        ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
-                        ->update([
-                            'status_unit' => $targetStatus, // RENTAL or STOCK ASET based on contract
-                            'id_inventory_unit' => $unitId,
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ]);
-
-                } else if ($charger['action'] === 'assign' && $charger['new_inventory_attachment_id']) {
-                    // Assign charger to unit that doesn't have one
-                    $db->table('inventory_attachment')
-                        ->where('id_inventory_attachment', $charger['new_inventory_attachment_id'])
-                        ->update([
-                            'status_unit' => $targetStatus, // RENTAL or STOCK ASET based on contract
-                            'id_inventory_unit' => $unitId,
-                            'updated_at' => date('Y-m-d H:i:s')
-                        ]);
-                }
-            }
-        }
-
-        // Log component transactions for audit trail
-        $this->logComponentTransactions($unitId, $componentData);
-    }
-    
-    /**
-     * Apply departmental rules for units
-     * GASOLINE/DIESEL units should not have battery/charger components
-     */
-    private function applyDepartmentalRules($unitId)
-    {
-        if (!$unitId) {
-            return;
-        }
-
-        $db = \Config\Database::connect();
-
-        // Get unit department
-        $unit = $db->query("
-            SELECT iu.departemen_id, d.nama_departemen
-            FROM inventory_unit iu
-            LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
-            WHERE iu.id_inventory_unit = ?
-        ", [$unitId])->getRowArray();
-
-        if (!$unit) {
-            return;
-        }
-
-        $isGasolineOrDiesel = in_array($unit['nama_departemen'], ['GASOLINE', 'DIESEL']);
-
-        if ($isGasolineOrDiesel) {
-            // GASOLINE/DIESEL units should not have battery or charger components
-            log_message('info', "Applying departmental rules for {$unit['nama_departemen']} unit {$unitId}");
-
-            // Detach any battery components
-            $detachedBatteries = $db->query("
-                UPDATE inventory_attachment 
-                SET id_inventory_unit = NULL, 
-                    attachment_status = 'AVAILABLE',
-                    updated_at = NOW()
-                WHERE id_inventory_unit = ? 
-                AND tipe_item = 'battery'
-            ", [$unitId]);
-            
-            $batteryCount = $db->affectedRows();
-            if ($batteryCount > 0) {
-                log_message('info', "Detached {$batteryCount} battery component(s) from {$unit['nama_departemen']} unit {$unitId}");
-            }
-
-            // Detach any charger components
-            $detachedChargers = $db->query("
-                UPDATE inventory_attachment 
-                SET id_inventory_unit = NULL, 
-                    attachment_status = 'AVAILABLE',
-                    updated_at = NOW()
-                WHERE id_inventory_unit = ? 
-                AND tipe_item = 'charger'
-            ", [$unitId]);
-            
-            $chargerCount = $db->affectedRows();
-            if ($chargerCount > 0) {
-                log_message('info', "Detached {$chargerCount} charger component(s) from {$unit['nama_departemen']} unit {$unitId}");
-            }
-
-            if ($batteryCount > 0 || $chargerCount > 0) {
-                log_message('info', "Departmental rules applied: Removed " . ($batteryCount + $chargerCount) . " components from {$unit['nama_departemen']} unit {$unitId}");
-            }
-        }
-    }
-    
-    /**
-     * Trigger unit status update based on contract status
-     */
-    private function triggerUnitStatusUpdate($unitId)
-    {
-        try {
-            // Get contract status for this unit
-            $kontrak = $this->db->query("
-                SELECT k.id as kontrak_id, k.status 
-                FROM kontrak k
-                JOIN kontrak_spesifikasi ks ON k.id = ks.kontrak_id
-                JOIN inventory_unit iu ON ks.id = iu.kontrak_spesifikasi_id
-                WHERE iu.id_inventory_unit = ?
-            ", [$unitId])->getRowArray();
-            
-            if ($kontrak && $kontrak['status'] === 'Aktif') {
-                // Update unit status to RENTAL
-                $this->db->query("
-                    UPDATE inventory_unit 
-                    SET status_unit_id = 3, updated_at = NOW()
-                    WHERE id_inventory_unit = ?
-                ", [$unitId]);
-                
-                log_message('info', "Updated unit {$unitId} status to RENTAL (3) due to active contract");
-                
-                // Also trigger inventory status model for comprehensive update
-                $inventoryStatusModel = new \App\Models\InventoryStatusModel();
-                $result = $inventoryStatusModel->updateStatusForActiveContract($kontrak['kontrak_id']);
-                
-                log_message('info', "Triggered comprehensive status update for contract {$kontrak['kontrak_id']}: " . ($result ? 'SUCCESS' : 'FAILED'));
-            }
-            
-        } catch (\Exception $e) {
-            log_message('error', "Failed to trigger unit status update for unit {$unitId}: " . $e->getMessage());
-        }
-    }
-    
-    /**
-     * Log component transactions untuk audit trail
-     */
-    private function logComponentTransactions($unitId, $componentData)
+    private function releaseAttachment($attachmentId)
     {
         $db = \Config\Database::connect();
+        $db->table('inventory_attachment')
+            ->where('id_inventory_attachment', $attachmentId)
+            ->update([
+                'id_inventory_unit' => null,
+                'attachment_status' => 'AVAILABLE',
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
         
-        foreach (['battery', 'charger'] as $componentType) {
-            if (isset($componentData['components'][$componentType])) {
-                $component = $componentData['components'][$componentType];
-                
-                if (in_array($component['action'], ['replace', 'assign'])) {
-                    $logData = [
-                        'unit_id' => $unitId,
-                        'component_type' => $componentType,
-                        'action' => $component['action'],
-                        'old_attachment_id' => $component['existing_model_id'] ?? null,
-                        'new_attachment_id' => $component['new_inventory_attachment_id'] ?? null,
-                        'timestamp' => date('Y-m-d H:i:s'),
-                        'user_id' => session('user_id') ?? null
-                    ];
-                    
-                    // Insert to component transaction log table (create if needed)
-                    try {
-                        $db->table('spk_component_transactions')->insert($logData);
-                    } catch (\Exception $e) {
-                        // Table might not exist, log to error instead
-                        log_message('info', 'Component transaction: ' . json_encode($logData));
-                    }
-                }
-            }
-        }
+        log_message('info', "Released attachment ID: {$attachmentId}");
     }
 
-    public function approvePdi()
+    /**
+     * Attach attachment to unit (set id_inventory_unit and status to USED)
+     */
+    private function attachToUnit($attachmentId, $unitId)
     {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setStatusCode(400)->setJSON(['message'=>'Bad request']);
-        }
-        $spkId   = (int) $this->request->getPost('spk_id');
-        $catatan = (string) $this->request->getPost('catatan');
-
-        $db   = db_connect();
-        $spk  = $db->table('spk')->where('id',$spkId)->get()->getRowArray();
-        if (!$spk) return $this->response->setStatusCode(404)->setJSON(['message'=>'SPK tidak ditemukan']);
-
-        $spec = json_decode($spk['spesifikasi'] ?? '{}', true) ?: [];
-        $last = $spec['fabrikasi_last'] ?? null;
-        if (!$last || empty($last['unit_id'])) {
-            return $this->response->setStatusCode(400)->setJSON(['message'=>'Data fabrikasi belum lengkap']);
-        }
-
-        $prepared = $spec['prepared_units'] ?? [];
-        $prepared[] = [
-            'unit_id'                 => (string)$last['unit_id'],
-            'attachment_inventory_id' => $last['attachment_inventory_id'] ?? null,
-            'charger_inventory_id'    => $last['charger_inventory_id'] ?? null,
-            'mekanik'                 => $last['mekanik'] ?? null,
-            'catatan'                 => $catatan ?: null,
-            'timestamp'               => date('Y-m-d H:i:s'),
-        ];
-        $spec['prepared_units'] = $prepared;
-        unset($spec['fabrikasi_last']); // reset untuk siklus berikutnya
-
-        // hitung progress → READY bila terpenuhi
-        $total    = (int) ($spk['jumlah_unit'] ?? 1);
-        $isReady  = (count($prepared) >= max(1,$total));
+        $db = \Config\Database::connect();
+        $db->table('inventory_attachment')
+            ->where('id_inventory_attachment', $attachmentId)
+            ->update([
+                'id_inventory_unit' => $unitId,
+                'attachment_status' => 'USED',
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
         
-        // Reset persiapan_unit_id to NULL when SPK is completed (READY)
-        // This ensures the unit won't be detected as in use by another SPK
-        $updateData = [
-            'pdi_tanggal_approve' => date('Y-m-d H:i:s'),
-            'pdi_catatan'         => $catatan ?: null,
-            'status'              => $isReady ? 'READY' : 'IN_PROGRESS',
-            'spesifikasi'         => json_encode($spec, JSON_UNESCAPED_UNICODE)
-        ];
-        
-        // If SPK is complete, release the unit by setting persiapan_unit_id to NULL
-        if ($isReady) {
-            $updateData['persiapan_unit_id'] = NULL;
-            
-            // Also update unit status back to available (STOCK NON ASET = 8)
-            log_message('debug', "Releasing units for completed SPK ID {$spkId}");
-            
-            // Get all units used in this SPK
-            $unitIds = [];
-            if (!empty($spk['persiapan_unit_id'])) {
-                $unitIds[] = $spk['persiapan_unit_id'];
-            }
-            
-            // Also check units in prepared_units array
-            if (!empty($prepared)) {
-                foreach ($prepared as $unit) {
-                    if (!empty($unit['unit_id']) && !in_array($unit['unit_id'], $unitIds)) {
-                        $unitIds[] = $unit['unit_id'];
-                    }
-                }
-            }
-            
-            // Update all units to available status
-            if (!empty($unitIds)) {
-                $db->table('inventory_unit')
-                   ->whereIn('id_inventory_unit', $unitIds)
-                   ->update(['status_unit_id' => 8]); // 8 = STOCK NON ASET
-                   
-                log_message('debug', "Updated " . count($unitIds) . " units to STOCK NON ASET status: " . implode(', ', $unitIds));
-            }
-        }
-        
-        $db->table('spk')->where('id',$spkId)->update($updateData);
-
-        return $this->response->setJSON(['success'=>true, 'ready'=>$isReady]);
+        log_message('info', "Attached attachment ID: {$attachmentId} to unit ID: {$unitId}");
     }
+    
 }

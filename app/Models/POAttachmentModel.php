@@ -6,22 +6,26 @@ use CodeIgniter\Model;
 
 class POAttachmentModel extends Model
 {
-    protected $table = 'po_items';
-    protected $primaryKey = 'id_po_item';
+    protected $table = 'po_attachment';
+    protected $primaryKey = 'id_po_attachment';
     protected $useAutoIncrement = true;
     protected $returnType = 'array';
     protected $useSoftDeletes = false;
     protected $protectFields = true;
     
-    // Daftar kolom yang diizinkan, 'qty' sudah dihapus.
+    // Daftar kolom yang diizinkan
     protected $allowedFields = [
         'po_id',
         'item_type',
+        'item_id',
+        'qty_ordered',
+        'qty_received',
+        'harga_satuan',
+        'total_harga',
         'attachment_id',
         'baterai_id',
         'charger_id',
         'serial_number',
-        'serial_number_charger',
         'keterangan',
         'status_verifikasi',
         'catatan_verifikasi',
@@ -59,7 +63,7 @@ class POAttachmentModel extends Model
     public function getVerificationStatusOptions()
     {
         // Ambil dari tipe ENUM di kolom status_verifikasi
-        $query = "SHOW COLUMNS FROM po_items LIKE 'status_verifikasi'";
+        $query = "SHOW COLUMNS FROM po_attachment LIKE 'status_verifikasi'";
         $row = $this->db->query($query)->getRow()->Type;
         preg_match("/^enum\(\'(.*)\'\)$/", $row, $matches);
         $enum = explode("','", $matches[1]);

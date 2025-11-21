@@ -13,4 +13,14 @@ class SparepartModel extends Model
     protected $protectFields    = true;
     protected $allowedFields    = ['kode', 'desc_sparepart'];
     protected $useTimestamps    = true;
+
+    /**
+     * Get active spareparts for dropdown
+     */
+    public function getActiveSpareparts()
+    {
+        return $this->select('id_sparepart as id, CONCAT(kode, " - ", desc_sparepart) as text')
+                    ->orderBy('desc_sparepart', 'ASC')
+                    ->findAll();
+    }
 }

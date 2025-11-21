@@ -1,76 +1,166 @@
 <?= $this->extend('layouts/base') ?>
 
+<?php
+// Load global permission helper
+helper('global_permission');
+
+// Get permissions for warehouse module
+$permissions = get_global_permission('warehouse');
+$can_view = $permissions['view'];
+$can_create = $permissions['create'];
+$can_edit = $permissions['edit'];
+$can_delete = $permissions['delete'];
+$can_export = $permissions['export'];
+?>
+
 <?= $this->section('css') ?>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
 <style>
-    .table-card { border: none; border-radius: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); }
-    .card-stats { 
-        border: none; 
-        border-radius: 15px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        transition: all 0.3s ease;
+    /* CSS umum sudah ada di optima-pro.css */
+    /* Hanya custom styling khusus untuk inventory unit table */
+    
+    /* Clickable rows khusus untuk inventory-unit-table */
+    #inventory-unit-table tbody tr {
         cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
     }
-    .card-stats:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.15);
+    
+    #inventory-unit-table tbody tr:hover {
+        background-color: rgba(0, 123, 255, 0.1) !important;
     }
-    .card-stats.active {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-        border: 2px solid #0d6efd;
-    }
-    /* Konsistensi kolom aksi seperti halaman lain */
-    #inventory-unit-table th:last-child, #inventory-unit-table td:last-child { width: 55px; text-align: center; }
-    #inventory-unit-table .dropdown-toggle { padding: 2px 6px; }
-    #inventory-unit-table .dropdown-menu { font-size: 0.8rem; }
-    /* Sticky header & hover */
-    #inventory-unit-table thead th { position: sticky; top: 0; background: #f8f9fa; z-index: 5; }
-    #inventory-unit-table tbody tr:hover { background: #eef6ff !important; }
-    .badge { font-weight:500; }
-    /* Responsive hide columns */
+    
+    /* Responsive hide columns khusus untuk inventory-unit-table */
     @media (max-width: 992px){
         #inventory-unit-table td:nth-child(5), #inventory-unit-table th:nth-child(5),
         #inventory-unit-table td:nth-child(6), #inventory-unit-table th:nth-child(6),
         #inventory-unit-table td:nth-child(7), #inventory-unit-table th:nth-child(7){ display:none; }
     }
+    
+    /* Disabled Table Styling */
+    .table-disabled {
+        opacity: 0.5 !important;
+        pointer-events: none !important;
+        user-select: none !important;
+        cursor: not-allowed !important;
+    }
+    .table-disabled tbody tr {
+        cursor: not-allowed !important;
+        pointer-events: none !important;
+    }
+    .table-disabled tbody tr:hover {
+        background-color: #f8f9fa !important;
+    }
+    .table-disabled .btn {
+        pointer-events: none !important;
+        opacity: 0.3 !important;
+    }
+    .table-disabled a {
+        pointer-events: none !important;
+        cursor: not-allowed !important;
+        color: #6c757d !important;
+    }
+    .table-disabled input, .table-disabled select {
+        pointer-events: none !important;
+        opacity: 0.5 !important;
+    }
 </style>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-    <!-- Interactive Filter Tabs (mirip permissions) & Toggle Advanced Filters -->
-    <div class="card table-card">
-    <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
-        <ul class="nav nav-tabs flex-grow-1" id="unitStatusTabs">
-            <li class="nav-item"><button class="nav-link active" data-status="" type="button"><i class="fas fa-list me-1"></i>Semua <span class="badge bg-secondary ms-1" id="count-all"><?= $stats['total'] ?? 0 ?></span></button></li>
-            <li class="nav-item"><button class="nav-link" data-status="7" type="button"><i class="fas fa-box me-1"></i>Stock Aset <span class="badge bg-success ms-1" id="count-stock"><?= $stats['in_stock'] ?? 0 ?></span></button></li>
-            <li class="nav-item"><button class="nav-link" data-status="8" type="button"><i class="fas fa-archive me-1"></i>Stok Non Aset <span class="badge bg-secondary ms-1" id="count-nonasset"><?= $stats['non_asset'] ?? 0 ?></span></button></li>
-            <li class="nav-item"><button class="nav-link" data-status="3" type="button"><i class="fas fa-handshake me-1"></i>Rental <span class="badge bg-warning text-dark ms-1" id="count-rental"><?= $stats['rented'] ?? 0 ?></span></button></li>
-            <li class="nav-item"><button class="nav-link" data-status="9" type="button"><i class="fas fa-shopping-cart me-1"></i>Jual <span class="badge bg-info text-dark ms-1" id="count-sold"><?= $stats['sold'] ?? 0 ?></span></button></li>
-            <!-- <li class="nav-item"><button class="nav-link" data-status="2" type="button"><i class="fas fa-tools me-1"></i>Workshop <span class="badge bg-danger ms-1" id="count-workshop"><?= $stats['workshop'] ?? 0 ?></span></button></li> -->
-        </ul>
-    </div>
 
-    <!-- Inventory Table -->
+    <!-- Inventory Table dengan Tab Terintegrasi -->
     <div class="card table-card">
+        <!-- Tab Filter untuk Status Unit -->
+        <div class="card-body p-0">
+            <ul class="nav nav-tabs nav-fill mb-0" id="unitStatusTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="all-tab" data-category="" type="button" role="tab">
+                        <i class="fas fa-list me-1"></i>
+                        <span>Semua</span>
+                        <span class="badge bg-secondary ms-1" id="count-all"><?= $stats['total'] ?? 0 ?></span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="stock-tab" data-category="stock" type="button" role="tab">
+                        <i class="fas fa-warehouse me-1"></i>
+                        <span>Stock Unit</span>
+                        <span class="badge bg-success ms-1" id="count-stock">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="rental-tab" data-category="rental" type="button" role="tab">
+                        <i class="fas fa-handshake me-1"></i>
+                        <span>Rental</span>
+                        <span class="badge bg-warning text-dark ms-1" id="count-rental">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="progress-tab" data-category="progress" type="button" role="tab">
+                        <i class="fas fa-cogs me-1"></i>
+                        <span>Progress</span>
+                        <span class="badge bg-info ms-1" id="count-progress">0</span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="sold-tab" data-category="sold" type="button" role="tab">
+                        <i class="fas fa-shopping-cart me-1"></i>
+                        <span>Terjual</span>
+                        <span class="badge bg-dark ms-1" id="count-sold"><?= $stats['sold'] ?? 0 ?></span>
+                    </button>
+                </li>
+            </ul>
+        </div>
+        
+        <!-- Sub-filter untuk setiap kategori -->
+        <div class="card-body border-top" id="subFilterContainer" style="display: none;">
+            <div class="d-flex flex-wrap gap-2 align-items-center">
+                <small class="text-muted me-2">Filter Status:</small>
+                <div id="stockSubFilters" class="sub-filter-group" style="display: none;">
+                    <button class="btn btn-sm btn-outline-success active" data-sub-status="" type="button">Semua Stock</button>
+                    <button class="btn btn-sm btn-outline-success" data-sub-status="1" type="button">Available Stock</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="2" type="button">Stock Non Aset</button>
+                    <button class="btn btn-sm btn-outline-primary" data-sub-status="3" type="button">Booked</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="9" type="button">Returned</button>
+                </div>
+                <div id="rentalSubFilters" class="sub-filter-group" style="display: none;">
+                    <button class="btn btn-sm btn-outline-warning active" data-sub-status="" type="button">Semua Rental</button>
+                    <button class="btn btn-sm btn-outline-warning" data-sub-status="7" type="button">Rental Active</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="11" type="button">Rental Inactive</button>
+                </div>
+                <div id="progressSubFilters" class="sub-filter-group" style="display: none;">
+                    <button class="btn btn-sm btn-outline-info active" data-sub-status="" type="button">Semua Progress</button>
+                    <button class="btn btn-sm btn-outline-info" data-sub-status="4" type="button">In Preparation</button>
+                    <button class="btn btn-sm btn-outline-success" data-sub-status="5" type="button">Ready to Deliver</button>
+                    <button class="btn btn-sm btn-outline-info" data-sub-status="6" type="button">In Delivery</button>
+                    <button class="btn btn-sm btn-outline-danger" data-sub-status="8" type="button">Maintenance</button>
+                </div>
+            </div>
+        </div>
+        
         <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
             <h5 class="card-title fw-bold m-0">Daftar Stok Unit</h5>
             <div class="d-flex gap-2 ms-auto">
                 <a class="btn btn-sm btn-primary" data-bs-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false" aria-controls="filterCollapse" title="Tampilkan / Sembunyikan Filter">
                     <i class="fas fa-filter me-1"></i>Filter
                 </a>
-                <a href="<?= base_url('warehouse/inventory/export-invent-unit') ?>" class="btn btn-sm btn-success" id="btnExport" title="Export CSV">
-                    <i class="fas fa-file-export me-1"></i>Export
+                <?php if ($can_export): ?>
+                <a href="<?= base_url('warehouse/inventory/export_unit_inventory') ?>" class="btn btn-sm btn-outline-success" id="btnExport" title="Export CSV">
+                    <i class="fas fa-file-export me-1"></i>Export Unit
                 </a>
+                <?php else: ?>
+                <a href="#" class="btn btn-sm btn-outline-success disabled" onclick="return false;" title="Access Denied">
+                    <i class="fas fa-file-export me-1"></i>Export Unit
+                </a>
+                <?php endif; ?>
             </div>
         </div>
 
         <div class="collapse" id="filterCollapse">
             <div class="card-body bg-light-subtle border-top">
                 <form id="filterForm" class="row gx-3 gy-2 align-items-end">
-                    <div class="col-md-4 col-sm-12">
+                    <div class="col-md-6 col-sm-12">
                         <label for="filter_departemen" class="form-label">Departemen</label>
                         <select id="filter_departemen" class="form-select">
                             <option value="" selected>Semua Departemen</option>
@@ -80,17 +170,7 @@
                         </select>
                     </div>
 
-                    <div class="col-md-4 col-sm-12">
-                        <label for="filter_lokasi" class="form-label">Lokasi</label>
-                        <select id="filter_lokasi" class="form-select">
-                            <option value="" selected>Semua Lokasi</option>
-                            <?php if(!empty($lokasi_options)): foreach($lokasi_options as $l): ?>
-                                <option value="<?= esc($l) ?>"><?= esc($l) ?></option>
-                            <?php endforeach; endif; ?>
-                        </select>
-                    </div>
-
-                    <div class="col-md-4 col-sm-12 d-flex gap-2">
+                    <div class="col-md-6 col-sm-12 d-flex gap-2">
                         <button type="submit" class="btn btn-success flex-grow-1">
                             <i class="fas fa-check me-1"></i> Terapkan
                         </button>
@@ -110,7 +190,14 @@
                 </div>
                 <div class="small text-muted" id="activeFilterInfo"></div>
             </div>
-            <table id="inventory-unit-table" class="table table-striped table-hover" style="width:100%">
+            <?php if (!can_view('warehouse')): ?>
+            <div class="alert alert-warning m-3">
+                <i class="fas fa-lock me-2"></i>
+                <strong>Access Denied:</strong> You do not have permission to view unit inventory. 
+                Please contact your administrator to request access.
+            </div>
+            <?php endif; ?>
+            <table id="inventory-unit-table" class="table table-striped table-hover <?= !$can_view ? 'table-disabled' : '' ?>" style="width:100%">
                 <thead>
                     <tr>
                         <th>No. Unit</th>
@@ -122,8 +209,6 @@
                         <th>Status</th>
                         <th>Lokasi</th>
                         <th>Tanggal Masuk</th>
-                        <th>Aksi</th>
-                        <th>Konfirmasi</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -132,21 +217,31 @@
     </div>
 </div>
 
-<!-- Modal View Unit Detail -->
+<!-- Modal View Unit Detail - Enhanced Modern Design -->
 <div class="modal fade" id="viewUnitModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Unit</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-light border-bottom">
+                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-cube me-2 text-secondary"></i>Detail Unit Lengkap</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-0">
                 <div id="unitDetailContent">
                     <!-- Content will be loaded here -->
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-warning me-2" onclick="editUnitFromModal()">
+                        <i class="fas fa-edit me-1"></i>Edit Unit
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="deleteUnitFromModal()">
+                        <i class="fas fa-trash me-1"></i>Hapus Unit
+                    </button>
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-1"></i>Tutup
+                </button>
             </div>
         </div>
     </div>
@@ -206,18 +301,53 @@
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-    let currentStatusFilter = '';
+    let currentCategoryFilter = '';
+    let currentSubStatusFilter = '';
     let unitTable;
     let departemenFilter = '';
-    let lokasiFilter = '';
+
+    // Mapping kategori ke status IDs
+    const categoryStatusMap = {
+        'stock': [1, 2, 3, 9], // AVAILABLE_STOCK, STOCK_NON_ASET, BOOKED, RETURNED
+        'rental': [7, 11], // RENTAL_ACTIVE, RENTAL_INACTIVE
+        'progress': [4, 5, 6, 8], // IN_PREPARATION, READY_TO_DELIVER, IN_DELIVERY, MAINTENANCE
+        'sold': [10] // SOLD
+    };
 
     function updateDynamicBadges(stats){
         if(!stats) return;
         $('#count-all').text(stats.total ?? 0);
-        $('#count-stock').text(stats.in_stock ?? 0);
-        $('#count-rental').text(stats.rented ?? 0);
+        
+        // Hitung untuk kategori
+        const stockCount = (stats.available_stock ?? 0) + (stats.stock_non_aset ?? 0) + (stats.booked ?? 0) + (stats.returned ?? 0);
+        const rentalCount = (stats.rental_active ?? 0) + (stats.rental_inactive ?? 0);
+        const progressCount = (stats.in_preparation ?? 0) + (stats.ready_to_deliver ?? 0) + (stats.in_delivery ?? 0) + (stats.maintenance ?? 0);
+        
+        $('#count-stock').text(stockCount);
+        $('#count-rental').text(rentalCount);
+        $('#count-progress').text(progressCount);
         $('#count-sold').text(stats.sold ?? 0);
-        $('#count-workshop').text(stats.workshop ?? 0);
+    }
+
+    function showSubFilters(category) {
+        // Sembunyikan semua sub-filter
+        $('.sub-filter-group').hide();
+        
+        if (category) {
+            $('#subFilterContainer').show();
+            $(`#${category}SubFilters`).show();
+        } else {
+            $('#subFilterContainer').hide();
+        }
+    }
+
+    function getEffectiveStatusFilter() {
+        if (currentSubStatusFilter) {
+            return currentSubStatusFilter;
+        } else if (currentCategoryFilter && categoryStatusMap[currentCategoryFilter]) {
+            return categoryStatusMap[currentCategoryFilter].join(',');
+        }
+        return '';
     }
 
     $(document).ready(function(){
@@ -225,16 +355,15 @@
             processing:true,
             serverSide:true,
             pageLength:25,
-            order:[[8,'desc']], // index shifted after removing internal id column
+            order:[[8,'desc']], // Tanggal Masuk column (index 8, setelah hapus kolom konfirmasi)
             scrollX:true,
             deferRender:true,
             ajax:{
                 url:'<?= base_url('warehouse/inventory/invent_unit') ?>',
                 type:'POST',
                 data:function(d){
-                    d.status_unit = currentStatusFilter;
+                    d.status_unit = getEffectiveStatusFilter();
                     d.departemen_id = departemenFilter;
-                    d.lokasi_unit = lokasiFilter;
                     d['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
                 },
                 dataSrc:function(json){
@@ -258,37 +387,51 @@
                         if(!d) return '-';
                         const s=d.toUpperCase();
                         let cls='bg-secondary';
-                        if(s.includes('STOCK')) cls='bg-success';
-                        else if(s.includes('RENTAL')) cls='bg-warning';
-                        else if(s.includes('JUAL')) cls='bg-info';
-                        else if(s.includes('WORKSHOP')||s.includes('RUSAK')) cls='bg-danger';
+                        if(s.includes('AVAILABLE_STOCK')) cls='bg-success';
+                        else if(s.includes('STOCK_NON_ASET')) cls='bg-warning';
+                        else if(s.includes('BOOKED')) cls='bg-primary';
+                        else if(s.includes('IN_PREPARATION')) cls='bg-info';
+                        else if(s.includes('READY_TO_DELIVER')) cls='bg-success';
+                        else if(s.includes('IN_DELIVERY')) cls='bg-info';
+                        else if(s.includes('RENTAL_ACTIVE')) cls='bg-warning';
+                        else if(s.includes('MAINTENANCE')) cls='bg-danger';
+                        else if(s.includes('RETURNED')) cls='bg-secondary';
+                        else if(s.includes('SOLD')) cls='bg-dark';
+                        else if(s.includes('RENTAL_INACTIVE')) cls='bg-secondary';
                         return `<span class="badge ${cls}">${d}</span>`;
                     }
                 },
-                { data:'lokasi_unit', render:d=> d||'-' },
-                { data:'tanggal_masuk', render:d=> d||'-' },
-                { data:'id_inventory_unit', orderable:false, render:function(data,type,row){
-                        const items=[];
-                        items.push(`<li><a class=\"dropdown-item\" href=\"#\" onclick=\"viewUnit(${data})\"><i class=\"fas fa-eye me-2\"></i>Lihat Detail</a></li>`);
-                        items.push(`<li><a class=\"dropdown-item\" href=\"#\" onclick=\"editUnit(${data})\"><i class=\"fas fa-edit me-2\"></i>Edit</a></li>`);
-                        items.push('<li><hr class=\"dropdown-divider\"></li>');
-                        items.push(`<li><a class=\"dropdown-item text-danger\" href=\"#\" onclick=\"deleteUnit(${data})\"><i class=\"fas fa-trash me-2\"></i>Hapus</a></li>`);
-                        return `<div class=\"dropdown\"><button class=\"btn btn-sm btn-outline-secondary dropdown-toggle\" data-bs-toggle=\"dropdown\"><i class=\"fas fa-ellipsis-h\"></i></button><ul class=\"dropdown-menu dropdown-menu-end\">${items.join('')}<\/ul></div>`;
-                    }
-                },
-                { data:'id_inventory_unit', orderable:false, render:function(data,type,row){
-                        // Normalisasi status id bisa berupa string/number atau tidak dikirim
-                        const rawId = row.status_unit_id !== undefined ? row.status_unit_id : row.status_unit;
-                        const stId = rawId !== undefined && rawId !== null && rawId !== '' ? parseInt(rawId,10) : NaN;
-                        const name = (row.status_unit_name||'').toUpperCase();
-                        const isNonAsset = stId === 8 || name.includes('NON ASET');
-                        const hasNoUnit = !!(row.no_unit && String(row.no_unit).trim() !== '');
-                        if(isNonAsset && !hasNoUnit){
-                            return `<button class=\"btn btn-sm btn-success\" onclick=\"confirmToAsset(${data})\" title=\"Konfirmasi Jadi Aset (beri No Unit)\"><i class=\"fas fa-check\"></i></button>`;
+                { data:'lokasi_unit', render:function(data, type, row) {
+                    const statusId = parseInt(row.status_unit_id) || 0;
+                    
+                    // Jika rental aktif (status_unit_id = 7)
+                    if (statusId === 7) {
+                        // Cek apakah ada customer data
+                        if (row.customer_name) {
+                            // Tampilkan nama perusahaan (customer) di atas (hijau, bold)
+                            // Tampilkan lokasi di bawah (kecil, abu)
+                            let html = `<span class="text-success fw-bold"><i class="fas fa-building me-1"></i>${row.customer_name}</span>`;
+                            
+                            // Tambahkan lokasi di bawah
+                            if (row.customer_location_name && row.customer_city) {
+                                html += `<br><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>${row.customer_location_name} - ${row.customer_city}</small>`;
+                            } else if (row.customer_location_name) {
+                                html += `<br><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>${row.customer_location_name}</small>`;
+                            } else if (data) {
+                                html += `<br><small class="text-muted"><i class="fas fa-map-marker-alt me-1"></i>${data}</small>`;
+                            }
+                            
+                            return html;
+                        } else {
+                            // Fallback: tampilkan lokasi_unit dengan format hijau
+                            return `<span class="text-success fw-bold"><i class="fas fa-map-marker-alt me-1"></i>${data || 'Customer Location'}</span>`;
                         }
-                        return '<span class="text-muted small">-</span>';
                     }
-                }
+                    
+                    // Untuk status lain, tampilkan lokasi gudang biasa
+                    return data || '-';
+                } },
+                { data:'tanggal_masuk', render:d=> d||'-' }
             ],
             language:{
                 emptyTable:'Tidak ada data tersedia',
@@ -297,14 +440,42 @@
                 infoEmpty:'Menampilkan 0 data',
                 paginate:{previous:'Sebelumnya', next:'Berikutnya'}
             },
-            dom: 'rtip'
+            dom: 'rtip',
+            drawCallback: function() {
+                // Add click event to table rows for viewing detail
+                $('#inventory-unit-table tbody tr').off('click').on('click', function() {
+                    const data = unitTable.row(this).data();
+                    if (data && data.id_inventory_unit) {
+                        viewUnit(data.id_inventory_unit);
+                    }
+                });
+            }
         });
 
-        // Tab status click
+        // Tab kategori click
         $('#unitStatusTabs .nav-link').on('click', function(){
             $('#unitStatusTabs .nav-link').removeClass('active');
             $(this).addClass('active');
-            currentStatusFilter = $(this).data('status');
+            currentCategoryFilter = $(this).data('category');
+            currentSubStatusFilter = ''; // Reset sub-filter
+            
+            showSubFilters(currentCategoryFilter);
+            
+            // Reset active sub-filter buttons
+            $('.sub-filter-group .btn').removeClass('active');
+            $('.sub-filter-group .btn[data-sub-status=""]').addClass('active');
+            
+            updateDynamicTitle();
+            unitTable.ajax.reload();
+        });
+        
+        // Sub-filter click handlers
+        $(document).on('click', '.sub-filter-group .btn', function() {
+            // Update active state
+            $(this).siblings().removeClass('active');
+            $(this).addClass('active');
+            
+            currentSubStatusFilter = $(this).data('sub-status');
             updateDynamicTitle();
             unitTable.ajax.reload();
         });
@@ -312,15 +483,16 @@
         $('#filter_departemen').on('change', function(){
             departemenFilter = this.value; updateDynamicTitle(); unitTable.ajax.reload();
         });
-        $('#filter_lokasi').on('change', function(){
-            lokasiFilter = this.value; updateDynamicTitle(); unitTable.ajax.reload();
-        });
         $('#btnResetFilter').on('click', function(){
-            currentStatusFilter=''; departemenFilter=''; lokasiFilter='';
-            $('#filter_departemen').val(''); $('#filter_lokasi').val('');
+            currentCategoryFilter = ''; 
+            currentSubStatusFilter = '';
+            departemenFilter = ''; 
+            $('#filter_departemen').val(''); 
             $('#unitStatusTabs .nav-link').removeClass('active');
-            $('#unitStatusTabs .nav-link[data-status=""]').addClass('active');
-            updateDynamicTitle(); unitTable.ajax.reload();
+            $('#unitStatusTabs .nav-link[data-category=""]').addClass('active');
+            showSubFilters('');
+            updateDynamicTitle(); 
+            unitTable.ajax.reload();
         });
         $('#btnToggleAdvanced').on('click', function(){ $('#advancedFilters').slideToggle(150); });
         // Custom search debounce
@@ -346,55 +518,45 @@
         });
     });
 
-        // Fungsi konfirmasi unit jadi aset
-    function confirmToAsset(id){
-        Swal.fire({
-            title:'Konfirmasi Jadi Aset',
-            html:`<div class='mb-2'>Masukkan No Unit unik untuk aset ini:</div>
-                  <input id='swalNoUnit' class='swal2-input' placeholder='Contoh: FL-2025-001' style='width:90%;'>`,
-            focusConfirm:false,
-            showCancelButton:true,
-            confirmButtonText:'Simpan & Konfirmasi',
-            preConfirm:()=>{
-                const val = document.getElementById('swalNoUnit').value.trim();
-                if(!val){ Swal.showValidationMessage('No Unit wajib diisi'); return false; }
-                return val;
-            }
-        }).then(res=>{
-            if(!res.isConfirmed) return;
-            $.ajax({
-                url:`<?= base_url('warehouse/inventory/confirm-to-asset/') ?>${id}`,
-                type:'POST',
-                data:{'<?= csrf_token() ?>':'<?= csrf_hash() ?>', no_unit: res.value},
-                dataType:'json',
-                success:function(r){
-                    if(r.success){ Swal.fire('Berhasil', r.message,'success'); unitTable.ajax.reload(null,false); }
-                    else { Swal.fire('Gagal', r.message,'error'); }
-                },
-                error:function(xhr){
-                    let msg='Tidak dapat terhubung ke server';
-                    if(xhr.responseJSON && xhr.responseJSON.message) msg=xhr.responseJSON.message;
-                    Swal.fire('Error', msg,'error');
-                }
-            });
-        });
-    }
-
     function updateDynamicTitle(){
         let parts = ['Daftar Stok Unit'];
-        if(currentStatusFilter){
-            const mapStatus = { '7':'STOCK ASET','3':'RENTAL','9':'JUAL','2':'WORKSHOP-RUSAK' };
-            parts.push(mapStatus[currentStatusFilter]||'Status '+currentStatusFilter);
+        
+        if(currentCategoryFilter){
+            const categoryMap = { 
+                'stock': 'Stock Unit',
+                'rental': 'Rental',
+                'progress': 'Progress',
+                'sold': 'Terjual'
+            };
+            parts.push(categoryMap[currentCategoryFilter] || 'Kategori ' + currentCategoryFilter);
         }
+        
+        if(currentSubStatusFilter) {
+            const subStatusMap = {
+                '1': 'Available Stock',
+                '2': 'Stock Non Aset', 
+                '3': 'Booked',
+                '4': 'In Preparation',
+                '5': 'Ready to Deliver',
+                '6': 'In Delivery',
+                '7': 'Rental Active',
+                '8': 'Maintenance',
+                '9': 'Returned',
+                '10': 'Sold',
+                '11': 'Rental Inactive'
+            };
+            parts.push(subStatusMap[currentSubStatusFilter] || 'Status ' + currentSubStatusFilter);
+        }
+        
         if(departemenFilter){
             const txt = $('#filter_departemen option:selected').text();
             if(txt) parts.push(txt);
         }
-        if(lokasiFilter){
-            const txt = $('#filter_lokasi option:selected').text();
-            if(txt) parts.push('Lokasi '+txt);
+        
+        // Update page title if element exists
+        if($('#unitTableTitle').length) {
+            $('#unitTableTitle').text(parts.join(' - '));
         }
-        $('#unitTableTitle').text(parts.join(' - '));
     }
 
     function viewUnit(id) {
@@ -413,6 +575,7 @@
                 
                 if (response.success) {
                     const data = response.data;
+                    currentUnitData = data; // Store data for modal actions
                     const detailHtml = createUnitDetailHtml(data);
                     $('#unitDetailContent').html(detailHtml);
                 } else {
@@ -463,90 +626,348 @@
             return String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;');
         };
         
+        const formatCurrency = (value) => {
+            if (!value || value === '' || value === null) return '-';
+            return new Intl.NumberFormat('id-ID', { 
+                style: 'currency', 
+                currency: 'IDR',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(value);
+        };
+        
+        const formatDate = (dateStr) => {
+            if (!dateStr || dateStr === '' || dateStr === null) return '-';
+            return new Date(dateStr).toLocaleDateString('id-ID', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        };
+        
+        const getStatusBadge = (status) => {
+            const s = (status || '').toUpperCase();
+            let cls = 'bg-secondary';
+            if (s.includes('AVAILABLE_STOCK')) cls = 'bg-success';
+            else if (s.includes('STOCK_NON_ASET')) cls = 'bg-warning text-dark';
+            else if (s.includes('BOOKED')) cls = 'bg-primary';
+            else if (s.includes('IN_PREPARATION')) cls = 'bg-info';
+            else if (s.includes('READY_TO_DELIVER')) cls = 'bg-success';
+            else if (s.includes('IN_DELIVERY')) cls = 'bg-info';
+            else if (s.includes('RENTAL_ACTIVE')) cls = 'bg-warning text-dark';
+            else if (s.includes('MAINTENANCE')) cls = 'bg-danger';
+            else if (s.includes('RETURNED')) cls = 'bg-secondary';
+            else if (s.includes('SOLD')) cls = 'bg-dark';
+            else if (s.includes('RENTAL_INACTIVE')) cls = 'bg-secondary';
+            return `<span class="badge ${cls}">${h(status)}</span>`;
+        };
+        
         console.log('Creating detail HTML for data:', data);
         
+        // Create attachment gallery
+        let attachmentHtml = '';
+        if (data.attachments && data.attachments.length > 0) {
+            attachmentHtml = data.attachments.map(att => `
+                <div class="col-md-6 mb-3">
+                    <div class="card border-start border-primary border-3">
+                        <div class="card-body py-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <h6 class="card-title mb-0 text-primary">${h(att.attachment_name || att.tipe_item)}</h6>
+                                <span class="badge bg-${att.attachment_status === 'AVAILABLE' ? 'success' : att.attachment_status === 'USED' ? 'warning' : 'secondary'} rounded-pill">
+                                    ${h(att.attachment_status)}
+                                </span>
+                            </div>
+                            <div class="row text-sm">
+                                <div class="col-6">
+                                    <small class="text-muted">Type:</small><br>
+                                    <small>${h(att.attachment_type || att.tipe_item)}</small>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted">Serial:</small><br>
+                                    <small>${h(att.sn_attachment || att.sn_baterai || att.sn_charger)}</small>
+                                </div>
+                                <div class="col-6 mt-1">
+                                    <small class="text-muted">Kondisi:</small><br>
+                                    <small class="badge bg-${att.kondisi_fisik === 'Baik' ? 'success' : att.kondisi_fisik === 'Rusak Ringan' ? 'warning' : 'danger'}">${h(att.kondisi_fisik)}</small>
+                                </div>
+                                <div class="col-6 mt-1">
+                                    <small class="text-muted">Kelengkapan:</small><br>
+                                    <small class="badge bg-${att.kelengkapan === 'Lengkap' ? 'success' : 'warning'}">${h(att.kelengkapan)}</small>
+                                </div>
+                                <div class="col-12 mt-2">
+                                    <div class="d-flex align-items-center">
+                                        <i class="fas fa-map-marker-alt text-${att.is_following_unit ? 'success' : 'secondary'} me-1"></i>
+                                        <small class="text-muted me-1">${h(att.location_label || 'Lokasi')}:</small>
+                                        <small class="fw-bold text-${att.is_following_unit ? 'success' : 'dark'}">${h(att.smart_location || att.lokasi_penyimpanan || 'Tidak diketahui')}</small>
+                                        ${att.is_following_unit ? '<span class="badge bg-success ms-1" style="font-size: 0.6rem;">Mengikuti Unit</span>' : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            ${att.catatan_fisik ? `<hr class="my-2"><small class="text-muted">${h(att.catatan_fisik)}</small>` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            attachmentHtml = '<div class="col-12"><div class="alert alert-info mb-0"><i class="fas fa-info-circle me-2"></i>Tidak ada attachment yang terkait dengan unit ini.</div></div>';
+        }
+        
         return `
-            <div class="row">
-                <!-- Basic Unit Information -->
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header bg-primary text-black">
-                            <h6 class="mb-0"><i class="fas fa-truck me-2"></i>Informasi Unit</h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm table-borderless">
-                                <tr><td width="40%"><strong>ID Unit</strong></td><td>: ${h(data.id_inventory_unit)}</td></tr>
-                                <tr><td><strong>Serial Number</strong></td><td>: ${h(data.serial_number_po)}</td></tr>
-                                <tr><td><strong>Merk</strong></td><td>: ${h(data.merk_unit)}</td></tr>
-                                <tr><td><strong>Model</strong></td><td>: ${h(data.model_unit)}</td></tr>
-                                <tr><td><strong>Jenis Unit</strong></td><td>: ${h(data.nama_departemen)}</td></tr>
-                                <tr><td><strong>Tipe Unit</strong></td><td>: ${h(data.nama_tipe_unit)}</td></tr>
-                                <tr><td><strong>Tahun</strong></td><td>: ${h(data.tahun_po)}</td></tr>
-                                <tr><td><strong>Kapasitas</strong></td><td>: ${h(data.kapasitas_unit)}</td></tr>
-                                <tr><td><strong>Status</strong></td><td>: <span class="badge bg-info">${h(data.status_unit_name)}</span></td></tr>
-                                <tr><td><strong>Lokasi</strong></td><td>: ${h(data.lokasi_unit)}</td></tr>
-                                <tr><td><strong>Tanggal Masuk</strong></td><td>: ${h(data.tanggal_masuk)}</td></tr>
-                            </table>
-                        </div>
+            <!-- Header Info Bar -->
+            <div class="bg-light border-bottom p-3">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h4 class="mb-1 text-dark">${h(data.merk_unit)} ${h(data.model_unit)}</h4>
+                        <p class="mb-0 text-muted">
+                            <i class="fas fa-barcode me-2 text-secondary"></i>SN: ${h(data.serial_number)} 
+                            ${data.no_unit ? `| <i class="fas fa-hashtag me-1 text-secondary"></i>No. Unit: ${h(data.no_unit)}` : ''}
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-end">
+                        <div class="mb-2">${getStatusBadge(data.status_unit_name)}</div>
+                        <small class="text-muted"><i class="fas fa-map-marker-alt me-1 text-secondary"></i>${h(data.display_location || data.lokasi_unit)}</small>
+                        <br><small class="text-muted" style="font-size: 0.7rem;">${h(data.location_label || 'Lokasi')}</small>
                     </div>
                 </div>
+            </div>
 
-                <!-- Component Details -->
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header bg-success text-black">
-                            <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Detail Komponen</h6>
+            <!-- Tabbed Content -->
+            <div class="p-3">
+                <ul class="nav nav-tabs nav-fill mb-3" id="unitDetailTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
+                            <i class="fas fa-info-circle me-1"></i>Informasi Dasar
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="specs-tab" data-bs-toggle="tab" data-bs-target="#specs" type="button" role="tab">
+                            <i class="fas fa-cogs me-1"></i>Spesifikasi
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="customer-tab" data-bs-toggle="tab" data-bs-target="#customer" type="button" role="tab">
+                            <i class="fas fa-user-tie me-1"></i>Pelanggan & Area
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab">
+                            <i class="fas fa-paperclip me-1"></i>Attachment
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="contract-tab" data-bs-toggle="tab" data-bs-target="#contract" type="button" role="tab">
+                            <i class="fas fa-handshake me-1"></i>Kontrak
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="unitDetailTabContent">
+                    <!-- Basic Information Tab -->
+                    <div class="tab-pane fade show active" id="basic" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-truck me-2 text-secondary"></i>Informasi Unit</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td width="40%"><strong>ID Unit</strong></td><td>: ${h(data.id_inventory_unit)}</td></tr>
+                                            <tr><td><strong>Serial Number</strong></td><td>: <code>${h(data.serial_number)}</code></td></tr>
+                                            <tr><td><strong>No. Unit</strong></td><td>: ${h(data.no_unit) || '<span class="text-muted">Belum ada</span>'}</td></tr>
+                                            <tr><td><strong>Merk</strong></td><td>: ${h(data.merk_unit)}</td></tr>
+                                            <tr><td><strong>Model</strong></td><td>: ${h(data.model_unit)}</td></tr>
+                                            <tr><td><strong>Tipe Unit</strong></td><td>: ${h(data.nama_tipe_unit)}</td></tr>
+                                            <tr><td><strong>Kapasitas</strong></td><td>: ${h(data.kapasitas_unit)}</td></tr>
+                                            <tr><td><strong>Tahun</strong></td><td>: ${h(data.tahun_unit)}</td></tr>
+                                            <tr><td><strong>Departemen</strong></td><td>: ${h(data.nama_departemen)}</td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-success">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-calendar me-2 text-secondary"></i>Timeline & Status</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td width="40%"><strong>Status</strong></td><td>: ${getStatusBadge(data.status_unit_name)}</td></tr>
+                                            <tr><td><strong>${h(data.location_label || 'Lokasi')}</strong></td><td>: <i class="fas fa-map-marker-alt text-${data.is_rental_active ? 'success' : 'danger'} me-1"></i>${h(data.display_location || data.lokasi_unit)}</td></tr>
+                                            ${data.is_rental_active && data.lokasi_unit ? `<tr><td><strong>Lokasi Gudang</strong></td><td>: <i class="fas fa-warehouse text-secondary me-1"></i>${h(data.lokasi_unit)}</td></tr>` : ''}
+                                            <tr><td><strong>Tanggal Masuk</strong></td><td>: ${formatDate(data.tanggal_masuk)}</td></tr>
+                                            <tr><td><strong>Tanggal Update</strong></td><td>: ${formatDate(data.tanggal_update)}</td></tr>
+                                            <tr><td><strong>Tanggal Kirim</strong></td><td>: ${formatDate(data.tanggal_kirim)}</td></tr>
+                                            ${data.workflow_status ? `<tr><td><strong>Workflow</strong></td><td>: <span class="badge bg-info">${h(data.workflow_status)}</span></td></tr>` : ''}
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-sm table-borderless">
-                                <tr><td width="40%"><strong>Mast</strong></td><td>: ${h(data.tipe_mast)}</td></tr>
-                                <tr><td><strong>SN Mast</strong></td><td>: ${h(data.sn_mast_po)}</td></tr>
-                                <tr><td><strong>Mesin</strong></td><td>: ${h(data.merk_mesin + ' ' + data.model_mesin)}</td></tr>
-                                <tr><td><strong>SN Mesin</strong></td><td>: ${h(data.sn_mesin_po)}</td></tr>
-                                <tr><td><strong>Baterai</strong></td><td>: ${h(data.tipe_baterai)}</td></tr>
-                                <tr><td><strong>SN Baterai</strong></td><td>: ${h(data.sn_baterai_po)}</td></tr>
-                                <tr><td><strong>Ban</strong></td><td>: ${h(data.tipe_ban)}</td></tr>
-                                <tr><td><strong>Roda</strong></td><td>: ${h(data.tipe_roda)}</td></tr>
-                                <tr><td><strong>Valve</strong></td><td>: ${h(data.jumlah_valve)}</td></tr>
-                            </table>
+                        ${data.keterangan ? `
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card border-info">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-sticky-note me-2 text-secondary"></i>Keterangan</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-0">${h(data.keterangan)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Specifications Tab -->
+                    <div class="tab-pane fade" id="specs" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card border-light">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-cogs me-2 text-secondary"></i>Komponen Utama</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td width="35%"><strong>Tipe Mast</strong></td><td>: ${h(data.tipe_mast)}</td></tr>
+                                            <tr><td><strong>Tinggi Mast</strong></td><td>: ${h(data.tinggi_mast)}</td></tr>
+                                            <tr><td><strong>SN Mast</strong></td><td>: <code>${h(data.sn_mast)}</code></td></tr>
+                                            <tr><td><strong>Merk Mesin</strong></td><td>: ${h(data.merk_mesin)}</td></tr>
+                                            <tr><td><strong>Model Mesin</strong></td><td>: ${h(data.model_mesin)}</td></tr>
+                                            <tr><td><strong>SN Mesin</strong></td><td>: <code>${h(data.sn_mesin)}</code></td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-light">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-circle me-2 text-secondary"></i>Roda & Ban</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td width="35%"><strong>Tipe Ban</strong></td><td>: ${h(data.tipe_ban)}</td></tr>
+                                            <tr><td><strong>Tipe Roda</strong></td><td>: ${h(data.tipe_roda)}</td></tr>
+                                            <tr><td><strong>Jumlah Valve</strong></td><td>: ${h(data.jumlah_valve)}</td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ${data.aksesoris ? `
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="card border-info">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-plus-circle me-2 text-secondary"></i>Aksesoris</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="mb-0">${h(data.aksesoris)}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+
+                    <!-- Customer & Area Tab -->
+                    <div class="tab-pane fade" id="customer" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card border-primary">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-building me-2 text-secondary"></i>Informasi Pelanggan</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td width="35%"><strong>Nama</strong></td><td>: ${h(data.customer_name)}</td></tr>
+                                            <tr><td><strong>Kode</strong></td><td>: <code>${h(data.customer_code)}</code></td></tr>
+                                            <tr><td><strong>Lokasi</strong></td><td>: ${h(data.customer_location_name)}</td></tr>
+                                            <tr><td><strong>Alamat</strong></td><td>: ${h(data.customer_address)}</td></tr>
+                                            <tr><td><strong>Kota</strong></td><td>: ${h(data.customer_city)}</td></tr>
+                                            <tr><td><strong>Contact Person</strong></td><td>: ${h(data.customer_contact)}</td></tr>
+                                            <tr><td><strong>Phone</strong></td><td>: ${h(data.customer_phone)}</td></tr>
+                                            <tr><td><strong>Email</strong></td><td>: ${h(data.customer_email)}</td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-success">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-map me-2 text-secondary"></i>Informasi Area</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td width="35%"><strong>Area</strong></td><td>: ${h(data.area_name)}</td></tr>
+                                            <tr><td><strong>Kode Area</strong></td><td>: <code>${h(data.area_code)}</code></td></tr>
+                                            <tr><td><strong>Deskripsi</strong></td><td>: ${h(data.area_description)}</td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                                
+                                <div class="card border-light mt-3">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-file-invoice me-2 text-secondary"></i>Purchase Order</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td width="35%"><strong>No. PO</strong></td><td>: <code>${h(data.no_po)}</code></td></tr>
+                                            <tr><td><strong>Tanggal PO</strong></td><td>: ${formatDate(data.tanggal_po)}</td></tr>
+                                            <tr><td><strong>Status PO</strong></td><td>: <span class="badge bg-secondary">${h(data.status_po)}</span></td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Purchase Order Information -->
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header bg-warning text-dark">
-                            <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i>Informasi PO</h6>
+                    <!-- Attachments Tab -->
+                    <div class="tab-pane fade" id="attachments" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0"><i class="fas fa-paperclip me-2"></i>Attachment & Komponen</h6>
+                            <span class="badge bg-primary rounded-pill">${data.attachments ? data.attachments.length : 0} Items</span>
                         </div>
-                        <div class="card-body">
-                            <table class="table table-sm table-borderless">
-                                <tr><td width="40%"><strong>No. PO</strong></td><td>: ${h(data.no_po)}</td></tr>
-                                <tr><td><strong>Tanggal PO</strong></td><td>: ${h(data.tanggal_po)}</td></tr>
-                                <tr><td><strong>Supplier</strong></td><td>: ${h(data.nama_supplier)}</td></tr>
-                                <tr><td><strong>Status PO</strong></td><td>: <span class="badge bg-secondary">${h(data.status_po)}</span></td></tr>
-                                <tr><td><strong>Kondisi Jual</strong></td><td>: ${h(data.status_penjualan)}</td></tr>
-                            </table>
+                        <div class="row">
+                            ${attachmentHtml}
                         </div>
                     </div>
-                </div>
 
-                <!-- Verification Information -->
-                <div class="col-md-6 mb-4">
-                    <div class="card h-100">
-                        <div class="card-header bg-info text-black">
-                            <h6 class="mb-0"><i class="fas fa-check-circle me-2"></i>Informasi Verifikasi</h6>
-                        </div>
-                        <div class="card-body">
-                            <table class="table table-sm table-borderless">
-                                <tr><td width="40%"><strong>Status Verifikasi</strong></td><td>: <span class="badge ${data.status_verifikasi === 'Sesuai' ? 'bg-success' : data.status_verifikasi === 'Tidak Sesuai' ? 'bg-danger' : 'bg-secondary'}">${h(data.status_verifikasi)}</span></td></tr>
-                                <tr><td><strong>Catatan Verifikasi</strong></td><td>: ${h(data.catatan_verifikasi) || '-'}</td></tr>
-                            </table>
-                            ${data.keterangan ? `
-                            <hr>
-                            <h6><strong>Keterangan:</strong></h6>
-                            <p class="text-muted">${h(data.keterangan)}</p>
-                            ` : ''}
+                    <!-- Contract Tab -->
+                    <div class="tab-pane fade" id="contract" role="tabpanel">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="card border-success">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-handshake me-2 text-secondary"></i>Informasi Kontrak</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td width="35%"><strong>No. Kontrak</strong></td><td>: <code>${h(data.no_kontrak)}</code></td></tr>
+                                            <tr><td><strong>Status</strong></td><td>: <span class="badge bg-${data.status_kontrak === 'Aktif' ? 'success' : data.status_kontrak === 'Berakhir' ? 'danger' : 'warning'}">${h(data.status_kontrak)}</span></td></tr>
+                                            <tr><td><strong>Jenis Sewa</strong></td><td>: ${h(data.jenis_sewa)}</td></tr>
+                                            <tr><td><strong>Mulai</strong></td><td>: ${formatDate(data.kontrak_mulai)}</td></tr>
+                                            <tr><td><strong>Berakhir</strong></td><td>: ${formatDate(data.kontrak_berakhir)}</td></tr>
+                                            ${data.contract_disconnect_date ? `<tr><td><strong>Disconnect</strong></td><td>: ${formatDate(data.contract_disconnect_date)}</td></tr>` : ''}
+                                            ${data.contract_disconnect_stage ? `<tr><td><strong>Stage</strong></td><td>: <span class="badge bg-warning">${h(data.contract_disconnect_stage)}</span></td></tr>` : ''}
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="card border-info">
+                                    <div class="card-header bg-light text-dark border-bottom">
+                                        <h6 class="mb-0"><i class="fas fa-clipboard-list me-2 text-secondary"></i>SPK & Delivery</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-sm table-borderless mb-0">
+                                            <tr><td><strong>SPK ID</strong></td><td>: ${h(data.spk_id) || '-'}</td></tr>
+                                            <tr><td><strong>DI ID</strong></td><td>: ${h(data.delivery_instruction_id) || '-'}</td></tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -609,6 +1030,42 @@
                 }
             });
         });
+    }
+
+    // Variables to store current unit data for modal actions
+    let currentUnitData = null;
+
+    // Edit unit from modal detail
+    function editUnitFromModal() {
+        if (!currentUnitData) {
+            Swal.fire('Error', 'Data unit tidak tersedia', 'error');
+            return;
+        }
+        
+        // Close detail modal and populate edit modal
+        $('#viewUnitModal').modal('hide');
+        
+        // Populate edit form with current data
+        $('#edit_id').val(currentUnitData.id_inventory_unit);
+        $('#edit_serial_number').val(currentUnitData.serial_number_po || '');
+        $('#edit_merk').val(currentUnitData.merk_unit || '');
+        $('#edit_status_unit').val(currentUnitData.status_unit_id || '');
+        $('#edit_lokasi').val(currentUnitData.lokasi_unit || '');
+        
+        // Show edit modal
+        $('#editUnitModal').modal('show');
+    }
+
+    // Delete unit from modal detail
+    function deleteUnitFromModal() {
+        if (!currentUnitData) {
+            Swal.fire('Error', 'Data unit tidak tersedia', 'error');
+            return;
+        }
+        
+        // Close detail modal and call delete function
+        $('#viewUnitModal').modal('hide');
+        deleteUnit(currentUnitData.id_inventory_unit);
     }
 </script>
 <?= $this->endSection() ?>

@@ -39,9 +39,9 @@ class CustomerModel extends Model
         'customer_code' => 'required|max_length[20]|is_unique[customers.customer_code,id,{id}]',
         'customer_name' => 'required|max_length[255]',
         'area_id' => 'required|integer|is_not_unique[areas.id]',
-        'primary_address' => 'required',
-        'city' => 'required|max_length[100]',
-        'province' => 'required|max_length[100]',
+        'primary_address' => 'permit_empty|max_length[500]',
+        'city' => 'permit_empty|max_length[100]',
+        'province' => 'permit_empty|max_length[100]',
         'pic_name' => 'permit_empty|max_length[100]',
         'pic_phone' => 'permit_empty|max_length[20]',
         'pic_email' => 'permit_empty|valid_email|max_length[100]',
@@ -107,7 +107,8 @@ class CustomerModel extends Model
     public function getCustomersWithArea($customerId = null)
     {
         $builder = $this->select('customers.*, areas.area_name, areas.area_code')
-                       ->join('areas', 'areas.id = customers.area_id')
+                       ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
+                       ->join('areas', 'areas.id = cl.area_id', 'left')
                        ->where('customers.is_active', 1);
                        
         if ($customerId) {
@@ -124,8 +125,9 @@ class CustomerModel extends Model
     public function getCustomersByArea($areaId)
     {
         return $this->select('customers.*, areas.area_name')
-                   ->join('areas', 'areas.id = customers.area_id')
-                   ->where('customers.area_id', $areaId)
+                   ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
+                   ->join('areas', 'areas.id = cl.area_id', 'left')
+                   ->where('cl.area_id', $areaId)
                    ->where('customers.is_active', 1)
                    ->findAll();
     }
@@ -163,7 +165,8 @@ class CustomerModel extends Model
     public function searchCustomers($search = '', $areaId = null, $contractType = null)
     {
         $builder = $this->select('customers.*, areas.area_name, areas.area_code')
-                       ->join('areas', 'areas.id = customers.area_id')
+                       ->join('customer_locations cl', 'customers.id = cl.customer_id AND cl.is_primary = 1', 'left')
+                       ->join('areas', 'areas.id = cl.area_id', 'left')
                        ->where('customers.is_active', 1);
                        
         if (!empty($search)) {
@@ -176,7 +179,7 @@ class CustomerModel extends Model
         }
         
         if ($areaId) {
-            $builder->where('customers.area_id', $areaId);
+            $builder->where('cl.area_id', $areaId);
         }
         
         if ($contractType) {
@@ -195,7 +198,7 @@ class CustomerModel extends Model
                        ->where('customers.is_active', 1);
                        
         if ($areaId) {
-            $builder->where('customers.area_id', $areaId);
+            $builder->where('cl.area_id', $areaId);
         }
         
         $customers = $builder->orderBy('customers.customer_name')->findAll();

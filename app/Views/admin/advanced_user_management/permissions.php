@@ -2,24 +2,7 @@
 
 <?= $this->section('css') ?>
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<style>
-    .stats-card { 
-        transition: transform 0.2s; 
-        cursor: pointer;
-    }
-    .stats-card:hover { 
-        transform: translateY(-5px); 
-        box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-    }
-    .permission-card { 
-        border-left: 4px solid #007bff; 
-    }
-    .permission-card.system { 
-        border-left-color: #28a745; 
-    }
-    .permission-card.custom { 
-        border-left-color: #ffc107; 
-    }
+<!-- CSS umum sudah ada di optima-pro.css (stats-card, permission-card, dll) --><style>
     
     /* Perbaiki jarak kolom DataTable */
     #permissionsTable th,
@@ -129,7 +112,7 @@
             </h1>
             <p class="mb-0 text-muted">Create and manage system permissions. Permissions are assigned to roles.</p>
         </div>
-        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#createPermissionModal">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPermissionModal">
             <i class="fas fa-plus me-2"></i>Create Permission
         </button>
     </div>

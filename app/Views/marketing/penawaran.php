@@ -1,24 +1,41 @@
 <?= $this->extend('layouts/base') ?>
 
 <?= $this->section('content') ?>
+<div class="container-fluid py-3">
+    <h5 class="mb-3"><i class="fas fa-cog me-2"></i>Page Title</h5>
+    
+    
+<?php
+// Load global permission helper
+helper('global_permission');
 
-<div class="container-fluid">
-    <!-- Page Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-handshake me-2"></i>Manajemen Penawaran
-        </h1>
-        <div class="d-sm-flex align-items-center">
-            <div class="btn-group" role="group">
-                <button class="btn btn-outline-info btn-sm" onclick="refreshData()">
-                    <i class="fas fa-sync-alt me-1"></i>Refresh
-                </button>
+// Get permissions for marketing module
+$permissions = get_global_permission('marketing');
+$can_view = $permissions['view'];
+$can_create = $permissions['create'];
+$can_edit = $permissions['edit'];
+$can_delete = $permissions['delete'];
+$can_export = $permissions['export'];
+?>
+
+<?php if (can_export('marketing')): ?>
                 <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#exportModal">
                     <i class="fas fa-download me-1"></i>Export
                 </button>
+                <?php else: ?>
+                <button class="btn btn-outline-secondary btn-sm disabled" onclick="return false;" title="Access Denied">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+                <?php endif; ?>
+                <?php if (can_create('marketing')): ?>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addQuotationModal">
                     <i class="fas fa-plus me-1"></i>Buat Penawaran
                 </button>
+                <?php else: ?>
+                <button class="btn btn-primary btn-sm disabled" onclick="return false;" title="Access Denied">
+                    <i class="fas fa-plus me-1"></i>Buat Penawaran
+                </button>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -163,9 +180,16 @@
             </div>
         </div>
         
+        <?php if (!$can_view): ?>
+        <div class="alert alert-warning m-3">
+            <i class="fas fa-lock me-2"></i>
+            <strong>Access Denied:</strong> You do not have permission to view penawaran. 
+            Please contact your administrator to request access.
+        </div>
+        <?php endif; ?>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered" id="quotationsTable" width="100%" cellspacing="0">
+                <table class="table table-bordered <?= !$can_view ? 'table-disabled' : '' ?>" id="quotationsTable" width="100%" cellspacing="0">
                     <thead>
                         <tr>
                             <th>No. Penawaran</th>
@@ -372,4 +396,7 @@ function exportData() {
 }
 </script>
 
+
+    <?php endif; ?>
+</div>
 <?= $this->endSection() ?>

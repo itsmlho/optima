@@ -1,32 +1,28 @@
 <?= $this->extend('layouts/base') ?>
-<?= $this->section('css') ?>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-<style>
-        #marketing-units-table thead th{white-space:nowrap;font-size:.7rem;letter-spacing:.5px;background:#f8f9fa}
-        #marketing-units-table tbody td{vertical-align:middle}
-        .brand-cell .brand{font-weight:600;display:block;line-height:1.05}
-        .brand-cell .model{font-size:.7rem;color:#6c757d;display:block;margin-top:2px}
-        .filter-bar{gap:.5rem}
-        .badge{font-weight:500}
-</style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="card shadow-sm">
-        <div class="d-flex flex-wrap gap-2 align-items-center p-3 pb-2">
-                <ul class="nav nav-tabs flex-grow-1" id="mktStatusTabs" style="border-bottom:1px solid #dee2e6;">
-                        <li class="nav-item"><button class="nav-link active" data-status="" type="button">Semua <span class="badge bg-secondary ms-1" id="mkt-count-all">0</span></button></li>
-                        <li class="nav-item"><button class="nav-link" data-status="7" type="button">Stock Aset <span class="badge bg-success ms-1" id="mkt-count-7">0</span></button></li>
-                        <li class="nav-item"><button class="nav-link" data-status="8" type="button">Stock Non Aset <span class="badge bg-success ms-1" id="mkt-count-8">0</span></button></li>
-                </ul>
-                <div class="input-group input-group-sm" style="max-width:300px;">
-                        <span class="input-group-text bg-white"><i class="fas fa-search text-secondary"></i></span>
-                        <input type="text" id="globalSearch" class="form-control" placeholder="Cari Serial / Merk / Model / Tipe / Lokasi" autocomplete="off">
-                        <button class="btn btn-outline-secondary" type="button" id="btnClearSearch" title="Bersihkan"><i class="fas fa-times"></i></button>
-                </div>
-                <div class="d-flex gap-2">
-                        <a class="btn btn-sm btn-primary" data-bs-toggle="collapse" href="#mktFilterCollapse" title="Tampilkan / Sembunyikan Filter"><i class="fas fa-filter me-1"></i>Filter</a>
+<div class="container-fluid py-3">
+    <h5 class="mb-3"><i class="fas fa-cog me-2"></i>Page Title</h5>
+    
+    
+<?php
+// Load global permission helper
+helper('global_permission');
+
+// Get permissions for marketing module
+$permissions = get_global_permission('marketing');
+$can_view = $permissions['view'];
+$can_create = $permissions['create'];
+$can_edit = $permissions['edit'];
+$can_delete = $permissions['delete'];
+$can_export = $permissions['export'];
+?>
+
+<?php if (can_export('marketing')): ?>
                         <button id="btnExport" class="btn btn-sm btn-success" title="Export CSV"><i class="fas fa-file-export"></i> Export</button>
+                        <?php else: ?>
+                        <button id="btnExport" class="btn btn-sm btn-success disabled" onclick="return false;" title="Access Denied"><i class="fas fa-file-export"></i> Export</button>
+                        <?php endif; ?>
                 </div>
         </div>
         <div class="collapse" id="mktFilterCollapse">
@@ -47,8 +43,15 @@
                         </form>
                 </div>
         </div>
+        <?php if (!$can_view): ?>
+        <div class="alert alert-warning m-3">
+            <i class="fas fa-lock me-2"></i>
+            <strong>Access Denied:</strong> You do not have permission to view unit management. 
+            Please contact your administrator to request access.
+        </div>
+        <?php endif; ?>
         <div class="card-body pt-2">
-            <table id="marketing-units-table" class="table table-sm table-hover w-100">
+            <table id="marketing-units-table" class="table table-sm table-hover w-100 <?= !$can_view ? 'table-disabled' : '' ?>">
                     <thead>
                             <tr>
                                     <th>No. Unit</th>
@@ -82,6 +85,9 @@
             </div>
         </div>
     </div>
+</div>
+
+    <?php endif; ?>
 </div>
 <?= $this->endSection() ?>
 

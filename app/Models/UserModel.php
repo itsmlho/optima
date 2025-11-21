@@ -18,7 +18,8 @@ class UserModel extends Model
         'first_name', 'last_name', 'username', 'email', 'password_hash', 
         'phone', 'department', 'position', 'is_active', 'last_login', 
         'remember_token', 'reset_token', 'reset_expires', 'is_super_admin',
-        'division_id', 'email_verified_at', 'created_at', 'updated_at'
+        'division_id', 'email_verified_at', 'bio', 'avatar', 'location',
+        'created_at', 'updated_at'
     ];
 
     // Dates
@@ -117,10 +118,10 @@ class UserModel extends Model
     }
 
 
-    // Callbacks
-    protected $allowCallbacks = true;
-    protected $beforeInsert   = ['hashPassword'];
-    protected $beforeUpdate   = ['hashPasswordIfProvided']; // Mengubah nama callback untuk update
+    // Callbacks - Disabled since we hash passwords in controller
+    protected $allowCallbacks = false;
+    // protected $beforeInsert   = ['hashPassword'];
+    // protected $beforeUpdate   = ['hashPasswordIfProvided'];
 
     /**
      * Override insert method to ensure password is hashed

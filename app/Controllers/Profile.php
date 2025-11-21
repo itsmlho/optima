@@ -18,62 +18,66 @@ class Profile extends BaseController
 
     public function index()
     {
-        $userId = session()->get('user_id') ?: 1;
+        $userId = session()->get('user_id');
+        
+        // Debug logging
+        log_message('info', "Profile Controller - User ID from session: " . ($userId ?? 'NULL'));
+        log_message('info', "Profile Controller - Session data: " . json_encode(session()->get()));
+        log_message('info', "Profile Controller - All session keys: " . implode(', ', array_keys(session()->get())));
+        
+        if (!$userId) {
+            return redirect()->to('/login')->with('error', 'Please login first');
+        }
         
         try {
             $user = $this->userModel->find($userId);
             
+            // Debug logging
+            log_message('info', "Profile Controller - User ID being queried: " . $userId);
+            log_message('info', "Profile Controller - User data from model: " . json_encode($user));
+            
             if (!$user) {
-                // Create default user if none exists
-                $user = [
-                    'id' => 1,
-                    'first_name' => 'Admin',
-                    'last_name' => 'System',
-                    'email' => 'admin@optima.com',
-                    'phone' => '',
-                    'avatar' => null,
-                    'role' => 'admin',
-                    'status' => 'active',
-                    'division' => 'admin',
-                    'position' => 'System Administrator',
-                    'location' => 'jakarta',
-                    'supervisor_id' => null,
-                    'bio' => 'System Administrator',
-                    'created_at' => date('Y-m-d H:i:s')
-                ];
-                
-                // Set session data
-                session()->set([
-                    'user_id' => 1,
-                    'first_name' => 'Admin',
-                    'last_name' => 'System',
-                    'email' => 'admin@optima.com',
-                    'role' => 'admin',
-                    'division' => 'admin'
-                ]);
+                log_message('error', "Profile Controller - User not found for ID: " . $userId);
+                return redirect()->to('/login')->with('error', 'User not found');
             }
+            
+            // Get user's division and role information
+            $db = \Config\Database::connect();
+            
+            // Get division info
+            $divisionInfo = $db->table('users u')
+                ->select('d.name as division_name')
+                ->join('divisions d', 'd.id = u.division_id', 'left')
+                ->where('u.id', $userId)
+                ->get()
+                ->getRowArray();
+            
+            // Get role info
+            $roleInfo = $db->table('user_roles ur')
+                ->select('r.name as role_name')
+                ->join('roles r', 'r.id = ur.role_id', 'left')
+                ->where('ur.user_id', $userId)
+                ->get()
+                ->getRowArray();
+            
+            // Add division and role to user data
+            $user['division_name'] = $divisionInfo['division_name'] ?? 'No Division';
+            $user['role_name'] = $roleInfo['role_name'] ?? 'No Role';
+            
+            // Map division_id to division name for form
+            $user['division'] = $this->mapDivisionIdToName($user['division_id'] ?? null);
+            
+            // Debug logging
+            log_message('info', "Profile Controller - User data: " . json_encode($user));
+            log_message('info', "Profile Controller - Division info: " . json_encode($divisionInfo));
+            log_message('info', "Profile Controller - Role info: " . json_encode($roleInfo));
+            
         } catch (\Exception $e) {
-            // If table doesn't exist, create default user data
-            $user = [
-                'id' => 1,
-                'first_name' => 'Admin',
-                'last_name' => 'System',
-                'email' => 'admin@optima.com',
-                'phone' => '',
-                'avatar' => null,
-                'role' => 'admin',
-                'status' => 'active',
-                'division' => 'admin',
-                'position' => 'System Administrator',
-                'location' => 'jakarta',
-                'supervisor_id' => null,
-                'bio' => 'System Administrator',
-                'created_at' => date('Y-m-d H:i:s')
-            ];
+            return redirect()->to('/login')->with('error', 'Database error: ' . $e->getMessage());
         }
 
         $data = [
-            'title' => 'Profile | OPTIMA',
+            'title' => 'Profile',
             'page_title' => 'Profile Management',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -86,7 +90,7 @@ class Profile extends BaseController
             'profile_logs' => $this->getProfileLogs($userId)
         ];
 
-        return view('profile/index', $data);
+        return view('admin/advanced_user_management/profile', $data);
     }
 
     public function update()
@@ -244,16 +248,53 @@ class Profile extends BaseController
 
     private function getDivisions()
     {
-        return [
-            'service' => 'Service Division',
-            'rolling_unit' => 'Rolling Unit Division',
-            'marketing' => 'Marketing Division',
-            'warehouse' => 'Warehouse & Assets Division',
-            'finance' => 'Finance Division',
-            'hr' => 'Human Resources',
-            'it' => 'Information Technology',
-            'management' => 'Management'
-        ];
+        try {
+            $db = \Config\Database::connect();
+            $divisions = $db->table('divisions')
+                ->select('id, name')
+                ->where('is_active', 1)
+                ->get()
+                ->getResultArray();
+            
+            $divisionMap = [];
+            foreach ($divisions as $division) {
+                $divisionMap[$division['id']] = $division['name'];
+            }
+            
+            return $divisionMap;
+        } catch (\Exception $e) {
+            // Fallback to hardcoded divisions
+            return [
+                'service' => 'Service Division',
+                'rolling_unit' => 'Rolling Unit Division',
+                'marketing' => 'Marketing Division',
+                'warehouse' => 'Warehouse & Assets Division',
+                'finance' => 'Finance Division',
+                'hr' => 'Human Resources',
+                'it' => 'Information Technology',
+                'management' => 'Management'
+            ];
+        }
+    }
+    
+    private function mapDivisionIdToName($divisionId)
+    {
+        if (!$divisionId) {
+            return null;
+        }
+        
+        try {
+            $db = \Config\Database::connect();
+            $division = $db->table('divisions')
+                ->select('name')
+                ->where('id', $divisionId)
+                ->get()
+                ->getRowArray();
+            
+            return $division ? $division['name'] : null;
+        } catch (\Exception $e) {
+            return null;
+        }
     }
 
     private function getLocations()

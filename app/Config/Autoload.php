@@ -93,7 +93,9 @@ class Autoload extends AutoloadConfig
         // 'advanced_permission',
         'auth',
         'rbac',
+        'simple_rbac',
         'activity_log',
         'comprehensive_activity_log',
+        'date', // Load date helper globally
     ];
 }
