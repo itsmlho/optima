@@ -1598,36 +1598,37 @@ class WorkOrderController extends Controller
         try {
             $db = \Config\Database::connect();
             
-            $units = $db->table('inventory_unit iu')
-                ->select('iu.id_inventory_unit as id, 
-                         iu.no_unit,
-                         iu.serial_number,
-                         d.nama_departemen as departemen,
-                         c.customer_name as pelanggan,
-                         cl.location_name as lokasi,
-                         tu.jenis as jenis,
-                         kp.kapasitas_unit as kapasitas,
-                         mu.merk_unit as merk,
-                         mu.model_unit,
-                         c.area_id,
-                         a.area_name')
-                ->join('departemen d', 'iu.departemen_id = d.id_departemen', 'left')
-                ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
-                ->join('areas a', 'a.id = c.area_id', 'left')
-                ->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left')
-                ->join('kapasitas kp', 'iu.kapasitas_unit_id = kp.id_kapasitas', 'left')
-                ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
-                ->where('iu.no_unit IS NOT NULL', null, false)
-                ->orderBy('iu.no_unit', 'ASC')
-                ->limit(100)
-                ->get()
-                ->getResultArray();
+            // Use area_id from customer_locations (cl.area_id) like other working queries
+            $sql = "SELECT 
+                        iu.id_inventory_unit as id, 
+                        iu.no_unit,
+                        iu.serial_number,
+                        COALESCE(c.customer_name, 'Belum Ada Kontrak') as pelanggan,
+                        cl.location_name as lokasi,
+                        tu.jenis as jenis,
+                        kp.kapasitas_unit as kapasitas,
+                        mu.merk_unit as merk,
+                        mu.model_unit,
+                        a.id as area_id, 
+                        a.area_name
+                    FROM inventory_unit iu
+                    LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+                    LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
+                    LEFT JOIN customers c ON c.id = cl.customer_id
+                    LEFT JOIN areas a ON a.id = cl.area_id
+                    LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
+                    LEFT JOIN kapasitas kp ON iu.kapasitas_unit_id = kp.id_kapasitas
+                    LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
+                    WHERE iu.no_unit IS NOT NULL
+                    ORDER BY iu.no_unit ASC
+                    LIMIT 100";
             
-            // Handle null values in result
+            $result = $db->query($sql);
+            $units = $result->getResultArray();
+            
+            // Handle null values
             foreach ($units as &$unit) {
-                $unit['pelanggan'] = $unit['pelanggan'] ?? 'N/A';
+                $unit['pelanggan'] = $unit['pelanggan'] ?? 'Belum Ada Kontrak';
                 $unit['lokasi'] = $unit['lokasi'] ?? 'N/A';
                 $unit['jenis'] = $unit['jenis'] ?? 'N/A';
                 $unit['kapasitas'] = $unit['kapasitas'] ?? 'N/A';

@@ -37,8 +37,28 @@ class ServiceAreaManagementController extends BaseController
         
         // Data for dashboard stats
         $db = \Config\Database::connect();
+        
+        // Apply department filter for dashboard stats
+        $allowedDepartments = get_user_division_departments();
+        
+        // Check if departemen_id column exists
+        $fields = $db->getFieldData('areas');
+        $hasDepartemenId = false;
+        foreach ($fields as $field) {
+            if ($field->name === 'departemen_id') {
+                $hasDepartemenId = true;
+                break;
+            }
+        }
+        
+        $areaBuilder = $db->table('areas');
+        if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
+            $areaBuilder->whereIn('departemen_id', $allowedDepartments);
+        }
+        $totalAreas = $areaBuilder->where('is_active', 1)->countAllResults();
+        
         $dashboardData = [
-            'totalAreas' => $db->table('areas')->where('is_active', 1)->countAllResults(),
+            'totalAreas' => $totalAreas,
             'totalEmployees' => $db->table('employees')->where('is_active', 1)->countAllResults(),
             'totalAssignments' => $db->table('area_employee_assignments')->where('is_active', 1)->countAllResults(),
             'breadcrumbs' => [
@@ -48,12 +68,18 @@ class ServiceAreaManagementController extends BaseController
             ]
         ];
         
-        // Get active areas
+        // Get active areas with department filter
         $areas = [];
         try {
             $areaBuilder = $db->table('areas');
             $areaBuilder->select('areas.id, areas.area_code, areas.area_name');
             $areaBuilder->where('areas.is_active', 1);
+            
+            // Apply department filter if column exists
+            if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
+                $areaBuilder->whereIn('areas.departemen_id', $allowedDepartments);
+            }
+            
             $areaBuilder->orderBy('areas.area_name', 'ASC');
             $areas = $areaBuilder->get()->getResultArray();
         } catch (\Exception $e) {
@@ -85,18 +111,29 @@ class ServiceAreaManagementController extends BaseController
             ];
         }
         
-        // Get assignments by area for chart
+        // Get assignments by area for chart with department filter
         $assignmentsByArea = [];
         try {
-            $assignmentsQuery = $db->query("
+            $sql = "
                 SELECT a.area_name, a.area_code, COUNT(aea.id) as assignment_count
                 FROM areas a
                 LEFT JOIN area_employee_assignments aea ON a.id = aea.area_id AND aea.is_active = 1
                 WHERE a.is_active = 1
+            ";
+            
+            // Add department filter if column exists
+            if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
+                $deptIds = implode(',', array_map('intval', $allowedDepartments));
+                $sql .= " AND a.departemen_id IN ($deptIds)";
+            }
+            
+            $sql .= "
                 GROUP BY a.id, a.area_name, a.area_code
                 ORDER BY assignment_count DESC
                 LIMIT 10
-            ");
+            ";
+            
+            $assignmentsQuery = $db->query($sql);
             
             if ($assignmentsQuery) {
                 $assignmentsByArea = $assignmentsQuery->getResultArray();
@@ -134,17 +171,40 @@ class ServiceAreaManagementController extends BaseController
         log_message('debug', 'DataTable request: ' . json_encode($request));
         log_message('debug', 'Draw parameter: ' . ($request['draw'] ?? 'not set'));
         
-        // Total records without filtering
-        $totalRecords = $this->areaModel->countAllResults();
-        
         // Apply division-based department filter for areas using global helper
-        // Areas should show if they have customers with units in allowed departments
         $allowedDepartments = get_user_division_departments();
         
-        $allowedAreaIds = null;
-        if ($allowedDepartments !== null && is_array($allowedDepartments)) {
+        // Check if departemen_id column exists in areas table
+        $db = \Config\Database::connect();
+        $fields = $db->getFieldData('areas');
+        $hasDepartemenId = false;
+        foreach ($fields as $field) {
+            if ($field->name === 'departemen_id') {
+                $hasDepartemenId = true;
+                break;
+            }
+        }
+        
+        // Total records - apply department filter if needed
+        $totalBuilder = $this->areaModel->builder();
+        if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
+            $totalBuilder->whereIn('departemen_id', $allowedDepartments);
+        }
+        $totalRecords = $totalBuilder->countAllResults();
+        
+        // Build query dengan join yang benar setelah migration area_id ke customer_locations
+        $builder = $this->areaModel->builder();
+        $builder->select('areas.*, COUNT(DISTINCT c.id) as customers_count');
+        $builder->join('customer_locations cl', 'cl.area_id = areas.id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        
+        // Apply department filter directly on areas.departemen_id if column exists
+        if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
+            // Simple filter: areas.departemen_id IN allowed departments
+            $builder->whereIn('areas.departemen_id', $allowedDepartments);
+        } elseif ($allowedDepartments !== null && is_array($allowedDepartments)) {
+            // Fallback: if departemen_id column doesn't exist, use complex join
             // Get area IDs that have units in allowed departments
-            $db = \Config\Database::connect();
             $areaQuery = $db->table('areas a')
                 ->select('DISTINCT a.id')
                 ->join('customer_locations cl', 'cl.area_id = a.id', 'inner')
@@ -163,16 +223,7 @@ class ServiceAreaManagementController extends BaseController
                     'data' => []
                 ]);
             }
-        }
-        
-        // Build query dengan join yang benar setelah migration area_id ke customer_locations
-        $builder = $this->areaModel->builder();
-        $builder->select('areas.*, COUNT(DISTINCT c.id) as customers_count');
-        $builder->join('customer_locations cl', 'cl.area_id = areas.id', 'left');
-        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
-        
-        // Apply area filter if division-based filtering is active
-        if ($allowedAreaIds !== null) {
+            
             $builder->whereIn('areas.id', $allowedAreaIds);
         }
         
@@ -405,6 +456,7 @@ class ServiceAreaManagementController extends BaseController
             'area_code' => $input['area_code'],
             'area_name' => $input['area_name'],
             'area_description' => !empty($input['area_description']) ? $input['area_description'] : null,
+            'departemen_id' => !empty($input['departemen_id']) ? (int)$input['departemen_id'] : null,
             'updated_at' => date('Y-m-d H:i:s') // Force update
         ];
         

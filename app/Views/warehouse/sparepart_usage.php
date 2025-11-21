@@ -40,38 +40,69 @@
         color: #fff;
     }
     
+    .nav-tabs .nav-item {
+        margin-bottom: 0;
+    }
+    
     .nav-tabs .nav-link {
-        border: none;
-        border-bottom: 3px solid transparent;
+        padding: 1.25rem 2.5rem;
+        border: 1px solid transparent;
+        border-top-left-radius: 0.375rem;
+        border-top-right-radius: 0.375rem;
         color: #6c757d;
-        font-weight: 600;
-        padding: 1rem 1.5rem;
-        transition: all 0.3s ease;
+        transition: all 0.15s ease-in-out;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: transparent;
+        font-weight: 500;
     }
     
     .nav-tabs .nav-link:hover {
-        border-bottom-color: #dee2e6;
-        color: #495057;
+        border-color: #e9ecef #e9ecef #dee2e6;
+        isolation: isolate;
+        color: #4e73df;
+        background-color: #f8f9fc;
     }
     
     .nav-tabs .nav-link.active {
-        border-bottom-color: #667eea;
-        color: #667eea;
-        background: transparent;
+        color: white !important;
+        background-color: #4e73df !important;
+        border-color: #4e73df !important;
+        box-shadow: 0 2px 4px rgba(78, 115, 223, 0.2);
+    }
+    
+    /* Table row hover effect */
+    #usageTable tbody tr,
+    #returnsTable tbody tr {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    
+    #usageTable tbody tr:hover,
+    #returnsTable tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.1) !important;
+    }
+    
+    /* Ensure tab content is properly hidden */
+    .tab-content .tab-pane {
+        display: none;
+    }
+    
+    .tab-content .tab-pane.active {
+        display: block;
+    }
+    
+    /* Prevent DataTable from initializing on hidden tables */
+    .tab-pane:not(.active) table {
+        display: none !important;
     }
 </style>
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
-<div class="container-fluid">
-    <!-- Page Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-tools text-primary me-2"></i>
-            Pemakaian & Pengembalian Sparepart
-        </h1>
-    </div>
+
 
     <!-- Statistics Cards -->
     <div class="row mb-4">
@@ -133,39 +164,48 @@
         </div>
     </div>
 
-    <!-- Tabs Navigation -->
-    <ul class="nav nav-tabs mb-4" id="sparepartTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage" type="button" role="tab">
-                <i class="fas fa-list-check me-2"></i>Pemakaian
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="returns-tab" data-bs-toggle="tab" data-bs-target="#returns" type="button" role="tab">
-                <i class="fas fa-undo me-2"></i>Pengembalian
-            </button>
-        </li>
-    </ul>
-
-    <!-- Tab Content -->
-    <div class="tab-content" id="sparepartTabContent">
-        <!-- Tab Pemakaian -->
-        <div class="tab-pane fade show active" id="usage" role="tabpanel">
-            <?php if (isset($usage_table_exists) && !$usage_table_exists): ?>
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Tabel <code>work_order_sparepart_usage</code> belum tersedia.
-            </div>
-            <?php else: ?>
-            <div class="card table-card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-list me-2"></i>Daftar Pemakaian Sparepart
-                    </h6>
+    <!-- Main Content Card with Tabs -->
+    <div class="card table-card shadow mb-4">
+        <div class="card-header">
+            <div class="row align-items-center mb-3">
+                <div class="col">
+                    <h5 class="card-title fw-bold m-0">
+                        <i class="fas fa-tools text-primary me-2"></i>
+                        Pemakaian & Pengembalian Sparepart
+                    </h5>
                 </div>
-                <div class="card-body">
+            </div>
+            
+            <!-- Tabs Navigation -->
+            <ul class="nav nav-tabs mb-3" id="sparepartTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage" type="button" role="tab" aria-controls="usage" aria-selected="true">
+                        <i class="fas fa-list-check me-1"></i>
+                        <strong>Pemakaian</strong>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="returns-tab" data-bs-toggle="tab" data-bs-target="#returns" type="button" role="tab" aria-controls="returns" aria-selected="false">
+                        <i class="fas fa-undo me-1"></i>
+                        <strong>Pengembalian</strong>
+                    </button>
+                </li>
+            </ul>
+        </div>
+        
+        <div class="card-body">
+            <!-- Tab Content -->
+            <div class="tab-content" id="sparepartTabContent">
+                <!-- Tab Pemakaian -->
+                <div class="tab-pane fade show active" id="usage" role="tabpanel">
+                    <?php if (isset($usage_table_exists) && !$usage_table_exists): ?>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Tabel <code>work_order_sparepart_usage</code> belum tersedia.
+                    </div>
+                    <?php else: ?>
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover" id="usageTable" width="100%" cellspacing="0">
+                        <table class="table table-striped table-hover" id="usageTable" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
                                     <th>Tanggal</th>
@@ -186,31 +226,22 @@
                             </tbody>
                         </table>
                     </div>
+                    <?php endif; ?>
                 </div>
-            </div>
-            <?php endif; ?>
-        </div>
 
-        <!-- Tab Pengembalian -->
-        <div class="tab-pane fade" id="returns" role="tabpanel">
-            <?php if (isset($return_table_exists) && !$return_table_exists): ?>
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Tabel <code>work_order_sparepart_returns</code> belum tersedia. 
-                <a href="<?= base_url('warehouse/sparepart-returns') ?>" class="alert-link">Lihat instruksi setup</a>
-            </div>
-            <?php else: ?>
-            <!-- Filter Card -->
-            <div class="card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-filter me-2"></i>Filter
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div class="row">
+                <!-- Tab Pengembalian -->
+                <div class="tab-pane fade" id="returns" role="tabpanel">
+                    <?php if (isset($return_table_exists) && !$return_table_exists): ?>
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Tabel <code>work_order_sparepart_returns</code> belum tersedia. 
+                        <a href="<?= base_url('warehouse/sparepart-returns') ?>" class="alert-link">Lihat instruksi setup</a>
+                    </div>
+                    <?php else: ?>
+                    <!-- Filter Section -->
+                    <div class="row mb-3">
                         <div class="col-md-4">
-                            <label class="form-label">Status</label>
+                            <label class="form-label fw-bold">Filter Status</label>
                             <select class="form-select" id="filter-status">
                                 <option value="PENDING" selected>Pending</option>
                                 <option value="CONFIRMED">Confirmed</option>
@@ -223,19 +254,10 @@
                             </button>
                         </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Returns Table -->
-            <div class="card table-card shadow mb-4">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-list me-2"></i>Daftar Pengembalian Sparepart
-                    </h6>
-                </div>
-                <div class="card-body">
+                    <!-- Returns Table -->
                     <div class="table-responsive">
-                        <table class="table table-bordered table-hover" id="returnsTable" width="100%" cellspacing="0">
+                        <table class="table table-striped table-hover" id="returnsTable" width="100%" cellspacing="0">
                             <thead>
                                 <tr>
                                     <th>Tanggal</th>
@@ -256,9 +278,9 @@
                             </tbody>
                         </table>
                     </div>
+                    <?php endif; ?>
                 </div>
             </div>
-            <?php endif; ?>
         </div>
     </div>
 </div>
@@ -309,16 +331,74 @@
 
 <?= $this->section('javascript') ?>
 <script>
+let usageTable, returnsTable;
+let usageTableInitialized = false;
+let returnsTableInitialized = false;
+
 $(document).ready(function() {
+    // Handle tab switching
+    $('#sparepartTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        const targetTab = $(e.target).data('bs-target');
+        
+        // Small delay to ensure tab is fully visible
+        setTimeout(function() {
+            // Initialize Usage Table when usage tab is shown
+            if (targetTab === '#usage' && !usageTableInitialized) {
+                <?php if (isset($usage_table_exists) && $usage_table_exists): ?>
+                initializeUsageTable();
+                <?php endif; ?>
+            }
+            
+            // Initialize Returns Table when returns tab is shown
+            if (targetTab === '#returns' && !returnsTableInitialized) {
+                <?php if (isset($return_table_exists) && $return_table_exists): ?>
+                initializeReturnsTable();
+                <?php endif; ?>
+            }
+        }, 150);
+    });
+    
+    // Force activate Pemakaian tab on page load (default tab)
+    $('#usage-tab').tab('show');
+    
+    // Initialize first tab (Pemakaian) on page load (with delay to ensure DOM is ready)
+    setTimeout(function() {
+        // Always initialize Pemakaian tab first as default
+        <?php if (isset($usage_table_exists) && $usage_table_exists): ?>
+        if (!usageTableInitialized) {
+            console.log('Initializing default tab: Pemakaian');
+            initializeUsageTable();
+        }
+        <?php endif; ?>
+    }, 300);
+    
     <?php if (isset($usage_table_exists) && $usage_table_exists): ?>
-    // Initialize Usage DataTable
-    const usageTable = $('#usageTable').DataTable({
+    function initializeUsageTable() {
+        if (usageTableInitialized) {
+            console.log('Usage table already initialized');
+            return;
+        }
+        
+        // Check if table element exists
+        if ($('#usageTable').length === 0) {
+            console.error('Usage table element not found');
+            return;
+        }
+        
+        // Ensure tab is active before initializing
+        if (!$('#usage').hasClass('active')) {
+            $('#usage-tab').tab('show');
+        }
+        
+        console.log('Initializing usage table...');
+        usageTable = $('#usageTable').DataTable({
         processing: true,
         serverSide: true,
         ajax: {
             url: '<?= base_url('warehouse/sparepart-usage/get-usage') ?>',
             type: 'POST'
         },
+        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
         columns: [
             { data: 'used_at', name: 'used_at' },
             { data: 'work_order_number', name: 'work_order_number' },
@@ -388,11 +468,34 @@ $(document).ready(function() {
             }
         }
     });
+        
+        usageTableInitialized = true;
+        console.log('Usage table initialized successfully');
+    }
     <?php endif; ?>
 
     <?php if (isset($return_table_exists) && $return_table_exists): ?>
-    // Initialize Returns DataTable
-    const returnsTable = $('#returnsTable').DataTable({
+    function initializeReturnsTable() {
+        if (returnsTableInitialized) {
+            console.log('Returns table already initialized');
+            return;
+        }
+        
+        // Check if table element exists
+        if ($('#returnsTable').length === 0) {
+            console.error('Returns table element not found');
+            return;
+        }
+        
+        // Check if tab is visible (either active or will be active)
+        const returnsTab = $('#returns');
+        if (!returnsTab.length) {
+            console.error('Returns tab element not found');
+            return;
+        }
+        
+        console.log('Initializing returns table...');
+        returnsTable = $('#returnsTable').DataTable({
         processing: true,
         serverSide: true,
         ajax: {
@@ -402,6 +505,7 @@ $(document).ready(function() {
                 d.status = $('#filter-status').val();
             }
         },
+        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
         columns: [
             { data: 'created_at', name: 'created_at' },
             { data: 'work_order_number', name: 'work_order_number' },
@@ -478,6 +582,11 @@ $(document).ready(function() {
             }
         }
     });
+        
+        returnsTableInitialized = true;
+        console.log('Returns table initialized successfully');
+    }
+    <?php endif; ?>
 
     // View usage detail
     window.viewUsageDetail = function(id) {
@@ -675,7 +784,9 @@ $(document).ready(function() {
 
     // Apply return filters
     window.applyReturnFilters = function() {
-        returnsTable.ajax.reload();
+        if (returnsTable && returnsTableInitialized) {
+            returnsTable.ajax.reload();
+        }
     };
 
     // Confirm return
@@ -694,7 +805,9 @@ $(document).ready(function() {
                 if (response.success) {
                     alert('Pengembalian sparepart berhasil dikonfirmasi');
                     $('#returnDetailModal').modal('hide');
-                    returnsTable.ajax.reload();
+                    if (returnsTable && returnsTableInitialized) {
+                        returnsTable.ajax.reload();
+                    }
                 } else {
                     alert('Error: ' + (response.message || 'Gagal mengonfirmasi'));
                 }
@@ -704,7 +817,6 @@ $(document).ready(function() {
             }
         });
     };
-    <?php endif; ?>
 });
 </script>
 <?= $this->endSection() ?>

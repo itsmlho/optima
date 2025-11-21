@@ -3234,39 +3234,40 @@ $(document).ready(function() {
     $('#workOrderModal').on('shown.bs.modal', function() {
         console.log('📋 Modal shown, loading data...');
         
-        // Destroy any existing Select2 instances first
-        const unitSelect = $('#unit_id');
-        if (unitSelect.hasClass('select2-hidden-accessible')) {
-            try {
-                unitSelect.select2('destroy');
-            } catch (e) {
-                console.warn('Error destroying Select2:', e);
-            }
-        }
-        
-        // Load data first (unit dropdown will initialize Select2 after data loads)
+        // Load unit dropdown first - it will handle its own Select2 initialization
+        // DO NOT destroy unit_id here - let loadUnitsDropdown() handle it completely
         loadUnitsDropdown();
         loadMechanicHelperDropdowns();
         
-        // Initialize Select2 for other dropdowns after a short delay
+        // Initialize Select2 for other dropdowns (NOT unit_id and NOT sparepart - they handle themselves)
+        // Use longer delay to ensure unit and sparepart dropdowns are initialized first
         setTimeout(function() {
+            console.log('🔄 Initializing Select2 for other dropdowns (excluding unit_id and sparepart)');
             initializeSelect2();
-        }, 500);
+        }, 800); // Increased delay to ensure unit and sparepart dropdowns are initialized first
         
         // Add initial sparepart row if not exists - with proper timing
+        // Wait for sparepartsData to be available and ensure it's loaded
         setTimeout(function() {
             if ($('#sparepartTableBody tr').length === 0) {
                 console.log('🔧 Adding initial sparepart row');
-                addSparepartRow();
+                console.log('📦 SparepartsData available:', window.sparepartsData ? window.sparepartsData.length : 0, 'items');
+                
+                // Ensure sparepartsData is available
+                if (!window.sparepartsData || !Array.isArray(window.sparepartsData) || window.sparepartsData.length === 0) {
+                    console.warn('⚠️ SparepartsData not available yet, waiting...');
+                    // Retry after a bit more delay
+                    setTimeout(function() {
+                        if ($('#sparepartTableBody tr').length === 0) {
+                            console.log('🔧 Retrying to add initial sparepart row');
+                            addSparepartRow();
+                        }
+                    }, 200);
+                } else {
+                    addSparepartRow();
+                }
             }
-        }, 200);
-
-        
-        // Re-initialize Select2 for all form elements after DOM is ready
-        setTimeout(function() {
-            console.log('🔄 Re-initializing Select2 after modal is shown');
-            initializeSelect2();
-        }, 100);
+        }, 400);
     });
 
     // Fix Select2 modal issues
@@ -3348,8 +3349,9 @@ $(document).ready(function() {
         
         console.log('✅ Select2 library is available');
         
-        // Safely destroy existing instances - only if they exist and are initialized
-        const selectorsToDestroy = ['#unit_id', '#category_id', '#subcategory_id', '#order_type', '#mechanic_1', '#mechanic_2', '#helper_1', '#helper_2', '#spareparts'];
+        // Safely destroy existing instances - EXCLUDE unit_id (handled separately in loadUnitsDropdown)
+        // unit_id should NEVER be destroyed here to prevent duplicate initialization
+        const selectorsToDestroy = ['#category_id', '#subcategory_id', '#order_type', '#mechanic_1', '#mechanic_2', '#helper_1', '#helper_2', '#spareparts'];
         
         selectorsToDestroy.forEach(function(selector) {
             const $element = $(selector);
@@ -3362,8 +3364,10 @@ $(document).ready(function() {
             }
         });
         
-        // Remove any orphaned Select2 containers
-        $('.select2-container').remove();
+        // NEVER destroy unit_id here - it's managed by loadUnitsDropdown() with proper search config
+        
+        // DO NOT remove Select2 containers - let them be managed by their own functions
+        // Removing containers can break unit_id and sparepart dropdowns
         
         // Common configuration for modal compatibility
         const modalConfig = {
@@ -3410,9 +3414,15 @@ $(document).ready(function() {
 
         // Initialize searchable dropdowns - Only for fields that really need search
         searchableSelectors.forEach(function(config) {
+            // CRITICAL: unit_id is handled separately in loadUnitsDropdown() - NEVER touch it here
+            if (config.id === '#unit_id') {
+                console.log('⏭️ Skipping unit_id completely - managed by loadUnitsDropdown()');
+                return; // Skip immediately, don't even check the element
+            }
+            
             const $element = $(config.id);
             if ($element.length) {
-                // Destroy existing Select2 if any
+                // Destroy existing Select2 if any (only for non-unit_id elements)
                 if ($element.hasClass('select2-hidden-accessible')) {
                     try {
                         $element.select2('destroy');
@@ -3422,11 +3432,7 @@ $(document).ready(function() {
                 }
                 
                 // Only initialize if element has options (data loaded)
-                // For unit_id, check if it has more than just placeholder option
-                if (config.id === '#unit_id') {
-                    // Skip initialization here - will be done in loadUnitsDropdown()
-                    console.log('⏭️ Skipping Select2 init for unit_id - will be initialized after data loads');
-                } else if ($element.find('option').length > 1) {
+                if ($element.find('option').length > 1) {
                     $element.select2({
                         ...searchableConfig,
                         minimumResultsForSearch: 5,
@@ -3539,35 +3545,27 @@ $(document).ready(function() {
                         console.warn('⚠️ No units found in response');
                     }
                     
-                    // Re-initialize Select2 after populating options
-                    if (unitSelect.hasClass('select2-hidden-accessible')) {
-                        try {
-                            unitSelect.select2('destroy');
-                            console.log('🔄 Destroyed existing Select2 for unit');
-                        } catch (e) {
-                            console.warn('⚠️ Error destroying Select2:', e);
-                        }
-                    }
-                    
-                    // Small delay to ensure DOM is ready
+                    // Initialize Select2 with search - SIMPLE & DIRECT
                     setTimeout(function() {
                         try {
+                            // Always initialize (we already destroyed above if needed)
                             unitSelect.select2({
                                 placeholder: '-- Pilih Unit --',
                                 allowClear: true,
                                 width: '100%',
                                 dropdownParent: $('#workOrderModal'),
-                                minimumInputLength: 0,
+                                minimumInputLength: 0, // Enable search immediately
+                                minimumResultsForSearch: 0, // Always show search box
                                 language: {
                                     noResults: function() { return "Tidak ada hasil ditemukan"; },
                                     searching: function() { return "Mencari..."; }
                                 }
                             });
-                            console.log('✅ Select2 initialized for unit dropdown with', response.data.length, 'options');
+                            console.log('✅ Select2 initialized for unit dropdown with search,', response.data.length, 'options');
                         } catch (e) {
                             console.error('❌ Error initializing Select2:', e);
                         }
-                    }, 100);
+                    }, 150);
                 } else {
                     unitSelect.empty().append('<option value="">Error: ' + (response.message || 'Gagal memuat data') + '</option>');
                     console.error('❌ Error loading units:', response.message || 'Unknown error');
@@ -3812,142 +3810,10 @@ $(document).ready(function() {
         $(this).closest('tr').remove();
     });
 
-    function addSparepartRow(sparepartData = null) {
-        sparepartRowCount++;
-        console.log(`🔧 Adding sparepart row ${sparepartRowCount}`, sparepartData ? 'with data' : 'empty');
-        
-        const row = `
-            <tr>
-                <td>
-                    <select class="form-select" name="sparepart_name[]" id="sparepart_${sparepartRowCount}" required>
-                        <option value="">-- Pilih Sparepart --</option>
-                        <?php if (!empty($spareparts)): ?>
-                            <?php foreach ($spareparts as $sparepart): ?>
-                                <option value="<?= $sparepart['text'] ?>"><?= $sparepart['text'] ?></option>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <option value="" disabled>No spareparts available</option>
-                        <?php endif; ?>
-                    </select>
-                </td>
-                <td>
-                    <input type="number" class="form-control" name="sparepart_quantity[]" value="1" min="1" required>
-                </td>
-                <td>
-                    <select class="form-select form-select-sm" name="sparepart_unit[]" required>
-                        <option value="PCS">PCS</option>
-                        <option value="SET">SET</option>
-                        <option value="LITER">LITER</option>
-                        <option value="KG">KG</option>
-                        <option value="METER">METER</option>
-                    </select>
-                </td>
-                <td>
-                    <button type="button" class="btn btn-danger btn-sm removeSparepartRow">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-        $('#sparepartTableBody').append(row);
-        
-        const sparepartSelect = $(`#sparepart_${sparepartRowCount}`);
-        const quantityInput = sparepartSelect.closest('tr').find('input[name="sparepart_quantity[]"]');
-        const unitSelect = sparepartSelect.closest('tr').find('select[name="sparepart_unit[]"]');
-        
-        // Initialize Select2 for the new sparepart dropdown with search
-        setTimeout(function() {
-            try {
-                const sparepartElement = $(`#sparepart_${sparepartRowCount}`);
-                console.log(`🔍 Checking sparepart_${sparepartRowCount} - exists:`, sparepartElement.length, 'hasSelect2:', sparepartElement.hasClass('select2-hidden-accessible'));
-                
-                if (sparepartElement.length > 0 && !sparepartElement.hasClass('select2-hidden-accessible')) {
-                    // Clear existing options and add sparepart data
-                    sparepartElement.empty().append('<option value="">-- Pilih Sparepart --</option>');
-                    
-                    // Add all sparepart options from global data
-                    if (window.sparepartsData && Array.isArray(window.sparepartsData)) {
-                        window.sparepartsData.forEach(function(sparepart) {
-                            const option = new Option(sparepart.nama_sparepart, sparepart.nama_sparepart, false, false);
-                            sparepartElement.append(option);
-                        });
-                        console.log('🔧 Added', window.sparepartsData.length, 'sparepart options to', sparepartElement.attr('id'));
-                    }
-                    
-                    sparepartElement.select2({
-                        placeholder: '-- Pilih Sparepart --',
-                        allowClear: true,
-                        width: '100%',
-                        dropdownParent: $('#workOrderModal'),
-                        minimumResultsForSearch: 5, // Enable search for sparepart
-                        language: {
-                            noResults: function() { return "Tidak ada hasil ditemukan"; },
-                            searching: function() { return "Mencari..."; }
-                        }
-                    });
-                    console.log('✅ Select2 initialized for sparepart:', sparepartElement.attr('id'));
-                } else if (sparepartElement.length === 0) {
-                    console.warn('⚠️ Sparepart select element not found:', `#sparepart_${sparepartRowCount}`);
-                } else {
-                    console.log('ℹ️ Sparepart Select2 already initialized:', sparepartElement.attr('id'));
-                }
-            } catch (error) {
-                console.error('❌ Error initializing Select2 for sparepart:', error);
-            }
-        }, 200);
-        
-        // If sparepartData is provided, populate the row
-        if (sparepartData) {
-            console.log('🔧 Populating sparepart data:', sparepartData);
-            
-            setTimeout(function() {
-                try {
-                    // First, ensure the sparepart option exists in dropdown
-                    if (sparepartData.sparepart_name || sparepartData.name) {
-                        let sparepartName = sparepartData.sparepart_name || sparepartData.name;
-                        console.log('🔧 Setting sparepart name:', sparepartName);
-                        
-                        // Check if option exists, if not add it
-                        if (sparepartSelect.find(`option[value="${sparepartName}"]`).length === 0) {
-                            sparepartSelect.append(new Option(sparepartName, sparepartName, true, true));
-                            console.log('🔧 Added missing sparepart option:', sparepartName);
-                        } else {
-                            sparepartSelect.val(sparepartName);
-                        }
-                        sparepartSelect.trigger('change');
-                    }
-                    
-                    // Set quantity
-                    if (sparepartData.quantity || sparepartData.qty) {
-                        let quantity = sparepartData.quantity || sparepartData.qty;
-                        console.log('🔧 Setting quantity:', quantity);
-                        quantityInput.val(quantity);
-                    }
-                    
-                    // Set unit
-                    if (sparepartData.unit || sparepartData.satuan) {
-                        let unit = sparepartData.unit || sparepartData.satuan;
-                        console.log('🔧 Setting unit:', unit);
-                        unitSelect.val(unit);
-                    }
-                    
-                    console.log('✅ Sparepart row populated successfully');
-                } catch (error) {
-                    console.error('❌ Error populating sparepart data:', error);
-                }
-            }, 500);
-        } else {
-            console.log('📝 Empty sparepart row added');
-        }
-    }
-
-
     /**
-     * SOLUSI FINAL DROPDOWN SPAREPART
-     * Mengikuti model dropdown unit 100%
+     * Function addSparepartRow - searchable dropdown seperti unit dropdown
+     * Menggunakan Select2 dengan search functionality
      */
-    
-    // Override fungsi addSparepartRow dengan implementasi unit-style
     addSparepartRow = function(sparepartData = null) {
         sparepartRowCount++;
         console.log(`🔧 Adding sparepart row ${sparepartRowCount} [UNIT STYLE]`);
@@ -3989,28 +3855,51 @@ $(document).ready(function() {
         // 3. Tambahkan semua data sparepart ke dropdown (PERSIS seperti unit_id)
         sparepartSelect.empty().append('<option value="">-- Pilih Sparepart --</option>');
         
-        if (window.sparepartsData && Array.isArray(window.sparepartsData)) {
+        if (window.sparepartsData && Array.isArray(window.sparepartsData) && window.sparepartsData.length > 0) {
             window.sparepartsData.forEach(function(sparepart) {
-                sparepartSelect.append(`<option value="${sparepart.text}">${sparepart.text}</option>`);
+                // Handle both formats: sparepart.text or other formats
+                const sparepartValue = sparepart.text || sparepart.nama_sparepart || sparepart.desc_sparepart || '';
+                const sparepartLabel = sparepart.text || sparepart.nama_sparepart || sparepart.desc_sparepart || '';
+                if (sparepartValue) {
+                    sparepartSelect.append(`<option value="${sparepartValue}">${sparepartLabel}</option>`);
+                }
             });
             console.log(`✅ Added ${window.sparepartsData.length} spareparts to dropdown #sparepart_${sparepartRowCount}`);
+        } else {
+            console.warn(`⚠️ No spareparts data available for row ${sparepartRowCount}. SparepartsData:`, window.sparepartsData);
         }
         
         // 4. Inisialisasi Select2 untuk searchable dropdown (PERSIS seperti unit)
-        if (!sparepartSelect.hasClass('select2-hidden-accessible')) {
-            sparepartSelect.select2({
-                placeholder: '-- Pilih Sparepart --',
-                allowClear: true,
-                width: '100%',
-                dropdownParent: $('#workOrderModal'),
-                minimumInputLength: 0, // Enable search
-                language: {
-                    noResults: function() { return "Tidak ada hasil ditemukan"; },
-                    searching: function() { return "Mencari..."; }
+        // Use longer timeout to ensure DOM is ready and data is populated
+        setTimeout(function() {
+            try {
+                const sparepartElement = $(`#sparepart_${sparepartRowCount}`);
+                if (sparepartElement.length === 0) {
+                    console.error(`❌ Sparepart element #sparepart_${sparepartRowCount} not found!`);
+                    return;
                 }
-            });
-            console.log(`✅ Select2 initialized for sparepart_${sparepartRowCount}`);
-        }
+                
+                if (!sparepartElement.hasClass('select2-hidden-accessible')) {
+                    sparepartElement.select2({
+                        placeholder: '-- Pilih Sparepart --',
+                        allowClear: true,
+                        width: '100%',
+                        dropdownParent: $('#workOrderModal'),
+                        minimumInputLength: 0, // Enable search immediately
+                        minimumResultsForSearch: 0, // Always show search box
+                        language: {
+                            noResults: function() { return "Tidak ada hasil ditemukan"; },
+                            searching: function() { return "Mencari..."; }
+                        }
+                    });
+                    console.log(`✅ Select2 initialized for sparepart_${sparepartRowCount} with search`);
+                } else {
+                    console.log(`ℹ️ Select2 already initialized for sparepart_${sparepartRowCount}`);
+                }
+            } catch (error) {
+                console.error(`❌ Error initializing Select2 for sparepart_${sparepartRowCount}:`, error);
+            }
+        }, 150);
         
         // 5. Jika data disediakan, isi form
         if (sparepartData) {
