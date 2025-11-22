@@ -1,0 +1,22 @@
+========================================
+DATABASE BACKUP SUMMARY
+========================================
+Date: Sun Nov 23 12:02:42 AM WIB 2025
+Host: 127.0.0.1:3306
+User: root
+
+Backed up databases:
+  - optima_db: /opt/lampp/htdocs/optima1/scripts/backups/optima_db_20251123_000242.sql.gz (96K)
+
+Results:
+  Success: 1
+  Failed: 0
+
+Backup location: /opt/lampp/htdocs/optima1/scripts/backups
+
+To restore:
+  1. Extract: gunzip database_name_20251123_000242.sql.gz
+  2. Import: mysql -u root -p < database_name_20251123_000242.sql
+
+Or directly:
+  gunzip < database_name_20251123_000242.sql.gz | mysql -u root -p
