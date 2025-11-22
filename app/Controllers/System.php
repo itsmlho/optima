@@ -731,4 +731,55 @@ class System extends BaseController
 
         return $notifications;
     }
+
+    /**
+     * Toggle OTP (Enable/Disable) for current user
+     */
+    public function toggleOtp()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.']);
+        }
+
+        $userId = session()->get('user_id');
+        if (!$userId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User not authenticated.']);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User not found.']);
+        }
+
+        $currentOtpStatus = !empty($user['otp_enabled']) && $user['otp_enabled'] == 1;
+        $newOtpStatus = !$currentOtpStatus;
+
+        $updateData = [
+            'otp_enabled' => $newOtpStatus ? 1 : 0,
+            'otp_enabled_at' => $newOtpStatus ? date('Y-m-d H:i:s') : null,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+
+        if ($this->userModel->update($userId, $updateData)) {
+            $message = $newOtpStatus ? 'Two-Factor Authentication (OTP) berhasil diaktifkan.' : 'Two-Factor Authentication (OTP) berhasil dinonaktifkan.';
+            
+            // Log activity if trait is available
+            if (method_exists($this, 'logAuthActivity')) {
+                $this->logAuthActivity('OTP_TOGGLE', $userId, [
+                    'username' => $user['username'],
+                    'email' => $user['email'],
+                    'action' => $newOtpStatus ? 'enabled' : 'disabled',
+                    'description' => $message
+                ]);
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => $message,
+                'otp_enabled' => $newOtpStatus
+            ]);
+        } else {
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal mengubah status OTP. Silakan coba lagi.']);
+        }
+    }
 }

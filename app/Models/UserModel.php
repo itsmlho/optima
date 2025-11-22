@@ -20,6 +20,7 @@ class UserModel extends Model
         'remember_token', 'reset_token', 'reset_expires', 'is_super_admin',
         'division_id', 'email_verified_at', 'bio', 'avatar', 'location',
         'otp_enabled', 'otp_enabled_at',
+        'email_verification_token', 'email_verification_expiry',
         'created_at', 'updated_at'
     ];
 

@@ -130,11 +130,21 @@ class Auth extends BaseController
                 ]);
         }
 
-        // Find user by username or email
+        // Find user by username or email (check both active and inactive)
         $user = $this->userModel->where('username', $username)
                                 ->orWhere('email', $username)
-                                ->where('is_active', 1)
                                 ->first();
+        
+        // Check if user exists but is not active
+        if ($user && $user['is_active'] == 0) {
+            return redirect()->to('/auth/waiting-approval')
+                ->with('info', 'Akun Anda belum diaktifkan. Silakan tunggu persetujuan admin atau hubungi IT Support.');
+        }
+        
+        // Only proceed if user is active
+        if (!$user || $user['is_active'] != 1) {
+            $user = null; // Set to null to trigger password check failure
+        }
 
         $isPasswordValid = false;
         if ($user) {
@@ -502,12 +512,129 @@ class Auth extends BaseController
             return redirect()->to('/welcome');
         }
 
+        // Get divisions for form (roles will be loaded via AJAX based on division)
+        $divisions = [];
+        
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get active divisions, exclude Administrator
+            if ($db->tableExists('divisions')) {
+                $divisionsData = $db->table('divisions')
+                    ->select('id, name, code')
+                    ->where('is_active', 1)
+                    ->where('name !=', 'Administrator')
+                    ->orderBy('name', 'ASC')
+                    ->get()
+                    ->getResultArray();
+                
+                foreach ($divisionsData as $div) {
+                    $divisions[$div['id']] = $div['name'];
+                }
+            }
+        } catch (\Exception $e) {
+            log_message('debug', 'Error loading divisions for register: ' . $e->getMessage());
+        }
+
         $data = [
             'title' => 'Register',
-            'validation' => $this->validator ?? null
+            'validation' => $this->validator ?? null,
+            'divisions' => $divisions
         ];
 
         return view('auth/register', $data);
+    }
+    
+    /**
+     * Get positions by division (AJAX endpoint)
+     */
+    public function getPositionsByDivision()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.']);
+        }
+
+        $divisionId = $this->request->getPost('division_id');
+        
+        if (empty($divisionId)) {
+            return $this->response->setJSON([
+                'success' => true,
+                'positions' => []
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            $positions = [];
+            
+            if ($db->tableExists('positions')) {
+                // Get division name first
+                $division = null;
+                if ($db->tableExists('divisions')) {
+                    $division = $db->table('divisions')
+                        ->select('id, name')
+                        ->where('id', $divisionId)
+                        ->get()
+                        ->getRowArray();
+                }
+                
+                // Try to get positions by division_id first
+                $positionsData = $db->table('positions')
+                    ->select('id, name, code, description, division_id')
+                    ->where('is_active', 1)
+                    ->where('division_id', $divisionId)
+                    ->orderBy('name', 'ASC')
+                    ->get()
+                    ->getResultArray();
+                
+                // If no positions found by division_id, try to match by division name in position name
+                if (empty($positionsData) && $division) {
+                    $divisionName = strtolower($division['name']);
+                    $positionsData = $db->table('positions')
+                        ->select('id, name, code, description, division_id')
+                        ->where('is_active', 1)
+                        ->like('LOWER(name)', $divisionName)
+                        ->orderBy('name', 'ASC')
+                        ->get()
+                        ->getResultArray();
+                }
+                
+                // If still no positions, get all active positions as fallback
+                if (empty($positionsData)) {
+                    $positionsData = $db->table('positions')
+                        ->select('id, name, code, description, division_id')
+                        ->where('is_active', 1)
+                        ->orderBy('name', 'ASC')
+                        ->get()
+                        ->getResultArray();
+                }
+                
+                foreach ($positionsData as $position) {
+                    $positions[] = [
+                        'id' => $position['id'],
+                        'name' => $position['name'],
+                        'code' => $position['code'] ?? '',
+                        'description' => $position['description'] ?? ''
+                    ];
+                }
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'positions' => $positions,
+                'debug' => [
+                    'division_id' => $divisionId,
+                    'division_name' => $division['name'] ?? null,
+                    'count' => count($positions)
+                ]
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading positions by division: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading positions: ' . $e->getMessage()
+            ]);
+        }
     }
 
     public function attemptRegister()
@@ -515,9 +642,13 @@ class Auth extends BaseController
         $rules = [
             'first_name' => 'required|min_length[2]|max_length[50]',
             'last_name' => 'required|min_length[2]|max_length[50]',
+            'username' => 'required|min_length[3]|max_length[20]|is_unique[users.username]',
             'email' => 'required|valid_email|is_unique[users.email]',
+            'phone' => 'permit_empty|max_length[20]',
             'password' => 'required|min_length[8]',
             'confirm_password' => 'required|matches[password]',
+            'division_id' => 'permit_empty|integer',
+            'position' => 'required|in_list[Head of Divisi,Staff Admin,Mechanic]',
             'terms' => 'required'
         ];
 
@@ -525,20 +656,252 @@ class Auth extends BaseController
             return redirect()->back()->withInput()->with('validation', $this->validator);
         }
 
-        $userData = [
-            'first_name' => $this->request->getPost('first_name'),
-            'last_name' => $this->request->getPost('last_name'),
-            'email' => $this->request->getPost('email'),
-            'password_hash' => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
-            'is_active' => 1,
-            'created_at' => date('Y-m-d H:i:s')
-        ];
+        $db = \Config\Database::connect();
+        $db->transStart();
 
-        if ($this->userModel->insert($userData)) {
-            return redirect()->to('/auth/login')->with('success', 'Registration successful! Please login with your credentials.');
-        } else {
-            return redirect()->back()->with('error', 'Registration failed. Please try again.');
+        try {
+            $userData = [
+                'first_name' => $this->request->getPost('first_name'),
+                'last_name' => $this->request->getPost('last_name'),
+                'username' => $this->request->getPost('username'),
+                'email' => $this->request->getPost('email'),
+                'phone' => $this->request->getPost('phone') ?: null,
+                'password_hash' => password_hash($this->request->getPost('password'), PASSWORD_DEFAULT),
+                'division_id' => $this->request->getPost('division_id') ?: null,
+                'position' => $this->request->getPost('position'),
+                'is_active' => 0, // New registrations need approval
+                'created_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            $userId = $this->userModel->insert($userData);
+
+            if (!$userId) {
+                $errors = $this->userModel->errors();
+                $errorMessage = 'Failed to create user account.';
+                if (!empty($errors)) {
+                    $errorMessage .= ' Errors: ' . implode(', ', $errors);
+                }
+                log_message('error', 'User registration failed: ' . $errorMessage);
+                throw new \Exception($errorMessage);
+            }
+
+            // Generate email verification token
+            $verificationToken = bin2hex(random_bytes(32));
+            $verificationExpiry = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            
+            // Store verification token in database
+            // Check if columns exist first
+            $hasTokenColumn = $db->fieldExists('email_verification_token', 'users');
+            $hasExpiryColumn = $db->fieldExists('email_verification_expiry', 'users');
+            
+            if ($hasTokenColumn && $hasExpiryColumn) {
+                // Use existing columns
+                $db->table('users')
+                    ->where('id', $userId)
+                    ->update([
+                        'email_verification_token' => $verificationToken,
+                        'email_verification_expiry' => $verificationExpiry
+                    ]);
+            } else {
+                // Store in password_resets table as fallback
+                // Check if password_resets table exists and has required columns
+                if ($db->tableExists('password_resets')) {
+                    $hasTypeColumn = $db->fieldExists('type', 'password_resets');
+                    $hasExpiresAtColumn = $db->fieldExists('expires_at', 'password_resets');
+                    
+                    $insertData = [
+                        'email' => $userData['email'],
+                        'token' => $verificationToken,
+                        'created_at' => date('Y-m-d H:i:s')
+                    ];
+                    
+                    if ($hasExpiresAtColumn) {
+                        $insertData['expires_at'] = $verificationExpiry;
+                    }
+                    
+                    if ($hasTypeColumn) {
+                        $insertData['type'] = 'email_verification';
+                    }
+                    
+                    $db->table('password_resets')->insert($insertData);
+                } else {
+                    // If password_resets doesn't exist, just log and continue
+                    // Token will be in email link only
+                    log_message('info', 'Email verification token generated but not stored (tables not available): ' . $verificationToken);
+                }
+            }
+
+            // Send verification email
+            $this->sendVerificationEmail($userData['email'], $userData['first_name'], $verificationToken, $userId);
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                throw new \Exception('Database transaction failed.');
+            }
+
+            return redirect()->to('/auth/login')->with('success', 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi akun. Setelah verifikasi, akun Anda akan menunggu persetujuan admin.');
+        } catch (\Exception $e) {
+            $db->transRollback();
+            log_message('error', 'Registration error: ' . $e->getMessage());
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Registrasi gagal: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Send email verification
+     */
+    private function sendVerificationEmail($email, $firstName, $token, $userId)
+    {
+        try {
+            $emailService = \Config\Services::email();
+            $emailConfig = config('Email');
+            
+            $verificationLink = base_url('auth/verify-email/' . $token);
+            
+            $message = view('emails/email_verification', [
+                'user' => [
+                    'first_name' => $firstName,
+                    'email' => $email,
+                ],
+                'verification_link' => $verificationLink,
+                'app_name' => 'OPTIMA',
+                'support_email' => $emailConfig->fromEmail ?? 'itsupport@sml.co.id',
+            ]);
+            
+            $emailService->setFrom($emailConfig->fromEmail ?? 'itsupport@sml.co.id', $emailConfig->fromName ?? 'OPTIMA System');
+            $emailService->setTo($email);
+            $emailService->setSubject('Verifikasi Email - OPTIMA');
+            $emailService->setMessage($message);
+            $emailService->setMailType('html');
+            
+            return $emailService->send();
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to send verification email: ' . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Verify email with token
+     */
+    public function verifyEmail($token)
+    {
+        if (empty($token)) {
+            return redirect()->to('/auth/login')
+                ->with('error', 'Token verifikasi tidak valid.');
+        }
+        
+        try {
+            $db = \Config\Database::connect();
+            
+            // Check if token column exists in users table
+            $hasTokenColumn = $db->fieldExists('email_verification_token', 'users');
+            $hasExpiryColumn = $db->fieldExists('email_verification_expiry', 'users');
+            $hasVerifiedAtColumn = $db->fieldExists('email_verified_at', 'users');
+            $hasVerifiedColumn = $db->fieldExists('email_verified', 'users');
+            
+            $user = null;
+            
+            if ($hasTokenColumn && $hasExpiryColumn) {
+                // Use users table columns
+                $user = $db->table('users')
+                    ->where('email_verification_token', $token)
+                    ->where('email_verification_expiry >', date('Y-m-d H:i:s'))
+                    ->get()
+                    ->getRowArray();
+            } else {
+                // Use password_resets table as fallback
+                if ($db->tableExists('password_resets')) {
+                    $hasTypeColumn = $db->fieldExists('type', 'password_resets');
+                    $hasExpiresAtColumn = $db->fieldExists('expires_at', 'password_resets');
+                    
+                    $builder = $db->table('password_resets')
+                        ->where('token', $token);
+                    
+                    if ($hasTypeColumn) {
+                        $builder->where('type', 'email_verification');
+                    }
+                    
+                    if ($hasExpiresAtColumn) {
+                        $builder->where('expires_at >', date('Y-m-d H:i:s'));
+                    }
+                    
+                    $resetRecord = $builder->get()->getRowArray();
+                    
+                    if ($resetRecord) {
+                        $user = $db->table('users')
+                            ->where('email', $resetRecord['email'])
+                            ->get()
+                            ->getRowArray();
+                    }
+                }
+            }
+            
+            if (!$user) {
+                return redirect()->to('/auth/login')
+                    ->with('error', 'Token verifikasi tidak valid atau sudah kadaluarsa.');
+            }
+            
+            // Update user - mark email as verified
+            $updateData = [];
+            
+            if ($hasVerifiedAtColumn) {
+                $updateData['email_verified_at'] = date('Y-m-d H:i:s');
+            } elseif ($hasVerifiedColumn) {
+                $updateData['email_verified'] = date('Y-m-d H:i:s');
+            }
+            
+            if ($hasTokenColumn) {
+                $updateData['email_verification_token'] = null;
+            }
+            
+            if ($hasExpiryColumn) {
+                $updateData['email_verification_expiry'] = null;
+            }
+            
+            if (!empty($updateData)) {
+                $db->table('users')
+                    ->where('id', $user['id'])
+                    ->update($updateData);
+            }
+            
+            // Delete from password_resets if used
+            if (!$hasTokenColumn && $db->tableExists('password_resets')) {
+                $builder = $db->table('password_resets')
+                    ->where('token', $token);
+                
+                if ($db->fieldExists('type', 'password_resets')) {
+                    $builder->where('type', 'email_verification');
+                }
+                
+                $builder->delete();
+            }
+            
+            // Redirect to waiting page (user still needs admin approval)
+            return redirect()->to('/auth/waiting-approval')
+                ->with('success', 'Email berhasil diverifikasi! Akun Anda sedang menunggu persetujuan admin.');
+        } catch (\Exception $e) {
+            log_message('error', 'Email verification error: ' . $e->getMessage());
+            return redirect()->to('/auth/login')
+                ->with('error', 'Terjadi kesalahan saat verifikasi email.');
+        }
+    }
+    
+    /**
+     * Waiting approval page
+     */
+    public function waitingApproval()
+    {
+        $data = [
+            'title' => 'Menunggu Persetujuan',
+            'support_email' => 'itsupport@sml.co.id'
+        ];
+        
+        return view('auth/waiting_approval', $data);
     }
 
     public function forgotPassword()

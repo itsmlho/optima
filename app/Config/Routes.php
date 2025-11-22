@@ -27,6 +27,8 @@ $routes->group('auth', static function ($routes) {
     $routes->post('attempt-login', 'Auth::attemptLogin');
     $routes->get('register', 'Auth::register');
     $routes->post('attempt-register', 'Auth::attemptRegister');
+    $routes->get('verify-email/(:any)', 'Auth::verifyEmail/$1');
+    $routes->get('waiting-approval', 'Auth::waitingApproval');
     $routes->get('forgot-password', 'Auth::forgotPassword');
     $routes->post('send-reset-link', 'Auth::sendResetLink');
     $routes->get('reset-password/(:any)', 'Auth::resetPassword/$1');
@@ -43,6 +45,8 @@ $routes->group('auth', static function ($routes) {
     $routes->post('update-profile', 'Auth::updateProfile');
     $routes->post('change-password', 'Auth::changePassword');
     $routes->post('toggle-otp', 'Auth::toggleOtp');
+    // Get positions by division (AJAX)
+    $routes->post('get-positions-by-division', 'Auth::getPositionsByDivision');
 });
 
 // Dashboard routes for different divisions
@@ -776,6 +780,10 @@ $routes->group('admin', static function ($routes) {
         $routes->get('positions/json', 'Admin\AdvancedUserManagement::getPositionsJson');
         $routes->get('permissions/json', 'Admin\AdvancedUserManagement::getPermissionsJson');
         $routes->get('export/users', 'Admin\AdvancedUserManagement::exportUsers');
+        // User approval routes
+        $routes->get('get-user-for-approval/(:num)', 'Admin\AdvancedUserManagement::getUserForApproval/$1');
+        $routes->post('approve-user/(:num)', 'Admin\AdvancedUserManagement::approveUser/$1');
+        $routes->post('deactivate-user/(:num)', 'Admin\AdvancedUserManagement::deactivateUser/$1');
     });
     
     // Role Management Routes (Simple RBAC)

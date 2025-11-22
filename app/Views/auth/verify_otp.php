@@ -32,22 +32,79 @@
     <style>
         body {
             font-family: 'Metropolis', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 50%, #f8f9fa 100%);
+            background-attachment: fixed;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
             padding: 1rem;
+            position: relative;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(circle at 20% 50%, rgba(0, 97, 242, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(77, 140, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 20%, rgba(0, 97, 242, 0.03) 0%, transparent 50%);
+            background-size: 100% 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 97, 242, 0.02) 2px, rgba(0, 97, 242, 0.02) 4px);
+            pointer-events: none;
+            z-index: 0;
         }
         
         .otp-container {
             background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 1rem;
-            box-shadow: 0 2rem 4rem rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 1.5rem;
+            box-shadow: 
+                0 8px 32px rgba(0, 97, 242, 0.1),
+                0 2px 8px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.5);
             overflow: hidden;
             max-width: 500px;
             width: 100%;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .otp-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(0, 97, 242, 0.08) 0%, transparent 70%);
+            animation: pulse 15s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.5; }
+            50% { transform: scale(1.1) translate(-5%, -5%); opacity: 0.8; }
         }
         
         .otp-header {
@@ -90,6 +147,13 @@
         
         .otp-body {
             padding: 2.5rem 2rem;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .otp-header {
+            position: relative;
+            z-index: 2;
         }
         
         .otp-info {
@@ -113,13 +177,16 @@
         }
         
         .otp-input {
-            width: 50px;
-            height: 60px;
+            width: 100%;
+            max-width: 300px;
+            height: 70px;
             text-align: center;
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 2rem;
+            font-weight: 700;
+            letter-spacing: 0.5rem;
             border: 2px solid #e9ecef;
-            border-radius: 0.5rem;
+            border-radius: 0.75rem;
+            padding: 1rem;
             transition: all 0.3s ease;
         }
         
@@ -257,7 +324,7 @@
                 
                 <!-- OTP Input Fields -->
                 <div class="otp-input-group">
-                    <input type="text" class="otp-input" id="otp1" name="otp_code" maxlength="6" pattern="[0-9]{6}" required autocomplete="off" autofocus>
+                    <input type="text" class="form-control otp-input" id="otp1" name="otp_code" maxlength="6" pattern="[0-9]{6}" required autocomplete="off" autofocus placeholder="000000">
                 </div>
                 
                 <input type="hidden" id="otpCode" name="otp_code">

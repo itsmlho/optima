@@ -1489,8 +1489,16 @@ class AdvancedUserManagement extends BaseController
                 $statusHtml = $user['is_active'] ? '<span class="badge bg-success">Active</span>' : '<span class="badge bg-secondary">Inactive</span>';
 
                 // Actions
+                $approveBtn = '';
+                if ($user['is_active'] == 0) {
+                    $approveBtn = '<button class="btn btn-success" onclick="approveUser(' . $user['id'] . ', \'' . esc($user['first_name'] . ' ' . $user['last_name']) . '\')" title="Approve User"><i class="fas fa-check-circle"></i></button>';
+                } else {
+                    $approveBtn = '<button class="btn btn-secondary" onclick="deactivateUser(' . $user['id'] . ', \'' . esc($user['first_name'] . ' ' . $user['last_name']) . '\')" title="Deactivate User"><i class="fas fa-times-circle"></i></button>';
+                }
+                
                 $actions = '
                     <div class="btn-group btn-group-sm">
+                        ' . $approveBtn . '
                         <button class="btn btn-info" onclick="viewUserMatrix(' . $user['id'] . ')" title="View Matrix"><i class="fas fa-th"></i></button>
                         <a href="' . base_url('admin/advanced-users/show/' . $user['id']) . '" class="btn btn-primary" title="Detail"><i class="fas fa-eye"></i></a>
                         <a href="' . base_url('admin/advanced-users/edit/' . $user['id']) . '" class="btn btn-warning" title="Edit"><i class="fas fa-edit"></i></a>
@@ -1810,6 +1818,183 @@ class AdvancedUserManagement extends BaseController
                 'success' => false,
                 'message' => 'Error loading users by roles: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Get user data for approval modal
+     */
+    public function getUserForApproval($userId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+        }
+
+        if (!$this->hasPermission('admin.manage')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak.'])->setStatusCode(403);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan.'])->setStatusCode(404);
+        }
+
+        // Get division name if division_id exists
+        $userDivisionName = null;
+        if (!empty($user['division_id'])) {
+            $userDivision = $this->divisionModel->find($user['division_id']);
+            $userDivisionName = $userDivision ? $userDivision['name'] : null;
+        }
+
+        // Get all divisions (for admin selection)
+        $divisions = $this->divisionModel->where('name !=', 'Administrator')->findAll();
+
+        // Get all roles for cascading dropdown
+        $allRoles = $this->roleModel->findAll();
+
+        return $this->response->setJSON([
+            'success' => true,
+            'user' => [
+                'id' => $user['id'],
+                'first_name' => $user['first_name'],
+                'last_name' => $user['last_name'],
+                'email' => $user['email'],
+                'username' => $user['username'] ?? '',
+                'phone' => $user['phone'] ?? '',
+                'position' => $user['position'] ?? '',
+                'division_id' => $user['division_id'] ?? null,
+                'division_name' => $userDivisionName
+            ],
+            'divisions' => $divisions,
+            'roles' => $allRoles
+        ]);
+    }
+
+    /**
+     * Approve user with division and position assignment
+     */
+    public function approveUser($userId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+        }
+
+        if (!$this->hasPermission('admin.manage')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak.'])->setStatusCode(403);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan.'])->setStatusCode(404);
+        }
+
+        // Get division and role from POST
+        $divisionId = $this->request->getPost('division_id');
+        $roleId = $this->request->getPost('role_id');
+
+        if (empty($divisionId) || empty($roleId)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Division dan Role harus diisi.'])->setStatusCode(400);
+        }
+
+        // Validate division exists
+        $division = $this->divisionModel->find($divisionId);
+        if (!$division) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Division tidak ditemukan.'])->setStatusCode(400);
+        }
+
+        // Validate role exists
+        $role = $this->roleModel->find($roleId);
+        if (!$role) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Role tidak ditemukan.'])->setStatusCode(400);
+        }
+
+        $this->db->transStart();
+
+        try {
+            // Update user: activate and assign division
+            $updateData = [
+                'is_active' => 1,
+                'division_id' => $divisionId,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            if (!$this->userModel->update($userId, $updateData)) {
+                throw new \Exception('Failed to update user.');
+            }
+
+            // Remove existing user_roles for this user
+            $this->db->table('user_roles')->where('user_id', $userId)->delete();
+
+            // Assign new role with division
+            $this->db->table('user_roles')->insert([
+                'user_id' => $userId,
+                'role_id' => $roleId,
+                'division_id' => $divisionId,
+                'assigned_by' => session()->get('user_id') ?? 1,
+                'assigned_at' => date('Y-m-d H:i:s'),
+                'is_active' => 1
+            ]);
+
+            // Log activity
+            $this->logAuthActivity('USER_APPROVED', $userId, [
+                'username' => $user['username'],
+                'email' => $user['email'],
+                'division_id' => $divisionId,
+                'division_name' => $division['name'],
+                'role_id' => $roleId,
+                'role_name' => $role['name'],
+                'action' => 'approved',
+                'description' => 'User account approved by admin with division and role assignment.'
+            ]);
+
+            $this->db->transComplete();
+
+            if ($this->db->transStatus() === false) {
+                throw new \Exception('Database transaction failed.');
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'User berhasil diaktifkan dengan division dan role yang ditetapkan.'
+            ]);
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', 'Approve User Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal mengaktifkan user: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Deactivate user
+     */
+    public function deactivateUser($userId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request.'])->setStatusCode(400);
+        }
+
+        if (!$this->hasPermission('admin.manage')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Akses ditolak.'])->setStatusCode(403);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON(['success' => false, 'message' => 'User tidak ditemukan.'])->setStatusCode(404);
+        }
+
+        if ($this->userModel->update($userId, ['is_active' => 0, 'updated_at' => date('Y-m-d H:i:s')])) {
+            $this->logAuthActivity('USER_DEACTIVATED', $userId, [
+                'username' => $user['username'],
+                'email' => $user['email'],
+                'action' => 'deactivated',
+                'description' => 'User account deactivated by admin.'
+            ]);
+            return $this->response->setJSON(['success' => true, 'message' => 'User berhasil dinonaktifkan.']);
+        } else {
+            return $this->response->setJSON(['success' => false, 'message' => 'Gagal menonaktifkan user.'])->setStatusCode(500);
         }
     }
 }

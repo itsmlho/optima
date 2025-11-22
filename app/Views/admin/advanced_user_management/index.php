@@ -252,6 +252,103 @@
     </div>
 </div>
 
+<!-- Approve User Modal -->
+<div class="modal fade" id="approveUserModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle me-2"></i>Approve User
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="approveUserForm">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Konfirmasi Data User</strong><br>
+                        Silakan verifikasi data user dan tentukan Divisi serta Posisi sebelum mengaktifkan akun.
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-user me-2"></i>Informasi User</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <strong>Nama:</strong><br>
+                                    <span id="approveUserName">-</span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>Email:</strong><br>
+                                    <span id="approveUserEmail">-</span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>Username:</strong><br>
+                                    <span id="approveUserUsername">-</span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>No. Telepon:</strong><br>
+                                    <span id="approveUserPhone">-</span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>Divisi (User Input):</strong><br>
+                                    <span id="approveUserDivision" class="text-muted">-</span>
+                                </div>
+                                <div class="col-md-6 mb-2">
+                                    <strong>Posisi (User Input):</strong><br>
+                                    <span id="approveUserPosition" class="text-muted">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card mb-3">
+                        <div class="card-header bg-primary text-black">
+                            <h6 class="mb-0">
+                                <i class="fas fa-building me-2"></i>Division & Role
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="approveDivisionId" class="form-label">
+                                        <strong>Division <span class="text-danger">*</span></strong>
+                                    </label>
+                                    <select class="form-select" id="approveDivisionId" name="division_id" required>
+                                        <option value="">Select Division</option>
+                                    </select>
+                                    <div class="invalid-feedback">Silakan pilih division.</div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="approveRoleId" class="form-label">
+                                        <strong>Role <span class="text-danger">*</span></strong>
+                                    </label>
+                                    <select class="form-select" id="approveRoleId" name="role_id" required>
+                                        <option value="">Select Role</option>
+                                    </select>
+                                    <div class="invalid-feedback">Silakan pilih role.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <input type="hidden" id="approveUserId" name="user_id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Batal
+                    </button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check-circle me-2"></i>Approve & Aktifkan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <?= $this->endSection() ?>
 
 <?= $this->section('css') ?>
@@ -290,6 +387,62 @@
 <?= $this->section('script') ?>
 <script>
 $(document).ready(function() {
+    // Handle approve form submission
+    $('#approveUserForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const form = $(this);
+        const userId = $('#approveUserId').val();
+        const divisionId = $('#approveDivisionId').val();
+        const roleId = $('#approveRoleId').val();
+        
+        // Validate
+        if (!divisionId || !roleId) {
+            form.addClass('was-validated');
+            return false;
+        }
+        
+        // Disable submit button
+        const submitBtn = form.find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Memproses...');
+        
+        $.ajax({
+            url: '<?= base_url('admin/advanced-users/approve-user') ?>/' + userId,
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                division_id: divisionId,
+                role_id: roleId,
+                '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+            },
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                if (response.success) {
+                    // Close modal
+                    bootstrap.Modal.getInstance(document.getElementById('approveUserModal')).hide();
+                    
+                    // Show success message
+                    alert(response.message);
+                    
+                    // Reload table
+                    $('#usersTable').DataTable().ajax.reload(null, false);
+                } else {
+                    alert('Error: ' + (response.message || 'Gagal mengaktifkan user'));
+                    submitBtn.prop('disabled', false).html(originalText);
+                }
+            },
+            error: function(xhr) {
+                const response = xhr.responseJSON || {};
+                alert('Error: ' + (response.message || 'Terjadi kesalahan saat mengaktifkan user'));
+                submitBtn.prop('disabled', false).html(originalText);
+            }
+        });
+        
+        return false;
+    });
     // Initialize DataTable with AJAX
     $('#usersTable').DataTable({
         responsive: true,
@@ -493,6 +646,216 @@ function renderUserMatrix(data) {
 
 function quickAssignMenu(userId) {
     window.location.href = '<?= base_url('admin/advanced-users/quick-assign') ?>?user=' + userId;
+}
+
+// Division-Role mapping (same as in form.php)
+const allRoles = [
+    // Marketing Division (ID: 0)
+    { id: '2', name: 'Head Marketing', division: '0' },
+    { id: '3', name: 'Staff Marketing', division: '0' },
+    
+    // Service Diesel Division (ID: 1)
+    { id: '6', name: 'Head Service Diesel', division: '1' },
+    { id: '7', name: 'Staff Service Diesel', division: '1' },
+    
+    // Service Electric Division (ID: 2)
+    { id: '8', name: 'Head Service Electric', division: '2' },
+    { id: '9', name: 'Staff Service Electric', division: '2' },
+    
+    // Warehouse Division (ID: 3)
+    { id: '16', name: 'Head Warehouse', division: '3' },
+    { id: '32', name: 'Staff Warehouse', division: '3' },
+    
+    // HRD Division (ID: 4)
+    { id: '14', name: 'Head HRD', division: '4' },
+    { id: '15', name: 'Staff HRD', division: '4' },
+    
+    // Administrator Division (ID: 5)
+    { id: '30', name: 'Administrator', division: '5' },
+    
+    // Purchasing Division (ID: 6)
+    { id: '10', name: 'Head Purchasing', division: '6' },
+    { id: '11', name: 'Staff Purchasing', division: '6' },
+    
+    // IT Division (ID: 7)
+    { id: '33', name: 'Head IT', division: '7' },
+    { id: '34', name: 'Staff IT', division: '7' }
+];
+
+// Function to update roles based on division
+function updateApprovalRoles(selectedDivision) {
+    console.log('updateApprovalRoles called with division:', selectedDivision);
+    const roleSelect = $('#approveRoleId');
+    roleSelect.empty();
+    roleSelect.append('<option value="">Select Role</option>');
+    
+    if (selectedDivision) {
+        // Convert division ID to string for comparison
+        const divisionStr = selectedDivision.toString();
+        const filteredRoles = allRoles.filter(role => role.division === divisionStr);
+        console.log('Filtered roles for division', divisionStr, ':', filteredRoles);
+        
+        if (filteredRoles.length === 0) {
+            console.warn('No roles found for division:', divisionStr);
+        }
+        
+        filteredRoles.forEach(role => {
+            roleSelect.append('<option value="' + role.id + '">' + role.name + '</option>');
+        });
+        
+        // Force trigger change event
+        roleSelect.trigger('change');
+    }
+}
+
+function approveUser(userId, userName) {
+    // Load user data and show modal
+    $.ajax({
+        url: '<?= base_url('admin/advanced-users/get-user-for-approval') ?>/' + userId,
+        type: 'GET',
+        dataType: 'json',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+        },
+        success: function(response) {
+            if (response.success) {
+                // Populate user info
+                $('#approveUserId').val(response.user.id);
+                $('#approveUserName').text(response.user.first_name + ' ' + response.user.last_name);
+                $('#approveUserEmail').text(response.user.email);
+                $('#approveUserUsername').text(response.user.username || '-');
+                $('#approveUserPhone').text(response.user.phone || '-');
+                
+                // Show user input division and position
+                $('#approveUserDivision').text(response.user.division_name || '-');
+                $('#approveUserPosition').text(response.user.position || '-');
+                
+                // Populate divisions dropdown (for admin selection)
+                const divisionSelect = $('#approveDivisionId');
+                divisionSelect.empty().append('<option value="">Select Division</option>');
+                if (response.divisions && response.divisions.length > 0) {
+                    response.divisions.forEach(function(division) {
+                        divisionSelect.append('<option value="' + division.id + '">' + division.name + '</option>');
+                    });
+                }
+                
+                // Reset role dropdown
+                $('#approveRoleId').empty().append('<option value="">Select Role</option>');
+                
+                // Show modal
+                const modal = new bootstrap.Modal(document.getElementById('approveUserModal'));
+                modal.show();
+            } else {
+                alert('Error: ' + (response.message || 'Gagal memuat data user'));
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON || {};
+            alert('Error: ' + (response.message || 'Terjadi kesalahan saat memuat data user'));
+        }
+    });
+}
+
+// Handle approve form submission
+$('#approveUserForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    const form = $(this);
+    const userId = $('#approveUserId').val();
+    const divisionId = $('#approveDivisionId').val();
+    const roleId = $('#approveRoleId').val();
+    
+    // Validate
+    if (!divisionId || !roleId) {
+        form.addClass('was-validated');
+        return false;
+    }
+    
+    // Disable submit button
+    const submitBtn = form.find('button[type="submit"]');
+    const originalText = submitBtn.html();
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Memproses...');
+    
+    $.ajax({
+        url: '<?= base_url('admin/advanced-users/approve-user') ?>/' + userId,
+        type: 'POST',
+        dataType: 'json',
+        data: {
+            division_id: divisionId,
+            role_id: roleId,
+            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+        },
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        success: function(response) {
+            if (response.success) {
+                // Close modal
+                bootstrap.Modal.getInstance(document.getElementById('approveUserModal')).hide();
+                
+                // Show success message
+                alert(response.message);
+                
+                // Reload table
+                $('#usersTable').DataTable().ajax.reload(null, false);
+            } else {
+                alert('Error: ' + (response.message || 'Gagal mengaktifkan user'));
+                submitBtn.prop('disabled', false).html(originalText);
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON || {};
+            alert('Error: ' + (response.message || 'Terjadi kesalahan saat mengaktifkan user'));
+            submitBtn.prop('disabled', false).html(originalText);
+        }
+    });
+    
+    return false;
+});
+
+// Handle division change for approval modal
+$(document).on('change', '#approveDivisionId', function() {
+    console.log('Approval division changed to:', $(this).val());
+    const selectedDivision = $(this).val();
+    updateApprovalRoles(selectedDivision);
+});
+
+// Also handle when modal is shown (in case division is pre-selected)
+$(document).on('shown.bs.modal', '#approveUserModal', function() {
+    const selectedDivision = $('#approveDivisionId').val();
+    if (selectedDivision) {
+        console.log('Modal shown, division already selected:', selectedDivision);
+        updateApprovalRoles(selectedDivision);
+    }
+});
+
+function deactivateUser(userId, userName) {
+    if (!confirm('Apakah Anda yakin ingin menonaktifkan user "' + userName + '"?\n\nUser tidak akan dapat login ke sistem setelah dinonaktifkan.')) {
+        return;
+    }
+    
+    $.ajax({
+        url: '<?= base_url('admin/advanced-users/deactivate-user') ?>/' + userId,
+        type: 'POST',
+        dataType: 'json',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+        },
+        success: function(response) {
+            if (response.success) {
+                alert(response.message);
+                $('#usersTable').DataTable().ajax.reload();
+            } else {
+                alert('Error: ' + (response.message || 'Gagal menonaktifkan user'));
+            }
+        },
+        error: function(xhr) {
+            const response = xhr.responseJSON || {};
+            alert('Error: ' + (response.message || 'Terjadi kesalahan saat menonaktifkan user'));
+        }
+    });
 }
 
 function confirmDeleteUser(userId, userName) {
