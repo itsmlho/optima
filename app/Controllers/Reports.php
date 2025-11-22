@@ -23,6 +23,12 @@ class Reports extends BaseController
 
     public function index()
     {
+        // Check permission: Reports bisa diakses oleh admin atau user dengan akses ke modul apapun
+        // Untuk sekarang, kita check admin access
+        if (!$this->canAccess('admin')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         $data = [
             'title' => 'Reports Dashboard | OPTIMA',
             'page_title' => 'Reports Dashboard',

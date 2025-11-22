@@ -9,6 +9,11 @@ class Finance extends BaseController
 {
     public function index()
     {
+        // Check permission: User harus punya akses ke accounting module
+        if (!$this->canAccess('accounting')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         $data = [
             'title' => 'Financial Management',
             'page_title' => 'Financial Management',
@@ -102,6 +107,14 @@ class Finance extends BaseController
 
     public function createInvoice()
     {
+        // Check permission: User harus punya manage permission untuk accounting
+        if (!$this->canManage('accounting')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Access denied: You do not have permission to create invoice'
+            ])->setStatusCode(403);
+        }
+        
         // Mock successful response
         return $this->response->setJSON([
             'success' => true,

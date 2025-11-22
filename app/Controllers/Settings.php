@@ -10,6 +10,11 @@ class Settings extends BaseController
     use ActivityLoggingTrait;
     public function index()
     {
+        // Check permission: Settings hanya untuk admin
+        if (!$this->canAccess('admin')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         $data = [
             'title' => 'Settings | OPTIMA',
             'page_title' => 'System Settings',
@@ -25,6 +30,17 @@ class Settings extends BaseController
 
     public function update()
     {
+        // Check permission: Settings hanya untuk admin dengan manage permission
+        if (!$this->canManage('admin')) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Access denied: You do not have permission to update settings'
+                ])->setStatusCode(403);
+            }
+            return redirect()->back()->with('error', 'Access denied.');
+        }
+        
         $validation = \Config\Services::validation();
         $validation->setRules([
             'app_name' => 'required|max_length[100]',

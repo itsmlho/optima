@@ -28,6 +28,11 @@ class RoleController extends BaseController
      */
     public function index()
     {
+        // Check permission: User harus punya akses ke admin module
+        if (!$this->hasPermission('admin.role_management') && !$this->canAccess('admin')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         $data = [
             'title' => 'Simple Role Management',
             'roles' => $this->roleModel->findAll(),

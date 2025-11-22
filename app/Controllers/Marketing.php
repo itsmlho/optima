@@ -44,9 +44,16 @@ class Marketing extends BaseController
 
     public function availableUnits()
     {
-        // Check permission for viewing available units
-        if (!$this->hasPermission('marketing.unit_management.view')) {
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view available units');
+        // Check permission: Marketing perlu akses ke warehouse inventory (cross-division)
+        // Bisa menggunakan module permission (warehouse.access) atau resource permission (warehouse.inventory.view)
+        if (!$this->canAccess('warehouse') && !$this->canViewResource('warehouse', 'inventory')) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Access denied: You do not have permission to view inventory'
+                ])->setStatusCode(403);
+            }
+            return redirect()->to('/dashboard')->with('error', 'Access denied: You do not have permission to view inventory');
         }
         
         return view('marketing/unit_tersedia');
@@ -94,9 +101,12 @@ class Marketing extends BaseController
     // Proxy detail (optional) agar marketing bisa akses tanpa prefix inventory
     public function unitDetail($id)
     {
-        // Check permission for viewing unit details
-        if (!$this->hasPermission('marketing.unit_management.view')) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Access denied: You do not have permission to view unit details'])->setStatusCode(403);
+        // Check permission: Marketing perlu akses ke warehouse inventory (cross-division)
+        if (!$this->canAccess('warehouse') && !$this->canViewResource('warehouse', 'inventory')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Access denied: You do not have permission to view unit details'
+            ])->setStatusCode(403);
         }
         
         try {

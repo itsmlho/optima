@@ -55,6 +55,11 @@ class Dashboard extends BaseController
 
     public function service()
     {
+        // Check permission: User harus punya akses ke service module
+        if (!$this->canAccess('service')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         $data = [
             'title' => 'Service Dashboard',
             'page_title' => 'Dashboard Service',
@@ -85,6 +90,11 @@ class Dashboard extends BaseController
 
     public function marketing()
     {
+        // Check permission: User harus punya akses ke marketing module
+        if (!$this->canAccess('marketing')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         $data = [
             'title' => 'Marketing Dashboard',
             'page_title' => 'Dashboard Marketing',
@@ -100,6 +110,11 @@ class Dashboard extends BaseController
 
     public function warehouse()
     {
+        // Check permission: User harus punya akses ke warehouse module
+        if (!$this->canAccess('warehouse')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         $data = [
             'title' => 'Warehouse & Assets Dashboard',
             'page_title' => 'Dashboard Warehouse & Assets',

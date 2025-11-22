@@ -388,6 +388,11 @@ class Purchasing extends BaseController
 
     public function index()
     {
+        // Check permission
+        if (!$this->canAccess('purchasing')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         // Redirect to purchasing hub
         return $this->purchasingHub();
     }
@@ -397,6 +402,10 @@ class Purchasing extends BaseController
      */
     public function purchasingHub()
     {
+        // Check permission
+        if (!$this->canAccess('purchasing')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
         // Get suppliers
         $suppliers = $this->supplierModel->findAll();
         

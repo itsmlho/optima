@@ -1997,4 +1997,234 @@ class AdvancedUserManagement extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => 'Gagal menonaktifkan user.'])->setStatusCode(500);
         }
     }
+
+    /**
+     * Get available permissions for custom permission assignment
+     */
+    public function getAvailablePermissions($userId)
+    {
+        if (!$this->hasPermission('admin.manage')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Access denied'
+            ])->setStatusCode(403);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'User not found'
+            ])->setStatusCode(404);
+        }
+
+        // Get all permissions
+        $allPermissions = $this->permissionModel->findAll();
+        
+        // Get current user custom permissions (from user_permissions table)
+        $customPermissions = $this->db->table('user_permissions')
+            ->where('user_id', $userId)
+            ->select('permission_id')
+            ->get()
+            ->getResultArray();
+        $customPermissionIds = array_column($customPermissions, 'permission_id');
+
+        // Get permissions from user roles (from role_permissions table)
+        $rolePermissions = $this->db->table('user_roles ur')
+            ->join('role_permissions rp', 'rp.role_id = ur.role_id')
+            ->where('ur.user_id', $userId)
+            ->select('rp.permission_id')
+            ->distinct()
+            ->get()
+            ->getResultArray();
+        $rolePermissionIds = array_column($rolePermissions, 'permission_id');
+
+        // Combine both: permissions from roles + custom permissions
+        $allAssignedPermissionIds = array_unique(array_merge($rolePermissionIds, $customPermissionIds));
+
+        // Format permissions with current status
+        $permissions = [];
+        foreach ($allPermissions as $perm) {
+            $isFromRole = in_array($perm['id'], $rolePermissionIds);
+            $isCustom = in_array($perm['id'], $customPermissionIds);
+            $isAssigned = in_array($perm['id'], $allAssignedPermissionIds);
+            
+            $permissions[] = [
+                'id' => $perm['id'],
+                'key' => $perm['key'],
+                'name' => $perm['name'],
+                'description' => $perm['description'] ?? '',
+                'module' => $perm['module'] ?? 'general',
+                'category' => $perm['category'] ?? 'module',
+                'is_assigned' => $isAssigned,
+                'is_from_role' => $isFromRole,
+                'is_custom' => $isCustom
+            ];
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => $permissions
+        ]);
+    }
+
+    /**
+     * Save custom permissions for user
+     */
+    public function saveCustomPermissions($userId)
+    {
+        if (!$this->hasPermission('admin.manage')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Access denied'
+            ])->setStatusCode(403);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'User not found'
+            ])->setStatusCode(404);
+        }
+
+        $permissionIds = $this->request->getPost('permissions') ?? [];
+        
+        if (empty($permissionIds)) {
+            // Remove all custom permissions
+            $this->db->table('user_permissions')->where('user_id', $userId)->delete();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'All custom permissions removed'
+            ]);
+        }
+
+        // Validate permission IDs
+        $validPermissionIds = $this->db->table('permissions')
+            ->whereIn('id', $permissionIds)
+            ->select('id')
+            ->get()
+            ->getResultArray();
+        $validIds = array_column($validPermissionIds, 'id');
+
+        if (count($validIds) !== count($permissionIds)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Some permission IDs are invalid'
+            ])->setStatusCode(400);
+        }
+
+        $this->db->transStart();
+
+        try {
+            // Remove existing custom permissions
+            $this->db->table('user_permissions')->where('user_id', $userId)->delete();
+
+            // Insert new custom permissions
+            $assignedBy = session()->get('user_id') ?? 1;
+            foreach ($validIds as $permissionId) {
+                $this->db->table('user_permissions')->insert([
+                    'user_id' => $userId,
+                    'permission_id' => $permissionId,
+                    'granted' => 1,
+                    'assigned_by' => $assignedBy,
+                    'assigned_at' => date('Y-m-d H:i:s')
+                ]);
+            }
+
+            $this->db->transComplete();
+
+            if ($this->db->transStatus()) {
+                // Log activity
+                $this->logActivity('UPDATE', 'user_permissions', $userId, 'Custom permissions updated', [
+                    'module_name' => 'ADMIN',
+                    'submenu_item' => 'User Management',
+                    'business_impact' => 'MEDIUM',
+                    'permissions_count' => count($validIds)
+                ]);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => count($validIds) . ' custom permission(s) saved successfully'
+                ]);
+            } else {
+                throw new \Exception('Transaction failed');
+            }
+
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', 'Save Custom Permissions Error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Remove a custom permission from user
+     */
+    public function removeCustomPermission($userId)
+    {
+        if (!$this->hasPermission('admin.manage')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Access denied'
+            ])->setStatusCode(403);
+        }
+
+        $user = $this->userModel->find($userId);
+        if (!$user) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'User not found'
+            ])->setStatusCode(404);
+        }
+
+        $permissionId = $this->request->getPost('permission_id');
+        
+        if (empty($permissionId)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Permission ID is required'
+            ])->setStatusCode(400);
+        }
+
+        try {
+            $result = $this->db->table('user_permissions')
+                ->where('user_id', $userId)
+                ->where('permission_id', $permissionId)
+                ->delete();
+
+            if ($result) {
+                // Log activity
+                $this->logActivity('DELETE', 'user_permissions', $userId, 'Custom permission removed', [
+                    'module_name' => 'ADMIN',
+                    'submenu_item' => 'User Management',
+                    'business_impact' => 'LOW',
+                    'permission_id' => $permissionId
+                ]);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Custom permission removed successfully'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Permission not found or already removed'
+                ])->setStatusCode(404);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Remove Custom Permission Error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
+    }
 }

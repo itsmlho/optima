@@ -195,6 +195,74 @@
                             </div>
                         </div>
 
+                        <!-- Custom Permissions Section (only for edit) -->
+                        <?php if (isset($user)): ?>
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h5 class="text-primary mb-3">
+                                    <i class="fas fa-user-shield me-2"></i>Custom Permissions
+                                    <small class="text-muted">(Override role permissions untuk user khusus)</small>
+                                </h5>
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Info:</strong> Custom permissions akan override permissions dari role. Gunakan untuk memberikan akses khusus di luar template role_permissions global.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="openCustomPermissionModal()">
+                                        <i class="fas fa-plus me-2"></i>Manage Custom Permissions
+                                    </button>
+                                    <span class="ms-2 text-muted" id="customPermissionCount">
+                                        <?php 
+                                        $customCount = count($userPermissions ?? []);
+                                        echo $customCount > 0 ? "({$customCount} custom permission" . ($customCount > 1 ? 's' : '') . " assigned)" : "(No custom permissions)";
+                                        ?>
+                                    </span>
+                                </div>
+                                
+                                <!-- Display current custom permissions -->
+                                <?php if (!empty($userPermissions)): ?>
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Permission Key</th>
+                                                <th>Permission Name</th>
+                                                <th>Status</th>
+                                                <th>Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customPermissionsList">
+                                            <?php foreach ($userPermissions as $perm): ?>
+                                            <tr data-permission-id="<?= $perm['id'] ?>">
+                                                <td><code><?= esc($perm['key']) ?></code></td>
+                                                <td><?= esc($perm['name']) ?></td>
+                                                <td>
+                                                    <?php if ($perm['granted'] == 1): ?>
+                                                        <span class="badge bg-success">Granted</span>
+                                                    <?php else: ?>
+                                                        <span class="badge bg-danger">Denied</span>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td>
+                                                    <button type="button" class="btn btn-sm btn-danger" onclick="removeCustomPermission(<?= $perm['id'] ?>)">
+                                                        <i class="fas fa-trash"></i> Remove
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            <?php endforeach; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+
                         <!-- Submit Buttons (only for create) -->
                         <?php if (!isset($user)): ?>
                         <div class="row">
@@ -266,6 +334,42 @@
         </div>
     </div>
 </div>
+
+<!-- Custom Permission Modal -->
+<?php if (isset($user)): ?>
+<div class="modal fade" id="customPermissionModal" tabindex="-1" aria-labelledby="customPermissionModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="customPermissionModalLabel">
+                    <i class="fas fa-user-shield me-2"></i>Manage Custom Permissions
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Warning:</strong> Custom permissions akan override permissions dari role. Hanya gunakan untuk user khusus yang memerlukan akses di luar template role_permissions global.
+                </div>
+                
+                <div id="availablePermissionsList" style="max-height: 400px; overflow-y: auto;">
+                    <div class="text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading permissions...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="window.saveCustomPermissions()">
+                    <i class="fas fa-save me-2"></i>Save Custom Permissions
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <?php endif; ?>
 
 <?= $this->endSection() ?>
@@ -273,6 +377,193 @@
 <?= $this->section('javascript') ?>
 <script>
 <?php if (isset($user)): ?>
+// Define custom permission functions first (before other code)
+window.openCustomPermissionModal = function() {
+    $('#customPermissionModal').modal('show');
+    window.loadAvailablePermissions();
+};
+
+window.loadAvailablePermissions = function() {
+    $.ajax({
+        url: '<?= base_url('admin/advanced-users/get-available-permissions/' . $user['id']) ?>',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response.success) {
+                const permissions = response.data;
+                const grouped = {};
+                
+                // Group by module
+                permissions.forEach(perm => {
+                    const module = perm.module || 'general';
+                    if (!grouped[module]) {
+                        grouped[module] = [];
+                    }
+                    grouped[module].push(perm);
+                });
+                
+                // Build HTML
+                let html = '';
+                Object.keys(grouped).sort().forEach(module => {
+                    html += `<div class="mb-3"><h6 class="text-primary">${module.toUpperCase()}</h6>`;
+                    grouped[module].forEach(perm => {
+                        const isChecked = perm.is_assigned ? 'checked' : '';
+                        html += `
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="checkbox" 
+                                       id="perm_${perm.id}" 
+                                       value="${perm.id}"
+                                       data-key="${perm.key}"
+                                       data-name="${perm.name}"
+                                       ${isChecked}>
+                                <label class="form-check-label" for="perm_${perm.id}">
+                                    <strong>${perm.key}</strong> - ${perm.name}
+                                    ${perm.description ? '<br><small class="text-muted">' + perm.description + '</small>' : ''}
+                                    ${perm.is_assigned ? '<span class="badge bg-success ms-2">Assigned</span>' : ''}
+                                </label>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                });
+                
+                $('#availablePermissionsList').html(html);
+            }
+        },
+        error: function() {
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to load permissions',
+                confirmButtonColor: '#e74a3b'
+            });
+        }
+    });
+};
+
+window.saveCustomPermissions = function() {
+    const selected = [];
+    $('#availablePermissionsList input[type="checkbox"]:checked').each(function() {
+        selected.push({
+            id: $(this).val(),
+            key: $(this).data('key'),
+            name: $(this).data('name')
+        });
+    });
+    
+    if (selected.length === 0) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'No Selection',
+            text: 'Please select at least one permission',
+            confirmButtonColor: '#4e73df'
+        });
+        return;
+    }
+    
+    Swal.fire({
+        title: 'Saving...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    $.ajax({
+        url: '<?= base_url('admin/advanced-users/save-custom-permissions/' . $user['id']) ?>',
+        type: 'POST',
+        data: {
+            permissions: selected.map(p => p.id)
+        },
+        dataType: 'json',
+        success: function(response) {
+            Swal.close();
+            if (response.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: response.message || 'Custom permissions saved',
+                    confirmButtonColor: '#4e73df',
+                    timer: 2000
+                }).then(() => {
+                    $('#customPermissionModal').modal('hide');
+                    location.reload();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: response.message || 'Failed to save permissions',
+                    confirmButtonColor: '#e74a3b'
+                });
+            }
+        },
+        error: function(xhr) {
+            Swal.close();
+            const errorMsg = xhr.responseJSON?.message || 'Failed to save permissions';
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMsg,
+                confirmButtonColor: '#e74a3b'
+            });
+        }
+    });
+};
+
+window.removeCustomPermission = function(permissionId) {
+    Swal.fire({
+        title: 'Remove Permission?',
+        text: 'Are you sure you want to remove this custom permission?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Yes, remove it!'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '<?= base_url('admin/advanced-users/remove-custom-permission/' . $user['id']) ?>',
+                type: 'POST',
+                data: {
+                    permission_id: permissionId
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Removed!',
+                            text: 'Permission removed successfully',
+                            confirmButtonColor: '#4e73df',
+                            timer: 1500
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.message || 'Failed to remove permission',
+                            confirmButtonColor: '#e74a3b'
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Failed to remove permission',
+                        confirmButtonColor: '#e74a3b'
+                    });
+                }
+            });
+        }
+    });
+};
+
 let isEditMode = false;
 let originalData = {};
 
@@ -949,6 +1240,209 @@ $(document).ready(function() {
     });
     <?php endif; ?>
     
+    // Custom Permissions Management - Define globally BEFORE document.ready
+    <?php if (isset($user)): ?>
+    // Define functions in global scope IMMEDIATELY (not inside document.ready)
+    window.openCustomPermissionModal = function() {
+        $('#customPermissionModal').modal('show');
+        if (typeof window.loadAvailablePermissions === 'function') {
+            window.loadAvailablePermissions();
+        }
+    };
+    
+    window.loadAvailablePermissions = function() {
+        $.ajax({
+            url: '<?= base_url('admin/advanced-users/get-available-permissions/' . $user['id']) ?>',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    const permissions = response.data;
+                    const grouped = {};
+                    
+                    // Group by module
+                    permissions.forEach(perm => {
+                        const module = perm.module || 'general';
+                        if (!grouped[module]) {
+                            grouped[module] = [];
+                        }
+                        grouped[module].push(perm);
+                    });
+                    
+                    // Build HTML
+                    let html = '';
+                    Object.keys(grouped).sort().forEach(module => {
+                        html += `<div class="mb-3"><h6 class="text-primary">${module.toUpperCase()}</h6>`;
+                        grouped[module].forEach(perm => {
+                            const isChecked = perm.is_assigned ? 'checked' : '';
+                            const isFromRole = perm.is_from_role || false;
+                            const isCustom = perm.is_custom || false;
+                            let badgeHtml = '';
+                            if (isFromRole && isCustom) {
+                                badgeHtml = '<span class="badge bg-info ms-2">Role + Custom</span>';
+                            } else if (isFromRole) {
+                                badgeHtml = '<span class="badge bg-primary ms-2">From Role</span>';
+                            } else if (isCustom) {
+                                badgeHtml = '<span class="badge bg-success ms-2">Custom</span>';
+                            }
+                            
+                            html += `
+                                <div class="form-check mb-2">
+                                    <input class="form-check-input" type="checkbox" 
+                                           id="perm_${perm.id}" 
+                                           value="${perm.id}"
+                                           data-key="${perm.key}"
+                                           data-name="${perm.name}"
+                                           ${isChecked}>
+                                    <label class="form-check-label" for="perm_${perm.id}">
+                                        <strong>${perm.key}</strong> - ${perm.name}
+                                        ${perm.description ? '<br><small class="text-muted">' + perm.description + '</small>' : ''}
+                                        ${badgeHtml}
+                                    </label>
+                                </div>
+                            `;
+                        });
+                        html += '</div>';
+                    });
+                    
+                    $('#availablePermissionsList').html(html);
+                }
+            },
+            error: function() {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'Failed to load permissions',
+                    confirmButtonColor: '#e74a3b'
+                });
+            }
+        });
+    };
+    
+    window.saveCustomPermissions = function() {
+        const selected = [];
+        $('#availablePermissionsList input[type="checkbox"]:checked').each(function() {
+            selected.push({
+                id: $(this).val(),
+                key: $(this).data('key'),
+                name: $(this).data('name')
+            });
+        });
+        
+        if (selected.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'No Selection',
+                text: 'Please select at least one permission',
+                confirmButtonColor: '#4e73df'
+            });
+            return;
+        }
+        
+        Swal.fire({
+            title: 'Saving...',
+            text: 'Please wait',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+        
+        $.ajax({
+            url: '<?= base_url('admin/advanced-users/save-custom-permissions/' . $user['id']) ?>',
+            type: 'POST',
+            data: {
+                permissions: selected.map(p => p.id)
+            },
+            dataType: 'json',
+            success: function(response) {
+                Swal.close();
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Success!',
+                        text: response.message || 'Custom permissions saved',
+                        confirmButtonColor: '#4e73df',
+                        timer: 2000
+                    }).then(() => {
+                        $('#customPermissionModal').modal('hide');
+                        location.reload();
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: response.message || 'Failed to save permissions',
+                        confirmButtonColor: '#e74a3b'
+                    });
+                }
+            },
+            error: function(xhr) {
+                Swal.close();
+                const errorMsg = xhr.responseJSON?.message || 'Failed to save permissions';
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: errorMsg,
+                    confirmButtonColor: '#e74a3b'
+                });
+            }
+        });
+    };
+    
+    window.removeCustomPermission = function(permissionId) {
+        Swal.fire({
+            title: 'Remove Permission?',
+            text: 'Are you sure you want to remove this custom permission?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
+            confirmButtonText: 'Yes, remove it!'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '<?= base_url('admin/advanced-users/remove-custom-permission/' . $user['id']) ?>',
+                    type: 'POST',
+                    data: {
+                        permission_id: permissionId
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Removed!',
+                                text: 'Permission removed successfully',
+                                confirmButtonColor: '#4e73df',
+                                timer: 1500
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error',
+                                text: response.message || 'Failed to remove permission',
+                                confirmButtonColor: '#e74a3b'
+                            });
+                        }
+                    },
+                    error: function() {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Failed to remove permission',
+                            confirmButtonColor: '#e74a3b'
+                        });
+                    }
+                });
+            }
+        });
+    };
+    <?php endif; ?>
+    
     // Form validation and AJAX submission (only for create)
     $('#createUserForm').on('submit', function(e) {
         e.preventDefault();
@@ -1037,4 +1531,5 @@ $(document).ready(function() {
         .appendTo('head');
 });
 </script>
+<?php endif; ?>
 <?= $this->endSection() ?>

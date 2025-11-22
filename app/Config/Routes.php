@@ -763,6 +763,11 @@ $routes->group('admin', static function ($routes) {
         // $routes->post('quick-assign-permission', 'Admin\AdvancedUserManagement::quickAssignPermission');
         // $routes->post('bulk-assign-permissions', 'Admin\AdvancedUserManagement::bulkAssignPermissions');
         
+        // Custom Permissions routes
+        $routes->get('get-available-permissions/(:num)', 'Admin\AdvancedUserManagement::getAvailablePermissions/$1');
+        $routes->post('save-custom-permissions/(:num)', 'Admin\AdvancedUserManagement::saveCustomPermissions/$1');
+        $routes->post('remove-custom-permission/(:num)', 'Admin\AdvancedUserManagement::removeCustomPermission/$1');
+        
         // Division management routes
         $routes->get('division/(:num)', 'Admin\AdvancedUserManagement::divisionUsers/$1');
         $routes->get('division-users/(:num)', 'Admin\AdvancedUserManagement::divisionUsers/$1');
@@ -842,6 +847,9 @@ $routes->group('admin', static function ($routes) {
         $routes->get('getCounts', 'Admin\RoleController::getCounts');
         $routes->get('getRoleDetail/(:num)', 'Admin\RoleController::getRoleDetail/$1');
     });
+    
+    // Verify Resource Permissions
+    $routes->get('verify-resource-permissions', 'Admin\VerifyResourcePermissions::index');
     
     // Activity Log Routes
     $routes->group('activity-logs', ['filter' => 'permission:logs.view'], static function ($routes) {

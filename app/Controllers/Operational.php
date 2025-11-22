@@ -103,6 +103,15 @@ class Operational extends Controller
 
     private function searchByKontrak($kontrakNo)
     {
+        // Check permission: Operational perlu akses ke marketing kontrak (cross-division)
+        // Operational Head/Staff punya: marketing.kontrak.view (resource permission)
+        if (!$this->canAccess('marketing') && !$this->canViewResource('marketing', 'kontrak')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Access denied: You do not have permission to view kontrak'
+            ])->setStatusCode(403);
+        }
+        
         log_message('info', 'Searching for kontrak: ' . $kontrakNo);
         
         // Try different search methods
@@ -1627,6 +1636,14 @@ class Operational extends Controller
      */
     public function getContractUnits()
     {
+        // Check permission: Operational perlu akses ke marketing kontrak (cross-division)
+        if (!$this->canAccess('marketing') && !$this->canViewResource('marketing', 'kontrak')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Access denied: You do not have permission to view kontrak'
+            ])->setStatusCode(403);
+        }
+        
         try {
             $kontrakId = $this->request->getGet('kontrak_id');
             $jenisId = $this->request->getGet('jenis_id');

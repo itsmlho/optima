@@ -208,4 +208,107 @@ abstract class BaseController extends Controller
         }
         return null;
     }
+    
+    /**
+     * Check if user can access a resource (cross-division)
+     * Supports both module permission and resource permission
+     * 
+     * @param string $module - Module name (e.g., 'warehouse', 'marketing')
+     * @param string|null $resource - Resource name (e.g., 'inventory', 'kontrak') - optional
+     * @param string $action - Action (view, manage, delete, export) - default: 'view'
+     * @return bool
+     */
+    protected function canAccessResource(string $module, ?string $resource = null, string $action = 'view'): bool
+    {
+        // Super admin bypass
+        try {
+            $db = \Config\Database::connect();
+            $userId = session('user_id');
+            if (!$userId) {
+                return false;
+            }
+
+            // Check Super Administrator
+            $super = $db->table('user_roles ur')
+                ->select('1')
+                ->join('roles r', 'r.id = ur.role_id', 'left')
+                ->where('ur.user_id', $userId)
+                ->where('r.name', 'Super Administrator')
+                ->limit(1)->get()->getRowArray();
+            if ($super) {
+                return true;
+            }
+
+            // Build permission key
+            if ($resource) {
+                // Resource permission: module.resource.action
+                $permissionKey = $module . '.' . $resource . '.' . $action;
+            } else {
+                // Module permission: module.action
+                $permissionKey = $module . '.' . $action;
+            }
+
+            // Check permission
+            return $this->hasPermission($permissionKey);
+        } catch (\Throwable $e) {
+            // If anything goes wrong, do not block UI
+            return true;
+        }
+    }
+
+    /**
+     * Check if user can view a resource (cross-division)
+     * 
+     * @param string $module - Module name
+     * @param string|null $resource - Resource name (optional)
+     * @return bool
+     */
+    protected function canViewResource(string $module, ?string $resource = null): bool
+    {
+        return $this->canAccessResource($module, $resource, 'view');
+    }
+
+    /**
+     * Check if user can manage a resource (cross-division)
+     * 
+     * @param string $module - Module name
+     * @param string|null $resource - Resource name (optional)
+     * @return bool
+     */
+    protected function canManageResource(string $module, ?string $resource = null): bool
+    {
+        return $this->canAccessResource($module, $resource, 'manage');
+    }
+
+    /**
+     * Require resource access or redirect/return error
+     * Checks both module permission and resource permission
+     * 
+     * @param string $module - Module name
+     * @param string|null $resource - Resource name (optional)
+     * @param string $action - Action (view, manage) - default: 'view'
+     * @param bool $ajax - Whether this is an AJAX request
+     * @return mixed|null
+     */
+    protected function requireResourceAccess(string $module, ?string $resource = null, string $action = 'view', bool $ajax = false)
+    {
+        // Check module permission first (own division)
+        $hasModuleAccess = $this->canAccessResource($module, null, $action);
+        
+        // Check resource permission (cross-division)
+        $hasResourceAccess = $resource ? $this->canAccessResource($module, $resource, $action) : false;
+
+        // Allow if either module or resource permission exists
+        if (!$hasModuleAccess && !$hasResourceAccess) {
+            if ($ajax || $this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Access denied: You do not have permission to access this resource'
+                ])->setStatusCode(403);
+            }
+            return redirect()->to('/dashboard')->with('error', 'Access denied: You do not have permission to access this resource');
+        }
+        
+        return null;
+    }
 }

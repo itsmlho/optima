@@ -733,12 +733,22 @@ class Warehouse extends BaseController
 
     /**
      * Memperbarui data stok unit.
+     * Support cross-division access: Service bisa update inventory setelah maintenance
      */
     public function updateUnit($id)
     {
         if (!$this->request->isAJAX()) {
             return $this->response->setStatusCode(403)->setJSON(['success' => false, 'message' => 'Akses ditolak.']);
         }
+        
+        // Check permission: Warehouse punya warehouse.manage, Service punya warehouse.inventory.manage
+        if (!$this->canManage('warehouse') && !$this->canManageResource('warehouse', 'inventory')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Access denied: You do not have permission to update inventory'
+            ])->setStatusCode(403);
+        }
+        
         $inventoryUnitModel = new InventoryUnitModel();
         $data = [
             'status_unit_id' => $this->request->getPost('status_unit'),

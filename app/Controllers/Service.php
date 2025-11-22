@@ -433,10 +433,25 @@ class Service extends BaseController
 
     public function spkDetail($id)
     {
+        // Check permission: Service punya service.access (module permission)
+        if (!$this->canAccess('service')) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Access denied: You do not have permission to view SPK details'
+                ])->setStatusCode(403);
+            }
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        
         $row = $this->db->table('spk')->where('id', (int)$id)->get()->getRowArray();
         if (!$row) {
             return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'SPK tidak ditemukan']);
         }
+        
+        // Note: Service mengakses kontrak_spesifikasi di bawah (line 733-749)
+        // Ini adalah cross-division access yang sudah di-handle oleh permission check di atas
+        // Service Head/Staff punya: marketing.kontrak.view (resource permission)
         
         // Get stage status from new spk_unit_stages table
         $stageStatus = $this->getSpkStageStatusData($id);
@@ -1256,6 +1271,12 @@ class Service extends BaseController
         }
         
         // Update unit status to READY_TO_DELIVER
+        // Check permission: Service perlu manage inventory (cross-division)
+        // Service Head/Staff punya: warehouse.inventory.manage (resource permission)
+        if (!$this->canManage('warehouse') && !$this->canManageResource('warehouse', 'inventory')) {
+            throw new \Exception('Access denied: You do not have permission to update inventory');
+        }
+        
         $this->db->table('inventory_unit')
             ->where('id_inventory_unit', $stageData['unit_id'])
             ->update(['status_unit_id' => 5, 'updated_at' => date('Y-m-d H:i:s')]);
@@ -1266,9 +1287,16 @@ class Service extends BaseController
 
     /**
      * Update inventory unit data
+     * Service perlu manage inventory (cross-division) - warehouse.inventory.manage
      */
     private function updateInventoryUnit($unit_id, $area_id, $no_unit_action, $update_no_unit)
     {
+        // Check permission: Service perlu manage inventory (cross-division)
+        // Service Head/Staff punya: warehouse.inventory.manage (resource permission)
+        if (!$this->canManage('warehouse') && !$this->canManageResource('warehouse', 'inventory')) {
+            log_message('error', 'Service::updateInventoryUnit - Access denied for user: ' . session()->get('user_id'));
+            throw new \Exception('Access denied: You do not have permission to update inventory');
+        }
         $updateData = [
             'area_id' => $area_id, 
             'status_unit_id' => 4, // IN_PREPARATION
