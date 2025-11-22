@@ -16,6 +16,7 @@ class SiloModel extends Model
     protected $allowedFields = [
         'unit_id',
         'status',
+        'nama_pt_pjk3',
         'tanggal_pengajuan_pjk3',
         'catatan_pengajuan_pjk3',
         'tanggal_testing_pjk3',
@@ -25,6 +26,7 @@ class SiloModel extends Model
         'file_surat_keterangan_pjk3',
         'tanggal_pengajuan_uptd',
         'catatan_pengajuan_uptd',
+        'lokasi_disnaker',
         'tanggal_proses_uptd',
         'catatan_proses_uptd',
         'nomor_silo',
@@ -47,13 +49,11 @@ class SiloModel extends Model
     protected $skipValidation       = false;
     protected $cleanValidationRules = true;
 
-    // Status constants
+    // Status constants (Simplified workflow)
     const STATUS_BELUM_ADA = 'BELUM_ADA';
     const STATUS_PENGAJUAN_PJK3 = 'PENGAJUAN_PJK3';
-    const STATUS_TESTING_PJK3 = 'TESTING_PJK3';
     const STATUS_SURAT_KETERANGAN_PJK3 = 'SURAT_KETERANGAN_PJK3';
     const STATUS_PENGAJUAN_UPTD = 'PENGAJUAN_UPTD';
-    const STATUS_PROSES_UPTD = 'PROSES_UPTD';
     const STATUS_SILO_TERBIT = 'SILO_TERBIT';
     const STATUS_SILO_EXPIRED = 'SILO_EXPIRED';
 
@@ -73,11 +73,17 @@ class SiloModel extends Model
                 $builder->select('s.*,
                     iu.no_unit,
                     iu.serial_number,
-                    tu.tipe as tipe_unit,
-                    CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit');
+                    CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit,
+                    CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                    c.customer_name as nama_perusahaan,
+                    cl.address as alamat,
+                    d.nama_departemen as departemen');
             $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('customers c', 'c.id = iu.customer_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = iu.customer_location_id', 'left');
+            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
 
             // Apply filters
             if (!empty($filters['status'])) {
@@ -85,10 +91,8 @@ class SiloModel extends Model
                 if ($filters['status'] === 'progres') {
                     $progresStatuses = [
                         self::STATUS_PENGAJUAN_PJK3,
-                        self::STATUS_TESTING_PJK3,
                         self::STATUS_SURAT_KETERANGAN_PJK3,
                         self::STATUS_PENGAJUAN_UPTD,
-                        self::STATUS_PROSES_UPTD,
                     ];
                     $builder->whereIn('s.status', $progresStatuses);
                 } else {
@@ -111,10 +115,23 @@ class SiloModel extends Model
                 $builder->where('s.tanggal_expired_silo IS NOT NULL');
                 $builder->where('s.tanggal_expired_silo <=', date('Y-m-d', strtotime("+{$days} days")));
                 $builder->where('s.tanggal_expired_silo >=', date('Y-m-d'));
+                // Only show SILO_TERBIT status for expiring soon
+                $builder->where('s.status', self::STATUS_SILO_TERBIT);
             }
 
             if (!empty($filters['expired'])) {
+                $builder->where('s.tanggal_expired_silo IS NOT NULL');
                 $builder->where('s.tanggal_expired_silo <', date('Y-m-d'));
+                // Only show SILO_TERBIT status for expired
+                $builder->where('s.status', self::STATUS_SILO_TERBIT);
+            }
+
+            if (!empty($filters['filter_status'])) {
+                $builder->where('s.status', $filters['filter_status']);
+            }
+
+            if (!empty($filters['filter_departemen'])) {
+                $builder->where('iu.departemen_id', $filters['filter_departemen']);
             }
 
             $builder->orderBy('s.created_at', 'DESC');
@@ -138,7 +155,7 @@ class SiloModel extends Model
     /**
      * Get units without SILO (for tab "Belum Ada SILO")
      */
-    public function getUnitsWithoutSilo($search = '')
+    public function getUnitsWithoutSilo($search = '', $filterDepartemen = null)
     {
         try {
             log_message('debug', 'SiloModel::getUnitsWithoutSilo - Called with search: ' . $search);
@@ -147,9 +164,16 @@ class SiloModel extends Model
             $builder = $this->db->table('inventory_unit iu');
             $builder->select('iu.id_inventory_unit as id_silo, iu.no_unit, iu.serial_number, 
                 NULL as status, NULL as nomor_silo, NULL as tanggal_terbit_silo, NULL as tanggal_expired_silo,
-                tu.tipe as tipe_unit, CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit');
+                CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit, 
+                CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+                c.customer_name as nama_perusahaan,
+                cl.address as alamat,
+                d.nama_departemen as departemen');
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+            $builder->join('customers c', 'c.id = iu.customer_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = iu.customer_location_id', 'left');
+            $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
             
             // Check if silo table exists
             if ($this->db->tableExists($this->table)) {
@@ -185,6 +209,11 @@ class SiloModel extends Model
                 $builder->groupEnd();
             }
 
+            // Apply departemen filter
+            if (!empty($filterDepartemen)) {
+                $builder->where('iu.departemen_id', $filterDepartemen);
+            }
+
             $builder->orderBy('iu.no_unit', 'ASC');
 
             $result = $builder->get()->getResultArray();
@@ -210,11 +239,24 @@ class SiloModel extends Model
             iu.no_unit, 
             iu.serial_number,
             iu.tahun_unit,
-                    tu.tipe as tipe_unit,
-                    CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit');
+            iu.lokasi_unit,
+            tu.tipe as tipe_unit,
+            tu.jenis as jenis_unit,
+            CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
+            CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit_full,
+            k.kapasitas_unit,
+            d.nama_departemen as departemen,
+            c.customer_name as nama_perusahaan,
+            cl.address as alamat,
+            cl.city as kota,
+            cl.province as provinsi');
         $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
         $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
         $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+        $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
+        $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
+        $builder->join('customers c', 'c.id = iu.customer_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = iu.customer_location_id', 'left');
         $builder->where('s.id_silo', $siloId);
 
         return $builder->get()->getRowArray();
@@ -245,10 +287,8 @@ class SiloModel extends Model
             
             $progresStatuses = [
                 self::STATUS_PENGAJUAN_PJK3,
-                self::STATUS_TESTING_PJK3,
                 self::STATUS_SURAT_KETERANGAN_PJK3,
                 self::STATUS_PENGAJUAN_UPTD,
-                self::STATUS_PROSES_UPTD,
             ];
             $stats['progres'] = $this->whereIn('status', $progresStatuses)->countAllResults();
 
@@ -282,11 +322,9 @@ class SiloModel extends Model
     {
         $workflow = [
             self::STATUS_BELUM_ADA => self::STATUS_PENGAJUAN_PJK3,
-            self::STATUS_PENGAJUAN_PJK3 => self::STATUS_TESTING_PJK3,
-            self::STATUS_TESTING_PJK3 => self::STATUS_SURAT_KETERANGAN_PJK3,
+            self::STATUS_PENGAJUAN_PJK3 => self::STATUS_SURAT_KETERANGAN_PJK3,
             self::STATUS_SURAT_KETERANGAN_PJK3 => self::STATUS_PENGAJUAN_UPTD,
-            self::STATUS_PENGAJUAN_UPTD => self::STATUS_PROSES_UPTD,
-            self::STATUS_PROSES_UPTD => self::STATUS_SILO_TERBIT,
+            self::STATUS_PENGAJUAN_UPTD => self::STATUS_SILO_TERBIT,
         ];
 
         return $workflow[$currentStatus] ?? null;
@@ -325,10 +363,8 @@ class SiloModel extends Model
         $labels = [
             self::STATUS_BELUM_ADA => 'Belum Ada SILO',
             self::STATUS_PENGAJUAN_PJK3 => 'Pengajuan ke PJK3',
-            self::STATUS_TESTING_PJK3 => 'Testing PJK3',
             self::STATUS_SURAT_KETERANGAN_PJK3 => 'Surat Keterangan PJK3',
             self::STATUS_PENGAJUAN_UPTD => 'Pengajuan ke UPTD',
-            self::STATUS_PROSES_UPTD => 'Proses UPTD',
             self::STATUS_SILO_TERBIT => 'SILO Terbit',
             self::STATUS_SILO_EXPIRED => 'SILO Expired',
         ];
@@ -344,10 +380,8 @@ class SiloModel extends Model
         $colors = [
             self::STATUS_BELUM_ADA => 'danger',
             self::STATUS_PENGAJUAN_PJK3 => 'warning',
-            self::STATUS_TESTING_PJK3 => 'warning',
             self::STATUS_SURAT_KETERANGAN_PJK3 => 'info',
             self::STATUS_PENGAJUAN_UPTD => 'warning',
-            self::STATUS_PROSES_UPTD => 'warning',
             self::STATUS_SILO_TERBIT => 'success',
             self::STATUS_SILO_EXPIRED => 'danger',
         ];

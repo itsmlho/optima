@@ -642,11 +642,13 @@ $routes->group('finance', static function ($routes) {
 $routes->group('perizinan', static function ($routes) {
     $routes->get('silo', 'Perizinan::silo');
     $routes->get('get-silo-list', 'Perizinan::getSiloList');
+    $routes->get('get-silo-stats', 'Perizinan::getSiloStats');
     $routes->get('get-available-units', 'Perizinan::getAvailableUnits');
     $routes->post('create-silo', 'Perizinan::createSilo');
     $routes->get('get-silo-detail/(:num)', 'Perizinan::getSiloDetail/$1');
     $routes->post('update-silo-status/(:num)', 'Perizinan::updateSiloStatus/$1');
     $routes->post('upload-file/(:num)', 'Perizinan::uploadFile/$1');
+    $routes->get('preview-file/(:num)/(:segment)', 'Perizinan::previewFile/$1/$2');
     $routes->get('download-file/(:num)/(:segment)', 'Perizinan::downloadFile/$1/$2');
     $routes->get('emisi', 'Perizinan::emisi');
 });
