@@ -19,6 +19,7 @@ class UserModel extends Model
         'phone', 'department', 'position', 'is_active', 'last_login', 
         'remember_token', 'reset_token', 'reset_expires', 'is_super_admin',
         'division_id', 'email_verified_at', 'bio', 'avatar', 'location',
+        'otp_enabled', 'otp_enabled_at',
         'created_at', 'updated_at'
     ];
 

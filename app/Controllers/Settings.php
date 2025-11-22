@@ -85,21 +85,78 @@ class Settings extends BaseController
 
     public function testEmail()
     {
-        $email = \Config\Services::email();
+        $testEmail = $this->request->getPost('test_email') ?? $this->request->getPost('email') ?? '';
         
-        $email->setTo($this->request->getPost('test_email'));
-        $email->setSubject('OPTIMA - Email Test');
-        $email->setMessage('This is a test email from OPTIMA system. If you receive this, email configuration is working correctly.');
+        if (empty($testEmail)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Email address is required'
+            ]);
+        }
+        
+        $email = \Config\Services::email();
+        $emailConfig = config('Email');
+        
+        // Set from email
+        if (!empty($emailConfig->fromEmail)) {
+            $email->setFrom($emailConfig->fromEmail, $emailConfig->fromName ?? 'OPTIMA System');
+        }
+        
+        // Generate test OTP
+        $otpCode = str_pad(rand(0, 999999), 6, '0', STR_PAD_LEFT);
+        
+        // Create HTML email message
+        $message = '
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+                .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+                .header { background-color: #4e73df; color: white; padding: 20px; text-align: center; }
+                .content { background-color: #f8f9fc; padding: 30px; margin: 20px 0; }
+                .otp-code { font-size: 32px; font-weight: bold; text-align: center; color: #4e73df; 
+                            background-color: white; padding: 20px; margin: 20px 0; border: 2px dashed #4e73df; }
+                .footer { text-align: center; color: #858796; font-size: 12px; margin-top: 20px; }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>Test OTP Email - OPTIMA</h2>
+                </div>
+                <div class="content">
+                    <p>Halo,</p>
+                    <p>Ini adalah email test untuk verifikasi konfigurasi email OPTIMA.</p>
+                    <p><strong>Test OTP Code Anda adalah:</strong></p>
+                    <div class="otp-code">' . $otpCode . '</div>
+                    <p>Kode ini akan expired dalam 5 menit.</p>
+                    <p>Jika Anda menerima email ini, berarti konfigurasi email sudah benar!</p>
+                </div>
+                <div class="footer">
+                    <p>Email ini dikirim dari sistem OPTIMA untuk testing.</p>
+                    <p>&copy; ' . date('Y') . ' PT SARANA MITRA LUAS Tbk. All rights reserved.</p>
+                </div>
+            </div>
+        </body>
+        </html>';
+        
+        $email->setTo($testEmail);
+        $email->setSubject('Test OTP Email - OPTIMA');
+        $email->setMessage($message);
 
         if ($email->send()) {
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Test email sent successfully'
+                'message' => 'Test email sent successfully to ' . $testEmail,
+                'otp_code' => $otpCode
             ]);
         } else {
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to send test email: ' . $email->printDebugger(['headers'])
+                'message' => 'Failed to send test email',
+                'error' => $email->printDebugger(['headers', 'subject', 'body'])
             ]);
         }
     }

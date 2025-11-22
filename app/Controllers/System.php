@@ -3,17 +3,51 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
+use App\Models\UserModel;
+use App\Traits\ActivityLoggingTrait;
 
 class System extends BaseController
 {
+    use ActivityLoggingTrait;
+    
+    protected $userModel;
+
     public function __construct()
     {
         helper('form');
+        $this->userModel = new UserModel();
     }
     
     public function profile()
     {
         $userProfile = $this->getUserProfile();
+        
+        // Get OTP status
+        $otpEnabled = !empty($userProfile['otp_enabled']) && $userProfile['otp_enabled'] == 1;
+        
+        // Get sessions for session management (if available)
+        $sessions = [];
+        $activeSessionCount = 0;
+        $trackDevices = true;
+        
+        try {
+            $db = \Config\Database::connect();
+            $tableExists = $db->tableExists('user_sessions');
+            
+            if ($tableExists) {
+                $authSecurityConfig = config('AuthSecurity');
+                if ($authSecurityConfig && $authSecurityConfig->trackDevices) {
+                    $sessionService = new \App\Services\SessionService();
+                    $userId = session()->get('user_id');
+                    if ($userId) {
+                        $sessions = $sessionService->getUserSessions($userId, true);
+                        $activeSessionCount = $sessionService->getActiveSessionCount($userId);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            log_message('debug', 'Session management skipped: ' . $e->getMessage());
+        }
         
         $data = [
             'title' => 'Profil Saya',
@@ -27,7 +61,12 @@ class System extends BaseController
             'divisions' => $this->getDivisions(),
             'locations' => $this->getLocations(),
             'supervisors' => $this->getSupervisors(),
-            'profile_logs' => $this->getProfileLogs($userProfile['id'] ?? 0)
+            'profile_logs' => $this->getProfileLogs($userProfile['id'] ?? 0),
+            'otp_enabled' => $otpEnabled,
+            'sessions' => $sessions,
+            'active_session_count' => $activeSessionCount,
+            'current_session_id' => session_id(),
+            'track_devices' => $trackDevices,
         ];
         
         // Ensure session avatar is set

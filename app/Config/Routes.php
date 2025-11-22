@@ -5,7 +5,18 @@ use CodeIgniter\Router\RouteCollection;
 /**
  * @var RouteCollection $routes
  */
-$routes->get('/', 'Dashboard::index');
+// Default route - redirect based on login status
+$routes->get('/', function() {
+    $session = session();
+    if ($session->get('isLoggedIn')) {
+        return redirect()->to('/welcome');
+    }
+    return redirect()->to('/auth/login');
+});
+
+// Welcome page - requires authentication
+$routes->get('welcome', 'Welcome::index');
+
 $routes->get('/comingsoon', '::index');
 
 
@@ -20,10 +31,18 @@ $routes->group('auth', static function ($routes) {
     $routes->post('send-reset-link', 'Auth::sendResetLink');
     $routes->get('reset-password/(:any)', 'Auth::resetPassword/$1');
     $routes->post('update-password', 'Auth::updatePassword');
+    // OTP Routes
+    $routes->get('verify-otp', 'Auth::verifyOtpPage');
+    $routes->post('verify-otp', 'Auth::verifyOtp');
+    $routes->post('resend-otp', 'Auth::resendOtp');
+    // Session Management Routes
+    $routes->post('logout-session/(:segment)', 'Auth::logoutSession/$1');
+    $routes->post('logout-all-sessions', 'Auth::logoutAllSessions');
     $routes->get('logout', 'Auth::logout');
     $routes->get('profile', 'Auth::profile');
     $routes->post('update-profile', 'Auth::updateProfile');
     $routes->post('change-password', 'Auth::changePassword');
+    $routes->post('toggle-otp', 'Auth::toggleOtp');
 });
 
 // Dashboard routes for different divisions
@@ -40,6 +59,7 @@ $routes->get('/profile', 'System::profile');
 $routes->post('/profile/update', 'System::updateProfile');
 $routes->post('/profile/change-password', 'System::changePassword');
 $routes->post('/profile/upload-avatar', 'System::uploadAvatar');
+$routes->post('/profile/toggle-otp', 'System::toggleOtp');
 
 
 $routes->get('/settings', 'System::settings');
@@ -652,6 +672,9 @@ $routes->group('perizinan', static function ($routes) {
     $routes->get('download-file/(:num)/(:segment)', 'Perizinan::downloadFile/$1/$2');
     $routes->get('emisi', 'Perizinan::emisi');
 });
+
+// Public Test Email Route (for testing email configuration)
+$routes->post('settings/test-email', 'Settings::testEmail');
 
 // Reports Routes
 $routes->group('reports', ['namespace' => 'App\Controllers'], function($routes) {

@@ -364,7 +364,7 @@ class SiloModel extends Model
             self::STATUS_BELUM_ADA => 'Belum Ada SILO',
             self::STATUS_PENGAJUAN_PJK3 => 'Pengajuan ke PJK3',
             self::STATUS_SURAT_KETERANGAN_PJK3 => 'Surat Keterangan PJK3',
-            self::STATUS_PENGAJUAN_UPTD => 'Pengajuan ke UPTD',
+            self::STATUS_PENGAJUAN_UPTD => 'Pengajuan DISNAKER',
             self::STATUS_SILO_TERBIT => 'SILO Terbit',
             self::STATUS_SILO_EXPIRED => 'SILO Expired',
         ];

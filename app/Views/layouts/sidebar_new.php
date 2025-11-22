@@ -9,7 +9,7 @@
 <!-- Enhanced Sidebar with Advanced Features -->
 <nav class="sidebar sidebar-enhanced" id="sidebar">
     <!-- Sidebar Brand -->
-    <a href="<?= base_url('/') ?>" class="sidebar-brand" style="text-decoration: none; color: inherit;">
+    <a href="<?= base_url('/welcome') ?>" class="sidebar-brand" style="text-decoration: none; color: inherit;">
         <div class="sidebar-brand-icon">
             <img src="<?= base_url('assets/images/logo-optima.ico') ?>" alt="OPTIMA" class="optima-logo">
         </div>

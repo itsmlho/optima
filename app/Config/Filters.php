@@ -37,6 +37,7 @@ class Filters extends BaseFilters
         'permission'    => \App\Filters\PermissionFilter::class,
         'role'          => \App\Filters\RoleFilter::class,
         'level'         => \App\Filters\LevelFilter::class,
+        'auth'          => \App\Filters\AuthFilter::class,
     ];
 
     /**
@@ -72,6 +73,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
+            'auth', // Protect all routes - public paths handled in filter itself
             // 'honeypot',
             // 'csrf',
             // 'invalidchars',
@@ -108,5 +110,7 @@ class Filters extends BaseFilters
      *
      * @var array<string, array<string, list<string>>>
      */
-    public array $filters = [];
+    public array $filters = [
+        // Auth filter is now in globals and handles public paths internally
+    ];
 }

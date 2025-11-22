@@ -430,6 +430,50 @@
                     </div>
                 <?php endif; ?>
                 
+                <!-- Rate Limiting Messages -->
+                <?php 
+                $rateLimit = session()->getFlashdata('rate_limit');
+                if ($rateLimit): 
+                    $lockedUntil = $rateLimit['locked_until'] ?? null;
+                    $lockedUntilTimestamp = $rateLimit['locked_until_timestamp'] ?? null;
+                    $remainingAttempts = $rateLimit['remaining_attempts'] ?? null;
+                ?>
+                    <?php if ($lockedUntil && $lockedUntilTimestamp): ?>
+                        <!-- Account Locked Message -->
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert" id="lockAlert">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-lock me-2 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <strong>Akun Terkunci</strong>
+                                    <p class="mb-1">Terlalu banyak percobaan login yang gagal. Akun Anda terkunci sementara.</p>
+                                    <p class="mb-0">
+                                        <small>
+                                            Silakan coba lagi dalam: 
+                                            <strong id="countdownTimer" class="text-danger"></strong>
+                                        </small>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <script>
+                            // Set locked until timestamp for countdown
+                            window.lockedUntilTimestamp = <?= $lockedUntilTimestamp ?>;
+                        </script>
+                    <?php elseif ($remainingAttempts !== null && $remainingAttempts < 5): ?>
+                        <!-- Remaining Attempts Warning -->
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <strong>Peringatan:</strong> 
+                            Anda memiliki <strong><?= $remainingAttempts ?></strong> 
+                            percobaan login tersisa. 
+                            <?php if ($remainingAttempts <= 2): ?>
+                                Akun Anda akan terkunci setelah percobaan gagal berikutnya.
+                            <?php endif; ?>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                    <?php endif; ?>
+                <?php endif; ?>
+                
                 <!-- Login Form -->
                 <form action="<?= base_url('auth/attempt-login') ?>" method="post" class="needs-validation" novalidate>
                     <?= csrf_field() ?>
@@ -517,9 +561,50 @@
             });
         })();
         
-        // Auto-hide alerts
+        // Countdown timer for locked account
+        if (typeof window.lockedUntilTimestamp !== 'undefined' && window.lockedUntilTimestamp) {
+            function updateCountdown() {
+                const countdownElement = document.getElementById('countdownTimer');
+                const lockAlert = document.getElementById('lockAlert');
+                
+                if (!countdownElement) return;
+                
+                const now = Math.floor(Date.now() / 1000);
+                const lockedUntil = window.lockedUntilTimestamp;
+                const remaining = lockedUntil - now;
+                
+                if (remaining <= 0) {
+                    // Lock expired
+                    countdownElement.textContent = 'Kunci sudah berakhir. Silakan coba login lagi.';
+                    if (lockAlert) {
+                        lockAlert.classList.remove('alert-warning');
+                        lockAlert.classList.add('alert-info');
+                        const icon = lockAlert.querySelector('.fa-lock');
+                        if (icon) icon.className = 'fas fa-check-circle me-2 mt-1';
+                    }
+                    // Reload page after 2 seconds
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    // Calculate minutes and seconds
+                    const minutes = Math.floor(remaining / 60);
+                    const seconds = remaining % 60;
+                    
+                    countdownElement.textContent = minutes + ' menit ' + seconds + ' detik';
+                    
+                    // Update every second
+                    setTimeout(updateCountdown, 1000);
+                }
+            }
+            
+            // Start countdown
+            updateCountdown();
+        }
+
+        // Auto-hide alerts (except locked account alert)
         document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert');
+            const alerts = document.querySelectorAll('.alert:not(#lockAlert)');
             alerts.forEach(alert => {
                 setTimeout(() => {
                     const bsAlert = new bootstrap.Alert(alert);

@@ -26,6 +26,11 @@ class Dashboard extends BaseController
 
     public function index()
     {
+        // Check if user is logged in
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('/auth/login');
+        }
+
         $data = [
             'title' => 'Dashboard',
             'page_title' => 'Dashboard Utama',

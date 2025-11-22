@@ -195,17 +195,50 @@
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
                     <h6 class="m-0 font-weight-bold text-warning">
-                        <i class="fas fa-shield-alt me-2"></i>Security
+                        <i class="fas fa-shield-alt me-2"></i>Security Settings
                     </h6>
                 </div>
                 <div class="card-body">
-                    <p class="text-muted mb-3">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Keep your account secure by using a strong password.
-                    </p>
-                    <button type="button" class="btn btn-warning w-100" onclick="openChangePasswordModal()">
-                        <i class="fas fa-key me-2"></i>Change Password
-                    </button>
+                    <!-- OTP Toggle -->
+                    <div class="mb-4 pb-3 border-bottom">
+                        <div class="mb-2">
+                            <label class="form-label mb-1 fw-bold">
+                                <i class="fas fa-key me-2"></i>Two-Factor Authentication (OTP)
+                            </label>
+                            <p class="text-muted small mb-2">
+                                Aktifkan OTP untuk keamanan ekstra. Setelah aktif, Anda akan diminta verifikasi OTP via email setiap kali login.
+                            </p>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <span class="badge <?= $otp_enabled ? 'bg-success' : 'bg-secondary' ?> me-2">
+                                    <?= $otp_enabled ? 'Aktif' : 'Tidak Aktif' ?>
+                                </span>
+                                <?php if ($otp_enabled && !empty($user_data['otp_enabled_at'])): ?>
+                                    <small class="text-muted d-block mt-1">
+                                        Diaktifkan: <?= date('d M Y, H:i', strtotime($user_data['otp_enabled_at'])) ?>
+                                    </small>
+                                <?php endif; ?>
+                            </div>
+                            <button type="button" class="btn btn-sm <?= $otp_enabled ? 'btn-outline-danger' : 'btn-outline-success' ?>" 
+                                    id="toggleOtpBtn" data-otp-enabled="<?= $otp_enabled ? '1' : '0' ?>">
+                                <i class="fas fa-<?= $otp_enabled ? 'toggle-on' : 'toggle-off' ?> me-1"></i>
+                                <span id="otpToggleText"><?= $otp_enabled ? 'Nonaktifkan' : 'Aktifkan' ?></span>
+                            </button>
+                        </div>
+                        <div id="otpToggleAlert" class="mt-2"></div>
+                    </div>
+
+                    <!-- Change Password -->
+                    <div>
+                        <p class="text-muted mb-2">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Keep your account secure by using a strong password.
+                        </p>
+                        <button type="button" class="btn btn-warning w-100" onclick="openChangePasswordModal()">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -743,6 +776,89 @@ $('#changePasswordModal').on('hidden.bs.modal', function () {
     // Reset all password fields to type password
     $('#current_password, #new_password, #confirm_password').attr('type', 'password');
     $('#current_password_icon, #new_password_icon, #confirm_password_icon').removeClass('fa-eye-slash').addClass('fa-eye');
+});
+
+// Toggle OTP
+$('#toggleOtpBtn').on('click', function() {
+    const btn = $(this);
+    const currentStatus = btn.data('otp-enabled') == '1';
+    const actionText = currentStatus ? 'menonaktifkan' : 'mengaktifkan';
+    
+    Swal.fire({
+        title: 'Konfirmasi',
+        text: `Apakah Anda yakin ingin ${actionText} OTP?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: currentStatus ? '#e74a3b' : '#4e73df',
+        cancelButtonColor: '#858796',
+        confirmButtonText: 'Ya, ' + actionText,
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Disable button
+            btn.prop('disabled', true);
+            const originalHtml = btn.html();
+            btn.html('<i class="fas fa-spinner fa-spin me-1"></i>Memproses...');
+            
+            $.ajax({
+                url: '<?= base_url('profile/toggle-otp') ?>',
+                type: 'POST',
+                dataType: 'json',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // Show success message
+                        Swal.fire({
+                            icon: response.otp_enabled ? 'success' : 'info',
+                            title: 'Berhasil!',
+                            text: response.message,
+                            confirmButtonColor: '#4e73df',
+                            timer: 3000,
+                            showConfirmButton: true
+                        });
+                        
+                        // Update UI
+                        const isEnabled = response.otp_enabled;
+                        btn.data('otp-enabled', isEnabled ? '1' : '0');
+                        btn.removeClass(isEnabled ? 'btn-outline-danger' : 'btn-outline-success')
+                           .addClass(isEnabled ? 'btn-outline-danger' : 'btn-outline-success');
+                        btn.html(`
+                            <i class="fas fa-${isEnabled ? 'toggle-on' : 'toggle-off'} me-1"></i>
+                            <span>${isEnabled ? 'Nonaktifkan' : 'Aktifkan'}</span>
+                        `);
+                        
+                        // Update badge
+                        const badge = btn.closest('.card-body').find('.badge');
+                        badge.removeClass(isEnabled ? 'bg-secondary' : 'bg-success')
+                              .addClass(isEnabled ? 'bg-success' : 'bg-secondary')
+                              .text(isEnabled ? 'Aktif' : 'Tidak Aktif');
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error!',
+                            text: response.message || 'Gagal mengubah status OTP.',
+                            confirmButtonColor: '#e74a3b'
+                        });
+                    }
+                    btn.prop('disabled', false);
+                },
+                error: function(xhr) {
+                    const response = xhr.responseJSON || {};
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: response.message || 'Terjadi kesalahan. Silakan coba lagi.',
+                        confirmButtonColor: '#e74a3b'
+                    });
+                    btn.prop('disabled', false);
+                    btn.html(originalHtml);
+                }
+            });
+        }
+    });
 });
 
 // Add focus styling for editable fields

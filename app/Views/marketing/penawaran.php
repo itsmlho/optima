@@ -395,8 +395,5 @@ function exportData() {
     $('#exportModal').modal('hide');
 }
 </script>
-
-
-    <?php endif; ?>
 </div>
 <?= $this->endSection() ?>
