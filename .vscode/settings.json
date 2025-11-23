@@ -1,0 +1,12 @@
+{
+  // Auto-fetch dari remote setiap 3 menit (180 detik)
+  "git.autofetch": true,
+  "git.autofetchPeriod": 180,
+  
+  // Menampilkan notifikasi saat ada perubahan di remote
+  "git.confirmSync": false,
+  
+  // Auto-refresh source control panel
+  "git.enableSmartCommit": true
+}
+
