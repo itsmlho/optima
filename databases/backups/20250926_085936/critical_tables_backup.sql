@@ -1,6 +1,6 @@
 -- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Linux (x86_64)
 --
--- Host: localhost    Database: optima_db
+-- Host: localhost    Database: optima_ci
 -- ------------------------------------------------------
 -- Server version	10.4.32-MariaDB
 

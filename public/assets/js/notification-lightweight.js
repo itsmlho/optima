@@ -9,7 +9,7 @@
 
 class OptimaNotificationLightweight {
     constructor() {
-        this.baseUrl = window.location.origin + '/optima1/public';
+        this.baseUrl = window.location.origin + '/optima/public';
         this.pollingInterval = 30000; // 30 seconds (more frequent for better real-time)
         this.pollingTimer = null;
         this.isPolling = false;
@@ -556,7 +556,7 @@ class OptimaNotificationLightweight {
             if (Notification.permission === 'granted') {
                 new Notification(notification.title || 'Notifikasi', {
                     body: notification.message || '',
-                    icon: '/optima1/public/assets/img/logo.png'
+                    icon: '/optima/public/assets/img/logo.png'
                 });
             }
         }

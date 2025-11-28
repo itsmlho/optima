@@ -3,6 +3,9 @@
 namespace App\Controllers;
 
 use CodeIgniter\Database\BaseBuilder;
+use CodeIgniter\HTTP\RequestInterface;
+use CodeIgniter\HTTP\ResponseInterface;
+use Psr\Log\LoggerInterface;
 use App\Models\SpkModel;
 use App\Models\KontrakModel;
 use App\Models\KontrakSpesifikasiModel;
@@ -15,7 +18,7 @@ use App\Traits\ActivityLoggingTrait;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-class Marketing extends BaseController
+class Marketing extends BaseDataTableController
 {
     use ActivityLoggingTrait;
     
@@ -28,18 +31,21 @@ class Marketing extends BaseController
     protected $diModel;
     protected $diItemModel;
     protected $notifModel;
+    protected $performanceService;
 
-    public function __construct()
+    public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
     {
-    $this->db = \Config\Database::connect();
-    $this->spkModel = new SpkModel();
-    $this->kontrakModel = new KontrakModel();
-    $this->kontrakSpesifikasiModel = new KontrakSpesifikasiModel();
-    $this->unitModel = new InventoryUnitModel();
-    $this->attModel = new InventoryAttachmentModel();
-    $this->diModel = new DeliveryInstructionModel();
-    $this->diItemModel = new DeliveryItemModel();
-    $this->notifModel = class_exists(\App\Models\NotificationModel::class) ? new NotificationModel() : null;
+        parent::initController($request, $response, $logger); // Initialize BaseDataTableController
+        $this->db = \Config\Database::connect();
+        $this->spkModel = new SpkModel();
+        $this->kontrakModel = new KontrakModel();
+        $this->kontrakSpesifikasiModel = new KontrakSpesifikasiModel();
+        $this->unitModel = new InventoryUnitModel();
+        $this->attModel = new InventoryAttachmentModel();
+        $this->diModel = new DeliveryInstructionModel();
+        $this->diItemModel = new DeliveryItemModel();
+        $this->notifModel = class_exists(\App\Models\NotificationModel::class) ? new NotificationModel() : null;
+        $this->performanceService = new \App\Services\PerformanceService();
     }
 
     public function availableUnits()
@@ -257,8 +263,8 @@ class Marketing extends BaseController
         
         return view('marketing/penawaran', [
             'can_view_marketing' => can_view('marketing'),
-            'can_create_marketing' => can_create('marketing'),
-            'can_export_marketing' => can_export('marketing'),
+            'can_create_marketing' => $this->canManage('marketing'),
+            'can_export_marketing' => $this->canExport('marketing'),
         ]);
     }
 
@@ -285,8 +291,8 @@ class Marketing extends BaseController
                 '/marketing/spk' => 'SPK'
             ],
             'can_view_marketing' => can_view('marketing'),
-            'can_create_marketing' => can_create('marketing'),
-            'can_export_marketing' => can_export('marketing'),
+            'can_create_marketing' => $this->canManage('marketing'),
+            'can_export_marketing' => $this->canExport('marketing'),
         ]);
     }
     public function di()

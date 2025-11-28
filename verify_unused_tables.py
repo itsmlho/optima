@@ -104,7 +104,7 @@ def search_comprehensive(table_name, codebase_path):
                     pass
     
     # Cek di SQL file untuk views dan procedures
-    sql_file = os.path.join(codebase_path, 'databases', 'optima_db_24-11-25_reorganized.sql')
+    sql_file = os.path.join(codebase_path, 'databases', 'optima_ci_24-11-25_reorganized.sql')
     if os.path.exists(sql_file):
         with open(sql_file, 'r', encoding='utf-8', errors='ignore') as f:
             sql_content = f.read()
@@ -161,7 +161,7 @@ def check_table_structure(table_name, sql_file):
 
 def main():
     codebase_path = '/opt/lampp/htdocs/optima1'
-    sql_file = os.path.join(codebase_path, 'databases', 'optima_db_24-11-25_reorganized.sql')
+    sql_file = os.path.join(codebase_path, 'databases', 'optima_ci_24-11-25_reorganized.sql')
     
     print("=" * 100)
     print("VERIFIKASI DETAIL TABEL YANG TIDAK DIGUNAKAN")

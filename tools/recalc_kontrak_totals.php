@@ -7,7 +7,7 @@
 $host = '127.0.0.1';
 $user = 'root';
 $pass = 'root';
-$db   = 'optima_db';
+$db   = 'optima_ci';
 $port = 3306;
 
 $mysqli = new mysqli($host, $user, $pass, $db, $port);

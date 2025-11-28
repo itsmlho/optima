@@ -2,7 +2,7 @@
 
 ## ✅ FILE FINAL
 
-**File:** `optima_db_24-11-25_FINAL.sql`  
+**File:** `optima_ci_24-11-25_FINAL.sql`  
 **Ukuran:** ~853 KB  
 **Baris:** 7,819 baris  
 **Format:** CRLF (Windows compatible)
@@ -27,7 +27,7 @@
    - `user_all_permissions` - Fixed UNION ALL spacing
    - `view_spk_workflow` - Removed kolom stage yang tidak ada
 4. ✅ **Syntax Procedures** - Fixed referensi kolom yang tidak ada
-5. ✅ **Database Name** - Diperbaiki dari `optima_db_test` ke `optima_db`
+5. ✅ **Database Name** - Diperbaiki dari `optima_ci_test` ke `optima_ci`
 6. ✅ **Line Endings** - CRLF untuk Windows
 7. ✅ **COMMIT** - Ada di akhir untuk memastikan transaksi selesai
 
@@ -39,14 +39,14 @@
 
 1. Buka phpMyAdmin
 2. Klik tab **"Import"**
-3. Pilih file `optima_db_24-11-25_FINAL.sql`
+3. Pilih file `optima_ci_24-11-25_FINAL.sql`
 4. Klik **"Go"**
 5. Tunggu sampai selesai
 
 ### **Via Command Line:**
 
 ```bash
-mysql -u root -p < optima_db_24-11-25_FINAL.sql
+mysql -u root -p < optima_ci_24-11-25_FINAL.sql
 ```
 
 ---
@@ -54,7 +54,7 @@ mysql -u root -p < optima_db_24-11-25_FINAL.sql
 ## ⚠️ CATATAN PENTING
 
 1. **Backup dulu** database yang ada (jika ada)
-2. File ini akan **membuat database baru** `optima_db`
+2. File ini akan **membuat database baru** `optima_ci`
 3. Jika database sudah ada, akan **menambahkan** tabel-tabel baru
 4. Import bisa memakan waktu **beberapa menit** (tergantung spesifikasi server)
 

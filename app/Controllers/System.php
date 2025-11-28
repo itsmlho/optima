@@ -36,7 +36,7 @@ class System extends BaseController
             
             if ($tableExists) {
                 $authSecurityConfig = config('AuthSecurity');
-                if ($authSecurityConfig && $authSecurityConfig->trackDevices) {
+                if ($authSecurityConfig && ($authSecurityConfig->trackDevices ?? false)) {
                     $sessionService = new \App\Services\SessionService();
                     $userId = session()->get('user_id');
                     if ($userId) {

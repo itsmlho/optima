@@ -74,7 +74,7 @@ def search_table_in_codebase(table_name, codebase_path):
     return references
 
 def main():
-    sql_file = '/opt/lampp/htdocs/optima1/databases/optima_db_24-11-25_reorganized.sql'
+    sql_file = '/opt/lampp/htdocs/optima1/databases/optima_ci_24-11-25_reorganized.sql'
     codebase_path = '/opt/lampp/htdocs/optima1'
     
     print("=" * 80)

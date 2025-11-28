@@ -12,7 +12,7 @@
 ### **Metode 1: Via phpMyAdmin**
 
 1. Buka phpMyAdmin
-2. Pilih database yang digunakan (misal: `optima_db`)
+2. Pilih database yang digunakan (misal: `optima_ci`)
 3. Klik tab **"SQL"**
 4. Copy-paste isi file `create_silo_tables.sql`
 5. Klik **"Go"** atau **"Jalankan"**
@@ -24,20 +24,20 @@
 mysql -u root -p
 
 # Pilih database
-USE optima_db;
+USE optima_ci;
 
 # Jalankan script
 source /opt/lampp/htdocs/optima1/databases/migrations/create_silo_tables.sql;
 
 # Atau langsung dari command line
-mysql -u root -p optima_db < /opt/lampp/htdocs/optima1/databases/migrations/create_silo_tables.sql
+mysql -u root -p optima_ci < /opt/lampp/htdocs/optima1/databases/migrations/create_silo_tables.sql
 ```
 
 ### **Metode 3: Via XAMPP MySQL**
 
 ```bash
 # Jika menggunakan XAMPP
-/opt/lampp/bin/mysql -u root -p optima_db < /opt/lampp/htdocs/optima1/databases/migrations/create_silo_tables.sql
+/opt/lampp/bin/mysql -u root -p optima_ci < /opt/lampp/htdocs/optima1/databases/migrations/create_silo_tables.sql
 ```
 
 ---
@@ -65,7 +65,7 @@ SELECT
 FROM 
     INFORMATION_SCHEMA.KEY_COLUMN_USAGE
 WHERE 
-    TABLE_SCHEMA = 'optima_db'
+    TABLE_SCHEMA = 'optima_ci'
     AND TABLE_NAME IN ('silo', 'silo_history')
     AND REFERENCED_TABLE_NAME IS NOT NULL;
 ```

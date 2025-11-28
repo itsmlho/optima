@@ -256,8 +256,8 @@ def reorganize_sql(input_file, output_file):
         print(f"  {i:3d}. {table:40s} (depends on: {deps_str})")
 
 if __name__ == '__main__':
-    input_file = '/opt/lampp/htdocs/optima1/databases/optima_db 24-11-25.sql'
-    output_file = '/opt/lampp/htdocs/optima1/databases/optima_db_24-11-25_reorganized.sql'
+    input_file = '/opt/lampp/htdocs/optima1/databases/optima_ci 24-11-25.sql'
+    output_file = '/opt/lampp/htdocs/optima1/databases/optima_ci_24-11-25_reorganized.sql'
     
     reorganize_sql(input_file, output_file)
 

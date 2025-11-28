@@ -96,15 +96,15 @@ class SparepartUsageController extends BaseController
                     wo.report_date,
                     wo.mechanic_id,
                     wo.helper_id,
-                    ms.staff_name as mechanic_name,
-                    hs.staff_name as helper_name,
+                    COALESCE(mech_emp.staff_name, "Unknown Mechanic") as mechanic_name,
+                    COALESCE(help_emp.staff_name, "Unknown Helper") as helper_name,
                     wos.status_name as wo_status,
                     c.customer_name,
                     iu.no_unit as unit_number
                 ')
                 ->join('work_orders wo', 'wo.id = wosp.work_order_id', 'left')
-                ->join('work_order_staff_backup_final ms', 'ms.id = wo.mechanic_id', 'left')
-                ->join('work_order_staff_backup_final hs', 'hs.id = wo.helper_id', 'left')
+                ->join('employees mech_emp', 'mech_emp.id = wo.mechanic_id', 'left')
+                ->join('employees help_emp', 'help_emp.id = wo.helper_id', 'left')
                 ->join('work_order_statuses wos', 'wos.id = wo.status_id', 'left')
                 ->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left')
                 ->join('kontrak k', 'k.id = iu.kontrak_id', 'left')
@@ -168,11 +168,11 @@ class SparepartUsageController extends BaseController
                     ->get()
                     ->getResultArray();
                 
-                // Get staff names
+                // Get staff names from employees table
                 $staffIds = array_unique(array_filter(array_column($allAssignments, 'staff_id')));
                 $staffMap = [];
                 if (!empty($staffIds)) {
-                    $staffData = $db->table('work_order_staff_backup_final')
+                    $staffData = $db->table('employees')
                         ->whereIn('id', $staffIds)
                         ->get()
                         ->getResultArray();
@@ -207,11 +207,11 @@ class SparepartUsageController extends BaseController
                 // Combine mechanic_name dan helper_name dari work_orders dengan assignments
                 $mechanicHelperNames = [];
                 
-                // Dari work_orders (mechanic_id dan helper_id)
-                if (!empty($row['mechanic_name'])) {
+                // Dari work_orders - tampilkan hanya nama valid (bukan Unknown atau kosong)
+                if (!empty($row['mechanic_name']) && !in_array(trim($row['mechanic_name']), ['Unknown Mechanic', 'Unknown', '-', 'NULL'])) {
                     $mechanicHelperNames[] = $row['mechanic_name'] . ' (MECHANIC)';
                 }
-                if (!empty($row['helper_name'])) {
+                if (!empty($row['helper_name']) && !in_array(trim($row['helper_name']), ['Unknown Helper', 'Unknown', '-', 'NULL'])) {
                     $mechanicHelperNames[] = $row['helper_name'] . ' (HELPER)';
                 }
                 
@@ -293,19 +293,19 @@ class SparepartUsageController extends BaseController
                     wo.id as work_order_id,
                     wo.mechanic_id,
                     wo.helper_id,
-                    ms.staff_name as mechanic_name,
-                    hs.staff_name as helper_name,
+                    COALESCE(mech_emp.staff_name, "Unknown Mechanic") as mechanic_name,
+                    COALESCE(help_emp.staff_name, "Unknown Helper") as helper_name,
                     c.customer_name,
                     iu.no_unit as unit_number,
-                    mu.merk_unit,
-                    mu.model_unit,
+                    mdu.merk_unit,
+                    mdu.model_unit,
                     u.username as confirmed_by_name
                 ')
                 ->join('work_orders wo', 'wo.id = wosr.work_order_id', 'left')
-                ->join('work_order_staff_backup_final ms', 'ms.id = wo.mechanic_id', 'left')
-                ->join('work_order_staff_backup_final hs', 'hs.id = wo.helper_id', 'left')
+                ->join('employees mech_emp', 'mech_emp.id = wo.mechanic_id', 'left')
+                ->join('employees help_emp', 'help_emp.id = wo.helper_id', 'left')
                 ->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left')
-                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('model_unit mdu', 'mdu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('kontrak k', 'k.id = iu.kontrak_id', 'left')
                 ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
@@ -369,11 +369,11 @@ class SparepartUsageController extends BaseController
                     ->get()
                     ->getResultArray();
                 
-                // Get staff names
+                // Get staff names from employees table
                 $staffIds = array_unique(array_filter(array_column($allAssignments, 'staff_id')));
                 $staffMap = [];
                 if (!empty($staffIds)) {
-                    $staffData = $db->table('work_order_staff_backup_final')
+                    $staffData = $db->table('employees')
                         ->whereIn('id', $staffIds)
                         ->get()
                         ->getResultArray();
@@ -408,11 +408,11 @@ class SparepartUsageController extends BaseController
                 // Combine mechanic_name dan helper_name dari work_orders dengan assignments
                 $mechanicHelperNames = [];
                 
-                // Dari work_orders (mechanic_id dan helper_id)
-                if (!empty($row['mechanic_name'])) {
+                // Dari work_orders - tampilkan hanya nama valid (bukan Unknown atau kosong)
+                if (!empty($row['mechanic_name']) && !in_array(trim($row['mechanic_name']), ['Unknown Mechanic', 'Unknown', '-', 'NULL'])) {
                     $mechanicHelperNames[] = $row['mechanic_name'] . ' (MECHANIC)';
                 }
-                if (!empty($row['helper_name'])) {
+                if (!empty($row['helper_name']) && !in_array(trim($row['helper_name']), ['Unknown Helper', 'Unknown', '-', 'NULL'])) {
                     $mechanicHelperNames[] = $row['helper_name'] . ' (HELPER)';
                 }
                 
@@ -591,14 +591,14 @@ class SparepartUsageController extends BaseController
                         $role = $assignment['role'];
                         
                         // Get staff name
-                        $staff = $db->table('work_order_staff_backup_final')
+                        $staff = $db->table('users')
                             ->where('id', $staffId)
                             ->get()
                             ->getRowArray();
                         
-                        if ($staff && !empty($staff['staff_name'])) {
+                        if ($staff && (!empty($staff['first_name']) || !empty($staff['last_name']))) {
                             $roleLabel = $role === 'MECHANIC' ? 'MECHANIC' : 'HELPER';
-                            $mechanicHelpers[] = $staff['staff_name'] . ' (' . $roleLabel . ')';
+                            $mechanicHelpers[] = trim($staff['first_name'] . ' ' . $staff['last_name']) . ' (' . $roleLabel . ')';
                         }
                     }
                     

@@ -92,10 +92,12 @@ class Autoload extends AutoloadConfig
         // 'permission',
         // 'advanced_permission',
         'auth',
-        'rbac',
-        'simple_rbac',
-        'activity_log',
-        'comprehensive_activity_log',
+        'rbac', // Keep main RBAC helper only
+        // 'simple_rbac', // REMOVED - redundant with rbac + BaseController
+        // 'activity_log', // REMOVED - not used, ActivityLoggingTrait is used
+        // 'comprehensive_activity_log', // REMOVED - not used
         'date', // Load date helper globally
+        'notification', // Load notification helper for sending notifications
+        'cache', // Load cache helper for queue system
     ];
 }

@@ -19,6 +19,13 @@ $routes->get('welcome', 'Welcome::index');
 
 $routes->get('/comingsoon', '::index');
 
+// Health Check & Monitoring Routes
+$routes->group('health', static function ($routes) {
+    $routes->get('/', 'HealthController::check');
+    $routes->get('ping', 'HealthController::ping');
+    $routes->get('info', 'HealthController::info');
+    $routes->get('performance', 'HealthController::performance');
+});
 
 // Authentication Routes
 $routes->group('auth', static function ($routes) {
@@ -76,23 +83,6 @@ $routes->group('apps', static function ($routes) {
     $routes->get('messages', 'Apps::messages');
     $routes->get('settings', 'Apps::settings');
     $routes->get('analytics', 'Apps::analytics');
-});
-
-// Rental Management Routes
-$routes->group('rentals', static function ($routes) {
-    $routes->get('/', 'RentalManagement::index');
-    $routes->get('create', 'RentalManagement::create');
-    $routes->post('store', 'RentalManagement::store');
-    $routes->get('edit/(:num)', 'RentalManagement::edit/$1');
-    $routes->post('update/(:num)', 'RentalManagement::update/$1');
-    $routes->post('delete/(:num)', 'RentalManagement::delete/$1');
-    $routes->post('list', 'RentalManagement::getRentalList');
-    $routes->post('stats', 'RentalManagement::getRentalStats');
-    $routes->get('(:num)', 'RentalManagement::getRental/$1');
-    $routes->post('update-status/(:num)', 'RentalManagement::updateStatus/$1');
-    $routes->post('available-forklifts', 'RentalManagement::getAvailableForklifts');
-    $routes->post('calculate-amount', 'RentalManagement::calculateRentalAmount');
-    $routes->post('export/(:alpha)', 'RentalManagement::export/$1');
 });
 
 // Unit Rolling Routes
@@ -410,7 +400,6 @@ $routes->group('operational', static function ($routes) {
     $routes->get('tracking', 'Operational::tracking');
     $routes->post('tracking-search', 'Operational::trackingSearch');
     $routes->post('audit-trail', 'Operational::auditTrail');
-    $routes->get('test-database', 'Operational::testDatabase');
     
     // DI Workflow Logic API Routes
     $routes->get('api/jenis-perintah-kerja', 'Operational::getJenisPerintahKerja');
@@ -711,6 +700,24 @@ $routes->group('admin', static function ($routes) {
     $routes->post('backup', 'Admin::systemBackup');
     $routes->post('restore', 'Admin::systemRestore');
     
+    // Cache Management
+    $routes->post('cache/clear', 'Admin::clearCache');
+    $routes->post('cache/test', 'Admin::testCacheConnection');
+    
+    // Performance Management
+    $routes->post('performance/test', 'Admin::performanceTest');
+    $routes->post('logs/clear', 'Admin::clearLogs');
+    
+    // Queue Management
+    $routes->post('queue/start', 'Admin::startQueue');
+    $routes->post('queue/stop', 'Admin::stopQueue');
+    $routes->post('queue/clear-failed', 'Admin::clearFailedJobs');
+    
+    // System Health & Maintenance
+    $routes->post('health/check', 'Admin::healthCheck');
+    $routes->post('database/optimize', 'Admin::optimizeDatabase');
+    $routes->post('sessions/clear', 'Admin::clearSessions');
+    
     // Activity Log Routes - DEPRECATED: Use ActivityLogViewer instead
     // $routes->get('activity-log', 'ActivityLog::index');
     // $routes->post('activity-log/data', 'ActivityLog::getData');
@@ -903,11 +910,7 @@ $routes->group('api', static function ($routes) {
     $routes->post('workorders/update', 'Service::workOrderUpdate');
     $routes->post('workorders/delete', 'Service::workOrderDelete');
     
-    $routes->get('realtime-data', 'ApiController::getRealtimeData');
     $routes->get('get-unit-form', 'Purchasing::getUnitFormFragment');
-    
-    // Customer API
-    $routes->post('customers/list', 'Customers::getCustomerList');
     
     // Finance API
     $routes->post('finance/invoices/create', 'Finance::createInvoice');
@@ -918,21 +921,14 @@ $routes->group('api', static function ($routes) {
     $routes->post('reports/schedule', 'Reports::scheduleReport');
     
     // Unit Assets Form API
-    $routes->get('merk', 'ApiController::getMerk');
-    $routes->get('models/(:segment)', 'ApiController::getModelsByMerk/$1');
-    $routes->get('models-by-merk/(:segment)', 'ApiController::getModelsByMerk/$1');
-    $routes->get('form-data', 'ApiController::getFormData');
-    $routes->get('dropdown/(:segment)', 'ApiController::getDropdownData/$1');
+    $routes->get('models-by-merk/(:segment)', 'Api::getModelsByMerk/$1');
 });
 
 // System Routes (duplicate cleanup) - REMOVED
 
 // API Routes for Form Data
 $routes->group('api', ['namespace' => 'App\Controllers'], function($routes) {
-    $routes->get('merk', 'ApiController::getMerk');
-    $routes->get('models-by-merk/(:segment)', 'ApiController::getModelsByMerk/$1');
-    $routes->get('form-data', 'ApiController::getFormData');
-    $routes->get('dropdown/(:segment)', 'ApiController::getDropdownData/$1');
+    $routes->get('models-by-merk/(:segment)', 'Api::getModelsByMerk/$1');
 });
 
 // ============================================================================
@@ -1029,5 +1025,20 @@ $routes->group('notifications', function($routes) {
     $routes->post('admin/toggle-status/(:num)', 'NotificationController::toggleStatus/$1');
     $routes->post('admin/delete-rule/(:num)', 'NotificationController::deleteRule/$1');
     $routes->delete('rules/delete/(:num)', 'NotificationController::deleteRule/$1');
+});
+
+// ============================================================================
+// QUEUE MANAGEMENT ROUTES - Background Jobs & Queue System
+// ============================================================================
+$routes->group('queue', function($routes) {
+    $routes->get('/', 'QueueController::index');
+    $routes->get('dashboard', 'QueueController::index');
+    $routes->post('process', 'QueueController::process');
+    $routes->get('stats', 'QueueController::stats');
+    $routes->post('clean-failed', 'QueueController::cleanFailed');
+    $routes->post('clear-cache', 'QueueController::clearCache');
+    $routes->post('test-email', 'QueueController::testEmail');
+    $routes->post('test-notification', 'QueueController::testNotification');
+    $routes->get('auto-process', 'QueueController::autoProcess'); // For cron jobs
 });
 

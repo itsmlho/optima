@@ -105,14 +105,6 @@ $can_export = $permissions['export'];
     position: relative;
 }
 
-/* NO opacity/transform on tab-pane to prevent scroll reset */
-.tab-pane {
-    /* Removed: opacity and transform transitions that cause scroll jump */
-}
-
-.tab-pane.active {
-    /* Content is just shown/hidden, no animation to preserve scroll position */
-}
 
 /* Smooth content loading for spesifikasi */
 #spesifikasiListContract {

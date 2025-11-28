@@ -121,7 +121,7 @@ CREATE TABLE notification_rules (
 sudo /opt/lampp/lampp startmysql
 
 # Run migration script
-mysql -u root -proot optima_db < /opt/lampp/htdocs/optima1/databases/rebuild_notification_system.sql
+mysql -u root -proot optima_ci < /opt/lampp/htdocs/optima1/databases/rebuild_notification_system.sql
 ```
 
 ### **Step 2: Verify Installation**

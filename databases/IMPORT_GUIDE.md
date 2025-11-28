@@ -1,6 +1,6 @@
 # 📘 PANDUAN IMPORT DATABASE - OPTIMA DB
 
-**File:** `optima_db_24-11-25_FINAL.sql`  
+**File:** `optima_ci_24-11-25_FINAL.sql`  
 **Ukuran:** ~7,819 baris  
 **Tabel:** 106 tabel  
 **Views:** 27 views  
@@ -16,7 +16,7 @@ File SQL sudah direorganize dan difinalisasi dengan:
 2. ✅ **Foreign Key Checks** - Dinonaktifkan saat CREATE, diaktifkan kembali setelah semua constraints ditambahkan
 3. ✅ **Syntax Diperbaiki** - Semua view dan procedure sudah diperbaiki
 4. ✅ **Line Endings** - CRLF (Windows compatible)
-5. ✅ **Database Name** - `optima_db` (bukan optima_db_test)
+5. ✅ **Database Name** - `optima_ci` (bukan optima_ci_test)
 6. ✅ **COMMIT** - Ada di akhir untuk memastikan transaksi selesai
 
 ---
@@ -27,7 +27,7 @@ File SQL sudah direorganize dan difinalisasi dengan:
 
 1. Buka phpMyAdmin di browser
 2. Klik tab **"Import"**
-3. Klik **"Choose File"** dan pilih `optima_db_24-11-25_FINAL.sql`
+3. Klik **"Choose File"** dan pilih `optima_ci_24-11-25_FINAL.sql`
 4. Pastikan:
    - Format: **SQL**
    - Character set: **utf8mb4**
@@ -39,20 +39,20 @@ File SQL sudah direorganize dan difinalisasi dengan:
 
 ```bash
 # Windows (Command Prompt)
-mysql -u root -p < "C:\path\to\optima_db_24-11-25_FINAL.sql"
+mysql -u root -p < "C:\path\to\optima_ci_24-11-25_FINAL.sql"
 
 # Atau dengan source command
 mysql -u root -p
-mysql> CREATE DATABASE IF NOT EXISTS optima_db;
-mysql> USE optima_db;
-mysql> source C:/path/to/optima_db_24-11-25_FINAL.sql;
+mysql> CREATE DATABASE IF NOT EXISTS optima_ci;
+mysql> USE optima_ci;
+mysql> source C:/path/to/optima_ci_24-11-25_FINAL.sql;
 ```
 
 ### **Metode 3: MySQL Workbench**
 
 1. Buka MySQL Workbench
 2. Connect ke server MySQL
-3. File → Open SQL Script → Pilih `optima_db_24-11-25_FINAL.sql`
+3. File → Open SQL Script → Pilih `optima_ci_24-11-25_FINAL.sql`
 4. Klik tombol **Execute** (⚡)
 5. Tunggu sampai selesai
 
@@ -63,7 +63,7 @@ mysql> source C:/path/to/optima_db_24-11-25_FINAL.sql;
 ### 1. **Backup Database yang Ada**
 ```sql
 -- Backup database yang ada (jika ada)
-mysqldump -u root -p optima_db > backup_before_import.sql
+mysqldump -u root -p optima_ci > backup_before_import.sql
 ```
 
 ### 2. **Cek Privileges User MySQL**
@@ -137,8 +137,8 @@ File diorganisir dengan urutan berikut:
 - File menggunakan `CREATE TABLE IF NOT EXISTS`, jadi aman
 - Jika ingin replace, hapus database dulu:
   ```sql
-  DROP DATABASE IF EXISTS optima_db;
-  CREATE DATABASE optima_db;
+  DROP DATABASE IF EXISTS optima_ci;
+  CREATE DATABASE optima_ci;
   ```
 
 ### **Error: "Access denied"**
@@ -159,21 +159,21 @@ Setelah import selesai, verifikasi dengan:
 -- Cek jumlah tabel
 SELECT COUNT(*) as total_tables 
 FROM information_schema.tables 
-WHERE table_schema = 'optima_db';
+WHERE table_schema = 'optima_ci';
 
 -- Harusnya: 106 tabel
 
 -- Cek jumlah views
 SELECT COUNT(*) as total_views 
 FROM information_schema.views 
-WHERE table_schema = 'optima_db';
+WHERE table_schema = 'optima_ci';
 
 -- Harusnya: 27 views
 
 -- Cek foreign keys
 SELECT COUNT(*) as total_fk 
 FROM information_schema.key_column_usage 
-WHERE table_schema = 'optima_db' 
+WHERE table_schema = 'optima_ci' 
 AND referenced_table_name IS NOT NULL;
 
 -- Cek beberapa tabel penting
@@ -191,7 +191,7 @@ SELECT COUNT(*) FROM spk;
 - [ ] Cek space disk cukup
 - [ ] Cek MySQL/MariaDB version kompatibel
 - [ ] Cek user MySQL memiliki privileges cukup
-- [ ] File `optima_db_24-11-25_FINAL.sql` sudah ada
+- [ ] File `optima_ci_24-11-25_FINAL.sql` sudah ada
 - [ ] Siap untuk import
 
 ---

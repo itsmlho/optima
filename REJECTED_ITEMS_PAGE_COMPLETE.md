@@ -7,7 +7,7 @@
 
 **Cara Install:**
 1. Buka phpMyAdmin atau MySQL client
-2. Pilih database `optima_db`
+2. Pilih database `optima_ci`
 3. Import file `databases/create_po_verification_table.sql`
 4. Atau copy-paste SQL dan execute
 

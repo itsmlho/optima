@@ -31,10 +31,10 @@ class UserRoleModel extends Model
     public function getUserRoles($userId)
     {
         $builder = $this->db->table($this->table);
-        $builder->select('user_roles.*, roles.name, roles.description, roles.level');
+        $builder->select('user_roles.*, roles.name as role_name, roles.description');
         $builder->join('roles', 'roles.id = user_roles.role_id');
         $builder->where('user_roles.user_id', $userId);
-        $builder->orderBy('roles.level', 'ASC');
+        $builder->orderBy('roles.name', 'ASC');
         
         return $builder->get()->getResultArray();
     }
@@ -170,22 +170,41 @@ class UserRoleModel extends Model
         $builder = $this->db->table($this->table);
         $builder->join('roles', 'roles.id = user_roles.role_id');
         $builder->where('user_roles.user_id', $userId);
-        $builder->where('roles.level <=', 3); // Management level
+        // Check for specific management role names since 'level' column doesn't exist
+        $builder->whereIn('roles.name', ['Admin', 'Manager', 'Supervisor', 'System Administrator']);
         
         return $builder->countAllResults() > 0;
     }
 
     /**
-     * Get user's highest role level
+     * Get user's roles (simplified without level)
      */
     public function getUserHighestRoleLevel($userId)
     {
-        $builder = $this->db->table($this->table);
-        $builder->select('MIN(roles.level) as highest_level');
-        $builder->join('roles', 'roles.id = user_roles.role_id');
-        $builder->where('user_roles.user_id', $userId);
+        // Since 'level' column doesn't exist, return role priority based on name
+        $roles = $this->getUserRoles($userId);
         
-        $result = $builder->get()->getRowArray();
-        return $result ? $result['highest_level'] : null;
+        if (empty($roles)) return null;
+        
+        // Define role hierarchy manually
+        $rolePriority = [
+            'System Administrator' => 1,
+            'Admin' => 2,
+            'Manager' => 3,
+            'Supervisor' => 4,
+            'User' => 5,
+            'Guest' => 6
+        ];
+        
+        $highestPriority = 999;
+        foreach ($roles as $role) {
+            $roleName = $role['role_name'] ?? $role['name'] ?? 'Guest';
+            $priority = $rolePriority[$roleName] ?? 999;
+            if ($priority < $highestPriority) {
+                $highestPriority = $priority;
+            }
+        }
+        
+        return $highestPriority < 999 ? $highestPriority : null;
     }
 }

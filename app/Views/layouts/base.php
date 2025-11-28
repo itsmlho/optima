@@ -763,9 +763,6 @@
                             <li><a class="dropdown-item" href="<?= base_url('/profile') ?>">
                                 <i class="fas fa-user me-2"></i>Profil Saya
                             </a></li>
-                            <li><a class="dropdown-item" href="<?= base_url('/settings') ?>">
-                                <i class="fas fa-cog me-2"></i>Pengaturan
-                            </a></li>
                             <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="<?= base_url('/auth/logout') ?>">
                                 <i class="fas fa-sign-out-alt me-2"></i>Keluar

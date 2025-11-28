@@ -3,6 +3,7 @@
 namespace App\Controllers;
 
 use CodeIgniter\Controller;
+use App\Controllers\BaseController;
 use App\Models\DeliveryInstructionModel;
 use App\Models\DeliveryItemModel;
 use App\Models\KontrakModel;
@@ -11,7 +12,7 @@ use App\Services\DeliveryInstructionService;
 use App\Config\JenisPerintahKerja;
 use App\Config\TujuanPerintahKerja;
 
-class Operational extends Controller
+class Operational extends BaseController
 {
     use ActivityLoggingTrait;
     
@@ -289,55 +290,6 @@ class Operational extends Controller
                 'multiple_dis' => false
             ]
         ]);
-    }
-
-    /**
-     * Test endpoint for debugging
-     */
-    public function testDatabase()
-    {
-        try {
-            $kontrakCount = $this->db->table('kontrak')->countAllResults();
-            $spkCount = $this->db->table('spk')->countAllResults();
-            $diCount = $this->db->table('delivery_instructions')->countAllResults();
-            
-            $sampleKontrak = $this->db->table('kontrak')->limit(1)->get()->getRowArray();
-            $sampleSPK = $this->db->table('spk')->limit(1)->get()->getRowArray();
-            
-            // Find kontrak with multiple SPKs
-            $kontrakWithMultipleSPK = $this->db->table('spk')
-                ->select('kontrak_id, COUNT(*) as spk_count')
-                ->where('kontrak_id IS NOT NULL')
-                ->groupBy('kontrak_id')
-                ->having('spk_count > 1')
-                ->limit(1)
-                ->get()
-                ->getRowArray();
-            
-            if ($kontrakWithMultipleSPK) {
-                $kontrak = $this->db->table('kontrak')->where('id', $kontrakWithMultipleSPK['kontrak_id'])->get()->getRowArray();
-                $spks = $this->db->table('spk')->where('kontrak_id', $kontrakWithMultipleSPK['kontrak_id'])->get()->getResultArray();
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => [
-                    'kontrak_count' => $kontrakCount,
-                    'spk_count' => $spkCount,
-                    'di_count' => $diCount,
-                    'sample_kontrak' => $sampleKontrak,
-                    'sample_spk' => $sampleSPK,
-                    'kontrak_with_multiple_spk' => $kontrakWithMultipleSPK,
-                    'kontrak_data' => $kontrak ?? null,
-                    'spks_data' => $spks ?? null
-                ]
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ]);
-        }
     }
 
     public function delivery()

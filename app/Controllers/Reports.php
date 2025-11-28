@@ -349,7 +349,7 @@ class Reports extends BaseController
     {
         switch ($reportType) {
             case 'rental_monthly':
-                return $this->getRentalMonthlyData($dateFrom, $dateTo, $filters);
+                return []; // Rental monthly not implemented - use inventory_unit status instead
             case 'contract_performance':
                 return $this->getContractPerformanceData($dateFrom, $dateTo, $filters);
             case 'unit_utilization':
@@ -785,23 +785,6 @@ class Reports extends BaseController
     }
 
     // Mock data methods - replace with actual database queries
-    private function getRentalMonthlyData($dateFrom, $dateTo, $filters)
-    {
-        return [
-            'summary' => [
-                'total_rentals' => 45,
-                'total_revenue' => 'Rp 125,000,000',
-                'average_duration' => '15 days',
-                'completion_rate' => '95%'
-            ],
-            'data' => [
-                ['contract_id' => 'RNT-001', 'client' => 'PT ABC', 'unit' => 'FL-001', 'start_date' => '2024-01-01', 'end_date' => '2024-01-15', 'revenue' => 'Rp 2,500,000'],
-                ['contract_id' => 'RNT-002', 'client' => 'PT XYZ', 'unit' => 'FL-002', 'start_date' => '2024-01-05', 'end_date' => '2024-01-20', 'revenue' => 'Rp 3,000,000'],
-                // Add more mock data...
-            ]
-        ];
-    }
-
     private function getContractPerformanceData($dateFrom, $dateTo, $filters)
     {
         return [
@@ -891,10 +874,18 @@ class Reports extends BaseController
 
     private function logActivity($action, $description)
     {
-        // Log to activity log if ActivityLog controller exists
-        if (class_exists('\App\Controllers\ActivityLog')) {
-            $activityLog = new \App\Controllers\ActivityLog();
-            $activityLog->log($action, $description);
+        // Log to activity log using ActivityLoggingTrait or SystemActivityLogModel
+        try {
+            $activityModel = new \App\Models\SystemActivityLogModel();
+            $activityModel->insert([
+                'table_name' => 'reports',
+                'action' => $action,
+                'description' => $description,
+                'user_id' => session()->get('user_id') ?? 1,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to log activity: ' . $e->getMessage());
         }
     }
 
@@ -941,17 +932,27 @@ class Reports extends BaseController
     // Mock data methods for different report categories
     private function getRentalReportData()
     {
+        $db = \Config\Database::connect();
+        
+        // Get real rental data from inventory_unit with status RENTAL_ACTIVE (7)
+        $activeRentals = $db->table('inventory_unit iu')
+            ->select('iu.*, k.no_kontrak, k.pelanggan')
+            ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+            ->where('iu.status_unit_id', 7) // RENTAL_ACTIVE
+            ->get()->getResultArray();
+            
+        $totalRentals = $db->table('inventory_unit')
+            ->where('status_unit_id', 7)
+            ->countAllResults();
+            
         return [
             'summary' => [
-                'total_rentals' => 156,
-                'active_contracts' => 89,
-                'completed_contracts' => 67,
-                'total_revenue' => 'Rp 450,000,000'
+                'total_rentals' => $totalRentals,
+                'active_contracts' => count($activeRentals),
+                'completed_contracts' => 0, // TODO: implement history tracking
+                'total_revenue' => 'Rp ' . number_format(array_sum(array_column($activeRentals, 'harga_sewa_bulanan')), 0, ',', '.')
             ],
-            'recent_rentals' => [
-                ['id' => 'RNT-001', 'client' => 'PT ABC', 'unit' => 'FL-001', 'status' => 'Active'],
-                ['id' => 'RNT-002', 'client' => 'PT XYZ', 'unit' => 'FL-002', 'status' => 'Completed']
-            ]
+            'recent_rentals' => array_slice($activeRentals, 0, 10) // Limit to 10 recent
         ];
     }
 

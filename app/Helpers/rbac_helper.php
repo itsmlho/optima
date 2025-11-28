@@ -414,3 +414,25 @@ if (!function_exists('rbac_middleware')) {
         return true;
     }
 }
+
+if (!function_exists('can_create')) {
+    /**
+     * Check if user can create (edit permission level and above)
+     */
+    function can_create($permission_key, $user_id = null, $division_id = null)
+    {
+        $level = get_permission_level($permission_key, $user_id, $division_id);
+        return in_array($level, ['edit', 'delete', 'manage']);
+    }
+}
+
+if (!function_exists('can_export')) {
+    /**
+     * Check if user can export (view permission level and above)
+     */
+    function can_export($permission_key, $user_id = null, $division_id = null)
+    {
+        $level = get_permission_level($permission_key, $user_id, $division_id);
+        return in_array($level, ['view', 'edit', 'delete', 'manage']);
+    }
+}

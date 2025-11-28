@@ -9,7 +9,7 @@ Tabel database belum dibuat. Ikuti langkah berikut:
 ### Opsi 1: Via phpMyAdmin (Recommended)
 
 1. Buka **phpMyAdmin** (http://localhost/phpmyadmin)
-2. Pilih database **`optima_db`**
+2. Pilih database **`optima_ci`**
 3. Klik tab **SQL**
 4. Copy-paste SQL berikut:
 
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS `work_order_sparepart_returns` (
 ### Opsi 2: Via MySQL Command Line
 
 ```bash
-mysql -u root -p optima_db < app/Database/SQL/work_order_sparepart_returns.sql
+mysql -u root -p optima_ci < app/Database/SQL/work_order_sparepart_returns.sql
 ```
 
 ### Opsi 3: Via CodeIgniter Migration

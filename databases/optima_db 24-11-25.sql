@@ -18,10 +18,10 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `optima_db`
+-- Database: `optima_ci`
 --
-CREATE DATABASE IF NOT EXISTS `optima_db` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-USE `optima_db`;
+CREATE DATABASE IF NOT EXISTS `optima_ci` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `optima_ci`;
 
 DELIMITER $$
 --

@@ -17,7 +17,7 @@ header('Cache-Control: max-age=0');
 try {
     // Get data from database using direct MySQL connection
     $host = 'localhost';
-    $dbname = 'optima_db';
+    $dbname = 'optima_ci';
     $username = 'root';
     $password = 'root';
     

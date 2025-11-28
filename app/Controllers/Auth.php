@@ -79,14 +79,14 @@ class Auth extends BaseController
             return redirect()->to('/auth/login');
         }
         
-        return redirect()->to('/welcome');
+        return redirect()->to('/dashboard');
     }
 
     public function login()
     {
         // If already logged in, redirect to welcome page
         if ($this->session->get('isLoggedIn')) {
-            return redirect()->to('/welcome');
+            return redirect()->to('/dashboard');
         }
 
         $data = [
@@ -440,7 +440,7 @@ class Auth extends BaseController
         return $this->response->setJSON([
             'success' => true,
             'message' => 'OTP baru telah dikirim ke email Anda.',
-            'remaining_seconds' => config('AuthSecurity')->otpResendCooldownSeconds,
+            'remaining_seconds' => config('AuthSecurity')->otpResendCooldownSeconds ?? 300,
         ]);
     }
 
@@ -501,15 +501,15 @@ class Auth extends BaseController
      */
     private function getRedirectUrl($role)
     {
-        // All users redirect to welcome page after login
-        return '/welcome';
+        // All users redirect to dashboard after login
+        return '/dashboard';
     }
 
     public function register()
     {
         // If already logged in, redirect to welcome page
         if ($this->session->get('isLoggedIn')) {
-            return redirect()->to('/welcome');
+            return redirect()->to('/dashboard');
         }
 
         // Get divisions for form (roles will be loaded via AJAX based on division)
@@ -1042,7 +1042,7 @@ class Auth extends BaseController
 
         // Check if token is single use and already used
         $authSecurityConfig = config('AuthSecurity');
-        if ($authSecurityConfig->resetTokenSingleUse && $resetRecord['is_used'] == 1) {
+        if (($authSecurityConfig->resetTokenSingleUse ?? true) && $resetRecord['is_used'] == 1) {
             return redirect()->to('/auth/forgot-password')
                 ->with('error', 'Token reset password sudah digunakan. Silakan request reset password baru.');
         }
@@ -1208,7 +1208,7 @@ class Auth extends BaseController
             $db = \Config\Database::connect();
             $tableExists = $db->tableExists('user_sessions');
             
-            if ($tableExists && config('AuthSecurity')->trackDevices) {
+            if ($tableExists && (config('AuthSecurity')->trackDevices ?? false)) {
                 $sessions = $this->sessionService->getUserSessions($userId, true);
                 $activeSessionCount = $this->sessionService->getActiveSessionCount($userId);
             }

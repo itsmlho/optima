@@ -11,11 +11,11 @@
 **Jalankan SQL file:**
 ```bash
 # Via command line
-mysql -u root -p optima_db < scripts/setup_resource_permissions.sql
+mysql -u root -p optima_ci < scripts/setup_resource_permissions.sql
 
 # Atau via phpMyAdmin:
 # 1. Buka phpMyAdmin
-# 2. Pilih database optima_db
+# 2. Pilih database optima_ci
 # 3. Klik tab "Import"
 # 4. Pilih file: scripts/setup_resource_permissions.sql
 # 5. Klik "Go"

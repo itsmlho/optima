@@ -11,11 +11,18 @@ $can_create = $permissions['create'];
 $can_edit = $permissions['edit'];
 $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
+
+// Initialize Phase 3 optimization services
+$lazyService = new \App\Services\LazyLoadingService();
+$assetService = new \App\Services\AssetMinificationService();
 ?>
 
 <?= $this->section('css') ?>
 <!-- Select2 CSS -->
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+<!-- Phase 3: Lazy loading CSS -->
+<?= $lazyService->getLazyLoadingCSS() ?>
 <style>
     /* CSS umum sudah ada di optima-pro.css (card-stats, table-card, badges, tabs, buttons, dll) */
     
@@ -34,9 +41,6 @@ $can_export = $permissions['export'];
         padding: 0.75rem 0.5rem;
     }
     
-    /* Table disabled styling is now centralized in optima-pro.css */
-        color: white;
-    }
     .dropdown-toggle::after {
         float: right;
         margin-top: 8px;
@@ -1414,6 +1418,10 @@ $can_export = $permissions['export'];
 <?= $this->section('javascript') ?>
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<!-- Phase 3: Lazy loading JavaScript -->
+<?= $lazyService->getLazyLoadingScript() ?>
+<?= $lazyService->getLazyContentScript() ?>
 <script>
 // Global permission variables (accessible from all functions)
 const canViewService = <?= $can_view ? 'true' : 'false' ?>;
@@ -1483,6 +1491,7 @@ $(document).ready(function() {
             type: 'POST',
             data: function(d) {
                 d.tab = 'progress'; // Filter for non-closed work orders
+                d.useOptimized = true; // Phase 3: Enable optimized model
             },
             error: function(xhr, error, thrown) {
                 console.log('Error loading progress data:', xhr.responseText);
@@ -1547,6 +1556,7 @@ $(document).ready(function() {
             type: 'POST',
             data: function(d) {
                 d.tab = 'closed'; // Filter for closed work orders only
+                d.useOptimized = true; // Phase 3: Enable optimized model
             },
             error: function(xhr, error, thrown) {
                 console.log('Error loading closed data:', xhr.responseText);
@@ -3937,6 +3947,20 @@ $(document).ready(function() {
     
     console.log('✅ Sparepart dropdown fix applied - Standard dropdown mode active');
 });
+
+// Production asset optimization
+<?php if (ENVIRONMENT === 'production'): ?>
+document.addEventListener('DOMContentLoaded', function() {
+    // Load minified assets untuk production
+    const optimizedCSS = document.querySelector('link[href*="optima-pro.css"]');
+    if (optimizedCSS) {
+        const minifiedCSS = '<?= $assetService->getAsset('css', 'optima-pro.css') ?>';
+        if (minifiedCSS) {
+            optimizedCSS.href = '<?= base_url() ?>' + minifiedCSS;
+        }
+    }
+});
+<?php endif; ?>
 </script>
 
 <?php include 'sparepart_validation.php'; ?>

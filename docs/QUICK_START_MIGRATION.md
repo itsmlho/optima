@@ -14,7 +14,7 @@ Jika Anda melihat error ini, berarti **migration belum dijalankan**.
 2. Login dengan:
    - Username: `root`
    - Password: `root` (atau sesuai setting Anda)
-3. Pilih database: `optima_db` (kiri sidebar)
+3. Pilih database: `optima_ci` (kiri sidebar)
 
 ### Step 2: Import SQL File
 
@@ -74,7 +74,7 @@ Saya sudah menambahkan **graceful fallback** di code, jadi:
 ## 📋 Checklist Migration
 
 - [ ] Buka phpMyAdmin
-- [ ] Pilih database: `optima_db`
+- [ ] Pilih database: `optima_ci`
 - [ ] Import file: `MIGRATION_MANUAL.sql`
 - [ ] Verifikasi 4 tables created
 - [ ] Refresh aplikasi

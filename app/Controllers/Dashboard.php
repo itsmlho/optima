@@ -5,23 +5,20 @@ namespace App\Controllers;
 use App\Controllers\BaseController;
 use App\Models\UserModel;
 use App\Models\AssetManagementModel;
-use App\Models\ForkliftModel;
-use App\Models\RentalModel;
+use App\Models\InventoryUnitModel;
 
 
 class Dashboard extends BaseController
 {
     protected $userModel;
     protected $AssetManagementModel;
-
+    protected $inventoryUnitModel;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
         $this->AssetManagementModel = new AssetManagementModel();
-        
-        // Auto-create missing tables if needed
-        $this->createMissingTables();
+        $this->inventoryUnitModel = new InventoryUnitModel();
     }
 
     public function index()
@@ -144,10 +141,10 @@ class Dashboard extends BaseController
         try {
             // Get rolling unit statistics
             return [
-                'total_units' => $this->forkliftModel->countAll(),
-                'active_units' => $this->forkliftModel->where('status', 'available')->countAllResults(),
-                'in_maintenance' => $this->forkliftModel->where('status', 'maintenance')->countAllResults(),
-                'rented_units' => $this->forkliftModel->where('status', 'rented')->countAllResults(),
+                'total_units' => $this->inventoryUnitModel->countAll(),
+                'active_units' => $this->inventoryUnitModel->where('status_unit_id', 1)->countAllResults(),
+                'in_maintenance' => $this->inventoryUnitModel->where('status_unit_id', 8)->countAllResults(),
+                'rented_units' => $this->inventoryUnitModel->where('status_unit_id', 7)->countAllResults(),
             ];
         } catch (\Exception $e) {
             log_message('error', 'Error getting rolling stats: ' . $e->getMessage());
@@ -174,8 +171,8 @@ class Dashboard extends BaseController
         try {
             // Get warehouse statistics
             return [
-                'total_assets' => $this->forkliftModel->countAll(),
-                'available_units' => $this->forkliftModel->where('status', 'available')->countAllResults(),
+                'total_assets' => $this->inventoryUnitModel->countAll(),
+                'available_units' => $this->inventoryUnitModel->where('status_unit_id', 1)->countAllResults(),
                 'total_spareparts' => 0, // Will be implemented later
                 'low_stock_items' => 0, // Will be implemented later
             ];

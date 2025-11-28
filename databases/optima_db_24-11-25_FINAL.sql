@@ -18,10 +18,10 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `optima_db_test`
+-- Database: `optima_ci_test`
 --
-CREATE DATABASE IF NOT EXISTS `optima_db_test` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-USE `optima_db_test`;
+CREATE DATABASE IF NOT EXISTS `optima_ci_test` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+USE `optima_ci_test`;
 
 -- Disable foreign key checks for safe import
 SET FOREIGN_KEY_CHECKS = 0;

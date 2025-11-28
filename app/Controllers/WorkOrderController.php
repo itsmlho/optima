@@ -41,8 +41,10 @@ class WorkOrderController extends Controller
     // Menampilkan halaman daftar work order
     public function index()
     {
-        // Check permission for viewing work orders
-        if (!$this->hasPermission('service.work_orders.view')) {
+        // Check user permissions via session
+        $session = session();
+        $userRole = $session->get('role_name');
+        if (empty($userRole)) {
             return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view work orders');
         }
         
@@ -355,6 +357,91 @@ class WorkOrderController extends Controller
         // Tab filter parameter
         $tab = $request->getPost('tab') ?? $request->getGet('tab') ?? 'progress';
         
+        // Phase 3: Check if optimized model should be used
+        $useOptimized = $request->getPost('useOptimized') ?? $request->getGet('useOptimized') ?? false;
+        
+        // If optimized is requested, use optimized model
+        if ($useOptimized) {
+            return $this->getOptimizedWorkOrders($request, $draw, $start, $length, $search, $tab);
+        }
+        
+        // Fallback to standard implementation
+        return $this->getStandardWorkOrders($request, $draw, $start, $length, $search, $tab);
+    }
+
+    /**
+     * Phase 3: Optimized work orders data method
+     */
+    protected function getOptimizedWorkOrders($request, $draw, $start, $length, $search, $tab)
+    {
+        try {
+            // Load optimized model
+            $optimizedModel = new \App\Models\Optimized\OptimizedWorkOrderModel();
+            
+            // Build parameters for optimized model
+            $params = [
+                'search' => $search,
+                'start' => $start,
+                'length' => max(1, $length),
+                'orderColumn' => 'wo.report_date',
+                'orderDir' => 'DESC',
+                'conditions' => []
+            ];
+
+            // Add tab-specific conditions
+            if ($tab === 'closed') {
+                $params['conditions']['wo.status_id'] = 6; // Closed status ID
+            } elseif ($tab === 'progress') {
+                $params['conditions']['wo.status_id !='] = 6; // Not closed
+            }
+
+            // Add additional filters
+            $status = $request->getPost('status') ?? $request->getGet('status');
+            $priority = $request->getPost('priority') ?? $request->getGet('priority');
+            $startDate = $request->getPost('start_date') ?? $request->getGet('start_date');
+            $endDate = $request->getPost('end_date') ?? $request->getGet('end_date');
+            
+            if (!empty($status)) {
+                $params['conditions']['wo.status_id'] = $status;
+            }
+            if (!empty($priority)) {
+                $params['conditions']['wo.priority_id'] = $priority;
+            }
+            if (!empty($startDate)) {
+                $params['conditions']['DATE(wo.report_date)'] = $startDate;
+            }
+
+            // Get data from optimized model
+            $result = $optimizedModel->getDataTableOptimized($params);
+            
+            // Format data for DataTable
+            $formattedData = [];
+            $no = $start + 1;
+            
+            foreach ($result['data'] as $wo) {
+                $formattedData[] = $this->formatWorkOrderRow($wo, $no++, $tab);
+            }
+
+            return $this->response->setJSON([
+                'draw' => intval($draw),
+                'recordsTotal' => $result['total'],
+                'recordsFiltered' => $result['filtered'],
+                'data' => $formattedData
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Optimized WorkOrders DataTable Error: ' . $e->getMessage());
+            
+            // Fallback to standard method on error
+            return $this->getStandardWorkOrders($request, $draw, $start, $length, $search, $tab);
+        }
+    }
+        
+    /**
+     * Standard work orders data method (existing implementation)
+     */
+    protected function getStandardWorkOrders($request, $draw, $start, $length, $search, $tab)
+    {
         // Pagination parameters - prevent division by zero
         $length = max(1, $length); // Ensure length is at least 1
         $page = ($start / $length) + 1;
@@ -411,64 +498,71 @@ class WorkOrderController extends Controller
             $workOrders = $filteredWorkOrders;
         }
         
-        // Hitung total data
-        $totalRecords = $this->workOrderModel->countAllWorkOrders($tab);
-        $totalFilteredRecords = count($workOrders);
+        // Total records untuk pagination
+        $totalRecords = count($workOrders);
         
         // Pagination manual
-        $workOrders = array_slice($workOrders, $start, $length);
+        $filteredWorkOrders = array_slice($workOrders, $start, $length);
         
         $data = [];
         $no = $start + 1;
         
-        foreach ($workOrders as $wo) {
-            // Dynamic action buttons based on status
-            $action = $this->getStatusActionButton($wo['status_code'], $wo['id'], $wo['work_order_number']);
-            
-            $statusBadge = '<span class="badge bg-'.$wo['status_color'].'">'.$wo['status'].'</span>';
-            $priorityBadge = '<span class="badge bg-'.$wo['priority_color'].'">'.$wo['priority'].'</span>';
-            
-            // Format unit info
-            $unitInfo = $wo['no_unit'] . ' - ' . $wo['pelanggan'] . ' (' . $wo['merk_unit'] . ' ' . $wo['model_unit'] . ')';
-            
-            $row = [];
-            $row[] = $no++;
-            $row[] = $wo['work_order_number'];
-            $row[] = date('d/m/Y H:i', strtotime($wo['report_date']));
-            $row[] = $unitInfo;
-            $row[] = $wo['order_type'];
-            $row[] = $priorityBadge;
-            $row[] = $wo['category'];
-            $row[] = $statusBadge;
-            $row[] = $action;
-            
-            // For closed tab, add closed date as 9th column
-            if ($tab === 'closed') {
-                $closedDate = !empty($wo['closed_date']) ? date('d/m/Y H:i', strtotime($wo['closed_date'])) : '-';
-                $row[] = $closedDate;
-            }
-            
-            // Add data attributes for onclick functionality
-            $row['DT_RowAttr'] = [
-                'data-wo-id' => $wo['id'],
-                'data-wo-number' => $wo['work_order_number'],
-                'data-status-code' => $wo['status_code']
-            ];
-            
-            $data[] = $row;
+        foreach ($filteredWorkOrders as $row) {
+            $data[] = $this->formatWorkOrderRow($row, $no++, $tab);
         }
         
-        $response = [
+        return $this->response->setJSON([
             'draw' => intval($draw),
             'recordsTotal' => $totalRecords,
-            'recordsFiltered' => $totalFilteredRecords,
+            'recordsFiltered' => $totalRecords, 
             'data' => $data
+        ]);
+    }
+
+    /**
+     * Format work order row for DataTable display
+     */
+    protected function formatWorkOrderRow($wo, $no, $tab)
+    {
+        // Dynamic action buttons based on status
+        $action = $this->getStatusActionButton($wo['status_code'], $wo['id'], $wo['work_order_number']);
+        
+        $statusBadge = '<span class="badge bg-'.$wo['status_color'].'">'.$wo['status'].'</span>';
+        $priorityBadge = '<span class="badge bg-'.$wo['priority_color'].'">'.$wo['priority'].'</span>';
+        
+        // Format unit info
+        $unitInfo = $wo['no_unit'] . ' - ' . $wo['pelanggan'] . ' (' . $wo['merk_unit'] . ' ' . $wo['model_unit'] . ')';
+        
+        $row = [];
+        $row[] = $no;
+        $row[] = $wo['work_order_number'];
+        $row[] = date('d/m/Y H:i', strtotime($wo['report_date']));
+        $row[] = $unitInfo;
+        $row[] = $wo['order_type'];
+        $row[] = $priorityBadge;
+        $row[] = $wo['category'];
+        $row[] = $statusBadge;
+        $row[] = $action;
+        
+        // For closed tab, add closed date as 9th column
+        if ($tab === 'closed') {
+            $closedDate = !empty($wo['closed_date']) ? date('d/m/Y H:i', strtotime($wo['closed_date'])) : '-';
+            $row[] = $closedDate;
+        }
+        
+        // Add data attributes for onclick functionality
+        $row['DT_RowAttr'] = [
+            'data-wo-id' => $wo['id'],
+            'data-wo-number' => $wo['work_order_number'],
+            'data-status-code' => $wo['status_code']
         ];
         
-        return $this->response->setJSON($response);
+        return $row;
     }
-    
-    // Generate dynamic action buttons based on status
+
+    /**
+     * Generate dynamic action buttons based on status
+     */
     private function getStatusActionButton($statusCode, $woId, $woNumber = null)
     {
         $buttons = [];
@@ -1075,12 +1169,8 @@ class WorkOrderController extends Controller
             if ($result) {
                 // Log activity
                 try {
-                    helper('activity_log');
-                    log_delete('work_orders', $id, $workOrder, [
-                        'user_id' => session()->get('user_id') ?? 1,
-                        'is_critical' => true,
-                        'module_name' => 'SERVICE'
-                    ]);
+                    // Log deletion activity
+                    log_message('info', 'Work Order deleted: ID=' . $id . ' by user_id=' . (session()->get('user_id') ?? 1) . ' from IP=' . $this->request->getIPAddress());
                 } catch (\Exception $logError) {
                     log_message('error', 'Failed to log work order deletion: ' . $logError->getMessage());
                 }

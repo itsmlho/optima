@@ -674,7 +674,7 @@ class NotificationController extends BaseController
         
         if ($result) {
             // Log the create activity
-            $this->logActivity('CREATE', 'notification_rules', $result, null, $data);
+            $this->logActivity('CREATE', 'notification_rules', $result, '', $data);
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Notification rule created successfully',

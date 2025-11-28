@@ -79,7 +79,7 @@
 # Import file: scripts/setup_resource_permissions.sql
 
 # Option 2: Via command line
-mysql -u root -p optima_db < scripts/setup_resource_permissions.sql
+mysql -u root -p optima_ci < scripts/setup_resource_permissions.sql
 ```
 
 ### Step 2: Verify Setup

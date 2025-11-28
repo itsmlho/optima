@@ -28,7 +28,9 @@
                                 System Status
                             </div>
                             <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <span class="badge bg-success">Online</span>
+                                <span class="badge bg-<?= ($system_status['database_status'] ?? '') === 'Connected' ? 'success' : 'danger' ?>">
+                                    <?= ($system_status['database_status'] ?? '') === 'Connected' ? 'ONLINE' : 'OFFLINE' ?>
+                                </span>
                             </div>
                         </div>
                         <div class="col-auto">
@@ -93,6 +95,155 @@
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-chart-line fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance & System Metrics -->
+    <div class="row mb-4">
+        <!-- Performance Metrics -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Performance Metrics</h6>
+                    <i class="fas fa-tachometer-alt"></i>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <small class="text-muted">Average Query Time</small>
+                                <div class="font-weight-bold"><?= number_format($performance_metrics['query_time'] ?? 0, 3) ?>s</div>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Page Load Time</small>
+                                <div class="font-weight-bold"><?= number_format($performance_metrics['page_load_time'] ?? 0, 2) ?>s</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <small class="text-muted">Memory Peak</small>
+                                <div class="font-weight-bold"><?= $performance_metrics['memory_peak'] ?? '0 MB' ?></div>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Slow Queries</small>
+                                <div class="font-weight-bold text-<?= ($performance_metrics['slow_queries'] ?? 0) > 0 ? 'danger' : 'success' ?>">
+                                    <?= $performance_metrics['slow_queries'] ?? 0 ?>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cache Statistics -->
+        <div class="col-xl-6 col-lg-6">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-success">Cache Statistics</h6>
+                    <i class="fas fa-database"></i>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <small class="text-muted">Hit Rate</small>
+                                <div class="font-weight-bold text-success"><?= number_format($cache_stats['hit_rate'] ?? 0, 1) ?>%</div>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Total Keys</small>
+                                <div class="font-weight-bold"><?= number_format($cache_stats['total_keys'] ?? 0) ?></div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <small class="text-muted">Miss Rate</small>
+                                <div class="font-weight-bold text-warning"><?= number_format($cache_stats['miss_rate'] ?? 0, 1) ?>%</div>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Memory Usage</small>
+                                <div class="font-weight-bold"><?= $cache_stats['memory_usage'] ?? '0 MB' ?></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Queue Status & System Monitoring -->
+    <div class="row mb-4">
+        <!-- Queue Status -->
+        <div class="col-xl-4 col-lg-6">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-info">Queue Status</h6>
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="mb-2">
+                            <span class="badge bg-<?= ($queue_status['status'] ?? '') === 'Active' ? 'success' : 'secondary' ?> mb-2">
+                                <?= $queue_status['status'] ?? 'Unknown' ?>
+                            </span>
+                        </div>
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <small class="text-muted">Pending</small>
+                                <div class="font-weight-bold"><?= $queue_status['pending'] ?? 0 ?></div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Failed</small>
+                                <div class="font-weight-bold text-danger"><?= $queue_status['failed'] ?? 0 ?></div>
+                            </div>
+                            <div class="col-4">
+                                <small class="text-muted">Today</small>
+                                <div class="font-weight-bold text-success"><?= $queue_status['completed_today'] ?? 0 ?></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Resources -->
+        <div class="col-xl-8 col-lg-6">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-warning">System Resources</h6>
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 col-6">
+                            <div class="mb-3">
+                                <small class="text-muted">Memory Usage</small>
+                                <div class="progress mb-1" style="height: 10px;">
+                                    <div class="progress-bar bg-info" role="progressbar" 
+                                         style="width: <?= $system_status['memory_usage'] ?? 0 ?>%"></div>
+                                </div>
+                                <small><?= number_format($system_status['memory_usage'] ?? 0, 1) ?>%</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-6">
+                            <div class="mb-3">
+                                <small class="text-muted">Storage Usage</small>
+                                <div class="progress mb-1" style="height: 10px;">
+                                    <div class="progress-bar bg-warning" role="progressbar" 
+                                         style="width: <?= $system_status['storage_usage'] ?? 0 ?>%"></div>
+                                </div>
+                                <small><?= number_format($system_status['storage_usage'] ?? 0, 1) ?>%</small>
+                            </div>
+                        </div>
+                        <div class="col-md-4 col-12">
+                            <div class="mb-3">
+                                <small class="text-muted">System Uptime</small>
+                                <div class="font-weight-bold"><?= $system_status['uptime'] ?? 'Unknown' ?></div>
+                            </div>
                         </div>
                     </div>
                 </div>

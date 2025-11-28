@@ -14,7 +14,7 @@ Jika `php spark migrate` gagal karena error MySQLi/PDO extensions, gunakan **man
 2. Login dengan credentials:
    - Username: `root`
    - Password: `root` (atau sesuai setting Anda)
-3. Pilih database: `optima_db`
+3. Pilih database: `optima_ci`
 
 ### Step 2: Import SQL File
 
@@ -48,7 +48,7 @@ SELECT
 FROM 
     information_schema.TABLES 
 WHERE 
-    TABLE_SCHEMA = 'optima_db'
+    TABLE_SCHEMA = 'optima_ci'
     AND TABLE_NAME IN ('user_otp', 'login_attempts', 'user_sessions', 'password_resets')
 ORDER BY 
     TABLE_NAME;
@@ -74,7 +74,7 @@ SELECT
 FROM 
     information_schema.COLUMNS 
 WHERE 
-    TABLE_SCHEMA = 'optima_db'
+    TABLE_SCHEMA = 'optima_ci'
     AND TABLE_NAME = 'users' 
     AND COLUMN_NAME IN ('otp_enabled', 'otp_enabled_at');
 ```
@@ -159,7 +159,7 @@ Jika MySQL version tidak support `IF NOT EXISTS`, gunakan query ini:
 -- Check if column exists
 SELECT COUNT(*) as exists_count
 FROM information_schema.COLUMNS
-WHERE TABLE_SCHEMA = 'optima_db'
+WHERE TABLE_SCHEMA = 'optima_ci'
   AND TABLE_NAME = 'users'
   AND COLUMN_NAME = 'otp_enabled';
 

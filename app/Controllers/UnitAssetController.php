@@ -13,7 +13,7 @@ class UnitAssetController extends BaseController
 
     public function __construct()
     {
-        ini_set('memory_limit', '1024M');
+        ini_set('memory_limit', '512M');
         $this->unitAssetModel = new UnitAssetModel();
         
         // Load auth helper for division filtering

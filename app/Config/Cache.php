@@ -20,6 +20,8 @@ class Cache extends BaseConfig
      *
      * The name of the preferred handler that should be used. If for some reason
      * it is not available, the $backupHandler will be used in its place.
+     * 
+     * For Hostinger shared hosting: 'file' is optimal
      */
     public string $handler = 'file';
 
@@ -42,7 +44,7 @@ class Cache extends BaseConfig
      * This string is added to all cache item names to help avoid collisions
      * if you run multiple applications with the same cache engine.
      */
-    public string $prefix = '';
+    public string $prefix = 'optima_v2_';
 
     /**
      * --------------------------------------------------------------------------
@@ -55,7 +57,21 @@ class Cache extends BaseConfig
      * hard-coded, but may be useful to projects and modules. This will replace
      * the hard-coded value in a future release.
      */
-    public int $ttl = 60;
+    public int $ttl = 300; // 5 minutes default for better performance
+
+    /**
+     * --------------------------------------------------------------------------
+     * Custom TTL for different data types - OPTIMIZED FOR SHARED HOSTING
+     * --------------------------------------------------------------------------
+     */
+    public array $customTTL = [
+        'dashboard' => 600,        // 10 minutes
+        'notifications' => 120,    // 2 minutes  
+        'user_data' => 900,        // 15 minutes
+        'reports' => 3600,         // 1 hour
+        'statistics' => 1800,      // 30 minutes
+        'heavy_queries' => 7200,   // 2 hours
+    ];
 
     /**
      * --------------------------------------------------------------------------

@@ -21,10 +21,10 @@ def finalize_sql_file(input_file, output_file):
     # Fixes yang akan dilakukan
     fixes = []
     
-    # 1. Pastikan database name benar (bukan optima_db_test)
-    if 'optima_db_test' in content:
-        content = content.replace('optima_db_test', 'optima_db')
-        fixes.append("✓ Database name diperbaiki: optima_db_test → optima_db")
+    # 1. Pastikan database name benar (bukan optima_ci_test)
+    if 'optima_ci_test' in content:
+        content = content.replace('optima_ci_test', 'optima_ci')
+        fixes.append("✓ Database name diperbaiki: optima_ci_test → optima_ci")
     
     # 2. Pastikan SET FOREIGN_KEY_CHECKS = 0 ada di awal (setelah USE)
     if 'SET FOREIGN_KEY_CHECKS = 0' not in content[:500]:
@@ -115,8 +115,8 @@ def finalize_sql_file(input_file, output_file):
     print(f"   4. Pastikan user MySQL memiliki privilege CREATE, DROP, ALTER")
 
 if __name__ == '__main__':
-    input_file = '/opt/lampp/htdocs/optima1/databases/optima_db_24-11-25_reorganized.sql'
-    output_file = '/opt/lampp/htdocs/optima1/databases/optima_db_24-11-25_FINAL.sql'
+    input_file = '/opt/lampp/htdocs/optima1/databases/optima_ci_24-11-25_reorganized.sql'
+    output_file = '/opt/lampp/htdocs/optima1/databases/optima_ci_24-11-25_FINAL.sql'
     
     finalize_sql_file(input_file, output_file)
 

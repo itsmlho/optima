@@ -61,61 +61,84 @@ class CustomerManagementController extends BaseController
      */
     public function getCustomers()
     {
-        if (!$this->hasPermission('marketing.customer.view')) {
-            return $this->response->setJSON(['draw'=>1,'recordsTotal'=>0,'recordsFiltered'=>0,'data'=>[]])->setStatusCode(403);
-        }
-        $request = $this->request;
-        $draw = $request->getPost('draw') ?: 1;
-        $start = $request->getPost('start') ?: 0;
-        $length = $request->getPost('length') ?: 10;
+        try {
+            if (!$this->hasPermission('marketing.customer.view')) {
+                return $this->response->setJSON(['draw'=>1,'recordsTotal'=>0,'recordsFiltered'=>0,'data'=>[]])->setStatusCode(403);
+            }
+            
+            $request = $this->request;
+            $draw = $request->getPost('draw') ?: 1;
+            $start = $request->getPost('start') ?: 0;
+            $length = $request->getPost('length') ?: 10;
         
-        // Safe array access
-        $search = $request->getPost('search') ?: [];
-        $searchValue = isset($search['value']) ? $search['value'] : '';
+            // Safe array access
+            $search = $request->getPost('search') ?: [];
+            $searchValue = isset($search['value']) ? $search['value'] : '';
+            
+            $order = $request->getPost('order') ?: [['column' => 0, 'dir' => 'asc']];
+            $orderColumnIndex = isset($order[0]['column']) ? $order[0]['column'] : 0;
+            $orderDir = isset($order[0]['dir']) ? $order[0]['dir'] : 'asc';
+            
+            // Define columns for ordering - updated to match new structure
+            $columns = ['customers.customer_code', 'customers.customer_name', 'area_name', 'pic_name', 'pic_phone', 'customers.created_at'];
+            $orderColumn = $columns[$orderColumnIndex] ?? 'customers.customer_name';
+            
+            // Get total records
+            $totalRecords = $this->customerModel->countAllResults();
         
-        $order = $request->getPost('order') ?: [['column' => 0, 'dir' => 'asc']];
-        $orderColumnIndex = isset($order[0]['column']) ? $order[0]['column'] : 0;
-        $orderDir = isset($order[0]['dir']) ? $order[0]['dir'] : 'asc';
-        
-        // Define columns for ordering - updated to match new structure
-        $columns = ['customer_code', 'customer_name', 'area_name', 'contact_person', 'phone', 'created_at'];
-        $orderColumn = $columns[$orderColumnIndex] ?? 'customer_name';
-        
-        // Get total records
-        $totalRecords = $this->customerModel->countAllResults();
-        
-        // Build query with search - updated to include customer_locations primary contact
-        $builder = $this->customerModel->builder();
-        $builder->select('customers.*, 
-                          GROUP_CONCAT(DISTINCT areas.area_name ORDER BY areas.area_name SEPARATOR ", ") as area_name,
-                          cl_primary.contact_person as pic_name, cl_primary.phone as pic_phone, cl_primary.email as pic_email,
-                          cl_primary.address as primary_address')
-                ->join('customer_locations cl_primary', 'customers.id = cl_primary.customer_id AND cl_primary.is_primary = 1', 'left')
-                ->join('customer_locations cl_all', 'customers.id = cl_all.customer_id', 'left')
-                ->join('areas', 'cl_all.area_id = areas.id', 'left')
-                ->groupBy('customers.id');
-                
-        if (!empty($searchValue)) {
-            $builder->groupStart()
-                    ->like('customer_code', $searchValue)
-                    ->orLike('customer_name', $searchValue)
-                    ->orLike('areas.area_name', $searchValue)
-                    ->orLike('cl_primary.contact_person', $searchValue)
-                    ->orLike('cl_primary.phone', $searchValue)
-                    ->orLike('cl_primary.email', $searchValue)
-                    ->groupEnd();
-        }
-        
-        $filteredRecords = $builder->countAllResults(false);
-        
-        // Apply ordering and pagination
-        $builder->orderBy($orderColumn, $orderDir)
-                ->limit($length, $start);
-        
-        $customers = $builder->get()->getResultArray();
-        
-        // Add additional data for enhanced table display
-        foreach ($customers as &$customer) {
+            // Build query with search - updated to include customer_locations primary contact
+            // Build query with search - updated to include customer_locations primary contact
+            $builder = $this->customerModel->builder();
+            $builder->select('customers.id, customers.customer_code, customers.customer_name, customers.created_at, customers.updated_at, customers.is_active,
+                              GROUP_CONCAT(DISTINCT areas.area_name ORDER BY areas.area_name SEPARATOR ", ") as area_name,
+                              MAX(cl_primary.contact_person) as pic_name, 
+                              MAX(cl_primary.phone) as pic_phone, 
+                              MAX(cl_primary.email) as pic_email,
+                              MAX(cl_primary.address) as primary_address')
+                    ->join('customer_locations cl_primary', 'customers.id = cl_primary.customer_id AND cl_primary.is_primary = 1', 'left')
+                    ->join('customer_locations cl_all', 'customers.id = cl_all.customer_id', 'left')
+                    ->join('areas', 'cl_all.area_id = areas.id', 'left')
+                    ->groupBy('customers.id, customers.customer_code, customers.customer_name, customers.created_at, customers.updated_at, customers.is_active');
+                    
+            if (!empty($searchValue)) {
+                $builder->groupStart()
+                        ->like('customers.customer_code', $searchValue)
+                        ->orLike('customers.customer_name', $searchValue)
+                        ->orLike('areas.area_name', $searchValue)
+                        ->orLike('cl_primary.contact_person', $searchValue)
+                        ->orLike('cl_primary.phone', $searchValue)
+                        ->orLike('cl_primary.email', $searchValue)
+                        ->groupEnd();
+            }
+            
+            // For filtered count, we need to get the distinct customer IDs first
+            $countBuilder = $this->db->table('customers');
+            if (!empty($searchValue)) {
+                $countBuilder->distinct('customers.id')
+                            ->join('customer_locations cl_primary', 'customers.id = cl_primary.customer_id AND cl_primary.is_primary = 1', 'left')
+                            ->join('customer_locations cl_all', 'customers.id = cl_all.customer_id', 'left')
+                            ->join('areas', 'cl_all.area_id = areas.id', 'left')
+                            ->groupStart()
+                            ->like('customers.customer_code', $searchValue)
+                            ->orLike('customers.customer_name', $searchValue)
+                            ->orLike('areas.area_name', $searchValue)
+                            ->orLike('cl_primary.contact_person', $searchValue)
+                            ->orLike('cl_primary.phone', $searchValue)
+                            ->orLike('cl_primary.email', $searchValue)
+                            ->groupEnd();
+                $filteredRecords = count($countBuilder->get()->getResultArray());
+            } else {
+                $filteredRecords = $totalRecords;
+            }
+            
+            // Apply ordering and pagination
+            $builder->orderBy($orderColumn, $orderDir)
+                    ->limit($length, $start);
+            
+            $customers = $builder->get()->getResultArray();
+            
+            // Add additional data for enhanced table display
+            foreach ($customers as &$customer) {
             $customer['locations_count'] = $this->locationModel->where('customer_id', $customer['id'])->countAllResults();
             
             // Get contracts through customer_locations (updated for optimized database structure)
@@ -137,16 +160,30 @@ class CustomerManagementController extends BaseController
             } else {
                 $customer['locations_summary'] = 'No locations';
             }
+            }
+            
+            $response = [
+                'draw' => $draw,
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $filteredRecords,
+                'data' => $customers
+            ];
+            
+            return $this->response->setJSON($response);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'CustomerManagementController::getCustomers - Error: ' . $e->getMessage());
+            log_message('error', 'CustomerManagementController::getCustomers - File: ' . $e->getFile() . ':' . $e->getLine());
+            log_message('error', 'CustomerManagementController::getCustomers - Trace: ' . $e->getTraceAsString());
+            
+            return $this->response->setJSON([
+                'draw' => 1,
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Database error occurred'
+            ])->setStatusCode(500);
         }
-        
-        $response = [
-            'draw' => $draw,
-            'recordsTotal' => $totalRecords,
-            'recordsFiltered' => $filteredRecords,
-            'data' => $customers
-        ];
-        
-        return $this->response->setJSON($response);
     }
 
     /**

@@ -229,8 +229,7 @@ class KontrakSpesifikasiModel extends Model
      */
     public function assignUnits($spesifikasiId, $unitIds, $hargaBulanan = null, $hargaHarian = null)
     {
-        // Load helper for logging
-        helper('activity_log');
+        // Activity logging sudah ada di trait yang di-load via controller
         
         $spek = $this->find($spesifikasiId);
         if (!$spek) return false;
@@ -282,24 +281,7 @@ class KontrakSpesifikasiModel extends Model
                 ->update($updateData);
 
             // Log the unit assignment
-            log_assign('inventory_unit', $unitId, 
-                format_activity_description('ASSIGN', 'inventory_unit', [
-                    'nomor' => $kontrak['no_po_marketing'] ?? 'N/A',
-                    'pelanggan' => $kontrak['pelanggan'] ?? 'N/A',
-                    'harga' => $finalHargaBulanan
-                ]), [
-                    'workflow_stage' => 'KONTRAK',
-                    'related_kontrak_id' => $spek['kontrak_id'],
-                    'data' => [
-                        'spesifikasi_id' => $spesifikasiId,
-                        'old_status' => $oldUnitData['status_unit_id'] ?? null,
-                        'new_status' => $newStatusId,
-                        'kontrak_status' => $kontrakStatus,
-                        'harga_bulanan' => $finalHargaBulanan,
-                        'harga_harian' => $finalHargaHarian
-                    ]
-                ]
-            );
+            log_message('info', 'Unit Assignment: Unit ID ' . $unitId . ' assigned to contract ' . ($kontrak['no_po_marketing'] ?? 'N/A') . ' for customer ' . ($kontrak['pelanggan'] ?? 'N/A') . ' at price ' . $finalHargaBulanan);
         }
 
         // Update spesifikasi jumlah_tersedia
@@ -310,14 +292,7 @@ class KontrakSpesifikasiModel extends Model
         ]);
 
         // Log spesifikasi update
-        log_update('kontrak_spesifikasi', $spesifikasiId,
-            ['jumlah_tersedia' => $currentTersedia],
-            ['jumlah_tersedia' => $currentTersedia + $assignedCount], [
-                'description' => "Spesifikasi {$spek['spek_kode']} diperbarui: {$assignedCount} unit di-assign",
-                'workflow_stage' => 'KONTRAK',
-                'related_kontrak_id' => $spek['kontrak_id']
-            ]
-        );
+        log_message('info', 'Spesifikasi Update: ID ' . $spesifikasiId . ' - ' . ($spek['spek_kode'] ?? 'N/A') . ' updated: ' . $assignedCount . ' units assigned, available quantity changed from ' . $currentTersedia . ' to ' . ($currentTersedia + $assignedCount));
 
         $db->transComplete();
         return $db->transStatus();

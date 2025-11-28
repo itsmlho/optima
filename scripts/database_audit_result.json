@@ -2,9 +2,9 @@
     "audit_date": "2025-11-22 16:10:33",
     "server": "127.0.0.1",
     "port": 3306,
-    "app_database": "optima_db",
+    "app_database": "optima_ci",
     "active_databases": [
-        "optima_db"
+        "optima_ci"
     ],
     "inactive_databases": [
         "phpmyadmin",
@@ -13,7 +13,7 @@
     "detailed": {
         "active": [
             {
-                "name": "optima_db",
+                "name": "optima_ci",
                 "table_count": 134,
                 "size_mb": 5.94,
                 "fk_count": 74,

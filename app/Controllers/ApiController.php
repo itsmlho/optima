@@ -3,15 +3,17 @@
 namespace App\Controllers;
 
 use App\Controllers\BaseController;
-use App\Models\ModelFormulir;
+use App\Models\PurchasingModel;
 
 class ApiController extends BaseController
 {
     protected $formulirModel;
+    protected $purchasingModel;
 
     public function __construct()
     {
-        $this->formulirModel = new ModelFormulir();
+        $this->formulirModel = new \App\Models\SystemManagementModel();
+        $this->purchasingModel = new PurchasingModel();
     }
 
     /**

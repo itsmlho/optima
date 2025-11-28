@@ -38,6 +38,7 @@ class Filters extends BaseFilters
         'role'          => \App\Filters\RoleFilter::class,
         'level'         => \App\Filters\LevelFilter::class,
         'auth'          => \App\Filters\AuthFilter::class,
+        'performancemonitor' => \App\Filters\PerformanceMonitorFilter::class,
     ];
 
     /**

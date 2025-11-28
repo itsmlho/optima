@@ -137,6 +137,6 @@ WHERE
 -- ============================================
 -- 1. Replace 'IF NOT EXISTS' and 'IF EXISTS' syntax if your MySQL version doesn't support it
 -- 2. For older MySQL versions, check if tables/columns exist before creating/adding
--- 3. Make sure you're connected to the correct database (optima_db)
+-- 3. Make sure you're connected to the correct database (optima_ci)
 -- 4. All timestamps are in DATETIME format (adjust timezone as needed)
 
