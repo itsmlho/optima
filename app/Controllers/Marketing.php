@@ -287,8 +287,7 @@ class Marketing extends BaseDataTableController
             'title' => 'Surat Perintah Kerja (SPK)',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/marketing' => 'Marketing',
-                '/marketing/spk' => 'SPK'
+                '/marketing/spk' => 'Surat Perintah Kerja (SPK)'
             ],
             'can_view_marketing' => can_view('marketing'),
             'can_create_marketing' => $this->canManage('marketing'),
@@ -301,8 +300,7 @@ class Marketing extends BaseDataTableController
             'title' => 'Delivery Instructions (DI)',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/marketing' => 'Marketing',
-                '/marketing/di' => 'Delivery Instructions'
+                '/marketing/di' => 'Delivery Instructions (DI)'
             ]
         ]);
     }

@@ -189,7 +189,6 @@ class Service extends BaseController
             'page_title' => 'Work Orders',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/service' => 'Service',
                 '/service/work-orders' => 'Work Orders'
             ],
             'mode' => 'active',
@@ -214,8 +213,6 @@ class Service extends BaseController
             'page_title' => 'Work Order History',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/service' => 'Service',
-                '/service/work-orders' => 'Work Orders',
                 '/service/work-orders/history' => 'History'
             ],
             'mode' => 'history',
@@ -234,7 +231,6 @@ class Service extends BaseController
             'page_title' => 'Preventive Maintenance Planned Service',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/service' => 'Service',
                 '/service/pmps' => 'PMPS'
             ]
         ];
@@ -288,7 +284,6 @@ class Service extends BaseController
             'page_title' => 'SPK dari Marketing',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/service' => 'Service',
                 '/service/spk_service' => 'SPK Service'
             ]
         ];

@@ -298,7 +298,6 @@ class Operational extends BaseController
             'title' => 'Delivery Instructions',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/operational' => 'Operational',
                 '/operational/delivery' => 'Delivery Process'
             ]
         ]);

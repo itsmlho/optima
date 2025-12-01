@@ -63,7 +63,6 @@ class ServiceAreaManagementController extends BaseController
             'totalAssignments' => $db->table('area_employee_assignments')->where('is_active', 1)->countAllResults(),
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/service' => 'Service',
                 '/service/area_employee_management' => 'Area & Employee Management'
             ]
         ];

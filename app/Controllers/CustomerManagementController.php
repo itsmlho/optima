@@ -43,7 +43,6 @@ class CustomerManagementController extends BaseController
             'title' => 'Customer Management - Marketing',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/marketing' => 'Marketing',
                 '/marketing/customer_management' => 'Customer Management'
             ],
             'customers' => $this->customerModel->findAll(),

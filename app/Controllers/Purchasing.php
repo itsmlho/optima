@@ -430,7 +430,6 @@ class Purchasing extends BaseController
             'title' => 'Purchasing Management | OPTIMA',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/purchasing' => 'Purchasing',
                 '/purchasing' => 'PO Unit & Attachment'
             ],
             'suppliers' => $suppliers,
@@ -1992,7 +1991,6 @@ class Purchasing extends BaseController
             'title' => 'Supplier Management',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/purchasing' => 'Purchasing',
                 '/purchasing/supplier_management' => 'Supplier Management'
             ],
             'suppliers' => $this->supplierModel->findAll(),

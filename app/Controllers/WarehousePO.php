@@ -70,7 +70,6 @@ class WarehousePO extends BaseController
             'page_title' => 'Purchase Order Verification Dashboard',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse' => 'Warehouse & Assets',
                 '/warehouse/purchase-orders' => 'PO Verification'
             ],
             // Fixed column name: status_verifikasi
@@ -172,7 +171,6 @@ class WarehousePO extends BaseController
             'title' => 'PO Verification | Warehouse',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse' => 'Warehouse',
                 '/warehouse/wh_verification' => 'PO Verification'
             ],
             'detailGroupUnit' => $detailGroupUnit,
@@ -507,8 +505,6 @@ class WarehousePO extends BaseController
             'page_title' => 'PO Unit Verification',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse' => 'Warehouse & Assets',
-                '/warehouse/purchase-orders' => 'PO Verification',
                 '/warehouse/purchase-orders/po-unit' => 'PO Unit'
             ],
             'detailGroup' => $detailGroup,
@@ -831,8 +827,6 @@ class WarehousePO extends BaseController
             'page_title' => 'PO Items - Tidak Sesuai / Rejected',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse' => 'Warehouse & Assets',
-                '/warehouse/purchase-orders' => 'PO Verification',
                 '/warehouse/purchase-orders/rejected-items' => 'Rejected Items'
             ],
             'rejected_units' => $rejectedUnits,

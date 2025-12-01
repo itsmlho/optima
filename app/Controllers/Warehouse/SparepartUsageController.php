@@ -40,7 +40,6 @@ class SparepartUsageController extends BaseController
             'page_title' => 'Pemakaian & Pengembalian Sparepart',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse' => 'Warehouse',
                 '/warehouse/sparepart-usage' => 'Sparepart Usage & Returns'
             ],
             'usage_table_exists' => $usageTableExists,

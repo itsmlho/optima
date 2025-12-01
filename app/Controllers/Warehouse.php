@@ -260,7 +260,6 @@ class Warehouse extends BaseController
             'title' => 'Inventory Unit',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse' => 'Warehouse',
                 '/warehouse/inventory' => 'Inventory Unit'
             ],
             'stats' => $stats,
@@ -894,7 +893,6 @@ class Warehouse extends BaseController
             'page_title' => 'Inventory Attachment',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse' => 'Warehouse',
                 '/warehouse/inventory/invent_attachment' => 'Inventory Attachment'
             ],
             'stats' => $attachmentModel->getStats()

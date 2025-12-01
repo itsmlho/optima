@@ -60,7 +60,6 @@ class Admin extends BaseController
             'page_title' => 'System Settings',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/admin' => 'Administration',
                 '/admin/settings' => 'Settings'
             ],
             'settings' => $this->getSystemSettings(),
@@ -84,7 +83,6 @@ class Admin extends BaseController
             'page_title' => 'System Configuration',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/admin' => 'Administration',
                 '/admin/configuration' => 'Configuration'
             ],
             'config_data' => $this->getConfigurationData(),

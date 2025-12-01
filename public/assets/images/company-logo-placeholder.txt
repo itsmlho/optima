@@ -1,0 +1,3 @@
+# This file represents the SML Rental logo placeholder
+# The actual PNG logo image should be placed at this path
+# company-logo.png

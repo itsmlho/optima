@@ -27,7 +27,6 @@ class UnitAssetController extends BaseController
             'page_title' => 'Unit Assets',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/warehouse' => 'Warehouse & Assets',
                 '/warehouse/unit-assets' => 'Unit Assets'
             ],
             'stats' => $this->unitAssetModel->getUnitAssetStats(),

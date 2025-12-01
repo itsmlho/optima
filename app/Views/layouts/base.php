@@ -760,25 +760,19 @@
             const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
             if (isCollapsed) {
                 document.body.classList.add('sidebar-collapsed');
-                sidebar.classList.add('collapsed');
-                mainContent.classList.add('expanded');
             }
             
             // Toggle sidebar function
             function toggleSidebar() {
-                const isCurrentlyCollapsed = sidebar.classList.contains('collapsed');
+                const isCurrentlyCollapsed = document.body.classList.contains('sidebar-collapsed');
                 
                 if (isCurrentlyCollapsed) {
                     // Expand sidebar
                     document.body.classList.remove('sidebar-collapsed');
-                    sidebar.classList.remove('collapsed');
-                    mainContent.classList.remove('expanded');
                     localStorage.setItem('sidebarCollapsed', 'false');
                 } else {
                     // Collapse sidebar
                     document.body.classList.add('sidebar-collapsed');
-                    sidebar.classList.add('collapsed');
-                    mainContent.classList.add('expanded');
                     localStorage.setItem('sidebarCollapsed', 'true');
                 }
             }
@@ -797,16 +791,12 @@
                 
                 if (isMobile) {
                     // Mobile behavior - hide sidebar by default
-                    sidebar.classList.remove('collapsed');
-                    mainContent.classList.remove('expanded');
                     document.body.classList.remove('sidebar-collapsed');
                 } else {
                     // Desktop behavior - restore saved state
                     const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
                     if (isCollapsed) {
                         document.body.classList.add('sidebar-collapsed');
-                        sidebar.classList.add('collapsed');
-                        mainContent.classList.add('expanded');
                     }
                     sidebar.classList.remove('show');
                 }
@@ -817,6 +807,46 @@
             
             // Listen to window resize
             window.addEventListener('resize', handleResize);
+            
+            // Enterprise Dropdown Positioning
+            function initializeDropdownPositioning() {
+                const groupItems = document.querySelectorAll('.nav-group-item');
+                
+                groupItems.forEach((item, index) => {
+                    const dropdown = item.querySelector('.nav-dropdown');
+                    if (!dropdown) return;
+                    
+                    item.addEventListener('mouseenter', () => {
+                        if (!document.body.classList.contains('sidebar-collapsed')) return;
+                        
+                        // Calculate optimal position
+                        const itemRect = item.getBoundingClientRect();
+                        const dropdownHeight = dropdown.offsetHeight;
+                        const viewportHeight = window.innerHeight;
+                        
+                        // Position dropdown smartly to avoid viewport overflow
+                        let topPosition = itemRect.top - 60; // Subtract header height
+                        
+                        // Adjust if dropdown would overflow bottom
+                        if (topPosition + dropdownHeight > viewportHeight - 20) {
+                            topPosition = viewportHeight - dropdownHeight - 20;
+                        }
+                        
+                        // Ensure minimum top position
+                        if (topPosition < 20) {
+                            topPosition = 20;
+                        }
+                        
+                        dropdown.style.top = topPosition + 'px';
+                    });
+                });
+            }
+            
+            // Initialize dropdown positioning after DOM is ready
+            setTimeout(initializeDropdownPositioning, 100);
+            
+            // Reinitialize on window resize
+            window.addEventListener('resize', initializeDropdownPositioning);
             
             // Close mobile sidebar when clicking outside
             document.addEventListener('click', function(e) {

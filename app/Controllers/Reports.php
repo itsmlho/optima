@@ -49,7 +49,6 @@ class Reports extends BaseController
             'page_title' => 'Rental Reports',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/reports' => 'Reports',
                 '/reports/rental' => 'Rental Reports'
             ],
             'rental_data' => $this->getRentalReportData(),
@@ -66,7 +65,6 @@ class Reports extends BaseController
             'page_title' => 'Maintenance Reports',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/reports' => 'Reports',
                 '/reports/maintenance' => 'Maintenance Reports'
             ],
             'maintenance_data' => $this->getMaintenanceReportData(),
@@ -83,7 +81,6 @@ class Reports extends BaseController
             'page_title' => 'Financial Reports',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/reports' => 'Reports',
                 '/reports/financial' => 'Financial Reports'
             ],
             'financial_data' => $this->getFinancialReportData(),
@@ -100,7 +97,6 @@ class Reports extends BaseController
             'page_title' => 'Inventory Reports',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/reports' => 'Reports',
                 '/reports/inventory' => 'Inventory Reports'
             ],
             'inventory_data' => $this->getInventoryReportData(),
@@ -117,7 +113,6 @@ class Reports extends BaseController
             'page_title' => 'Custom Report Builder',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/reports' => 'Reports',
                 '/reports/custom' => 'Custom Reports'
             ],
             'report_templates' => $this->getReportTemplates(),
