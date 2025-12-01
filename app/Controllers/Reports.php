@@ -38,10 +38,6 @@ class Reports extends BaseController
             ],
             'loadDataTables' => true, // Enable DataTables loading
         ];
-            'report_categories' => $this->getReportCategories(),
-            'recent_reports' => $this->getRecentReports(),
-            'report_stats' => $this->getReportStats()
-        ];
 
         return view('reports/index', $data);
     }

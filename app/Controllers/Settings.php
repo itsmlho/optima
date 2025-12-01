@@ -111,11 +111,20 @@ class Settings extends BaseController
         }
         
         $email = \Config\Services::email();
-        $emailConfig = config('Email');
         
-        // Set from email
-        if (!empty($emailConfig->fromEmail)) {
-            $email->setFrom($emailConfig->fromEmail, $emailConfig->fromName ?? 'OPTIMA System');
+        // Get email config as array for safer access
+        $emailConfigArray = config('Email');
+        $emailConfig = (array) $emailConfigArray;
+        
+        // Set from email safely
+        $fromEmail = $emailConfig['fromEmail'] ?? null;
+        $fromName = $emailConfig['fromName'] ?? 'OPTIMA System';
+        
+        if (!empty($fromEmail)) {
+            $email->setFrom($fromEmail, $fromName);
+        } else {
+            // Fallback to default
+            $email->setFrom('noreply@optima.com', 'OPTIMA System');
         }
         
         // Generate test OTP

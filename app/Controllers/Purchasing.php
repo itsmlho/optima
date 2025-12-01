@@ -63,6 +63,7 @@ class Purchasing extends BaseController
     protected $purchasingManagementModel;
     protected $inventoryUnitModel; // <-- untuk inventory unit
     protected $inventoryAttachmentModel; // <-- untuk inventory attachment
+    protected $poAttachmentModel; // <-- untuk po attachment items
     protected $poDeliveryModel; // <-- untuk delivery tracking
     protected $deliveryItemModel; // <-- untuk delivery items
 
@@ -1169,8 +1170,8 @@ class Purchasing extends BaseController
 
             // Get delivery data
             $deliveries = [];
-            if (isset($this->pODeliveryModel)) {
-                $deliveries = $this->pODeliveryModel->where('po_id', $poId)->findAll();
+            if (isset($this->poDeliveryModel)) {
+                $deliveries = $this->poDeliveryModel->where('po_id', $poId)->findAll();
             }
 
             // Add packing list data to each item
@@ -2121,7 +2122,7 @@ class Purchasing extends BaseController
         try {
             $tipeUnits = $this->tipeUnitModel->where('id_departemen', $departemenId)->findAll();
             return $this->respond(['success' => true, 'data' => $tipeUnits]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -2141,7 +2142,7 @@ class Purchasing extends BaseController
             return $this->respond(['success' => true, 'data' => [
                 ['id_tipe_unit' => $tipeUnit['id_tipe_unit'], 'jenis' => $tipeUnit['jenis']]
             ]]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -2173,7 +2174,7 @@ class Purchasing extends BaseController
             }
             
             return $this->respond(['success' => true, 'data' => $merks]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -2266,7 +2267,7 @@ class Purchasing extends BaseController
             $baterais = $this->bateraiModel->where('merk_baterai', $baterai['merk_baterai'])->findAll();
             
             return $this->respond(['success' => true, 'data' => $baterais]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
@@ -2298,7 +2299,7 @@ class Purchasing extends BaseController
             }
             
             return $this->respond(['success' => true, 'data' => $merks]);
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             return $this->respond(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
