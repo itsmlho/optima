@@ -2,11 +2,11 @@
 <div class="modal fade" id="sparepartValidationModal" tabindex="-1" aria-labelledby="sparepartValidationModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header bg-primary text-black">
                 <h5 class="modal-title" id="sparepartValidationModalLabel">
                     <i class="fas fa-tools me-2"></i>Validasi Sparepart - WO: <span id="sparepart-wo-number">Loading...</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-black" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
 
 <!-- Custom CSS untuk Bootstrap Select di dalam modal -->

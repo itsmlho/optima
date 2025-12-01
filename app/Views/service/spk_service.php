@@ -2022,7 +2022,8 @@ document.addEventListener('DOMContentLoaded', () => {
 									data-installed-sn="${item.installed_unit_sn||''}"
 									data-installed-merk="${item.installed_unit_merk||''}"
 									data-installed-model="${item.installed_unit_model||''}"
-									style="white-space: normal; line-height: 1.4; padding: 8px; ${isUsed ? 'color: #856404; background-color: #fff3cd;' : ''}">
+									style="white-space: normal; line-height: 1.4; padding: 8px;" 
+									class="${isUsed ? 'used-unit-option' : 'available-unit-option'}">
 								${name} • ${serialInfo}${statusLabel}
 							</option>`;
 						}).join('');
@@ -2073,7 +2074,8 @@ document.addEventListener('DOMContentLoaded', () => {
 									data-installed-sn="${item.installed_unit_sn||''}"
 									data-installed-merk="${item.installed_unit_merk||''}"
 									data-installed-model="${item.installed_unit_model||''}"
-									style="white-space: normal; line-height: 1.4; padding: 8px; ${isUsed ? 'color: #856404; background-color: #fff3cd;' : ''}">
+									style="white-space: normal; line-height: 1.4; padding: 8px;" 
+									class="${isUsed ? 'used-unit-option' : 'available-unit-option'}">
 								${name} • ${serialInfo}${statusLabel}
 							</option>`;
 						}).join('');

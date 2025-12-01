@@ -177,14 +177,17 @@ class PermissionController extends BaseController
 
             // Log permission update using trait
             $this->logUpdate('permissions', $permissionId, [
-                'permission_id' => $permissionId,
+                'key' => $permission['key'],
+                'name' => $permission['name'],
+                'description' => $permission['description'],
+                'module' => $permission['module']
+            ], [
                 'key' => $permissionData['key'],
                 'name' => $permissionData['name'],
                 'description' => $permissionData['description'],
-                'module' => $permissionData['module'],
-                'updated_by' => session()->get('user_id') ?? 1,
-                'previous_key' => $permission['key'],
-                'previous_name' => $permission['name']
+                'module' => $permissionData['module']
+            ], [
+                'updated_by' => session()->get('user_id') ?? 1
             ]);
 
             return $this->response->setJSON([

@@ -156,6 +156,52 @@
     font-size: 0.8rem; /* Smaller font */
     margin: 0;
 }
+
+/* Dark mode untuk welcome page */
+[data-bs-theme="dark"] .welcome-page {
+    background-color: #1a1d23 !important;
+}
+
+[data-bs-theme="dark"] .welcome-container {
+    background-color: #212529 !important;
+    border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] .welcome-header {
+    background-color: #343a40 !important;
+}
+
+[data-bs-theme="dark"] .welcome-content {
+    background-color: #212529 !important;
+}
+
+[data-bs-theme="dark"] .welcome-message {
+    background-color: #1e2328 !important;
+    color: #dee2e6 !important;
+    border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] .welcome-message p {
+    color: #e4e6ea !important;
+}
+
+[data-bs-theme="dark"] .user-info-section {
+    background-color: #1e2328 !important;
+    border-color: #495057 !important;
+}
+
+[data-bs-theme="dark"] .user-info-section h5 {
+    color: #f8f9fa !important;
+}
+
+[data-bs-theme="dark"] .user-info-grid {
+    background-color: transparent !important;
+}
+
+[data-bs-theme="dark"] .user-info-item {
+    background-color: #343a40 !important;
+    border-color: #495057 !important;
+}
 </style>
 <?= $this->endSection() ?>
 

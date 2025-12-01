@@ -1891,7 +1891,7 @@ class Warehouse extends BaseController
                 $message = "Attachment lama dilepas dan dipasang yang baru ke Unit {$unit['no_unit']}";
                 
                 // Log detach
-                $this->logActivity('auto_detach', "Attachment lama dilepas dari Unit {$unit['no_unit']} (auto)", [
+                $this->logActivity('auto_detach', 'inventory_attachment', $existingAttachment['id_inventory_attachment'], "Attachment lama dilepas dari Unit {$unit['no_unit']} (auto)", [
                     'old_attachment_id' => $existingAttachment['id_inventory_attachment'],
                     'new_attachment_id' => $attachmentId,
                     'unit_id' => $unitId
@@ -1911,7 +1911,7 @@ class Warehouse extends BaseController
                 }
                 
                 // Log activity
-                $this->logActivity('attach_to_unit', "Attachment dipasang ke Unit {$unit['no_unit']}", [
+                $this->logActivity('attach_to_unit', 'inventory_attachment', (int)$attachmentId, "Attachment dipasang ke Unit {$unit['no_unit']}", [
                     'attachment_id' => $attachmentId,
                     'unit_id' => $unitId,
                     'notes' => $notes,
@@ -1980,7 +1980,7 @@ class Warehouse extends BaseController
                 $attachmentModel->detachFromUnit($existingAttachment['id_inventory_attachment'], 'Auto-detach karena ada replacement (swap)');
                 
                 // Log auto-detach
-                $this->logActivity('auto_detach', "Attachment lama dilepas dari unit tujuan (auto swap)", [
+                $this->logActivity('auto_detach', 'inventory_attachment', $existingAttachment['id_inventory_attachment'], "Attachment lama dilepas dari unit tujuan (auto swap)", [
                     'old_attachment_id' => $existingAttachment['id_inventory_attachment'],
                     'moving_attachment_id' => $attachmentId,
                     'unit_id' => $toUnitId
@@ -2002,7 +2002,7 @@ class Warehouse extends BaseController
                 $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $toUnitId)->get()->getRowArray();
                 
                 // Log activity
-                $this->logActivity('swap_unit', "Attachment dipindah dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}", [
+                $this->logActivity('swap_unit', 'inventory_attachment', (int)$attachmentId, "Attachment dipindah dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}", [
                     'attachment_id' => $attachmentId,
                     'from_unit_id' => $fromUnitId,
                     'to_unit_id' => $toUnitId,
@@ -2070,7 +2070,7 @@ class Warehouse extends BaseController
                 
                 // Log activity
                 $unitInfo = $attachment['no_unit'] ?? $attachment['id_inventory_unit'] ?? 'Unknown';
-                $this->logActivity('detach_from_unit', "Attachment dilepas dari Unit {$unitInfo}", [
+                $this->logActivity('detach_from_unit', 'inventory_attachment', (int)$attachmentId, "Attachment dilepas dari Unit {$unitInfo}", [
                     'attachment_id' => $attachmentId,
                     'from_unit_id' => $attachment['id_inventory_unit'] ?? null,
                     'reason' => $reason,

@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               </div>
               <div class="col-6">
                 <label class="form-label">Lokasi Pengiriman</label>
-                <textarea class="form-control-plaintext" readonly rows="3" style="resize: none; border: 1px solid #dee2e6; border-radius: 0.375rem; padding: 0.375rem 0.75rem; background-color: #f8f9fa;">${di.lokasi || '-'}</textarea>
+                <textarea class="form-control-plaintext readonly-textarea" readonly rows="3" style="resize: none;">${di.lokasi || '-'}</textarea>
               </div>
               <div class="col-12"><hr></div>
               <div class="col-12"><h6 class="text-primary">Data Operasional Pengiriman</h6></div>

@@ -5,7 +5,7 @@
 // helper('global_permission');
 ?>
 <!DOCTYPE html>
-<html lang="id" data-bs-theme="light">
+<html lang="id" data-bs-theme="light" id="html-root">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -369,30 +369,23 @@
             </div>
         </main>
 
-    <!-- Company Credit Footer -->
-    <footer class="company-footer">
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-12">
-                    
-                    <div class="d-flex flex-column align-items-end">
-                        <div class="d-flex align-items-center">
-                            <span class="text-muted small me-1">Powered by:</span>
-                            <img src="<?= base_url('assets/images/company-logo.svg') ?>" 
-                                alt="SML Rental" 
-                                class="company-credit-logo"
-                                onerror="this.style.display='none'; this.nextElementSibling.classList.remove('d-none');">
-                            <span class="text-muted small d-none">SML Rental</span>
-                        </div>
-
-                        <p class="text-muted small mb-0 text-end">
-                            © <?= date('Y') ?> OPTIMA - PT Sarana Mitra Luas Tbk. All rights reserved.
-                        </p>
-                    </div>
-
+    <!-- Admin Footer -->
+    <footer class="admin-footer">
+        
+        <div class="row">
+            <div class="col-md-6">
+                <p class="mb-0 text-muted">© <?= date('Y') ?> OPTIMA - PT Sarana Mitra Luas Tbk. All rights reserved.</p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <div class="d-flex align-items-center justify-content-md-end">
+                    <span class="text-muted me-2">Powered by:</span>
+                    <img src="<?= base_url('assets/images/company-logo.svg') ?>" 
+                            alt="SML Rental" 
+                            style="height: 24px; opacity: 0.8;"
+                            onerror="this.style.display='none'; this.nextElementSibling.classList.remove('d-none');">
+                    <span class="text-muted d-none">SML Rental</span>
                 </div>
             </div>
-        </div>
     </footer>
 
     <!-- Legacy notification container removed: unified toast system in use -->
@@ -615,34 +608,85 @@
             });
         }
 
-        // Theme initialization and toggle functionality
+        // Theme initialization with tracking prevention fallback
         (function() {
-            // Apply saved theme immediately to prevent flash
-            const savedTheme = localStorage.getItem('optima-theme');
+            let savedTheme = 'light';
+            
+            // Safe localStorage access with tracking prevention fallback
+            try {
+                savedTheme = localStorage.getItem('optima-theme');
+            } catch (e) {
+                console.warn('LocalStorage blocked by tracking prevention, using sessionStorage fallback');
+                try {
+                    savedTheme = sessionStorage.getItem('optima-theme');
+                } catch (e2) {
+                    console.warn('SessionStorage also blocked, using cookie fallback');
+                    const themeMatch = document.cookie.match(/optima-theme=([^;]+)/);
+                    savedTheme = themeMatch ? themeMatch[1] : null;
+                }
+            }
+            
             const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
             const themeToApply = savedTheme || (systemPrefersDark ? 'dark' : 'light');
             
             document.documentElement.setAttribute('data-bs-theme', themeToApply);
         })();
         
+        // Safe storage function
+        function safeSaveTheme(theme) {
+            try {
+                localStorage.setItem('optima-theme', theme);
+            } catch (e) {
+                try {
+                    sessionStorage.setItem('optima-theme', theme);
+                } catch (e2) {
+                    // Cookie fallback with 30 days expiry
+                    const date = new Date();
+                    date.setTime(date.getTime() + (30 * 24 * 60 * 60 * 1000));
+                    document.cookie = `optima-theme=${theme}; expires=${date.toUTCString()}; path=/; SameSite=Lax`;
+                }
+            }
+        }
+        
         document.addEventListener('DOMContentLoaded', function() {
-            // Theme toggle will be handled by OPTIMA unified system
+            // Enhanced Theme toggle system
             const themeToggle = document.querySelector('.theme-toggle');
+            
+            // Initialize icon based on current theme
+            function updateThemeIcon() {
+                if (!themeToggle) return;
+                
+                const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
+                const icon = themeToggle.querySelector('i');
+                if (icon) {
+                    icon.className = currentTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+                }
+                themeToggle.title = `Switch to ${currentTheme === 'dark' ? 'Light' : 'Dark'} Mode`;
+            }
+            
             if (themeToggle) {
+                // Set initial icon
+                updateThemeIcon();
+                
                 themeToggle.addEventListener('click', function() {
                     console.log('Theme toggle button clicked!');
                     const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
                     const newTheme = currentTheme === 'light' ? 'dark' : 'light';
                     
-                    // Set theme
+                    // Set theme with smooth transition
+                    document.documentElement.style.transition = 'all 0.3s ease';
                     document.documentElement.setAttribute('data-bs-theme', newTheme);
-                    localStorage.setItem('optima-theme', newTheme);
+                    
+                    // Safe theme saving
+                    safeSaveTheme(newTheme);
                     
                     // Update icon
-                    const icon = this.querySelector('i');
-                    if (icon) {
-                        icon.className = newTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
-                    }
+                    updateThemeIcon();
+                    
+                    // Trigger custom event for other components
+                    window.dispatchEvent(new CustomEvent('themeChanged', { 
+                        detail: { theme: newTheme } 
+                    }));
                     
                     // Update OPTIMA state if available
                     if (window.OPTIMA && window.OPTIMA.initialized) {
@@ -650,15 +694,48 @@
                         window.OPTIMA.log(`Theme switched to ${newTheme} mode`);
                     }
                     
-                    console.log('Theme switched to:', newTheme);
+                    // Remove transition after theme change
+                    setTimeout(() => {
+                        document.documentElement.style.transition = '';
+                    }, 300);
+                    
+                    console.log(`Theme switched to: ${newTheme}`);
                 });
                 
-                // Initialize correct icon on load
-                const currentTheme = document.documentElement.getAttribute('data-bs-theme') || 'light';
-                const icon = themeToggle.querySelector('i');
-                if (icon) {
-                    icon.className = currentTheme === 'dark' ? 'fas fa-sun' : 'fas fa-moon';
+                // Safe theme retrieval function
+                function safeGetTheme() {
+                    try {
+                        return localStorage.getItem('optima-theme');
+                    } catch (e) {
+                        try {
+                            return sessionStorage.getItem('optima-theme');
+                        } catch (e2) {
+                            // Check cookies as final fallback
+                            const cookies = document.cookie.split(';');
+                            const themeCookie = cookies.find(cookie => cookie.trim().startsWith('optima-theme='));
+                            return themeCookie ? themeCookie.split('=')[1] : null;
+                        }
+                    }
                 }
+                
+                // Listen for system theme changes
+                if (window.matchMedia) {
+                    try {
+                        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+                            if (!safeGetTheme()) {
+                                const newTheme = e.matches ? 'dark' : 'light';
+                                document.documentElement.setAttribute('data-bs-theme', newTheme);
+                                updateThemeIcon();
+                                console.log(`System theme changed to: ${newTheme}`);
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('System theme detection not available:', e.message);
+                    }
+                }
+                
+                // Final initialization check
+                console.log('OPTIMA Theme System initialized successfully');
             }
         });
 
@@ -756,8 +833,26 @@
                 return;
             }
             
-            // Initialize sidebar state from localStorage
-            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            // Safe localStorage access for sidebar state
+            function getSidebarState() {
+                try {
+                    return localStorage.getItem('sidebarCollapsed') === 'true';
+                } catch (e) {
+                    console.warn('localStorage unavailable for sidebar state');
+                    return false;
+                }
+            }
+            
+            function setSidebarState(collapsed) {
+                try {
+                    localStorage.setItem('sidebarCollapsed', collapsed.toString());
+                } catch (e) {
+                    console.warn('localStorage unavailable for sidebar state');
+                }
+            }
+            
+            // Initialize sidebar state
+            const isCollapsed = getSidebarState();
             if (isCollapsed) {
                 document.body.classList.add('sidebar-collapsed');
             }
@@ -769,21 +864,16 @@
                 if (isCurrentlyCollapsed) {
                     // Expand sidebar
                     document.body.classList.remove('sidebar-collapsed');
-                    localStorage.setItem('sidebarCollapsed', 'false');
+                    setSidebarState(false);
                 } else {
                     // Collapse sidebar
                     document.body.classList.add('sidebar-collapsed');
-                    localStorage.setItem('sidebarCollapsed', 'true');
+                    setSidebarState(true);
                 }
             }
             
             // Attach toggle event
             sidebarToggle.addEventListener('click', toggleSidebar);
-            
-            // Mobile sidebar toggle
-            function toggleMobileSidebar() {
-                sidebar.classList.toggle('show');
-            }
             
             // Handle mobile/tablet view
             function handleResize() {
@@ -794,7 +884,7 @@
                     document.body.classList.remove('sidebar-collapsed');
                 } else {
                     // Desktop behavior - restore saved state
-                    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+                    const isCollapsed = getSidebarState();
                     if (isCollapsed) {
                         document.body.classList.add('sidebar-collapsed');
                     }
@@ -861,7 +951,10 @@
         
         // Legacy support for existing toggle function calls
         function toggleSidebar() {
-            document.getElementById('sidebarToggle')?.click();
+            const toggleButton = document.getElementById('sidebarToggle');
+            if (toggleButton) {
+                toggleButton.click();
+            }
         }
     </script>
 </body>

@@ -209,8 +209,11 @@ class WarehousePO extends BaseController
             // For tanggal_datang, take the latest non-null value
             if (!empty($item['tanggal_datang']) && $item['tanggal_datang'] !== null) {
                 $itemDate = is_string($item['tanggal_datang']) ? strtotime($item['tanggal_datang']) : $item['tanggal_datang'];
-                $currentDate = !empty($detailGroup[$poKey]['tanggal_datang']) 
-                    ? (is_string($detailGroup[$poKey]['tanggal_datang']) ? strtotime($detailGroup[$poKey]['tanggal_datang']) : $detailGroup[$poKey]['tanggal_datang'])
+                
+                // Safely handle current date with explicit null checking
+                $currentDateValue = $detailGroup[$poKey]['tanggal_datang'] ?? null;
+                $currentDate = (!empty($currentDateValue) && $currentDateValue !== null)
+                    ? (is_string($currentDateValue) ? strtotime($currentDateValue) : $currentDateValue)
                     : 0;
                 
                 if ($itemDate > $currentDate) {

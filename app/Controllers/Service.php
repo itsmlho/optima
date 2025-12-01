@@ -1637,7 +1637,7 @@ class Service extends BaseController
         
         // Build script content with proper escaping
         $hostname = $defaultConfig['hostname'];
-        $username = $defaultConfig['username'];  
+        $username = $defaultConfig['username'];
         $password = $defaultConfig['password'];
         $database = $defaultConfig['database'];
         $transferModeStr = $transfer_attachment ? 'true' : 'false';
