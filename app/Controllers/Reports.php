@@ -36,6 +36,8 @@ class Reports extends BaseController
                 '/' => 'Dashboard',
                 '/reports' => 'Reports'
             ],
+            'loadDataTables' => true, // Enable DataTables loading
+        ];
             'report_categories' => $this->getReportCategories(),
             'recent_reports' => $this->getRecentReports(),
             'report_stats' => $this->getReportStats()

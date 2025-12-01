@@ -58,7 +58,8 @@ class AdvancedUserManagement extends BaseController
                 'permissions' => $groupedPermissions,
                 'users' => $users,
                 'roles' => $this->roleModel->findAll(),
-                'divisions' => $this->divisionModel->findAll()
+                'divisions' => $this->divisionModel->findAll(),
+                'loadDataTables' => true, // Enable DataTables loading
             ];
 
             return view('admin/advanced_user_management/index', $data);

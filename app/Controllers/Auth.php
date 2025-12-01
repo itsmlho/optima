@@ -79,14 +79,14 @@ class Auth extends BaseController
             return redirect()->to('/auth/login');
         }
         
-        return redirect()->to('/dashboard');
+        return redirect()->to('/welcome');
     }
 
     public function login()
     {
         // If already logged in, redirect to welcome page
         if ($this->session->get('isLoggedIn')) {
-            return redirect()->to('/dashboard');
+            return redirect()->to('/welcome');
         }
 
         $data = [
@@ -501,15 +501,15 @@ class Auth extends BaseController
      */
     private function getRedirectUrl($role)
     {
-        // All users redirect to dashboard after login
-        return '/dashboard';
+        // All users redirect to welcome page first, then can navigate to dashboard
+        return '/welcome';
     }
 
     public function register()
     {
         // If already logged in, redirect to welcome page
         if ($this->session->get('isLoggedIn')) {
-            return redirect()->to('/dashboard');
+            return redirect()->to('/welcome');
         }
 
         // Get divisions for form (roles will be loaded via AJAX based on division)

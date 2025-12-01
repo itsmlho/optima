@@ -146,8 +146,8 @@
     
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover align-middle" id="customersTable" style="width: 100%;">
-                <thead class="table-light">
+            <table class="table table-striped table-hover align-middle" id="customersTable">
+                <thead class="table-header">
                     <tr>
                         <th class="fw-semibold">Customer</th>
                         <th class="fw-semibold">Company</th>
@@ -310,10 +310,6 @@
 <?= $this->endSection(); ?>
 
 <?= $this->section('scripts'); ?>
-<!-- DataTables CSS & JS -->
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
 
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

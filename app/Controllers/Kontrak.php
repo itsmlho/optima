@@ -40,6 +40,7 @@ class Kontrak extends BaseController
             'can_view_marketing' => can_view('marketing'),
             'can_create_marketing' => can_create('marketing'),
             'can_export_marketing' => can_export('marketing'),
+            'loadDataTables' => true, // Enable DataTables loading
         ];
         return view('marketing/kontrak', $data);
     }

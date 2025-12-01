@@ -25,63 +25,55 @@ $can_export = $permissions['export'];
     <?php else: ?>
     
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Total SPK</h6>
-                            <h3 class="mb-0" id="stat-total-spk">0</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-file-alt fa-2x opacity-75"></i>
-                        </div>
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-file-text stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-total-spk">0</div>
+                        <div class="text-muted">Total SPK</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">In Progress</h6>
-                            <h3 class="mb-0" id="stat-in-progress">0</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-clock fa-2x opacity-75"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-clock stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-in-progress">0</div>
+                        <div class="text-muted">In Progress</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Ready</h6>
-                            <h3 class="mb-0" id="stat-ready">0</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-check-circle fa-2x opacity-75"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-check-circle stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-ready">0</div>
+                        <div class="text-muted">Ready</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h6 class="card-title">Completed</h6>
-                            <h3 class="mb-0" id="stat-completed">0</h3>
-                        </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-check-double fa-2x opacity-75"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-info-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-check-all stat-icon text-info"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-completed">0</div>
+                        <div class="text-muted">Completed</div>
                     </div>
                 </div>
             </div>
@@ -133,7 +125,7 @@ $can_export = $permissions['export'];
                     <span>Show</span>
                     <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
                         <option value="10">10</option>
-                        <option value="25">25</option>
+                        <option value="25" selected>25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
@@ -146,9 +138,23 @@ $can_export = $permissions['export'];
             </div>
             
             <div class="table-responsive">
-                <table class="table table-sm mb-0 <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
-                    <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Total Unit</th><th>Aksi</th></tr></thead>
-                    <tbody></tbody>
+                <table class="table table-striped table-hover table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
+                    <thead>
+                        <tr>
+                            <th>No. SPK</th>
+                            <th>Jenis</th>
+                            <th>Kontrak/PO</th>
+                            <th>Nama Perusahaan</th>
+                            <th>PIC</th>
+                            <th>Kontak</th>
+                            <th>Status</th>
+                            <th>Total Unit</th>
+                            <th data-no-sort>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Data loaded via JavaScript -->
+                    </tbody>
                 </table>
             </div>
             
@@ -2563,9 +2569,12 @@ $can_export = $permissions['export'];
         }
     });
     </script>
+    
     <style>
     /* Ensure the SPK modal body scrolls when content is long */
     #spkModal .modal-body { max-height: 70vh; overflow-y: auto; }
+    
+    /* Consistent DataTables-like sorting headers */
     </style>
 
     <!-- SPK Edit Modal -->

@@ -1,1 +1,56 @@
-.table-disabled{opacity:0.5 !important;pointer-events:none !important;user-select:none !important;cursor:not-allowed !important}.table-disabled tbody tr{cursor:not-allowed !important;pointer-events:none !important}.table-disabled tbody tr:hover{background-color:#f8f9fa !important}.table-disabled tbody tr td{pointer-events:none !important;cursor:not-allowed !important}.table-disabled tbody tr td *{pointer-events:none !important;cursor:not-allowed !important}.table-disabled .btn{pointer-events:none !important;opacity:0.3 !important}.table-disabled a{pointer-events:none !important;cursor:not-allowed !important;color:#6c757d !important;text-decoration:none !important}.btn-disabled{opacity:0.5 !important;pointer-events:none !important;cursor:not-allowed !important}.form-disabled input,.form-disabled select,.form-disabled textarea{opacity:0.5 !important;pointer-events:none !important;cursor:not-allowed !important}
+/* GLOBAL PERMISSION STYLES */
+.table-disabled {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+    user-select: none !important;
+    cursor: not-allowed !important;
+}
+
+.table-disabled tbody tr {
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+}
+
+.table-disabled tbody tr:hover {
+    background-color: #f8f9fa !important;
+}
+
+.table-disabled tbody tr td {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.table-disabled tbody tr td * {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+.table-disabled .btn {
+    pointer-events: none !important;
+    opacity: 0.3 !important;
+}
+
+.table-disabled a {
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+    color: #6c757d !important;
+    text-decoration: none !important;
+}
+
+/* Button disabling */
+.btn-disabled {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+/* Form disabling */
+.form-disabled input,
+.form-disabled select,
+.form-disabled textarea {
+    opacity: 0.5 !important;
+    pointer-events: none !important;
+    cursor: not-allowed !important;
+}
+
+

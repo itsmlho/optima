@@ -132,7 +132,7 @@
             <div class="card-body">
                 <div class="table-responsive">
                     <table class="table table-striped">
-                        <thead class="table-dark">
+                        <thead>
                             <tr>
                                 <th>Type</th>
                                 <th>Item Name</th>
@@ -337,39 +337,6 @@
     </div>
 </div>
 
-<?= $this->endSection() ?>
-
-<?= $this->section('css') ?>
-<style>
-.card {
-    border-radius: 15px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.nav-tabs .nav-link {
-    border-radius: 10px 10px 0 0;
-    font-weight: 500;
-}
-
-.nav-tabs .nav-link.active {
-    background-color: #007bff;
-    border-color: #007bff;
-    color: white;
-}
-
-.progress {
-    border-radius: 10px;
-}
-
-.table-responsive {
-    border-radius: 10px;
-}
-
-.badge {
-    font-size: 0.75em;
-    padding: 0.5em 0.75em;
-}
-</style>
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>

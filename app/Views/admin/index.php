@@ -17,85 +17,64 @@
         </div>
     </div>
 
-    <!-- System Status Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                System Status
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <span class="badge bg-<?= ($system_status['database_status'] ?? '') === 'Connected' ? 'success' : 'danger' ?>">
-                                    <?= ($system_status['database_status'] ?? '') === 'Connected' ? 'ONLINE' : 'OFFLINE' ?>
-                                </span>
-                            </div>
+    <!-- System Status Cards - Professional Standard -->
+
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-server stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-system-status">
+                            <span class="badge bg-<?= ($system_status['database_status'] ?? '') === 'Connected' ? 'success' : 'danger' ?>">
+                                <?= ($system_status['database_status'] ?? '') === 'Connected' ? 'ONLINE' : 'OFFLINE' ?>
+                            </span>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-server fa-2x text-gray-300"></i>
-                        </div>
+                        <div class="text-muted">System Status</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Active Users
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= $system_status['active_users'] ?? 0 ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-users fa-2x text-gray-300"></i>
-                        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-people stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-total-users"><?= $system_status['active_users'] ?? 0 ?></div>
+                        <div class="text-muted">Total Users</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Database Size
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= $system_status['database_size'] ?? '0 MB' ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-database fa-2x text-gray-300"></i>
-                        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-info-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-database stat-icon text-info"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-database-size"><?= $system_status['database_size'] ?? '0 MB' ?></div>
+                        <div class="text-muted">Database Size</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                System Load
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= $system_status['system_load'] ?? 'Low' ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
-                        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-speedometer2 stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-system-load"><?= $system_status['system_load'] ?? 'Low' ?></div>
+                        <div class="text-muted">System Load</div>
                     </div>
                 </div>
             </div>
@@ -314,7 +293,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered">
+                        <table class="table table-striped table-hover">
                             <thead>
                                 <tr>
                                     <th>Time</th>

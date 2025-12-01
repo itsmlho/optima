@@ -1,74 +1,5 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
-<style>
-    .table-card { border: none; border-radius: 15px; box-shadow: 0 4px 25px rgba(0,0,0,0.1); }
-    .card-stats { 
-        border: none; 
-        border-radius: 15px; 
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-    .card-stats:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.15);
-    }
-    .card-stats.active {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 15px rgba(0,0,0,0.2);
-        border: 2px solid #0d6efd;
-    }
-    
-    /* Clickable table rows */
-    #inventory-attachment-table tbody tr {
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-    
-    #inventory-attachment-table tbody tr:hover {
-        background-color: rgba(13, 110, 253, 0.1) !important;
-    }
-    
-    /* Tab Styling */
-    .nav-tabs .nav-item {
-        margin-bottom: 0;
-    }
-    
-    
-    .nav-tabs .nav-link {
-        padding: 1.25rem 2.5rem;
-        border: 1px solid transparent;
-        border-top-left-radius: 0.375rem;
-        border-top-right-radius: 0.375rem;
-        color: #6c757d;
-        transition: all 0.15s ease-in-out;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: transparent;
-        font-weight: 500;
-    }
-    
-    .nav-tabs .nav-link:hover {
-        border-color: #e9ecef #e9ecef #dee2e6;
-        isolation: isolate;
-        color: #4e73df;
-        background-color: #f8f9fc;
-    }
-    
-    .nav-tabs .nav-link.active {
-        color: white !important;
-        background-color: #4e73df !important;
-        border-color: #4e73df !important;
-        box-shadow: 0 2px 4px rgba(78, 115, 223, 0.2);
-    }
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
     <!-- Inventory Table -->
@@ -142,7 +73,7 @@
             </ul>
         </div>
         <div class="card-body">
-            <table id="inventory-attachment-table" class="table table-striped table-hover" style="width:100%">
+            <table id="inventory-attachment-table" class="table table-striped table-hover">
                 <thead id="table-header">
                     <!-- Dynamic header will be inserted here -->
                 </thead>

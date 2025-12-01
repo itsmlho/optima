@@ -20,71 +20,71 @@
         </div>
     </div>
 
-    <!-- Sales Performance KPIs -->
-    <div class="row mb-4" aria-label="Statistik Marketing" role="list">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2" role="listitem">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Revenue Bulan Ini</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-currency="<?= $marketing_stats['monthly_revenue'] ?? 0 ?>">Rp 0</div>
-                            <div class="text-xs text-success"><i class="fas fa-arrow-up" aria-hidden="true"></i> +15.3% dari bulan lalu</div>
+    <!-- Sales Performance KPIs - Professional Standard -->
+    <div class="row g-4 mb-4">
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-stats bg-primary text-white h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h2 class="fw-bold mb-1" data-currency="<?= $marketing_stats['monthly_revenue'] ?? 0 ?>">Rp 0</h2>
+                        <h6 class="card-title text-uppercase small mb-0">REVENUE BULAN INI</h6>
+                        <div class="small mt-1 opacity-75">
+                            <i class="fas fa-arrow-up me-1"></i>+15.3% dari bulan lalu
                         </div>
-                        <div class="col-auto" aria-hidden="true">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
-                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2" role="listitem">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Kontrak Aktif</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $marketing_stats['active_contracts'] ?? 0 ?></div>
-                            <div class="text-xs text-success"><i class="fas fa-handshake" aria-hidden="true"></i> <?= round(($marketing_stats['active_contracts'] ?? 0) / max(($marketing_stats['total_contracts'] ?? 1), 1) * 100, 1) ?>% dari total</div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-stats bg-success text-white h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h2 class="fw-bold mb-1"><?= $marketing_stats['active_contracts'] ?? 0 ?></h2>
+                        <h6 class="card-title text-uppercase small mb-0">KONTRAK AKTIF</h6>
+                        <div class="small mt-1 opacity-75">
+                            <i class="fas fa-handshake me-1"></i><?= round(($marketing_stats['active_contracts'] ?? 0) / max(($marketing_stats['total_contracts'] ?? 1), 1) * 100, 1) ?>% dari total
                         </div>
-                        <div class="col-auto" aria-hidden="true">
-                            <i class="fas fa-handshake fa-2x text-gray-300"></i>
-                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-handshake fa-2x opacity-75"></i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2" role="listitem">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Penawaran Pending</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $marketing_stats['pending_quotations'] ?? 0 ?></div>
-                            <div class="text-xs text-warning"><i class="fas fa-clock" aria-hidden="true"></i> Butuh follow-up</div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-stats bg-warning text-white h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h2 class="fw-bold mb-1"><?= $marketing_stats['pending_quotations'] ?? 0 ?></h2>
+                        <h6 class="card-title text-uppercase small mb-0">PENAWARAN PENDING</h6>
+                        <div class="small mt-1 opacity-75">
+                            <i class="fas fa-clock me-1"></i>Butuh follow-up
                         </div>
-                        <div class="col-auto" aria-hidden="true">
-                            <i class="fas fa-file-invoice fa-2x text-gray-300"></i>
-                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-file-invoice fa-2x opacity-75"></i>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2" role="listitem">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Conversion Rate</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">68.5%</div>
-                            <div class="text-xs text-info"><i class="fas fa-percentage" aria-hidden="true"></i> Target: 70%</div>
+        <div class="col-xl-3 col-md-6">
+            <div class="card card-stats bg-info text-white h-100">
+                <div class="card-body d-flex align-items-center">
+                    <div class="flex-grow-1">
+                        <h2 class="fw-bold mb-1">68.5%</h2>
+                        <h6 class="card-title text-uppercase small mb-0">CONVERSION RATE</h6>
+                        <div class="small mt-1 opacity-75">
+                            <i class="fas fa-percentage me-1"></i>Target: 70%
                         </div>
-                        <div class="col-auto" aria-hidden="true">
-                            <i class="fas fa-chart-pie fa-2x text-gray-300"></i>
-                        </div>
+                    </div>
+                    <div class="ms-3">
+                        <i class="fas fa-chart-pie fa-2x opacity-75"></i>
                     </div>
                 </div>
             </div>
@@ -208,7 +208,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="salesActivitiesTable">
+                        <table class="table table-striped" id="salesActivitiesTable">
                             <thead>
                                 <tr>
                                     <th>Date</th>

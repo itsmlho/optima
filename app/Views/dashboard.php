@@ -1,423 +1,12 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<!-- CSS umum sudah ada di optima-pro.css (stats-card, quick-action-card, activity-item, dll) -->
-<style>
-    /* Custom dashboard widgets */
-    .stats-icon {
-        font-size: 2.5rem;
-        opacity: 0.8;
-    }
-    
-    .notification-item {
-        display: flex;
-        align-items: flex-start;
-        padding: 1rem;
-        border-bottom: 1px solid #e9ecef;
-        transition: background-color 0.3s ease;
-    }
-    
-    .notification-item:hover {
-        background-color: rgba(0, 97, 242, 0.05);
-    }
-    
-    .notification-item:last-child {
-        border-bottom: none;
-    }
-    
-    .notification-icon {
-        width: 35px;
-        height: 35px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 0.75rem;
-        font-size: 0.75rem;
-        flex-shrink: 0;
-    }
-    
-    .progress-ring {
-        transform: rotate(-90deg);
-    }
-    
-    .progress-ring-circle {
-        stroke-dasharray: 188.4;
-        stroke-dashoffset: 188.4;
-        transition: stroke-dashoffset 0.5s ease-in-out;
-    }
-    
-    .maintenance-alert {
-        background: linear-gradient(135deg, rgba(255, 182, 7, 0.1) 0%, rgba(255, 182, 7, 0.05) 100%);
-        border-left: 4px solid #ffb607;
-        border-radius: 0.5rem;
-        padding: 1rem;
-        margin-bottom: 1rem;
-    }
-    
-    .revenue-card {
-        background: linear-gradient(135deg, #00ac69 0%, #4dd289 100%);
-        color: white;
-        border-radius: 1rem;
-        padding: 2rem;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .revenue-card::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 100%;
-        height: 200%;
-        background: rgba(255, 255, 255, 0.1);
-        transform: rotate(15deg);
-    }
-    
-    .calendar-widget {
-        background: white;
-        border-radius: 0.75rem;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-        overflow: hidden;
-    }
-    
-    .calendar-header {
-        background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
-        color: white;
-        padding: 1rem;
-        text-align: center;
-        font-weight: 600;
-    }
-    
-    .calendar-body {
-        padding: 1rem;
-    }
-    
-    .calendar-day {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0.5rem;
-        border-bottom: 1px solid #f1f3f4;
-        font-size: 0.875rem;
-    }
-    
-    .calendar-day:last-child {
-        border-bottom: none;
-    }
-    
-    .calendar-day.today {
-        background: rgba(0, 97, 242, 0.1);
-        font-weight: 600;
-        color: #0061f2;
-    }
-    
-    /* OPTIMA Theme - Centralized CSS */
-    
-    /* Color Palette */
-    :root {
-        --optima-primary: #0061f2;
-        --optima-primary-light: #4d7cff;
-        --optima-primary-dark: #0041a3;
-        --optima-success: #00ac69;
-        --optima-success-light: #4dd289;
-        --optima-success-dark: #007a4d;
-        --optima-info: #17a2b8;
-        --optima-info-light: #5bc0de;
-        --optima-info-dark: #117a8b;
-        --optima-warning: #ffb607;
-        --optima-warning-light: #ffc947;
-        --optima-warning-dark: #cc9205;
-        --optima-danger: #e81500;
-        --optima-danger-light: #ff4d4d;
-        --optima-danger-dark: #b30e00;
-        --optima-light: #f8f9fa;
-        --optima-dark: #343a40;
-        --optima-gray: #6c757d;
-        --optima-gray-light: #adb5bd;
-        --optima-gray-dark: #495057;
-    }
-    
-    /* Base Card Styles */
-    .card {
-        border-radius: 12px;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        background: #ffffff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    }
-    
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-        border-color: rgba(0, 97, 242, 0.1);
-    }
-    
-    /* Stats Card Styles */
-    .stats-card {
-        border-radius: 16px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-        border: none;
-    }
-    
-    .stats-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
-        pointer-events: none;
-    }
-    
-    .stats-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-    }
-    
-    .stats-icon {
-        font-size: 2.5rem;
-        opacity: 0.9;
-        transition: all 0.3s ease;
-    }
-    
-    .stats-card:hover .stats-icon {
-        transform: scale(1.1);
-        opacity: 1;
-    }
-    
-    /* Gradient Backgrounds */
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, var(--optima-primary) 0%, var(--optima-primary-dark) 100%);
-    }
-    
-    .bg-gradient-success {
-        background: linear-gradient(135deg, var(--optima-success) 0%, var(--optima-success-dark) 100%);
-    }
-    
-    .bg-gradient-info {
-        background: linear-gradient(135deg, var(--optima-info) 0%, var(--optima-info-dark) 100%);
-    }
-    
-    .bg-gradient-warning {
-        background: linear-gradient(135deg, var(--optima-warning) 0%, var(--optima-warning-dark) 100%);
-    }
-    
-    .bg-gradient-danger {
-        background: linear-gradient(135deg, var(--optima-danger) 0%, var(--optima-danger-dark) 100%);
-    }
-    
-    /* Division Cards */
-    .division-card {
-        border-radius: 12px;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        transition: all 0.3s ease;
-        background: #ffffff;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-    }
-    
-    .division-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-        border-color: rgba(0, 97, 242, 0.1);
-    }
-    
-    .division-card .card-header {
-        background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        border-radius: 12px 12px 0 0;
-        padding: 1.25rem 1.5rem;
-    }
-    
-    .division-card .card-body {
-        padding: 1.5rem;
-    }
-    
-    /* Metric Cards */
-    .metric-card {
-        background: #ffffff;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        border-radius: 8px;
-        padding: 1rem;
-        transition: all 0.3s ease;
-        text-align: center;
-    }
-    
-    .metric-card:hover {
-        background: rgba(0, 97, 242, 0.02);
-        border-color: rgba(0, 97, 242, 0.1);
-        transform: translateY(-1px);
-    }
-    
-    .metric-value {
-        font-size: 1.5rem;
-        font-weight: 700;
-        color: var(--optima-primary);
-        margin-bottom: 0.25rem;
-    }
-    
-    .metric-label {
-        font-size: 0.875rem;
-        color: var(--optima-gray);
-        font-weight: 500;
-    }
-    
-    /* Progress Bars */
-    .progress {
-        border-radius: 8px;
-        overflow: hidden;
-        background: rgba(0, 0, 0, 0.05);
-        height: 8px;
-    }
-    
-    .progress-bar {
-        border-radius: 8px;
-        transition: width 0.6s ease;
-    }
-    
-    /* Badge Styles */
-    .badge {
-        border-radius: 6px;
-        font-weight: 600;
-        padding: 0.375rem 0.75rem;
-        font-size: 0.75rem;
-    }
-    
-    /* Button Styles */
-    .btn {
-        border-radius: 8px;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        padding: 0.5rem 1rem;
-    }
-    
-    .btn:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    }
-    
-    /* Chart Containers */
-    .chart-container {
-        position: relative;
-        height: 200px;
-        background: #ffffff;
-        border-radius: 8px;
-        padding: 1rem;
-    }
-    
-    /* Activity Items */
-    .activity-item {
-        transition: all 0.3s ease;
-        border-radius: 8px;
-        padding: 0.75rem;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        background: #ffffff;
-    }
-    
-    .activity-item:hover {
-        background: rgba(0, 97, 242, 0.02);
-        border-color: rgba(0, 97, 242, 0.1);
-        transform: translateX(4px);
-    }
-    
-    /* Quick Action Cards */
-    .quick-action-card {
-        transition: all 0.3s ease;
-        border-radius: 12px;
-        cursor: pointer;
-        padding: 1.5rem;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        background: #ffffff;
-    }
-    
-    .quick-action-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
-        border-color: rgba(0, 97, 242, 0.1);
-    }
-    
-    /* Notification Items */
-    .notification-item {
-        border-radius: 8px;
-        transition: all 0.3s ease;
-        padding: 0.75rem;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        background: #ffffff;
-    }
-    
-    .notification-item:hover {
-        background: rgba(0, 97, 242, 0.02);
-        border-color: rgba(0, 97, 242, 0.1);
-        transform: translateX(4px);
-    }
-    
-    /* Maintenance Alert */
-    .maintenance-alert {
-        border-radius: 12px;
-        border-left: 4px solid var(--optima-warning);
-        background: linear-gradient(135deg, rgba(255, 182, 7, 0.1) 0%, rgba(255, 182, 7, 0.05) 100%);
-        padding: 1.5rem;
-        margin: 1rem 0;
-    }
-    
-    /* Section Spacing */
-    .row.g-4 > * {
-        margin-bottom: 1.5rem;
-    }
-    
-    /* Typography */
-    .fw-bold {
-        font-weight: 700 !important;
-    }
-    
-    .text-muted {
-        color: var(--optima-gray) !important;
-    }
-    
-    /* Icon Enhancements */
-    .fas, .far, .fab {
-        transition: all 0.3s ease;
-    }
-    
-    .card:hover .fas,
-    .card:hover .far,
-    .card:hover .fab {
-        transform: scale(1.05);
-    }
-    
-    /* Division Specific Colors */
-    .division-operational {
-        border-left: 4px solid var(--optima-primary);
-    }
-    
-    .division-warehouse {
-        border-left: 4px solid var(--optima-success);
-    }
-    
-    .division-maintenance {
-        border-left: 4px solid var(--optima-warning);
-    }
-    
-    .division-delivery {
-        border-left: 4px solid var(--optima-info);
-    }
-    
-    .division-purchase {
-        border-left: 4px solid var(--optima-danger);
-    }
-</style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 <!-- Executive Summary - Director Dashboard -->
 <div class="row g-4 mb-4" aria-label="Executive Summary" role="region">
     <!-- Total Units -->
     <div class="col-xl-3 col-md-6">
-        <div class="card stats-card bg-gradient-primary text-white h-100 shadow-lg border-0" onclick="location.href='<?= base_url('/units') ?>'" tabindex="0" role="button" aria-pressed="false" aria-label="Total Unit">
+        <div class="card-stats bg-primary text-white h-100 shadow-business border-0 hover-lift" onclick="location.href='<?= base_url('/units') ?>'" tabindex="0" role="button" aria-pressed="false" aria-label="Total Unit">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
@@ -427,8 +16,8 @@
                             <i class="fas fa-arrow-up me-1" aria-hidden="true"></i>12% dari bulan lalu
                         </div>
                     </div>
-                    <div class="stats-icon" aria-hidden="true">
-                        <i class="fas fa-truck"></i>
+                    <div class="text-end">
+                        <i class="fas fa-truck fa-2x opacity-75"></i>
                     </div>
                 </div>
             </div>
@@ -437,18 +26,18 @@
     
     <!-- Active Contracts -->
     <div class="col-xl-3 col-md-6">
-        <div class="card stats-card bg-gradient-success text-white h-100 shadow-lg border-0" onclick="location.href='<?= base_url('/kontrak') ?>'">
+        <div class="card-stats bg-success text-white h-100 shadow-business border-0 hover-lift" onclick="location.href='<?= base_url('/kontrak') ?>'">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
-                        <div class="stats-value h2 mb-2 fw-bold" data-count="<?= $director_metrics['active_contracts'] ?>">0</div>
-                        <div class="stats-label text-uppercase">Kontrak Aktif</div>
-                        <div class="small mt-1 opacity-75">
+                        <div class="h2 mb-2 fw-bold text-white" data-count="<?= $director_metrics['active_contracts'] ?>">0</div>
+                        <div class="text-uppercase text-white">Kontrak Aktif</div>
+                        <div class="small mt-1 text-white opacity-75">
                             <i class="fas fa-arrow-up me-1"></i>8% dari bulan lalu
                         </div>
                     </div>
-                    <div class="stats-icon">
-                        <i class="fas fa-handshake"></i>
+                    <div class="text-end">
+                        <i class="fas fa-handshake fa-2x opacity-75"></i>
                     </div>
                 </div>
             </div>
@@ -712,38 +301,38 @@
                             </h6>
                             <div class="row g-2">
                                 <div class="col-md-4">
-                                    <div class="metric-card">
+                                    <div class="professional-card text-center">
                                         <div class="d-flex align-items-center justify-content-between">
                                             <div>
                                                 <div class="h5 mb-1 text-danger">12</div>
                                                 <div class="small text-muted">Mechanical Issues</div>
                                                 <div class="small text-danger">Engine, Hydraulic</div>
                                             </div>
-                                            <i class="fas fa-cog text-danger"></i>
+                                            <i class="fas fa-cog text-danger fs-2"></i>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="metric-card">
+                                    <div class="professional-card text-center">
                                         <div class="d-flex align-items-center justify-content-between">
                                             <div>
                                                 <div class="h5 mb-1 text-warning">8</div>
                                                 <div class="small text-muted">Electrical Issues</div>
                                                 <div class="small text-warning">Battery, Wiring</div>
                                             </div>
-                                            <i class="fas fa-bolt text-warning"></i>
+                                            <i class="fas fa-bolt text-warning fs-2"></i>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="col-md-4">
-                                    <div class="metric-card">
+                                    <div class="professional-card text-center">
                                         <div class="d-flex align-items-center justify-content-between">
                                             <div>
                                                 <div class="h5 mb-1 text-info">6</div>
                                                 <div class="small text-muted">Safety Issues</div>
                                                 <div class="small text-info">Brakes, Lights</div>
                                             </div>
-                                            <i class="fas fa-shield-alt text-info"></i>
+                                            <i class="fas fa-shield-alt text-info fs-2"></i>
                                         </div>
                                     </div>
                                 </div>

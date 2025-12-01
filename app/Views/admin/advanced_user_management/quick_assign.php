@@ -160,7 +160,7 @@
 </style>
 <?= $this->endSection() ?>
 
-<?= $this->section('js') ?>
+<?= $this->section('javascript') ?>
 <script>
 let selectedUserId = null;
 

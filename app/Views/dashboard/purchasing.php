@@ -1,252 +1,134 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<style>
-    .card-stats {
-        transition: all 0.3s ease;
-        cursor: pointer;
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .card-stats:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-    
-    .card-stats::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 100%);
-    }
-    
-    .filter-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    .table-card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    
-    .table-responsive {
-        border-radius: 0;
-    }
-    
-    .btn-action {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.875rem;
-        border-radius: 8px;
-        transition: all 0.2s ease;
-    }
-    
-    .btn-action:hover {
-        transform: scale(1.05);
-    }
-    
-    .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem 0;
-        margin: -1.5rem -1.5rem 2rem -1.5rem;
-        border-radius: 0 0 20px 20px;
-    }
-    
-    .status-badge {
-        font-size: 0.75rem;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .asset-badge {
-        font-size: 0.75rem;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-    
-    .table thead th {
-        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        color: white;
-        border: none;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-        letter-spacing: 0.5px;
-        padding: 1rem 0.75rem;
-    }
-    
-    .table tbody tr {
-        transition: all 0.2s ease;
-    }
-    
-    .table tbody tr:hover {
-        background-color: #f8f9fa;
-        transform: scale(1.001);
-    }
-    
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-color: #667eea;
-        color: white !important;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-    
-    .alert {
-        border: none;
-        border-radius: 10px;
-        padding: 1rem 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .modal-content {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    }
-    
-    .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 15px 15px 0 0;
-        padding: 1.5rem;
-    }
-    
-    .form-control, .form-select {
-        border: 2px solid #e9ecef;
-        border-radius: 8px;
-        padding: 0.6rem 1rem;
-        transition: all 0.2s ease;
-    }
-    
-    .form-control:focus, .form-select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-    }
-</style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<!-- Enhanced Page Header -->
-<div class="page-header">
-    <div class="container-fluid">
-        <div class="d-flex justify-content-between align-items-center">
-            <div>
-                <h1 class="h2 mb-0 fw-bold">
-                    <i class="fas fa-truck me-3"></i>Unit Assets Management
-                </h1>
-                <p class="mb-0 opacity-75">Comprehensive asset management and monitoring system</p>
+<!-- Page Header -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-truck me-2"></i>Unit Assets Management
+    </h1>
+    <div class="d-sm-flex align-items-center">
+        <div class="me-3">
+            <small class="text-muted">Comprehensive asset management and monitoring system</small>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" onclick="exportUnitAssets()">
+            <i class="fas fa-download me-1"></i>Export Data
+        </button>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+
+<div class="row mt-3 mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-truck stat-icon text-primary"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= isset($stats['total']) ? $stats['total'] : 0 ?></div>
+                    <div class="text-muted">Total Unit Assets</div>
+                </div>
             </div>
-            <div class="d-flex gap-2">
-                <button type="button" class="btn btn-light btn-action" onclick="exportUnitAssets()">
-                    <i class="fas fa-download me-2"></i>Export Data
-                </button>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-check-circle stat-icon text-success"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= isset($stats['available']) ? $stats['available'] : 0 ?></div>
+                    <div class="text-muted">Available Units</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-info-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-gear stat-icon text-info"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= isset($stats['maintenance']) ? $stats['maintenance'] : 0 ?></div>
+                    <div class="text-muted">Under Maintenance</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-exclamation-triangle stat-icon text-warning"></i>
+                </div>
+                <div>
+                    <div class="stat-value"><?= isset($stats['broken']) ? $stats['broken'] : 0 ?></div>
+                    <div class="text-muted">Needs Repair</div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Enhanced Statistics Cards -->
-<div class="row g-4 mb-4">
-    <!-- Total Units -->
     <div class="col-xl-3 col-md-6">
         <div class="card card-stats bg-primary text-white h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="h2 mb-2 fw-bold"><?= isset($stats['total']) ? $stats['total'] : 0 ?></div>
-                        <div class="text-uppercase small opacity-75 fw-semibold">Total Unit Assets</div>
-                        <div class="small opacity-50 mt-1">All registered units</div>
-                    </div>
-                    <div class="opacity-75">
-                        <i class="fas fa-truck fa-3x"></i>
-                    </div>
+            <div class="card-body d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <h2 class="fw-bold mb-1"><?= isset($stats['total']) ? $stats['total'] : 0 ?></h2>
+                    <h6 class="card-title text-uppercase small mb-0">TOTAL UNIT ASSETS</h6>
+                </div>
+                <div class="ms-3">
+                    <i class="fas fa-truck fa-2x opacity-75"></i>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Available Units -->
     <div class="col-xl-3 col-md-6">
         <div class="card card-stats bg-success text-white h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="h2 mb-2 fw-bold"><?= isset($stats['available']) ? $stats['available'] : 0 ?></div>
-                        <div class="text-uppercase small opacity-75 fw-semibold">Available</div>
-                        <div class="small opacity-50 mt-1">Ready for deployment</div>
-                    </div>
-                    <div class="opacity-75">
-                        <i class="fas fa-check-circle fa-3x"></i>
-                    </div>
+            <div class="card-body d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <h2 class="fw-bold mb-1"><?= isset($stats['available']) ? $stats['available'] : 0 ?></h2>
+                    <h6 class="card-title text-uppercase small mb-0">AVAILABLE</h6>
+                </div>
+                <div class="ms-3">
+                    <i class="fas fa-check-circle fa-2x opacity-75"></i>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Rented Units -->
     <div class="col-xl-3 col-md-6">
         <div class="card card-stats bg-info text-white h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="h2 mb-2 fw-bold"><?= isset($stats['rented']) ? $stats['rented'] : 0 ?></div>
-                        <div class="text-uppercase small opacity-75 fw-semibold">In Service</div>
-                        <div class="small opacity-50 mt-1">Currently deployed</div>
-                    </div>
-                    <div class="opacity-75">
-                        <i class="fas fa-handshake fa-3x"></i>
-                    </div>
+            <div class="card-body d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <h2 class="fw-bold mb-1"><?= isset($stats['rented']) ? $stats['rented'] : 0 ?></h2>
+                    <h6 class="card-title text-uppercase small mb-0">IN SERVICE</h6>
+                </div>
+                <div class="ms-3">
+                    <i class="fas fa-handshake fa-2x opacity-75"></i>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Maintenance Units -->
     <div class="col-xl-3 col-md-6">
         <div class="card card-stats bg-warning text-white h-100">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="h2 mb-2 fw-bold"><?= isset($stats['maintenance']) ? $stats['maintenance'] : 0 ?></div>
-                        <div class="text-uppercase small opacity-75 fw-semibold">Maintenance</div>
-                        <div class="small opacity-50 mt-1">Under service</div>
-                    </div>
-                    <div class="opacity-75">
-                        <i class="fas fa-tools fa-3x"></i>
-                    </div>
+            <div class="card-body d-flex align-items-center">
+                <div class="flex-grow-1">
+                    <h2 class="fw-bold mb-1"><?= isset($stats['maintenance']) ? $stats['maintenance'] : 0 ?></h2>
+                    <h6 class="card-title text-uppercase small mb-0">MAINTENANCE</h6>
+                </div>
+                <div class="ms-3">
+                    <i class="fas fa-tools fa-2x opacity-75"></i>
                 </div>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <!-- Enhanced Filters -->
@@ -310,7 +192,7 @@
 <div class="row">
     <div class="col-12">
         <div class="card table-card">
-            <div class="card-header bg-white border-0 pb-0">
+            <div class="card-header border-0 pb-0">
                 <div class="d-flex justify-content-between align-items-center">
                     <h5 class="card-title mb-0 fw-bold text-primary">
                         <i class="fas fa-list me-2"></i>Unit Assets Registry
@@ -324,7 +206,7 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table id="unitAssetsTable" class="table table-hover w-100">
+                    <table id="unitAssetsTable" class="table table-striped table-hover w-100">
                         <thead>
                             <tr>
                                 <th>Unit No</th>
@@ -1383,7 +1265,7 @@ console.log('✅ Enhanced Unit Assets Management System loaded successfully');
 </script>
 <?= $this->endSection() ?>
 
-<?= $this->section('script') ?>
+<?= $this->section('javascript') ?>
 // Enhanced page initialization complete
 console.log('Enhanced Unit Assets Management ready');
 <?= $this->endSection() ?> 

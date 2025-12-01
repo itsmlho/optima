@@ -351,40 +351,7 @@
 
 <?= $this->endSection() ?>
 
-<?= $this->section('css') ?>
-<style>
-.stats-card {
-    border: none;
-    border-radius: 10px;
-    transition: transform 0.2s;
-}
-.stats-card:hover {
-    transform: translateY(-2px);
-}
-.avatar-circle {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-}
-.badge {
-    font-size: 0.75em;
-}
-.permission-matrix {
-    font-size: 0.9em;
-}
-.permission-matrix th {
-    writing-mode: vertical-lr;
-    text-orientation: mixed;
-    font-size: 0.8em;
-}
-</style>
-<?= $this->endSection() ?>
-
-<?= $this->section('script') ?>
+<?= $this->section('javascript') ?>
 <script>
 $(document).ready(function() {
     // Handle approve form submission

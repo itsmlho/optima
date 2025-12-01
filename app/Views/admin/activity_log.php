@@ -1,32 +1,5 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
-<style>
-    .table tbody tr {
-        transition: background-color 0.2s ease;
-    }
-    .table tbody tr:hover {
-        background-color: #f8f9fa;
-        cursor: pointer;
-    }
-    .activity-detail-row {
-        border-left: 4px solid #007bff;
-        padding-left: 15px;
-    }
-    .status-badge {
-        font-size: 0.875em;
-    }
-    .activity-timestamp {
-        color: #6c757d;
-        font-size: 0.9em;
-    }
-    .pre-scrollable {
-        max-height: 200px;
-        overflow-y: auto;
-    }
-</style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 <div class="content-body" id="activityLogContent">
@@ -54,7 +27,7 @@
         <div class="card">
             <div class="card-body">
                 <table id="activityLogTable" class="table table-striped table-hover">
-                    <thead class="table-dark">
+                    <thead>
                         <tr>
                             <th>Waktu</th>
                             <th>User</th>
@@ -74,18 +47,18 @@
         </div>
 </div>
 
-<!-- Modal untuk Detail Activity -->
-<div class="modal fade" id="activityDetailModal" tabindex="-1">
+<!-- OPTIMIZED Modal untuk Detail Activity -->
+<div class="modal-optimized" id="activityDetailModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-info-circle"></i> Detail Activity Log
+                    <i class="fas fa-list-alt me-2"></i>Activity Log Detail
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="activityDetailContent">
-                <!-- Content akan dimuat via AJAX -->
+            <div class="modal-body" id="activityDetailContent" data-dynamic="true">
+                <!-- Content loaded dynamically for performance -->
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
@@ -96,36 +69,47 @@
 <?= $this->endSection() ?>
 
 <?php // Using 'script' section instead of 'js' to match base layout ?>
-<?= $this->section('script') ?>
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
-
+<?= $this->section('javascript') ?>
 <script>
 $(document).ready(function() {
-    console.log('Initializing Activity Log DataTable...');
+    console.log('🚀 Initializing OPTIMIZED Activity Log DataTable...');
+    
+    // Destroy existing table if present for clean initialization
+    if ($.fn.DataTable.isDataTable('#activityLogTable')) {
+        $('#activityLogTable').DataTable().destroy();
+    }
     
     $('#activityLogTable').DataTable({
         processing: true,
         serverSide: true,
+        deferRender: false, // Render immediately for instant display
+        pageLength: 10, // REDUCED: Smaller pages for faster rendering
+        lengthMenu: [[5, 10, 15, 25], [5, 10, 15, 25]], // Optimized options
+        stateSave: false, // Disable for performance
+        autoWidth: false, // Disable auto width calculation
+        searchDelay: 800, // INCREASED: Aggressive debouncing
         ajax: {
             url: '<?= base_url('/admin/activity-log/data') ?>',
             type: 'POST',
+            timeout: 15000, // Increased timeout
             error: function(xhr, error, thrown) {
-                console.error('DataTables AJAX Error:', error, thrown);
-                console.log('Response:', xhr.responseText);
+                console.error('❌ DataTables AJAX Error:', error, thrown);
+                $('#activityLogTable_processing').hide();
+                showNotification('Failed to load activity log data. Please refresh.', 'error');
             },
             dataSrc: function(json) {
-                // Debug: log the data structure
-                console.log('DataTables received data:', json);
-                if (json.data && json.data.length > 0) {
-                    console.log('First row data:', json.data[0]);
-                    console.log('Available fields:', Object.keys(json.data[0]));
-                }
-                return json.data;
+                console.log('📄 DataTables received', json.recordsTotal, 'total records');
+                return json.data || [];
             }
         },
         columns: [
-            { data: 'created_at', title: 'Waktu' },
+            { 
+                data: 'created_at', 
+                title: 'Waktu',
+                render: function(data, type, row) {
+                    return data ? new Date(data).toLocaleString('id-ID') : '-';
+                }
+            },
             { data: 'username', title: 'User' },
             { data: 'module_name', title: 'Module' },
             { data: 'action_type', title: 'Action' },
@@ -134,37 +118,127 @@ $(document).ready(function() {
             { data: 'business_impact', title: 'Impact' },
             { data: 'is_critical', title: 'Critical' }
         ],
+        dom: 'lfrtip', // Minimal DOM for maximum speed
         order: [[0, 'desc']],
-        pageLength: 25,
+        pageLength: 10, // REDUCED for faster rendering
+        lengthMenu: [[5, 10, 15, 25], [5, 10, 15, 25]], // Optimized options
         language: {
-            processing: "Memuat data...",
-            search: "Cari:",
-            lengthMenu: "Tampilkan _MENU_ data per halaman",
-            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            emptyTable: "Tidak ada data activity log",
-            zeroRecords: "Tidak ada data yang cocok"
+            processing: '<div class="d-flex align-items-center justify-content-center p-2"><div class="spinner-border spinner-border-sm me-2"></div>Loading...</div>',
+            search: "Search:",
+            lengthMenu: "Show _MENU_",
+            info: "_START_ to _END_ of _TOTAL_",
+            emptyTable: "No activity logs",
+            zeroRecords: "No matching records"
         },
         rowCallback: function(row, data) {
-            // Add click event to each row
-            $(row).css('cursor', 'pointer');
-            $(row).attr('title', 'Klik untuk melihat detail lengkap');
-            $(row).on('click', function() {
+            // PERFORMANCE: Use vanilla JS for better speed
+            row.style.cursor = 'pointer';
+            row.title = 'Click to view details';
+            row.onclick = function() {
                 const activityId = data.activity_id;
-                console.log('Row clicked, activity_id:', activityId);
+                console.log('🖱️ Activity clicked:', activityId);
                 if (activityId) {
-                    viewDetails(activityId);
+                    showActivityDetailOptimized(activityId);
                 } else {
-                    console.error('No activity_id found in row data:', data);
+                    console.error('❌ No activity_id found:', data);
                 }
-            });
-            
-            // Add tooltip for action description
-            $(row).find('td:eq(5)').attr('title', data.action_description);
+            };
+        },
+        initComplete: function() {
+            console.log('✅ Activity Log DataTable optimized and ready');
         }
     });
     
     console.log('DataTable initialized');
 });
+
+// OPTIMIZED: Ultra-fast activity detail modal  
+function showActivityDetailOptimized(activityId) {
+    console.log('🚀 Loading activity detail (optimized):', activityId);
+    
+    // Show modal immediately for instant feedback
+    const modal = $('#activityDetailModal');
+    modal.addClass('show').css('display', 'block');
+    $('body').addClass('modal-open-optimized');
+    
+    // Show loading state immediately
+    $('#activityDetailContent').html(`
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3 mb-0 text-muted">Loading activity details...</p>
+        </div>
+    `);
+    
+    // Lazy load content with minimal delay
+    setTimeout(function() {
+        $.ajax({
+            url: '<?= base_url('/admin/activity-log/details/') ?>' + activityId,
+            type: 'GET',
+            timeout: 8000,
+            success: function(response) {
+                console.log('✅ Activity detail loaded');
+                if (response.success) {
+                    // Build simplified content for better performance
+                    const data = response.data;
+                    const content = `
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <h6><strong>User:</strong></h6>
+                                <p>${data.username || 'N/A'}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6><strong>Action:</strong></h6>
+                                <p><span class="badge bg-primary">${data.action_type || 'N/A'}</span></p>
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <h6><strong>Description:</strong></h6>
+                                <p>${data.action_description || 'No description'}</p>
+                            </div>
+                        </div>
+                        ${data.old_values || data.new_values ? `
+                        <div class="row">
+                            ${data.old_values ? `
+                            <div class="col-md-6">
+                                <h6 class="text-danger">Old Values:</h6>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    <pre class="bg-light p-2 small">${JSON.stringify(data.old_values, null, 2)}</pre>
+                                </div>
+                            </div>` : ''}
+                            ${data.new_values ? `
+                            <div class="col-md-6">
+                                <h6 class="text-success">New Values:</h6>
+                                <div style="max-height: 200px; overflow-y: auto;">
+                                    <pre class="bg-light p-2 small">${JSON.stringify(data.new_values, null, 2)}</pre>
+                                </div>
+                            </div>` : ''}
+                        </div>` : ''}
+                    `;
+                    $('#activityDetailContent').html(content);
+                } else {
+                    $('#activityDetailContent').html(`
+                        <div class="alert alert-warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            ${response.message || 'Failed to load activity details'}
+                        </div>
+                    `);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Error loading activity detail:', error);
+                $('#activityDetailContent').html(`
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Failed to load activity details. Please try again.
+                    </div>
+                `);
+            }
+        });
+    }, 50); // Minimal delay for smooth UX
+}
 
 // Function untuk show detail
 function viewDetails(id) {

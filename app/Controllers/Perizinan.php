@@ -43,6 +43,7 @@ class Perizinan extends BaseController
             'stats' => $stats,
             'current_status' => $status,
             'departments' => $departments,
+            'loadDataTables' => true, // Enable DataTables loading
         ];
 
         return view('perizinan/silo', $data);

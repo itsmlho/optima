@@ -50,7 +50,8 @@ class CustomerManagementController extends BaseController
             'areas' => $this->areaModel->findAll(),
             'totalCustomers' => $this->customerModel->countAllResults(),
             'totalLocations' => $this->locationModel->countAllResults(),
-            'customersByArea' => $this->getCustomersByAreaStats()
+            'customersByArea' => $this->getCustomersByAreaStats(),
+            'loadDataTables' => true, // Enable DataTables loading
         ];
         
         return view('marketing/customer_management', $data);

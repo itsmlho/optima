@@ -17,804 +17,71 @@ $lazyService = new \App\Services\LazyLoadingService();
 $assetService = new \App\Services\AssetMinificationService();
 ?>
 
-<?= $this->section('css') ?>
-<!-- Select2 CSS -->
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-
-<!-- Phase 3: Lazy loading CSS -->
-<?= $lazyService->getLazyLoadingCSS() ?>
-<style>
-    /* CSS umum sudah ada di optima-pro.css (card-stats, table-card, badges, tabs, buttons, dll) */
-    
-    /* Custom styling khusus untuk Work Orders Table */
-    #progressWorkOrdersTable,
-    #closedWorkOrdersTable {
-        width: 100% !important;
-        table-layout: auto;
-    }
-    
-    #progressWorkOrdersTable th,
-    #progressWorkOrdersTable td,
-    #closedWorkOrdersTable th,
-    #closedWorkOrdersTable td {
-        white-space: nowrap;
-        padding: 0.75rem 0.5rem;
-    }
-    
-    .dropdown-toggle::after {
-        float: right;
-        margin-top: 8px;
-    }
-    
-    /* Modal Footer Styling */
-    .modal-footer {
-        border-top: 1px solid #dee2e6;
-        padding: 1rem 1.5rem;
-        background-color: #f8f9fa;
-    }
-    
-    .modal-footer .btn {
-        min-width: 100px;
-        font-weight: 500;
-    }
-    
-    /* Work Order Modal Content */
-    #workOrderModal .modal-body {
-        max-height: 80vh;
-        overflow-y: auto;
-    }
-    
-    #workOrderModal .card {
-        margin-bottom: 1.5rem;
-    }
-    
-    #workOrderModal .card:last-child {
-        margin-bottom: 0;
-    }
-    
-    /* Modern Work Order Modal Styling */
-    .modal-xl {
-        max-width: 95%;
-    }
-    
-    .bg-gradient-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    }
-    
-    .info-grid {
-        display: grid;
-        gap: 1rem;
-    }
-    
-    .info-item {
-        padding: 0.75rem;
-        background: rgba(248, 249, 250, 0.8);
-        border-radius: 0.5rem;
-        border-left: 4px solid #007bff;
-        transition: all 0.2s ease;
-    }
-    
-    .info-item:hover {
-        background: rgba(248, 249, 250, 1);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
-    
-    .info-item small {
-        font-size: 0.75rem;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .component-list {
-        max-height: 200px;
-        overflow-y: auto;
-    }
-    
-    .component-item {
-        padding: 0.75rem;
-        margin-bottom: 0.5rem;
-        background: rgba(255, 255, 255, 0.8);
-        border: 1px solid #dee2e6;
-        border-radius: 0.5rem;
-        transition: all 0.2s ease;
-    }
-    
-    .component-item:hover {
-        background: rgba(255, 255, 255, 1);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-        border-color: #007bff;
-    }
-    
-    .component-item:last-child {
-        margin-bottom: 0;
-    }
-    
-    .work-description {
-        padding: 1rem;
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid #dee2e6;
-        border-radius: 0.5rem;
-        min-height: 100px;
-        font-size: 0.9rem;
-        line-height: 1.5;
-    }
-    
-    .card-header {
-        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
-        font-weight: 600;
-    }
-    
-    .shadow-sm {
-        box-shadow: 0 .125rem .25rem rgba(0,0,0,.075)!important;
-    }
-    
-    /* Fix modal display issues */
-    .modal.show {
-        display: block !important;
-    }
-    
-    #viewWorkOrderModal.show {
-        display: block !important;
-        z-index: 1055 !important;
-    }
-    
-    body.modal-open {
-        overflow: hidden !important;
-        padding-right: 0 !important;
-    }
-    
-    .modal-backdrop {
-        display: block !important;
-        z-index: 1050 !important;
-    }
-    
-    /* Ensure modal content is visible */
-    #viewWorkOrderModal .modal-content {
-        position: relative;
-        z-index: 1056 !important;
-    }
-    
-    /* Component list styling */
-    .component-list {
-        max-height: 300px;
-        overflow-y: auto;
-    }
-    
-    .component-item {
-        background: rgba(248, 249, 250, 0.8);
-        border: 1px solid #e9ecef;
-        border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 8px;
-        transition: all 0.2s ease;
-        position: relative;
-    }
-    
-    .component-item:hover {
-        background: rgba(255, 255, 255, 1);
-        border-color: #007bff;
-        box-shadow: 0 2px 8px rgba(0, 123, 255, 0.1);
-        transform: translateY(-1px);
-    }
-    
-    .component-item:last-child {
-        margin-bottom: 0;
-    }
-    
-    .component-sn {
-        font-family: 'Courier New', monospace;
-        font-weight: 600;
-        letter-spacing: 0.5px;
-    }
-    
-    /* Unit info badges */
-    .badge.fs-6 {
-        font-size: 0.875rem !important;
-        padding: 0.5rem 0.75rem;
-    }
-    
-    /* Modal improvements */
-    .modal-header {
-        border-bottom: 2px solid #f8f9fa;
-    }
-    
-    .modal-body hr {
-        border-color: #e9ecef;
-        opacity: 0.8;
-    }
-    
-    /* Font monospace for serial numbers */
-    .font-monospace {
-        font-family: 'Courier New', monospace !important;
-        font-weight: 600;
-        color: #495057;
-        background: rgba(233, 236, 239, 0.3);
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-    
-    /* Search results styling */
-    .list-group-item-action:hover {
-        background-color: rgba(0, 123, 255, 0.1);
-        cursor: pointer;
-    }
-    
-    .list-group-item.unit-result:hover,
-    .list-group-item.staff-result:hover {
-        background-color: rgba(0, 123, 255, 0.1);
-        border-color: #007bff;
-    }
-    
-    /* Search input groups */
-    .input-group .btn-outline-secondary {
-        border-color: #ced4da;
-    }
-    
-    .input-group .btn-outline-secondary:hover {
-        background-color: #e9ecef;
-        border-color: #adb5bd;
-    }
-    
-    /* Modal improvements for search */
-    .modal-body {
-        position: relative;
-    }
-    
-    .list-group {
-        position: absolute;
-        width: 100%;
-        z-index: 1050;
-        border-radius: 0.375rem;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-    }
-
-    .bg-light {
-        background-color: #f8f9fa !important;
-    }
-
-    #check-no-unit:disabled {
-        opacity: 0.6;
-    }
-
-    /* ========================================
-       SINGLE GLOBAL CSS - NO DUPLICATES
-       ======================================== */
-    
-    /* ========================================
-       OPTIMA WORK ORDER MODAL - CLEAN REDESIGN
-       ======================================== */
-    
-    /* Modal Container */
-    #workOrderModal .modal-dialog {
-        max-width: 1000px;
-        margin: 1.75rem auto;
-    }
-    
-    #workOrderModal .modal-content {
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
-        overflow: hidden;
-    }
-    
-    /* Modal Header */
-    #workOrderModal .modal-header {
-        background: #fff;
-        border-bottom: 2px solid #f8f9fa;
-        padding: 1.5rem 2rem;
-        border-radius: 0.75rem 0.75rem 0 0;
-    }
-    
-    #workOrderModal .modal-title {
-        font-weight: 700;
-        font-size: 1.375rem;
-        color: #2c3e50;
-        margin: 0;
-    }
-    
-    #workOrderModal .btn-close {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        color: #6c757d;
-        opacity: 0.7;
-        transition: opacity 0.2s ease;
-    }
-    
-    #workOrderModal .btn-close:hover {
-        opacity: 1;
-        color: #dc3545;
-    }
-    
-    /* Modal Body */
-    #workOrderModal .modal-body {
-        padding: 2rem;
-        background: #fff;
-    }
-    
-    /* Card Sections */
-    #workOrderModal .card {
-        border: 1px solid #e9ecef;
-        border-radius: 0.5rem;
-        margin-bottom: 1.5rem;
-        background: #fff;
-        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    }
-    
-    #workOrderModal .card-header {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border-bottom: 1px solid #dee2e6;
-        padding: 1rem 1.5rem;
-        border-radius: 0.5rem 0.5rem 0 0;
-    }
-    
-    #workOrderModal .card-header h6 {
-        color: #495057;
-        font-weight: 600;
-        margin: 0;
-        font-size: 1rem;
-        display: flex;
-        align-items: center;
-    }
-    
-    #workOrderModal .card-header h6 i {
-        margin-right: 0.5rem;
-        color: #6c757d;
-    }
-    
-    #workOrderModal .card-body {
-        padding: 1.5rem;
-        background: #fff;
-    }
-    
-    /* Form Grid Layout */
-    #workOrderModal .row {
-        margin-left: -0.75rem;
-        margin-right: -0.75rem;
-    }
-    
-    #workOrderModal .col-md-6,
-    #workOrderModal .col-md-12 {
-        padding-left: 0.75rem;
-        padding-right: 0.75rem;
-    }
-    
-    /* Form Groups */
-    #workOrderModal .mb-3 {
-        margin-bottom: 1.25rem;
-    }
-    
-    /* Labels */
-    #workOrderModal .form-label {
-        font-weight: 600;
-        color: #495057;
-        margin-bottom: 0.5rem;
-        font-size: 0.875rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    #workOrderModal .text-danger {
-        color: #dc3545 !important;
-        font-weight: 700;
-    }
-    
-    /* Form Controls - Standardized Height */
-    #workOrderModal .form-control,
-    #workOrderModal .form-select {
-        border: 2px solid #e9ecef;
-        border-radius: 0.5rem;
-        padding: 0.875rem 1rem;
-        font-size: 0.9375rem;
-        font-weight: 400;
-        line-height: 1.4; /* Reduced line-height to prevent text cutoff */
-        color: #495057;
-        background-color: #fff;
-        transition: all 0.2s ease-in-out;
-        height: 3.25rem !important; /* Force height for all form controls */
-        min-height: 3.25rem !important;
-        max-height: 3.25rem !important;
-        display: flex !important;
-        align-items: center !important; /* Center text vertically */
-    }
-    
-    #workOrderModal .form-control:focus,
-    #workOrderModal .form-select:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-        outline: none;
-    }
-    
-    #workOrderModal .form-control[readonly] {
-        background-color: #f8f9fa;
-        border-color: #dee2e6;
-        color: #6c757d;
-        cursor: not-allowed;
-    }
-    
-    #workOrderModal textarea.form-control {
-        height: auto !important;
-        min-height: 100px;
-        max-height: none !important;
-        resize: vertical;
-        padding: 0.75rem 1rem;
-    }
-    
-    /* Small Text */
-    #workOrderModal .form-text {
-        font-size: 0.8125rem;
-        color: #6c757d;
-        margin-top: 0.375rem;
-        font-style: italic;
-    }
-    
-    /* Ensure all select elements have consistent sizing */
-    #workOrderModal select.form-select {
-        height: 3.25rem !important;
-        min-height: 3.25rem !important;
-        max-height: 3.25rem !important;
-        padding: 0.875rem 1rem !important;
-        line-height: 1.4 !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-    
-    /* Fix any Bootstrap select styling conflicts */
-    #workOrderModal .form-select:not([size]):not([multiple]) {
-        height: 3.25rem !important;
-        padding: 0.875rem 1rem !important;
-        line-height: 1.4 !important;
-    }
-    
-    /* Force all input fields to have same height */
-    #workOrderModal input[type="text"],
-    #workOrderModal input[type="number"],
-    #workOrderModal input[type="email"],
-    #workOrderModal input[type="tel"],
-    #workOrderModal input[type="date"],
-    #workOrderModal input[type="time"],
-    #workOrderModal input[type="password"],
-    #workOrderModal input:not([type="checkbox"]):not([type="radio"]) {
-        height: 3.25rem !important;
-        min-height: 3.25rem !important;
-        max-height: 3.25rem !important;
-        padding: 0.875rem 1rem !important;
-        line-height: 1.4 !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-    
-    /* Sparepart table specific styling */
-    #workOrderModal #sparepartTable .form-control,
-    #workOrderModal #sparepartTable .form-select {
-        height: 3.25rem !important;
-        min-height: 3.25rem !important;
-        max-height: 3.25rem !important;
-        padding: 0.875rem 1rem !important;
-        font-size: 0.9375rem !important;
-        line-height: 1.4 !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-    
-    /* Select2 Styling */
-    #workOrderModal .select2-container {
-        width: 100% !important;
-    }
-    
-    #workOrderModal .select2-container--default .select2-selection--single {
-        height: 3.25rem !important;
-        min-height: 3.25rem !important;
-        max-height: 3.25rem !important;
-        padding: 0.875rem 1rem !important;
-        font-size: 0.9375rem !important;
-        line-height: 1.4 !important;
-        color: #495057 !important;
-        background-color: #fff !important;
-        border: 2px solid #e9ecef !important;
-        border-radius: 0.5rem !important;
-        transition: all 0.2s ease-in-out !important;
-        display: flex !important;
-        align-items: center !important;
-    }
-    
-    #workOrderModal .select2-container--default .select2-selection--single:focus {
-        border-color: #007bff !important;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
-        outline: none !important;
-    }
-    
-    #workOrderModal .select2-container--default .select2-selection--single .select2-selection__arrow {
-        height: 3.25rem !important;
-        right: 1rem !important;
-        top: 0 !important;
-        width: 1.5rem !important;
-    }
-    
-    #workOrderModal .select2-container--default .select2-selection--single .select2-selection__arrow b {
-        border-color: #6c757d transparent transparent transparent !important;
-        border-style: solid !important;
-        border-width: 0.5rem 0.5rem 0 0.5rem !important;
-        height: 0 !important;
-        left: 50% !important;
-        margin-left: -0.5rem !important;
-        margin-top: -0.25rem !important;
-        position: absolute !important;
-        top: 50% !important;
-        width: 0 !important;
-    }
-    
-    #workOrderModal .select2-container--default .select2-selection--single .select2-selection__rendered {
-        padding-left: 0 !important;
-        padding-right: 0 !important;
-        color: #495057 !important;
-        line-height: 1.5 !important;
-    }
-    
-    #workOrderModal .select2-container--default .select2-selection--single .select2-selection__placeholder {
-        color: #6c757d !important;
-    }
-    
-    #workOrderModal .select2-dropdown {
-        border: 2px solid #e9ecef !important;
-        border-radius: 0.5rem !important;
-        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
-        z-index: 10060 !important;
-        background: #fff !important;
-    }
-    
-    #workOrderModal .select2-results__option {
-        padding: 0.75rem 1rem !important;
-        color: #495057 !important;
-        font-size: 0.9375rem !important;
-        transition: background-color 0.2s ease !important;
-    }
-    
-    #workOrderModal .select2-results__option:hover,
-    #workOrderModal .select2-results__option--highlighted {
-        background-color: #f8f9fa !important;
-        color: #495057 !important;
-    }
-    
-    #workOrderModal .select2-results__option--selected {
-        background-color: #e9ecef !important;
-        color: #495057 !important;
-    }
-    
-    #workOrderModal .select2-search--dropdown .select2-search__field {
-        border: 2px solid #e9ecef !important;
-        border-radius: 0.5rem !important;
-        padding: 0.75rem 1rem !important;
-        font-size: 0.9375rem !important;
-    }
-    
-    /* Hide search for non-searchable dropdowns */
-    #workOrderModal .select2-container--default[data-minimum-results-for-search="Infinity"] .select2-search--dropdown {
-        display: none !important;
-    }
-    
-    /* Modal Footer */
-    #workOrderModal .modal-footer {
-        background: #f8f9fa;
-        border-top: 1px solid #dee2e6;
-        padding: 1.5rem 2rem;
-        border-radius: 0 0 0.75rem 0.75rem;
-    }
-    
-    #workOrderModal .modal-footer .btn {
-        padding: 0.75rem 1.5rem;
-        font-weight: 600;
-        border-radius: 0.5rem;
-        transition: all 0.2s ease;
-    }
-    
-    #workOrderModal .modal-footer .btn-secondary {
-        background-color: #6c757d;
-        border-color: #6c757d;
-        color: #fff;
-    }
-    
-    #workOrderModal .modal-footer .btn-secondary:hover {
-        background-color: #5a6268;
-        border-color: #545b62;
-    }
-    
-    #workOrderModal .modal-footer .btn-primary {
-        background-color: #007bff;
-        border-color: #007bff;
-        color: #fff;
-    }
-    
-    #workOrderModal .modal-footer .btn-primary:hover {
-        background-color: #0056b3;
-        border-color: #004085;
-    }
-    
-    #workOrderModal .form-control:focus,
-    #workOrderModal .form-select:focus {
-        border-color: #86b7fe !important;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-    }
-    
-    /* Readonly fields should have consistent styling */
-    #workOrderModal .form-control[readonly] {
-        background-color: #f8f9fa !important;
-        border-color: #ced4da !important;
-    }
-    
-    /* Ensure all form elements have consistent height and spacing */
-    #workOrderModal .form-control,
-    #workOrderModal .form-select {
-        height: calc(2.25rem + 2px) !important;
-        min-height: calc(2.25rem + 2px) !important;
-    }
-    
-    /* Textarea should have different height */
-    #workOrderModal textarea.form-control {
-        height: auto !important;
-        min-height: calc(2.25rem + 2px) !important;
-    }
-    
-    /* Remove any conflicting Bootstrap styles */
-    #workOrderModal .form-control:not([readonly]):not([disabled]) {
-        background-color: #fff !important;
-    }
-    
-    #workOrderModal .form-control[readonly],
-    #workOrderModal .form-control[disabled] {
-        background-color: #f8f9fa !important;
-        opacity: 1 !important;
-    }
-    
-    /* Remove any extra borders or lines that might be added by optima-pro.css */
-    #workOrderModal .form-select,
-    #workOrderModal .form-control {
-        border: 1px solid #ced4da !important;
-        box-shadow: none !important;
-        outline: none !important;
-    }
-    
-    #workOrderModal .form-select:focus,
-    #workOrderModal .form-control:focus {
-        border: 1px solid #86b7fe !important;
-        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
-        outline: none !important;
-    }
-
-    /* Basic modal styling only */
-    #workOrderModal .modal-dialog {
-        max-width: 900px;
-    }
-    
-    #workOrderModal .card {
-        border: 1px solid #dee2e6;
-        border-radius: 0.5rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    #workOrderModal .card-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #dee2e6;
-        padding: 0.75rem 1rem;
-    }
-    
-    #workOrderModal .card-header h6 {
-        margin: 0;
-        font-weight: 600;
-        color: #495057;
-        font-size: 0.95rem;
-    }
-    
-    #workOrderModal .card-body {
-        padding: 1.25rem;
-    }
-
-    /* Modal Work Order Form Improvements */
-    #workOrderModal .modal-dialog {
-        max-width: 900px;
-    }
-    
-    #workOrderModal .modal-body {
-        max-height: 75vh;
-        overflow-y: auto;
-        padding: 1.5rem;
-    }
-    
-    #workOrderModal .card {
-        border: 1px solid #e9ecef;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        margin-bottom: 1.5rem;
-    }
-    
-    #workOrderModal .card-header {
-        background-color: #f8f9fa;
-        border-bottom: 1px solid #e9ecef;
-        padding: 0.75rem 1rem;
-    }
-    
-    #workOrderModal .card-header h6 {
-        margin: 0;
-        font-weight: 600;
-        color: #495057;
-    }
-    
-    #workOrderModal .card-body {
-        padding: 1.25rem;
-    }
-    
-
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
 <!-- Alert Container -->
 <div id="alertContainer" class="mb-3"></div>
 
 <!-- Statistics Cards -->
-<div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
-        <div class="card card-stats bg-primary text-white h-100">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-uppercase mb-1">Total Work Orders</div>
-                        <div class="h5 mb-0 font-weight-bold" id="stat-total-work-orders">0</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-clipboard-list fa-2x"></i>
-                    </div>
+
+<div class="row mt-3 mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-file-text stat-icon text-primary"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-total-work-orders">0</div>
+                    <div class="text-muted">Total Work Orders</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card card-stats bg-info text-white h-100">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-uppercase mb-1">Open</div>
-                        <div class="h5 mb-0 font-weight-bold" id="stat-open">0</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-folder-open fa-2x"></i>
-                    </div>
+    
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-info-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-folder2-open stat-icon text-info"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-open">0</div>
+                    <div class="text-muted">Open</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card card-stats bg-warning text-white h-100">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-uppercase mb-1">In Progress</div>
-                        <div class="h5 mb-0 font-weight-bold" id="stat-in-progress">0</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-cogs fa-2x"></i>
-                    </div>
+    
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-gear stat-icon text-warning"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-in-progress">0</div>
+                    <div class="text-muted">In Progress</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card card-stats bg-success text-white h-100">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-uppercase mb-1">Completed</div>
-                        <div class="h5 mb-0 font-weight-bold" id="stat-completed">0</div>
-                    </div>
-                    <div class="col-auto">
-                        <i class="fas fa-check-circle fa-2x"></i>
-                    </div>
+    
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-check-circle stat-icon text-success"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-completed">0</div>
+                    <div class="text-muted">Completed</div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
 
 <!-- Tab System for Work Orders -->
 <div class="card table-card mb-4">
@@ -1168,7 +435,7 @@ $assetService = new \App\Services\AssetMinificationService();
                             </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-bordered" id="sparepartTable">
+                                <table class="table table-striped table-hover" id="sparepartTable">
                                     <thead>
                                         <tr>
                                             <th width="50%">Nama Sparepart*</th>
@@ -1352,7 +619,7 @@ $assetService = new \App\Services\AssetMinificationService();
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-sm table-striped">
-                                <thead class="table-light">
+                                <thead>
                                     <tr>
                                         <th style="width: 5%;">No</th>
                                         <th style="width: 40%;">Nama Spare Part</th>

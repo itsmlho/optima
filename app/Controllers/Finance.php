@@ -23,7 +23,8 @@ class Finance extends BaseController
             ],
             'financial_summary' => $this->getFinancialSummary(),
             'recent_transactions' => $this->getRecentTransactions(),
-            'monthly_revenue' => $this->getMonthlyRevenue()
+            'monthly_revenue' => $this->getMonthlyRevenue(),
+            'loadCharts' => true, // Enable Chart.js loading
         ];
 
         return view('finance/index', $data);

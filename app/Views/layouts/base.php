@@ -38,6 +38,9 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    
     <!-- DataTables CSS -->
     <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
     <link href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css" rel="stylesheet">
@@ -54,528 +57,67 @@
     <!-- noUiSlider CSS -->
     <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
     
-    <!-- Custom CSS -->
+    <!-- OPTIMA Pro CSS (Enhanced with Centralized Components) -->
     <link href="<?= base_url('assets/css/optima-pro.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Global Permission CSS -->
     <link href="<?= base_url('assets/css/global-permission.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Notification Popup CSS -->
     <link href="<?= base_url('assets/css/notification-popup.css') ?>?v=<?= time() ?>" rel="stylesheet">
     
+    <!-- Global Consistent Table Sorting Headers -->
+    <style>
+    /* Consistent DataTables-like sorting headers for all manual tables */
+    .table-manual-sort thead th {
+        position: relative;
+        cursor: pointer;
+        user-select: none;
+        padding-right: 20px !important;
+    }
+
+    .table-manual-sort thead th:hover {
+        background-color: #f8f9fa;
+    }
+
+    .table-manual-sort thead th::after {
+        content: "\2195"; /* Up-down arrow */
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        opacity: 0.3;
+        font-size: 10px;
+        color: #6c757d;
+    }
+
+    .table-manual-sort thead th.sortable-asc::after {
+        content: "\2191"; /* Up arrow */
+        opacity: 1;
+        color: #0d6efd;
+        font-weight: bold;
+    }
+
+    .table-manual-sort thead th.sortable-desc::after {
+        content: "\2193"; /* Down arrow */
+        opacity: 1;
+        color: #0d6efd;
+        font-weight: bold;
+    }
+
+    .table-manual-sort thead th:last-child::after,
+    .table-manual-sort thead th[data-no-sort]::after {
+        display: none; /* Hide sort arrow on actions column or no-sort columns */
+    }
+    </style>
+    
     <!-- Sidebar Scroll Management -->
     <script src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= time() ?>"></script>
    
     <!-- Page Specific CSS -->
     <?= $this->renderSection('css') ?>
-    
-    <!-- Custom Styles -->
-    <style>
-        /* Loading animation */
-        .page-loading {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 9999;
-            opacity: 1;
-            visibility: visible;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-        }
-        
-        .page-loading.fade-out {
-            opacity: 0;
-            visibility: hidden;
-        }
-        
-        .loading-content {
-            text-align: center;
-            animation: fadeInUp 0.6s ease-out;
-        }
-        
-        .loading-logo {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
-            border-radius: 1rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 2rem;
-            font-weight: 800;
-            margin-bottom: 1rem;
-            box-shadow: 0 0.5rem 1rem rgba(0, 97, 242, 0.25);
-        }
-        
-        .loading-text {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #0061f2;
-            margin-bottom: 0.5rem;
-        }
-        
-        .loading-subtitle {
-            font-size: 0.875rem;
-            color: #69707a;
-            margin-bottom: 1.5rem;
-        }
-        
-        .loading-spinner {
-            width: 2rem;
-            height: 2rem;
-            border: 3px solid #e9ecef;
-            border-top: 3px solid #0061f2;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        @keyframes fadeInUp {
-            from {
-                opacity: 0;
-                transform: translateY(1rem);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-    /* (Removed legacy #flash-toast-container styles; using unified #optima-toast-container system) */
-
-    /* Ensure PO verification list items remain clickable even within high z-index layout */
-    .po-group-header, .item-child-item, .unit-child-item, .unit-list-item {pointer-events:auto; position:relative;}
-    /* legacy toast progress removed */
-        
-        /* Sidebar overlay for mobile */
-        .sidebar-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-            display: none;
-        }
-        
-        @media (max-width: 991.98px) {
-            .sidebar.show + .sidebar-overlay {
-                display: block;
-            }
-        }
-        
-        /* Sidebar Collapsed State */
-        .sidebar.collapsed {
-            transform: translateX(-280px);
-        }
-        
-        .main-content.expanded {
-            margin-left: 0;
-        }
-        
-        /* Smooth transition for sidebar toggle */
-        .sidebar,
-        .main-content {
-            transition: all 0.3s ease;
-        }
-
-        /* Dark Mode Styles */
-        [data-bs-theme="dark"] {
-            --bs-body-bg: #1a1a1a;
-            --bs-body-color: #ffffff;
-            --bs-secondary-bg: #2d2d2d;
-            --bs-tertiary-bg: #3d3d3d;
-            --bs-border-color: #404040;
-        }
-
-        [data-bs-theme="dark"] .sidebar {
-            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            border-right: 1px solid #404040;
-        }
-
-        [data-bs-theme="dark"] .main-content {
-            background-color: #1a1a1a;
-            color: #ffffff;
-        }
-
-        [data-bs-theme="dark"] .navbar-brand {
-            color: #ffffff !important;
-        }
-
-        [data-bs-theme="dark"] .card {
-            background-color: #2d2d2d;
-            border-color: #404040;
-        }
-
-        [data-bs-theme="dark"] .card-header {
-            background-color: #3d3d3d;
-            border-bottom-color: #404040;
-        }
-
-        [data-bs-theme="dark"] .form-control {
-            background-color: #2d2d2d;
-            border-color: #404040;
-            color: #ffffff;
-        }
-
-        [data-bs-theme="dark"] .form-control:focus {
-            background-color: #2d2d2d;
-            border-color: #0061f2;
-            color: #ffffff;
-        }
-
-        [data-bs-theme="dark"] .btn-outline-secondary {
-            border-color: #404040;
-            color: #ffffff;
-        }
-
-        [data-bs-theme="dark"] .btn-outline-secondary:hover {
-            background-color: #404040;
-            border-color: #404040;
-        }
-
-        [data-bs-theme="dark"] .dropdown-menu {
-            background-color: #2d2d2d;
-            border-color: #404040;
-        }
-
-        [data-bs-theme="dark"] .dropdown-item {
-            color: #ffffff;
-        }
-
-        [data-bs-theme="dark"] .dropdown-item:hover {
-            background-color: #404040;
-        }
-
-        [data-bs-theme="dark"] .text-muted {
-            color: #adb5bd !important;
-        }
-
-        [data-bs-theme="dark"] .border-left-primary {
-            border-left-color: #0061f2 !important;
-        }
-
-        [data-bs-theme="dark"] .border-left-success {
-            border-left-color: #1cc88a !important;
-        }
-
-        [data-bs-theme="dark"] .border-left-warning {
-            border-left-color: #f6c23e !important;
-        }
-
-        [data-bs-theme="dark"] .border-left-info {
-            border-left-color: #36b9cc !important;
-        }
-        
-        /* Sidebar Structure */
-        .sidebar {
-            height: 100vh;
-            overflow: hidden;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 280px;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        /* Allow search results to overflow sidebar */
-        .sidebar:has(.search-results) {
-            overflow-x: visible;
-        }
-        
-        .sidebar-brand {
-            flex-shrink: 0;
-            padding: 1rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar-search {
-            flex-shrink: 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar-nav {
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 1rem 0 0 0;
-        }
-        
-        .sidebar-user-status {
-            flex-shrink: 0;
-        }
-        
-        /* Custom scrollbar for navigation only */
-        .sidebar-nav::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .sidebar-nav::-webkit-scrollbar-track {
-            background: rgba(255, 255, 255, 0.1);
-        }
-        
-        .sidebar-nav::-webkit-scrollbar-thumb {
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-        }
-        
-        .sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: rgba(255, 255, 255, 0.5);
-        }
-        
-        /* Dark mode scrollbar */
-        [data-bs-theme="light"] .sidebar-nav::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        
-        [data-bs-theme="light"] .sidebar-nav::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-        }
-        
-        [data-bs-theme="light"] .sidebar-nav::-webkit-scrollbar-thumb:hover {
-            background: #0061f2;
-        }
-        
-        /* Submenu Styling */
-        .nav-submenu {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            margin: 0.5rem 0;
-            padding: 0.5rem 0;
-        }
-        
-        /* Light mode submenu background */
-        [data-bs-theme="light"] .nav-submenu {
-            background: rgba(0, 97, 242, 0.05);
-        }
-        
-        [data-bs-theme="light"] .nav-submenu-nested {
-            background: rgba(0, 97, 242, 0.03);
-        }
-        
-        .nav-submenu-item {
-            padding: 0.5rem 1rem !important;
-            margin: 0.25rem 0;
-            font-size: 0.85rem;
-            color: rgba(255, 255, 255, 0.8) !important;
-            border-radius: 6px;
-            transition: all 0.3s ease;
-        }
-        
-        .nav-submenu-item:hover {
-            background: rgba(255, 255, 255, 0.1) !important;
-            color: #fff !important;
-            transform: translateX(5px);
-        }
-        
-        .nav-submenu-item.active {
-            background: rgba(0, 97, 242, 0.2) !important;
-            color: #0061f2 !important;
-            border-left: 3px solid #0061f2;
-        }
-        
-        /* Light mode submenu styling */
-        [data-bs-theme="light"] .nav-submenu-item {
-            color: #3a3b45 !important;
-        }
-        
-        [data-bs-theme="light"] .nav-submenu-item:hover {
-            background: rgba(0, 97, 242, 0.1) !important;
-            color: #0061f2 !important;
-        }
-        
-        [data-bs-theme="light"] .nav-submenu-nested-item {
-            color: #5a5c69 !important;
-        }
-        
-        [data-bs-theme="light"] .nav-submenu-nested-item:hover {
-            background: rgba(0, 97, 242, 0.08) !important;
-            color: #0061f2 !important;
-        }
-        
-        .nav-submenu-nested {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 6px;
-            margin: 0.25rem 0;
-            padding: 0.25rem 0;
-        }
-        
-        .nav-submenu-nested-item {
-            padding: 0.4rem 1rem !important;
-            margin: 0.15rem 0;
-            font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.7) !important;
-            border-radius: 4px;
-            transition: all 0.3s ease;
-        }
-        
-        .nav-submenu-nested-item:hover {
-            background: rgba(255, 255, 255, 0.08) !important;
-            color: #fff !important;
-            transform: translateX(3px);
-        }
-        
-        .nav-submenu-nested-item i.fas {
-            font-size: 0.6rem;
-            opacity: 0.6;
-        }
-        
-        .sidebar .nav-link[data-bs-toggle="collapse"][aria-expanded="true"] {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-        }
-        
-        .sidebar .nav-link[data-bs-toggle="collapse"][aria-expanded="true"] .fa-chevron-down {
-            transform: rotate(180deg);
-        }
-        
-        .sidebar .nav-link .fa-chevron-down {
-            transition: transform 0.3s ease;
-            font-size: 0.7rem;
-        }
-        
-        .sidebar .nav-link.collapsed .fa-chevron-down {
-            transform: rotate(0deg);
-        }
-        
-        /* Divider styling */
-        .sidebar-divider {
-            border-top: 1px solid rgba(255, 255, 255, 0.15);
-            margin: 1rem 0 !important;
-        }
-        
-        /* Print styles */
-        @media print {
-            .sidebar,
-            .content-header,
-            .notification-container,
-            .sidebar-overlay,
-            .page-loading {
-                display: none !important;
-            }
-            
-            .main-content {
-                margin-left: 0 !important;
-            }
-            
-            .content-body {
-                padding: 0 !important;
-            }
-        }
-    </style>
 </head>
 <body class="bg-light">
     <!-- Toast Global (pojok kanan atas) -->
     <div id="optima-toast-container" aria-live="polite" aria-atomic="true"></div>
-    <style>
-        #optima-toast-container {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            z-index: 1085;
-            display: flex;
-            flex-direction: column;
-            gap: .5rem;
-            max-width: 340px;
-        }
-        .optima-toast {
-            border-radius: .65rem;
-            box-shadow: 0 6px 18px -4px rgba(0,0,0,.25);
-            background: #fff;
-            overflow: hidden;
-            border: 1px solid #e5e7eb;
-            animation: fadeIn .25s ease;
-        }
-        .optima-toast.success { border-left: 6px solid #198754; }
-        .optima-toast.error { border-left: 6px solid #dc3545; }
-        .optima-toast.warning { border-left: 6px solid #ffc107; }
-        .optima-toast.info { border-left: 6px solid #0d6efd; }
-        .optima-toast .ot-head {
-            font-weight: 600;
-            font-size: .85rem;
-            letter-spacing: .5px;
-            text-transform: uppercase;
-            margin-bottom: .25rem;
-        }
-        .optima-toast .ot-body { font-size: .82rem; line-height: 1.2rem; }
-        .optima-toast .ot-close {
-            background: transparent;
-            border: none;
-            font-size: .9rem;
-            cursor: pointer;
-            color: #6c757d;
-        }
-        .optima-progress {
-            height: 3px;
-            width: 100%;
-            background: linear-gradient(90deg,#0d6efd,#3b82f6);
-            animation: ot-progress linear forwards;
-        }
-        @keyframes ot-progress { from {width:100%} to {width:0} }
-        @keyframes fadeIn { from {opacity:0; transform: translateY(-6px);} to {opacity:1; transform:translateY(0);} }
-        
-        /* SweetAlert2 Spacing Fix */
-        .swal2-popup {
-            margin: 1rem !important;
-        }
-        .swal2-container {
-            padding: 1rem !important;
-        }
-        .swal2-toast {
-            margin: 0.5rem !important;
-        }
-        
-        /* Notification Dropdown Styles */
-        .notification-item {
-            cursor: pointer;
-            transition: background-color 0.2s ease;
-        }
-        
-        .notification-item:hover {
-            background-color: #f8f9fa;
-        }
-        
-        .notification-item.unread {
-            background-color: #e3f2fd;
-            border-left: 3px solid #2196f3;
-        }
-        
-        .notification-item.unread:hover {
-            background-color: #bbdefb;
-        }
-        
-        .unread-dot {
-            width: 8px;
-            height: 8px;
-            background-color: #2196f3;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        
-        .avatar-sm {
-            width: 32px;
-            height: 32px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
-        }
-        
-        .bg-soft {
-            opacity: 0.2;
-        }
-    </style>
     <script>
         // Global function for mark all as read
         window.markAllAsRead = function() {
@@ -667,20 +209,22 @@
     </div>
 
     <!-- Enhanced Sidebar -->
-    <?= $this->include('layouts/sidebar_new') ?>    <!-- Main Content -->
+    <?= $this->include('layouts/sidebar_new') ?>
+    
+    <!-- Main Content -->
     <main class="main-content" id="mainContent">
         <!-- Content Header -->
         <header class="content-header">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <button class="btn btn-link d-md-none p-0 me-3 sidebar-toggle" type="button">
+                    <button class="btn btn-link d-md-none p-0 me-3 sidebar-toggle" type="button" style="color: #64748b;">
                         <i class="fas fa-bars fa-lg"></i>
                     </button>
                     <div>
                         <h1 class="h3 mb-0"><?= $title ?? 'Dashboard' ?></h1>
                         <?php if (isset($breadcrumbs) && is_array($breadcrumbs)): ?>
-                        <nav aria-label="breadcrumb" class="d-none d-lg-block">
-                            <ol class="breadcrumb">
+                        <nav aria-label="breadcrumb" class="d-none d-lg-block mt-1">
+                            <ol class="breadcrumb mb-0">
                                 <?php foreach ($breadcrumbs as $key => $breadcrumb): ?>
                                     <?php if ($key === array_key_last($breadcrumbs)): ?>
                                         <li class="breadcrumb-item active" aria-current="page"><?= $breadcrumb ?></li>
@@ -697,7 +241,7 @@
                 <div class="d-flex align-items-center">
                     <!-- Notifications -->
                     <div class="dropdown me-3">
-                        <button class="btn btn-outline-secondary position-relative" type="button" data-bs-toggle="dropdown">
+                        <button class="btn position-relative" type="button" data-bs-toggle="dropdown">
                             <i class="fas fa-bell"></i>
                             <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
                                 <span class="notification-count" data-realtime="notification_count">0</span>
@@ -706,7 +250,7 @@
                         <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end" style="min-width: 350px; max-height: 400px; overflow-y: auto;">
                             <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
                                 <span>Notifikasi</span>
-                                <button class="btn btn-sm btn-outline-primary" onclick="markAllAsRead()" style="font-size: 0.7rem;">
+                                <button class="btn btn-sm btn-primary" onclick="markAllAsRead()" style="font-size: 0.7rem;">
                                     <i class="fas fa-check-double me-1"></i>Mark All
                                 </button>
                             </h6></li>
@@ -727,18 +271,18 @@
                     </div>
                     
                     <!-- Theme Toggle -->
-                    <button class="btn btn-outline-secondary me-3 theme-toggle" type="button" title="Toggle Dark Mode">
+                    <button class="btn me-3 theme-toggle" type="button" title="Toggle Dark Mode">
                         <i class="fas fa-moon"></i>
                     </button>
                     
                     <!-- Sidebar Toggle -->
-                    <button class="btn btn-outline-secondary me-3 d-none d-md-block" type="button" onclick="toggleSidebar()" title="Toggle Sidebar">
+                    <button class="btn  me-3 d-none d-md-block" type="button" onclick="toggleSidebar()" title="Toggle Sidebar">
                         <i class="fas fa-bars"></i>
                     </button>
                     
                     <!-- User Profile -->
                     <div class="dropdown">
-                        <button class="btn btn-outline-secondary" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?>" style="padding: 4px 8px; border-radius: 20px;">
+                        <button class="btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?>" style="padding: 4px 8px; border-radius: 20px;">
                             <?php 
                             // Get avatar from session or database
                             $userAvatar = session()->get('avatar');
@@ -817,9 +361,10 @@
             </script>
 
             <!-- Page Content -->
-            <?= $this->renderSection('content') ?>
-        </div>
-    </main>
+            <div class="content-body">
+                <?= $this->renderSection('content') ?>
+            </div>
+        </main>
 
     <!-- Company Credit Footer -->
     <footer class="company-footer">
@@ -879,6 +424,84 @@
     
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
+    
+    <!-- Global Consistent Sorting Headers JavaScript -->
+    <script>
+    // Global function for consistent manual table sorting headers with actual sorting
+    function initializeManualTableSorting(tableSelector) {
+        const $table = $(tableSelector);
+        const $tbody = $table.find('tbody');
+        
+        $(tableSelector + ' thead th:not([data-no-sort]):not(:last-child)').on('click', function() {
+            var $this = $(this);
+            var columnIndex = $this.index();
+            var currentDirection = 'none';
+            
+            // Determine current and new direction
+            if ($this.hasClass('sortable-asc')) {
+                currentDirection = 'desc';
+                $this.removeClass('sortable-asc').addClass('sortable-desc');
+            } else if ($this.hasClass('sortable-desc')) {
+                currentDirection = 'asc';
+                $this.removeClass('sortable-desc').addClass('sortable-asc');
+            } else {
+                currentDirection = 'asc';
+                $this.addClass('sortable-asc');
+            }
+            
+            // Remove sorting classes from other columns
+            $table.find('thead th').not($this).removeClass('sortable-asc sortable-desc');
+            
+            // Perform actual sorting
+            const rows = $tbody.find('tr').toArray();
+            rows.sort(function(a, b) {
+                const aText = $(a).find('td').eq(columnIndex).text().trim();
+                const bText = $(b).find('td').eq(columnIndex).text().trim();
+                
+                // Try to parse as numbers first
+                const aNum = parseFloat(aText.replace(/[^\d.-]/g, ''));
+                const bNum = parseFloat(bText.replace(/[^\d.-]/g, ''));
+                
+                let comparison = 0;
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    // Numeric comparison
+                    comparison = aNum - bNum;
+                } else {
+                    // Text comparison
+                    comparison = aText.localeCompare(bText, 'id', {numeric: true});
+                }
+                
+                return currentDirection === 'asc' ? comparison : -comparison;
+            });
+            
+            // Reorder rows in DOM
+            $tbody.empty().append(rows);
+            
+            // Trigger custom sorting event for additional handling if needed
+            $this.trigger('manual-sort', {
+                column: columnIndex,
+                direction: currentDirection,
+                sortedRows: rows
+            });
+        });
+        
+        // Store original row order for potential reset
+        $table.data('originalOrder', $tbody.find('tr').toArray());
+    }
+
+    // Auto-initialize tables with class 'table-manual-sort' on document ready
+    $(document).ready(function() {
+        if ($('.table-manual-sort').length > 0) {
+            $('.table-manual-sort').each(function() {
+                var tableId = $(this).attr('id') || 'table-' + Math.random().toString(36).substr(2, 9);
+                if (!$(this).attr('id')) {
+                    $(this).attr('id', tableId);
+                }
+                initializeManualTableSorting('#' + tableId);
+            });
+        }
+    });
+    </script>
     
     <!-- Notification Sound Generator -->
     <script src="<?= base_url('assets/js/notification-sound-generator.js') ?>?v=<?= time() ?>"></script>

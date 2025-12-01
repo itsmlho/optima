@@ -37,6 +37,7 @@ class Admin extends BaseController
                 '/' => 'Dashboard',
                 '/admin' => 'Administration'
             ],
+            'loadDataTables' => true, // Enable DataTables loading
             'system_status' => $this->getSystemStatus(),
             'performance_metrics' => $this->getPerformanceMetrics(),
             'cache_stats' => $this->getCacheStats(),

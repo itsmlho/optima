@@ -2,29 +2,12 @@
 
 <?= $this->section('content') ?>
 
-<style>
-/* Scroll improvements for Edit Modal */
-#svcEditModal .modal-dialog { height:auto; max-height:calc(100vh - 2rem); margin-top:1rem; margin-bottom:1rem; }
-#svcEditModal .modal-content { max-height:100%; display:flex; flex-direction:column; }
-#svcEditModal .modal-header { flex:0 0 auto; }
-#svcEditModal .modal-footer { flex:0 0 auto; }
-#svcEditModal .modal-body { flex:1 1 auto; min-height:0; overflow-y:auto; overflow-x:hidden; padding-top:1rem; padding-bottom:1rem; }
-/* Optional: always show a slim scrollbar */
-#svcEditModal .modal-body::-webkit-scrollbar { width:8px; }
-#svcEditModal .modal-body::-webkit-scrollbar-track { background:transparent; }
-#svcEditModal .modal-body::-webkit-scrollbar-thumb { background:#ccc; border-radius:4px; }
-@media (max-width: 991.98px){
-    #svcEditModal .modal-dialog { max-width:95%; }
-}
-</style>
-
-
 <!-- Header & Status Tabs / Controls -->
-<div class="card shadow-sm mb-3">
-        <div class="card-body pb-10">
+<div class="card shadow-business mb-3">
+        <div class="card-body p-lg">
                 <div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-lg-between gap-3">
                         <div class="flex-grow-1">
-                                <ul class="nav nav-tabs small" id="svcStatusTabs">
+                                <ul class="nav nav-tabs" id="svcStatusTabs">
                                         <li class="nav-item"><button class="nav-link active" data-status="" type="button">Semua <span class="badge bg-secondary ms-1" id="svc-count-all">0</span></button></li>
                                         <li class="nav-item"><button class="nav-link" data-status="7" type="button">Stock Aset <span class="badge bg-success ms-1" id="svc-count-7">0</span></button></li>
                                         <li class="nav-item"><button class="nav-link" data-status="8" type="button">Non Aset <span class="badge bg-success ms-1" id="svc-count-8">0</span></button></li>
@@ -39,7 +22,7 @@
                 </div>
                 <div class="mt-3">
                 <div class="input-group input-group-sm shadow-sm" style="max-width:320px;">
-                    <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-secondary"></i></span>
+                    <span class="input-group-text border-end-0"><i class="fas fa-search text-secondary"></i></span>
                     <input type="text" id="svcSearch" class="form-control border-start-0" placeholder="Cari Unit / Serial / Merk / Model / Lokasi" aria-label="Pencarian">
                     <button class="btn btn-outline-secondary" id="svcClear" title="Clear"><i class="fas fa-times"></i></button>
                 </div>
@@ -79,7 +62,7 @@
         <div class="card-body p-2">
                 <div class="table-responsive">
                         <table id="service-units-table" class="table table-sm table-hover align-middle mb-0 w-100">
-                                <thead class="table-light">
+                                <thead>
                                         <tr class="small text-uppercase">
                                                 <th>No Unit</th>
                                                 <th>Serial</th>
@@ -224,7 +207,7 @@
                         </div> -->
                         <div class="card-body py-3">
                             <!-- Mast -->
-                            <div class="border rounded p-3 mb-3 bg-white">
+                            <div class="border rounded p-3 mb-3 ">
                                 <h6 class="text-primary mb-2">Mast</h6>
                                 <div class="row g-2">
                                     <div class="col-md-4">
@@ -248,7 +231,7 @@
                             </div>
 
                             <!-- Mesin -->
-                            <div class="border rounded p-3 mb-3 bg-white">
+                            <div class="border rounded p-3 mb-3 ">
                                 <h6 class="text-primary mb-2">Mesin</h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
@@ -268,7 +251,7 @@
                             </div>
 
                             <!-- Baterai -->
-                            <div class="border rounded p-3 mb-3 bg-white">
+                            <div class="border rounded p-3 mb-3 ">
                                 <h6 class="text-primary mb-2">Baterai</h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
@@ -296,7 +279,7 @@
                         </div> -->
                         <div class="card-body py-3">
                             <!-- Attachment -->
-                            <div class="border rounded p-3 mb-3 bg-white">
+                            <div class="border rounded p-3 mb-3 ">
                                 <h6 class="text-primary mb-2">Attachment</h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
@@ -316,7 +299,7 @@
                             </div>
 
                             <!-- Charger -->
-                            <div class="border rounded p-3 mb-3 bg-white">
+                            <div class="border rounded p-3 mb-3 ">
                                 <h6 class="text-primary mb-2">Charger</h6>
                                 <div class="row g-2">
                                     <div class="col-md-6">
@@ -336,7 +319,7 @@
                             </div>
 
                             <!-- Valve -->
-                            <div class="border rounded p-3 bg-white">
+                            <div class="border rounded p-3 ">
                                 <h6 class="text-primary mb-2">Valve</h6>
                                 <div class="col-md-6">
                                     <label for="svcEditValve" class="form-label small">Tipe Valve</label>
@@ -377,9 +360,7 @@
     </div>
 </div>
 <?= $this->endSection() ?>
-<?= $this->section('script') ?>
-<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>
+<?= $this->section('javascript') ?>
 <script>
 let svcTable;
 let currentTabStatus = '';

@@ -81,7 +81,7 @@
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
                                         <table class="table table-sm table-bordered mb-0" id="usedSparepartTable">
-                                            <thead class="table-light">
+                                            <thead class="table-header">
                                                 <tr>
                                                     <th width="8%" class="text-center">✅</th>
                                                     <th width="35%">Nama Sparepart</th>
@@ -116,7 +116,7 @@
                                 <div class="card-body p-0">
                                     <div class="table-responsive">
                                         <table class="table table-sm table-bordered mb-0" id="additionalSparepartTable">
-                                            <thead class="table-light">
+                                            <thead class="table-header">
                                                 <tr>
                                                     <th width="40%">Nama Sparepart</th>
                                                     <th width="15%" class="text-center">Quantity</th>

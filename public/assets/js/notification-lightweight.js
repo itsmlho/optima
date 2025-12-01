@@ -10,7 +10,7 @@
 class OptimaNotificationLightweight {
     constructor() {
         this.baseUrl = window.location.origin + '/optima/public';
-        this.pollingInterval = 30000; // 30 seconds (more frequent for better real-time)
+        this.pollingInterval = 60000; // 60 seconds (reduced frequency for performance)
         this.pollingTimer = null;
         this.isPolling = false;
         this.lastNotificationId = 0;
@@ -19,57 +19,34 @@ class OptimaNotificationLightweight {
         this.badge = null;
         this.dropdownMenu = null;
         
-        // Sound notification
-        this.notificationSound = null;
-        this.enableSound = true; // User preference
+        // Disable sound by default for performance
+        this.enableSound = false;
         
-        // Queue for notifications (prevent spam)
+        // Reduced queue size
         this.notificationQueue = [];
         this.isShowingNotification = false;
         
-        // Track which notifications have been shown as popup (prevent duplicate)
+        // Simplified popup tracking (in-memory only for performance)
         this.shownPopupIds = new Set();
-        this.loadShownPopups();
         
         console.log('🚀 Optima Notification Lightweight Client initialized');
         this.init();
     }
     
     /**
-     * Load shown popup IDs from localStorage
+     * Simplified popup tracking (removed localStorage for performance)
      */
     loadShownPopups() {
-        try {
-            const stored = localStorage.getItem('optima_shown_popup_ids');
-            if (stored) {
-                const ids = JSON.parse(stored);
-                this.shownPopupIds = new Set(ids);
-                
-                // Clean up old IDs (older than 7 days)
-                const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-                const cleanedIds = Array.from(this.shownPopupIds).filter(id => {
-                    // Keep IDs (assuming IDs are incremental and recent IDs are higher)
-                    return id > (this.lastNotificationId - 100); // Keep last 100 IDs
-                });
-                this.shownPopupIds = new Set(cleanedIds);
-                this.saveShownPopups();
-            }
-        } catch (err) {
-            console.warn('Error loading shown popups:', err);
-            this.shownPopupIds = new Set();
-        }
+        // No localStorage operations for better performance
+        // Reset every session
+        this.shownPopupIds = new Set();
     }
     
     /**
-     * Save shown popup IDs to localStorage
+     * Removed localStorage for performance optimization
      */
     saveShownPopups() {
-        try {
-            const ids = Array.from(this.shownPopupIds);
-            localStorage.setItem('optima_shown_popup_ids', JSON.stringify(ids));
-        } catch (err) {
-            console.warn('Error saving shown popups:', err);
-        }
+        // No localStorage operations for better performance
     }
     
     init() {
@@ -77,78 +54,46 @@ class OptimaNotificationLightweight {
         this.badge = document.getElementById('notificationBadge');
         this.dropdownMenu = document.getElementById('notificationDropdownMenu');
         
-        // Initialize notification sound
-        this.initSound();
-        
         // Update count immediately
         this.updateCount();
         
         // Check for new notifications immediately (on page load)
         setTimeout(() => {
             this.pollForNotifications();
-        }, 1000); // 1 second after page load
+        }, 500); // Faster initialization - 0.5 seconds
         
         // Start regular polling
         this.startPolling();
         
-        // Update when dropdown is opened
+        // Update when dropdown is opened (optimized)
         const notificationDropdown = document.querySelector('[data-bs-toggle="dropdown"]');
         if (notificationDropdown) {
             notificationDropdown.addEventListener('click', () => {
-                setTimeout(() => {
-                    this.updateCount();
-                    this.fetchRecent();
-                }, 100);
+                this.updateCount();
+                this.fetchRecent();
             });
         }
     }
     
     /**
-     * Initialize notification sound
+     * Sound functionality removed for performance
      */
     initSound() {
-        // Sound will be generated using Web Audio API
-        // See notification-sound-generator.js
-        
-        // Load user preference from localStorage
-        const savedPref = localStorage.getItem('optima_notification_sound');
-        if (savedPref !== null) {
-            this.enableSound = savedPref === 'true';
-        }
+        // Sound disabled for performance optimization
     }
     
     /**
-     * Play notification sound based on type
+     * Sound functionality removed for performance
      */
     playSound(notification) {
-        if (!this.enableSound) return;
-        
-        try {
-            if (window.NotificationSound) {
-                // Play different sounds based on priority/type
-                if (notification.type === 'critical' || notification.priority >= 5) {
-                    window.NotificationSound.playCriticalAlert();
-                } else if (notification.type === 'success') {
-                    window.NotificationSound.playSuccessSound();
-                } else {
-                    window.NotificationSound.playNotificationBeep();
-                }
-            }
-        } catch (err) {
-            console.warn('Error playing sound:', err);
-        }
+        // Sound disabled for performance optimization
     }
     
     /**
-     * Toggle sound on/off
+     * Sound functionality removed for performance
      */
     toggleSound() {
-        this.enableSound = !this.enableSound;
-        localStorage.setItem('optima_notification_sound', this.enableSound);
-        
-        // Show feedback
-        const status = this.enableSound ? 'enabled' : 'disabled';
-        this.showSimpleToast(`Notification sound ${status}`, 'info');
+        // Sound disabled for performance optimization
     }
     
     /**
@@ -166,17 +111,13 @@ class OptimaNotificationLightweight {
         
         // Mark this notification as shown (prevent duplicate popup)
         this.shownPopupIds.add(notification.id);
-        this.saveShownPopups();
         
         console.log(`📢 Showing popup for notification ID: ${notification.id}`);
         
-        // Play sound based on notification type
-        this.playSound(notification);
-        
-        // Show SweetAlert popup (like Facebook)
+        // Show notification popup
         await this.showNotificationPopup(notification);
         
-        // After SweetAlert is dismissed, update count and animate bell
+        // After popup is dismissed, update count
         this.updateCount();
         this.animateBellIcon();
         

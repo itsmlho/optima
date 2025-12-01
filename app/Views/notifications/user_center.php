@@ -91,7 +91,7 @@
 
     <!-- Notifications List -->
     <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3">
+        <div class="card-header py-3">
             <div class="row align-items-center">
                 <div class="col">
                     <h5 class="mb-0"><i class="fas fa-list me-2"></i>All Notifications</h5>

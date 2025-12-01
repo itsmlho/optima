@@ -256,33 +256,8 @@
 </div>
 <?= $this->endSection() ?>
 
-<?= $this->section('css') ?>
-<style>
-.stats-card {
-    border: none;
-    border-radius: 10px;
-    transition: transform 0.2s;
-}
 
-.stats-card:hover {
-    transform: translateY(-2px);
-}
-
-.avatar-circle {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 0.7rem;
-}
-</style>
-<?= $this->endSection() ?>
-
-<?= $this->section('js') ?>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<?= $this->section('javascript') ?>
 <script>
 $(document).ready(function() {
     // Division Distribution Chart

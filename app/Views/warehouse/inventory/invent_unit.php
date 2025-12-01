@@ -13,68 +13,13 @@ $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
 ?>
 
-<?= $this->section('css') ?>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
-<style>
-    /* CSS umum sudah ada di optima-pro.css */
-    /* Hanya custom styling khusus untuk inventory unit table */
-    
-    /* Clickable rows khusus untuk inventory-unit-table */
-    #inventory-unit-table tbody tr {
-        cursor: pointer;
-        transition: background-color 0.15s ease-in-out;
-    }
-    
-    #inventory-unit-table tbody tr:hover {
-        background-color: rgba(0, 123, 255, 0.1) !important;
-    }
-    
-    /* Responsive hide columns khusus untuk inventory-unit-table */
-    @media (max-width: 992px){
-        #inventory-unit-table td:nth-child(5), #inventory-unit-table th:nth-child(5),
-        #inventory-unit-table td:nth-child(6), #inventory-unit-table th:nth-child(6),
-        #inventory-unit-table td:nth-child(7), #inventory-unit-table th:nth-child(7){ display:none; }
-    }
-    
-    /* Disabled Table Styling */
-    .table-disabled {
-        opacity: 0.5 !important;
-        pointer-events: none !important;
-        user-select: none !important;
-        cursor: not-allowed !important;
-    }
-    .table-disabled tbody tr {
-        cursor: not-allowed !important;
-        pointer-events: none !important;
-    }
-    .table-disabled tbody tr:hover {
-        background-color: #f8f9fa !important;
-    }
-    .table-disabled .btn {
-        pointer-events: none !important;
-        opacity: 0.3 !important;
-    }
-    .table-disabled a {
-        pointer-events: none !important;
-        cursor: not-allowed !important;
-        color: #6c757d !important;
-    }
-    .table-disabled input, .table-disabled select {
-        pointer-events: none !important;
-        opacity: 0.5 !important;
-    }
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
-    <!-- Inventory Table dengan Tab Terintegrasi -->
-    <div class="card table-card">
+    <!-- Inventory Table dengan Tab Terintegrasi - Professional Standard -->
+    <div class="card shadow-sm">
         <!-- Tab Filter untuk Status Unit -->
         <div class="card-body p-0">
-            <ul class="nav nav-tabs nav-fill mb-0" id="unitStatusTabs" role="tablist">
+            <ul class="nav nav-tabs mb-0" id="unitStatusTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="all-tab" data-category="" type="button" role="tab">
                         <i class="fas fa-list me-1"></i>
@@ -93,7 +38,7 @@ $can_export = $permissions['export'];
                     <button class="nav-link" id="rental-tab" data-category="rental" type="button" role="tab">
                         <i class="fas fa-handshake me-1"></i>
                         <span>Rental</span>
-                        <span class="badge bg-warning text-dark ms-1" id="count-rental">0</span>
+                        <span class="badge bg-warning ms-1" id="count-rental">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
@@ -140,19 +85,19 @@ $can_export = $permissions['export'];
         </div>
         
         <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
-            <h5 class="card-title fw-bold m-0">Daftar Stok Unit</h5>
+            <h6 class="card-title mb-0">Daftar Stok Unit</h6>
             <div class="d-flex gap-2 ms-auto">
-                <a class="btn btn-sm btn-primary" data-bs-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false" aria-controls="filterCollapse" title="Tampilkan / Sembunyikan Filter">
+                <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false" aria-controls="filterCollapse" title="Tampilkan / Sembunyikan Filter">
                     <i class="fas fa-filter me-1"></i>Filter
-                </a>
+                </button>
                 <?php if ($can_export): ?>
                 <a href="<?= base_url('warehouse/inventory/export_unit_inventory') ?>" class="btn btn-sm btn-outline-success" id="btnExport" title="Export CSV">
                     <i class="fas fa-file-export me-1"></i>Export Unit
                 </a>
                 <?php else: ?>
-                <a href="#" class="btn btn-sm btn-outline-success disabled" onclick="return false;" title="Access Denied">
+                <button class="btn btn-sm btn-outline-success" disabled onclick="return false;" title="Access Denied">
                     <i class="fas fa-file-export me-1"></i>Export Unit
-                </a>
+                </button>
                 <?php endif; ?>
             </div>
         </div>
@@ -184,7 +129,7 @@ $can_export = $permissions['export'];
         <div class="card-body pt-2">
             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                 <div class="input-group input-group-sm" style="max-width:340px;">
-                    <span class="input-group-text bg-white"><i class="fas fa-search text-secondary"></i></span>
+                    <span class="input-group-text"><i class="fas fa-search text-secondary"></i></span>
                     <input type="text" id="unitSearch" class="form-control" placeholder="Cari Serial / Lokasi / Merk / Model..." autocomplete="off">
                     <button class="btn btn-outline-secondary" type="button" id="btnClearSearch" title="Bersihkan pencarian"><i class="fas fa-times"></i></button>
                 </div>
@@ -197,32 +142,33 @@ $can_export = $permissions['export'];
                 Please contact your administrator to request access.
             </div>
             <?php endif; ?>
-            <table id="inventory-unit-table" class="table table-striped table-hover <?= !$can_view ? 'table-disabled' : '' ?>" style="width:100%">
-                <thead>
-                    <tr>
-                        <th>No. Unit</th>
-                        <th>Serial Number</th>
-                        <th>Merk</th>
+            <div class="table-responsive">
+                <table id="inventory-unit-table" class="table table-sm mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
+                    <thead>
+                        <tr>
+                            <th>No. Unit</th>
+                            <th>Serial Number</th>
+                            <th>Merk</th>
                         <th>Model</th>
                         <th>Tipe</th>
                         <th>Departemen</th>
                         <th>Status</th>
                         <th>Lokasi</th>
                         <th>Tanggal Masuk</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 
 <!-- Modal View Unit Detail - Enhanced Modern Design -->
 <div class="modal fade" id="viewUnitModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header bg-light border-bottom">
-                <h5 class="modal-title fw-bold text-dark"><i class="fas fa-cube me-2 text-secondary"></i>Detail Unit Lengkap</h5>
+                <h5 class="modal-title fw-bold"><i class="fas fa-cube me-2 text-secondary"></i>Detail Unit Lengkap</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
@@ -296,7 +242,7 @@ $can_export = $permissions['export'];
 </div>
 <?= $this->endSection() ?>
 
-<?= $this->section('script') ?>
+<?= $this->section('javascript') ?>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -717,7 +663,7 @@ $can_export = $permissions['export'];
             <div class="bg-light border-bottom p-3">
                 <div class="row align-items-center">
                     <div class="col-md-8">
-                        <h4 class="mb-1 text-dark">${h(data.merk_unit)} ${h(data.model_unit)}</h4>
+                        <h4 class="mb-1">${h(data.merk_unit)} ${h(data.model_unit)}</h4>
                         <p class="mb-0 text-muted">
                             <i class="fas fa-barcode me-2 text-secondary"></i>SN: ${h(data.serial_number)} 
                             ${data.no_unit ? `| <i class="fas fa-hashtag me-1 text-secondary"></i>No. Unit: ${h(data.no_unit)}` : ''}
@@ -767,7 +713,7 @@ $can_export = $permissions['export'];
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="card border-primary">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-truck me-2 text-secondary"></i>Informasi Unit</h6>
                                     </div>
                                     <div class="card-body">
@@ -787,7 +733,7 @@ $can_export = $permissions['export'];
                             </div>
                             <div class="col-md-6">
                                 <div class="card border-success">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-calendar me-2 text-secondary"></i>Timeline & Status</h6>
                                     </div>
                                     <div class="card-body">
@@ -808,7 +754,7 @@ $can_export = $permissions['export'];
                         <div class="row mt-3">
                             <div class="col-12">
                                 <div class="card border-info">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-sticky-note me-2 text-secondary"></i>Keterangan</h6>
                                     </div>
                                     <div class="card-body">
@@ -825,7 +771,7 @@ $can_export = $permissions['export'];
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="card border-light">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-cogs me-2 text-secondary"></i>Komponen Utama</h6>
                                     </div>
                                     <div class="card-body">
@@ -842,7 +788,7 @@ $can_export = $permissions['export'];
                             </div>
                             <div class="col-md-6">
                                 <div class="card border-light">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-circle me-2 text-secondary"></i>Roda & Ban</h6>
                                     </div>
                                     <div class="card-body">
@@ -859,7 +805,7 @@ $can_export = $permissions['export'];
                         <div class="row mt-3">
                             <div class="col-12">
                                 <div class="card border-info">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-plus-circle me-2 text-secondary"></i>Aksesoris</h6>
                                     </div>
                                     <div class="card-body">
@@ -876,7 +822,7 @@ $can_export = $permissions['export'];
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="card border-primary">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-building me-2 text-secondary"></i>Informasi Pelanggan</h6>
                                     </div>
                                     <div class="card-body">
@@ -895,7 +841,7 @@ $can_export = $permissions['export'];
                             </div>
                             <div class="col-md-6">
                                 <div class="card border-success">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-map me-2 text-secondary"></i>Informasi Area</h6>
                                     </div>
                                     <div class="card-body">
@@ -908,7 +854,7 @@ $can_export = $permissions['export'];
                                 </div>
                                 
                                 <div class="card border-light mt-3">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-file-invoice me-2 text-secondary"></i>Purchase Order</h6>
                                     </div>
                                     <div class="card-body">
@@ -939,7 +885,7 @@ $can_export = $permissions['export'];
                         <div class="row">
                             <div class="col-md-8">
                                 <div class="card border-success">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-handshake me-2 text-secondary"></i>Informasi Kontrak</h6>
                                     </div>
                                     <div class="card-body">
@@ -957,7 +903,7 @@ $can_export = $permissions['export'];
                             </div>
                             <div class="col-md-4">
                                 <div class="card border-info">
-                                    <div class="card-header bg-light text-dark border-bottom">
+                                    <div class="card-header border-bottom">
                                         <h6 class="mb-0"><i class="fas fa-clipboard-list me-2 text-secondary"></i>SPK & Delivery</h6>
                                     </div>
                                     <div class="card-body">

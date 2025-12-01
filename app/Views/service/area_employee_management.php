@@ -1,316 +1,57 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.2.3/css/buttons.bootstrap4.min.css">
-<style>
-    /* CSS umum sudah ada di optima-pro.css */
-    /* Custom styling khusus untuk area & employee management */
-    
-    .mini-stats-wid { 
-        border: none; 
-        box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
-        border-radius: 15px; 
-    }
-    .mini-stats-wid .avatar-sm { height: 3rem; width: 3rem; }
-    .mini-stats-wid .mini-stat-icon { line-height: 3rem; text-align:center; }
-    
-    .form-errors { 
-        background-color: #f8d7da; 
-        border: 1px solid #f5c6cb; 
-        border-radius: 5px; 
-        padding: 10px; 
-        display: none;
-    }
-    .form-errors:not(:empty) { 
-        display: block;
-    }
-    
-    .btn-view { 
-        background-color: #4e73df; 
-        border-color: #4e73df; 
-        color: white; 
-        font-size: 0.75rem; 
-        padding: 0.25rem 0.5rem; 
-    }
-    .btn-view:hover { 
-        background-color: #2e59d9; 
-        border-color: #2653d4; 
-        color: white; 
-    }
-    
-    .employee-role { 
-        font-weight: 500; 
-        color: #2c3e50 !important; /* Dark color for readability */
-    }
-    .employee-code { 
-        font-family: 'Courier New', monospace; 
-        font-size: 0.85rem; 
-        color: #495057 !important; /* Darker grey for better contrast */
-    }
-    .dataTables_wrapper .dataTables_filter input { border-color: #d1d3e2; }
-    .text-dark { color: #2c3e50 !important; } /* Ensure dark text is visible */
-    .font-weight-medium { font-weight: 500; }
-    
-    /* Fix white text issue in DataTables */
-    #areasTable tbody td,
-    #employeesTable tbody td,
-    #assignmentsTable tbody td {
-        color: #2c3e50 !important; /* Dark grey text for all table cells */
-    }
-    
-    /* Badge colors - ensure they're visible */
-    .badge-info { 
-        background-color: #36b9cc !important; 
-        color: white !important; 
-    }
-    .badge-primary { 
-        background-color: #4e73df !important; 
-        color: white !important; 
-    }
-    .badge-success { 
-        background-color: #1cc88a !important; 
-        color: white !important; 
-    }
-    .badge-warning { 
-        background-color: #f6c23e !important; 
-        color: #2c3e50 !important; 
-        font-weight: 600;
-    }
-    .badge-danger { 
-        background-color: #e74a3b !important; 
-        color: white !important; 
-    }
-    .badge-secondary { 
-        background-color: #6c757d !important; 
-        color: white !important; 
-    }
-    .badge-light { 
-        background-color: #e3e6f0 !important; 
-        color: #2c3e50 !important; 
-        border: 1px solid #d1d3e2;
-        font-weight: 600;
-    }
-    .badge-dark { 
-        background-color: #2c3e50 !important; 
-        color: white !important; 
-    }
-    
-    /* Make sure text-muted is still readable */
-    .text-muted {
-        color: #6c757d !important;
-    }
-    
-    /* Table styling improvements */
-    .table thead th {
-        background-color: #f8f9fc;
-        color: #2c3e50;
-        font-weight: 600;
-        border-bottom: 2px solid #e3e6f0;
-    }
-    
-    .table tbody tr {
-        border-bottom: 1px solid #e3e6f0;
-    }
-    
-    .table tbody tr:hover {
-        background-color: #f8f9fc;
-    }
-    .nav-tabs .nav-item { margin-bottom: 0; }
-    .nav-tabs .nav-link { 
-        border: 1px solid transparent;
-        border-top-left-radius: 0.35rem;
-        border-top-right-radius: 0.35rem;
-        color: #6c757d;
-    }
-    .nav-tabs .nav-link.active {
-        color: white !important;
-        background-color: #4e73df !important;
-        border-color: #4e73df !important;
-    }
-    .nav-tabs .nav-link:hover {
-        border-color: #e9ecef #e9ecef #dee2e6;
-        isolation: isolate;
-        color: #4e73df;
-    }
-    .table-hover-row {
-        background-color: #f1f3f4 !important;
-        cursor: pointer;
-    }
-    .table tbody tr {
-        transition: background-color 0.15s ease-in-out;
-    }
-    .table tbody tr:hover {
-        cursor: pointer;
-    }
-    
-    
-    .btn-outline-success:hover {
-        background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
-        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-        transform: translateY(-2px);
-        color: white;
-    }
-    
-    .btn-outline-success:active {
-        transform: translateY(0);
-        box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
-    }
-    
-    /* use centralized button styles from optima-pro.css */
-    
-    /* Fix modal close button styling */
-    .modal-header .close {
-        background: none;
-        border: none;
-        font-size: 1.5rem;
-        font-weight: 700;
-        line-height: 1;
-        color: #6c757d;
-        text-shadow: none;
-        opacity: 0.8;
-        padding: 0;
-        margin: 0;
-        width: auto;
-        height: auto;
-        cursor: pointer;
-    }
-    .modal-header .close:hover {
-        color: #495057;
-        opacity: 1;
-        background: none;
-        border: none;
-        cursor: pointer;
-    }
-    .modal-header .close:focus {
-        outline: none;
-        box-shadow: none;
-    }
-    .modal-header .close:active {
-        transform: scale(0.95);
-    }
-    
-    /* Ensure modal close button is clickable */
-    .modal-header .close {
-        z-index: 1050;
-        position: relative;
-    }
-    
-    /* Fix modal backdrop issues */
-    .modal-backdrop {
-        z-index: 1040;
-    }
-    .modal {
-        z-index: 1050;
-    }
-    
-    /* Modal action buttons */
-    .modal-footer .btn {
-        margin-left: 0.5rem;
-    }
-    .modal-footer .btn:first-child {
-        margin-left: 0;
-    }
-    
-    /* DataTable Buttons styling */
-    .dt-buttons {
-        margin-bottom: 0.5rem;
-    }
-    .dt-buttons .btn {
-        margin-left: 0.25rem;
-        margin-right: 0;
-    }
-    .dt-buttons .btn:first-child {
-        margin-left: 0;
-    }
-    
-    /* Tab content header styling */
-    .tab-pane .card-header {
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        border: 1px solid #e3e6f0;
-    }
-    .tab-pane .card-header h6 {
-        font-weight: 600;
-        color: #5a5c69;
-    }
-    
-    /* Real-time update effects */
-    .table-success {
-        background-color: #d4edda !important;
-        transition: background-color 2s ease-out;
-    }
-    .fade-out-row {
-        opacity: 0.3;
-        transition: opacity 0.3s ease-out;
-    }
-    
-    /* Fix spacing for assignments buttons */
-    .gap-2 > * + * {
-        margin-left: 0.5rem;
-    }
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
   <!-- Statistics Cards -->
-  <div class="row g-4 mb-4">
-      <div class="col-md-3">
-          <div class="card card-stats bg-primary text-white h-100">
-              <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                          <h2 class="fw-bold mb-1"><?= $totalAreas ?></h2>
-                          <h6 class="card-title text-uppercase small mb-0">Total Areas</h6>
-                      </div>
-                      <div class="avatar-sm rounded-circle bg-white bg-opacity-25">
-                          <i class="fas fa-globe-europe text-white" style="font-size: 1.5rem; line-height: 3rem;"></i>
-                      </div>
+  <div class="row mt-3 mb-4">
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-primary-soft">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-globe stat-icon text-primary"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value"><?= $totalAreas ?></div>
+                      <div class="text-muted">Total Areas</div>
                   </div>
               </div>
           </div>
       </div>
-      <div class="col-md-3">
-          <div class="card card-stats bg-success text-white h-100">
-              <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                          <h2 class="fw-bold mb-1"><?= $totalEmployees ?></h2>
-                          <h6 class="card-title text-uppercase small mb-0">Total Employees</h6>
-                      </div>
-                      <div class="avatar-sm rounded-circle bg-white bg-opacity-25">
-                          <i class="fas fa-users text-white" style="font-size: 1.5rem; line-height: 3rem;"></i>
-                      </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-success-soft">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-people stat-icon text-success"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value"><?= $totalEmployees ?></div>
+                      <div class="text-muted">Total Employees</div>
                   </div>
               </div>
           </div>
       </div>
-      <div class="col-md-3">
-          <div class="card card-stats bg-warning text-white h-100">
-              <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                          <h2 class="fw-bold mb-1"><?= $totalAssignments ?></h2>
-                          <h6 class="card-title text-uppercase small mb-0">Active Assignments</h6>
-                      </div>
-                      <div class="avatar-sm rounded-circle bg-white bg-opacity-25">
-                          <i class="fas fa-link text-white" style="font-size: 1.5rem; line-height: 3rem;"></i>
-                      </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-warning-soft">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-link stat-icon text-warning"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value"><?= $totalAssignments ?></div>
+                      <div class="text-muted">Active Assignments</div>
                   </div>
               </div>
           </div>
       </div>
-      <div class="col-md-3">
-          <div class="card card-stats bg-info text-white h-100">
-              <div class="card-body">
-                  <div class="d-flex justify-content-between align-items-center">
-                      <div>
-                          <h2 class="fw-bold mb-1" id="roleDistribution">-</h2>
-                          <h6 class="card-title text-uppercase small mb-0">Role Distribution</h6>
-                      </div>
-                      <div class="avatar-sm rounded-circle bg-white bg-opacity-25">
-                          <i class="fas fa-chart-pie text-white" style="font-size: 1.5rem; line-height: 3rem;"></i>
-                      </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-info-soft">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-pie-chart stat-icon text-info"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="roleDistribution">-</div>
+                      <div class="text-muted">Role Distribution</div>
                   </div>
               </div>
           </div>
@@ -369,7 +110,7 @@
                               </div>
                           </div>
                           <div class="table-responsive">
-                              <table id="areasTable" class="table table-striped table-bordered dt-responsive nowrap" style="width:100%">
+                              <table id="areasTable" class="table table-striped dt-responsive nowrap">
                                   <thead>
                                       <tr>
                                           <th>Area Code</th>
@@ -402,7 +143,7 @@
                               </div>
                           </div>
                           <div class="table-responsive">
-                              <table id="employeesTable" class="table table-striped table-bordered dt-responsive nowrap" style="width:100%">
+                              <table id="employeesTable" class="table table-striped dt-responsive nowrap">
                                   <thead>
                                       <tr>
                                           <th>Staff Code</th>
@@ -1066,7 +807,6 @@
 <script src="https://cdn.datatables.net/responsive/2.2.9/js/dataTables.responsive.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/dataTables.buttons.min.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.2.3/js/buttons.bootstrap4.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 let areasTable, employeesTable;
 let employeesByRoleChart, assignmentsByAreaChart;

@@ -1,145 +1,65 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
+
 <!-- CSS umum sudah ada di optima-pro.css -->
-<style>
-/* Custom delivery page - Smart address column */
-.lokasi-cell {
-  max-width: 200px;
-  position: relative;
-  cursor: pointer;
-}
-
-.lokasi-preview {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  line-height: 1.4;
-  font-size: 13px;
-  color: #495057;
-  margin: 0;
-}
-
-.lokasi-tooltip {
-  position: absolute;
-  top: -10px;
-  left: 0;
-  right: -20px;
-  background: #fff;
-  border: 2px solid #007bff;
-  border-radius: 8px;
-  padding: 12px;
-  box-shadow: 0 8px 25px rgba(0,0,0,0.25);
-  z-index: 1050;
-  max-width: 320px;
-  font-size: 14px;
-  line-height: 1.4;
-  color: #495057;
-  display: none;
-}
-
-.lokasi-cell:hover .lokasi-tooltip {
-  display: block;
-}
-
-.lokasi-badge {
-  display: inline-block;
-  background: #e3f2fd;
-  color: #1976d2;
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 11px;
-  font-weight: 500;
-  margin-top: 3px;
-}
-
-/* Compact Action Buttons */
-.btn-action {
-  padding: 5px 8px;
-  margin: 2px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  border: none;
-  transition: all 0.2s;
-}
-
-.btn-action:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-}
-
-/* Status Badge Improvements */
-.badge {
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 12px;
-}
-</style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
-<!-- Statistics Cards - Modern Dashboard Style -->
-<div class="row g-4 mb-4">
-  <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor:pointer;">
-      <div class="card-body d-flex align-items-center">
-        <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1" id="totalDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">TOTAL DI</h6>
-        </div>
-        <div class="ms-3">
-          <i class="fas fa-clipboard-list fa-2x opacity-75"></i>
-        </div>
+<!-- Statistics Cards -->
+  <div class="row mt-3 mb-4">
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-primary-soft" data-filter="all" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-truck stat-icon text-primary"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="totalDI">0</div>
+                      <div class="text-muted">Total DI</div>
+                  </div>
+              </div>
+          </div>
       </div>
-    </div>
-  </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="SUBMITTED" style="cursor:pointer;">
-      <div class="card-body d-flex align-items-center">
-        <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1" id="submittedDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">PENDING</h6>
-          <small class="opacity-75">Submitted</small>
-        </div>
-        <div class="ms-3">
-          <i class="fas fa-clock fa-2x opacity-75"></i>
-        </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-warning-soft" data-filter="SUBMITTED" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-clock stat-icon text-warning"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="submittedDI">0</div>
+                      <div class="text-muted">Pending</div>
+                  </div>
+              </div>
+          </div>
       </div>
-    </div>
-  </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-info text-white h-100 filter-card" data-filter="INPROGRESS" style="cursor:pointer;">
-      <div class="card-body d-flex align-items-center">
-        <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1" id="inprogressDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">IN PROGRESS</h6>
-          <small class="opacity-75">Processed + Shipped</small>
-        </div>
-        <div class="ms-3">
-          <i class="fas fa-shipping-fast fa-2x opacity-75"></i>
-        </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-info-soft" data-filter="INPROGRESS" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-arrow-repeat stat-icon text-info"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="inprogressDI">0</div>
+                      <div class="text-muted">In Progress</div>
+                  </div>
+              </div>
+          </div>
       </div>
-    </div>
-  </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-success text-white h-100 filter-card" data-filter="DELIVERED" style="cursor:pointer;">
-      <div class="card-body d-flex align-items-center">
-        <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1" id="deliveredDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">COMPLETED</h6>
-          <small class="opacity-75">Delivered</small>
-        </div>
-        <div class="ms-3">
-          <i class="fas fa-check-circle fa-2x opacity-75"></i>
-        </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-success-soft" data-filter="DELIVERED" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-check-circle stat-icon text-success"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="deliveredDI">0</div>
+                      <div class="text-muted">Completed</div>
+                  </div>
+              </div>
+          </div>
       </div>
-    </div>
   </div>
-</div>
 
   <div class="card table-card mb-3">
     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
@@ -187,7 +107,7 @@
       </div>
 
       <div class="table-responsive">
-        <table class="table table-sm mb-0" id="diTable">
+        <table class="table table-striped table-hover table-manual-sort" id="diTable">
           <thead>
             <tr>
               <th>No. DI</th>
@@ -200,7 +120,7 @@
               <th>Req. Tanggal Kirim</th>
               <th>Status Eksekusi</th>
               <th>Supir/Kendaraan</th>
-              <th>Aksi Operasional</th>
+              <th data-no-sort>Aksi Operasional</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1254,3 +1174,5 @@ document.addEventListener('DOMContentLoaded', ()=>{
   </div>
 </div>
 <?= $this->endSection() ?>
+
+

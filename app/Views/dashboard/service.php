@@ -16,84 +16,66 @@
         </div>
     </div>
 
-    <!-- Statistics Cards -->
-    <div class="row mb-4" aria-label="Statistik Service" role="list">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2" role="listitem">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Total Work Orders</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" data-count="<?= $service_stats['total_work_orders'] ?>">0</div>
-                        </div>
-                        <div class="col-auto" aria-hidden="true">
-                            <i class="fas fa-clipboard-list fa-2x text-gray-300"></i>
-                        </div>
+    <!-- Statistics Cards - Professional Standard -->
+    
+    <div class="row mt-3 mb-4" aria-label="Statistik Service" role="list">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-file-text stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-total-work-orders" data-count="<?= $service_stats['total_work_orders'] ?>">0</div>
+                        <div class="text-muted">Total Work Orders</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Pending PMPS
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= $service_stats['pending_pmps'] ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-calendar-times fa-2x text-gray-300"></i>
-                        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-clock stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-pending-pmps"><?= $service_stats['pending_pmps'] ?></div>
+                        <div class="text-muted">Pending PMPs</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Completed Services
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= $service_stats['completed_services'] ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-check-circle stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-completed-services"><?= $service_stats['completed_services'] ?></div>
+                        <div class="text-muted">Completed Services</div>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                Maintenance Alerts
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                <?= $service_stats['maintenance_alerts'] ?>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-danger-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-exclamation-triangle stat-icon text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-maintenance-alerts"><?= $service_stats['maintenance_alerts'] ?></div>
+                        <div class="text-muted">Maintenance Alerts</div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
 
     <!-- Charts Row -->
     <div class="row mb-4">
@@ -193,7 +175,6 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 // Work Orders Chart
 const workOrdersCtx = document.getElementById('workOrdersChart').getContext('2d');

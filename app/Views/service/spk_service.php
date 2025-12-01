@@ -35,63 +35,55 @@ $can_export = true;
     <?php else: ?>
     
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-primary text-white h-100 filter-card" data-filter="all" style="cursor: pointer;">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h3 class="mb-0" id="stat-total-spk">0</h3>
-                            <p class="mb-0">Total SPK</p>
-                        </div>
-                        <div class="fs-1">
-                            <i class="fas fa-list"></i>
-                        </div>
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft filter-card" data-filter="all" style="cursor: pointer;">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-list-task stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-total-spk">0</div>
+                        <div class="text-muted">Total SPK</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-info text-white h-100 filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h3 class="mb-0" id="stat-in-progress">0</h3>
-                            <p class="mb-0">In Progress</p>
-                        </div>
-                        <div class="fs-1">
-                            <i class="fas fa-spinner"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-info-soft filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-arrow-repeat stat-icon text-info"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-in-progress">0</div>
+                        <div class="text-muted">In Progress</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white h-100 filter-card" data-filter="READY" style="cursor: pointer;">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h3 class="mb-0" id="stat-ready">0</h3>
-                            <p class="mb-0">Ready</p>
-                        </div>
-                        <div class="fs-1">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft filter-card" data-filter="READY" style="cursor: pointer;">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-check-circle stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-ready">0</div>
+                        <div class="text-muted">Ready</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="card bg-warning text-white h-100 filter-card" data-filter="COMPLETED" style="cursor: pointer;">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h3 class="mb-0" id="stat-completed">0</h3>
-                            <p class="mb-0">Completed</p>
-                        </div>
-                        <div class="fs-1">
-                            <i class="fas fa-flag-checkered"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft filter-card" data-filter="COMPLETED" style="cursor: pointer;">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-flag stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-completed">0</div>
+                        <div class="text-muted">Completed</div>
                     </div>
                 </div>
             </div>
@@ -146,8 +138,8 @@ $can_export = true;
                 </div>
             </div>
             <div class="table-responsive">
-                <table class="table table-sm mb-0 <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
-                    <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Total Unit</th><th>Aksi</th></tr></thead>
+                <table class="table table-striped table-hover table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
+                    <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Total Unit</th><th data-no-sort>Aksi</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>

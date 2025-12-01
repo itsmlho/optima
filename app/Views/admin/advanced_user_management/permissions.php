@@ -1,107 +1,5 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<!-- CSS umum sudah ada di optima-pro.css (stats-card, permission-card, dll) --><style>
-    
-    /* Perbaiki jarak kolom DataTable */
-    #permissionsTable th,
-    #permissionsTable td {
-        padding: 0.5rem 0.75rem !important;
-        vertical-align: middle;
-    }
-    
-    #permissionsTable th:nth-child(1),
-    #permissionsTable td:nth-child(1) { 
-        width: 20%; 
-        min-width: 150px;
-    }
-    
-    #permissionsTable th:nth-child(2),
-    #permissionsTable td:nth-child(2) { 
-        width: 20%; 
-        min-width: 150px;
-    }
-    
-    #permissionsTable th:nth-child(3),
-    #permissionsTable td:nth-child(3) { 
-        width: 35%; 
-        min-width: 200px;
-    }
-    
-    #permissionsTable th:nth-child(4),
-    #permissionsTable td:nth-child(4) { 
-        width: 15%; 
-        min-width: 100px;
-        text-align: center;
-    }
-    
-    #permissionsTable th:nth-child(5),
-    #permissionsTable td:nth-child(5) { 
-        width: 10%; 
-        min-width: 80px;
-        text-align: center;
-    }
-    
-    /* Responsive table */
-    .table-responsive {
-        overflow-x: auto;
-        border-radius: 0.375rem;
-    }
-    
-    /* Tab styling */
-    .nav-tabs .nav-link {
-        border: none;
-        color: #6c757d;
-        font-weight: 500;
-        border-radius: 0.375rem 0.375rem 0 0;
-        margin-right: 0.25rem;
-    }
-    
-    .nav-tabs .nav-link.active {
-        background-color: #007bff;
-        color: white;
-        border: none;
-    }
-    
-    .nav-tabs .nav-link:hover {
-        background-color: #f8f9fa;
-        border: none;
-    }
-    
-    .nav-tabs .nav-link.active:hover {
-        background-color: #0056b3;
-        color: white;
-    }
-    
-    /* Badge styling */
-    .badge {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-    }
-    
-    /* Search input styling */
-    .input-group {
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        border-radius: 0.375rem;
-    }
-    
-    .input-group-text {
-        background-color: #f8f9fa;
-        border-right: none;
-    }
-    
-    .form-control {
-        border-left: none;
-    }
-    
-    .form-control:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
-    }
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 <div class="container-fluid">
     <!-- Page Header -->
@@ -118,68 +16,65 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stats-card bg-primary text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="card-title mb-1" id="stat-total-permissions">
-                                <?= $stats['total'] ?? 0 ?>
-                            </h4>
-                            <p class="card-text mb-0">Total Permissions</p>
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-key stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-total-permissions">
+                            <?= $stats['total'] ?? 0 ?>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-key fa-2x opacity-75"></i>
-                        </div>
+                        <div class="text-muted">Total Permissions</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stats-card bg-success text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="card-title mb-1" id="stat-module-count">
-                                <?= $stats['modules'] ?? 0 ?>
-                            </h4>
-                            <p class="card-text mb-0">Modules</p>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-stack stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-module-count">
+                            <?= $stats['modules'] ?? 0 ?>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-cubes fa-2x opacity-75"></i>
-                        </div>
+                        <div class="text-muted">Modules</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stats-card bg-info text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="card-title mb-1" id="stat-system-permissions">
-                                <?= $stats['system'] ?? 0 ?>
-                            </h4>
-                            <p class="card-text mb-0">System Permissions</p>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-info-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-shield-check stat-icon text-info"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-system-permissions">
+                            <?= $stats['system'] ?? 0 ?>
                         </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-shield-alt fa-2x opacity-75"></i>
-                        </div>
+                        <div class="text-muted">System Permissions</div>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card stats-card bg-warning text-white h-100">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between">
-                        <div>
-                            <h4 class="card-title mb-1" id="stat-custom-permissions">
-                                <?= $stats['custom'] ?? 0 ?>
-                            </h4>
-                            <p class="card-text mb-0">Custom Permissions</p>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-gear stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-custom-permissions">
+                            <?= $stats['custom'] ?? 0 ?>
                         </div>
+                        <div class="text-muted">Custom Permissions</div>
+                    </div>
+                </div>
                         <div class="align-self-center">
                             <i class="fas fa-user-cog fa-2x opacity-75"></i>
                         </div>
@@ -251,7 +146,7 @@
                     <!-- DataTable -->
                     <div class="table-responsive">
                         <table class="table table-striped table-hover align-middle" id="permissionsTable">
-                            <thead class="table-dark">
+                            <thead>
                                 <tr>
                                     <th><i class="fas fa-key me-1"></i>Permission Key</th>
                                     <th><i class="fas fa-tag me-1"></i>Display Name</th>
@@ -430,7 +325,7 @@
 </div>
 <?= $this->endSection() ?>
 
-<?= $this->section('script') ?>
+<?= $this->section('javascript') ?>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

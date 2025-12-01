@@ -14,76 +14,67 @@ $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
 ?>
 
-<?= $this->section('css') ?>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
-<style>
-    .card.border-start {
-        transition: all 0.2s ease;
-    }
-    .card.border-start:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    /* Ensure tab panes are properly hidden */
-    .tab-content .tab-pane {
-        display: none;
-    }
-    .tab-content .tab-pane.show.active {
-        display: block !important;
-    }
-    /* Ensure tab buttons are clickable */
-    #rejectedTabs button {
-        cursor: pointer;
-        pointer-events: auto;
-    }
-    .stat-card {
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    .stat-card.unit { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-    .stat-card.attachment { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
-    .stat-card.sparepart { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
-    .stat-card.total { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="stat-card unit text-white">
-                <h5 class="mb-0">Unit</h5>
-                <h2 class="mb-0 mt-2"><?= count($rejected_units) ?></h2>
-                <small>Item ditolak</small>
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-danger-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-truck stat-icon text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value"><?= count($rejected_units) ?></div>
+                        <div class="text-muted">Unit</div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card attachment text-white">
-                <h5 class="mb-0">Attachment</h5>
-                <h2 class="mb-0 mt-2"><?= count($rejected_attachments) ?></h2>
-                <small>Item ditolak</small>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-danger-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-puzzle stat-icon text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value"><?= count($rejected_attachments) ?></div>
+                        <div class="text-muted">Attachment</div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card sparepart text-white">
-                <h5 class="mb-0">Sparepart</h5>
-                <h2 class="mb-0 mt-2"><?= count($rejected_spareparts) ?></h2>
-                <small>Item ditolak</small>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-danger-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-gear stat-icon text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value"><?= count($rejected_spareparts) ?></div>
+                        <div class="text-muted">Sparepart</div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card total text-white">
-                <h5 class="mb-0">Total</h5>
-                <h2 class="mb-0 mt-2"><?= $total_rejected ?></h2>
-                <small>Semua item ditolak</small>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-exclamation-triangle stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value"><?= $total_rejected ?></div>
+                        <div class="text-muted">Total</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Tabs -->
-    <ul class="nav nav-tabs mb-4" id="rejectedTabs" role="tablist">
+    <ul class="nav nav-tabs mb-3" id="rejectedTabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="unit-tab" data-tab="unit" type="button" role="tab" onclick="switchRejectedTab('unit', this)">
                 <i class="fas fa-truck me-1"></i>Unit (<?= count($rejected_units) ?>)

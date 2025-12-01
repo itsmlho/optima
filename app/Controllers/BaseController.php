@@ -311,4 +311,55 @@ abstract class BaseController extends Controller
         
         return null;
     }
+
+    /**
+     * Get current theme preference
+     * Check for saved theme in session/cookie, fallback to light
+     */
+    protected function getCurrentTheme(): string
+    {
+        // Check session first
+        $sessionTheme = session()->get('user_theme');
+        if ($sessionTheme && in_array($sessionTheme, ['light', 'dark'])) {
+            return $sessionTheme;
+        }
+
+        // Check cookie as fallback
+        $cookieTheme = $this->request->getCookie('optima_theme');
+        if ($cookieTheme && in_array($cookieTheme, ['light', 'dark'])) {
+            return $cookieTheme;
+        }
+
+        // Default to light theme
+        return 'light';
+    }
+
+    /**
+     * Set theme preference for user
+     */
+    protected function setTheme(string $theme): void
+    {
+        if (in_array($theme, ['light', 'dark'])) {
+            // Save to session
+            session()->set('user_theme', $theme);
+            
+            // Save to cookie using helper
+            helper('cookie');
+            set_cookie('optima_theme', $theme, 86400 * 30); // 30 days
+        }
+    }
+
+    /**
+     * Prepare common view data including theme
+     */
+    protected function prepareViewData(array $data = []): array
+    {
+        $commonData = [
+            'theme' => $this->getCurrentTheme(),
+            'user_name' => session()->get('first_name') . ' ' . session()->get('last_name'),
+            'user_email' => session()->get('email'),
+        ];
+
+        return array_merge($commonData, $data);
+    }
 }

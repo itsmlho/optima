@@ -286,7 +286,7 @@
 </div>
 <?= $this->endSection() ?>
 
-<?= $this->section('js') ?>
+<?= $this->section('javascript') ?>
 <script>
 $(document).ready(function() {
     // Export form handler

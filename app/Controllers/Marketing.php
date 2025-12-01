@@ -3229,7 +3229,8 @@ class Marketing extends BaseDataTableController
             'breadcrumbs' => [
                 'marketing' => 'Marketing',
                 'marketing/kontrak' => 'Kontrak'
-            ]
+            ],
+            'loadDataTables' => true, // Enable DataTables loading
         ];
         
         return view('marketing/kontrak', $data);

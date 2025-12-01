@@ -449,4 +449,57 @@ class Settings extends BaseController
         
         return $latestTime ? date('d/m/Y H:i:s', $latestTime) : 'Never';
     }
+
+    /**
+     * Toggle theme via AJAX - Enhanced with better error handling
+     */
+    public function toggleTheme()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Invalid request method'
+            ])->setStatusCode(400);
+        }
+
+        try {
+            $currentTheme = $this->getCurrentTheme();
+            $newTheme = $currentTheme === 'light' ? 'dark' : 'light';
+            
+            // Save to session
+            session()->set('user_theme', $newTheme);
+            
+            // Save to cookie using response helper
+            helper('cookie');
+            set_cookie('optima_theme', $newTheme, 86400 * 30); // 30 days
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'theme' => $newTheme,
+                'message' => 'Theme changed to ' . $newTheme . ' mode successfully'
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Theme toggle error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to change theme. Please try again.'
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Get current theme via AJAX
+     */
+    public function getCurrentThemeAjax()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/dashboard');
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'theme' => $this->getCurrentTheme()
+        ]);
+    }
 } 

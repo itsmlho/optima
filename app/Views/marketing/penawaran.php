@@ -189,7 +189,7 @@ $can_export = $permissions['export'];
         <?php endif; ?>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered <?= !$can_view ? 'table-disabled' : '' ?>" id="quotationsTable" width="100%" cellspacing="0">
+                <table class="table table-striped table-hover <?= !$can_view ? 'table-disabled' : '' ?>" id="quotationsTable">
                     <thead>
                         <tr>
                             <th>No. Penawaran</th>

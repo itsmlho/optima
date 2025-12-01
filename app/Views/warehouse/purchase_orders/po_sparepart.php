@@ -104,7 +104,7 @@
 
 <?= $this->endSection() ?>
 
-<?= $this->section('script') ?>
+<?= $this->section('javascript') ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
     function toggleDropdown(element) {

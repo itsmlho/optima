@@ -1,103 +1,87 @@
-<?= $this->extend('templates/pro_layout') ?>
+<?= $this->extend('layouts/base') ?>
 
 <?= $this->section('content') ?>
 
-<!-- Finance & KPI Dashboard Header -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1 class="h3 mb-2 text-gradient">Dashboard Finance & KPI</h1>
-        <p class="text-muted mb-0">Monitor financial performance, KPI metrics, dan overall business health</p>
-    </div>
-    <div class="d-flex gap-2">
-        <button class="btn btn-outline-success">
-            <i class="fas fa-file-excel me-2"></i>Financial Report
-        </button>
-        <button class="btn btn-success">
-            <i class="fas fa-chart-pie me-2"></i>KPI Report
-        </button>
+<!-- Page Header -->
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-chart-pie me-2"></i>Dashboard Finance & KPI
+    </h1>
+    <div class="d-sm-flex align-items-center">
+        <div class="me-3">
+            <small class="text-muted">Monitor financial performance, KPI metrics, dan overall business health</small>
+        </div>
+        <div class="btn-group">
+            <button class="btn btn-outline-success btn-sm">
+                <i class="fas fa-file-excel me-1"></i>Financial Report
+            </button>
+            <button class="btn btn-primary btn-sm">
+                <i class="fas fa-chart-pie me-1"></i>KPI Report
+            </button>
+        </div>
     </div>
 </div>
 
-<!-- Financial KPI Cards -->
-<div class="row g-4 mb-4">
-    <!-- Total Revenue -->
-    <div class="col-xl-3 col-lg-6 col-md-6">
-        <div class="pro-stats-card animate-fade-in-up">
-            <div class="pro-stats-card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="pro-stats-label">Total Revenue</div>
-                        <div class="pro-stats-value">Rp 8.4M</div>
-                        <div class="pro-stats-change text-success">
-                            <i class="fas fa-arrow-up me-1"></i>+18.2% YoY
-                        </div>
+<!-- Financial KPI Cards - Professional Standard -->
+<div class="container-fluid">
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-currency-dollar stat-icon text-primary"></i>
                     </div>
-                    <div class="pro-stats-icon bg-success">
-                        <i class="fas fa-chart-line"></i>
+                    <div>
+                        <div class="stat-value" id="stat-total-revenue">Rp 8.4M</div>
+                        <div class="text-muted">Total Revenue</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-check-circle stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-net-profit">Rp 1.8M</div>
+                        <div class="text-muted">Net Profit</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-gear stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-operating-costs">Rp 6.2M</div>
+                        <div class="text-muted">Operating Costs</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-info-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-percentage stat-icon text-info"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-roi">24.8%</div>
+                        <div class="text-muted">ROI <span class="text-success small">+3.2%</span></div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Net Profit -->
-    <div class="col-xl-3 col-lg-6 col-md-6">
-        <div class="pro-stats-card animate-fade-in-up" style="animation-delay: 0.1s;">
-            <div class="pro-stats-card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="pro-stats-label">Net Profit</div>
-                        <div class="pro-stats-value">Rp 1.8M</div>
-                        <div class="pro-stats-change text-success">
-                            <i class="fas fa-arrow-up me-1"></i>+22.5% margin
-                        </div>
-                    </div>
-                    <div class="pro-stats-icon bg-primary">
-                        <i class="fas fa-coins"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Operating Costs -->
-    <div class="col-xl-3 col-lg-6 col-md-6">
-        <div class="pro-stats-card animate-fade-in-up" style="animation-delay: 0.2s;">
-            <div class="pro-stats-card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="pro-stats-label">Operating Costs</div>
-                        <div class="pro-stats-value">Rp 6.2M</div>
-                        <div class="pro-stats-change text-success">
-                            <i class="fas fa-arrow-down me-1"></i>-8.5% optimized
-                        </div>
-                    </div>
-                    <div class="pro-stats-icon bg-warning">
-                        <i class="fas fa-calculator"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- ROI -->
-    <div class="col-xl-3 col-lg-6 col-md-6">
-        <div class="pro-stats-card animate-fade-in-up" style="animation-delay: 0.3s;">
-            <div class="pro-stats-card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="pro-stats-label">ROI</div>
-                        <div class="pro-stats-value">24.8%</div>
-                        <div class="pro-stats-change text-success">
-                            <i class="fas fa-arrow-up me-1"></i>+3.2% improvement
-                        </div>
-                    </div>
-                    <div class="pro-stats-icon bg-info">
-                        <i class="fas fa-percentage"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
+</div>
     </div>
 </div>
 
@@ -330,8 +314,8 @@
             </div>
             <div class="pro-card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead class="table-light">
+                    <table class="table table-striped table-hover align-middle">
+                        <thead>
                             <tr>
                                 <th>Department</th>
                                 <th>Budget</th>

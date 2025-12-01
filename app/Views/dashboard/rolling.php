@@ -212,7 +212,7 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-bordered" id="activitiesTable">
+                        <table class="table table-striped" id="activitiesTable">
                             <thead>
                                 <tr>
                                     <th>Time</th>

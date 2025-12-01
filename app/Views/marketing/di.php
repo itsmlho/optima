@@ -13,77 +13,63 @@ $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
 ?>
 
-<?= $this->section('css') ?>
-<!-- CSS umum sudah ada di optima-pro.css -->
-<style>
-  /* Custom DI page - Unit selection list */
-  .unit-list { max-height: 260px; overflow: auto; border: 1px solid #e5e7eb; border-radius: .5rem; padding:.5rem; }
-  .unit-item { display:flex; align-items:flex-start; gap:.5rem; padding:.25rem .25rem; border-bottom:1px dashed #e5e7eb; }
-  .unit-item:last-child{ border-bottom: none; }
-  .unit-note { font-size:.8rem; color:#6b7280; }
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
-<!-- Statistics Cards - Modern Dashboard Style -->
-<div class="row g-4 mb-4">
-  <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-primary text-white h-100 filter-card" data-filter="all" style="cursor:pointer;">
-      <div class="card-body d-flex align-items-center">
-        <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1" id="totalDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">TOTAL DI</h6>
-        </div>
-        <div class="ms-3">
-          <i class="fas fa-clipboard-list fa-2x opacity-75"></i>
-        </div>
+<!-- Statistics Cards -->
+  <div class="row mt-3 mb-4">
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-primary-soft filter-card" data-filter="all" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-file-text stat-icon text-primary"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="totalDI">0</div>
+                      <div class="text-muted">Total DI</div>
+                  </div>
+              </div>
+          </div>
       </div>
-    </div>
-  </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-warning text-white h-100 filter-card" data-filter="DIRENCANAKAN" style="cursor:pointer;">
-      <div class="card-body d-flex align-items-center">
-        <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1" id="submittedDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">DIRENCANAKAN</h6>
-          <small class="opacity-75">Belum Dikerjakan</small>
-        </div>
-        <div class="ms-3">
-          <i class="fas fa-clock fa-2x opacity-75"></i>
-        </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-warning-soft filter-card" data-filter="DIRENCANAKAN" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-calendar-check stat-icon text-warning"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="submittedDI">0</div>
+                      <div class="text-muted">Direncanakan</div>
+                  </div>
+              </div>
+          </div>
       </div>
-    </div>
-  </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-info text-white h-100 filter-card" data-filter="DALAM_PERJALANAN" style="cursor:pointer;">
-      <div class="card-body d-flex align-items-center">
-        <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1" id="inprogressDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">DALAM PERJALANAN</h6>
-          <small class="opacity-75">Tim di Lapangan</small>
-        </div>
-        <div class="ms-3">
-          <i class="fas fa-shipping-fast fa-2x opacity-75"></i>
-        </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-info-soft filter-card" data-filter="DALAM_PERJALANAN" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-arrow-repeat stat-icon text-info"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="inprogressDI">0</div>
+                      <div class="text-muted">Dalam Perjalanan</div>
+                  </div>
+              </div>
+          </div>
       </div>
-    </div>
-  </div>
-  <div class="col-xl-3 col-md-6">
-    <div class="card card-stats bg-success text-white h-100 filter-card" data-filter="SELESAI" style="cursor:pointer;">
-      <div class="card-body d-flex align-items-center">
-        <div class="flex-grow-1">
-          <h2 class="fw-bold mb-1" id="deliveredDI">0</h2>
-          <h6 class="card-title text-uppercase small mb-0">SELESAI</h6>
-          <small class="opacity-75">Tugas Completed</small>
-        </div>
-        <div class="ms-3">
-          <i class="fas fa-check-circle fa-2x opacity-75"></i>
-        </div>
+      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+          <div class="stat-card bg-success-soft filter-card" data-filter="SELESAI" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-check-circle stat-icon text-success"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="deliveredDI">0</div>
+                      <div class="text-muted">Selesai</div>
+                  </div>
+              </div>
+          </div>
       </div>
-    </div>
   </div>
-</div>
 
   <div class="card table-card mb-3">
     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
@@ -133,7 +119,7 @@ $can_export = $permissions['export'];
       </div>
 
       <div class="table-responsive">
-        <table class="table table-sm mb-0" id="diTable">
+        <table class="table table-striped table-hover table-manual-sort" id="diTable">
           <thead>
             <tr>
               <th>No. DI</th>
@@ -145,7 +131,7 @@ $can_export = $permissions['export'];
               <th>Jenis Perintah</th>
               <th>Tujuan Perintah</th>
               <th>Req. Tanggal Kirim</th>
-              <th>Status</th>
+              <th data-no-sort>Status</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1744,6 +1730,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   };
 });
 </script>
+
 <!-- DI Detail Modal -->
 <div class="modal fade" id="diDetailModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">

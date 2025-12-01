@@ -97,7 +97,7 @@
 
     <!-- Notification Rules Table -->
     <div class="card border-0 shadow-sm">
-        <div class="card-header bg-white py-3">
+        <div class="card-header py-3">
             <h5 class="mb-0"><i class="fas fa-list me-2"></i>Notification Rules</h5>
         </div>
         <div class="card-body">

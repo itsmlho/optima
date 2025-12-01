@@ -15,7 +15,8 @@ class ActivityLogViewer extends BaseController
             'breadcrumbs' => [
                 '/' => 'Dashboard',
                 '/admin/activity-log' => 'Activity Log'
-            ]
+            ],
+            'loadDataTables' => true, // Enable DataTables loading
         ];
 
         return view('admin/activity_log', $data);

@@ -3,66 +3,59 @@
 <?= $this->section('content') ?>
 
 <!-- Stats Cards -->
-<div class="row mb-4">
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card card-stats bg-primary text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label">Total Supplier</div>
-                        <div class="stat-value" id="stat-total-supplier"><?= $supplierStats['total'] ?? 0 ?></div>
-                    </div>
-                    <div class="stat-icon">
-                        <i class="fas fa-building fa-1x opacity-50"></i>
-                    </div>
+
+<div class="row mt-3 mb-4">
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-primary-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-building stat-icon text-primary"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-total-supplier"><?= $supplierStats['total'] ?? 0 ?></div>
+                    <div class="text-muted">Total Supplier</div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card card-stats bg-success text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label">Active</div>
-                        <div class="stat-value" id="stat-active-supplier"><?= $supplierStats['active'] ?? 0 ?></div>
-                    </div>
-                    <div class="stat-icon">
-                        <i class="fas fa-check-circle fa-1x opacity-50"></i>
-                    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-success-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-check-circle stat-icon text-success"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-active-supplier"><?= $supplierStats['active'] ?? 0 ?></div>
+                    <div class="text-muted">Active</div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-lg-3 col-md-6 mb-4">
-        <div class="card card-stats bg-info text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label">Verified</div>
-                        <div class="stat-value" id="stat-verified-supplier"><?= $supplierStats['verified'] ?? 0 ?></div>
-                    </div>
-                    <div class="stat-icon">
-                        <i class="fas fa-shield-alt fa-1x opacity-50"></i>
-                    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-info-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-shield-check stat-icon text-info"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-verified-supplier"><?= $supplierStats['verified'] ?? 0 ?></div>
+                    <div class="text-muted">Verified</div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="col-xl-3 col-md-6 mb-4">
-        <div class="card card-stats bg-warning text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="stat-label">Total PO</div>
-                        <div class="stat-value" id="stat-total-po"><?= $supplierStats['total_po'] ?? 0 ?></div>
-                    </div>
-                    <div class="stat-icon">
-                        <i class="fas fa-file-invoice fa-1x opacity-50"></i>
-                    </div>
+    <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-receipt stat-icon text-warning"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-total-po"><?= $supplierStats['total_po'] ?? 0 ?></div>
+                    <div class="text-muted">Total PO</div>
                 </div>
             </div>
         </div>
@@ -102,7 +95,7 @@
     <div class="card-body">
         <div class="table-responsive">
             <table class="table table-striped table-hover" id="supplierTable">
-                <thead class="table-dark">
+                <thead>
                     <tr>
                         <th>No</th>
                         <th>Kode Supplier</th>
@@ -297,47 +290,6 @@
     </div>
 </div>
 
-<?= $this->endSection() ?>
-
-<?= $this->section('css') ?>
-<style>
-    .card-stats {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    
-    .card-stats:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-    
-    .stat-label {
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        opacity: 0.9;
-    }
-    
-    .stat-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        line-height: 1;
-        margin-top: 0.5rem;
-    }
-    
-    .stat-icon {
-        font-size: 3rem;
-    }
-    
-    .table-card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
-    }
-</style>
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
@@ -803,6 +755,18 @@ function formatCurrency(amount) {
         currency: 'IDR'
     }).format(amount);
 }
+
+// Initialize DataTable for sorting and search functionality
+$(document).ready(function() {
+    $('#supplierTable').DataTable({
+        processing: true,
+        pageLength: 25,
+        order: [[1, 'asc']], // Sort by supplier name
+        columnDefs: [
+            { orderable: false, targets: [-1] } // Disable sorting on last column (actions)
+        ]
+    });
+});
 </script>
 <?= $this->endSection() ?>
 

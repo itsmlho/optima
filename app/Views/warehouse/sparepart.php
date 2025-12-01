@@ -1,159 +1,5 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<style>
-    .card-stats {
-        transition: all 0.3s ease;
-        cursor: pointer;
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .card-stats:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-    
-    .card-stats::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 100%);
-    }
-    
-    .filter-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-    
-    .table-card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    
-    .table-responsive {
-        border-radius: 0;
-    }
-    
-    .btn-action {
-        padding: 0.4rem 0.8rem;
-        font-size: 0.875rem;
-        border-radius: 8px;
-        transition: all 0.2s ease;
-    }
-    
-    .btn-action:hover {
-        transform: scale(1.05);
-    }
-    
-    .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 2rem 0;
-        margin: -1.5rem -1.5rem 2rem -1.5rem;
-        border-radius: 0 0 20px 20px;
-    }
-    
-    .status-badge {
-        font-size: 0.75rem;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-    
-    .po-badge {
-        font-size: 0.75rem;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 600;
-    }
-    
-    .table thead th {
-        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-        color: white;
-        border: none;
-        font-weight: 600;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-        letter-spacing: 0.5px;
-        padding: 1rem 0.75rem;
-    }
-    
-    .table tbody tr {
-        transition: all 0.2s ease;
-    }
-    
-    .table tbody tr:hover {
-        background-color: #f8f9fa;
-        transform: scale(1.001);
-    }
-    
-    .dataTables_wrapper .dataTables_paginate .paginate_button.current {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-color: #667eea;
-        color: white !important;
-    }
-    
-    .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border: none;
-        border-radius: 8px;
-        padding: 0.5rem 1.5rem;
-        font-weight: 600;
-        transition: all 0.3s ease;
-    }
-    
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-    
-    .alert {
-        border: none;
-        border-radius: 10px;
-        padding: 1rem 1.5rem;
-        margin-bottom: 1.5rem;
-    }
-    
-    .modal-content {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-    }
-    
-    .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 15px 15px 0 0;
-        padding: 1.5rem;
-    }
-    
-    .form-control, .form-select {
-        border: 2px solid #e9ecef;
-        border-radius: 8px;
-        padding: 0.6rem 1rem;
-        transition: all 0.2s ease;
-    }
-    
-    .form-control:focus, .form-select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-    }
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
 <div class="container-fluid">
@@ -174,71 +20,59 @@
     </div>
 
     <!-- Inventory Stats -->
-    <?php if (isset($inventory_stats) && is_array($inventory_stats)): ?>
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Total Items</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $inventory_stats['total_items'] ?></div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-cog fa-2x text-gray-300"></i>
-                        </div>
+<?php if (isset($inventory_stats) && is_array($inventory_stats)): ?>
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-gear stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value"><?= $inventory_stats['total_items'] ?></div>
+                        <div class="text-muted">Total Items</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Low Stock</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $inventory_stats['low_stock_items'] ?></div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-exclamation-triangle stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value"><?= $inventory_stats['low_stock_items'] ?></div>
+                        <div class="text-muted">Low Stock</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-danger shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
-                                Out of Stock</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $inventory_stats['out_of_stock'] ?></div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-times-circle fa-2x text-gray-300"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-danger-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-x-circle stat-icon text-danger"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value"><?= $inventory_stats['out_of_stock'] ?></div>
+                        <div class="text-muted">Out of Stock</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Total Value</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">Rp <?= number_format($inventory_stats['total_value'], 0, ',', '.') ?></div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
-                        </div>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-currency-dollar stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value">Rp <?= number_format($inventory_stats['total_value'], 0, ',', '.') ?></div>
+                        <div class="text-muted">Total Value</div>
                     </div>
                 </div>
             </div>
@@ -319,7 +153,7 @@
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table class="table table-bordered" id="sparepartsTable" width="100%" cellspacing="0">
+                <table class="table table-striped table-hover" id="sparepartsTable">
                     <thead>
                         <tr>
                             <th>Part Number</th>
@@ -554,4 +388,20 @@ function confirmStockAdjustment() {
 }
 </script>
 
+<?= $this->endSection() ?>
+
+<?= $this->section('javascript') ?>
+<script>
+$(document).ready(function() {
+    // Initialize DataTable for sorting and search functionality
+    $('#sparepartsTable').DataTable({
+        processing: true,
+        pageLength: 25,
+        order: [[1, 'asc']], // Sort by sparepart name
+        columnDefs: [
+            { orderable: false, targets: [-1] } // Disable sorting on last column (actions)
+        ]
+    });
+});
+</script>
 <?= $this->endSection() ?> 

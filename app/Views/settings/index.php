@@ -427,7 +427,7 @@ function getSystemInfo() {
             const info = data.info;
             const html = `
                 <div class="table-responsive">
-                    <table class="table table-bordered">
+                    <table class="table table-striped table-hover">
                         <tr><th>PHP Version</th><td>${info.php_version}</td></tr>
                         <tr><th>CodeIgniter Version</th><td>${info.codeigniter_version}</td></tr>
                         <tr><th>Server Software</th><td>${info.server_software}</td></tr>

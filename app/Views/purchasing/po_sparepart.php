@@ -1,8 +1,5 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<!-- CSS coming soon sudah ada di optima-pro.css -->
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 <div class="coming-soon-container">

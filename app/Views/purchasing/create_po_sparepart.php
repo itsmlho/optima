@@ -1,44 +1,5 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<!-- Select2 CSS -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/css/select2.min.css" />
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" />
-<style>
-    .form-section {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-        margin-bottom: 2rem;
-    }
-    .section-header {
-        background: linear-gradient(135deg,rgb(249, 249, 249) 0%,rgb(248, 248, 248) 100%);
-        color: black;
-        padding: 1rem 1.5rem;
-        border-radius: 10px 10px 0 0;
-        margin-bottom: 0;
-    }  
-    .btn-action {
-        border-radius: 8px;
-        transition: all 0.2s ease;
-    }
-    .btn-action:hover {
-        transform: scale(1.05);
-    }
-    .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-    }
-    .form-control:focus, .form-select:focus, .select2-container--bootstrap-5 .select2-selection--single:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-    }
-    #sparepart-table tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-</style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
@@ -103,7 +64,7 @@
             <h5 class="section-header"><i class="fas fa-tools me-2"></i>Daftar Sparepart</h5>
             <div class="card-body p-4">
                 <div class="table-responsive">
-                    <table class="table table-bordered" id="sparepart-table">
+                    <table class="table table-striped table-hover" id="sparepart-table">
                         <thead>
                             <tr>
                                 <th style="width: 40%;">Sparepart</th>
@@ -224,6 +185,16 @@
                 OptimaPro.showNotification('Harap tambahkan setidaknya satu item sparepart.', 'warning');
                 return false;
             }
+        });
+
+        // Initialize DataTable for sorting and search functionality
+        $('#sparepart-table').DataTable({
+            processing: true,
+            pageLength: 25,
+            order: [[1, 'asc']], // Sort by sparepart name
+            columnDefs: [
+                { orderable: false, targets: [-1] } // Disable sorting on last column (actions)
+            ]
         });
     });
 </script>

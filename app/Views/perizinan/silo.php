@@ -1,107 +1,50 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<style>
-    /* Simple & Clean Styling */
-    .table-card {
-        border: 1px solid #e9ecef;
-        background-color: #ffffff;
-    }
-    
-    .tab-content {
-        padding: 0.75rem;
-    }
-    
-    .tab-pane .row.mb-2 {
-        margin-bottom: 0.5rem !important;
-    }
-    
-    .tab-pane .form-group {
-        margin-bottom: 0.5rem;
-    }
-    
-    /* Table Styling */
-    #siloTable thead th,
-    #siloTable2 thead th,
-    #siloTable3 thead th,
-    #siloTable4 thead th {
-        background-color: #f8f9fa;
-        font-weight: 600;
-        font-size: 0.875rem;
-        padding: 0.75rem;
-        border-bottom: 2px solid #dee2e6;
-    }
-    
-    #siloTable tbody td,
-    #siloTable2 tbody td,
-    #siloTable3 tbody td,
-    #siloTable4 tbody td {
-        padding: 0.75rem;
-        font-size: 0.875rem;
-        border-bottom: 1px solid #e9ecef;
-    }
-    
-    #siloTable tbody tr:hover,
-    #siloTable2 tbody tr:hover,
-    #siloTable3 tbody tr:hover,
-    #siloTable4 tbody tr:hover {
-        background-color: #f8f9fa;
-    }
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
-
 <!-- Statistics Cards -->
-<div class="row g-4 mb-4">
-    <div class="col-xl-4 col-md-6">
-        <div class="card card-stats bg-success text-white h-100" onclick="filterByStatus('SILO_TERBIT')">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-uppercase mb-1">Sudah Ada SILO</div>
-                        <div class="h5 mb-0 font-weight-bold" id="stat-sudah-ada">
-                            <?= $stats['sudah_ada'] ?? 0 ?>
-                        </div>
+<div class="row mt-3 mb-4">
+    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-success-soft" onclick="filterByStatus('SILO_TERBIT')" style="cursor:pointer;">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-check-circle stat-icon text-success"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-sudah-ada">
+                        <?= $stats['sudah_ada'] ?? 0 ?>
                     </div>
-                    <div class="col-auto">
-                        <i class="fas fa-check-circle fa-2x"></i>
-                    </div>
+                    <div class="text-muted">Sudah Ada SILO</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-4 col-md-6">
-        <div class="card card-stats bg-warning text-white h-100" onclick="filterByStatus('progres')">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-uppercase mb-1">Progres</div>
-                        <div class="h5 mb-0 font-weight-bold" id="stat-progres">
-                            <?= $stats['progres'] ?? 0 ?>
-                        </div>
+    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-warning-soft" onclick="filterByStatus('progres')" style="cursor:pointer;">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-clock stat-icon text-warning"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-progres">
+                        <?= $stats['progres'] ?? 0 ?>
                     </div>
-                    <div class="col-auto">
-                        <i class="fas fa-clock fa-2x"></i>
-                    </div>
+                    <div class="text-muted">Progres</div>
                 </div>
             </div>
         </div>
     </div>
-    <div class="col-xl-4 col-md-6">
-        <div class="card card-stats bg-danger text-white h-100" onclick="filterByStatus('BELUM_ADA')">
-            <div class="card-body">
-                <div class="row no-gutters align-items-center">
-                    <div class="col mr-2">
-                        <div class="text-xs font-weight-bold text-uppercase mb-1">Belum Ada SILO</div>
-                        <div class="h5 mb-0 font-weight-bold" id="stat-belum-ada">
-                            <?= $stats['belum_ada'] ?? 0 ?>
-                        </div>
+    <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+        <div class="stat-card bg-danger-soft" onclick="filterByStatus('BELUM_ADA')" style="cursor:pointer;">
+            <div class="d-flex align-items-center">
+                <div class="me-3">
+                    <i class="bi bi-exclamation-triangle stat-icon text-danger"></i>
+                </div>
+                <div>
+                    <div class="stat-value" id="stat-belum-ada">
+                        <?= $stats['belum_ada'] ?? 0 ?>
                     </div>
-                    <div class="col-auto">
-                        <i class="fas fa-exclamation-triangle fa-2x"></i>
-                    </div>
+                    <div class="text-muted">Belum Ada SILO</div>
                 </div>
             </div>
         </div>
@@ -217,7 +160,7 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable" class="table table-striped table-hover" width="100%" cellspacing="0">
+                        <table id="siloTable" class="table table-striped table-hover">
                             <thead>
                                 <tr>
                                     <th>No Unit</th>
@@ -274,7 +217,7 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable2" class="table table-striped table-hover" width="100%" cellspacing="0">
+                        <table id="siloTable2" class="table table-striped table-hover">
                             <thead>
                                 <tr>
                                     <th>No Unit</th>
@@ -330,7 +273,7 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable3" class="table table-striped table-hover" width="100%" cellspacing="0">
+                        <table id="siloTable3" class="table table-striped table-hover">
                             <thead>
                                 <tr>
                                     <th>No Unit</th>
@@ -374,7 +317,7 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable5" class="table table-striped table-hover" width="100%" cellspacing="0">
+                        <table id="siloTable5" class="table table-striped table-hover">
                             <thead>
                                 <tr>
                                     <th>No Unit</th>
@@ -418,7 +361,7 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable6" class="table table-striped table-hover" width="100%" cellspacing="0">
+                        <table id="siloTable6" class="table table-striped table-hover">
                             <thead>
                                 <tr>
                                     <th>No Unit</th>
@@ -462,7 +405,7 @@
                 
                 <!-- DataTable -->
                 <div class="table-responsive">
-                    <table id="siloTable4" class="table table-striped table-hover" width="100%" cellspacing="0">
+                    <table id="siloTable4" class="table table-striped table-hover">
                         <thead>
                             <tr>
                                 <th>No Unit</th>

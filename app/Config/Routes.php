@@ -669,6 +669,10 @@ $routes->group('perizinan', static function ($routes) {
 // Public Test Email Route (for testing email configuration)
 $routes->post('settings/test-email', 'Settings::testEmail');
 
+// Theme Toggle Routes
+$routes->post('settings/toggle-theme', 'Settings::toggleTheme');
+$routes->get('settings/current-theme', 'Settings::getCurrentThemeAjax');
+
 // Reports Routes
 $routes->group('reports', ['namespace' => 'App\Controllers'], function($routes) {
     $routes->get('/', 'Reports::index');

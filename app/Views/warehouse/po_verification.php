@@ -179,7 +179,7 @@ $can_export = $permissions['export'];
                     </div>
 
                     <!-- DataTable -->
-                    <table id="poUnitTable" class="table table-striped table-hover" style="width:100%">
+                    <table id="poUnitTable" class="table table-striped table-hover">
                         <thead>
                             <tr>
                                 <th>PO Number</th>
@@ -319,7 +319,7 @@ $can_export = $permissions['export'];
                     </div>
                     
                     <!-- DataTable -->
-                    <table id="poSparepartTable" class="table table-striped table-hover" style="width:100%">
+                    <table id="poSparepartTable" class="table table-striped table-hover">
                         <thead>
                             <tr>
                                 <th>No. PO</th>
@@ -399,7 +399,7 @@ $can_export = $permissions['export'];
 
 <?= $this->endSection() ?>
 
-<?= $this->section('script') ?>
+<?= $this->section('javascript') ?>
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
@@ -979,6 +979,18 @@ $can_export = $permissions['export'];
             }
         });
     }
+
+    // Initialize DataTable for sorting and search functionality
+    $(document).ready(function() {
+        $('#poUnitTable, #poSparepartTable').DataTable({
+            processing: true,
+            pageLength: 25,
+            order: [[0, 'desc']],
+            columnDefs: [
+                { orderable: false, targets: [-1] } // Disable sorting on last column (actions)
+            ]
+        });
+    });
 </script>
 
 <?= $this->endSection() ?>

@@ -1,163 +1,55 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('css') ?>
-<style>
-    .card-stats {
-        transition: all 0.3s ease;
-        cursor: pointer;
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
-    
-    .card-stats:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    }
-    
-    .table-card {
-        border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-    
-    .status-badge {
-        font-size: 0.75rem;
-        padding: 0.4rem 0.8rem;
-        border-radius: 20px;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-    
-    .badge-pending {
-        background-color: #ffc107;
-        color: #000;
-    }
-    
-    .badge-confirmed {
-        background-color: #28a745;
-        color: #fff;
-    }
-    
-    .nav-tabs .nav-item {
-        margin-bottom: 0;
-    }
-    
-    .nav-tabs .nav-link {
-        padding: 1.25rem 2.5rem;
-        border: 1px solid transparent;
-        border-top-left-radius: 0.375rem;
-        border-top-right-radius: 0.375rem;
-        color: #6c757d;
-        transition: all 0.15s ease-in-out;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        background: transparent;
-        font-weight: 500;
-    }
-    
-    .nav-tabs .nav-link:hover {
-        border-color: #e9ecef #e9ecef #dee2e6;
-        isolation: isolate;
-        color: #4e73df;
-        background-color: #f8f9fc;
-    }
-    
-    .nav-tabs .nav-link.active {
-        color: white !important;
-        background-color: #4e73df !important;
-        border-color: #4e73df !important;
-        box-shadow: 0 2px 4px rgba(78, 115, 223, 0.2);
-    }
-    
-    /* Table row hover effect */
-    #usageTable tbody tr,
-    #returnsTable tbody tr {
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-    
-    #usageTable tbody tr:hover,
-    #returnsTable tbody tr:hover {
-        background-color: rgba(13, 110, 253, 0.1) !important;
-    }
-    
-    /* Ensure tab content is properly hidden */
-    .tab-content .tab-pane {
-        display: none;
-    }
-    
-    .tab-content .tab-pane.active {
-        display: block;
-    }
-    
-    /* Prevent DataTable from initializing on hidden tables */
-    .tab-pane:not(.active) table {
-        display: none !important;
-    }
-</style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
 
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card card-stats border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Total Pemakaian</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="stat-usage-total">
-                                <?= $stats['usage_total'] ?? 0 ?>
-                            </div>
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-info-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-list stat-icon text-info"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-usage-total">
+                            <?= $stats['usage_total'] ?? 0 ?>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-list fa-2x text-gray-300"></i>
-                        </div>
+                        <div class="text-muted">Total Pemakaian</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card card-stats border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Pending Returns</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="stat-return-pending">
-                                <?= $stats['return_pending'] ?? 0 ?>
-                            </div>
+        <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-clock stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-return-pending">
+                            <?= $stats['return_pending'] ?? 0 ?>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-clock fa-2x text-gray-300"></i>
-                        </div>
+                        <div class="text-muted">Pending Returns</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card card-stats border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Confirmed Returns</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="stat-return-confirmed">
-                                <?= $stats['return_confirmed'] ?? 0 ?>
-                            </div>
+        <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-check-circle stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-return-confirmed">
+                            <?= $stats['return_confirmed'] ?? 0 ?>
                         </div>
-                        <div class="col-auto">
-                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
-                        </div>
+                        <div class="text-muted">Confirmed Returns</div>
                     </div>
                 </div>
             </div>
@@ -205,7 +97,7 @@
                     </div>
                     <?php else: ?>
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover" id="usageTable" width="100%" cellspacing="0">
+                        <table class="table table-striped table-hover" id="usageTable">
                             <thead>
                                 <tr>
                                     <th>Tanggal</th>
@@ -257,7 +149,7 @@
 
                     <!-- Returns Table -->
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover" id="returnsTable" width="100%" cellspacing="0">
+                        <table class="table table-striped table-hover" id="returnsTable">
                             <thead>
                                 <tr>
                                     <th>Tanggal</th>

@@ -28,14 +28,14 @@ class Dashboard extends BaseController
             return redirect()->to('/auth/login');
         }
 
-        $data = [
+        $data = $this->prepareViewData([
             'title' => 'Dashboard',
             'page_title' => 'Dashboard Utama',
             'breadcrumbs' => [
                 '/' => 'Dashboard'
             ],
             'user_count' => $this->userModel->countAll(),
-            'forklift_count' => $this->AssetManagementModel->countAll(),
+            'forklift_count' => $this->getInventoryUnitCount(),
             'director_metrics' => $this->getDirectorMetrics(),
             'operational_overview' => $this->getOperationalOverview(),
             'warehouse_insights' => $this->getWarehouseInsights(),
@@ -45,7 +45,8 @@ class Dashboard extends BaseController
             'work_order_trends' => $this->getWorkOrderTrends(),
             'delivery_insights' => $this->getDeliveryInsights(),
             'purchase_order_insights' => $this->getPurchaseOrderInsights(),
-        ];
+            'loadCharts' => true, // Enable Chart.js loading for main dashboard
+        ]);
 
         return view('dashboard', $data);
     }
@@ -65,6 +66,7 @@ class Dashboard extends BaseController
                 '/dashboard/service' => 'Service'
             ],
             'service_stats' => $this->getServiceStats(),
+            'loadCharts' => true, // Enable Chart.js loading
         ];
 
         return view('dashboard/service', $data);
@@ -80,6 +82,7 @@ class Dashboard extends BaseController
                 '/dashboard/rolling' => 'Rolling Unit'
             ],
             'rolling_stats' => $this->getRollingStats(),
+            'loadCharts' => true, // Enable Chart.js loading
         ];
 
         return view('dashboard/rolling', $data);
@@ -100,6 +103,7 @@ class Dashboard extends BaseController
                 '/dashboard/marketing' => 'Marketing'
             ],
             'marketing_stats' => $this->getMarketingStats(),
+            'loadCharts' => true, // Enable Chart.js loading
         ];
 
         return view('dashboard/marketing', $data);
@@ -120,6 +124,7 @@ class Dashboard extends BaseController
                 '/dashboard/warehouse' => 'Warehouse & Assets'
             ],
             'warehouse_stats' => $this->getWarehouseStats(),
+            'loadCharts' => true, // Enable Chart.js loading
         ];
 
         return view('dashboard/warehouse', $data);
@@ -1013,6 +1018,28 @@ class Dashboard extends BaseController
                 'approval_rate' => 85,
                 'po_efficiency' => 92
             ];
+        }
+    }
+
+    /**
+     * Get inventory unit count safely
+     */
+    private function getInventoryUnitCount()
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Check if inventory_unit table exists
+            if ($db->tableExists('inventory_unit')) {
+                $query = $db->query("SELECT COUNT(*) as count FROM inventory_unit");
+                $result = $query->getRow();
+                return $result ? $result->count : 0;
+            }
+            
+            return 0;
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting inventory unit count: ' . $e->getMessage());
+            return 0;
         }
     }
 } 

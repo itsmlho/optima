@@ -13,166 +13,62 @@ $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
 ?>
 
-<?= $this->section('css') ?>
-<style>
-/* Modal z-index for nested modals */
-#customerDetailModal { z-index: 1055 !important; }
-#contractDetailModal { z-index: 1065 !important; }
-#unitDetailModal { z-index: 1075 !important; }
-
-/* Spesifikasi modals - Above contract detail modal */
-#addSpesifikasiModal { z-index: 1080 !important; }
-#addAttachmentSpesifikasiModal { z-index: 1080 !important; }
-
-/* SPK modal - Above all other modals */
-#spkFromKontrakModal { z-index: 1085 !important; }
-
-/* Sweet Alert z-index - Above all modals */
-.swal2-container { z-index: 9999 !important; }
-.swal2-popup { z-index: 9999 !important; }
-.swal2-backdrop { z-index: 9998 !important; }
-
-/* Notification z-index - Above SPK modal */
-.alert, .toast-container, .toast, .notification-container, .notification-popup, .optima-notification, .optima-notification-container, .optima-toast, .optima-alert {
-    z-index: 10000 !important;
-}
-
-/* Global notification override */
-[class*="notification"], [class*="toast"], [class*="alert"] {
-    z-index: 10000 !important;
-}
-
-/* Enhanced Modal Header Styling - Like Card Headers */
-.modal-header {
-    background: #f8f9fa !important;
-    border-bottom: 1px solid #dee2e6;
-    padding: 1rem 1.5rem;
-}
-
-.modal-header .modal-title {
-    color: #495057 !important;
-    font-weight: 700 !important;
-    font-size: 1.25rem;
-}
-
-.modal-header .text-light {
-    color: #6c757d !important;
-    font-weight: 500;
-    font-size: 0.9rem;
-}
-
-.modal-header .btn-close {
-    filter: none;
-    opacity: 0.7;
-}
-
-.modal-header .btn-close:hover {
-    opacity: 1;
-}
-
-/* Accordion styling */
-.accordion-button:not(.collapsed) {
-    background-color: #e7f3ff;
-    color: #0d6efd;
-}
-
-.accordion-body {
-    padding: 0;
-}
-
-/* Unit row hover */
-.unit-row:hover {
-    background-color: #f8f9fa !important;
-    cursor: pointer;
-}
-
-/* Customer card on click */
-.customer-card {
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.customer-card:hover {
-    transform: translateY(-2px);
-}
-
-/* Smooth Tab Transitions - WITHOUT scroll reset */
-.nav-link {
-    transition: all 0.3s ease;
-}
-
-.tab-content {
-    position: relative;
-}
-
-
-/* Smooth content loading for spesifikasi */
-#spesifikasiListContract {
-    transition: opacity 0.3s ease-in-out;
-}
-
-#spesifikasiListContract.loading {
-    opacity: 0.5;
-}
-
-#spesifikasiListContract .card {
-    animation: slideInCard 0.4s ease-out;
-}
-
-@keyframes slideInCard {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* Stagger animation for multiple cards */
-#spesifikasiListContract .card:nth-child(1) { animation-delay: 0.05s; }
-#spesifikasiListContract .card:nth-child(2) { animation-delay: 0.1s; }
-#spesifikasiListContract .card:nth-child(3) { animation-delay: 0.15s; }
-#spesifikasiListContract .card:nth-child(4) { animation-delay: 0.2s; }
-#spesifikasiListContract .card:nth-child(5) { animation-delay: 0.25s; }
-
-</style>
-<?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
 
 <!-- Statistics Cards -->
-<div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
-        <div class="card card-stats bg-primary text-white h-100">
-            <div class="card-body">
-                <h2 class="fw-bold mb-1" id="stat-total-customers">0</h2>
-                <h6 class="card-title text-uppercase small">Total Customers</h6>
+
+    <div class="row mt-3 mb-4">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-people stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-total-customers">0</div>
+                        <div class="text-muted">Total Customers</div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card card-stats bg-success text-white h-100">
-            <div class="card-body">
-                <h2 class="fw-bold mb-1" id="stat-active-customers">0</h2>
-                <h6 class="card-title text-uppercase small">Active Customers</h6>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-success-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-person-check stat-icon text-success"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-active-customers">0</div>
+                        <div class="text-muted">Active Customers</div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card card-stats bg-warning text-white h-100">
-            <div class="card-body">
-                <h2 class="fw-bold mb-1" id="stat-total-contracts">0</h2>
-                <h6 class="card-title text-uppercase small">Total Contracts</h6>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-warning-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-file-earmark-text stat-icon text-warning"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-total-contracts">0</div>
+                        <div class="text-muted">Total Contracts</div>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    <div class="col-xl-3 col-md-6">
-        <div class="card card-stats bg-info text-white h-100">
-            <div class="card-body">
-                <h2 class="fw-bold mb-1" id="stat-total-units">0</h2>
-                <h6 class="card-title text-uppercase small">Total Units</h6>
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-info-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="bi bi-boxes stat-icon text-info"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-total-units">0</div>
+                        <div class="text-muted">Total Units</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -198,7 +94,7 @@ $can_export = $permissions['export'];
     </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table id="customerTable" class="table table-striped table-hover" style="width:100%">
+            <table id="customerTable" class="table table-striped table-hover">
                 <thead>
                     <tr>
                         <th>Customer Code</th>
@@ -223,16 +119,16 @@ $can_export = $permissions['export'];
 <div class="modal fade" id="customerDetailModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header">
                 <div>
                     <h5 class="modal-title">
-                        <i class="fas fa-building me-2"></i><span id="customerName">Customer Details</span>
+                        <i class="bi bi-building me-2"></i><span id="customerName">Customer Details</span>
                     </h5>
-                    <small class="text-light" id="customerCode"></small>
+                    <small class="text-muted" id="customerCode"></small>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-light btn-sm" id="printCustomerPDF" title="Print PDF Report">
-                        <i class="fas fa-file-pdf me-1"></i>Print PDF
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="printCustomerPDF" title="Print PDF Report">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Print PDF
                     </button>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -307,7 +203,7 @@ $can_export = $permissions['export'];
                             </button>
                         </div>
                         <div class="table-responsive">
-                            <table class="table table-hover" id="contractsTable">
+                            <table class="table table-striped table-hover" id="contractsTable">
                                 <thead class="bg-light">
                                     <tr>
                                         <th>No. Kontrak</th>
@@ -339,14 +235,14 @@ $can_export = $permissions['export'];
 <div class="modal fade" id="contractDetailModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header">
                 <div>
                     <h5 class="modal-title">
-                        <i class="fas fa-file-contract me-2"></i><strong>Contract Details</strong>
+                        <i class="bi bi-file-text me-2"></i><strong>Contract Details</strong>
                     </h5>
-                    <small class="text-light" id="contractSubtitle"></small>
+                    <small class="text-muted" id="contractSubtitle"></small>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <!-- Contract Information -->
@@ -645,7 +541,7 @@ $can_export = $permissions['export'];
                     <h5 class="modal-title">Tambah Kontrak Baru</h5>
                     <small class="text-muted">Langkah 1: Informasi Dasar Kontrak</small>
                 </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addContractForm">
                 <div class="modal-body">
@@ -1144,9 +1040,6 @@ $can_export = $permissions['export'];
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
-<script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.11.3/js/dataTables.bootstrap5.min.js"></script>
-
 <script>
 let customerTable;
 let currentCustomerId = null;
@@ -1155,8 +1048,19 @@ let currentContractId = null;
 $(document).ready(function() {
     console.log('🚀 Initializing Customer Management...');
     
-    // Initialize DataTable
-    initializeCustomerTable();
+    // Check if DataTables library loaded properly
+    if (typeof $.fn.DataTable === 'undefined') {
+        console.error('DataTables library not loaded!');
+        setTimeout(function() {
+            location.reload();
+        }, 2000);
+        return;
+    }
+    
+    // Initialize components with proper sequence
+    setTimeout(function() {
+        initializeCustomerTable();
+    }, 100); // Small delay to ensure DOM is ready
     
     // Load statistics
     loadStatistics();
@@ -1165,44 +1069,57 @@ $(document).ready(function() {
     setupTabHandlers();
 });
 
-// Initialize DataTable
+// Initialize DataTable with MAXIMUM PERFORMANCE optimization
 function initializeCustomerTable() {
-    customerTable = $('#customerTable').DataTable({
-        processing: true,
-        serverSide: true,
-        ajax: {
-            url: '<?= base_url('marketing/customer-management/getCustomers') ?>',
-            type: 'POST'
-        },
+    // Destroy existing table if exists
+    if ($.fn.DataTable.isDataTable('#customerTable')) {
+        $('#customerTable').DataTable().destroy();
+    }
+    
+    console.log('🔄 Initializing DataTable...');
+    
+    try {
+        customerTable = $('#customerTable').DataTable({
+            processing: true,
+            serverSide: true,
+            deferRender: false, // Disable defer render to show table immediately
+            pageLength: 15,
+            lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]],
+            stateSave: false,
+            search: {
+                smart: false,
+                caseInsensitive: true
+            },
+            searchDelay: 600,
+            ajax: {
+                url: '<?= base_url('marketing/customer-management/getCustomers') ?>',
+                type: 'POST',
+                timeout: 15000, // Increased timeout
+                error: function(xhr, error, code) {
+                    console.error('DataTable AJAX Error:', error);
+                    $('#customerTable_processing').hide();
+                    showNotification('Failed to load customer data. Please refresh the page.', 'error');
+                }
+            },
         columns: [
             { 
                 data: 'customer_code', 
                 name: 'customer_code',
                 render: function(data, type, row) {
-                    return `<strong class="text-primary">${data || '-'}</strong>`;
+                    return data || '-';
                 }
             },
             { 
                 data: 'customer_name', 
-                name: 'customer_name',
-                render: function(data, type, row) {
-                    return `<div class="fw-bold">${data || '-'}</div>`;
-                }
+                name: 'customer_name'
             },
             { 
                 data: 'area_name', 
                 name: 'area_name',
                 render: function(data, type, row) {
-                    if (!data) return '<span class="text-muted">-</span>';
-                    // Split multiple areas if exists
+                    if (!data) return '-';
                     const areas = data.split(', ');
-                    if (areas.length > 2) {
-                        return `<span class="badge bg-light text-dark me-1">${areas[0]}</span>` +
-                               `<span class="badge bg-secondary text-white">+${areas.length - 1}</span>`;
-                    }
-                    return areas.map(area => 
-                        `<span class="badge bg-light text-dark me-1">${area}</span>`
-                    ).join('');
+                    return areas.length > 2 ? areas[0] + ' +' + (areas.length - 1) : data;
                 }
             },
             { 
@@ -1211,8 +1128,7 @@ function initializeCustomerTable() {
                 className: 'text-center',
                 orderable: false,
                 render: function(data, type, row) {
-                    const count = data || 0;
-                    return `<span class="badge bg-info">${count}</span>`;
+                    return data || 0;
                 }
             },
             { 
@@ -1221,8 +1137,7 @@ function initializeCustomerTable() {
                 className: 'text-center',
                 orderable: false,
                 render: function(data, type, row) {
-                    const count = data || 0;
-                    return `<span class="badge bg-success">${count}</span>`;
+                    return data || 0;
                 }
             },
             { 
@@ -1231,8 +1146,7 @@ function initializeCustomerTable() {
                 className: 'text-center',
                 orderable: false,
                 render: function(data, type, row) {
-                    const count = data || 0;
-                    return `<span class="badge bg-primary">${count}</span>`;
+                    return data || 0;
                 }
             },
             { 
@@ -1240,34 +1154,44 @@ function initializeCustomerTable() {
                 name: 'is_active',
                 className: 'text-center',
                 render: function(data, type, row) {
-                    const isActive = data == 1;
-                    const badgeClass = isActive ? 'bg-success' : 'bg-danger';
-                    const text = isActive ? 'ACTIVE' : 'INACTIVE';
-                    return `<span class="badge ${badgeClass}">${text}</span>`;
+                    return data == 1 ? 'ACTIVE' : 'INACTIVE';
                 }
             },
             { 
                 data: 'created_at', 
                 name: 'created_at',
                 render: function(data, type, row) {
-                    if (!data) return '<span class="text-muted">-</span>';
-                    const date = new Date(data);
-                    return `<small class="text-muted">
-                        <i class="fas fa-calendar me-1"></i>
-                        ${date.toLocaleDateString('id-ID')}
-                    </small>`;
+                    return data ? new Date(data).toLocaleDateString('id-ID') : '-';
                 }
             }
         ],
-        pageLength: 25,
+        dom: '<"row"<"col-sm-6"l><"col-sm-6"f>>t<"row"<"col-sm-6"i><"col-sm-6"p>>', // Simplified DOM
+        language: {
+            processing: "Loading customer data...",
+            search: "Search:",
+            lengthMenu: "Show _MENU_ entries",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            paginate: { "first": "First", "last": "Last", "next": "Next", "previous": "Previous" }
+        },
         order: [[1, 'asc']],
         rowCallback: function(row, data) {
-            $(row).css('cursor', 'pointer');
-            $(row).off('click').on('click', function() {
-                openCustomerDetail(data.id);
-            });
+            // Minimal row callback for better performance
+            row.style.cursor = 'pointer';
+            row.onclick = function() { openCustomerDetail(data.id); };
+        },
+        initComplete: function(settings, json) {
+            console.log('✅ DataTable initialized successfully');
+            console.log('📊 Loaded', json.recordsTotal, 'total records');
+        },
+        drawCallback: function(settings) {
+            console.log('🎨 DataTable drawn with', settings.fnRecordsDisplay(), 'visible records');
         }
     });
+    
+    } catch (error) {
+        console.error('❌ DataTable initialization failed:', error);
+        showNotification('Failed to initialize customer table. Please refresh the page.', 'error');
+    }
 }
 
 // Load statistics
@@ -1287,26 +1211,32 @@ function loadStatistics() {
     });
 }
 
-// Open customer detail
+// Open customer detail with lazy loading optimization
 function openCustomerDetail(customerId) {
     currentCustomerId = customerId;
     
-    // Load customer data using Marketing controller endpoint
-    $.ajax({
-        url: `<?= base_url('marketing/customer-management/getCustomerDetail') ?>/${customerId}`,
-        type: 'GET',
-        success: function(response) {
-            if (response.success) {
-                displayCustomerDetail(response.data);
-                $('#customerDetailModal').modal('show');
-            } else {
-                showNotification('Failed to load customer details', 'error');
+    // Show modal immediately with loading state
+    $('#customerDetailModal').modal('show');
+    $('#customerDetailContent').html('<div class="text-center p-4"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading customer details...</p></div>');
+    
+    // Lazy load customer data
+    setTimeout(function() {
+        $.ajax({
+            url: `<?= base_url('marketing/customer-management/getCustomerDetail') ?>/${customerId}`,
+            type: 'GET',
+            timeout: 5000,
+            success: function(response) {
+                if (response.success) {
+                    displayCustomerDetail(response.data);
+                } else {
+                    $('#customerDetailContent').html('<div class="alert alert-danger">Failed to load customer details</div>');
+                }
+            },
+            error: function() {
+                $('#customerDetailContent').html('<div class="alert alert-danger">Error loading customer details</div>');
             }
-        },
-        error: function() {
-            showNotification('Error loading customer details', 'error');
-        }
-    });
+        });
+    }, 100); // Small delay to show loading state
 }
 
 // Display customer detail
@@ -1523,7 +1453,7 @@ function displayUnitsAccordion(units) {
                     <div class="accordion-body">
                         <div class="table-responsive">
                             <table class="table table-sm table-hover mb-0">
-                                <thead class="table-light">
+                                <thead>
                                 <tr>
                                     <th>No Unit</th>
                                     <th>Merk/Model</th>
@@ -2622,10 +2552,60 @@ function showNotification(message, type) {
     }
 }
 
+// Auto-check DataTable visibility and reinitialize if needed
+function checkDataTableVisibility() {
+    setTimeout(function() {
+        // Check if table wrapper is visible but no rows showing
+        const tableWrapper = $('.dataTables_wrapper');
+        const tableRows = $('#customerTable tbody tr');
+        const isProcessing = $('.dataTables_processing').is(':visible');
+        
+        if (tableWrapper.length > 0 && tableRows.length === 0 && !isProcessing) {
+            console.warn('⚠️ DataTable appears empty, checking status...');
+            
+            // Check if it's just "No data" or actually broken
+            const noDataMessage = $('#customerTable tbody tr td').text();
+            if (noDataMessage.includes('No data') || noDataMessage.includes('No matches')) {
+                console.log('📄 Table is empty (no data)');
+            } else {
+                console.warn('🔄 Table seems broken, reinitializing...');
+                refreshData();
+            }
+        }
+    }, 2000); // Check after 2 seconds
+}
+
+// Call visibility check after initialization
+$(document).ready(function() {
+    checkDataTableVisibility();
+});
+
 function refreshData() {
-    customerTable.ajax.reload();
-    loadStatistics();
-    showNotification('Data refreshed', 'success');
+    console.log('🔄 Refreshing customer data...');
+    
+    try {
+        // Check if DataTable exists and is initialized
+        if (customerTable && $.fn.DataTable.isDataTable('#customerTable')) {
+            customerTable.ajax.reload(function(json) {
+                console.log('✅ DataTable reloaded successfully');
+                loadStatistics();
+                showNotification('Data refreshed successfully', 'success');
+            }, false); // false = don't reset paging
+        } else {
+            console.warn('⚠️ DataTable not initialized, reinitializing...');
+            // Reinitialize table if it doesn't exist
+            initializeCustomerTable();
+            loadStatistics();
+            showNotification('Table reinitialized', 'info');
+        }
+    } catch (error) {
+        console.error('❌ Error refreshing data:', error);
+        // Fallback: reload the page
+        showNotification('Reloading page to fix display issue...', 'warning');
+        setTimeout(function() {
+            location.reload();
+        }, 1500);
+    }
 }
 
 // ===== Generic form error helpers =====
@@ -3803,6 +3783,26 @@ $(document).on('click', '#printCustomerPDF', function() {
     } else {
         showNotification('PDF report is being generated...', 'success');
     }
+});
+
+// Auto-refresh mechanism when user returns to tab
+$(window).on('focus', function() {
+    console.log('👀 Window focused, checking table status...');
+    
+    // Only auto-refresh if table has been idle for more than 10 seconds
+    if (customerTable && $.fn.DataTable.isDataTable('#customerTable')) {
+        const now = new Date().getTime();
+        if (!window.lastTableRefresh || (now - window.lastTableRefresh) > 10000) {
+            console.log('🔄 Auto-refreshing data on window focus...');
+            customerTable.ajax.reload(null, false); // Don't reset paging
+            window.lastTableRefresh = now;
+        }
+    }
+});
+
+// Track when table was last refreshed
+$(document).ready(function() {
+    window.lastTableRefresh = new Date().getTime();
 });
 </script>
 

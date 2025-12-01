@@ -13,329 +13,6 @@ $can_delete = $permissions['delete'];
 $can_export = $permissions['export'];
 ?>
 
-<?= $this->section('css') ?>
-<!-- CSS umum sudah ada di optima-pro.css -->
-<style>
-/* Custom purchasing page - Minimal custom styling */
-
-.card-body.p-0 {
-    padding: 0 !important;
-}
-
-.table-responsive {
-    width: 100% !important;
-    overflow-x: auto;
-    margin: 0;
-}
-
-.dataTables_wrapper {
-    width: 100% !important;
-    padding: 1.5rem;
-}
-
-.table {
-    margin-bottom: 0;
-}
-
-.table thead th {
-    background: linear-gradient(180deg, #ffffff 0%, #f8f9fc 100%);
-    border-bottom: 2px solid #e3e6f0;
-    color: #5a5c69;
-    font-weight: 700;
-    text-transform: uppercase;
-    font-size: 0.7rem;
-    letter-spacing: 0.08em;
-    padding: 1rem 0.75rem;
-    white-space: nowrap;
-}
-
-.table tbody tr {
-    transition: all 0.2s ease;
-    border-bottom: 1px solid #f1f3f5;
-    cursor: pointer;
-}
-
-.table tbody tr:hover {
-    background-color: #f8f9fc;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-    transform: translateY(-1px);
-}
-
-.table tbody td {
-    padding: 1rem 0.75rem;
-    vertical-align: middle;
-    color: #5a5c69;
-    font-size: 0.875rem;
-}
-
-.table-striped tbody tr:nth-of-type(odd) {
-    background-color: #ffffff;
-}
-
-.table-striped tbody tr:nth-of-type(even) {
-    background-color: #fafbfc;
-}
-
-/* Badge Styling - Consistent Colors */
-.badge {
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 12px;
-}
-
-
-/* Button Styling */
-.btn {
-    border-radius: 0.375rem;
-    font-weight: 500;
-    font-size: 0.875rem;
-    padding: 0.5rem 1rem;
-    transition: all 0.2s ease;
-}
-
-.btn-sm {
-    padding: 0.375rem 0.75rem;
-    font-size: 0.8rem;
-}
-
-.btn-group .btn {
-    margin: 0 0.125rem;
-}
-
-.btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-
-/* Card Styling */
-.card {
-    border: 1px solid #e3e6f0;
-    border-radius: 0.5rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-}
-
-.card-header {
-    background: linear-gradient(180deg, #ffffff 0%, #f8f9fc 100%);
-    border-bottom: 2px solid #e3e6f0;
-}
-
-/* Modal Styling */
-.modal-header {
-    background: linear-gradient(180deg, #ffffff 0%, #f8f9fc 100%);
-    border-bottom: 2px solid #e3e6f0;
-}
-
-.modal-title {
-    color: #5a5c69;
-    font-weight: 600;
-}
-
-.modal-xl {
-    max-width: 1200px;
-}
-
-/* Form Styling */
-.form-control {
-    border: 1px solid #d1d3e2;
-    border-radius: 0.375rem;
-    padding: 0.625rem 0.875rem;
-}
-
-.form-control:focus {
-    border-color: #4e73df;
-    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.15);
-}
-
-.form-label {
-    color: #5a5c69;
-    font-weight: 600;
-    font-size: 0.875rem;
-}
-
-/* Progress Bar */
-.progress {
-    height: 22px;
-    font-size: 0.75rem;
-    background-color: #e9ecef;
-    border-radius: 0.5rem;
-}
-
-.progress-bar {
-    font-weight: 600;
-}
-
-/* Dropdown */
-.dropdown-item i {
-    min-width: 20px;
-    text-align: center;
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-    .nav-tabs .nav-link {
-        padding: 0.625rem 1rem;
-        font-size: 0.85rem;
-    }
-    
-    .badge {
-        font-size: 0.65rem;
-        padding: 0.3rem 0.5rem;
-    }
-    
-    .table thead th {
-        font-size: 0.65rem;
-        padding: 0.75rem 0.5rem;
-    }
-    
-    .table tbody td {
-        padding: 0.75rem 0.5rem;
-        font-size: 0.8rem;
-    }
-    
-    .dataTables_wrapper {
-        padding: 1rem;
-    }
-    
-    /* Export Dropdown Styling */
-    .dropdown-menu {
-        border: none;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-        border-radius: 10px;
-        padding: 0.5rem 0;
-        min-width: 200px;
-    }
-    .dropdown-item {
-        padding: 0.75rem 1.5rem;
-        transition: all 0.2s ease;
-        border-radius: 0;
-        display: flex;
-        align-items: center;
-    }
-    .dropdown-item:hover {
-        background-color: #f8f9fc;
-        color: #4e73df;
-        transform: translateX(5px);
-    }
-    .dropdown-item i {
-        width: 20px;
-        text-align: center;
-    }
-    
-    /* Premium Export Button Styling */
-    .btn-outline-success {
-        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-        border: none;
-        color: white;
-        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        transition: all 0.3s ease;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .btn-outline-success:hover {
-        background: linear-gradient(135deg, #218838 0%, #1ea085 100%);
-        box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
-        transform: translateY(-2px);
-        color: white;
-    }
-    
-    /* use centralized button styles from optima-pro.css */
-}
-
-/* Disabled Table Styling */
-.table-disabled {
-    opacity: 0.6;
-    pointer-events: none;
-    user-select: none;
-}
-
-.table-disabled tbody tr {
-    cursor: not-allowed !important;
-}
-
-.table-disabled tbody tr:hover {
-    background-color: #f8f9fa !important;
-}
-
-.table-disabled .btn {
-    pointer-events: none;
-    opacity: 0.5;
-}
-
-/* Scrollbar */
-.table-responsive::-webkit-scrollbar {
-    height: 8px;
-}
-
-.table-responsive::-webkit-scrollbar-track {
-    background: #f1f3f5;
-}
-
-.table-responsive::-webkit-scrollbar-thumb {
-    background: #d1d3e2;
-    border-radius: 4px;
-}
-
-.table-responsive::-webkit-scrollbar-thumb:hover {
-    background: #b7b9cc;
-}
-
-.item-badge { 
-    font-size: 0.85rem; 
-    padding: 0.35rem 0.65rem; 
-}
-
-.form-section { 
-    border-radius: 10px; 
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
-    background: white;
-}
-
-.section-header { 
-    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); 
-    color: #333; 
-    padding: 0.75rem 1rem; 
-    border-radius: 10px 10px 0 0; 
-    font-weight: 600;
-    font-size: 0.95rem;
-}
-
-/* Fix Select2 dropdown in scrollable modal */
-.select2-dropdown-fixed {
-    z-index: 10060 !important; /* Above modal backdrop (1050) */
-}
-
-.select2-container--open {
-    z-index: 10060 !important;
-}
-
-/* Ensure Select2 dropdown stays visible when scrolling */
-.modal-body {
-    position: relative;
-    overflow-y: auto;
-}
-
-.select2-container {
-    z-index: 10050;
-}
-
-/* Fix Select2 search input in dropdown */
-.select2-search--dropdown .select2-search__field {
-    padding: 4px 8px;
-    border: 1px solid #ddd;
-}
-
-/* Better Select2 dropdown positioning */
-.select2-dropdown {
-    border: 1px solid rgba(0,0,0,.15);
-    box-shadow: 0 0.5rem 1rem rgba(0,0,0,.175);
-}
-</style>
-<?= $this->endSection() ?>
-
 <?= $this->section('content') ?>
 
 <!-- Success/Error Messages -->
@@ -433,7 +110,7 @@ $can_export = $permissions['export'];
     </div>
 
         <!-- Tabs Navigation -->
-        <div class="card-header bg-white border-bottom">
+        <div class="card-header border-bottom">
             <ul class="nav nav-tabs card-header-tabs" id="poTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="progres-tab" data-bs-toggle="tab" data-bs-target="#progres-pane" type="button" role="tab" aria-controls="progres-pane" aria-selected="true">
@@ -471,8 +148,8 @@ $can_export = $permissions['export'];
             <?php endif; ?>
             <div class="card-body p-0">
         <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOTable" style="cursor: pointer;">
-                <thead class="table-dark">
+                    <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOTable">
+                <thead>
                     <tr>
                         <th>No PO</th>
                         <th>Tanggal</th>
@@ -503,8 +180,8 @@ $can_export = $permissions['export'];
             <?php endif; ?>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>" id="poDeliveryTable" style="cursor: pointer;">
-                        <thead class="table-dark">
+                    <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="poDeliveryTable">
+                        <thead>
                             <tr>
                                 <th>Packing List</th>
                                 <th>PO Number</th>
@@ -536,8 +213,8 @@ $can_export = $permissions['export'];
             <?php endif; ?>
             <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table table-striped table-hover mb-0 <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOCompletedTable" style="cursor: pointer;">
-                        <thead class="table-dark">
+                    <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOCompletedTable">
+                        <thead>
                             <tr>
                                 <th>No PO</th>
                                 <th>Tanggal</th>
@@ -963,7 +640,7 @@ $can_export = $permissions['export'];
 
                             <!-- Items Table -->
                             <div class="table-responsive">
-                                <table class="table table-bordered table-sm item-table" id="itemsTable">
+                                <table class="table table-striped table-sm item-table" id="itemsTable">
                                     <thead>
                                         <tr>
                                             <th style="width: 5%;">No</th>
@@ -2541,7 +2218,7 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
                             <h6 class="mb-2">Items dalam pengiriman:</h6>
                             <div class="table-responsive">
                                 <table class="table table-sm">
-                                    <thead class="table-light">
+                                    <thead>
                                         <tr>
                                             <th>Type</th>
                                             <th>Item Name</th>

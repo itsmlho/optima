@@ -151,7 +151,9 @@ class ServiceAreaManagementController extends BaseController
             'areas' => $areas,
             'roleStats' => $roleStats,
             'employeesByRole' => $employeesByRole,
-            'assignmentsByArea' => $assignmentsByArea
+            'assignmentsByArea' => $assignmentsByArea,
+            'loadCharts' => true, // Enable Chart.js loading
+            'loadDataTables' => true, // Enable DataTables loading
         ];
         
         return view('service/area_employee_management', $data);
