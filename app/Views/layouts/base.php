@@ -208,115 +208,118 @@
         </div>
     </div>
 
+    <!-- Global Header (Full Width) -->
+    <header class="global-header" id="globalHeader">
+        <div class="header-container">
+            <!-- Left Section: Logo + Sidebar Toggle -->
+            <div class="header-left">
+                <button class="btn btn-link sidebar-toggle" type="button" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <a href="<?= base_url('/welcome') ?>" class="header-brand">
+                    <img src="<?= base_url('assets/images/logo-optima.ico') ?>" alt="OPTIMA" class="header-logo">
+                    <span class="header-brand-text">OPTIMA</span>
+                </a>
+            </div>
+            
+            <!-- Center Section: Title + Breadcrumb (Small) -->
+            <div class="header-center">
+                <h1 class="header-title"><?= $title ?? 'Dashboard' ?></h1>
+                <?php if (isset($breadcrumbs) && is_array($breadcrumbs) && count($breadcrumbs) > 0): ?>
+                <nav class="header-breadcrumb">
+                    <ol class="breadcrumb-small">
+                        <?php foreach ($breadcrumbs as $key => $breadcrumb): ?>
+                            <?php if ($key === array_key_last($breadcrumbs)): ?>
+                                <li class="breadcrumb-item-small active"><?= $breadcrumb ?></li>
+                            <?php else: ?>
+                                <li class="breadcrumb-item-small">
+                                    <a href="<?= base_url($key) ?>"><?= $breadcrumb ?></a>
+                                </li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </ol>
+                </nav>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Right Section: Controls -->
+            <div class="header-right">
+                <!-- Notifications -->
+                <div class="dropdown">
+                    <button class="header-control-btn" type="button" data-bs-toggle="dropdown" title="Notifikasi">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">
+                            <span class="notification-count" data-realtime="notification_count">0</span>
+                        </span>
+                    </button>
+                    <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end notification-dropdown">
+                        <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
+                            <span>Notifikasi</span>
+                            <button class="btn btn-sm btn-primary" onclick="markAllAsRead()" style="font-size: 0.7rem;">
+                                <i class="fas fa-check-double me-1"></i>Mark All
+                            </button>
+                        </h6></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li class="notification-item">
+                            <div class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="text-muted mb-0 small mt-2">Memuat notifikasi...</p>
+                            </div>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item text-center" href="<?= base_url('/notifications') ?>">
+                            <i class="fas fa-bell me-2"></i>Lihat Semua Notifikasi
+                        </a></li>
+                    </ul>
+                </div>
+                
+                <!-- Theme Toggle -->
+                <button class="header-control-btn theme-toggle" type="button" title="Toggle Dark Mode">
+                    <i class="fas fa-moon"></i>
+                </button>
+                
+                <!-- User Profile -->
+                <div class="dropdown">
+                    <button class="header-control-btn header-profile-btn" type="button" data-bs-toggle="dropdown" title="Profil User">
+                        <?php 
+                        $userAvatar = session()->get('avatar');
+                        if ($userAvatar && !filter_var($userAvatar, FILTER_VALIDATE_URL)) {
+                            $userAvatar = base_url($userAvatar);
+                        }
+                        ?>
+                        <?php if ($userAvatar): ?>
+                            <img src="<?= $userAvatar ?>" alt="Avatar" class="user-avatar">
+                        <?php else: ?>
+                            <div class="user-avatar-placeholder">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        <?php endif; ?>
+                        <span class="user-name"><?= session()->get('first_name') ?? 'User' ?></span>
+                        <i class="fas fa-chevron-down user-chevron"></i>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end user-dropdown">
+                        <li><h6 class="dropdown-header">Halo, <?= session()->get('first_name') ?? 'User' ?>!</h6></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="<?= base_url('/profile') ?>">
+                            <i class="fas fa-user me-2"></i>Profil Saya
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="<?= base_url('/auth/logout') ?>">
+                            <i class="fas fa-sign-out-alt me-2"></i>Keluar
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </header>
+
     <!-- Enhanced Sidebar -->
     <?= $this->include('layouts/sidebar_new') ?>
     
     <!-- Main Content -->
     <main class="main-content" id="mainContent">
-        <!-- Content Header -->
-        <header class="content-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <div class="d-flex align-items-center">
-                    <button class="btn btn-link d-md-none p-0 me-3 sidebar-toggle" type="button" style="color: #64748b;">
-                        <i class="fas fa-bars fa-lg"></i>
-                    </button>
-                    <div>
-                        <h1 class="h3 mb-0"><?= $title ?? 'Dashboard' ?></h1>
-                        <?php if (isset($breadcrumbs) && is_array($breadcrumbs)): ?>
-                        <nav aria-label="breadcrumb" class="d-none d-lg-block mt-1">
-                            <ol class="breadcrumb mb-0">
-                                <?php foreach ($breadcrumbs as $key => $breadcrumb): ?>
-                                    <?php if ($key === array_key_last($breadcrumbs)): ?>
-                                        <li class="breadcrumb-item active" aria-current="page"><?= $breadcrumb ?></li>
-                                    <?php else: ?>
-                                        <li class="breadcrumb-item"><a href="<?= base_url($key) ?>"><?= $breadcrumb ?></a></li>
-                                    <?php endif; ?>
-                                <?php endforeach; ?>
-                            </ol>
-                        </nav>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                
-                <div class="d-flex align-items-center">
-                    <!-- Notifications -->
-                    <div class="dropdown me-3">
-                        <button class="btn position-relative" type="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-bell"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notificationBadge" style="display: none;">
-                                <span class="notification-count" data-realtime="notification_count">0</span>
-                            </span>
-                        </button>
-                        <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end" style="min-width: 350px; max-height: 400px; overflow-y: auto;">
-                            <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
-                                <span>Notifikasi</span>
-                                <button class="btn btn-sm btn-primary" onclick="markAllAsRead()" style="font-size: 0.7rem;">
-                                    <i class="fas fa-check-double me-1"></i>Mark All
-                                </button>
-                            </h6></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li class="notification-item">
-                                <div class="text-center py-3">
-                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                        <span class="visually-hidden">Loading...</span>
-                                    </div>
-                                    <p class="text-muted mb-0 small mt-2">Memuat notifikasi...</p>
-                                </div>
-                            </li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item text-center" href="<?= base_url('/notifications') ?>">
-                                <i class="fas fa-bell me-2"></i>Lihat Semua Notifikasi
-                            </a></li>
-                        </ul>
-                    </div>
-                    
-                    <!-- Theme Toggle -->
-                    <button class="btn me-3 theme-toggle" type="button" title="Toggle Dark Mode">
-                        <i class="fas fa-moon"></i>
-                    </button>
-                    
-                    <!-- Sidebar Toggle -->
-                    <button class="btn  me-3 d-none d-md-block" type="button" onclick="toggleSidebar()" title="Toggle Sidebar">
-                        <i class="fas fa-bars"></i>
-                    </button>
-                    
-                    <!-- User Profile -->
-                    <div class="dropdown">
-                        <button class="btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="<?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?>" style="padding: 4px 8px; border-radius: 20px;">
-                            <?php 
-                            // Get avatar from session or database
-                            $userAvatar = session()->get('avatar');
-                            if ($userAvatar) {
-                                // Handle both relative and absolute avatar URLs
-                                if (!filter_var($userAvatar, FILTER_VALIDATE_URL)) {
-                                    $userAvatar = base_url($userAvatar);
-                                }
-                            }
-                            ?>
-                            <?php if ($userAvatar): ?>
-                                <img src="<?= $userAvatar ?>" alt="Avatar" class="rounded-circle" width="40" height="40" style="object-fit: cover; border: 2px solid #e3e6f0;">
-                            <?php else: ?>
-                                <div class="bg-primary rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 40px; height: 40px; border: 2px solid #e3e6f0;">
-                                    <i class="fas fa-user text-white" style="font-size: 18px;"></i>
-                                </div>
-                            <?php endif; ?>
-                        </button>
-                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdownMenuButton">
-                            <li><h6 class="dropdown-header">Halo, <?= session()->get('first_name') ?>!</h6></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="<?= base_url('/profile') ?>">
-                                <i class="fas fa-user me-2"></i>Profil Saya
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="<?= base_url('/auth/logout') ?>">
-                                <i class="fas fa-sign-out-alt me-2"></i>Keluar
-                            </a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </header>
-
         <!-- Content Body -->
         <div class="content-body">
             <?php
@@ -739,5 +742,97 @@
     <!-- LIGHTWEIGHT POLLING NOTIFICATION SYSTEM -->
     <!-- ==================================================================== -->
     <script src="<?= base_url('assets/js/notification-lightweight.js') ?>"></script>
+
+    <!-- Metis Dashboard Style Sidebar Toggle -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const sidebarToggle = document.getElementById('sidebarToggle');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('mainContent');
+            
+            // Check if elements exist
+            if (!sidebarToggle || !sidebar || !mainContent) {
+                console.warn('Sidebar elements not found');
+                return;
+            }
+            
+            // Initialize sidebar state from localStorage
+            const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+            if (isCollapsed) {
+                document.body.classList.add('sidebar-collapsed');
+                sidebar.classList.add('collapsed');
+                mainContent.classList.add('expanded');
+            }
+            
+            // Toggle sidebar function
+            function toggleSidebar() {
+                const isCurrentlyCollapsed = sidebar.classList.contains('collapsed');
+                
+                if (isCurrentlyCollapsed) {
+                    // Expand sidebar
+                    document.body.classList.remove('sidebar-collapsed');
+                    sidebar.classList.remove('collapsed');
+                    mainContent.classList.remove('expanded');
+                    localStorage.setItem('sidebarCollapsed', 'false');
+                } else {
+                    // Collapse sidebar
+                    document.body.classList.add('sidebar-collapsed');
+                    sidebar.classList.add('collapsed');
+                    mainContent.classList.add('expanded');
+                    localStorage.setItem('sidebarCollapsed', 'true');
+                }
+            }
+            
+            // Attach toggle event
+            sidebarToggle.addEventListener('click', toggleSidebar);
+            
+            // Mobile sidebar toggle
+            function toggleMobileSidebar() {
+                sidebar.classList.toggle('show');
+            }
+            
+            // Handle mobile/tablet view
+            function handleResize() {
+                const isMobile = window.innerWidth <= 768;
+                
+                if (isMobile) {
+                    // Mobile behavior - hide sidebar by default
+                    sidebar.classList.remove('collapsed');
+                    mainContent.classList.remove('expanded');
+                    document.body.classList.remove('sidebar-collapsed');
+                } else {
+                    // Desktop behavior - restore saved state
+                    const isCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+                    if (isCollapsed) {
+                        document.body.classList.add('sidebar-collapsed');
+                        sidebar.classList.add('collapsed');
+                        mainContent.classList.add('expanded');
+                    }
+                    sidebar.classList.remove('show');
+                }
+            }
+            
+            // Initial resize check
+            handleResize();
+            
+            // Listen to window resize
+            window.addEventListener('resize', handleResize);
+            
+            // Close mobile sidebar when clicking outside
+            document.addEventListener('click', function(e) {
+                const isMobile = window.innerWidth <= 768;
+                if (isMobile && sidebar.classList.contains('show')) {
+                    if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+                        sidebar.classList.remove('show');
+                    }
+                }
+            });
+        });
+        
+        // Legacy support for existing toggle function calls
+        function toggleSidebar() {
+            document.getElementById('sidebarToggle')?.click();
+        }
+    </script>
 </body>
 </html>
