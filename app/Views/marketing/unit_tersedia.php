@@ -157,7 +157,7 @@ function actionMenu(id){
                 <button class="btn btn-sm btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>
                 <ul class="dropdown-menu dropdown-menu-sm">
                     <li><a class="dropdown-item" href="#" onclick="viewDetail(${id})"><i class='fas fa-eye me-2 text-info'></i>Lihat</a></li>
-                    <li><a class="dropdown-item" href="<?= base_url('marketing/penawaran') ?>?unit=${id}"><i class='fas fa-file-invoice me-2 text-primary'></i>Penawaran</a></li>
+                    <li><a class="dropdown-item" href="<?= base_url('marketing/quotations') ?>?unit=${id}"><i class='fas fa-file-invoice me-2 text-primary'></i>Quotations</a></li>
                     <li><a class="dropdown-item" href="#" onclick="reserveUnit(${id})"><i class='fas fa-calendar-plus me-2 text-success'></i>Booking</a></li>
                 </ul>
         </div>`;

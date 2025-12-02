@@ -13,7 +13,7 @@
                 <button class="btn btn-outline-info btn-sm" onclick="refreshMarketingData()">
                     <i class="fas fa-sync-alt me-1"></i>Refresh
                 </button>
-                <a href="<?= base_url('marketing/penawaran') ?>" class="btn btn-outline-primary btn-sm">
+                <a href="<?= base_url('marketing/quotations') ?>" class="btn btn-outline-primary btn-sm">
                     <i class="fas fa-file-contract me-1"></i>Quotations
                 </a>
                 <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-primary btn-sm">
@@ -174,7 +174,7 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <a href="<?= base_url('marketing/penawaran') ?>" class="btn btn-outline-primary btn-block">
+                            <a href="<?= base_url('marketing/quotations') ?>" class="btn btn-outline-primary btn-block">
                                 <i class="fas fa-file-contract me-2"></i>
                                 Create Quotation
                             </a>
@@ -229,7 +229,7 @@
             <div class="card shadow">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
                     <h6 class="m-0 font-weight-bold text-primary">Recent Quotations</h6>
-                    <a href="<?= base_url('marketing/penawaran') ?>" class="btn btn-sm btn-primary">
+                    <a href="<?= base_url('marketing/quotations') ?>" class="btn btn-sm btn-primary">
                         View All
                     </a>
                 </div>

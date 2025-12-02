@@ -978,7 +978,13 @@ class CustomerManagementController extends BaseController
     public function getTipeUnit()
     {
         try {
-            $tipeUnit = $this->db->table('tipe_unit')->get()->getResultArray();
+            $tipeUnit = $this->db->table('tipe_unit t')
+                ->select('t.id_tipe_unit, t.tipe, t.jenis, t.id_departemen, d.nama_departemen')
+                ->join('departemen d', 't.id_departemen = d.id_departemen', 'left')
+                ->orderBy('d.nama_departemen', 'ASC')
+                ->orderBy('t.tipe', 'ASC')
+                ->get()->getResultArray();
+            
             return $this->response->setJSON([
                 'success' => true,
                 'data' => $tipeUnit

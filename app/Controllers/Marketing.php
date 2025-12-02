@@ -9,6 +9,8 @@ use Psr\Log\LoggerInterface;
 use App\Models\SpkModel;
 use App\Models\KontrakModel;
 use App\Models\KontrakSpesifikasiModel;
+use App\Models\QuotationModel;
+use App\Models\QuotationSpecificationModel;
 use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
 use App\Models\DeliveryInstructionModel;
@@ -26,6 +28,8 @@ class Marketing extends BaseDataTableController
     protected $spkModel;
     protected $kontrakModel;
     protected $kontrakSpesifikasiModel;
+    protected $quotationModel;
+    protected $quotationSpecificationModel;
     protected $unitModel;
     protected $attModel;
     protected $diModel;
@@ -40,12 +44,49 @@ class Marketing extends BaseDataTableController
         $this->spkModel = new SpkModel();
         $this->kontrakModel = new KontrakModel();
         $this->kontrakSpesifikasiModel = new KontrakSpesifikasiModel();
+        $this->quotationModel = new QuotationModel();
+        $this->quotationSpecificationModel = new QuotationSpecificationModel();
         $this->unitModel = new InventoryUnitModel();
         $this->attModel = new InventoryAttachmentModel();
         $this->diModel = new DeliveryInstructionModel();
         $this->diItemModel = new DeliveryItemModel();
         $this->notifModel = class_exists(\App\Models\NotificationModel::class) ? new NotificationModel() : null;
         $this->performanceService = new \App\Services\PerformanceService();
+    }
+
+    /**
+     * Marketing dashboard index page
+     */
+    public function index()
+    {
+        // Load simple_rbac helper
+        helper('simple_rbac');
+        
+        // Get marketing statistics
+        $marketing_stats = $this->getMarketingDashboardStats();
+        
+        // Get recent quotations (last 5)
+        $recent_quotations = $this->getRecentQuotationsForDashboard();
+        
+        // Get active contracts (last 5)
+        $active_contracts = $this->getActiveContractsForDashboard();
+        
+        // Get revenue data for chart (last 6 months)
+        $revenue_data = $this->getRevenueDataForChart();
+        
+        $data = [
+            'title' => 'Marketing Dashboard',
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/marketing' => 'Marketing'
+            ],
+            'marketing_stats' => $marketing_stats,
+            'recent_quotations' => $recent_quotations,
+            'active_contracts' => $active_contracts,
+            'revenue_data' => $revenue_data
+        ];
+        
+        return view('marketing/index', $data);
     }
 
     public function availableUnits()
@@ -256,16 +297,198 @@ class Marketing extends BaseDataTableController
     }
 
     // Placeholder views for Penawaran (Quotations), Booking, and SPK as requested
-    public function penawaran()
+    /**
+     * Main quotations page (replaces old penawaran)
+     */
+    public function quotations()
     {
+        // Check if user is logged in
+        if (!session()->get('isLoggedIn')) {
+            return redirect()->to('/auth/login');
+        }
+        
         // Load simple_rbac helper
         helper('simple_rbac');
         
-        return view('marketing/penawaran', [
-            'can_view_marketing' => can_view('marketing'),
+        // Check if this is a create request
+        $mode = $this->request->getGet('mode');
+        
+        // Get quotation statistics
+        $stats = $this->getQuotationStatsData();
+        
+        $data = [
+            'title' => 'Quotations Management',
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/marketing/quotations' => 'Quotations'
+            ],
+            'can_access_marketing' => $this->canAccess('marketing'),
             'can_create_marketing' => $this->canManage('marketing'),
             'can_export_marketing' => $this->canExport('marketing'),
-        ]);
+            'quotation_stats' => $stats,
+            'mode' => $mode ?? 'index'
+        ];
+        
+        // If create mode, add additional data
+        if ($mode === 'create') {
+            $data['quotation_number'] = $this->generateQuotationNumber();
+            $data['customers'] = $this->getCustomersForDropdown();
+            $data['users'] = $this->getActiveUsersForDropdown();
+        }
+        
+        return view('marketing/quotations', $data);
+    }
+
+    /**
+     * Get quotation statistics for dashboard
+     */
+    private function getQuotationStatsData()
+    {
+        $total = $this->quotationModel->countAll();
+        $accepted = $this->quotationModel->where('stage', 'ACCEPTED')->countAllResults(false);
+        $pending = $this->quotationModel->where('stage', 'SENT')->countAllResults(false);
+        $rejected = $this->quotationModel->where('stage', 'REJECTED')->countAllResults(false);
+        $deals = $this->quotationModel->where('is_deal', 1)->countAllResults(false);
+        
+        return [
+            'total' => $total,
+            'accepted' => $accepted,
+            'pending' => $pending,
+            'rejected' => $rejected,
+            'deals' => $deals,
+            'conversion_rate' => $total > 0 ? round(($deals / $total) * 100, 1) : 0
+        ];
+    }
+
+    /**
+     * Get quotations data for DataTable
+     */
+    public function getQuotationsData()
+    {
+        try {
+            if (!$this->hasPermission('marketing.access')) {
+                return $this->response->setJSON(['draw'=>1,'recordsTotal'=>0,'recordsFiltered'=>0,'data'=>[]])->setStatusCode(403);
+            }
+            
+            if (!$this->request->isAJAX()) {
+                return $this->response->setStatusCode(403);
+            }
+
+            $draw = $this->request->getPost('draw') ?: 1;
+            $start = $this->request->getPost('start') ?: 0;
+            $length = $this->request->getPost('length') ?: 10;
+            
+            // Safe array access
+            $search = $this->request->getPost('search') ?: [];
+            $searchValue = isset($search['value']) ? $search['value'] : '';
+            
+            // Get total records
+            $totalRecords = $this->quotationModel->countAll();
+            
+            $builder = $this->quotationModel->builder();
+            
+            // Apply search filter
+            if (!empty($searchValue)) {
+                $builder->groupStart()
+                    ->like('quotation_number', $searchValue)
+                    ->orLike('prospect_name', $searchValue)
+                    ->orLike('quotation_title', $searchValue)
+                    ->orLike('stage', $searchValue)
+                    ->groupEnd();
+            }
+            
+            // Get filtered records count
+            $filteredRecords = !empty($searchValue) ? $builder->countAllResults(false) : $totalRecords;
+            
+            // Get data with pagination
+            $quotations = $builder->orderBy('created_at', 'DESC')
+                ->limit($length, $start)
+                ->findAll();
+            
+            $data = [];
+            foreach ($quotations as $quotation) {
+                $stageBadge = $this->getStagebadge($quotation['stage']);
+                $actions = $this->getQuotationActions($quotation['id_quotation']);
+                
+                $data[] = [
+                    'DT_RowId' => 'row_' . $quotation['id_quotation'],
+                    'quotation_number' => $quotation['quotation_number'],
+                    'prospect_name' => $quotation['prospect_name'],
+                    'quotation_title' => $quotation['quotation_title'],
+                    'quotation_date' => date('d/m/Y', strtotime($quotation['quotation_date'])),
+                    'total_amount' => 'Rp ' . number_format($quotation['total_amount'], 0, ',', '.'),
+                    'stage' => $stageBadge,
+                    'actions' => $actions
+                ];
+            }
+            
+            $response = [
+                'draw' => $draw,
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $filteredRecords,
+                'data' => $data
+            ];
+            
+            return $this->response->setJSON($response);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getQuotationsData - Error: ' . $e->getMessage());
+            log_message('error', 'Marketing::getQuotationsData - File: ' . $e->getFile() . ':' . $e->getLine());
+            
+            return $this->response->setJSON([
+                'draw' => 1,
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => 'Database error occurred'
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Get stage badge HTML
+     */
+    private function getStagebadge($stage)
+    {
+        $badges = [
+            'DRAFT' => '<span class="badge bg-secondary">Draft</span>',
+            'SENT' => '<span class="badge bg-warning">Sent</span>',
+            'ACCEPTED' => '<span class="badge bg-success">Accepted</span>',
+            'REJECTED' => '<span class="badge bg-danger">Rejected</span>',
+            'EXPIRED' => '<span class="badge bg-dark">Expired</span>'
+        ];
+        
+        return $badges[$stage] ?? '<span class="badge bg-light text-dark">' . $stage . '</span>';
+    }
+
+    /**
+     * Get action buttons for quotation
+     */
+    private function getQuotationActions($quotationId)
+    {
+        $actions = '<div class="btn-group" role="group">';
+        
+        if ($this->canAccess('marketing')) {
+            $actions .= '<a href="' . base_url('marketing/quotation/view/' . $quotationId) . '" class="btn btn-sm btn-outline-info" title="View">
+                <i class="fas fa-eye"></i>
+            </a>';
+        }
+        
+        if ($this->canManage('marketing')) {
+            $actions .= '<a href="' . base_url('marketing/quotation/edit/' . $quotationId) . '" class="btn btn-sm btn-outline-primary" title="Edit">
+                <i class="fas fa-edit"></i>
+            </a>';
+        }
+        
+        if ($this->canExport('marketing')) {
+            $actions .= '<a href="' . base_url('marketing/quotation/pdf/' . $quotationId) . '" class="btn btn-sm btn-outline-secondary" title="PDF">
+                <i class="fas fa-file-pdf"></i>
+            </a>';
+        }
+        
+        $actions .= '</div>';
+        
+        return $actions;
     }
 
     public function booking()
@@ -276,6 +499,763 @@ class Marketing extends BaseDataTableController
         }
         
         return view('marketing/booking');
+    }
+
+    /**
+     * Create new quotation
+     */
+    public function createQuotation()
+    {
+        if (!$this->canManage('marketing')) {
+            return redirect()->to('/marketing/quotations')->with('error', 'Access denied');
+        }
+        
+        if ($this->request->getMethod() === 'POST') {
+            return $this->storeQuotation();
+        }
+        
+        // Get dropdown data
+        $data = [
+            'title' => 'Create New Quotation',
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/marketing/quotations' => 'Quotations',
+                '/marketing/quotation/create' => 'Create Quotation'
+            ]
+        ];
+        
+        return view('marketing/quotation_create', $data);
+    }
+
+    /**
+     * Store new quotation
+     */
+    public function storeQuotation()
+    {
+        if (!$this->canManage('marketing')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        }
+        
+        $validation = \Config\Services::validation();
+        $validation->setRules([
+            'prospect_name' => 'required|max_length[255]',
+            'quotation_title' => 'required|max_length[255]',
+            'quotation_date' => 'required|valid_date',
+            'valid_until' => 'required|valid_date',
+        ]);
+        
+        if (!$validation->withRequest($this->request)->run()) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validation->getErrors()
+                ]);
+            }
+            return redirect()->back()->withInput()->with('errors', $validation->getErrors());
+        }
+        
+        $db = \Config\Database::connect();
+        $db->transStart();
+        
+        try {
+            // Generate quotation number
+            $quotationNumber = $this->generateQuotationNumber();
+            
+            // Prepare quotation data
+            $quotationData = [
+                'quotation_number' => $quotationNumber,
+                'prospect_name' => $this->request->getPost('prospect_name'),
+                'prospect_contact_person' => $this->request->getPost('prospect_contact_person'),
+                'prospect_phone' => $this->request->getPost('prospect_phone'),
+                'prospect_email' => $this->request->getPost('prospect_email'),
+                'prospect_address' => $this->request->getPost('prospect_address'),
+                'prospect_city' => $this->request->getPost('prospect_city'),
+                'quotation_title' => $this->request->getPost('quotation_title'),
+                'quotation_description' => $this->request->getPost('quotation_description'),
+                'quotation_date' => $this->request->getPost('quotation_date'),
+                'valid_until' => $this->request->getPost('valid_until'),
+                'currency' => $this->request->getPost('currency') ?: 'IDR',
+                'payment_terms' => $this->request->getPost('payment_terms'),
+                'delivery_terms' => $this->request->getPost('delivery_terms'),
+                'warranty_terms' => $this->request->getPost('warranty_terms'),
+                'stage' => 'DRAFT',
+                'probability_percent' => $this->request->getPost('probability_percent') ?: 50,
+                'created_by' => session('user_id'),
+                'assigned_to' => $this->request->getPost('assigned_to') ?: session('user_id')
+            ];
+            
+            $quotationId = $this->quotationModel->insert($quotationData);
+            
+            if (!$quotationId) {
+                throw new \Exception('Failed to create quotation');
+            }
+            
+            // Handle specifications if provided
+            $specifications = $this->request->getPost('specifications');
+            if ($specifications && is_array($specifications)) {
+                foreach ($specifications as $spec) {
+                    $specData = [
+                        'id_quotation' => $quotationId,
+                        'item_name' => $spec['item_name'],
+                        'description' => $spec['description'] ?? '',
+                        'category' => $spec['category'] ?? 'General',
+                        'quantity' => $spec['quantity'],
+                        'unit' => $spec['unit'],
+                        'unit_price' => $spec['unit_price'],
+                        'total_price' => $spec['quantity'] * $spec['unit_price'],
+                        'brand' => $spec['brand'] ?? '',
+                        'model_number' => $spec['model_number'] ?? '',
+                        'specifications' => $spec['specifications'] ?? '',
+                        'notes' => $spec['notes'] ?? '',
+                        'sort_order' => $spec['sort_order'] ?? 0,
+                        'is_active' => 1
+                    ];
+                    
+                    $this->quotationSpecificationModel->insert($specData);
+                }
+            }
+            
+            $db->transComplete();
+            
+            if ($db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+            
+            // Log activity
+            $this->logActivity('CREATE', 'quotation', $quotationId, 'Created quotation: ' . $quotationNumber);
+            
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Quotation created successfully',
+                    'quotation_id' => $quotationId,
+                    'quotation_number' => $quotationNumber
+                ]);
+            }
+            
+            return redirect()->to('/marketing/quotation/view/' . $quotationId)
+                ->with('success', 'Quotation created successfully');
+                
+        } catch (\Exception $e) {
+            $db->transRollback();
+            
+            if ($this->request->isAJAX()) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to create quotation: ' . $e->getMessage()
+                ]);
+            }
+            
+            return redirect()->back()->withInput()
+                ->with('error', 'Failed to create quotation: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * View quotation details
+     */
+    public function viewQuotation($quotationId)
+    {
+        if (!$this->canAccess('marketing')) {
+            return redirect()->to('/marketing/quotations')->with('error', 'Access denied');
+        }
+        
+        $quotation = $this->quotationModel->find($quotationId);
+        
+        if (!$quotation) {
+            return redirect()->to('/marketing/quotations')->with('error', 'Quotation not found');
+        }
+        
+        // Get specifications
+        $specifications = $this->quotationSpecificationModel
+            ->where('id_quotation', $quotationId)
+            ->where('is_active', 1)
+            ->orderBy('sort_order', 'ASC')
+            ->findAll();
+        
+        $data = [
+            'title' => 'Quotation Details - ' . $quotation['quotation_number'],
+            'quotation' => $quotation,
+            'specifications' => $specifications,
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/marketing/quotations' => 'Quotations',
+                '/marketing/quotation/view/' . $quotationId => 'View Quotation'
+            ]
+        ];
+        
+        return view('marketing/quotation_view', $data);
+    }
+
+    /**
+     * Convert quotation to contract
+     */
+    public function convertToContract($quotationId)
+    {
+        if (!$this->canManage('marketing')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        }
+        
+        $quotation = $this->quotationModel->find($quotationId);
+        
+        if (!$quotation) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Quotation not found']);
+        }
+        
+        if ($quotation['stage'] !== 'ACCEPTED') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Only accepted quotations can be converted to contracts']);
+        }
+        
+        if ($quotation['created_contract_id']) {
+            return $this->response->setJSON(['success' => false, 'message' => 'This quotation has already been converted to a contract']);
+        }
+        
+        $db = \Config\Database::connect();
+        $db->transStart();
+        
+        try {
+            // Get quotation specifications
+            $specifications = $this->quotationSpecificationModel
+                ->where('id_quotation', $quotationId)
+                ->where('is_active', 1)
+                ->findAll();
+            
+            // Generate contract number
+            $contractNumber = $this->generateContractNumberInternal();
+            
+            // Create contract
+            $contractData = [
+                'no_kontrak' => $contractNumber,
+                'customer_name' => $quotation['prospect_name'],
+                'tanggal_mulai' => date('Y-m-d'),
+                'tanggal_berakhir' => date('Y-m-d', strtotime('+1 month')),
+                'nilai_total' => $quotation['total_amount'],
+                'status' => 'Aktif',
+                'jenis_sewa' => 'BULANAN', // Default, bisa disesuaikan
+                'dibuat_oleh' => session('user_id'),
+                'dibuat_pada' => date('Y-m-d H:i:s')
+            ];
+            
+            $contractId = $this->kontrakModel->insert($contractData);
+            
+            if (!$contractId) {
+                throw new \Exception('Failed to create contract');
+            }
+            
+            // Create contract specifications
+            foreach ($specifications as $spec) {
+                $kontrakSpecData = [
+                    'kontrak_id' => $contractId,
+                    'spek_kode' => $spec['item_name'],
+                    'nama_spec' => $spec['item_name'],
+                    'qty_spec' => $spec['quantity'],
+                    'unit_spec' => $spec['unit'],
+                    'keterangan_spec' => $spec['description'],
+                    'harga_unit_spec' => $spec['unit_price'],
+                    'total_harga_spec' => $spec['total_price'],
+                    'brand_spec' => $spec['brand'],
+                    'tipe_spec' => $spec['category']
+                ];
+                
+                $this->kontrakSpesifikasiModel->insert($kontrakSpecData);
+            }
+            
+            // Update quotation with contract reference
+            $this->quotationModel->update($quotationId, [
+                'created_contract_id' => $contractId,
+                'is_deal' => 1,
+                'deal_date' => date('Y-m-d H:i:s')
+            ]);
+            
+            $db->transComplete();
+            
+            if ($db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+            
+            // Log activity
+            $this->logActivity('CONVERT', 'quotation', $quotationId, 'Converted quotation to contract: ' . $contractNumber);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Quotation successfully converted to contract',
+                'contract_number' => $contractNumber,
+                'contract_id' => $contractId
+            ]);
+            
+        } catch (\Exception $e) {
+            $db->transRollback();
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to convert quotation: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Generate quotation number
+     */
+    private function generateQuotationNumber()
+    {
+        $year = date('Y');
+        $month = date('m');
+        
+        $lastQuotation = $this->quotationModel
+            ->like('quotation_number', 'QUO/' . $year . '/' . $month . '/', 'after')
+            ->orderBy('quotation_number', 'DESC')
+            ->first();
+        
+        $sequence = 1;
+        if ($lastQuotation) {
+            $parts = explode('/', $lastQuotation['quotation_number']);
+            if (count($parts) === 4) {
+                $sequence = intval($parts[3]) + 1;
+            }
+        }
+        
+        return 'QUO/' . $year . '/' . $month . '/' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Generate contract number (internal use)
+     */
+    private function generateContractNumberInternal()
+    {
+        $year = date('Y');
+        $month = date('m');
+        
+        $lastContract = $this->kontrakModel
+            ->like('no_kontrak', 'KNTRK/' . $year . '/' . $month . '/', 'after')
+            ->orderBy('no_kontrak', 'DESC')
+            ->first();
+        
+        $sequence = 1;
+        if ($lastContract) {
+            $parts = explode('/', $lastContract['no_kontrak']);
+            if (count($parts) === 4) {
+                $sequence = intval($parts[3]) + 1;
+            }
+        }
+
+        return 'KNTRK/' . $year . '/' . $month . '/' . str_pad($sequence, 4, '0', STR_PAD_LEFT);
+    }    /**
+     * Get customers for dropdown
+     */
+    private function getCustomersForDropdown()
+    {
+        // Use customer table if available
+        $db = \Config\Database::connect();
+        $query = $db->query("
+            SELECT id, customer_name as name 
+            FROM customers 
+            WHERE aktif = 1 
+            ORDER BY customer_name ASC
+        ");
+        
+        return $query->getResultArray();
+    }
+
+    /**
+     * Get active users for dropdown
+     */
+    private function getActiveUsersForDropdown()
+    {
+        $db = \Config\Database::connect();
+        $query = $db->query("
+            SELECT id, firstname, lastname 
+            FROM users 
+            WHERE status = 'active' 
+            ORDER BY firstname, lastname ASC
+        ");
+        
+        return $query->getResultArray();
+    }
+
+    /**
+     * Get quotation statistics for API
+     */
+    public function getQuotationStats()
+    {
+        // Disable debug bar for AJAX responses
+        $this->response->setHeader('X-Requested-With', 'XMLHttpRequest');
+        
+        // Check if user is logged in
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Authentication required'
+            ])->setStatusCode(401);
+        }
+        
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        $stats = $this->getQuotationStatsData();
+        
+        // Calculate total value
+        $totalValue = $this->quotationModel
+            ->selectSum('total_amount')
+            ->where('stage !=', 'REJECTED')
+            ->get()
+            ->getRow()
+            ->total_amount ?? 0;
+
+        $stats['total_value'] = $totalValue;
+
+        return $this->response
+            ->setContentType('application/json')
+            ->setJSON([
+                'success' => true,
+                'data' => $stats
+            ]);
+    }
+
+    /**
+     * Get active users for filter
+     */
+    public function getActiveUsers()
+    {
+        try {
+            if (!$this->hasPermission('marketing.access')) {
+                return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
+            }
+            
+            if (!$this->request->isAJAX()) {
+                return $this->response->setStatusCode(403);
+            }
+
+            $users = $this->getActiveUsersForDropdown();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $users
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getActiveUsers - Error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error occurred'
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Get single quotation data
+     */
+    public function getQuotation($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        $quotation = $this->quotationModel->find($quotationId);
+
+        if (!$quotation) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Quotation not found'
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => $quotation
+        ]);
+    }
+
+    /**
+     * Export quotations to Excel
+     */
+    public function exportQuotations()
+    {
+        if (!$this->canExport('marketing')) {
+            return redirect()->to('/marketing/quotations')->with('error', 'Access denied');
+        }
+
+        // Get filter parameters
+        $filters = [
+            'stage' => $this->request->getGet('stage'),
+            'assigned_to' => $this->request->getGet('assigned_to'),
+            'date_from' => $this->request->getGet('date_from'),
+            'date_to' => $this->request->getGet('date_to'),
+            'search' => $this->request->getGet('search')
+        ];
+
+        $builder = $this->quotationModel;
+
+        // Apply filters
+        if (!empty($filters['stage'])) {
+            $builder->where('stage', $filters['stage']);
+        }
+        if (!empty($filters['assigned_to'])) {
+            $builder->where('assigned_to', $filters['assigned_to']);
+        }
+        if (!empty($filters['date_from'])) {
+            $builder->where('quotation_date >=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $builder->where('quotation_date <=', $filters['date_to']);
+        }
+        if (!empty($filters['search'])) {
+            $builder->groupStart()
+                ->like('quotation_number', $filters['search'])
+                ->orLike('prospect_name', $filters['search'])
+                ->orLike('quotation_title', $filters['search'])
+                ->groupEnd();
+        }
+
+        $quotations = $builder->orderBy('quotation_date', 'DESC')->findAll();
+
+        // Generate CSV
+        $filename = 'quotations_' . date('Y-m-d_H-i-s') . '.csv';
+        
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        
+        $output = fopen('php://output', 'w');
+        
+        // CSV headers
+        fputcsv($output, [
+            'Quotation Number',
+            'Prospect Name',
+            'Title',
+            'Date',
+            'Valid Until',
+            'Stage',
+            'Total Amount',
+            'Currency'
+        ]);
+        
+        // CSV data
+        foreach ($quotations as $quotation) {
+            fputcsv($output, [
+                $quotation['quotation_number'],
+                $quotation['prospect_name'],
+                $quotation['quotation_title'],
+                $quotation['quotation_date'],
+                $quotation['valid_until'],
+                $quotation['stage'],
+                $quotation['total_amount'],
+                $quotation['currency']
+            ]);
+        }
+        
+        fclose($output);
+        exit;
+    }
+
+    /**
+     * Convert quotation to deal
+     */
+    public function convertToDeal($quotationId)
+    {
+        if (!$this->canManage('marketing')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        }
+
+        $quotation = $this->quotationModel->find($quotationId);
+
+        if (!$quotation) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Quotation not found']);
+        }
+
+        if ($quotation['stage'] !== 'ACCEPTED') {
+            return $this->response->setJSON(['success' => false, 'message' => 'Only accepted quotations can be converted to deals']);
+        }
+
+        // Update quotation to mark as deal
+        $this->quotationModel->update($quotationId, [
+            'is_deal' => 1,
+            'deal_date' => date('Y-m-d H:i:s')
+        ]);
+
+        // Log activity
+        $this->logActivity('CONVERT', 'quotation', $quotationId, 'Converted quotation to deal: ' . $quotation['quotation_number']);
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Quotation successfully converted to deal'
+        ]);
+    }
+
+    /**
+     * Update quotation stage
+     */
+    public function updateQuotationStage($quotationId)
+    {
+        if (!$this->canManage('marketing')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        }
+
+        $validation = \Config\Services::validation();
+        $validation->setRules([
+            'new_stage' => 'required|in_list[DRAFT,SENT,FOLLOW_UP,NEGOTIATION,ACCEPTED,REJECTED,EXPIRED]',
+            'probability_percent' => 'permit_empty|integer|greater_than_equal_to[0]|less_than_equal_to[100]'
+        ]);
+
+        if (!$validation->withRequest($this->request)->run()) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validation->getErrors()
+            ]);
+        }
+
+        $updateData = [
+            'stage' => $this->request->getPost('new_stage'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
+
+        if ($this->request->getPost('probability_percent') !== '') {
+            $updateData['probability_percent'] = $this->request->getPost('probability_percent');
+        }
+
+        $this->quotationModel->update($quotationId, $updateData);
+
+        // Log stage history if table exists
+        $db = \Config\Database::connect();
+        if ($db->tableExists('quotation_stage_history')) {
+            $db->table('quotation_stage_history')->insert([
+                'quotation_id' => $quotationId,
+                'stage' => $updateData['stage'],
+                'change_reason' => $this->request->getPost('change_reason'),
+                'change_notes' => $this->request->getPost('change_notes'),
+                'changed_by' => session('user_id'),
+                'changed_at' => date('Y-m-d H:i:s')
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'message' => 'Stage updated successfully'
+        ]);
+    }
+
+    /**
+     * Get marketing dashboard statistics
+     */
+    private function getMarketingDashboardStats()
+    {
+        // Get quotation stats
+        $quotation_stats = $this->getQuotationStatsData();
+        
+        // Get contract stats
+        $total_contracts = $this->kontrakModel->countAll();
+        $active_contracts = $this->kontrakModel->where('status', 'Aktif')->countAllResults(false);
+        
+        // Calculate monthly revenue (from active contracts)
+        $monthly_revenue = $this->kontrakModel
+            ->selectSum('nilai_total')
+            ->where('status', 'Aktif')
+            ->where('MONTH(tanggal_mulai)', date('n'))
+            ->where('YEAR(tanggal_mulai)', date('Y'))
+            ->get()
+            ->getRow()
+            ->nilai_total ?? 0;
+        
+        // Calculate conversion rate (deals / total quotations)
+        $conversion_rate = $quotation_stats['total'] > 0 ? 
+            round(($quotation_stats['deals'] / $quotation_stats['total']) * 100, 1) : 0;
+        
+        // Mock customer satisfaction (can be replaced with real data later)
+        $customer_satisfaction = 87; // This should come from customer feedback system
+        
+        return [
+            'total_quotations' => $quotation_stats['total'],
+            'pending_quotations' => $quotation_stats['pending'],
+            'active_contracts' => $active_contracts,
+            'monthly_revenue' => $monthly_revenue,
+            'conversion_rate' => $conversion_rate,
+            'customer_satisfaction' => $customer_satisfaction
+        ];
+    }
+
+    /**
+     * Get recent quotations for dashboard display
+     */
+    private function getRecentQuotationsForDashboard()
+    {
+        $quotations = $this->quotationModel
+            ->select('id_quotation as id, quotation_number, prospect_name as client, quotation_title as project, total_amount as value, stage as status, created_at')
+            ->orderBy('created_at', 'DESC')
+            ->limit(5)
+            ->findAll();
+        
+        // Format data for dashboard display
+        foreach ($quotations as &$quotation) {
+            $quotation['id'] = $quotation['quotation_number'];
+            $quotation['status'] = $this->formatQuotationStatusForDashboard($quotation['status']);
+        }
+        
+        return $quotations;
+    }
+
+    /**
+     * Get active contracts for dashboard display
+     */
+    private function getActiveContractsForDashboard()
+    {
+        $contracts = $this->kontrakModel
+            ->select('no_kontrak as contract_number, customer_name as client, nilai_total as value, tanggal_mulai as start_date, tanggal_berakhir as end_date, status')
+            ->where('status', 'Aktif')
+            ->orderBy('tanggal_mulai', 'DESC')
+            ->limit(5)
+            ->findAll();
+        
+        // Add project field (can be derived from contract details)
+        foreach ($contracts as &$contract) {
+            $contract['project'] = 'Equipment Rental'; // This should be derived from kontrak_spesifikasi
+        }
+        
+        return $contracts;
+    }
+
+    /**
+     * Get revenue data for chart (last 6 months)
+     */
+    private function getRevenueDataForChart()
+    {
+        $revenue_data = [];
+        
+        for ($i = 5; $i >= 0; $i--) {
+            $date = date('Y-m', strtotime("-$i months"));
+            $month = date('M Y', strtotime("-$i months"));
+            
+            $revenue = $this->kontrakModel
+                ->selectSum('nilai_total')
+                ->where('status', 'Aktif')
+                ->where("DATE_FORMAT(tanggal_mulai, '%Y-%m')", $date)
+                ->get()
+                ->getRow()
+                ->nilai_total ?? 0;
+            
+            $revenue_data[$month] = (float)$revenue;
+        }
+        
+        return $revenue_data;
+    }
+
+    /**
+     * Format quotation status for dashboard display
+     */
+    private function formatQuotationStatusForDashboard($stage)
+    {
+        $statusMap = [
+            'DRAFT' => 'Draft',
+            'SENT' => 'Pending',
+            'FOLLOW_UP' => 'Follow Up',
+            'NEGOTIATION' => 'Negotiation',
+            'ACCEPTED' => 'Approved',
+            'REJECTED' => 'Rejected',
+            'EXPIRED' => 'Expired'
+        ];
+        
+        return $statusMap[$stage] ?? $stage;
     }
 
     public function spk()
@@ -3822,7 +4802,7 @@ class Marketing extends BaseDataTableController
             .'<button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown"><i class="fas fa-ellipsis-h"></i></button>'
             .'<ul class="dropdown-menu">'
             .'<li><a class="dropdown-item" href="#" onclick="viewDetail('.$id.')"><i class="fas fa-eye me-2 text-info"></i>Lihat</a></li>'
-            .'<li><a class="dropdown-item" href="'.base_url('marketing/penawaran').'?unit='.$id.'"><i class="fas fa-file-invoice me-2 text-primary"></i>Penawaran</a></li>'
+            .'<li><a class="dropdown-item" href="'.base_url('marketing/quotations').'?unit='.$id.'"><i class="fas fa-file-invoice me-2 text-primary"></i>Quotations</a></li>'
             .'<li><a class="dropdown-item" href="'.base_url('marketing/booking').'?unit='.$id.'"><i class="fas fa-calendar-plus me-2 text-success"></i>Booking</a></li>'
             .'</ul></div>';
     }

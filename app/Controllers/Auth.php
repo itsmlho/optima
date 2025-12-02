@@ -1305,4 +1305,28 @@ class Auth extends BaseController
             return redirect()->back()->with('error', 'Failed to change password. Please try again.');
         }
     }
+    
+    /**
+     * Get active users for dropdown/select options
+     */
+    public function getActiveUsers()
+    {
+        try {
+            $users = $this->userModel->select('id, first_name, last_name, email, username')
+                                    ->where('status', 'active')
+                                    ->orderBy('first_name', 'ASC')
+                                    ->findAll();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $users
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to get users: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
+    }
 } 

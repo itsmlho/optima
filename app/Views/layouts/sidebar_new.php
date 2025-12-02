@@ -43,8 +43,8 @@
                     <a href="<?= base_url('/marketing/customer-management') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'customer-management') !== false) ? 'active' : '' ?>">
                         <i class="fas fa-users"></i> Customer Management
                     </a>
-                    <a href="<?= base_url('/marketing/penawaran') ?>" class="nav-dropdown-item">
-                        <i class="fas fa-file-invoice"></i> Buat Penawaran
+                    <a href="<?= base_url('/marketing/quotations') ?>" class="nav-dropdown-item">
+                        <i class="fas fa-file-invoice-dollar"></i> Quotations
                     </a>
                     <a href="<?= base_url('/marketing/spk') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'marketing/spk') !== false ? 'active' : '' ?>">
                         <i class="fas fa-file-contract"></i> SPK (Surat Perintah Kerja)
@@ -235,14 +235,14 @@
                 <div class="sidebar-heading">MARKETING</div>
             </li>
 
-            <!-- Buat Penawaran -->
+            <!-- Quotations -->
             <?php if (can_view('marketing')): ?>
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/marketing/penawaran') ?>"
-                   data-search-terms="marketing penawaran buat proposal"
-                   data-tooltip="Buat Penawaran">
-                    <i class="fas fa-file-invoice"></i>
-                    <span class="nav-link-text">Buat Penawaran</span>
+                <a class="nav-link" href="<?= base_url('/quotations') ?>"
+                   data-search-terms="marketing quotations proposals quotes"
+                   data-tooltip="Quotations">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span class="nav-link-text">Quotations</span>
                 </a>
             </li>
             <?php endif; ?>

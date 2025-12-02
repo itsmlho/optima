@@ -28,9 +28,9 @@ $can_export = $permissions['export'];
                 </button>
                 <?php endif; ?>
                 <?php if (can_create('marketing')): ?>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addQuotationModal">
+                <a href="<?= base_url('marketing/quotation/create') ?>" class="btn btn-primary btn-sm">
                     <i class="fas fa-plus me-1"></i>Buat Penawaran
-                </button>
+                </a>
                 <?php else: ?>
                 <button class="btn btn-primary btn-sm disabled" onclick="return false;" title="Access Denied">
                     <i class="fas fa-plus me-1"></i>Buat Penawaran
@@ -49,14 +49,14 @@ $can_export = $permissions['export'];
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Total Penawaran</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">42</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $quotation_stats['total'] ?? 0 ?></div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-handshake fa-2x text-gray-300"></i>
                         </div>
                     </div>
                     <div class="text-xs text-success mt-2">
-                        <i class="fas fa-arrow-up me-1"></i>+8 penawaran baru
+                        <i class="fas fa-arrow-up me-1"></i><?= $quotation_stats['deals'] ?? 0 ?> deals closed
                     </div>
                 </div>
             </div>
@@ -69,14 +69,14 @@ $can_export = $permissions['export'];
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
                                 Penawaran Diterima</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">15</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $quotation_stats['accepted'] ?? 0 ?></div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-check-double fa-2x text-gray-300"></i>
                         </div>
                     </div>
                     <div class="text-xs text-success mt-2">
-                        <i class="fas fa-arrow-up me-1"></i>36% tingkat konversi
+                        <i class="fas fa-arrow-up me-1"></i><?= $quotation_stats['conversion_rate'] ?? 0 ?>% tingkat konversi
                     </div>
                 </div>
             </div>
@@ -89,7 +89,7 @@ $can_export = $permissions['export'];
                         <div class="col mr-2">
                             <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
                                 Menunggu Respon</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">12</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800"><?= $quotation_stats['pending'] ?? 0 ?></div>
                         </div>
                         <div class="col-auto">
                             <i class="fas fa-clock fa-2x text-gray-300"></i>
@@ -194,64 +194,15 @@ $can_export = $permissions['export'];
                         <tr>
                             <th>No. Penawaran</th>
                             <th>Klien</th>
-                            <th>Layanan</th>
+                            <th>Judul Penawaran</th>
+                            <th>Tanggal</th>
                             <th>Nilai</th>
-                            <th>Tanggal Dibuat</th>
-                            <th>Valid Hingga</th>
                             <th>Status</th>
-                            <th>Aksi</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php if (isset($quotations) && is_array($quotations)): ?>
-                            <?php foreach ($quotations as $quotation): ?>
-                                <tr>
-                                    <td><strong><?= esc($quotation['id']) ?></strong></td>
-                                    <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px; font-size: 12px;">
-                                                <?= strtoupper(substr($quotation['client'], 0, 2)) ?>
-                                            </div>
-                                            <div>
-                                                <div class="fw-semibold"><?= esc($quotation['client']) ?></div>
-                                                <div class="small text-muted"><?= esc($quotation['project']) ?></div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-info"><?= esc($quotation['units_requested']) ?></span>
-                                    </td>
-                                    <td><strong>Rp <?= number_format($quotation['value'], 0, ',', '.') ?></strong></td>
-                                    <td><?= date('d M Y', strtotime($quotation['created_at'])) ?></td>
-                                    <td><?= date('d M Y', strtotime($quotation['valid_until'])) ?></td>
-                                    <td>
-                                        <span class="badge bg-<?= $quotation['status'] == 'Approved' ? 'success' : ($quotation['status'] == 'Pending' ? 'warning' : 'secondary') ?>">
-                                            <?= esc($quotation['status']) ?>
-                                        </span>
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm">
-                                            <button class="btn btn-outline-info" data-bs-toggle="tooltip" title="Lihat Detail">
-                                                <i class="fas fa-eye"></i>
-                                            </button>
-                                            <button class="btn btn-outline-primary" data-bs-toggle="tooltip" title="Edit">
-                                                <i class="fas fa-edit"></i>
-                                            </button>
-                                            <button class="btn btn-outline-secondary" data-bs-toggle="tooltip" title="Download PDF">
-                                                <i class="fas fa-download"></i>
-                                            </button>
-                                            <button class="btn btn-outline-danger" data-bs-toggle="tooltip" title="Hapus">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            <?php endforeach; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="8" class="text-center">Tidak ada data penawaran</td>
-                            </tr>
-                        <?php endif; ?>
+                        <!-- Data will be populated by DataTables -->
                     </tbody>
                 </table>
             </div>

@@ -56,6 +56,11 @@ $routes->group('auth', static function ($routes) {
     $routes->post('get-positions-by-division', 'Auth::getPositionsByDivision');
 });
 
+// Users API endpoints
+$routes->group('users', static function ($routes) {
+    $routes->get('get-active', 'Auth::getActiveUsers');
+});
+
 // Dashboard routes for different divisions
 $routes->group('dashboard', static function ($routes) {
     $routes->get('', 'Dashboard::index');
@@ -161,7 +166,51 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('get-jenis-perintah-kerja', 'Marketing::getJenisPerintahKerja');
     $routes->get('get-tujuan-perintah-kerja', 'Marketing::getTujuanPerintahKerja');
     
-    $routes->get('penawaran', 'Marketing::penawaran');
+    // Quotations Management Routes
+    $routes->get('quotations', 'Quotation::index');
+    $routes->group('quotations', static function ($routes) {
+        $routes->post('data', 'Quotation::getDataTable');
+        $routes->post('store', 'Quotation::store');
+        $routes->get('detail/(:num)', 'Quotation::show/$1');
+        $routes->post('update/(:num)', 'Quotation::update/$1');
+        $routes->delete('delete/(:num)', 'Quotation::delete/$1');
+        $routes->get('stats', 'Quotation::getStatistics');
+        $routes->get('get/(:num)', 'Quotation::getQuotation/$1');
+        $routes->get('get-quotation/(:num)', 'Quotation::getQuotation/$1');
+        
+        // Quotation Specifications Routes
+        $routes->get('specifications/(:num)', 'Quotation::getSpecifications/$1');
+        $routes->get('get-specifications/(:num)', 'Quotation::getSpecifications/$1');
+        $routes->post('add-specification', 'Quotation::addSpecification');
+        $routes->post('update-specification/(:num)', 'Quotation::updateSpecification/$1');
+        $routes->delete('delete-specification/(:num)', 'Quotation::deleteSpecification/$1');
+        
+        // Dropdown Data Routes
+        $routes->get('departments', 'Quotation::getDepartments');
+        $routes->get('unit-types', 'Quotation::getUnitTypes');
+        $routes->get('capacities', 'Quotation::getCapacities');
+        $routes->get('chargers', 'Quotation::getChargers');
+        $routes->get('unit-brands', 'Quotation::getUnitBrands');
+        $routes->get('batteries', 'Quotation::getBatteries');
+        $routes->get('attachment-types', 'Quotation::getAttachmentTypes');
+        $routes->get('valves', 'Quotation::getValves');
+        $routes->get('masts', 'Quotation::getMasts');
+        $routes->get('tires', 'Quotation::getTires');
+        $routes->get('wheels', 'Quotation::getWheels');
+        
+        // Legacy routes for backward compatibility - keep for now
+        $routes->get('create', 'Marketing::createQuotation');
+        $routes->get('edit/(:num)', 'Marketing::editQuotation/$1');
+        $routes->post('convert-to-contract/(:num)', 'Marketing::convertToContract/$1');
+        $routes->get('export-pdf/(:num)', 'Marketing::quotationPdf/$1');
+        $routes->post('update-stage/(:num)', 'Marketing::updateQuotationStage/$1');
+        $routes->get('get-active-users', 'Marketing::getActiveUsers');
+        $routes->get('export', 'Marketing::exportQuotations');
+        $routes->post('convert-to-deal/(:num)', 'Marketing::convertToDeal/$1');
+        $routes->get('duplicate/(:num)', 'Marketing::duplicateQuotation/$1');
+        $routes->get('templates', 'Marketing::quotationTemplates');
+        $routes->get('reports', 'Marketing::quotationReports');
+    });
     // $routes->get('list-unit', 'Marketing::listUnit');
     $routes->get('unit-tersedia', 'Marketing::unitTersedia');
     $routes->get('unitmarketing', 'Marketing::unitMarketing');
