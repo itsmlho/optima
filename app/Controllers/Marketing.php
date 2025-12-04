@@ -393,7 +393,7 @@ class Marketing extends BaseDataTableController
                     ->like('quotation_number', $searchValue)
                     ->orLike('prospect_name', $searchValue)
                     ->orLike('quotation_title', $searchValue)
-                    ->orLike('stage', $searchValue)
+                    ->orLike('workflow_stage', $searchValue)
                     ->groupEnd();
             }
             
@@ -403,23 +403,27 @@ class Marketing extends BaseDataTableController
             // Get data with pagination
             $quotations = $builder->orderBy('created_at', 'DESC')
                 ->limit($length, $start)
-                ->findAll();
+                ->get()->getResultArray();
             
             $data = [];
+            $index = 0;
             foreach ($quotations as $quotation) {
-                $stageBadge = $this->getStagebadge($quotation['stage']);
-                $actions = $this->getQuotationActions($quotation['id_quotation']);
+                $stageBadge = $this->getWorkflowStageBadge($quotation['workflow_stage']);
+                $actions = $this->getQuotationActions($quotation['id_quotation'], $quotation['workflow_stage']);
                 
                 $data[] = [
                     'DT_RowId' => 'row_' . $quotation['id_quotation'],
+                    'DT_RowIndex' => $start + $index,
+                    'id_quotation' => $quotation['id_quotation'], // Add this for row click functionality
                     'quotation_number' => $quotation['quotation_number'],
                     'prospect_name' => $quotation['prospect_name'],
-                    'quotation_title' => $quotation['quotation_title'],
+                    'quotation_title' => $quotation['quotation_title'] ?? '-',
                     'quotation_date' => date('d/m/Y', strtotime($quotation['quotation_date'])),
                     'total_amount' => 'Rp ' . number_format($quotation['total_amount'], 0, ',', '.'),
-                    'stage' => $stageBadge,
+                    'workflow_stage' => $stageBadge,
                     'actions' => $actions
                 ];
+                $index++;
             }
             
             $response = [
@@ -446,48 +450,124 @@ class Marketing extends BaseDataTableController
     }
 
     /**
-     * Get stage badge HTML
+     * Get workflow stage badge HTML
      */
-    private function getStagebadge($stage)
+    private function getWorkflowStageBadge($stage)
     {
         $badges = [
-            'DRAFT' => '<span class="badge bg-secondary">Draft</span>',
-            'SENT' => '<span class="badge bg-warning">Sent</span>',
-            'ACCEPTED' => '<span class="badge bg-success">Accepted</span>',
-            'REJECTED' => '<span class="badge bg-danger">Rejected</span>',
-            'EXPIRED' => '<span class="badge bg-dark">Expired</span>'
+            'PROSPECT' => '<span class="badge bg-info">Prospect</span>',
+            'QUOTATION' => '<span class="badge bg-warning">Quotation</span>',
+            'SENT' => '<span class="badge bg-primary">Sent</span>',
+            'DEAL' => '<span class="badge bg-success">Deal</span>',
+            'NOT_DEAL' => '<span class="badge bg-danger">Not Deal</span>'
         ];
         
-        return $badges[$stage] ?? '<span class="badge bg-light text-dark">' . $stage . '</span>';
+        return $badges[$stage] ?? '<span class="badge bg-secondary">Unknown</span>';
     }
 
     /**
-     * Get action buttons for quotation
+     * Get action buttons for quotation based on workflow stage
      */
-    private function getQuotationActions($quotationId)
+    private function getQuotationActions($quotationId, $workflowStage = 'PROSPECT')
     {
         $actions = '<div class="btn-group" role="group">';
         
-        if ($this->canAccess('marketing')) {
-            $actions .= '<a href="' . base_url('marketing/quotation/view/' . $quotationId) . '" class="btn btn-sm btn-outline-info" title="View">
-                <i class="fas fa-eye"></i>
-            </a>';
+        // Check if quotation has specifications (required for SEND action)
+        $hasSpecs = $this->quotationSpecificationModel->where('id_quotation', $quotationId)->countAllResults() > 0;
+        
+        // Check if customer was created (for contract/PO buttons)
+        $quotation = $this->quotationModel->find($quotationId);
+        $hasCustomer = !empty($quotation['created_customer_id']);
+        $hasContract = !empty($quotation['created_contract_id']);
+        
+        // Check if customer has completed profile and location (for DEAL workflow)
+        $customerLocationComplete = false;
+        $customerContractComplete = false;
+        if ($hasCustomer) {
+            $customerModel = new \App\Models\CustomerModel();
+            $profileStatus = $customerModel->getCustomerProfileStatus($quotation['created_customer_id']);
+            $customerLocationComplete = $profileStatus['complete'] && $profileStatus['has_location'];
+            
+            // Check if customer has contracts
+            $db = \Config\Database::connect();
+            $contractCount = $db->table('kontrak k')
+                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+                ->where('cl.customer_id', $quotation['created_customer_id'])
+                ->where('k.status', 'Aktif')
+                ->countAllResults();
+            $customerContractComplete = $contractCount > 0;
         }
         
-        if ($this->canManage('marketing')) {
-            $actions .= '<a href="' . base_url('marketing/quotation/edit/' . $quotationId) . '" class="btn btn-sm btn-outline-primary" title="Edit">
-                <i class="fas fa-edit"></i>
-            </a>';
-        }
-        
-        if ($this->canExport('marketing')) {
-            $actions .= '<a href="' . base_url('marketing/quotation/pdf/' . $quotationId) . '" class="btn btn-sm btn-outline-secondary" title="PDF">
-                <i class="fas fa-file-pdf"></i>
-            </a>';
+        // Workflow actions based on current stage
+        switch ($workflowStage) {
+            case 'PROSPECT':
+                $actions .= '<button class="btn btn-sm btn-success" onclick="convertToQuotation(' . $quotationId . ')" title="Convert to Quotation">';
+                $actions .= '<i class="fas fa-arrow-right me-1"></i>Create Quotation';
+                $actions .= '</button>';
+                break;
+                
+            case 'QUOTATION':
+                $actions .= '<button class="btn btn-sm btn-warning me-1" onclick="addSpecifications(' . $quotationId . ')" title="Add/Edit Specifications">';
+                $actions .= '<i class="fas fa-list me-1"></i>Add Specs';
+                $actions .= '</button>';
+                
+                if ($hasSpecs) {
+                    $actions .= '<button class="btn btn-sm btn-info" onclick="sendQuotation(' . $quotationId . ')" title="Send Quotation">';
+                    $actions .= '<i class="fas fa-paper-plane me-1"></i>Send';
+                    $actions .= '</button>';
+                } else {
+                    $actions .= '<button class="btn btn-sm btn-secondary" disabled title="Add specifications before sending">';
+                    $actions .= '<i class="fas fa-paper-plane me-1"></i>Send (Add Specs First)';
+                    $actions .= '</button>';
+                }
+                break;
+                
+            case 'SENT':              
+                $actions .= '<button class="btn btn-sm btn-success me-1" onclick="markAsDeal(' . $quotationId . ')" title="Mark as Deal">';
+                $actions .= '<i class="fas fa-handshake me-1"></i>Deal';
+                $actions .= '</button>';
+                $actions .= '<button class="btn btn-sm btn-danger" onclick="markAsNotDeal(' . $quotationId . ')" title="Mark as Not Deal">';
+                $actions .= '<i class="fas fa-times-circle me-1"></i>No Deal';
+                $actions .= '</button>';
+                break;
+                
+            case 'DEAL':
+                // STRICT SEQUENTIAL WORKFLOW - Use database flags for reliable state
+                $customerLocationComplete = !empty($quotation['customer_location_complete']);
+                $customerContractComplete = !empty($quotation['customer_contract_complete']);
+                $spkCreated = !empty($quotation['spk_created']);
+                
+                // Step 1: Location must be completed first (MANDATORY)
+                if (!$customerLocationComplete) {
+                    $actions .= '<button class="btn btn-sm btn-warning" onclick="completeCustomerProfile(' . $quotationId . ')" title="Complete customer profile and location first">';
+                    $actions .= '<i class="fas fa-user-edit me-1"></i>Complete Customer Profile';
+                    $actions .= '</button>';
+                } 
+                // Step 2: Contract must be completed after location (MANDATORY)
+                else if (!$customerContractComplete) {
+                    $actions .= '<button class="btn btn-sm btn-info" onclick="completeCustomerContract(' . $quotationId . ')" title="Complete customer contract (required before SPK)">';
+                    $actions .= '<i class="fas fa-file-contract me-1"></i>Complete Contract';
+                    $actions .= '</button>';
+                } 
+                // Step 3: Only show SPK if BOTH location AND contract are complete
+                else if (!$spkCreated) {
+                    $actions .= '<button class="btn btn-sm btn-success" onclick="createSPK(' . $quotationId . ')" title="Create SPK">';
+                    $actions .= '<i class="fas fa-clipboard-list me-1"></i>Create SPK';
+                    $actions .= '</button>';
+                }
+                // All steps completed
+                else {
+                    $actions .= '<span class="badge bg-success">SPK Created</span>';
+                }
+                break;
+                
+            case 'NOT_DEAL':
+                // Show read-only No Deal status
+                $actions .= '<span class="badge bg-danger">No Deal</span>';
+                break;
         }
         
         $actions .= '</div>';
-        
         return $actions;
     }
 
@@ -629,7 +709,7 @@ class Marketing extends BaseDataTableController
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Quotation created successfully',
-                    'quotation_id' => $quotationId,
+                    'id_quotation' => $quotationId,
                     'quotation_number' => $quotationNumber
                 ]);
             }
@@ -649,6 +729,170 @@ class Marketing extends BaseDataTableController
             
             return redirect()->back()->withInput()
                 ->with('error', 'Failed to create quotation: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Create new prospect (first stage of quotation workflow)
+     */
+    public function createProspect()
+    {
+        if (!$this->canManage('marketing')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        }
+        
+        $validation = \Config\Services::validation();
+        $validation->setRules([
+            'prospect_name' => 'required|max_length[255]',
+            'prospect_contact_person' => 'required|max_length[255]',
+            'quotation_title' => 'required|max_length[255]',
+            'valid_until' => 'required|valid_date'
+        ]);
+        
+        if (!$validation->withRequest($this->request)->run()) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validation->getErrors()
+            ]);
+        }
+        
+        $db = \Config\Database::connect();
+        $db->transStart();
+        
+        try {
+            // Generate quotation number for prospect
+            $quotationNumber = $this->generateQuotationNumber();
+            
+            // Check if linking to existing customer
+            $existingCustomerId = $this->request->getPost('existing_customer_id');
+            $linkedCustomerData = null;
+            
+            if (!empty($existingCustomerId)) {
+                // Get existing customer data
+                $customerModel = new \App\Models\CustomerModel();
+                $customerLocationModel = new \App\Models\CustomerLocationModel();
+                
+                $customer = $customerModel->find($existingCustomerId);
+                if ($customer) {
+                    // Get primary location
+                    $primaryLocation = $customerLocationModel->where([
+                        'customer_id' => $existingCustomerId,
+                        'is_primary' => 1
+                    ])->first();
+                    
+                    if ($primaryLocation) {
+                        $linkedCustomerData = [
+                            'customer_id' => $customer['id'],
+                            'customer_name' => $customer['customer_name'],
+                            'location' => $primaryLocation
+                        ];
+                    }
+                }
+            }
+            
+            // Create prospect record with smart data handling
+            $prospectData = [
+                'quotation_number' => $quotationNumber,
+                'prospect_name' => $linkedCustomerData ? $linkedCustomerData['customer_name'] : $this->request->getPost('prospect_name'),
+                'prospect_contact_person' => $linkedCustomerData ? ($linkedCustomerData['location']['contact_person'] ?? $this->request->getPost('prospect_contact_person')) : $this->request->getPost('prospect_contact_person'),
+                'prospect_email' => $linkedCustomerData ? ($linkedCustomerData['location']['email'] ?? $this->request->getPost('prospect_email')) : $this->request->getPost('prospect_email'),
+                'prospect_phone' => $linkedCustomerData ? ($linkedCustomerData['location']['phone'] ?? $this->request->getPost('prospect_phone')) : $this->request->getPost('prospect_phone'),
+                'prospect_address' => $linkedCustomerData ? ($linkedCustomerData['location']['address'] ?? $this->request->getPost('prospect_address')) : $this->request->getPost('prospect_address'),
+                'prospect_city' => $linkedCustomerData ? ($linkedCustomerData['location']['city'] ?? $this->request->getPost('prospect_city')) : $this->request->getPost('prospect_city'),
+                'prospect_province' => $linkedCustomerData ? ($linkedCustomerData['location']['province'] ?? $this->request->getPost('prospect_province')) : $this->request->getPost('prospect_province'),
+                'quotation_title' => $this->request->getPost('quotation_title'),
+                'quotation_description' => $this->request->getPost('quotation_description'),
+                'quotation_date' => $this->request->getPost('quotation_date') ?: date('Y-m-d'),
+                'valid_until' => $this->request->getPost('valid_until'),
+                'stage' => 'DRAFT',
+                'workflow_stage' => 'PROSPECT',
+                'currency' => 'IDR',
+                'created_by' => session('user_id'),
+                // Store reference to linked customer (if any)
+                'created_customer_id' => $existingCustomerId ? $existingCustomerId : null
+            ];
+            
+            $quotationId = $this->quotationModel->insert($prospectData);
+            
+            if (!$quotationId) {
+                throw new \Exception('Failed to create prospect');
+            }
+            
+            $db->transComplete();
+            
+            if ($db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+            
+            // Log activity
+            $this->logActivity('PROSPECT_CREATED', 'quotation', $quotationId, 
+                'Created new prospect: ' . $this->request->getPost('prospect_name'));
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Prospect created successfully',
+                'data' => [
+                    'id_quotation' => $quotationId,
+                    'quotation_number' => $quotationNumber,
+                    'workflow_stage' => 'PROSPECT'
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            $db->transRollback();
+            log_message('error', 'Error creating prospect: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create prospect: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Convert prospect to quotation (allow adding specifications)
+     */
+    public function convertToQuotation($quotationId)
+    {
+        if (!$this->canManage('marketing')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
+        }
+        
+        try {
+            $quotation = $this->quotationModel->find($quotationId);
+            
+            if (!$quotation) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Quotation not found']);
+            }
+            
+            if ($quotation['workflow_stage'] !== 'PROSPECT') {
+                return $this->response->setJSON(['success' => false, 'message' => 'Only prospects can be converted to quotations']);
+            }
+            
+            // Update workflow stage to quotation
+            $this->quotationModel->update($quotationId, [
+                'workflow_stage' => 'QUOTATION',
+                'stage' => 'DRAFT'
+            ]);
+            
+            // Log activity
+            $this->logActivity('PROSPECT_TO_QUOTATION', 'quotation', $quotationId, 
+                'Converted prospect to quotation: ' . $quotation['quotation_number']);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Prospect converted to quotation successfully. Please add specifications before sending.',
+                'redirect_to_specs' => true
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error converting prospect: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to convert prospect: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -969,6 +1213,110 @@ class Marketing extends BaseDataTableController
     }
 
     /**
+     * Update quotation contract complete flag
+     */
+    public function updateContractComplete()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        $quotationId = $this->request->getPost('quotation_id');
+        
+        if (!$quotationId) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Quotation ID is required'
+            ]);
+        }
+
+        // Use Query Builder to avoid CI4 Model update exceptions
+        $db = \Config\Database::connect();
+        
+        $result = $db->table('quotations')
+            ->where('id_quotation', $quotationId)
+            ->update(['customer_contract_complete' => 1]);
+
+        if ($result !== false) {
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Contract stage completed'
+            ]);
+        }
+
+        return $this->response->setJSON([
+            'success' => false,
+            'message' => 'Failed to update quotation'
+        ]);
+    }
+
+    /**
+     * Link existing contract to quotation (Option 1: Pure Selection - No Update)
+     * This method only creates a link between quotation and existing contract
+     * without modifying the contract data itself
+     */
+    public function linkContract()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        $quotationId = $this->request->getPost('quotation_id');
+        $contractId = $this->request->getPost('contract_id');
+        
+        if (!$quotationId || !$contractId) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Quotation ID and Contract ID are required'
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Check if customer_contract_complete column exists, if not use workflow flags
+            $fields = $db->getFieldNames('quotations');
+            $hasContractCompleteField = in_array('customer_contract_complete', $fields);
+            
+            // Update quotation to mark contract as complete and link to contract
+            $updateData = [
+                'created_contract_id' => $contractId,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
+            // Add contract complete flag if column exists
+            if ($hasContractCompleteField) {
+                $updateData['customer_contract_complete'] = 1;
+            }
+            
+            $result = $db->table('quotations')
+                ->where('id_quotation', $quotationId)
+                ->update($updateData);
+
+            if ($result !== false) {
+                log_message('info', "Contract {$contractId} linked to quotation {$quotationId}");
+                
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Contract linked to quotation successfully'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to link contract to quotation'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::linkContract - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Database error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Export quotations to Excel
      */
     public function exportQuotations()
@@ -1121,7 +1469,7 @@ class Marketing extends BaseDataTableController
         $db = \Config\Database::connect();
         if ($db->tableExists('quotation_stage_history')) {
             $db->table('quotation_stage_history')->insert([
-                'quotation_id' => $quotationId,
+                'id_quotation' => $quotationId,
                 'stage' => $updateData['stage'],
                 'change_reason' => $this->request->getPost('change_reason'),
                 'change_notes' => $this->request->getPost('change_notes'),
@@ -3405,6 +3753,132 @@ class Marketing extends BaseDataTableController
     }
 
     /**
+     * Create SPK from Quotation Specifications
+     */
+    public function createFromQuotation()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
+        }
+
+        $this->db->transBegin();
+
+        try {
+            $requestData = $this->request->getJSON(true);
+            $quotationId = $requestData['quotation_id'] ?? null;
+
+            if (!$quotationId) {
+                throw new \Exception('ID Quotation tidak tersedia');
+            }
+
+            // Get quotation data with contract info
+            $quotation = $this->quotationModel->getQuotationWithContract($quotationId);
+            if (!$quotation) {
+                throw new \Exception('Quotation tidak ditemukan');
+            }
+
+            if ($quotation['workflow_stage'] !== 'DEAL') {
+                throw new \Exception('Hanya quotation dengan status DEAL yang dapat dibuat SPK');
+            }
+
+            if (!$quotation['created_contract_id']) {
+                throw new \Exception('Quotation belum memiliki kontrak yang dibuat');
+            }
+
+            // Get all specifications from quotation
+            $specifications = $this->quotationSpecificationModel->where('id_quotation', $quotationId)
+                                                               ->where('is_active', 1)
+                                                               ->findAll();
+
+            if (empty($specifications)) {
+                throw new \Exception('Tidak ada spesifikasi aktif dalam quotation');
+            }
+
+            $spkCount = 0;
+            $spkNumbers = [];
+
+            // Create SPK for each specification
+            foreach ($specifications as $spec) {
+                $jenis_spk = !empty($spec['attachment_tipe']) ? 'ATTACHMENT' : 'UNIT';
+                
+                // Build specification data
+                $specData = [
+                    'departemen_id' => $spec['departemen_id'],
+                    'tipe_unit_id' => $spec['tipe_unit_id'],
+                    'equipment_type' => $spec['equipment_type'],
+                    'brand' => $spec['brand'],
+                    'model' => $spec['model'],
+                    'kapasitas_id' => $spec['kapasitas_id'],
+                    'attachment_tipe' => $spec['attachment_tipe'],
+                    'attachment_merk' => $spec['attachment_merk'],
+                    'jenis_baterai' => $spec['jenis_baterai'],
+                    'charger_id' => $spec['charger_id'],
+                    'mast_id' => $spec['mast_id'],
+                    'ban_id' => $spec['ban_id'],
+                    'roda_id' => $spec['roda_id'],
+                    'valve_id' => $spec['valve_id'],
+                    'specifications' => $spec['specifications'],
+                    'service_scope' => $spec['service_scope'],
+                    'notes' => $spec['notes']
+                ];
+
+                $spkData = [
+                    'nomor_spk' => method_exists($this->spkModel, 'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
+                    'jenis_spk' => $jenis_spk,
+                    'kontrak_id' => $quotation['created_contract_id'],
+                    'quotation_specification_id' => $spec['id_specification'], // New field to link to quotation_specifications
+                    'jumlah_unit' => $spec['quantity'],
+                    'po_kontrak_nomor' => $quotation['quotation_number'],
+                    'pelanggan' => $quotation['customer_name'],
+                    'pic' => $quotation['contact_person'] ?? '',
+                    'kontak' => $quotation['phone'] ?? '',
+                    'lokasi' => $quotation['location_name'] ?? '',
+                    'delivery_plan' => null,
+                    'spesifikasi' => json_encode($specData),
+                    'catatan' => $spec['notes'],
+                    'status' => 'SUBMITTED',
+                    'dibuat_oleh' => session('user_id') ?: 1
+                ];
+
+                $spkId = $this->spkModel->insert($spkData);
+                if (!$spkId) {
+                    throw new \Exception('Gagal membuat SPK untuk spesifikasi: ' . $spec['specification_name']);
+                }
+
+                $spkNumbers[] = $spkData['nomor_spk'];
+                $spkCount++;
+
+                // Log activity
+                $this->logActivity('spk_created_from_quotation', 'spk', $spkId, 
+                    'SPK created from quotation: ' . $spkData['nomor_spk'] . ' for quotation: ' . $quotation['quotation_number'], [
+                    'spk_number' => $spkData['nomor_spk'],
+                    'quotation_id' => $quotationId,
+                    'quotation_number' => $quotation['quotation_number'],
+                    'specification_name' => $spec['specification_name']
+                ]);
+            }
+
+            $this->db->transCommit();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => "Berhasil membuat {$spkCount} SPK dari quotation",
+                'spk_count' => $spkCount,
+                'spk_numbers' => $spkNumbers,
+                'spk_number' => $spkNumbers[0] ?? null
+            ]);
+
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', 'SPK Creation from Quotation failed: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Update SPK data (full update)
      */
     public function spkUpdate($id)
@@ -5417,4 +5891,711 @@ class Marketing extends BaseDataTableController
         }
     }
 
+    // ===== WORKFLOW STAGE TRANSITION METHODS =====
+
+    public function sendQuotation($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        try {
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if ($quotation['workflow_stage'] !== 'QUOTATION') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation must be in QUOTATION stage to send'
+                ]);
+            }
+
+            // Check if specifications exist
+            $specsCount = $this->quotationSpecificationModel->where('id_quotation', $quotationId)->countAllResults();
+            if ($specsCount == 0) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Cannot send quotation without specifications. Please add specifications first.',
+                    'require_specs' => true
+                ]);
+            }
+
+            $updated = $quotationModel->update($quotationId, [
+                'workflow_stage' => 'SENT',
+                'stage' => 'SENT',
+                'sent_at' => date('Y-m-d H:i:s')
+            ]);
+
+            if ($updated) {
+                // Log activity
+                $this->logActivity('send_quotation', 'quotations', $quotationId, 'Quotation ' . $quotation['quotation_number'] . ' sent to customer');
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Quotation sent successfully'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to send quotation'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::sendQuotation - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to send quotation: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // REMOVED: Old markDeal() function - Use markAsDeal() instead (line ~6062)
+    // The newer version has better validation, transaction handling, and auto-creates customers
+
+    // REMOVED: Old markNotDeal() function - Use markAsNotDeal() instead (line ~6244)
+    // The newer version has better validation and proper status updates
+
+    public function createCustomer($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        try {
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if ($quotation['workflow_stage'] !== 'DEAL') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation must be marked as deal to create customer'
+                ]);
+            }
+
+            // Check if customer already exists
+            $customerModel = new \App\Models\CustomerModel();
+            if (!empty($quotation['created_customer_id'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Customer already created for this quotation'
+                ]);
+            }
+
+            // Create customer record using the stored procedure if available, or manual insert
+            try {
+                // Use the stored procedure for quotation to customer conversion
+                $db = \Config\Database::connect();
+                $query = $db->query("CALL sp_convert_quotation_to_deal(?, ?)", [$quotationId, session()->get('user_id')]);
+                
+                // Get the updated quotation to check customer creation
+                $updatedQuotation = $quotationModel->find($quotationId);
+                
+                if (!empty($updatedQuotation['created_customer_id'])) {
+                    // Log activity
+                    $this->logActivity('create_customer_from_deal', 'customers', $updatedQuotation['created_customer_id'], 
+                        'Customer created from deal quotation: ' . $quotation['quotation_number']);
+
+                    return $this->response->setJSON([
+                        'success' => true,
+                        'message' => 'Customer created successfully from deal. You can now create contracts and purchase orders.',
+                        'customer_id' => $updatedQuotation['created_customer_id']
+                    ]);
+                }
+                
+            } catch (\Exception $spError) {
+                // If stored procedure fails, fall back to manual creation
+                log_message('info', 'Stored procedure failed, using manual customer creation: ' . $spError->getMessage());
+                
+                // Manual customer creation
+                $customerData = [
+                    'customer_name' => $quotation['prospect_name'],
+                    'contact_person' => $quotation['prospect_contact_person'] ?? '',
+                    'phone' => $quotation['prospect_phone'] ?? '',
+                    'email' => $quotation['prospect_email'] ?? '',
+                    'address' => $quotation['prospect_address'] ?? '',
+                    'city' => $quotation['prospect_city'] ?? '',
+                    'customer_type' => 'CORPORATE',
+                    'status' => 'ACTIVE',
+                    'created_by' => session()->get('user_id'),
+                    'created_at' => date('Y-m-d H:i:s')
+                ];
+
+                $customerId = $customerModel->insert($customerData);
+
+                if ($customerId) {
+                    // Update quotation with customer_id
+                    $quotationModel->update($quotationId, [
+                        'created_customer_id' => $customerId,
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
+
+                    // Log activity
+                    $this->logActivity('create_customer_from_deal', 'customers', $customerId, 
+                        'Customer created from deal quotation: ' . $quotation['quotation_number']);
+
+                    return $this->response->setJSON([
+                        'success' => true,
+                        'message' => 'Customer created successfully from deal. You can now create contracts and purchase orders.',
+                        'customer_id' => $customerId
+                    ]);
+                } else {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Failed to create customer manually'
+                    ]);
+                }
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::createCustomer - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create customer: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Mark quotation as deal and auto-create customer with notification
+     */
+    public function markAsDeal($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        $db = \Config\Database::connect();
+        $db->transStart();
+
+        try {
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if ($quotation['workflow_stage'] !== 'SENT') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Only sent quotations can be marked as deal'
+                ]);
+            }
+
+            // Check if specifications exist
+            $hasSpecs = $this->quotationSpecificationModel->where('id_quotation', $quotationId)->countAllResults() > 0;
+            if (!$hasSpecs) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Please add specifications before marking as deal'
+                ]);
+            }
+
+            // Update quotation to DEAL status
+            $updated = $quotationModel->update($quotationId, [
+                'workflow_stage' => 'DEAL',
+                'stage' => 'ACCEPTED',
+                'is_deal' => 1,
+                'deal_date' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            if (!$updated) {
+                throw new \Exception('Failed to update quotation status');
+            }
+
+            // Auto-create customer from prospect data (Simplified approach)
+            $customerMessage = '';
+            $customerExists = false;
+            
+            try {
+                $customerModel = new \App\Models\CustomerModel();
+                
+                // Simple check by name only (using correct field name)
+                $existingCustomer = $customerModel->where('customer_name', $quotation['prospect_name'])->first();
+                
+                if ($existingCustomer) {
+                    // Customer already exists
+                    $customerId = $existingCustomer['id'];
+                    $customerExists = true;
+                    $customerMessage = 'Customer sudah terdaftar: ' . $existingCustomer['customer_name'];
+                    
+                    // Update quotation with existing customer ID
+                    $quotationModel->update($quotationId, [
+                        'created_customer_id' => $customerId
+                    ]);
+                } else {
+                    // Generate unique customer code
+                    $customerCode = 'CUST-' . date('Ymd') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                    
+                    // Check if code exists and regenerate if needed
+                    while ($customerModel->where('customer_code', $customerCode)->first()) {
+                        $customerCode = 'CUST-' . date('Ymd') . '-' . str_pad(mt_rand(1, 9999), 4, '0', STR_PAD_LEFT);
+                    }
+                    
+                    // Create basic customer record only (using correct field names)
+                    $customerData = [
+                        'customer_code' => $customerCode,
+                        'customer_name' => $quotation['prospect_name'] ?: 'Unknown Customer',
+                        'is_active' => 1
+                    ];
+
+                    log_message('info', 'Creating basic customer with data: ' . json_encode($customerData));
+
+                    $customerId = $customerModel->insert($customerData);
+                    
+                    if ($customerId && $customerId > 0) {
+                        $customerMessage = 'Customer baru berhasil ditambahkan: ' . $quotation['prospect_name'] . ' (Detail dapat dilengkapi nanti)';
+                        
+                        // Update quotation with new customer ID
+                        $quotationModel->update($quotationId, [
+                            'created_customer_id' => $customerId
+                        ]);
+                        
+                        log_message('info', 'Customer created successfully with ID: ' . $customerId);
+                    } else {
+                        $insertErrors = $customerModel->errors();
+                        $errorMsg = 'Insert failed';
+                        if (!empty($insertErrors)) {
+                            $errorMsg .= ': ' . implode(', ', $insertErrors);
+                        }
+                        
+                        log_message('error', 'Customer creation failed: ' . $errorMsg);
+                        $customerMessage = 'Customer gagal ditambahkan (' . $errorMsg . '), silakan buat manual';
+                    }
+                }
+            } catch (\Exception $customerError) {
+                log_message('error', 'Auto customer creation failed: ' . $customerError->getMessage());
+                $customerMessage = 'Customer gagal ditambahkan otomatis, silakan buat manual';
+            }
+
+            $db->transComplete();
+
+            if ($db->transStatus() === false) {
+                log_message('error', 'Marketing::markAsDeal - Transaction failed');
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to mark as deal: Transaction failed'
+                ]);
+            }
+
+            // Log activity
+            $this->logActivity('mark_as_deal', 'quotations', $quotationId, 
+                'Quotation marked as deal: ' . $quotation['quotation_number']);
+
+            // Check customer profile completion status
+            $profileStatus = $customerModel->getCustomerProfileStatus($customerId);
+            $needsProfileCompletion = !$profileStatus['complete'];
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Quotation marked as DEAL! ' . $customerMessage,
+                'customer_exists' => $customerExists,
+                'customer_message' => $customerMessage,
+                'customer_id' => $customerId,
+                'quotation_id' => $quotationId,
+                'needs_profile_completion' => $needsProfileCompletion,
+                'profile_status' => $profileStatus
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::markAsDeal - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to mark as deal: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get customer profile completion status
+     */
+    public function getCustomerProfileStatus($customerId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        try {
+            $customerModel = new \App\Models\CustomerModel();
+            $profileStatus = $customerModel->getCustomerProfileStatus($customerId);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'profile_status' => $profileStatus
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getCustomerProfileStatus - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to get customer profile status: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Mark quotation as not deal
+     */
+    public function markAsNotDeal($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        try {
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if ($quotation['workflow_stage'] !== 'SENT') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Only sent quotations can be marked as not deal'
+                ]);
+            }
+
+            $updated = $quotationModel->update($quotationId, [
+                'workflow_stage' => 'NOT_DEAL',
+                'stage' => 'REJECTED',
+                'is_deal' => 0,
+                'rejected_at' => date('Y-m-d H:i:s'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ]);
+
+            if ($updated) {
+                // Log activity
+                $this->logActivity('mark_as_not_deal', 'quotations', $quotationId, 
+                    'Quotation marked as not deal: ' . $quotation['quotation_number']);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Quotation marked as NOT DEAL and closed.'
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to mark quotation as not deal'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::markAsNotDeal - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to mark as not deal: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Check if customer profile is complete
+     */
+    private function isCustomerProfileComplete($customerId)
+    {
+        if (!$customerId) {
+            return false;
+        }
+
+        $customerModel = new \App\Models\CustomerModel();
+        $customerLocationModel = new \App\Models\CustomerLocationModel();
+
+        // Check basic customer data
+        $customer = $customerModel->find($customerId);
+        if (!$customer) {
+            return false;
+        }
+
+        // Check if customer has at least one complete location
+        $locations = $customerLocationModel->where('customer_id', $customerId)
+                                          ->where('is_active', 1)
+                                          ->findAll();
+
+        $hasCompleteLocation = false;
+        foreach ($locations as $location) {
+            // Consider location complete if it has: address, city, province, and contact info
+            if (!empty($location['address']) && 
+                !empty($location['city']) && 
+                !empty($location['province']) &&
+                !empty($location['contact_person']) &&
+                $location['address'] !== 'Alamat belum ditentukan' &&
+                $location['city'] !== 'Kota belum ditentukan' &&
+                $location['province'] !== 'Provinsi belum ditentukan') {
+                $hasCompleteLocation = true;
+                break;
+            }
+        }
+
+        return $hasCompleteLocation;
+    }
+
+    /**
+     * Create customer from deal quotation
+     */
+    public function createCustomerFromDeal($quotationId)
+    {
+        // Alias for createCustomer method for better naming
+        return $this->createCustomer($quotationId);
+    }
+
+    /**
+     * Create contract from deal quotation
+     */
+    public function createContract($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        try {
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if ($quotation['workflow_stage'] !== 'DEAL' || empty($quotation['created_customer_id'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation must be a deal with customer created first'
+                ]);
+            }
+
+            // Validate customer profile completion
+            $customerModel = new \App\Models\CustomerModel();
+            if (!$customerModel->isCustomerProfileComplete($quotation['created_customer_id'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Customer profile must be completed before creating contract',
+                    'require_profile_completion' => true,
+                    'customer_id' => $quotation['created_customer_id']
+                ]);
+            }
+
+            if (!empty($quotation['created_contract_id'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Contract already created for this quotation'
+                ]);
+            }
+
+            // Generate contract number
+            $contractNumber = $this->generateContractNumberInternal();
+
+            // Create contract record
+            $contractData = [
+                'no_kontrak' => $contractNumber,
+                'customer_id' => $quotation['created_customer_id'],
+                'quotation_id' => $quotationId,
+                'nilai_total' => $quotation['total_amount'],
+                'tanggal_mulai' => date('Y-m-d'),
+                'tanggal_berakhir' => date('Y-m-d', strtotime('+12 months')),
+                'status' => 'Draft',
+                'created_by' => session()->get('user_id'),
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+
+            $kontrakModel = new \App\Models\KontrakModel();
+            $contractId = $kontrakModel->insert($contractData);
+
+            if ($contractId) {
+                // Update quotation with contract_id
+                $quotationModel->update($quotationId, [
+                    'created_contract_id' => $contractId,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+                // Log activity
+                $this->logActivity('create_contract', 'kontrak', $contractId, 
+                    'Contract created from quotation: ' . $quotation['quotation_number']);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Contract created successfully: ' . $contractNumber,
+                    'contract_id' => $contractId,
+                    'contract_number' => $contractNumber
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to create contract'
+                ]);
+            }
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::createContract - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create contract: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Create purchase order from deal quotation
+     */
+    public function createPurchaseOrder($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        try {
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if ($quotation['workflow_stage'] !== 'DEAL' || empty($quotation['created_customer_id'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation must be a deal with customer created first'
+                ]);
+            }
+
+            // For now, just return success with a message to manually create PO
+            // This can be enhanced later with actual PO creation logic
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Please create Purchase Order manually in the Purchase Order module for customer: ' . $quotation['prospect_name'],
+                'redirect_to_po' => true,
+                'customer_id' => $quotation['created_customer_id']
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::createPurchaseOrder - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create purchase order: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Create SPK from completed deal
+     */
+    public function createSPK($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        try {
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if ($quotation['workflow_stage'] !== 'DEAL' || 
+                empty($quotation['created_customer_id']) || 
+                empty($quotation['created_contract_id'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Contract must be created first before creating SPK'
+                ]);
+            }
+
+            // Validate customer profile completion
+            if (!$this->isCustomerProfileComplete($quotation['created_customer_id'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Customer profile must be completed before creating SPK',
+                    'require_profile_completion' => true,
+                    'customer_id' => $quotation['created_customer_id']
+                ]);
+            }
+
+            // Redirect to SPK creation with quotation data
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Redirecting to SPK creation...',
+                'redirect_to_spk' => true,
+                'quotation_id' => $quotationId,
+                'contract_id' => $quotation['created_contract_id'],
+                'customer_id' => $quotation['created_customer_id'],
+                'redirect_url' => base_url('marketing/spk/create?quotation_id=' . $quotationId . '&contract_id=' . $quotation['created_contract_id'])
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::createSPK - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create SPK: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Add specifications to quotation
+     */
+    public function addSpecifications($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->to('/marketing/quotations');
+        }
+
+        try {
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Opening specifications modal...',
+                'open_specifications' => true,
+                'quotation_id' => $quotationId
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::addSpecifications - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to open specifications: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

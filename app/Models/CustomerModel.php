@@ -15,17 +15,7 @@ class CustomerModel extends Model
     
     protected $allowedFields = [
         'customer_code',
-        'customer_name', 
-        'area_id',
-        'primary_address',
-        'secondary_address',
-        'city',
-        'province',
-        'postal_code',
-        'pic_name',
-        'pic_phone',
-        'pic_email',
-        'contract_type',
+        'customer_name',
         'is_active'
     ];
     
@@ -38,14 +28,6 @@ class CustomerModel extends Model
     protected $validationRules = [
         'customer_code' => 'required|max_length[20]|is_unique[customers.customer_code,id,{id}]',
         'customer_name' => 'required|max_length[255]',
-        'area_id' => 'required|integer|is_not_unique[areas.id]',
-        'primary_address' => 'permit_empty|max_length[500]',
-        'city' => 'permit_empty|max_length[100]',
-        'province' => 'permit_empty|max_length[100]',
-        'pic_name' => 'permit_empty|max_length[100]',
-        'pic_phone' => 'permit_empty|max_length[20]',
-        'pic_email' => 'permit_empty|valid_email|max_length[100]',
-        'contract_type' => 'permit_empty|in_list[RENTAL_HARIAN,RENTAL_BULANAN,JUAL]',
         'is_active' => 'permit_empty|in_list[0,1]'
     ];
     
@@ -58,25 +40,6 @@ class CustomerModel extends Model
         'customer_name' => [
             'required' => 'Nama customer harus diisi',
             'max_length' => 'Nama customer maksimal 255 karakter'
-        ],
-        'area_id' => [
-            'required' => 'Area harus dipilih',
-            'integer' => 'Area harus berupa angka',
-            'is_not_unique' => 'Area tidak valid'
-        ],
-        'primary_address' => [
-            'required' => 'Alamat utama harus diisi'
-        ],
-        'city' => [
-            'required' => 'Kota harus diisi',
-            'max_length' => 'Nama kota maksimal 100 karakter'
-        ],
-        'province' => [
-            'required' => 'Provinsi harus diisi',
-            'max_length' => 'Nama provinsi maksimal 100 karakter'
-        ],
-        'pic_email' => [
-            'valid_email' => 'Format email tidak valid'
         ]
     ];
     
@@ -100,9 +63,92 @@ class CustomerModel extends Model
     {
         return $this->where('is_active', 1)->findAll();
     }
-    
+
     /**
-     * Get customers with area information
+     * Check if customer profile is complete
+     */
+    public function isCustomerProfileComplete($customerId)
+    {
+        // Get customer basic data
+        $customer = $this->find($customerId);
+        if (!$customer) {
+            return false;
+        }
+
+        // Check if customer has basic required info
+        if (empty($customer['customer_name']) || $customer['customer_name'] == 'Unknown Customer') {
+            return false;
+        }
+
+        // Check if customer has at least one complete location
+        $locationModel = new \App\Models\CustomerLocationModel();
+        $locations = $locationModel->where('customer_id', $customerId)
+                                  ->where('is_active', 1)
+                                  ->findAll();
+
+        if (empty($locations)) {
+            return false;
+        }
+
+        // Check if at least one location has complete data
+        foreach ($locations as $location) {
+            $isComplete = true;
+            
+            // Required fields check
+            $requiredFields = ['address', 'city', 'province', 'contact_person'];
+            foreach ($requiredFields as $field) {
+                if (empty($location[$field]) || 
+                    $location[$field] == 'Alamat belum ditentukan' ||
+                    $location[$field] == 'Kota belum ditentukan' ||
+                    $location[$field] == 'Provinsi belum ditentukan' ||
+                    $location[$field] == 'Contact belum ditentukan') {
+                    $isComplete = false;
+                    break;
+                }
+            }
+            
+            if ($isComplete) {
+                return true; // At least one complete location found
+            }
+        }
+
+        return false; // No complete location found
+    }
+
+    /**
+     * Get customer profile completion status
+     */
+    public function getCustomerProfileStatus($customerId)
+    {
+        $customer = $this->find($customerId);
+        if (!$customer) {
+            return [
+                'exists' => false,
+                'complete' => false,
+                'has_location' => false,
+                'message' => 'Customer not found'
+            ];
+        }
+
+        $isComplete = $this->isCustomerProfileComplete($customerId);
+        
+        // Check if customer has any locations
+        $locationModel = new \App\Models\CustomerLocationModel();
+        $hasLocation = $locationModel->where('customer_id', $customerId)
+                                   ->where('is_active', 1)
+                                   ->countAllResults() > 0;
+        
+        return [
+            'exists' => true,
+            'complete' => $isComplete,
+            'has_location' => $hasLocation,
+            'customer_name' => $customer['customer_name'],
+            'message' => $isComplete ? 'Customer profile is complete' : 'Customer profile needs completion'
+        ];
+    }
+
+    /**
+     * Get customers with area information (legacy method)
      */
     public function getCustomersWithArea($customerId = null)
     {

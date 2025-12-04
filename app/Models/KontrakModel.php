@@ -317,14 +317,13 @@ class KontrakModel extends Model
             return null;
         }
 
-        // Then get the dynamic calculations
+        // Then get the dynamic calculations from inventory_unit (tetap)
         $calculations = $this->db->query("
             SELECT 
                 COUNT(iu.id_inventory_unit) as actual_units,
                 COALESCE(SUM(iu.harga_sewa_bulanan), 0) as total_nilai
-            FROM kontrak_spesifikasi ks
-            LEFT JOIN inventory_unit iu ON ks.id = iu.kontrak_spesifikasi_id
-            WHERE ks.kontrak_id = ?
+            FROM inventory_unit iu 
+            WHERE iu.kontrak_id = ?
         ", [$id])->getRowArray();
 
         // Override the calculated fields

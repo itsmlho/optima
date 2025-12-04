@@ -350,7 +350,7 @@ class Quotation extends BaseController
 
             if ($this->quotationModel->delete($id)) {
                 // Also delete specifications
-                $this->quotationSpecificationModel->where('quotation_id', $id)->delete();
+                $this->quotationSpecificationModel->where('id_quotation', $id)->delete();
                 
                 $this->logActivity('quotation_deleted', 'quotations', $id, 'Deleted quotation: ' . $quotation['quotation_number']);
                 
@@ -384,7 +384,7 @@ class Quotation extends BaseController
             
             if ($this->quotationModel->updateStage($id, $stage)) {
                 $quotation = $this->quotationModel->find($id);
-                $this->logActivity('quotation_stage_updated', 'quotations', $quotationId, 'Updated quotation stage: ' . $quotation['quotation_number'] . ' to ' . $stage);
+                $this->logActivity('quotation_stage_updated', 'quotations', $id, 'Updated quotation stage: ' . $quotation['quotation_number'] . ' to ' . $stage);
                 
                 return $this->response->setJSON([
                     'success' => true,
@@ -421,7 +421,7 @@ class Quotation extends BaseController
         try {
             if ($this->quotationModel->markAsDeal($id)) {
                 $quotation = $this->quotationModel->find($id);
-                $this->logActivity('quotation_marked_as_deal', 'quotations', $quotationId, 'Marked quotation as deal: ' . $quotation['quotation_number']);
+                $this->logActivity('quotation_marked_as_deal', 'quotations', $id, 'Marked quotation as deal: ' . $quotation['quotation_number']);
                 
                 return $this->response->setJSON([
                     'success' => true,
@@ -551,9 +551,21 @@ class Quotation extends BaseController
             // Debug: Log successful query
             log_message('debug', "Quotation found: " . json_encode($quotation));
             
-            // Add status success to match frontend expectations
-            $quotation['status'] = 'success';
-            return $this->response->setJSON($quotation);
+            // Map database fields to frontend expectations
+            $response = [
+                'status' => 'success',
+                'id' => $quotation['id_quotation'],
+                'quotation_number' => $quotation['quotation_number'],
+                'customer_id' => $quotation['created_customer_id'] ?? null,
+                'description' => $quotation['quotation_title'],
+                'amount' => $quotation['total_amount'],
+                'valid_until' => $quotation['valid_until'],
+                'notes' => $quotation['quotation_description'] ?? '',
+                // Include all original data for other uses
+                'data' => $quotation
+            ];
+            
+            return $this->response->setJSON($response);
             
         } catch (\Exception $e) {
             log_message('error', 'Error getting quotation detail: ' . $e->getMessage());
@@ -658,31 +670,45 @@ class Quotation extends BaseController
                 ]);
             }
 
+            // Check workflow stage - only allow specifications for QUOTATION and SENT stages
+            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Specifications can only be added to quotations in QUOTATION or SENT stage. Current stage: ' . $quotation['workflow_stage']
+                ]);
+            }
+
             // Generate specification code
             $spekKode = $this->quotationSpecificationModel->generateNextSpekKode($quotationId);
             
-            // Prepare data
+            // Prepare data using correct field names that match quotation_specifications table
             $data = [
                 'id_quotation' => $quotationId,
                 'spek_kode' => $spekKode,
                 'specification_name' => $this->request->getPost('specification_name'),
-                'specification_description' => $this->request->getPost('specification_description'),
-                'category' => $this->request->getPost('category'),
                 'quantity' => (int)$this->request->getPost('quantity'),
-                'unit' => $this->request->getPost('unit') ?: 'pcs',
                 'unit_price' => (float)$this->request->getPost('unit_price'),
-                'equipment_type' => $this->request->getPost('equipment_type'),
-                'brand' => $this->request->getPost('brand'),
-                'model' => $this->request->getPost('model'),
+                'harga_per_unit_harian' => (float)$this->request->getPost('harga_per_unit_harian'),
                 'departemen_id' => $this->request->getPost('departemen_id') ?: null,
                 'tipe_unit_id' => $this->request->getPost('tipe_unit_id') ?: null,
                 'kapasitas_id' => $this->request->getPost('kapasitas_id') ?: null,
+                'brand' => $this->request->getPost('merk_unit'),
+                'jenis_baterai' => $this->request->getPost('jenis_baterai'),
                 'charger_id' => $this->request->getPost('charger_id') ?: null,
-                'specifications' => $this->request->getPost('specifications'),
-                'notes' => $this->request->getPost('notes'),
+                'attachment_tipe' => $this->request->getPost('attachment_tipe'),
+                'valve_id' => $this->request->getPost('valve_id'),
+                'mast_id' => $this->request->getPost('mast_id'),
+                'ban_id' => $this->request->getPost('ban_id'),
+                'roda_id' => $this->request->getPost('roda_id'),
                 'is_active' => 1,
                 'sort_order' => 1
             ];
+            
+            // Handle accessories array
+            $aksesoris = $this->request->getPost('aksesoris');
+            if ($aksesoris && is_array($aksesoris)) {
+                $data['notes'] = 'Accessories: ' . implode(', ', $aksesoris);
+            }
             
             // Calculate total price
             $data['total_price'] = $data['quantity'] * $data['unit_price'];
@@ -692,6 +718,9 @@ class Quotation extends BaseController
             if ($specId) {
                 // Update quotation total
                 $this->quotationSpecificationModel->updateQuotationTotal($quotationId);
+                
+                // Get updated quotation total
+                $updatedQuotation = $this->quotationModel->find($quotationId);
                 
                 // Log activity
                 $this->logActivity(
@@ -704,7 +733,11 @@ class Quotation extends BaseController
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Specification added successfully',
-                    'data' => ['id' => $specId, 'spek_kode' => $spekKode]
+                    'data' => [
+                        'id' => $specId, 
+                        'spek_kode' => $spekKode,
+                        'quotation_total' => $updatedQuotation['total_amount'] ?? 0
+                    ]
                 ]);
             } else {
                 return $this->response->setJSON([
@@ -743,6 +776,22 @@ class Quotation extends BaseController
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Specification not found'
+                ]);
+            }
+
+            // Check quotation workflow stage
+            $quotation = $this->quotationModel->find($specification['id_quotation']);
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Specifications can only be modified for quotations in QUOTATION or SENT stage. Current stage: ' . $quotation['workflow_stage']
                 ]);
             }
 
@@ -808,6 +857,22 @@ class Quotation extends BaseController
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Specification not found'
+                ]);
+            }
+
+            // Check quotation workflow stage
+            $quotation = $this->quotationModel->find($specification['id_quotation']);
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+
+            if (!in_array($quotation['workflow_stage'], ['QUOTATION', 'SENT'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Specifications can only be deleted from quotations in QUOTATION or SENT stage. Current stage: ' . $quotation['workflow_stage']
                 ]);
             }
 

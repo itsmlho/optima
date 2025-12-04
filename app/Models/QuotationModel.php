@@ -13,7 +13,7 @@ class QuotationModel extends Model
         'prospect_address', 'prospect_city', 'prospect_province', 'prospect_postal_code',
         'quotation_title', 'quotation_description', 'quotation_date', 'valid_until', 
         'currency', 'subtotal', 'discount_percent', 'discount_amount', 'tax_percent', 'tax_amount', 'total_amount',
-        'payment_terms', 'delivery_terms', 'warranty_terms', 'stage', 'probability_percent', 'expected_close_date',
+        'payment_terms', 'delivery_terms', 'warranty_terms', 'stage', 'workflow_stage', 'probability_percent', 'expected_close_date',
         'is_deal', 'deal_date', 'created_customer_id', 'created_contract_id', 'created_by', 'assigned_to'
     ];
     protected $useTimestamps = true;
@@ -186,11 +186,9 @@ class QuotationModel extends Model
     /**
      * Get statistics for dashboard
      */
-    public function getStats()
-    {
-        return $this->getQuotationStatistics();
-    }
-
+    // REMOVED: Unnecessary wrapper function getStats() 
+    // Use getQuotationStatistics() directly instead
+    
     /**
      * Get quotation statistics
      */
@@ -285,7 +283,8 @@ class QuotationModel extends Model
     public function getQuotationWithSpecs($quotationId)
     {
         $quotation = $this->find($quotationId);
-        
+     
+            
         if ($quotation) {
             $specModel = new \App\Models\QuotationSpecificationModel();
             $quotation['specifications'] = $specModel->getQuotationSpecifications($quotationId);
@@ -303,4 +302,29 @@ class QuotationModel extends Model
             ->where('quotations.id_quotation', $id)
             ->first();
     }
+
+    /**
+     * Get quotation with contract information for SPK creation
+     */
+    public function getQuotationWithContract($id)
+    {
+        $builder = $this->db->table('quotations q');
+        $builder->select('
+            q.*,
+            c.customer_name,
+            cl.location_name,
+            cl.contact_person,
+            cl.phone,
+            cl.address,
+            k.id as contract_id,
+            k.no_kontrak
+        ');
+        $builder->join('customers c', 'q.created_customer_id = c.id', 'left');
+        $builder->join('customer_locations cl', 'c.id = cl.customer_id', 'left');
+        $builder->join('kontrak k', 'q.created_contract_id = k.id', 'left');
+        $builder->where('q.id_quotation', $id);
+        
+        return $builder->get()->getRowArray();
+    }
+    
 }

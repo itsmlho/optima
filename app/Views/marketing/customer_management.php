@@ -79,7 +79,7 @@ $can_export = $permissions['export'];
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Customer Management</h5>
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-success" onclick="openAddCustomerModal()">
+            <button class="btn btn-sm btn-primary" onclick="openAddCustomerModal()">
                 <i class="fas fa-plus"></i> Add Customer
             </button>
             <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()">
@@ -185,7 +185,7 @@ $can_export = $permissions['export'];
                     <div class="tab-pane fade" id="locations-content" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0"><strong>Customer Locations</strong></h6>
-                            <button class="btn btn-sm btn-info" onclick="openAddLocationModal()">
+                            <button class="btn btn-sm btn-primary" onclick="openAddLocationModal()">
                                 <i class="fas fa-plus me-1"></i>Add Location
                             </button>
                         </div>
@@ -225,7 +225,7 @@ $can_export = $permissions['export'];
                 </div>
             </div>
             <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-white" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -262,11 +262,6 @@ $can_export = $permissions['export'];
                             <i class="fas fa-map-marker-alt me-1"></i>Locations & Units
                         </button>
                     </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="spesifikasi-tab-contract" data-bs-toggle="tab" data-bs-target="#spesifikasi-content-contract" type="button">
-                            <i class="fas fa-cogs me-1"></i>Request Specification (<span id="spekCountContract">0</span>)
-                        </button>
-                    </li>
                 </ul>
 
                 <!-- Tab Content -->
@@ -285,29 +280,11 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
 
-                    <!-- Spesifikasi Tab -->
-                    <div class="tab-pane fade" id="spesifikasi-content-contract" role="tabpanel">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0"><strong>Request Spesifikasi untuk dasar pembuatan SPK</strong></h6>
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-primary btn-sm" onclick="openAddSpesifikasiModal()">
-                                    <i class="fas fa-plus me-1"></i>Tambah Unit
-                                </button>
-                                <button class="btn btn-success btn-sm" onclick="openAddAttachmentSpesifikasiModal()">
-                                    <i class="fas fa-puzzle-piece me-1"></i>Tambah Attachment
-                                </button>
-                            </div>
-                        </div>
-                        <br>
 
-                        <div id="spesifikasiListContract">
-                            <p class="text-muted">Memuat spesifikasi...</p>
-                        </div>
-                    </div>
                 </div>
             </div>
             <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-white" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -330,7 +307,7 @@ $can_export = $permissions['export'];
                 <div class="text-center text-muted">Loading...</div>
             </div>
             <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-white" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -1500,152 +1477,11 @@ function displayUnitsAccordion(units) {
     $('#contractTotalUnits').text(totalUnits);
 }
 
-// Load contract spesifikasi - same as kontrak.php
-function loadContractSpesifikasi(kontrakId) {
-    console.log('=== loadContractSpesifikasi START ===');
-    console.log('kontrakId:', kontrakId);
-    console.log('typeof kontrakId:', typeof kontrakId);
-    
-    const container = document.getElementById('spesifikasiListContract');
-    if (!container) {
-        console.error('spesifikasiListContract container not found!');
-        return;
-    }
-    
-    console.log('Container found:', container);
-    console.log('Setting loading message...');
-    
-    // Add loading class for smooth fade
-    container.classList.add('loading');
-    container.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="text-muted mt-3">Memuat spesifikasi...</p></div>';
-    
-    const url = `<?= base_url('marketing/kontrak/spesifikasi/') ?>${kontrakId}`;
-    console.log('Fetching URL:', url);
-    console.log('Base URL:', '<?= base_url('marketing/kontrak/spesifikasi/') ?>');
-    
-    fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status, response.statusText);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(j => {
-            console.log('Spesifikasi response:', j);
-            if (!j.success) {
-                console.error('API returned error:', j.message);
-                container.classList.remove('loading');
-                container.innerHTML = '<div class="alert alert-danger">Gagal memuat spesifikasi: ' + (j.message || 'Unknown error') + '</div>';
-                return;
-            }
-            
-            const spesifikasi = j.data || [];
-            const summary = j.summary || {};
-            
-            console.log('Processing spesifikasi data, count:', spesifikasi.length);
-            
-            // Update tab counter
-            const spekCountElement = document.getElementById('spekCountContract');
-            if (spekCountElement) {
-                spekCountElement.textContent = spesifikasi.length;
-            }
-            
-            // Small delay for smooth transition
-            setTimeout(() => {
-                container.classList.remove('loading');
-                
-                if (spesifikasi.length === 0) {
-                    container.innerHTML = `
-                        <div class="text-center py-5">
-                            <div class="mb-4">
-                                <i class="fas fa-cogs fa-3x text-muted"></i>
-                            </div>
-                            <h5 class="text-muted">Belum ada spesifikasi</h5>
-                            <p class="text-muted">Klik "Tambah Unit" atau "Tambah Attachment" untuk menambahkan spesifikasi.</p>
-                        </div>
-                    `;
-                    return;
-                }
-                
-                // Call displayContractSpesifikasiCorrect to render properly
-                displayContractSpesifikasiCorrect(spesifikasi);
-            }, 200);
-        })
-        .catch(error => {
-            console.error('Error loading spesifikasi:', error);
-            container.classList.remove('loading');
-            container.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Gagal memuat spesifikasi: ' + error.message + '</div>';
-        });
-}
+// Contract spesifikasi functions removed - now handled in quotations module
+
 
 // Load all spesifikasi for a customer (from all contracts)
-function loadCustomerSpesifikasi(customerId) {
-    console.log('=== loadCustomerSpesifikasi START ===');
-    console.log('customerId:', customerId);
-    
-    const container = document.getElementById('spesifikasiList');
-    if (!container) {
-        console.error('spesifikasiList container not found!');
-        return;
-    }
-    
-    console.log('Container found:', container);
-    container.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Memuat spesifikasi...</div>';
-    
-    // First get all contracts for this customer
-    $.ajax({
-        url: `<?= base_url('marketing/customer-management/getCustomerContracts') ?>/${customerId}`,
-        type: 'GET',
-        success: function(contractsResponse) {
-            if (contractsResponse.success && contractsResponse.data.length > 0) {
-                // Get all spesifikasi from all contracts
-                let allSpesifikasi = [];
-                let contractsProcessed = 0;
-                
-                contractsResponse.data.forEach(contract => {
-                    $.ajax({
-                        url: `<?= base_url('marketing/kontrak/spesifikasi/') ?>${contract.id}`,
-                        type: 'GET',
-                        success: function(spesifikasiResponse) {
-                            if (spesifikasiResponse.success && spesifikasiResponse.data) {
-                                // Add contract info to each spesifikasi
-                                spesifikasiResponse.data.forEach(spek => {
-                                    spek.contract_info = {
-                                        no_kontrak: contract.no_kontrak,
-                                        no_po: contract.no_po_marketing,
-                                        location: contract.location_name
-                                    };
-                                });
-                                allSpesifikasi = allSpesifikasi.concat(spesifikasiResponse.data);
-                            }
-                            
-                            contractsProcessed++;
-                            if (contractsProcessed === contractsResponse.data.length) {
-                                // All contracts processed, display results
-                                displayCustomerSpesifikasi(allSpesifikasi);
-                            }
-                        },
-                        error: function(xhr, status, error) {
-                            console.error('Error loading spesifikasi for contract:', contract.id, error);
-                            contractsProcessed++;
-                            if (contractsProcessed === contractsResponse.data.length) {
-                                displayCustomerSpesifikasi(allSpesifikasi);
-                            }
-                        }
-                    });
-                });
-            } else {
-                // No contracts found
-                displayCustomerSpesifikasi([]);
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Error loading contracts:', error);
-            container.innerHTML = '<div class="alert alert-danger">Gagal memuat kontrak customer</div>';
-        }
-    });
-}
+// Customer spesifikasi functions removed - now handled in quotations module
 
 // Load contract spesifikasi with correct display - EXACT COPY from customer management
 function loadContractSpesifikasiCorrect(kontrakId) {

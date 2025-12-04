@@ -27,6 +27,17 @@ $routes->group('health', static function ($routes) {
     $routes->get('performance', 'HealthController::performance');
 });
 
+// Test Routes (Development Only)
+$routes->get('test/quotations', 'TestQuotations::testDataTables');
+
+// Customer AJAX Endpoints - MUST be before other routes to avoid conflicts
+$routes->get('customers/get/(:num)', 'Customers::get/$1');
+$routes->get('customers/getLocations/(:num)', 'Customers::getLocations/$1');
+$routes->get('customers/getContracts/(:num)', 'Customers::getContracts/$1');
+$routes->post('customers/saveLocation', 'Customers::saveLocation');
+$routes->post('customers/setPrimaryLocation', 'Customers::setPrimaryLocation');
+$routes->post('customers/searchContract', 'Customers::searchContract');
+
 // Authentication Routes
 $routes->group('auth', static function ($routes) {
     $routes->get('/', 'Auth::index');
@@ -99,6 +110,9 @@ $routes->group('unitRolling', static function ($routes) {
 // Marketing Routes
 $routes->group('marketing',  static function ($routes) {
     $routes->get('/', 'Marketing::index');
+    $routes->get('quotations', 'Marketing::quotations');
+    $routes->post('quotations/data', 'Marketing::getQuotationsData');
+    $routes->post('quotations/linkContract', 'Marketing::linkContract');
 
     // KONTRAK CRUD
     $routes->group('kontrak', static function ($routes) {
@@ -166,15 +180,17 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('get-jenis-perintah-kerja', 'Marketing::getJenisPerintahKerja');
     $routes->get('get-tujuan-perintah-kerja', 'Marketing::getTujuanPerintahKerja');
     
-    // Quotations Management Routes
-    $routes->get('quotations', 'Quotation::index');
+    // Quotations Management Routes - handled in main group above
     $routes->group('quotations', static function ($routes) {
-        $routes->post('data', 'Quotation::getDataTable');
+        $routes->post('data', 'Marketing::getQuotationsData');
+        $routes->get('stats', 'Marketing::getQuotationStats');
+        $routes->get('getQuotation/(:num)', 'Marketing::getQuotation/$1');
+        $routes->post('updateContractComplete', 'Marketing::updateContractComplete');
+        $routes->post('addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
         $routes->post('store', 'Quotation::store');
         $routes->get('detail/(:num)', 'Quotation::show/$1');
         $routes->post('update/(:num)', 'Quotation::update/$1');
         $routes->delete('delete/(:num)', 'Quotation::delete/$1');
-        $routes->get('stats', 'Quotation::getStatistics');
         $routes->get('get/(:num)', 'Quotation::getQuotation/$1');
         $routes->get('get-quotation/(:num)', 'Quotation::getQuotation/$1');
         
@@ -210,7 +226,23 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('duplicate/(:num)', 'Marketing::duplicateQuotation/$1');
         $routes->get('templates', 'Marketing::quotationTemplates');
         $routes->get('reports', 'Marketing::quotationReports');
+        
+        // Workflow Stage Routes
+        $routes->post('create-prospect', 'Marketing::createProspect');
+        $routes->post('convert-to-quotation/(:num)', 'Marketing::convertToQuotation/$1');
+        $routes->post('send-quotation/(:num)', 'Marketing::sendQuotation/$1');
+        // REMOVED: Old routes - Use markAsDeal and markAsNotDeal instead
+        // $routes->post('mark-deal/(:num)', 'Marketing::markDeal/$1');
+        // $routes->post('mark-not-deal/(:num)', 'Marketing::markNotDeal/$1');
+        $routes->post('create-customer/(:num)', 'Marketing::createCustomer/$1');
+        
+        // Enhanced Workflow Routes (Current Active Routes)
+        $routes->post('markAsDeal/(:num)', 'Marketing::markAsDeal/$1');
+        $routes->post('markAsNotDeal/(:num)', 'Marketing::markAsNotDeal/$1');
+        $routes->get('getCustomerProfileStatus/(:num)', 'Marketing::getCustomerProfileStatus/$1');
+        $routes->get('customer-profile-status/(:num)', 'Marketing::getCustomerProfileStatus/$1');
     });
+    
     // $routes->get('list-unit', 'Marketing::listUnit');
     $routes->get('unit-tersedia', 'Marketing::unitTersedia');
     $routes->get('unitmarketing', 'Marketing::unitMarketing');
@@ -223,6 +255,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('kontrak', 'Marketing::kontrak');
     $routes->get('kontrak/getData', 'Marketing::getData');
     $routes->post('kontrak/getDataTable', 'Marketing::getDataTable');
+    $routes->get('kontrak/detail/(:num)', 'Kontrak::detail/$1'); // Add missing detail route
     $routes->get('kontrak/units/(:num)', 'Marketing::kontrakUnits/$1');
     $routes->get('kontrak/customer-locations/(:num)', 'Marketing::customerLocations/$1');
     // Route removed - handled by kontrak/detail/(:num) in kontrak group (Kontrak::detail)
@@ -241,6 +274,7 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('/', 'CustomerManagementController::index');
         // Customers
         $routes->post('getCustomers', 'CustomerManagementController::getCustomers');
+        $routes->post('searchCustomers', 'CustomerManagementController::searchCustomers');
         $routes->get('getCustomerStats', 'CustomerManagementController::getCustomerStats');
         $routes->get('getAreas', 'CustomerManagementController::getAreas');
         // Dropdown data for spesifikasi
@@ -996,6 +1030,9 @@ $routes->get('service/spk/pdf/(:num)', 'Service::spkPdf/$1');
 // SPK Print (HTML) routes (top-level)
 $routes->get('marketing/spk/print/(:num)', 'Marketing::spkPrint/$1');
 $routes->get('service/spk/print/(:num)', 'Service::spkPrint/$1');
+
+// SPK Creation from Quotation
+$routes->post('marketing/spk/createFromQuotation', 'Marketing::createFromQuotation');
 
 $routes->group('warehouse/inventory', static function($r){
     $r->get('available-attachments', 'Warehouse\InventoryApi::availableAttachments');

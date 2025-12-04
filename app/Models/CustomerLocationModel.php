@@ -15,18 +15,21 @@ class CustomerLocationModel extends Model
     
     protected $allowedFields = [
         'customer_id',
+        'area_id',
         'location_name',
+        'location_code',
+        'location_type',
         'address',
-        'city',
-        'province', 
-        'postal_code',
-        'gps_latitude',
-        'gps_longitude',
         'contact_person',
         'phone',
         'email',
         'pic_position',
         'notes',
+        'city',
+        'province',
+        'postal_code',
+        'gps_latitude',
+        'gps_longitude',
         'is_primary',
         'is_active'
     ];

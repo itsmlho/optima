@@ -1651,6 +1651,62 @@ class CustomerManagementController extends BaseController
     }
 
     /**
+     * Search customers for prospect linking
+     */
+    public function searchCustomers()
+    {
+        try {
+            $searchTerm = $this->request->getPost('search');
+            
+            if (empty($searchTerm) || strlen($searchTerm) < 2) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Search term must be at least 2 characters',
+                    'data' => []
+                ]);
+            }
+            
+            $builder = $this->customerModel->builder();
+            $builder->select('customers.id, customers.customer_code, customers.customer_name, 
+                             COUNT(cl.id) as location_count,
+                             GROUP_CONCAT(DISTINCT CONCAT(cl.location_name, " (", cl.city, ")") 
+                                         ORDER BY cl.is_primary DESC, cl.location_name ASC 
+                                         SEPARATOR "; ") as locations_summary,
+                             MAX(CASE WHEN cl.is_primary = 1 THEN cl.address END) as primary_address,
+                             MAX(CASE WHEN cl.is_primary = 1 THEN CONCAT(cl.city, ", ", cl.province) END) as primary_location,
+                             MAX(CASE WHEN cl.is_primary = 1 THEN cl.contact_person END) as primary_contact,
+                             MAX(CASE WHEN cl.is_primary = 1 THEN cl.phone END) as primary_phone')
+                    ->join('customer_locations cl', 'customers.id = cl.customer_id', 'left')
+                    ->where('customers.is_active', 1)
+                    ->groupStart()
+                    ->like('customers.customer_name', $searchTerm)
+                    ->orLike('customers.customer_code', $searchTerm)
+                    ->orLike('cl.location_name', $searchTerm)
+                    ->orLike('cl.city', $searchTerm)
+                    ->groupEnd()
+                    ->groupBy('customers.id, customers.customer_code, customers.customer_name')
+                    ->orderBy('customers.customer_name', 'ASC')
+                    ->limit(10);
+            
+            $results = $builder->get()->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $results,
+                'count' => count($results)
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'CustomerManagementController::searchCustomers error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error searching customers: ' . $e->getMessage(),
+                'data' => []
+            ]);
+        }
+    }
+
+    /**
      * Generate PDF directly without view
      */
     private function generatePDFDirectly($data)

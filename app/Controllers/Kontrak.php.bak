@@ -40,7 +40,6 @@ class Kontrak extends BaseController
             'can_view_marketing' => can_view('marketing'),
             'can_create_marketing' => can_create('marketing'),
             'can_export_marketing' => can_export('marketing'),
-            'loadDataTables' => true, // Enable DataTables loading
         ];
         return view('marketing/kontrak', $data);
     }
@@ -317,17 +316,6 @@ class Kontrak extends BaseController
                 'kontrak' => [$newId]
             ]
         ]);
-
-        // Update quotation workflow if quotation_id is provided
-        $quotationId = $this->request->getPost('quotation_id');
-        if ($quotationId) {
-            $quotationDb = \Config\Database::connect();
-            $quotationDb->table('quotations')
-                ->where('id_quotation', $quotationId)
-                ->update(['customer_contract_complete' => 1]);
-            
-            log_message('info', "Updated quotation {$quotationId} contract_complete flag after contract creation");
-        }
 
         return $this->response->setJSON([
             'success' => true,
