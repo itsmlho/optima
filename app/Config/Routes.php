@@ -168,6 +168,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('spk/detail/(:num)', 'Marketing::spkDetail/$1');
     $routes->post('spk/create', 'Marketing::spkCreate');
     $routes->post('spk/createFromQuotation', 'Marketing::createSPKFromQuotation');
+    $routes->post('marketing/spk/createFromQuotation', 'Marketing::createSPKFromQuotation'); // Full path alias
     $routes->post('spk/update/(:num)', 'Marketing::spkUpdate/$1');
     $routes->post('spk/update-status/(:num)', 'Marketing::spkUpdateStatus/$1');
     $routes->post('spk/delete/(:num)', 'Marketing::spkDelete/$1');
@@ -1037,9 +1038,6 @@ $routes->get('service/spk/pdf/(:num)', 'Service::spkPdf/$1');
 // SPK Print (HTML) routes (top-level)
 $routes->get('marketing/spk/print/(:num)', 'Marketing::spkPrint/$1');
 $routes->get('service/spk/print/(:num)', 'Service::spkPrint/$1');
-
-// SPK Creation from Quotation
-$routes->post('marketing/spk/createFromQuotation', 'Marketing::createFromQuotation');
 
 $routes->group('warehouse/inventory', static function($r){
     $r->get('available-attachments', 'Warehouse\InventoryApi::availableAttachments');

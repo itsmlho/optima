@@ -1197,7 +1197,20 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(403);
         }
 
-        $quotation = $this->quotationModel->find($quotationId);
+        // Get quotation with customer location and contract details
+        $quotation = $this->db->table('quotations q')
+            ->select('q.*, 
+                c.customer_name, 
+                cl.location_name, 
+                cl.contact_person as pic_name, 
+                cl.phone as pic_phone,
+                k.no_kontrak as contract_number')
+            ->join('customers c', 'c.id = q.created_customer_id', 'left')
+            ->join('kontrak k', 'k.id = q.created_contract_id', 'left')
+            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+            ->where('q.id_quotation', $quotationId)
+            ->get()
+            ->getRowArray();
 
         if (!$quotation) {
             return $this->response->setJSON([
@@ -1230,7 +1243,10 @@ class Marketing extends BaseDataTableController
             $specifications = $db->table('quotation_specifications qs')
                 ->select('qs.id_specification,
                           qs.id_quotation,
+                          qs.specification_name,
+                          qs.specification_description,
                           qs.quantity,
+                          qs.category,
                           qs.brand as merk_unit,
                           qs.model as model_unit,
                           qs.equipment_type as tipe_jenis,
@@ -1257,6 +1273,20 @@ class Marketing extends BaseDataTableController
                 ->getResultArray();
 
             log_message('info', "getSpecifications found " . count($specifications) . " specifications");
+            
+            // Add existing SPK count for each specification
+            foreach ($specifications as &$spec) {
+                $existingSPK = $db->table('spk')
+                    ->selectSum('jumlah_unit', 'total_units')
+                    ->where('quotation_specification_id', $spec['id_specification'])
+                    ->where('status !=', 'CANCELLED')
+                    ->get()
+                    ->getRowArray();
+                
+                $spec['existing_spk_units'] = (int)($existingSPK['total_units'] ?? 0);
+                $spec['available_units'] = (int)$spec['quantity'] - $spec['existing_spk_units'];
+            }
+            unset($spec); // Break reference
 
             if (empty($specifications)) {
                 return $this->response->setJSON([
@@ -3595,21 +3625,52 @@ class Marketing extends BaseDataTableController
      */
     public function createSPKFromQuotation()
     {
+        // EXTREME DEBUG - This MUST show up
+        error_log("============ CREATE SPK FROM QUOTATION CALLED ============");
+        log_message('error', 'createSPKFromQuotation - Function called');
+        log_message('error', 'REQUEST METHOD: ' . $this->request->getMethod());
+        log_message('error', 'IS AJAX: ' . ($this->request->isAJAX() ? 'YES' : 'NO'));
+        
         if (!$this->request->isAJAX()) {
+            log_message('error', 'createSPKFromQuotation - Not AJAX request');
             return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
         }
 
+        log_message('info', 'createSPKFromQuotation - Starting transaction');
         $this->db->transBegin();
 
         try {
-            $quotationId = $this->request->getPost('quotation_id');
-            $customerId = $this->request->getPost('customer_id');
-            $contractId = $this->request->getPost('contract_id');
-            $deliveryDate = $this->request->getPost('delivery_date');
-            $specifications = $this->request->getPost('specifications'); // Array of {specification_id, quantity}
+            log_message('info', 'createSPKFromQuotation - Getting JSON input');
+            // Get JSON input
+            $jsonData = $this->request->getJSON(true); // true = return as array
+            
+            log_message('info', 'createSPKFromQuotation - JSON data: ' . ($jsonData ? 'exists' : 'null'));
+            
+            // Fallback to POST if not JSON
+            if (!$jsonData) {
+                log_message('info', 'createSPKFromQuotation - Fallback to POST');
+                $jsonData = [
+                    'quotation_id' => $this->request->getPost('quotation_id'),
+                    'customer_id' => $this->request->getPost('customer_id'),
+                    'contract_id' => $this->request->getPost('contract_id'),
+                    'delivery_date' => $this->request->getPost('delivery_date'),
+                    'specifications' => $this->request->getPost('specifications')
+                 ];
+            }
+            
+            $quotationId = $jsonData['quotation_id'] ?? null;
+            $customerId = $jsonData['customer_id'] ?? null;
+            $contractId = $jsonData['contract_id'] ?? null;
+            $deliveryDate = $jsonData['delivery_date'] ?? null;
+            $specifications = $jsonData['specifications'] ?? [];
+
+            log_message('error', 'createSPKFromQuotation - Input data: ' . json_encode($jsonData));
+            log_message('error', 'createSPKFromQuotation - Specifications count: ' . count($specifications));
+            log_message('error', 'createSPKFromQuotation - Specifications type: ' . gettype($specifications));
 
             // Validation
             if (!$quotationId || !$customerId || !$contractId) {
+                log_message('error', 'createSPKFromQuotation - Missing data: quotation=' . $quotationId . ', customer=' . $customerId . ', contract=' . $contractId);
                 throw new \Exception('Missing required data: quotation, customer, or contract');
             }
 
@@ -3627,8 +3688,15 @@ class Marketing extends BaseDataTableController
                 throw new \Exception('Quotation not found');
             }
 
-            // Get contract
-            $contract = $this->kontrakModel->find($contractId);
+            // Get contract with customer location data
+            $contract = $this->db->table('kontrak k')
+                ->select('k.*, c.customer_name as pelanggan, cl.contact_person as pic, cl.phone as kontak, cl.address as lokasi, cl.location_name as nama_lokasi')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->where('k.id', $contractId)
+                ->get()
+                ->getRowArray();
+                
             if (!$contract) {
                 throw new \Exception('Contract not found');
             }
@@ -3638,10 +3706,15 @@ class Marketing extends BaseDataTableController
 
             // Create SPK for each selected specification
             foreach ($specifications as $specData) {
+                log_message('error', "Loop iteration - specData: " . json_encode($specData));
+                
                 $specId = $specData['specification_id'];
                 $quantity = (int)$specData['quantity'];
 
+                log_message('error', "Processing spec {$specId} with quantity {$quantity}");
+
                 if ($quantity <= 0) {
+                    log_message('warning', "Spec {$specId} skipped: invalid quantity {$quantity}");
                     continue; // Skip invalid quantities
                 }
 
@@ -3659,6 +3732,35 @@ class Marketing extends BaseDataTableController
                     log_message('error', "Specification not found: ID {$specId}");
                     continue;
                 }
+
+                log_message('error', "Spec {$specId} found: " . json_encode(['brand' => $spec['brand'], 'model' => $spec['model'], 'qty' => $spec['quantity'], 'quotation_id' => $spec['quotation_id'] ?? 'null']));
+
+                // Check existing SPKs for this specification
+                $existingSPKs = $this->db->table('spk')
+                    ->selectSum('jumlah_unit', 'total_units')
+                    ->where('quotation_specification_id', $specId)
+                    ->where('status !=', 'CANCELLED')
+                    ->get()
+                    ->getRowArray();
+                
+                $existingUnits = (int)($existingSPKs['total_units'] ?? 0);
+                $specTotalQty = (int)($spec['quantity'] ?? 0);
+                $availableQty = $specTotalQty - $existingUnits;
+                
+                log_message('error', "Availability check for spec {$specId}: Total={$specTotalQty}, Existing={$existingUnits}, Available={$availableQty}");
+                
+                // Validate: requested quantity vs available
+                if ($availableQty <= 0) {
+                    log_message('error', "SKIPPED: Specification {$specId} has no available units. Total: {$specTotalQty}, Already created: {$existingUnits}");
+                    continue; // Skip - all units already have SPKs
+                }
+                
+                if ($quantity > $availableQty) {
+                    log_message('warning', "Specification {$specId} requested {$quantity} units but only {$availableQty} available (Total: {$specTotalQty}, Existing: {$existingUnits})");
+                    $quantity = $availableQty; // Adjust to available quantity
+                }
+
+                log_message('error', "CHECKPOINT 1: About to build specification JSON for spec {$specId}");
 
                 // Build specification JSON
                 $spesifikasiData = [
@@ -3679,24 +3781,27 @@ class Marketing extends BaseDataTableController
                     'aksesoris' => []
                 ];
 
+                log_message('error', "CHECKPOINT 2: About to generate SPK number");
+
                 // Generate SPK number
                 $nomorSPK = method_exists($this->spkModel, 'generateNextNumber') 
                     ? $this->spkModel->generateNextNumber() 
                     : $this->generateSpkNumber();
+
+                log_message('error', "CHECKPOINT 3: SPK number generated: {$nomorSPK}");
 
                 // Prepare SPK payload
                 $spkPayload = [
                     'nomor_spk' => $nomorSPK,
                     'jenis_spk' => 'UNIT',
                     'kontrak_id' => $contractId,
-                    'kontrak_spesifikasi_id' => null, // Link to quotation spec instead
                     'quotation_specification_id' => $specId,
                     'jumlah_unit' => $quantity,
                     'po_kontrak_nomor' => $contract['no_kontrak'] ?? null,
-                    'pelanggan' => $contract['pelanggan'] ?? $quotation['customer_name'] ?? '',
+                    'pelanggan' => $contract['pelanggan'] ?? null,
                     'pic' => $contract['pic'] ?? null,
                     'kontak' => $contract['kontak'] ?? null,
-                    'lokasi' => $contract['lokasi'] ?? null,
+                    'lokasi' => ($contract['nama_lokasi'] ?? '') . ($contract['lokasi'] ? ' - ' . $contract['lokasi'] : ''),
                     'delivery_plan' => $deliveryDate,
                     'spesifikasi' => json_encode($spesifikasiData),
                     'catatan' => "Created from Quotation {$quotation['quotation_number']}",
@@ -3705,8 +3810,12 @@ class Marketing extends BaseDataTableController
                     'dibuat_pada' => date('Y-m-d H:i:s')
                 ];
 
+                log_message('error', "CHECKPOINT 4: About to insert SPK with payload: " . json_encode(['nomor' => $spkPayload['nomor_spk'], 'kontrak_id' => $spkPayload['kontrak_id'], 'spec_id' => $spkPayload['quotation_specification_id']]));
+
                 // Insert SPK
                 $insertResult = $this->spkModel->insert($spkPayload);
+                
+                log_message('error', "CHECKPOINT 5: Insert result: " . ($insertResult ? 'SUCCESS' : 'FAILED'));
                 
                 if ($insertResult) {
                     $spkId = $this->spkModel->getInsertID();
@@ -3740,7 +3849,7 @@ class Marketing extends BaseDataTableController
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'SPK created successfully',
+                'message' => count($createdSPKs) . ' SPK(s) created successfully! Numbers: ' . implode(', ', $spkNumbers),
                 'spk_count' => count($createdSPKs),
                 'spk_numbers' => $spkNumbers,
                 'spk_ids' => $createdSPKs,

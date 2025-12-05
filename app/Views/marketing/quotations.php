@@ -829,6 +829,20 @@
                         You can create multiple SPKs from different specifications.
                     </div>
                     
+                    <!-- Customer & Contract Details -->
+                    <div class="card border-primary mb-3">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0"><i class="fas fa-building me-2"></i>Customer & Contract Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-2" id="spkCustomerDetails">
+                                <div class="col-12 text-muted text-center py-2">
+                                    <i class="fas fa-spinner fa-spin me-1"></i> Loading customer details...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Delivery Date -->
                     <div class="row mb-12">
                         <div class="col-md-12">
@@ -4283,6 +4297,26 @@ function showSPKCreationModal(quotation, specifications) {
         <strong>Customer:</strong> ${quotation.prospect_name || 'N/A'}
     `);
     
+    // Populate customer details section
+    $('#spkCustomerDetails').html(`
+        <div class="col-md-6">
+            <small class="text-muted">Company</small>
+            <div class="fw-bold">${quotation.customer_name || quotation.prospect_name || '-'}</div>
+        </div>
+        <div class="col-md-6">
+            <small class="text-muted">Location</small>
+            <div class="fw-bold">${quotation.location_name || '-'}</div>
+        </div>
+        <div class="col-md-6">
+            <small class="text-muted">PIC / Contact</small>
+            <div>${quotation.pic_name || '-'} ${quotation.pic_phone ? '/ ' + quotation.pic_phone : ''}</div>
+        </div>
+        <div class="col-md-6">
+            <small class="text-muted">Contract Number</small>
+            <div class="fw-bold text-primary">${quotation.contract_number || '-'}</div>
+        </div>
+    `);
+    
     // Set hidden fields
     $('#spk_quotation_id').val(quotation.id_quotation);
     $('#spk_customer_id').val(quotation.created_customer_id);
@@ -4299,54 +4333,64 @@ function showSPKCreationModal(quotation, specifications) {
     specifications.forEach((spec, index) => {
         const specId = spec.id_specification || spec.id;
         
-        // Build proper specification title
-        let specTitle = '';
-        if (spec.specification_name) {
-            specTitle = spec.specification_name; // Use user-defined name like "SPEC-001"
-        } else {
-            specTitle = `Specification #${index + 1}`;
-        }
+        // Use database specification_name and specification_description
+        let specTitle = spec.specification_name || `Specification #${index + 1}`;
         
-        // Add equipment type and category
-        if (spec.equipment_type) {
-            specTitle += `: ${spec.equipment_type}`;
-        }
-        
-        // Determine if this is UNIT or ATTACHMENT
+        // Determine if this is UNIT or ATTACHMENT based on category
         const specType = spec.category && spec.category.toLowerCase().includes('attachment') ? 'ATTACHMENT' : 'UNIT';
         
-        const specDetails = buildSpecificationDescription(spec);
+        // Use specification_description if available, otherwise build from details
+        const specDescription = spec.specification_description && spec.specification_description.trim() !== '' 
+            ? spec.specification_description 
+            : buildSpecificationDescription(spec);
+        
         const maxQty = spec.quantity || 1;
+        const existingUnits = spec.existing_spk_units || 0;
+        const availableUnits = spec.available_units || maxQty;
+        const isFullyCreated = availableUnits <= 0;
         
         specsHTML += `
             <div class="specification-item border-bottom pb-3 mb-3">
                 <div class="form-check">
                     <input class="form-check-input spec-checkbox" type="checkbox" 
                            id="spec_${specId}" name="specifications[]" value="${specId}" 
-                           data-max-qty="${maxQty}">
-                    <label class="form-check-label fw-bold" for="spec_${specId}">
+                           data-max-qty="${availableUnits}"
+                           ${isFullyCreated ? 'disabled' : ''}>
+                    <label class="form-check-label fw-bold ${isFullyCreated ? 'text-muted' : ''}" for="spec_${specId}">
                         ${specTitle} 
                         <span class="badge bg-${specType === 'UNIT' ? 'primary' : 'success'} ms-2">${specType}</span>
+                        ${isFullyCreated ? '<span class="badge bg-secondary ms-2"><i class="fas fa-check-circle me-1"></i>All Units Have SPK</span>' : ''}
                     </label>
                 </div>
                 <div class="ms-4 mt-2">
-                    <small class="text-muted d-block mb-2">${specDetails}</small>
+                    <small class="text-muted d-block mb-2">${specDescription}</small>
                     
-                    <!-- Quantity input -->
-                    <div class="row align-items-center">
-                        <div class="col-auto">
-                            <label class="col-form-label-sm">Quantity for SPK:</label>
+                    ${isFullyCreated ? `
+                        <div class="alert alert-info py-2 mb-2">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>All ${maxQty} unit(s) already have SPK created.</strong> 
+                            (Existing: ${existingUnits} unit(s))
                         </div>
-                        <div class="col-auto">
-                            <input type="number" class="form-control form-control-sm spec-quantity" 
-                                   id="qty_${specId}" name="quantities[${specId}]" 
-                                   min="1" max="${maxQty}" value="${maxQty}" 
-                                   style="width: 100px;" disabled>
+                    ` : `
+                        <!-- Quantity input -->
+                        <div class="row align-items-center">
+                            <div class="col-auto">
+                                <label class="col-form-label-sm">Quantity for SPK:</label>
+                            </div>
+                            <div class="col-auto">
+                                <input type="number" class="form-control form-control-sm spec-quantity" 
+                                       id="qty_${specId}" name="quantities[${specId}]" 
+                                       min="1" max="${availableUnits}" value="${availableUnits}" 
+                                       style="width: 100px;" disabled>
+                            </div>
+                            <div class="col-auto">
+                                <small class="text-muted">
+                                    of ${availableUnits} available 
+                                    ${existingUnits > 0 ? `<span class="text-warning">(${existingUnits} already have SPK)</span>` : ''}
+                                </small>
+                            </div>
                         </div>
-                        <div class="col-auto">
-                            <small class="text-muted">of ${maxQty} unit(s) in quotation</small>
-                        </div>
-                    </div>
+                    `}
                 </div>
             </div>
         `;
@@ -4433,7 +4477,20 @@ $('#createSPKForm').on('submit', function(e) {
         specifications: selectedSpecs
     };
     
-    console.log('Submitting SPK creation:', formData);
+    console.log('=== SPK Form Data Debug ===');
+    console.log('Quotation ID:', formData.quotation_id);
+    console.log('Customer ID:', formData.customer_id);
+    console.log('Contract ID:', formData.contract_id);
+    console.log('Delivery Date:', formData.delivery_date);
+    console.log('Specifications:', formData.specifications);
+    console.log('===========================');
+    
+    // Validate required fields
+    if (!formData.quotation_id || !formData.customer_id || !formData.contract_id) {
+        Swal.fire('Error', 'Missing quotation, customer, or contract ID. Please close and reopen the modal.', 'error');
+        submitBtn.prop('disabled', false).html('Create Selected SPK(s)');
+        return false;
+    }
     
     // Disable submit button
     const submitBtn = $('#submitSPKBtn');
@@ -4451,12 +4508,17 @@ $('#createSPKForm').on('submit', function(e) {
             if (response.success) {
                 $('#createSPKModal').modal('hide');
                 
+                const spkCount = response.spk_count || 1;
+                const spkNumbers = response.spk_numbers || [];
+                
+                let message = `${spkCount} SPK(s) created successfully!`;
+                if (spkNumbers.length > 0) {
+                    message += `\n\nSPK Numbers: ${spkNumbers.join(', ')}`;
+                }
+                
                 Swal.fire({
                     title: 'Success!',
-                    html: `
-                        <p><strong>${response.spk_count || 1}</strong> SPK(s) created successfully!</p>
-                        ${response.spk_numbers ? `<p class="small">SPK Numbers: ${response.spk_numbers.join(', ')}</p>` : ''}
-                    `,
+                    text: message,
                     icon: 'success',
                     confirmButtonText: 'OK'
                 }).then(() => {

@@ -2246,8 +2246,8 @@ $can_export = $permissions['export'];
                         <div class="col-12"><strong>Informasi Unit:</strong></div>
                         <div class="col-6"><strong>Spesifikasi:</strong> ${specDisplay}</div>
                         <div class="col-6"><strong>Total Unit:</strong> ${d.jumlah_unit || 0}</div>
-                        <div class="col-6"><strong>Tipe (Jenis):</strong> ${s.tipe_jenis||'-'}</div>
-                        <div class="col-6"><strong>Merk Unit:</strong> ${s.merk_unit||'-'}</div>
+                        <div class="col-6"><strong>Departemen:</strong> ${s.departemen_id_name||'-'}</div>
+                        <div class="col-6"><strong>Tipe & Merk:</strong> ${[s.tipe_jenis, s.merk_unit].filter(x=>x).join(' ') || '-'}</div>
                         <div class="col-6"><strong>Valve:</strong> ${s.valve_id_name||'-'}</div>
                         <div class="col-6"><strong>Baterai (Jenis):</strong> ${s.jenis_baterai||'-'}</div>
                         <div class="col-6"><strong>Charger:</strong> ${s.charger_id_name||'-'}</div>
