@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test getSpecifications</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <h1>Test getSpecifications Endpoint</h1>
+    <button onclick="testEndpoint()">Test Quotation ID 5</button>
+    <pre id="result"></pre>
+
+    <script>
+    function testEndpoint() {
+        $('#result').text('Loading...');
+        
+        $.ajax({
+            url: '/optima/public/marketing/quotations/getSpecifications/5',
+            method: 'GET',
+            dataType: 'json'
+        })
+        .done(function(response) {
+            $('#result').text('SUCCESS:\n' + JSON.stringify(response, null, 2));
+        })
+        .fail(function(xhr, status, error) {
+            $('#result').text('ERROR:\n' + 
+                'Status: ' + xhr.status + '\n' +
+                'Response: ' + xhr.responseText + '\n' +
+                'Error: ' + error);
+        });
+    }
+    </script>
+</body>
+</html>

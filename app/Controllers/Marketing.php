@@ -1213,6 +1213,75 @@ class Marketing extends BaseDataTableController
     }
 
     /**
+     * Get quotation specifications for SPK creation
+     */
+    public function getSpecifications($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            log_message('info', "getSpecifications called for quotation ID: {$quotationId}");
+            
+            // Get specifications with all related data
+            $specifications = $db->table('quotation_specifications qs')
+                ->select('qs.id_specification,
+                          qs.id_quotation,
+                          qs.quantity,
+                          qs.brand as merk_unit,
+                          qs.model as model_unit,
+                          qs.equipment_type as tipe_jenis,
+                          qs.departemen_id,
+                          qs.tipe_unit_id,
+                          qs.kapasitas_id,
+                          qs.attachment_tipe,
+                          qs.attachment_merk,
+                          qs.jenis_baterai,
+                          qs.charger_id,
+                          qs.mast_id,
+                          qs.ban_id,
+                          qs.roda_id,
+                          qs.valve_id,
+                          d.nama_departemen, 
+                          tu.tipe as nama_tipe_unit,
+                          tu.jenis as jenis_tipe_unit,
+                          k.kapasitas_unit as nama_kapasitas')
+                ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
+                ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
+                ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
+                ->where('qs.id_quotation', $quotationId)
+                ->get()
+                ->getResultArray();
+
+            log_message('info', "getSpecifications found " . count($specifications) . " specifications");
+
+            if (empty($specifications)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'No specifications found for this quotation'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $specifications
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getSpecifications error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load specifications: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Update quotation contract complete flag
      */
     public function updateContractComplete()
@@ -3512,6 +3581,176 @@ class Marketing extends BaseDataTableController
 
         } catch (\Exception $e) {
             $this->db->transRollback();
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    /**
+     * Create multiple SPKs from quotation specifications
+     * User selects which specifications and quantities to create SPK for
+     */
+    public function createSPKFromQuotation()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        $this->db->transBegin();
+
+        try {
+            $quotationId = $this->request->getPost('quotation_id');
+            $customerId = $this->request->getPost('customer_id');
+            $contractId = $this->request->getPost('contract_id');
+            $deliveryDate = $this->request->getPost('delivery_date');
+            $specifications = $this->request->getPost('specifications'); // Array of {specification_id, quantity}
+
+            // Validation
+            if (!$quotationId || !$customerId || !$contractId) {
+                throw new \Exception('Missing required data: quotation, customer, or contract');
+            }
+
+            if (!$deliveryDate) {
+                throw new \Exception('Delivery date is required');
+            }
+
+            if (empty($specifications) || !is_array($specifications)) {
+                throw new \Exception('Please select at least one specification');
+            }
+
+            // Get quotation
+            $quotation = $this->quotationModel->find($quotationId);
+            if (!$quotation) {
+                throw new \Exception('Quotation not found');
+            }
+
+            // Get contract
+            $contract = $this->kontrakModel->find($contractId);
+            if (!$contract) {
+                throw new \Exception('Contract not found');
+            }
+
+            $createdSPKs = [];
+            $spkNumbers = [];
+
+            // Create SPK for each selected specification
+            foreach ($specifications as $specData) {
+                $specId = $specData['specification_id'];
+                $quantity = (int)$specData['quantity'];
+
+                if ($quantity <= 0) {
+                    continue; // Skip invalid quantities
+                }
+
+                // Get specification details
+                $spec = $this->db->table('quotation_specifications qs')
+                    ->select('qs.*, d.nama_departemen, tu.tipe as nama_tipe_unit, tu.jenis as jenis_tipe_unit, k.kapasitas_unit as nama_kapasitas')
+                    ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
+                    ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
+                    ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
+                    ->where('qs.id_specification', $specId)
+                    ->get()
+                    ->getRowArray();
+
+                if (!$spec) {
+                    log_message('error', "Specification not found: ID {$specId}");
+                    continue;
+                }
+
+                // Build specification JSON
+                $spesifikasiData = [
+                    'departemen_id' => $spec['departemen_id'] ?? null,
+                    'tipe_unit_id' => $spec['tipe_unit_id'] ?? null,
+                    'tipe_jenis' => $spec['equipment_type'] ?? null,
+                    'merk_unit' => $spec['brand'] ?? null,
+                    'model_unit' => $spec['model'] ?? null,
+                    'kapasitas_id' => $spec['kapasitas_id'] ?? null,
+                    'attachment_tipe' => $spec['attachment_tipe'] ?? null,
+                    'attachment_merk' => $spec['attachment_merk'] ?? null,
+                    'jenis_baterai' => $spec['jenis_baterai'] ?? null,
+                    'charger_id' => $spec['charger_id'] ?? null,
+                    'mast_id' => $spec['mast_id'] ?? null,
+                    'ban_id' => $spec['ban_id'] ?? null,
+                    'roda_id' => $spec['roda_id'] ?? null,
+                    'valve_id' => $spec['valve_id'] ?? null,
+                    'aksesoris' => []
+                ];
+
+                // Generate SPK number
+                $nomorSPK = method_exists($this->spkModel, 'generateNextNumber') 
+                    ? $this->spkModel->generateNextNumber() 
+                    : $this->generateSpkNumber();
+
+                // Prepare SPK payload
+                $spkPayload = [
+                    'nomor_spk' => $nomorSPK,
+                    'jenis_spk' => 'UNIT',
+                    'kontrak_id' => $contractId,
+                    'kontrak_spesifikasi_id' => null, // Link to quotation spec instead
+                    'quotation_specification_id' => $specId,
+                    'jumlah_unit' => $quantity,
+                    'po_kontrak_nomor' => $contract['no_kontrak'] ?? null,
+                    'pelanggan' => $contract['pelanggan'] ?? $quotation['customer_name'] ?? '',
+                    'pic' => $contract['pic'] ?? null,
+                    'kontak' => $contract['kontak'] ?? null,
+                    'lokasi' => $contract['lokasi'] ?? null,
+                    'delivery_plan' => $deliveryDate,
+                    'spesifikasi' => json_encode($spesifikasiData),
+                    'catatan' => "Created from Quotation {$quotation['quotation_number']}",
+                    'status' => 'SUBMITTED',
+                    'dibuat_oleh' => session('user_id') ?? 1,
+                    'dibuat_pada' => date('Y-m-d H:i:s')
+                ];
+
+                // Insert SPK
+                $insertResult = $this->spkModel->insert($spkPayload);
+                
+                if ($insertResult) {
+                    $spkId = $this->spkModel->getInsertID();
+                    
+                    if ($spkId) {
+                        $createdSPKs[] = $spkId;
+                        $spkNumbers[] = $nomorSPK;
+                        
+                        // Log SPK creation
+                        $this->logCreate('spk', $spkId, [
+                            'spk_id' => $spkId,
+                            'nomor_spk' => $nomorSPK,
+                            'quotation_id' => $quotationId,
+                            'specification_id' => $specId,
+                            'jumlah_unit' => $quantity
+                        ]);
+                        
+                        log_message('info', "SPK created from quotation: {$nomorSPK} (ID: {$spkId})");
+                    }
+                }
+            }
+
+            if (empty($createdSPKs)) {
+                throw new \Exception('Failed to create any SPK. Please check your selections.');
+            }
+
+            // Update quotation status if needed
+            // You might want to mark quotation as having SPKs created
+            
+            $this->db->transCommit();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'SPK created successfully',
+                'spk_count' => count($createdSPKs),
+                'spk_numbers' => $spkNumbers,
+                'spk_ids' => $createdSPKs,
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', 'createSPKFromQuotation failed: ' . $e->getMessage());
+            
             return $this->response->setJSON([
                 'success' => false,
                 'message' => $e->getMessage(),

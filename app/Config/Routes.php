@@ -113,6 +113,12 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('quotations', 'Marketing::quotations');
     $routes->post('quotations/data', 'Marketing::getQuotationsData');
     $routes->post('quotations/linkContract', 'Marketing::linkContract');
+    $routes->get('quotations/getQuotation/(:num)', 'Marketing::getQuotation/$1');
+    $routes->get('quotations/getSpecifications/(:num)', 'Marketing::getSpecifications/$1');
+    $routes->get('quotations/getCustomerProfileStatus/(:num)', 'Marketing::getCustomerProfileStatus/$1');
+    $routes->post('quotations/createSPK/(:num)', 'Marketing::createSPK/$1');
+    $routes->post('quotations/addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
+    $routes->post('quotations/addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
 
     // KONTRAK CRUD
     $routes->group('kontrak', static function ($routes) {
@@ -161,6 +167,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('spk/monitoring', 'Marketing::spkMonitoring');
     $routes->get('spk/detail/(:num)', 'Marketing::spkDetail/$1');
     $routes->post('spk/create', 'Marketing::spkCreate');
+    $routes->post('spk/createFromQuotation', 'Marketing::createSPKFromQuotation');
     $routes->post('spk/update/(:num)', 'Marketing::spkUpdate/$1');
     $routes->post('spk/update-status/(:num)', 'Marketing::spkUpdateStatus/$1');
     $routes->post('spk/delete/(:num)', 'Marketing::spkDelete/$1');

@@ -270,30 +270,29 @@
 
                     <!-- Specifications Tab -->
                     <div class="tab-pane fade" id="specifications-content" role="tabpanel" aria-labelledby="specifications-tab">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0"><strong>Request Spesifikasi untuk dasar pembuatan SPK</strong></h6>
-                            <div class="btn-group" role="group">
-                                <button class="btn btn-primary btn-sm" onclick="openAddSpecificationModal()">
-                                    <i class="fas fa-plus me-1"></i>Tambah Unit
-                                </button>
-                                <button class="btn btn-success btn-sm" onclick="openAddAttachmentModal()">
-                                    <i class="fas fa-puzzle-piece me-1"></i>Tambah Attachment
-                                </button>
-                                <!-- SPK Button - only visible when quotation is DEAL status -->
-                                <button class="btn btn-warning btn-sm" id="createSpkFromQuotation" onclick="createSPKFromQuotation()" style="display: none;">
-                                    <i class="fas fa-file-contract me-1"></i>Buat SPK
-                                </button>
+                        <!-- Header with Add Buttons -->
+                        <div class="mb-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h6 class="mb-2 mb-md-0"><strong>Specifications for SPK</strong></h6>
+                                </div>
+                                <div class="col-md-6 text-md-end">
+                                    <button class="btn btn-primary btn-sm me-2" onclick="openAddSpecificationModal()" type="button">
+                                        <i class="fas fa-plus me-1"></i>Unit
+                                    </button>
+                                    <button class="btn btn-success btn-sm" onclick="openAddAttachmentModal()" type="button">
+                                        <i class="fas fa-plus me-1"></i>Attachment Only
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-
-                        <!-- SPK Creation Info Alert - only visible when quotation is DEAL status -->
+                        </div>                        <!-- SPK Creation Info Alert - only visible when quotation is DEAL status -->
                         <div class="alert alert-info d-none" id="spkCreationInfo">
                             <i class="fas fa-info-circle me-2"></i>
-                            <strong>Quotation sudah DEAL!</strong> Anda dapat membuat SPK berdasarkan spesifikasi yang sudah dibuat.
+                            <strong>Quotation DEAL!</strong> You can create an SPK based on the specifications that have been made.
                         </div>
 
                         <div id="spesifikasiListContract">
-                            <p class="text-muted">Memuat spesifikasi...</p>
+                            <p class="text-muted">Loading specifications...</p>
                         </div>
                     </div>
                 </div>
@@ -804,6 +803,64 @@
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save me-2"></i>Save Contract
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Create SPK Selection Modal -->
+<div class="modal fade" id="createSPKModal" tabindex="-1">
+    <div class="modal-dialog modal-md">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-muted">
+                <div>
+                    <h5 class="modal-title">Create SPK from Quotation</h5>
+                    <small class="d-block" id="spkModalQuotationInfo"></small>
+                </div>
+                <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="createSPKForm">
+                <div class="modal-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Instructions:</strong> Select specifications and quantities to create SPK. 
+                        You can create multiple SPKs from different specifications.
+                    </div>
+                    
+                    <!-- Delivery Date -->
+                    <div class="row mb-12">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold">Estimated Delivery Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="spk_delivery_date" name="delivery_date" required>
+                            <small class="text-muted">Target date for unit delivery, default set a 7-day lead time</small>
+                        </div>
+                    </div>
+                    </br>
+
+                    <!-- Specifications List -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Specifications to Create SPK:</label>
+                    </div>
+                    
+                    <div id="spkSpecificationsList" class="border rounded p-3">
+                        <!-- Will be populated dynamically -->
+                        <div class="text-center text-muted py-4">
+                            <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                            <p>Loading specifications...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden fields -->
+                    <input type="hidden" id="spk_quotation_id" name="quotation_id">
+                    <input type="hidden" id="spk_customer_id" name="customer_id">
+                    <input type="hidden" id="spk_contract_id" name="contract_id">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="submitSPKBtn">
+                        <i class="fas fa-check me-2"></i>Create Selected SPK(s)
                     </button>
                 </div>
             </form>
@@ -3739,54 +3796,24 @@ function proceedWithContractCreation(quotationId) {
 }
 
 function createSPK(quotationId) {
-    // Get quotation data first to get customer ID
-    $.get('<?= base_url('marketing/quotations/detail') ?>/' + quotationId)
+    // Direct call to createSPKFromQuotation with validation
+    $.get('<?= base_url('marketing/quotations/getQuotation') ?>/' + quotationId)
         .done(function(quotationResponse) {
-            if (!quotationResponse.success || !quotationResponse.quotation.created_customer_id) {
+            if (!quotationResponse.success || !quotationResponse.data || !quotationResponse.data.created_customer_id) {
                 Swal.fire('Error', 'Customer must be created before SPK. Please mark as deal first.', 'error');
                 return;
             }
             
-            const customerId = quotationResponse.quotation.created_customer_id;
+            const quotation = quotationResponse.data;
             
-            // Check customer profile completion
-            $.get('<?= base_url('marketing/quotations/getCustomerProfileStatus') ?>/' + customerId)
-                .done(function(profileResponse) {
-                    if (profileResponse.success && !profileResponse.profile_status.complete) {
-                        // Customer profile is not complete
-                        Swal.fire({
-                            title: 'Customer Profile Incomplete',
-                            html: `
-                                <div class="text-left">
-                                    <p class="mb-2">Customer profile must be completed before creating SPK.</p>
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle"></i> 
-                                        Customer: <strong>${profileResponse.profile_status.customer_name}</strong>
-                                    </div>
-                                    <p class="small text-muted">Please complete customer address, contact details, and location information.</p>
-                                </div>
-                            `,
-                            icon: 'warning',
-                            showCancelButton: true,
-                            confirmButtonText: 'Complete Profile',
-                            cancelButtonText: 'Cancel',
-                            confirmButtonColor: '#3085d6'
-                        }).then((result) => {
-                            if (result.isConfirmed) {
-                                // Open customer edit page in new tab
-                                const customerEditUrl = '<?= base_url('customers/edit') ?>/' + customerId;
-                                window.open(customerEditUrl, '_blank');
-                            }
-                        });
-                        return;
-                    }
-                    
-                    // Profile is complete, proceed with SPK creation
-                    proceedWithSPKCreation(quotationId);
-                })
-                .fail(function() {
-                    Swal.fire('Error', 'Failed to check customer profile status', 'error');
-                });
+            // Check if contract is linked
+            if (!quotation.created_contract_id) {
+                Swal.fire('Error', 'Contract must be linked before creating SPK. Please complete contract selection.', 'error');
+                return;
+            }
+            
+            // Proceed to SPK creation modal with specification selection
+            createSPKFromQuotation(quotationId);
         })
         .fail(function() {
             Swal.fire('Error', 'Failed to get quotation details', 'error');
@@ -3794,55 +3821,8 @@ function createSPK(quotationId) {
 }
 
 function proceedWithSPKCreation(quotationId) {
-    Swal.fire({
-        title: 'Create SPK?',
-        text: 'Redirect to SPK creation for this deal.',
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Yes, Create',
-        cancelButtonText: 'Cancel'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/createSPK') ?>/' + quotationId)
-                .done(function(response) {
-                    if (response.success) {
-                        if (response.redirect_to_spk && response.redirect_url) {
-                            Swal.fire({
-                                title: 'Redirecting to SPK Creation',
-                                text: response.message,
-                                icon: 'success',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                window.open(response.redirect_url, '_blank');
-                            });
-                        } else {
-                            Swal.fire('Success', response.message, 'success');
-                        }
-                    } else {
-                        if (response.require_profile_completion) {
-                            Swal.fire({
-                                title: 'Customer Profile Required',
-                                text: response.message,
-                                icon: 'warning',
-                                showCancelButton: true,
-                                confirmButtonText: 'Complete Profile',
-                                cancelButtonText: 'Cancel'
-                            }).then((result) => {
-                                if (result.isConfirmed) {
-                                    window.open('/optima/public/customer/edit/' + response.customer_id, '_blank');
-                                }
-                            });
-                        } else {
-                            Swal.fire('Error', response.message, 'error');
-                        }
-                    }
-                })
-                .fail(function() {
-                    Swal.fire('Error', 'Failed to create SPK', 'error');
-                });
-        }
-    });
+    // Redirect to new SPK creation modal with specification selection
+    createSPKFromQuotation(quotationId);
 }
 
 function addSpecifications(quotationId) {
@@ -4220,78 +4200,283 @@ $(document).on('hidden.bs.modal', '#detailModal', function () {
 });
 
 // Function to create SPK from quotation specifications
-function createSPKFromQuotation() {
-    if (!window.currentQuotationForSPK) {
-        Swal.fire('Error', 'Data quotation tidak tersedia!', 'error');
-        return;
-    }
+function createSPKFromQuotation(quotationId) {
+    console.log('Opening SPK creation modal for quotation:', quotationId);
     
-    const quotation = window.currentQuotationForSPK;
-    
-    // Confirm SPK creation
-    Swal.fire({
-        title: 'Buat SPK dari Quotation?',
-        html: `
-            <p>Akan membuat SPK berdasarkan spesifikasi dari quotation:</p>
-            <strong>${quotation.quotation_number || 'N/A'}</strong><br>
-            <strong>Customer:</strong> ${quotation.customer_name || 'N/A'}
-        `,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Buat SPK',
-        cancelButtonText: 'Batal',
-        confirmButtonColor: '#3085d6'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            // Show loading
-            Swal.fire({
-                title: 'Membuat SPK...',
-                text: 'Sedang memproses pembuatan SPK',
-                allowOutsideClick: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                }
-            });
+    // Get quotation data with specifications
+    $.ajax({
+        url: `<?= base_url('marketing/quotations/getQuotation/') ?>${quotationId}`,
+        method: 'GET',
+        success: function(response) {
+            if (!response.success || !response.data) {
+                Swal.fire('Error', 'Failed to load quotation data', 'error');
+                return;
+            }
             
-            // Create SPK via AJAX
-            fetch(`<?= base_url('marketing/spk/createFromQuotation') ?>`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({
-                    quotation_id: quotation.id_quotation
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                Swal.close();
-                
-                if (data.success) {
-                    Swal.fire({
-                        title: 'SPK Berhasil Dibuat!',
-                        html: `
-                            <p>SPK dengan nomor <strong>${data.spk_number}</strong> telah berhasil dibuat.</p>
-                            <p>Total ${data.spk_count} SPK dibuat berdasarkan spesifikasi quotation.</p>
-                        `,
-                        icon: 'success',
-                        confirmButtonText: 'OK'
-                    });
-                    
-                    // Optionally refresh data or redirect
-                } else {
-                    Swal.fire('Error', data.message || 'Gagal membuat SPK!', 'error');
-                }
-            })
-            .catch(error => {
-                Swal.close();
-                console.error('Error creating SPK:', error);
-                Swal.fire('Error', 'Terjadi kesalahan saat membuat SPK!', 'error');
-            });
+            const quotation = response.data;
+            
+            // Validate quotation has required data
+            if (!quotation.created_customer_id) {
+                Swal.fire('Error', 'Customer must be created first. Please mark as deal.', 'error');
+                return;
+            }
+            
+            if (!quotation.created_contract_id) {
+                Swal.fire('Error', 'Contract must be linked first. Please complete contract selection.', 'error');
+                return;
+            }
+            
+            // Load specifications for this quotation
+            loadSpecificationsForSPK(quotation);
+        },
+        error: function(xhr) {
+            console.error('Error loading quotation:', xhr);
+            Swal.fire('Error', 'Failed to load quotation details', 'error');
         }
     });
 }
+
+// Function to load specifications for SPK creation
+function loadSpecificationsForSPK(quotation) {
+    $.ajax({
+        url: `<?= base_url('marketing/quotations/getSpecifications/') ?>${quotation.id_quotation}`,
+        method: 'GET',
+        success: function(response) {
+            if (!response.success) {
+                Swal.fire('Error', 'Failed to load specifications', 'error');
+                return;
+            }
+            
+            const specifications = response.data || [];
+            
+            if (specifications.length === 0) {
+                Swal.fire({
+                    title: 'No Specifications',
+                    text: 'This quotation has no specifications yet. Please add specifications first.',
+                    icon: 'warning',
+                    confirmButtonText: 'Add Specifications'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        addSpecifications(quotation.id_quotation);
+                    }
+                });
+                return;
+            }
+            
+            // Populate SPK modal with data
+            showSPKCreationModal(quotation, specifications);
+        },
+        error: function(xhr) {
+            console.error('Error loading specifications:', xhr);
+            Swal.fire('Error', 'Failed to load specifications', 'error');
+        }
+    });
+}
+
+// Function to show SPK creation modal
+function showSPKCreationModal(quotation, specifications) {
+    console.log('Showing SPK modal with specifications:', specifications);
+    
+    // Set modal title info
+    $('#spkModalQuotationInfo').html(`
+        <strong>Quotation:</strong> ${quotation.quotation_number || 'N/A'} | 
+        <strong>Customer:</strong> ${quotation.prospect_name || 'N/A'}
+    `);
+    
+    // Set hidden fields
+    $('#spk_quotation_id').val(quotation.id_quotation);
+    $('#spk_customer_id').val(quotation.created_customer_id);
+    $('#spk_contract_id').val(quotation.created_contract_id);
+    
+    // Set default delivery date (today + 7 days)
+    const deliveryDate = new Date();
+    deliveryDate.setDate(deliveryDate.getDate() + 7);
+    $('#spk_delivery_date').val(deliveryDate.toISOString().split('T')[0]);
+    
+    // Build specifications list with checkboxes
+    let specsHTML = '';
+    
+    specifications.forEach((spec, index) => {
+        const specId = spec.id_specification || spec.id;
+        
+        // Build proper specification title
+        let specTitle = '';
+        if (spec.specification_name) {
+            specTitle = spec.specification_name; // Use user-defined name like "SPEC-001"
+        } else {
+            specTitle = `Specification #${index + 1}`;
+        }
+        
+        // Add equipment type and category
+        if (spec.equipment_type) {
+            specTitle += `: ${spec.equipment_type}`;
+        }
+        
+        // Determine if this is UNIT or ATTACHMENT
+        const specType = spec.category && spec.category.toLowerCase().includes('attachment') ? 'ATTACHMENT' : 'UNIT';
+        
+        const specDetails = buildSpecificationDescription(spec);
+        const maxQty = spec.quantity || 1;
+        
+        specsHTML += `
+            <div class="specification-item border-bottom pb-3 mb-3">
+                <div class="form-check">
+                    <input class="form-check-input spec-checkbox" type="checkbox" 
+                           id="spec_${specId}" name="specifications[]" value="${specId}" 
+                           data-max-qty="${maxQty}">
+                    <label class="form-check-label fw-bold" for="spec_${specId}">
+                        ${specTitle} 
+                        <span class="badge bg-${specType === 'UNIT' ? 'primary' : 'success'} ms-2">${specType}</span>
+                    </label>
+                </div>
+                <div class="ms-4 mt-2">
+                    <small class="text-muted d-block mb-2">${specDetails}</small>
+                    
+                    <!-- Quantity input -->
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <label class="col-form-label-sm">Quantity for SPK:</label>
+                        </div>
+                        <div class="col-auto">
+                            <input type="number" class="form-control form-control-sm spec-quantity" 
+                                   id="qty_${specId}" name="quantities[${specId}]" 
+                                   min="1" max="${maxQty}" value="${maxQty}" 
+                                   style="width: 100px;" disabled>
+                        </div>
+                        <div class="col-auto">
+                            <small class="text-muted">of ${maxQty} unit(s) in quotation</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    if (specsHTML === '') {
+        specsHTML = '<div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-2"></i>No specifications available</div>';
+    }
+    
+    $('#spkSpecificationsList').html(specsHTML);
+    
+    // Add checkbox change handler
+    $('.spec-checkbox').on('change', function() {
+        const specId = $(this).val();
+        const qtyInput = $(`#qty_${specId}`);
+        
+        if ($(this).is(':checked')) {
+            qtyInput.prop('disabled', false).focus();
+        } else {
+            qtyInput.prop('disabled', true);
+        }
+    });
+    
+    // Show modal
+    $('#createSPKModal').modal('show');
+}
+
+// Helper function to build specification description
+function buildSpecificationDescription(spec) {
+    let parts = [];
+    
+    // Category info (shows department and capacity)
+    if (spec.category) {
+        parts.push(`<strong>Category:</strong> ${spec.category}`);
+    }
+    
+    // Brand and Model
+    if (spec.merk_unit) parts.push(`<strong>Brand:</strong> ${spec.merk_unit}`);
+    if (spec.model_unit && spec.model_unit.trim() !== '') parts.push(`<strong>Model:</strong> ${spec.model_unit}`);
+    
+    // Attachment details
+    if (spec.attachment_tipe) parts.push(`<strong>Attachment Type:</strong> ${spec.attachment_tipe}`);
+    if (spec.attachment_merk) parts.push(`<strong>Attachment Brand:</strong> ${spec.attachment_merk}`);
+    
+    // Quantity in quotation
+    if (spec.quantity) parts.push(`<strong>Quotation Qty:</strong> ${spec.quantity} unit(s)`);
+    
+    return parts.join(' | ') || 'No details available';
+}
+
+// Handle SPK creation form submission
+$('#createSPKForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    // Get selected specifications
+    const selectedSpecs = [];
+    $('.spec-checkbox:checked').each(function() {
+        const specId = $(this).val();
+        const quantity = parseInt($(`#qty_${specId}`).val());
+        const maxQty = parseInt($(this).data('max-qty'));
+        
+        if (quantity > maxQty) {
+            Swal.fire('Error', `Quantity for specification #${specId} exceeds maximum (${maxQty})`, 'error');
+            return false;
+        }
+        
+        selectedSpecs.push({
+            specification_id: specId,
+            quantity: quantity
+        });
+    });
+    
+    if (selectedSpecs.length === 0) {
+        Swal.fire('Warning', 'Please select at least one specification', 'warning');
+        return false;
+    }
+    
+    // Prepare form data
+    const formData = {
+        quotation_id: $('#spk_quotation_id').val(),
+        customer_id: $('#spk_customer_id').val(),
+        contract_id: $('#spk_contract_id').val(),
+        delivery_date: $('#spk_delivery_date').val(),
+        specifications: selectedSpecs
+    };
+    
+    console.log('Submitting SPK creation:', formData);
+    
+    // Disable submit button
+    const submitBtn = $('#submitSPKBtn');
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
+    
+    // Submit to backend
+    $.ajax({
+        url: '<?= base_url('marketing/spk/createFromQuotation') ?>',
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(formData),
+        success: function(response) {
+            submitBtn.prop('disabled', false).html('<i class="fas fa-check me-2"></i>Create Selected SPK(s)');
+            
+            if (response.success) {
+                $('#createSPKModal').modal('hide');
+                
+                Swal.fire({
+                    title: 'Success!',
+                    html: `
+                        <p><strong>${response.spk_count || 1}</strong> SPK(s) created successfully!</p>
+                        ${response.spk_numbers ? `<p class="small">SPK Numbers: ${response.spk_numbers.join(', ')}</p>` : ''}
+                    `,
+                    icon: 'success',
+                    confirmButtonText: 'OK'
+                }).then(() => {
+                    // Refresh table if needed
+                    if (typeof quotationsTable !== 'undefined' && quotationsTable) {
+                        quotationsTable.ajax.reload(null, false);
+                    }
+                });
+            } else {
+                Swal.fire('Error', response.message || 'Failed to create SPK', 'error');
+            }
+        },
+        error: function(xhr) {
+            submitBtn.prop('disabled', false).html('<i class="fas fa-check me-2"></i>Create Selected SPK(s)');
+            console.error('Error creating SPK:', xhr);
+            Swal.fire('Error', 'Failed to create SPK: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
+        }
+    });
+});
+
 
 // Third $(document).ready() block removed - merged into main block above
 </script>
