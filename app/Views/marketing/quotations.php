@@ -2,8 +2,19 @@
 
 <?= $this->section('content') ?>
 
+<!-- Date Range Filter - Top Right -->
+<div class="row mt-3">
+    <div class="col-md-12 text-end">
+        <div class="d-inline-block">
+            <?= view('components/date_range_filter', [
+                'id' => 'quotationDateRangePicker'
+            ]) ?>
+        </div>
+    </div>
+</div>
+
 <!-- Statistics Cards -->
-<div class="row mt-3 mb-4">
+<div class="row mb-4">
     <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
         <div class="stat-card bg-primary-soft">
             <div class="d-flex align-items-center">
@@ -307,19 +318,21 @@
     </div>
 </div>
 
-<!-- Add Specification Modal -->
+<!-- Unified Specification Modal (Add & Edit) -->
 <div class="modal fade" id="addSpecificationModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content border-0 shadow">
-            <div class="modal-header bg-success text-muted">
-                <h6 class="modal-title fw-600">
+            <div class="modal-header bg-success text-muted" id="specModalHeader">
+                <h6 class="modal-title fw-600" id="specModalTitle">
                     <i class="fas fa-cogs me-2"></i>Add Unit Specification
                 </h6>
-                <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <form id="addSpecificationForm" method="post" action="javascript:void(0)">
                 <div class="modal-body">
                     <input type="hidden" name="id_quotation" id="specQuotationId">
+                    <input type="hidden" name="id_specification" id="specId">
+                    <input type="hidden" name="specification_type" id="specType" value="UNIT">
                     
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -333,12 +346,14 @@
                         </div>
                         
                         <div class="col-md-6">
-                            <label class="form-label">Monthly Rental Price <span class="text-danger" id="hargaRequired">*</span></label>
-                            <input type="number" class="form-control" name="unit_price" step="0.01" placeholder="Rp per unit per month" required>
+                            <label class="form-label">Monthly Rental Price <span class="text-danger" id="monthlyPriceRequired">*</span></label>
+                            <input type="number" class="form-control" name="unit_price" id="monthlyPrice" step="0.01" placeholder="Rp per unit per month">
+                            <small class="text-muted">Fill in at least one: Monthly or Daily price</small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Daily Rental Price</label>
-                            <input type="number" class="form-control" name="harga_per_unit_harian" step="0.01" placeholder="Rp per unit per day">
+                            <label class="form-label">Daily Rental Price <span class="text-danger" id="dailyPriceRequired">*</span></label>
+                            <input type="number" class="form-control" name="harga_per_unit_harian" id="dailyPrice" step="0.01" placeholder="Rp per unit per day">
+                            <small class="text-muted">Fill in at least one: Monthly or Daily price</small>
                         </div>
                         
                         <div class="col-12"><hr><h6>Technical Specifications</h6></div>
@@ -362,13 +377,13 @@
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Unit Brand</label>
-                            <select class="form-select" name="merk_unit" id="specMerkUnit">
+                            <select class="form-select" name="brand_id" id="specMerkUnit">
                                 <option value="">-- Select Brand --</option>
                             </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Battery Type</label>
-                            <select class="form-select" name="jenis_baterai" id="specJenisBaterai">
+                            <select class="form-select" name="battery_id" id="specJenisBaterai">
                                 <option value="">-- Select Battery --</option>
                             </select>
                             <small class="text-muted">Available for Electric units only</small>
@@ -380,7 +395,7 @@
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Attachment Type</label>
-                            <select class="form-select" name="attachment_tipe" id="specAttachmentTipe"></select>
+                            <select class="form-select" name="attachment_id" id="specAttachmentTipe"></select>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Valve</label>
@@ -539,7 +554,75 @@
                         <i class="fas fa-times me-1"></i>Cancel
                     </button>
                     <button type="submit" class="btn btn-success" id="submitSpecificationBtn">
-                        <i class="fas fa-save me-1"></i>Save Specification
+                        <i class="fas fa-save me-1"></i><span id="submitBtnText">Save Specification</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Attachment Modal -->
+<div class="modal fade" id="addAttachmentModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-info text-muted">
+                <h6 class="modal-title fw-600">
+                    <i class="fas fa-paperclip me-2"></i>Add Attachment Specification
+                </h6>
+                <button class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="addAttachmentForm" method="post" action="javascript:void(0)">
+                <div class="modal-body">
+                    <input type="hidden" name="id_quotation" id="attachmentQuotationId">
+                    <input type="hidden" name="specification_type" id="attachmentSpecType" value="ATTACHMENT">
+                    <input type="hidden" name="category" value="ATTACHMENT">
+                    
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Quantity Required <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" name="quantity" min="1" value="1" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Specification Name</label>
+                            <input type="text" class="form-control" name="specification_name" placeholder="Optional">
+                            <small class="text-muted">e.g., "Fork Attachment", "Side Shifter", etc.</small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Monthly Rental Price <span class="text-muted">(Optional)</span></label>
+                            <input type="number" class="form-control" name="unit_price" id="attachmentMonthlyPrice" step="0.01" placeholder="Rp per unit per month">
+                            <small class="text-muted">Fill in at least one: Monthly or Daily</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Daily Rental Price <span class="text-muted">(Optional)</span></label>
+                            <input type="number" class="form-control" name="harga_per_unit_harian" id="attachmentDailyPrice" step="0.01" placeholder="Rp per unit per day">
+                            <small class="text-muted">Fill in at least one: Monthly or Daily</small>
+                        </div>
+                        
+                        <div class="col-12"><hr><h6>Attachment Details</h6></div>
+                        
+                        <div class="col-md-6">
+                            <label class="form-label">Attachment Type <span class="text-danger">*</span></label>
+                            <select class="form-select" name="attachment_tipe" id="attachmentTipe" required></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Attachment Brand</label>
+                            <input type="text" class="form-control" name="attachment_merk" placeholder="e.g., OEM, Cascade, etc.">
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Description / Notes</label>
+                            <textarea class="form-control" name="specification_description" rows="3" placeholder="Additional details about the attachment"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-info" id="submitAttachmentBtn">
+                        <i class="fas fa-save me-1"></i>Save Attachment
                     </button>
                 </div>
             </form>
@@ -746,7 +829,7 @@
                     <!-- Contract Form (shown when __ADD_NEW__ or existing selected) -->
                     <div id="contractFormSection" style="display:none;">
                         <hr class="my-4">
-                        <h6 class="mb-3">Contract Details</h6>
+                        <h6 class="mb-3">Create New Contract</h6>
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Contract Number <span class="text-danger">*</span></label>
@@ -890,8 +973,8 @@
 var quotationsTable;
 
 $(document).ready(function() {
-    // Initialize DataTable
-    quotationsTable = $('#quotationsTable').DataTable({
+    // Initialize DataTable with date filter
+    var quotationsConfig = {
         processing: true,
         serverSide: true,
         ajax: {
@@ -935,7 +1018,13 @@ $(document).ready(function() {
             $(row).css('cursor', 'pointer');
             $(row).attr('title', 'Click to view details');
         }
-    });
+    };
+    
+    // Apply date filter to config
+    applyDateFilterToConfig(quotationsConfig, 'quotationDateRangePicker');
+    
+    // Initialize DataTable with modified config
+    quotationsTable = $('#quotationsTable').DataTable(quotationsConfig);
     
     // Add row click functionality
     $('#quotationsTable tbody').on('click', 'tr', function(e) {
@@ -946,6 +1035,12 @@ $(document).ready(function() {
                 viewQuotation(data.id_quotation);
             }
         }
+    });
+    
+    // Setup automatic DataTable reload on date filter change
+    setupDataTableDateFilter(quotationsTable, 'quotationDateRangePicker', function(startDate, endDate) {
+        // Also reload statistics when date changes
+        loadStatistics(startDate, endDate);
     });
 
     // Load statistics
@@ -1265,14 +1360,33 @@ function debounce(func, wait) {
     };
 }
 
-function loadStatistics() {
-    $.get('<?= base_url('marketing/quotations/stats') ?>', function(data) {
-        $('#stat-total-quotations').text(data.total || 0);
-        $('#stat-pending').text(data.pending || 0);
-        $('#stat-approved').text(data.approved || 0);
-        $('#stat-rejected').text(data.rejected || 0);
-    }).fail(function() {
-        console.error('Failed to load statistics');
+let currentDateRange = { start: null, end: null };
+
+function loadStatistics(startDate = null, endDate = null) {
+    const params = {};
+    if (startDate && endDate) {
+        params.start_date = startDate;
+        params.end_date = endDate;
+        console.log('📊 Loading quotation statistics WITH filter:', params);
+    } else {
+        console.log('📊 Loading quotation statistics WITHOUT filter (all data)');
+    }
+    
+    $.ajax({
+        url: '<?= base_url('marketing/quotations/stats') ?>',
+        type: 'POST',
+        data: params,
+        success: function(data) {
+            console.log('✅ Quotation statistics loaded:', data);
+            $('#stat-total-quotations').text(data.total || 0);
+            $('#stat-pending').text(data.pending || 0);
+            $('#stat-approved').text(data.approved || 0);
+            $('#stat-rejected').text(data.rejected || 0);
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ Failed to load quotation statistics:', error);
+            console.error('   Response:', xhr.responseText);
+        }
     });
 }
 
@@ -1315,9 +1429,19 @@ function viewQuotation(id) {
                     <strong>Quotation Number:</strong><br>
                     ${data.quotation_number || 'undefined'}<br><br>
                     <strong>Customer:</strong><br>
-                    ${data.prospect_name || 'undefined'}<br><br>
+                    ${data.customer_name || data.prospect_name || 'undefined'}<br><br>
+                    ${data.location_name ? `
                     <strong>Amount:</strong><br>
-                    Rp ${data.total_amount ? parseFloat(data.total_amount).toLocaleString('id-ID') : 'NaN'}
+                    <strong class="text-success"> Rp ${data.total_amount ? parseFloat(data.total_amount).toLocaleString('id-ID') : 'NaN'}</strong> <br><br>
+                    <strong>Customer Location:</strong><br>
+                    <div class="ms-2 p-2 bg-light rounded border">
+                        <div class="mb-1"><i class="fas fa-map-marker-alt text-primary me-2"></i><strong>${data.location_name}</strong></div>
+                        ${data.location_address ? `<div class="mb-1"><small class="text-muted">${data.location_address}</small></div>` : ''}
+                        ${data.pic_name ? `<div class="mb-1"><small><i class="fas fa-user text-info me-1"></i><strong>PIC:</strong> ${data.pic_name}</small></div>` : ''}
+                        ${data.pic_phone ? `<div><small><i class="fas fa-phone text-success me-1"></i>${data.pic_phone}</small></div>` : ''}
+                    </div><br>
+                    ` : ''}
+                    
                 </div>
                 <div class="col-md-6">
                     <strong>Status:</strong><br>
@@ -1626,95 +1750,150 @@ function displayQuotationSpecifications(specifications) {
     
     let html = '';
     specifications.forEach((spec, index) => {
-        const isAttachmentSpec = spec.attachment_tipe && (!spec.tipe_unit_id || spec.tipe_unit_id === '0');
-        const cardClass = isAttachmentSpec ? 'border-success' : 'border-primary';
-        const badgeClass = isAttachmentSpec ? 'bg-success' : 'bg-primary';
-        const specType = isAttachmentSpec ? 'Attachment' : 'Unit';
+        // Determine specification type
+        const specType = spec.specification_type || 'UNIT';
+        const isAttachment = specType === 'ATTACHMENT';
+        const cardClass = isAttachment ? 'border-success' : 'border-primary';
+        const badgeClass = isAttachment ? 'bg-success' : 'bg-primary';
+        
+        // Build specification details
+        const details = [];
+        
+        // Department and Unit Type
+        if (spec.nama_departemen) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Department</small><div class="fw-bold">${spec.nama_departemen}</div></div>`);
+        }
+        
+        if (spec.jenis_tipe_unit) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Unit Type</small><div class="fw-bold">${spec.jenis_tipe_unit}</div></div>`);
+        } else if (spec.nama_tipe_unit) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Unit Type</small><div class="fw-bold">${spec.nama_tipe_unit}</div></div>`);
+        }
+        
+        // Capacity
+        if (spec.nama_kapasitas) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Capacity</small><div class="fw-bold">${spec.nama_kapasitas}</div></div>`);
+        }
+        
+        // Quantity
+        details.push(`<div class="col-md-3"><small class="text-muted">Quantity</small><div class="fw-bold text-primary">${spec.quantity || 0} unit(s)</div></div>`);
+        
+        // Pricing
+        const monthlyPrice = spec.monthly_price || spec.unit_price || spec.harga_per_unit || 0;
+        const dailyPrice = spec.daily_price || spec.harga_per_unit_harian || 0;
+        const totalPrice = spec.total_price || (monthlyPrice * (spec.quantity || 0));
+        
+        if (monthlyPrice > 0) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Monthly Price/Unit</small><div class="fw-bold text-success">Rp ${formatNumber(monthlyPrice)}</div></div>`);
+        }
+        
+        if (dailyPrice > 0) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Daily Price/Unit</small><div class="fw-bold text-info">Rp ${formatNumber(dailyPrice)}</div></div>`);
+        }
+        
+        details.push(`<div class="col-md-3"><small class="text-muted">Total Price</small><div class="fw-bold text-primary">Rp ${formatNumber(totalPrice)}</div></div>`);
+        
+        // Brand and Model
+        if (spec.merk_unit || spec.brand) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Brand</small><div>${spec.merk_unit || spec.brand}</div></div>`);
+        }
+        
+        if (spec.model_unit) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Model</small><div>${spec.model_unit}</div></div>`);
+        }
+        
+        // Electric Specific - Battery and Charger
+        if (spec.jenis_baterai) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Battery Type</small><div><i class="fas fa-battery-full text-warning me-1"></i>${spec.jenis_baterai}</div></div>`);
+        }
+        
+        // Charger - check for various field combinations
+        let chargerInfo = '';
+        if (spec.merk_charger && spec.tipe_charger) {
+            chargerInfo = `${spec.merk_charger} - ${spec.tipe_charger}`;
+        } else if (spec.charger_id && spec.charger_id > 0) {
+            chargerInfo = `Charger ID: ${spec.charger_id}`;
+        }
+        
+        if (chargerInfo) {
+            details.push(`<div class="col-md-4"><small class="text-muted">Charger</small><div><i class="fas fa-charging-station text-success me-1"></i>${chargerInfo}</div></div>`);
+        }
+        
+        // Technical Specifications
+        const techSpecs = [];
+        if (spec.valve_name) {
+            techSpecs.push(`<span class="badge bg-light text-dark me-1"><i class="fas fa-cog me-1"></i>Valve: ${spec.valve_name}</span>`);
+        }
+        if (spec.mast_name) {
+            techSpecs.push(`<span class="badge bg-light text-dark me-1"><i class="fas fa-arrows-alt-v me-1"></i>Mast: ${spec.mast_name}</span>`);
+        }
+        if (spec.tire_name) {
+            techSpecs.push(`<span class="badge bg-light text-dark me-1"><i class="fas fa-circle me-1"></i>Tire: ${spec.tire_name}</span>`);
+        }
+        if (spec.wheel_name) {
+            techSpecs.push(`<span class="badge bg-light text-dark me-1"><i class="fas fa-circle-notch me-1"></i>Wheel: ${spec.wheel_name}</span>`);
+        }
+        
+        // Attachment Information
+        if (spec.attachment_tipe) {
+            details.push(`<div class="col-md-4"><small class="text-muted">Attachment Type</small><div><i class="fas fa-tools text-success me-1"></i>${spec.attachment_tipe}</div></div>`);
+        }
+        if (spec.attachment_merk) {
+            details.push(`<div class="col-md-4"><small class="text-muted">Attachment Brand</small><div>${spec.attachment_merk}</div></div>`);
+        }
+        
+        // Accessories
+        let accessoriesBadges = '';
+        if (spec.unit_accessories && spec.unit_accessories.trim() !== '') {
+            const accessories = spec.unit_accessories.split(',').map(a => a.trim());
+            accessoriesBadges = accessories.map(acc => 
+                `<span class="badge bg-info me-1"><i class="fas fa-plus-circle me-1"></i>${acc}</span>`
+            ).join('');
+        }
         
         html += `
             <div class="card mb-3 ${cardClass}">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">
-                        <span class="badge ${badgeClass} me-2">${spec.spek_kode || 'QS-' + (index + 1)}</span>
-                        <span class="badge bg-light text-dark me-2">${specType}</span>
-                        ${spec.specification_name || 'Specification ' + (index + 1)}
-                    </h6>
                     <div>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editSpecification(${spec.id_specification})">
+                        <span class="badge ${badgeClass} me-2">SPEC-${index + 1}</span>
+                        <span class="badge bg-light text-dark me-2">${specType}</span>
+                        <strong>${spec.specification_name || 'Specification ' + (index + 1)}</strong>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editSpecification(${spec.id_specification})" title="Edit">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSpecification(${spec.id_specification})">
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSpecification(${spec.id_specification})" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-md-3">
-                            <small class="text-muted">Quantity</small>
-                            <div class="fw-bold">${spec.quantity || 0}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Unit Price</small>
-                            <div class="fw-bold text-success">Rp ${formatNumber(spec.unit_price || 0)}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Total Price</small>
-                            <div class="fw-bold text-primary">Rp ${formatNumber(spec.total_price || 0)}</div>
-                        </div>
-                        <div class="col-md-3">
-                            <small class="text-muted">Equipment Type</small>
-                            <div>${spec.equipment_type || '-'}</div>
-                        </div>
-                        ${spec.brand ? `
-                        <div class="col-md-4">
-                            <small class="text-muted">Brand</small>
-                            <div>${spec.brand}</div>
-                        </div>
-                        ` : ''}
-                        ${spec.model ? `
-                        <div class="col-md-4">
-                            <small class="text-muted">Model</small>
-                            <div>${spec.model}</div>
-                        </div>
-                        ` : ''}
-                        ${spec.nama_departemen ? `
-                        <div class="col-md-4">
-                            <small class="text-muted">Department</small>
-                            <div>${spec.nama_departemen}</div>
-                        </div>
-                        ` : ''}
-                        ${spec.nama_tipe_unit ? `
-                        <div class="col-md-4">
-                            <small class="text-muted">Unit Type</small>
-                            <div>${spec.nama_tipe_unit} ${spec.jenis ? `(${spec.jenis})` : ''}</div>
-                        </div>
-                        ` : ''}
-                        ${spec.kapasitas ? `
-                        <div class="col-md-4">
-                            <small class="text-muted">Capacity</small>
-                            <div>${spec.kapasitas}</div>
-                        </div>
-                        ` : ''}
-                        ${spec.merk_charger && spec.tipe_charger ? `
-                        <div class="col-md-4">
-                            <small class="text-muted">Charger</small>
-                            <div>${spec.merk_charger} - ${spec.tipe_charger}</div>
-                        </div>
-                        ` : ''}
+                    <div class="row g-3">
+                        ${details.join('')}
                     </div>
-                    ${spec.specification_description ? `
-                    <div class="mt-2">
-                        <small class="text-muted">Description:</small>
-                        <div>${spec.specification_description}</div>
+                    
+                    ${techSpecs.length > 0 ? `
+                    <div class="mt-3">
+                        <small class="text-muted d-block mb-2">Technical Specifications:</small>
+                        ${techSpecs.join('')}
                     </div>
                     ` : ''}
-                    ${spec.notes ? `
-                    <div class="mt-2">
-                        <small class="text-muted">Notes:</small>
-                        <div>${spec.notes}</div>
+                    
+                    ${accessoriesBadges ? `
+                    <div class="mt-3">
+                        <small class="text-muted d-block mb-2">Unit Accessories:</small>
+                        ${accessoriesBadges}
                     </div>
                     ` : ''}
+                    
+                    ${spec.specification_description && spec.specification_description.trim() !== '' ? `
+                    <div class="mt-3">
+                        <small class="text-muted d-block mb-1">Description:</small>
+                        <div class="text-muted">${spec.specification_description}</div>
+                    </div>
+                    ` : ''}
+                </div>
                 </div>
             </div>
         `;
@@ -1775,13 +1954,17 @@ function openAddSpecificationModal() {
 }
 
 function proceedWithSpecificationModal() {
-    // Reset form
+    // Reset form to Add mode
     $('#addSpecificationForm')[0].reset();
     $('#specQuotationId').val(currentQuotationId);
+    $('#specId').val(''); // Clear spec ID for add mode
+    $('#specType').val('UNIT'); // Set specification type to UNIT
     
-    // Reset modal title and button text
-    $('#addSpecificationModal .modal-title').text('Add Specification');
-    $('#submitSpecificationBtn').text('Save Specification');
+    // Reset modal to Add mode
+    $('#specModalHeader').removeClass('bg-primary').addClass('bg-success');
+    $('#specModalTitle').html('<i class="fas fa-cogs me-2"></i>Add Unit Specification');
+    $('#submitBtnText').text('Save Specification');
+    $('#submitSpecificationBtn').removeClass('btn-primary').addClass('btn-success');
     
     // Load dropdown data
     loadDepartemenForSpecification();
@@ -1817,8 +2000,21 @@ function openAddAttachmentModal() {
         return;
     }
     
-    // For now, show info message that this will be implemented
-    Swal.fire('Info', 'Add Attachment functionality will be implemented soon', 'info');
+    // Reset form
+    $('#addAttachmentForm')[0].reset();
+    $('#attachmentSpecType').val('ATTACHMENT'); // Set specification type to ATTACHMENT
+    $('#attachmentQuotationId').val(currentQuotationId);
+    
+    // Load attachment types
+    loadAttachmentTypesForAttachment();
+    
+    // Show modal
+    $('#addAttachmentModal').modal('show');
+    
+    // Focus on quantity after modal is shown
+    setTimeout(() => {
+        $('#addAttachmentForm [name="quantity"]').focus();
+    }, 300);
 }
 
 // Department change handler - handle electric/non-electric filtering
@@ -1870,7 +2066,7 @@ $(document).on('change', '#specTipeUnit', function() {
 // Functions to load dropdown data - consistent with kontrak spesifikasi pattern
 function loadDepartemenForSpecification() {
     console.log('Loading departemen data...');
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=departemen', function(response) {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=departemen', function(response) {
         console.log('Departemen API Response:', response);
         if (response.success) {
             let options = '<option value="">-- Select Department --</option>';
@@ -1895,7 +2091,7 @@ function loadDepartemenForSpecification() {
 
 function loadTipeUnitForSpecification() {
     console.log('Loading tipe unit data...');
-    $.ajax({
+    return $.ajax({
         url: '<?= base_url('marketing/customer-management/getTipeUnit') ?>',
         method: 'GET',
         success: function(response) {
@@ -1982,7 +2178,7 @@ function updateTipeUnitOptions() {
 
 function loadKapasitasForSpecification() {
     console.log('Loading kapasitas data...');
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=kapasitas', function(response) {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=kapasitas', function(response) {
         console.log('Kapasitas API Response:', response);
         if (response.success) {
             let options = '<option value="">-- Select Capacity --</option>';
@@ -2006,15 +2202,16 @@ function loadKapasitasForSpecification() {
 }
 
 function loadChargersForSpecification() {
+    const selectedDeptId = $('#specDepartemen').val();
     const selectedDeptText = $('#specDepartemen option:selected').text().toLowerCase();
     const isElectric = selectedDeptText.includes('electric') || selectedDeptText.includes('listrik');
     
-    if (!isElectric) {
+    if (!isElectric || !selectedDeptId) {
         $('#specCharger').html('<option value="">Hanya tersedia untuk unit Electric</option>');
-        return;
+        return Promise.resolve();
     }
     
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=charger', function(response) {
+    return $.get(`<?= base_url('marketing/spk/spec-options') ?>?type=charger&departemen_id=${selectedDeptId}`, function(response) {
         if (response.success) {
             let options = '<option value="">-- Pilih Charger --</option>';
             response.data.forEach(charger => {
@@ -2029,48 +2226,62 @@ function loadChargersForSpecification() {
 }
 
 function loadUnitBrandsForSpecification() {
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit', function(response) {
+    console.log('📋 Loading Unit Brands...');
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit', function(response) {
+        console.log('Unit Brands API Response:', response);
         if (response.success) {
             let options = '<option value="">-- Select Brand --</option>';
             response.data.forEach(brand => {
+                // Backend returns {id: model_unit_id, name: "Brand - Model"}
                 options += `<option value="${brand.id}">${brand.name}</option>`;
             });
             $('#specMerkUnit').html(options);
+            console.log('✅ Loaded', response.data.length, 'unit brands');
         }
     }).fail(function(xhr) {
-        console.error('Failed to load unit brands:', xhr.responseText);
+        console.error('❌ Failed to load unit brands:', xhr.responseText);
         $('#specMerkUnit').html('<option value="">Error loading brands</option>');
     });
 }
 
 function loadBatteriesForSpecification() {
+    console.log('📋 Loading Batteries...');
+    const selectedDeptId = $('#specDepartemen').val();
     const selectedDeptText = $('#specDepartemen option:selected').text().toLowerCase();
     const isElectric = selectedDeptText.includes('electric') || selectedDeptText.includes('listrik');
     
-    if (!isElectric) {
+    console.log('  - Department ID:', selectedDeptId);
+    console.log('  - Is Electric:', isElectric);
+    
+    if (!isElectric || !selectedDeptId) {
+        console.log('⚠️ Not electric or no department - skipping battery load');
         $('#specJenisBaterai').html('<option value="">Hanya tersedia untuk unit Electric</option>');
-        return;
+        return Promise.resolve();
     }
     
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=jenis_baterai', function(response) {
+    return $.get(`<?= base_url('marketing/spk/spec-options') ?>?type=jenis_baterai&departemen_id=${selectedDeptId}`, function(response) {
+        console.log('Batteries API Response:', response);
         if (response.success) {
             let options = '<option value="">-- Pilih Baterai --</option>';
             response.data.forEach(battery => {
+                // Backend returns {id: battery_id, name: "Brand - Type (Jenis)"}
                 options += `<option value="${battery.id}">${battery.name}</option>`;
             });
             $('#specJenisBaterai').html(options);
+            console.log('✅ Loaded', response.data.length, 'batteries');
         }
     }).fail(function(xhr) {
-        console.error('Failed to load batteries:', xhr.responseText);
+        console.error('❌ Failed to load batteries:', xhr.responseText);
         $('#specJenisBaterai').html('<option value="">Error loading batteries</option>');
     });
 }
 
 function loadAttachmentTypesForSpecification() {
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=attachment_tipe', function(response) {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=attachment_tipe', function(response) {
         if (response.success) {
             let options = '<option value="">-- Select Attachment Type --</option>';
             response.data.forEach(att => {
+                // Backend returns {id: attachment_id, name: "Tipe - Brand Model"}
                 options += `<option value="${att.id}">${att.name}</option>`;
             });
             $('#specAttachmentTipe').html(options);
@@ -2081,8 +2292,24 @@ function loadAttachmentTypesForSpecification() {
     });
 }
 
+function loadAttachmentTypesForAttachment() {
+    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=attachment_tipe', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Attachment Type --</option>';
+            response.data.forEach(att => {
+                // Backend returns DISTINCT values with {id: name, name: name}
+                options += `<option value="${att.name}">${att.name}</option>`;
+            });
+            $('#attachmentTipe').html(options);
+        }
+    }).fail(function(xhr) {
+        console.error('Failed to load attachment types:', xhr.responseText);
+        $('#attachmentTipe').html('<option value="">Error loading attachments</option>');
+    });
+}
+
 function loadValvesForSpecification() {
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=valve', function(response) {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=valve', function(response) {
         if (response.success) {
             let options = '<option value="">-- Select Valve --</option>';
             response.data.forEach(valve => {
@@ -2097,7 +2324,7 @@ function loadValvesForSpecification() {
 }
 
 function loadMastsForSpecification() {
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=mast', function(response) {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=mast', function(response) {
         if (response.success) {
             let options = '<option value="">-- Select Mast --</option>';
             response.data.forEach(mast => {
@@ -2112,7 +2339,7 @@ function loadMastsForSpecification() {
 }
 
 function loadTiresForSpecification() {
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=ban', function(response) {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=ban', function(response) {
         if (response.success) {
             let options = '<option value="">-- Select Tire --</option>';
             response.data.forEach(tire => {
@@ -2127,7 +2354,7 @@ function loadTiresForSpecification() {
 }
 
 function loadWheelsForSpecification() {
-    $.get('<?= base_url('marketing/spk/spec-options') ?>?type=roda', function(response) {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=roda', function(response) {
         if (response.success) {
             let options = '<option value="">-- Select Wheel --</option>';
             response.data.forEach(wheel => {
@@ -2141,15 +2368,22 @@ function loadWheelsForSpecification() {
     });
 }
 
-// Handle specification form submission
+// Handle specification form submission (unified for Add and Edit)
 $('#addSpecificationForm').on('submit', function(e) {
     e.preventDefault();
     
     console.log('Specification form submitted');
     
+    // Check if this is Add or Edit mode
+    const specId = $('#specId').val();
+    const isEditMode = specId && specId !== '';
+    
+    console.log('Form mode:', isEditMode ? 'EDIT' : 'ADD', 'Spec ID:', specId);
+    
     // Enhanced validation
     const quantity = parseInt($('#addSpecificationForm [name="quantity"]').val());
-    const unitPrice = parseFloat($('#addSpecificationForm [name="unit_price"]').val());
+    const monthlyPrice = parseFloat($('#monthlyPrice').val()) || 0;
+    const dailyPrice = parseFloat($('#dailyPrice').val()) || 0;
     const departemen = $('#specDepartemen').val();
     const tipeUnit = $('#specTipeUnit').val();
     
@@ -2159,8 +2393,10 @@ $('#addSpecificationForm').on('submit', function(e) {
         return;
     }
     
-    if (!unitPrice || unitPrice < 0) {
-        Swal.fire('Validation Error', 'Please enter a valid unit price', 'warning');
+    // Validate: at least one price (monthly or daily) must be filled
+    if (monthlyPrice === 0 && dailyPrice === 0) {
+        Swal.fire('Validation Error', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)', 'warning');
+        $('#monthlyPrice').focus();
         return;
     }
     
@@ -2185,10 +2421,18 @@ $('#addSpecificationForm').on('submit', function(e) {
         console.log(key, ':', value);
     }
     
-    submitBtn.prop('disabled', true).text('Saving...');
+    // Determine endpoint based on mode
+    const endpoint = isEditMode 
+        ? '<?= base_url('marketing/quotations/update-specification') ?>' 
+        : '<?= base_url('marketing/quotations/add-specification') ?>';
+    
+    const actionText = isEditMode ? 'Updating...' : 'Saving...';
+    const successMsg = isEditMode ? 'Specification updated successfully' : 'Specification added successfully';
+    
+    submitBtn.prop('disabled', true).html(`<i class="fas fa-spinner fa-spin me-1"></i>${actionText}`);
     
     $.ajax({
-        url: '<?= base_url('marketing/quotations/add-specification') ?>',
+        url: endpoint,
         type: 'POST',
         data: formData,
         processData: false,
@@ -2197,7 +2441,7 @@ $('#addSpecificationForm').on('submit', function(e) {
             console.log('Specification save response:', response);
             if (response.success) {
                 $('#addSpecificationModal').modal('hide');
-                Swal.fire('Success', response.message || 'Specification added successfully', 'success');
+                Swal.fire('Success', response.message || successMsg, 'success');
                 
                 // Reload specifications and refresh tab
                 if (currentQuotationId) {
@@ -2213,18 +2457,18 @@ $('#addSpecificationForm').on('submit', function(e) {
                 // Reset form for next entry
                 $('#addSpecificationForm')[0].reset();
             } else {
-                Swal.fire('Error', response.message || 'Failed to add specification', 'error');
+                Swal.fire('Error', response.message || 'Failed to save specification', 'error');
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error adding specification:', {
+            console.error('Error saving specification:', {
                 status: xhr.status,
                 statusText: xhr.statusText,
                 responseText: xhr.responseText,
                 error: error
             });
             
-            let errorMessage = 'Failed to add specification';
+            let errorMessage = 'Failed to save specification';
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMessage = xhr.responseJSON.message;
             } else if (xhr.responseText) {
@@ -2239,16 +2483,586 @@ $('#addSpecificationForm').on('submit', function(e) {
             Swal.fire('Error', errorMessage, 'error');
         },
         complete: function() {
-            submitBtn.prop('disabled', false).text('Save Specification');
+            const btnText = $('#specId').val() ? 'Update Specification' : 'Save Specification';
+            submitBtn.prop('disabled', false).html(`<i class="fas fa-save me-1"></i><span id="submitBtnText">${btnText}</span>`);
         }
     });
 });
 
-// Edit specification
+// Handle attachment form submission
+$('#addAttachmentForm').on('submit', function(e) {
+    e.preventDefault();
+    
+    console.log('Attachment form submitted');
+    
+    // Enhanced validation
+    const quantity = parseInt($('#addAttachmentForm [name="quantity"]').val());
+    const monthlyPrice = parseFloat($('#attachmentMonthlyPrice').val()) || 0;
+    const dailyPrice = parseFloat($('#attachmentDailyPrice').val()) || 0;
+    const attachmentType = $('#attachmentTipe').val();
+    
+    // Client-side validation
+    if (!quantity || quantity < 1) {
+        Swal.fire('Validation Error', 'Please enter a valid quantity (minimum 1)', 'warning');
+        return;
+    }
+    
+    // Validate: at least one price (monthly or daily) must be filled
+    if (monthlyPrice === 0 && dailyPrice === 0) {
+        Swal.fire('Validation Error', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)', 'warning');
+        $('#attachmentMonthlyPrice').focus();
+        return;
+    }
+    
+    if (!attachmentType) {
+        Swal.fire('Validation Error', 'Please select an attachment type', 'warning');
+        $('#attachmentTipe').focus();
+        return;
+    }
+    
+    const formData = new FormData(this);
+    const submitBtn = $('#submitAttachmentBtn');
+    
+    // Log form data for debugging
+    console.log('Attachment form submission data:');
+    for (let [key, value] of formData.entries()) {
+        console.log(key, ':', value);
+    }
+    
+    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');
+    
+    $.ajax({
+        url: '<?= base_url('marketing/quotations/add-specification') ?>',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(response) {
+            console.log('Attachment save response:', response);
+            if (response.success) {
+                $('#addAttachmentModal').modal('hide');
+                Swal.fire('Success', response.message || 'Attachment added successfully', 'success');
+                
+                // Reload specifications and refresh tab
+                if (currentQuotationId) {
+                    $('#specifications-tab').removeClass('loaded');
+                    loadQuotationSpecifications(currentQuotationId);
+                    
+                    // Update quotation total if provided
+                    if (response.quotation_total) {
+                        console.log('Updated quotation total:', response.quotation_total);
+                    }
+                }
+                
+                // Reset form for next entry
+                $('#addAttachmentForm')[0].reset();
+            } else {
+                Swal.fire('Error', response.message || 'Failed to add attachment', 'error');
+            }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error adding attachment:', {
+                status: xhr.status,
+                statusText: xhr.statusText,
+                responseText: xhr.responseText,
+                error: error
+            });
+            
+            let errorMessage = 'Failed to add attachment';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMessage = xhr.responseJSON.message;
+            } else if (xhr.responseText) {
+                try {
+                    const errorData = JSON.parse(xhr.responseText);
+                    if (errorData.message) errorMessage = errorData.message;
+                } catch (e) {
+                    console.error('Could not parse error response');
+                }
+            }
+            
+            Swal.fire('Error', errorMessage, 'error');
+        },
+        complete: function() {
+            submitBtn.prop('disabled', false).html('<i class="fas fa-save me-1"></i>Save Attachment');
+        }
+    });
+});
+
+// Edit specification - reuse Add Specification modal
 function editSpecification(specId) {
-    // Implementation for editing specification
-    Swal.fire('Info', 'Edit specification functionality will be implemented', 'info');
+    console.log('=== EDIT SPECIFICATION STARTED ===');
+    console.log('Spec ID:', specId);
+    console.log('Current Quotation ID:', currentQuotationId);
+    
+    if (!currentQuotationId) {
+        console.error('No currentQuotationId set!');
+        Swal.fire('Error', 'Quotation ID is missing', 'error');
+        return;
+    }
+    
+    // First, load specification data
+    const apiUrl = `<?= base_url('marketing/quotations/getSpecifications/') ?>${currentQuotationId}`;
+    console.log('Fetching from:', apiUrl);
+    
+    $.ajax({
+        url: apiUrl,
+        method: 'GET',
+        success: function(response) {
+            console.log('API Response:', response);
+            console.log('Response type:', typeof response);
+            
+            if (!response || !response.success) {
+                console.error('API returned error or no success flag');
+                console.error('Full response:', response);
+                Swal.fire('Error', response?.message || 'Failed to load specification data', 'error');
+                return;
+            }
+            
+            if (!response.data || !Array.isArray(response.data)) {
+                console.error('Invalid response data structure');
+                console.error('response.data:', response.data);
+                Swal.fire('Error', 'Invalid data structure received', 'error');
+                return;
+            }
+
+            console.log('Total specifications:', response.data.length);
+            console.log('Looking for spec ID:', specId);
+            
+            // Find the specification with matching ID
+            const spec = response.data.find(s => s.id_specification == specId);
+            
+            if (!spec) {
+                console.error('Specification not found in data');
+                console.error('Available spec IDs:', response.data.map(s => s.id_specification));
+                Swal.fire('Error', 'Specification not found', 'error');
+                return;
+            }
+
+            console.log('✓ Found specification:', spec);
+            console.log('All spec fields:', Object.keys(spec));
+            
+            // Log critical field values for debugging
+            console.log('🔍 Field values to populate:');
+            console.log('  - kapasitas_id:', spec.kapasitas_id);
+            console.log('  - brand_id:', spec.brand_id, '(brand name:', spec.brand, spec.merk_unit, ')');
+            console.log('  - attachment_id:', spec.attachment_id, '(tipe:', spec.attachment_tipe, ')');
+            console.log('  - battery_id:', spec.battery_id, '(jenis_baterai:', spec.jenis_baterai, ')');
+            console.log('  - charger_id:', spec.charger_id);
+
+            // Change modal title and button for edit mode
+            $('#specModalHeader').removeClass('bg-success').addClass('bg-primary');
+            $('#specModalTitle').html('<i class="fas fa-edit me-2"></i>Edit Unit Specification');
+            $('#submitBtnText').text('Update Specification');
+            $('#submitSpecificationBtn').removeClass('btn-success').addClass('btn-primary');
+            
+            // Set spec ID for update
+            $('#specId').val(spec.id_specification);
+            $('#specQuotationId').val(currentQuotationId);
+            
+            // Populate basic fields using name attribute
+            $('[name="quantity"]').val(spec.quantity || 1);
+            $('[name="specification_name"]').val(spec.specification_name || '');
+            $('[name="unit_price"]').val(spec.harga_per_unit || spec.unit_price || 0);
+            $('[name="harga_per_unit_harian"]').val(spec.harga_per_unit_harian || 0);
+            
+            console.log('📋 Starting to load all dropdown data...');
+            
+            // STEP 1: Load independent dropdowns first (parallel)
+            Promise.all([
+                loadDepartemenForSpecification(),
+                loadKapasitasForSpecification(),
+                loadUnitBrandsForSpecification(),
+                loadAttachmentTypesForSpecification(),
+                loadValvesForSpecification(),
+                loadMastsForSpecification(),
+                loadTiresForSpecification(),
+                loadWheelsForSpecification(),
+                loadTipeUnitForSpecification()
+            ]).then(() => {
+                console.log('✅ Independent dropdowns loaded');
+                
+                // Set independent dropdown values IMMEDIATELY after load
+                console.log('📌 Setting Capacity:', spec.kapasitas_id);
+                $('#specKapasitas').val(spec.kapasitas_id || '');
+                
+                console.log('📌 Setting Unit Brand:', spec.brand || spec.merk_unit);
+                $('#specMerkUnit').val(spec.brand_id || '');
+                
+                console.log('📌 Setting Attachment Type:', spec.attachment_tipe);
+                $('#specAttachmentTipe').val(spec.attachment_id || '');
+                
+                console.log('📌 Setting Valve:', spec.valve_id);
+                $('#specValve').val(spec.valve_id || '');
+                
+                console.log('📌 Setting Mast:', spec.mast_id);
+                $('#specMast').val(spec.mast_id || '');
+                
+                console.log('📌 Setting Tire:', spec.ban_id);
+                $('#specBan').val(spec.ban_id || '');
+                
+                console.log('📌 Setting Wheel:', spec.roda_id);
+                $('#specRoda').val(spec.roda_id || '');
+                
+                // STEP 2: Set department and handle cascading
+                $('#specDepartemen').val(spec.departemen_id || '');
+                console.log('✅ Department set to:', spec.departemen_id);
+                
+                // Check if electric department
+                const deptText = $('#specDepartemen option:selected').text().toLowerCase();
+                const isElectric = deptText.includes('electric') || deptText.includes('listrik');
+                console.log('Is Electric Department:', isElectric);
+                
+                // STEP 3: Update Unit Type dropdown based on department
+                if (spec.departemen_id && window.allTipeUnitData) {
+                    console.log('📋 Filtering tipe unit for department:', spec.departemen_id);
+                    updateEditTipeUnitOptions(spec.departemen_id).then(() => {
+                        $('#specTipeUnit').val(spec.tipe_unit_id || '');
+                        console.log('✅ Unit Type set to:', spec.tipe_unit_id);
+                    });
+                }
+                
+                // STEP 4: Handle electric-specific fields
+                if (isElectric) {
+                    $('#specJenisBaterai').prop('disabled', false).closest('.col-md-4').find('small').show();
+                    $('#specCharger').prop('disabled', false).closest('.col-md-4').find('small').show();
+                    
+                    // DON'T trigger change - load battery/charger directly
+                    console.log('📋 Loading Battery and Charger for Electric unit...');
+                    
+                    // Load battery and charger with proper timing
+                    Promise.all([
+                        loadBatteriesForSpecification(),
+                        loadChargersForSpecification()
+                    ]).then(() => {
+                        console.log('📌 Setting Battery Type (battery_id):', spec.battery_id);
+                        $('#specJenisBaterai').val(spec.battery_id || '');
+                        
+                        console.log('📌 Setting Charger:', spec.charger_id);
+                        $('#specCharger').val(spec.charger_id || '');
+                        
+                        console.log('✅ Battery and Charger loaded and set');
+                    });
+                } else {
+                    $('#specJenisBaterai').prop('disabled', true).val('').closest('.col-md-4').find('small').hide();
+                    $('#specCharger').prop('disabled', true).val('').closest('.col-md-4').find('small').hide();
+                }
+                
+                // Handle accessories
+                $('[name="aksesoris[]"]').prop('checked', false);
+                
+                const accessoriesData = spec.aksesoris || spec.unit_accessories || '';
+                if (accessoriesData && accessoriesData !== '') {
+                    const accessories = typeof accessoriesData === 'string' 
+                        ? accessoriesData.split(',').map(a => a.trim())
+                        : (Array.isArray(accessoriesData) ? accessoriesData : []);
+                    
+                    accessories.forEach(accessory => {
+                        $(`[name="aksesoris[]"][value="${accessory}"]`).prop('checked', true);
+                    });
+                    
+                    console.log('✅ Accessories loaded:', accessories);
+                }
+                
+                // Show modal after ALL data is loaded and set
+                console.log('=== ALL DATA LOADED - SHOWING MODAL ===');
+                setTimeout(() => {
+                    $('#addSpecificationModal').modal('show');
+                    console.log('✅ Modal displayed');
+                }, 200);
+                
+            }).catch(error => {
+                console.error('❌ Error loading dropdown data:', error);
+                Swal.fire('Error', 'Failed to load dropdown data: ' + error.message, 'error');
+            });
+        },
+        error: function(xhr, status, error) {
+            console.error('=== AJAX ERROR ===');
+            console.error('Status:', status);
+            console.error('Error:', error);
+            console.error('XHR Status:', xhr.status);
+            console.error('Response Text:', xhr.responseText);
+            console.error('Full XHR:', xhr);
+            
+            let errorMsg = 'Failed to load specification data';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            } else if (xhr.status === 404) {
+                errorMsg = 'API endpoint not found (404). Check route configuration.';
+            } else if (xhr.status === 500) {
+                errorMsg = 'Server error (500). Check server logs.';
+            }
+            
+            Swal.fire('Error', errorMsg, 'error');
+        }
+    });
 }
+
+// Load functions for edit modal
+function loadDepartemenForEdit() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=departemen', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Department --</option>';
+            response.data.forEach(dept => {
+                options += `<option value="${dept.id}">${dept.name}</option>`;
+            });
+            $('#edit_departemen_id').html(options);
+        }
+    });
+}
+
+function loadTipeUnitForEdit() {
+    return $.ajax({
+        url: '<?= base_url('marketing/customer-management/getTipeUnit') ?>',
+        method: 'GET',
+        success: function(response) {
+            console.log('Edit Tipe Unit API Response:', response);
+            if (response.success) {
+                // Store all unit type data globally for filtering (same as Add Specification)
+                window.editAllTipeUnitData = response.data;
+                console.log('Loaded', response.data.length, 'tipe unit records for edit');
+                // Initially show placeholder only
+                $('#edit_tipe_unit_id').html('<option value="">-- Select Unit Type --</option>');
+            } else {
+                console.error('API returned error:', response.message);
+                $('#edit_tipe_unit_id').html('<option value="">Error loading unit types</option>');
+            }
+        },
+        error: function(xhr) {
+            console.error('Failed to load unit types for edit:', xhr.responseText);
+            $('#edit_tipe_unit_id').html('<option value="">Error loading unit types</option>');
+        }
+    });
+}
+
+function updateEditTipeUnitOptions(departemenId) {
+    return new Promise((resolve) => {
+        const select = $('#specTipeUnit');
+        
+        select.empty().append('<option value="">-- Select Unit Type --</option>');
+        
+        if (!departemenId || !window.allTipeUnitData) {
+            console.log('No department selected or no tipe unit data available');
+            resolve();
+            return;
+        }
+        
+        console.log('Edit - Filtering units for department:', departemenId);
+        
+        // Filter by department (same logic as Add Specification)
+        const filteredUnits = window.allTipeUnitData.filter(unit => {
+            return unit.id_departemen == departemenId;
+        });
+        
+        console.log('Edit - Filtered Units:', filteredUnits);
+        
+        if (filteredUnits.length === 0) {
+            select.append('<option value="">No unit types available for this department</option>');
+            resolve();
+            return;
+        }
+        
+        // Group by jenis to avoid duplicates (show JENIS not TIPE)
+        const uniqueJenis = [...new Set(filteredUnits.map(unit => unit.jenis))];
+        console.log('Edit - Unique jenis found:', uniqueJenis);
+        
+        uniqueJenis.sort().forEach(jenis => {
+            // Find the first unit with this jenis to get the id
+            const unitWithJenis = filteredUnits.find(unit => unit.jenis === jenis);
+            if (unitWithJenis) {
+                console.log('Edit - Adding option:', unitWithJenis.id_tipe_unit, jenis);
+                select.append(`<option value="${unitWithJenis.id_tipe_unit}">${jenis}</option>`);
+            }
+        });
+        
+        resolve();
+    });
+}
+
+function loadKapasitasForEdit() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=kapasitas', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Capacity --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.id}">${item.name}</option>`;
+            });
+            $('#edit_kapasitas_id').html(options);
+        }
+    });
+}
+
+function loadUnitBrandsForEdit() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Brand --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.name}">${item.name}</option>`;
+            });
+            $('#edit_brand').html(options);
+        }
+    });
+}
+
+function loadBatteriesForEdit(departemenId) {
+    return $.get(`<?= base_url('marketing/spk/spec-options') ?>?type=jenis_baterai&departemen_id=${departemenId}`, function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Battery --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.name}">${item.name}</option>`;
+            });
+            $('#edit_jenis_baterai').html(options).prop('disabled', false);
+        }
+    });
+}
+
+function loadChargersForEdit(departemenId) {
+    return $.get(`<?= base_url('marketing/spk/spec-options') ?>?type=charger&departemen_id=${departemenId}`, function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Charger --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.id}">${item.name}</option>`;
+            });
+            $('#edit_charger_id').html(options).prop('disabled', false);
+        }
+    }).fail(function(xhr) {
+        console.error('Failed to load chargers for edit:', xhr.responseText);
+        $('#edit_charger_id').html('<option value="">Error loading chargers</option>');
+    });
+}
+
+function loadAttachmentTypesForEdit() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=attachment_tipe', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Attachment Type --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.name}">${item.name}</option>`;
+            });
+            $('#edit_attachment_tipe').html(options);
+        }
+    });
+}
+
+function loadValvesForEdit() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=valve', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Valve --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.id}">${item.name}</option>`;
+            });
+            $('#edit_valve_id').html(options);
+        }
+    });
+}
+
+function loadMastsForEdit() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=mast', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Mast --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.id}">${item.name}</option>`;
+            });
+            $('#edit_mast_id').html(options);
+        }
+    });
+}
+
+function loadTiresForEdit() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=ban', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Tire --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.id}">${item.name}</option>`;
+            });
+            $('#edit_ban_id').html(options);
+        }
+    });
+}
+
+function loadWheelsForEdit() {
+    return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=roda', function(response) {
+        if (response.success) {
+            let options = '<option value="">-- Select Wheel --</option>';
+            response.data.forEach(item => {
+                options += `<option value="${item.id}">${item.name}</option>`;
+            });
+            $('#edit_roda_id').html(options);
+        }
+    });
+}
+
+// Department change handler for edit modal
+$(document).on('change', '#edit_departemen_id', function() {
+    const departemenId = $(this).val();
+    const deptText = $(this).find('option:selected').text().toLowerCase();
+    const isElectric = deptText.includes('electric') || deptText.includes('listrik');
+    
+    console.log('Edit department changed:', departemenId, deptText, 'Electric:', isElectric);
+    
+    // Update unit types based on department
+    updateEditTipeUnitOptions(departemenId);
+    
+    // Handle battery and charger fields visibility
+    if (isElectric && departemenId) {
+        // Enable and load battery/charger options
+        $('#edit_jenis_baterai').prop('disabled', false).removeClass('bg-light');
+        $('#edit_charger_id').prop('disabled', false).removeClass('bg-light');
+        
+        loadBatteriesForEdit(departemenId);
+        loadChargersForEdit(departemenId);
+    } else {
+        // Disable and clear battery/charger fields
+        $('#edit_jenis_baterai')
+            .html('<option value="">Hanya tersedia untuk unit Electric</option>')
+            .prop('disabled', true)
+            .addClass('bg-light')
+            .val('');
+        $('#edit_charger_id')
+            .html('<option value="">Hanya tersedia untuk unit Electric</option>')
+            .prop('disabled', true)
+            .addClass('bg-light')
+            .val('');
+    }
+});
+
+// Handle Edit Specification Form Submit
+$(document).on('submit', '#editSpecificationForm', function(e) {
+    e.preventDefault();
+    
+    const specId = $('#edit_spec_id').val();
+    const formData = $(this).serialize();
+    
+    $.ajax({
+        url: `<?= base_url('marketing/quotations/update-specification/') ?>${specId}`,
+        method: 'POST',
+        data: formData,
+        success: function(response) {
+            if (response.success) {
+                $('#editSpecificationModal').modal('hide');
+                Swal.fire('Success!', response.message, 'success');
+                
+                // Reload specifications
+                if (currentQuotationId) {
+                    loadQuotationSpecifications(currentQuotationId);
+                }
+            } else {
+                Swal.fire('Error', response.message || 'Failed to update specification', 'error');
+            }
+        },
+        error: function(xhr) {
+            console.error('Error updating specification:', xhr);
+            Swal.fire('Error', 'Failed to update specification: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
+        }
+    });
+});
+
+// Auto-calculate total price in edit form
+$(document).on('input', '#edit_quantity, #edit_unit_price', function() {
+    const quantity = parseFloat($('#edit_quantity').val()) || 0;
+    const unitPrice = parseFloat($('#edit_unit_price').val()) || 0;
+    const totalPrice = quantity * unitPrice;
+    
+    $('#edit_total_price').val(totalPrice);
+    $('#edit_total_price_display').val('Rp ' + totalPrice.toLocaleString('id-ID'));
+});
 
 // Delete specification
 function deleteSpecification(specId) {
@@ -2277,8 +3091,9 @@ function deleteSpecification(specId) {
                         Swal.fire('Error', response.message, 'error');
                     }
                 },
-                error: function() {
-                    Swal.fire('Error', 'Failed to delete specification', 'error');
+                error: function(xhr) {
+                    console.error('Error deleting specification:', xhr);
+                    Swal.fire('Error', 'Failed to delete specification: ' + (xhr.responseJSON?.message || xhr.statusText), 'error');
                 }
             });
         }
@@ -3212,7 +4027,26 @@ function showCreateContractModal(customerId, quotationId, message) {
     window.currentContractQuotationId = quotationId;
     window.currentContractCustomerId = customerId;
     
-    // Get customer name and set in modal title
+    // Show modal immediately with loading state
+    $('#addContractModal').modal('show');
+    
+    // Set dropdown to "Add New Contract" by default and show form
+    $('#contractOrPOSelect').val('__ADD_NEW__');
+    $('#contractFormSection').show();
+    
+    // Enable all fields for new entry
+    $('#contract_number_input, #po_number_input').prop('disabled', false).prop('readonly', false).removeClass('bg-light');
+    $('#contract_start_date, #contract_end_date, #contract_jenis_sewa').prop('disabled', false);
+    $('#contract_catatan').prop('readonly', false).removeClass('bg-light');
+    $('#generateContractNumberBtn').prop('disabled', false);
+    
+    // Change button text
+    $('#addContractForm button[type="submit"]').html('<i class="fas fa-save me-2"></i>Save New Contract');
+    
+    // Load customer and location data
+    loadCustomersForContract(customerId);
+    
+    // Update modal title
     $.ajax({
         url: `<?= base_url('customers/get/') ?>${customerId}`,
         method: 'GET',
@@ -3228,12 +4062,6 @@ function showCreateContractModal(customerId, quotationId, message) {
             $('#contractModalCustomerName').text('Customer: Unknown');
         }
     });
-    
-    // Load customers and locations for the modal
-    loadCustomersForContract(customerId);
-    
-    // Show the modal
-    $('#addContractModal').modal('show');
 }
 
 // Function to load customer and location data for contract modal (read-only)
@@ -3250,67 +4078,91 @@ function loadCustomersForContract(customerId) {
     // Load existing contracts for this customer
     loadExistingContracts(customerId);
     
-    // Get customer details
+    // Get quotation data to populate customer and location
     $.ajax({
-        url: `<?= base_url('customers/get/') ?>${customerId}`,
+        url: `<?= base_url('marketing/quotations/get-quotation/') ?>${quotationId}`,
         method: 'GET',
-        success: function(custResponse) {
-            console.log('Customer data loaded:', custResponse);
-            if (custResponse.success && custResponse.data) {
-                // Display customer name as read-only
-                $('#customerNameDisplay').val(custResponse.data.customer_name);
-                $('#customerIdContractNew').val(custResponse.data.id);
+        success: function(quotationResponse) {
+            console.log('📥 Quotation data loaded for contract:', quotationResponse);
+            
+            if (quotationResponse.status === 'success' || quotationResponse.success) {
+                const quotation = quotationResponse.data || quotationResponse;
+                
+                // Set customer name from quotation (prospect_name or customer_name)
+                const customerName = quotation.customer_name || quotation.prospect_name || 'N/A';
+                
+                // Use setTimeout to ensure field is rendered before setting value
+                setTimeout(function() {
+                    $('#customerNameDisplay').val(customerName);
+                    console.log('✅ Customer name set:', customerName, '| Field value:', $('#customerNameDisplay').val());
+                }, 100);
+                
+                // Set location name if available
+                if (quotation.location_name) {
+                    setTimeout(function() {
+                        $('#locationNameDisplay').val(quotation.location_name);
+                        console.log('✅ Location name set:', quotation.location_name, '| Field value:', $('#locationNameDisplay').val());
+                    }, 100);
+                    
+                    // If we have location from quotation, also set the location ID
+                    if (locationId) {
+                        $('#locationIdContractNew').val(locationId);
+                    }
+                } else if (locationId) {
+                    // If no location in quotation but we have locationId, fetch location details
+                    $.ajax({
+                        url: `<?= base_url('customers/getLocations/') ?>${customerId}`,
+                        method: 'GET',
+                        success: function(locResponse) {
+                            console.log('📥 Locations loaded:', locResponse);
+                            if (locResponse.success && locResponse.data) {
+                                const selectedLocation = locResponse.data.find(loc => loc.id == locationId);
+                                if (selectedLocation) {
+                                    setTimeout(function() {
+                                        $('#locationNameDisplay').val(selectedLocation.location_name);
+                                        $('#locationIdContractNew').val(selectedLocation.id);
+                                        console.log('✅ Location set from customer locations:', selectedLocation.location_name);
+                                    }, 100);
+                                }
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('❌ Error loading locations:', xhr);
+                        }
+                    });
+                } else {
+                    setTimeout(function() {
+                        $('#locationNameDisplay').val('No location selected');
+                        console.warn('⚠️ No location available');
+                    }, 100);
+                }
+            } else {
+                console.error('❌ Invalid quotation response');
             }
         },
         error: function(xhr) {
-            console.error('Error loading customer:', xhr);
+            console.error('❌ Error loading quotation for contract:', xhr);
             const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Unknown error';
-            console.error('Customer error details:', errorMsg);
-            Swal.fire({
-                icon: 'error',
-                title: 'Failed to Load Customer',
-                text: 'Could not load customer data. Error: ' + errorMsg,
-                timer: 3000
+            console.error('Quotation error details:', errorMsg);
+            
+            // Fallback: try to get customer data directly
+            $.ajax({
+                url: `<?= base_url('customers/get/') ?>${customerId}`,
+                method: 'GET',
+                success: function(custResponse) {
+                    if (custResponse.success && custResponse.data) {
+                        setTimeout(function() {
+                            $('#customerNameDisplay').val(custResponse.data.customer_name);
+                            console.log('✅ Customer name set from customer API:', custResponse.data.customer_name);
+                        }, 100);
+                    }
+                },
+                error: function(xhr) {
+                    console.error('❌ Error loading customer:', xhr);
+                }
             });
         }
     });
-    
-    // Get selected location
-    if (locationId) {
-        $.ajax({
-            url: `<?= base_url('customers/getLocations/') ?>${customerId}`,
-            method: 'GET',
-            success: function(locResponse) {
-                console.log('Locations loaded:', locResponse);
-                if (locResponse.success && locResponse.data) {
-                    // Find the selected location
-                    const selectedLocation = locResponse.data.find(loc => loc.id == locationId);
-                    if (selectedLocation) {
-                        $('#locationNameDisplay').val(selectedLocation.location_name);
-                        $('#locationIdContractNew').val(selectedLocation.id);
-                    }
-                }
-            },
-            error: function(xhr) {
-                console.error('Error loading locations:', xhr);
-                const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Unknown error';
-                Swal.fire({
-                    icon: 'error',
-                    title: 'Failed to Load Location',
-                    text: 'Could not load location data. Error: ' + errorMsg,
-                    timer: 3000
-                });
-            }
-        });
-    } else {
-        console.warn('No location ID found in workflow');
-        Swal.fire({
-            icon: 'warning',
-            title: 'No Location Selected',
-            text: 'Please complete location selection first.',
-            timer: 3000
-        });
-    }
 }
 
 // Function to load existing contracts for customer
@@ -4344,52 +5196,145 @@ function showSPKCreationModal(quotation, specifications) {
             ? spec.specification_description 
             : buildSpecificationDescription(spec);
         
-        const maxQty = spec.quantity || 1;
-        const existingUnits = spec.existing_spk_units || 0;
-        const availableUnits = spec.available_units || maxQty;
+        const maxQty = parseInt(spec.quantity) || 1;
+        const existingUnits = parseInt(spec.existing_spk_units) || 0;
+        // IMPORTANT: Use 0 if available_units is 0, don't fallback to maxQty!
+        const availableUnits = spec.available_units !== undefined && spec.available_units !== null 
+            ? parseInt(spec.available_units) 
+            : parseInt(spec.quantity) || 1;
         const isFullyCreated = availableUnits <= 0;
         
+        // Debug logging
+        console.log(`Spec ${specId}:`, {
+            maxQty,
+            existingUnits,
+            availableUnits,
+            isFullyCreated,
+            rawData: {
+                quantity: spec.quantity,
+                existing_spk_units: spec.existing_spk_units,
+                available_units: spec.available_units
+            }
+        });
+        
         specsHTML += `
-            <div class="specification-item border-bottom pb-3 mb-3">
-                <div class="form-check">
-                    <input class="form-check-input spec-checkbox" type="checkbox" 
-                           id="spec_${specId}" name="specifications[]" value="${specId}" 
-                           data-max-qty="${availableUnits}"
-                           ${isFullyCreated ? 'disabled' : ''}>
-                    <label class="form-check-label fw-bold ${isFullyCreated ? 'text-muted' : ''}" for="spec_${specId}">
-                        ${specTitle} 
-                        <span class="badge bg-${specType === 'UNIT' ? 'primary' : 'success'} ms-2">${specType}</span>
-                        ${isFullyCreated ? '<span class="badge bg-secondary ms-2"><i class="fas fa-check-circle me-1"></i>All Units Have SPK</span>' : ''}
-                    </label>
-                </div>
-                <div class="ms-4 mt-2">
-                    <small class="text-muted d-block mb-2">${specDescription}</small>
+            <div class="card mb-2 border">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="form-check">
+                            <input class="form-check-input spec-checkbox" type="checkbox" 
+                                   id="spec_${specId}" name="specifications[]" value="${specId}" 
+                                   data-max-qty="${availableUnits}"
+                                   ${isFullyCreated ? 'disabled' : ''}>
+                            <label class="form-check-label fw-bold ${isFullyCreated ? 'text-muted' : ''}" for="spec_${specId}">
+                                ${specTitle}
+                            </label>
+                        </div>
+                        <span class="badge bg-${specType === 'UNIT' ? 'primary' : 'success'}">${specType}</span>
+                    </div>
                     
-                    ${isFullyCreated ? `
-                        <div class="alert alert-info py-2 mb-2">
-                            <i class="fas fa-info-circle me-2"></i>
-                            <strong>All ${maxQty} unit(s) already have SPK created.</strong> 
-                            (Existing: ${existingUnits} unit(s))
+                    <div class="row g-2 small">
+                        <div class="col-md-4">
+                            <strong>Department:</strong> ${spec.nama_departemen || '-'}
                         </div>
+                        <div class="col-md-4">
+                            <strong>Unit Type:</strong> ${spec.jenis_tipe_unit || spec.nama_tipe_unit || '-'}
+                        </div>
+                        <div class="col-md-4">
+                            <strong>Capacity:</strong> ${spec.nama_kapasitas || '-'}
+                        </div>
+                    </div>
+                    <div class="row g-2 small mt-2">
+                        <div class="col-md-12">
+                            <strong>Brand & Model:</strong> ${spec.merk_unit || '-'} ${spec.model_unit ? '- ' + spec.model_unit : ''}
+                        </div>
+                    </div>
+                    
+                    ${spec.jenis_baterai || spec.attachment_tipe || (spec.merk_charger && spec.tipe_charger) ? `
+                    <div class="row g-2 small mt-2">
+                        ${spec.jenis_baterai ? `
+                        <div class="col-md-4">
+                            <strong>Battery:</strong> ${spec.jenis_baterai}
+                        </div>
+                        ` : ''}
+                        ${spec.merk_charger && spec.tipe_charger ? `
+                        <div class="col-md-4">
+                            <strong>Charger:</strong> ${spec.merk_charger} - ${spec.tipe_charger}
+                        </div>
+                        ` : ''}
+                        ${spec.attachment_tipe || spec.attachment_merk ? `
+                        <div class="col-md-4">
+                            <strong>Attachment:</strong> ${spec.attachment_tipe || ''}${spec.attachment_tipe && spec.attachment_merk ? ' - ' : ''}${spec.attachment_merk || ''}
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                    
+                    ${spec.valve_name || spec.mast_name || spec.tire_name || spec.wheel_name ? `
+                    <div class="row g-2 small mt-2">
+                        ${spec.valve_name ? `
+                        <div class="col-md-3">
+                            <strong>Valve:</strong> ${spec.valve_name}
+                        </div>
+                        ` : ''}
+                        ${spec.mast_name ? `
+                        <div class="col-md-3">
+                            <strong>Mast:</strong> ${spec.mast_name}
+                        </div>
+                        ` : ''}
+                        ${spec.tire_name ? `
+                        <div class="col-md-3">
+                            <strong>Tire:</strong> ${spec.tire_name}
+                        </div>
+                        ` : ''}
+                        ${spec.wheel_name ? `
+                        <div class="col-md-3">
+                            <strong>Wheel:</strong> ${spec.wheel_name}
+                        </div>
+                        ` : ''}
+                    </div>
+                    ` : ''}
+                    
+                    ${spec.unit_accessories && spec.unit_accessories.trim() !== '' ? `
+                    <div class="mt-2 small">
+                        <strong>Accessories:</strong> 
+                        ${spec.unit_accessories.split(',').map(acc => `<span class="badge bg-info text-dark me-1">${acc.trim()}</span>`).join('')}
+                    </div>
+                    ` : ''}
+                    
+                    <div class="row g-2 small mt-2">
+                        <div class="col-md-6">
+                            <strong>Price:</strong> 
+                            ${spec.monthly_price || spec.unit_price || spec.harga_per_unit ? 
+                                `Rp ${parseFloat(spec.monthly_price || spec.unit_price || spec.harga_per_unit).toLocaleString('id-ID')}/month` : ''}
+                            ${spec.daily_price || spec.harga_per_unit_harian ? 
+                                ` | Rp ${parseFloat(spec.daily_price || spec.harga_per_unit_harian).toLocaleString('id-ID')}/day` : ''}
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Qty:</strong> ${spec.quantity} unit(s)
+                            ${existingUnits > 0 ? `<span class="text-warning ms-2">(${existingUnits} have SPK)</span>` : ''}
+                        </div>
+                    </div>
+                    
+                    ${!isFullyCreated ? `
+                    <div class="row g-2 mt-2 align-items-center">
+                        <div class="col-auto">
+                            <small class="text-muted">Select quantity:</small>
+                        </div>
+                        <div class="col-auto">
+                            <input type="number" class="form-control form-control-sm spec-quantity" 
+                                   id="qty_${specId}" name="quantities[${specId}]" 
+                                   min="1" max="${availableUnits}" value="${availableUnits}" 
+                                   style="width: 80px;" disabled>
+                        </div>
+                        <div class="col-auto">
+                            <small class="text-muted">of ${availableUnits} available</small>
+                        </div>
+                    </div>
                     ` : `
-                        <!-- Quantity input -->
-                        <div class="row align-items-center">
-                            <div class="col-auto">
-                                <label class="col-form-label-sm">Quantity for SPK:</label>
-                            </div>
-                            <div class="col-auto">
-                                <input type="number" class="form-control form-control-sm spec-quantity" 
-                                       id="qty_${specId}" name="quantities[${specId}]" 
-                                       min="1" max="${availableUnits}" value="${availableUnits}" 
-                                       style="width: 100px;" disabled>
-                            </div>
-                            <div class="col-auto">
-                                <small class="text-muted">
-                                    of ${availableUnits} available 
-                                    ${existingUnits > 0 ? `<span class="text-warning">(${existingUnits} already have SPK)</span>` : ''}
-                                </small>
-                            </div>
-                        </div>
+                    <div class="alert alert-secondary py-2 mt-2 mb-0">
+                        <i class="fas fa-check-circle me-2"></i>All ${maxQty} unit(s) already have SPK
+                    </div>
                     `}
                 </div>
             </div>
@@ -4422,23 +5367,90 @@ function showSPKCreationModal(quotation, specifications) {
 function buildSpecificationDescription(spec) {
     let parts = [];
     
-    // Category info (shows department and capacity)
-    if (spec.category) {
-        parts.push(`<strong>Category:</strong> ${spec.category}`);
+    // Basic Info - Department and Unit Type
+    if (spec.nama_departemen) {
+        parts.push(`<strong>Department:</strong> ${spec.nama_departemen}`);
+    }
+    
+    if (spec.jenis_tipe_unit) {
+        parts.push(`<strong>Unit Type:</strong> ${spec.jenis_tipe_unit}`);
+    } else if (spec.nama_tipe_unit) {
+        parts.push(`<strong>Unit Type:</strong> ${spec.nama_tipe_unit}`);
+    }
+    
+    // Capacity
+    if (spec.nama_kapasitas) {
+        parts.push(`<strong>Capacity:</strong> ${spec.nama_kapasitas}`);
     }
     
     // Brand and Model
-    if (spec.merk_unit) parts.push(`<strong>Brand:</strong> ${spec.merk_unit}`);
-    if (spec.model_unit && spec.model_unit.trim() !== '') parts.push(`<strong>Model:</strong> ${spec.model_unit}`);
+    if (spec.merk_unit || spec.brand) {
+        parts.push(`<strong>Brand:</strong> ${spec.merk_unit || spec.brand}`);
+    }
+    if (spec.model_unit && spec.model_unit.trim() !== '') {
+        parts.push(`<strong>Model:</strong> ${spec.model_unit}`);
+    }
     
-    // Attachment details
-    if (spec.attachment_tipe) parts.push(`<strong>Attachment Type:</strong> ${spec.attachment_tipe}`);
-    if (spec.attachment_merk) parts.push(`<strong>Attachment Brand:</strong> ${spec.attachment_merk}`);
+    // Electric Specific - Battery and Charger
+    const isElectric = spec.nama_departemen && 
+                      (spec.nama_departemen.toLowerCase().includes('electric') || 
+                       spec.nama_departemen.toLowerCase().includes('listrik'));
+    
+    if (isElectric) {
+        if (spec.jenis_baterai) {
+            parts.push(`<strong>Battery:</strong> ${spec.jenis_baterai}`);
+        }
+        // Charger info could be added here if available in spec object
+    }
+    
+    // Technical Specs
+    const techSpecs = [];
+    if (spec.valve_id) techSpecs.push(`Valve`);
+    if (spec.mast_id) techSpecs.push(`Mast`);
+    if (spec.ban_id) techSpecs.push(`Tire`);
+    if (spec.roda_id) techSpecs.push(`Wheel`);
+    
+    if (techSpecs.length > 0) {
+        parts.push(`<strong>Tech:</strong> ${techSpecs.join(', ')}`);
+    }
+    
+    // Attachment details (if ATTACHMENT type)
+    if (spec.attachment_tipe) {
+        parts.push(`<strong>Attachment:</strong> ${spec.attachment_tipe}`);
+    }
+    if (spec.attachment_merk) {
+        parts.push(`<strong>Att. Brand:</strong> ${spec.attachment_merk}`);
+    }
+    
+    // Accessories
+    if (spec.unit_accessories && spec.unit_accessories.trim() !== '') {
+        const accessories = spec.unit_accessories.split(',').map(a => a.trim());
+        if (accessories.length > 0) {
+            parts.push(`<strong>Accessories:</strong> ${accessories.slice(0, 3).join(', ')}${accessories.length > 3 ? '...' : ''}`);
+        }
+    }
+    
+    // Pricing Info
+    const prices = [];
+    if (spec.monthly_price || spec.unit_price || spec.harga_per_unit) {
+        const monthlyPrice = spec.monthly_price || spec.unit_price || spec.harga_per_unit;
+        prices.push(`Monthly: Rp ${parseFloat(monthlyPrice).toLocaleString('id-ID')}`);
+    }
+    if (spec.daily_price || spec.harga_per_unit_harian) {
+        const dailyPrice = spec.daily_price || spec.harga_per_unit_harian;
+        prices.push(`Daily: Rp ${parseFloat(dailyPrice).toLocaleString('id-ID')}`);
+    }
+    
+    if (prices.length > 0) {
+        parts.push(`<strong>Price:</strong> ${prices.join(' | ')}`);
+    }
     
     // Quantity in quotation
-    if (spec.quantity) parts.push(`<strong>Quotation Qty:</strong> ${spec.quantity} unit(s)`);
+    if (spec.quantity) {
+        parts.push(`<strong>Qty:</strong> ${spec.quantity} unit(s)`);
+    }
     
-    return parts.join(' | ') || 'No details available';
+    return parts.length > 0 ? parts.join(' • ') : 'No details available';
 }
 
 // Handle SPK creation form submission
@@ -4510,10 +5522,17 @@ $('#createSPKForm').on('submit', function(e) {
                 
                 const spkCount = response.spk_count || 1;
                 const spkNumbers = response.spk_numbers || [];
+                const allAllocated = response.all_specs_allocated || false;
+                const statusUpdated = response.status_updated || false;
                 
                 let message = `${spkCount} SPK(s) created successfully!`;
                 if (spkNumbers.length > 0) {
                     message += `\n\nSPK Numbers: ${spkNumbers.join(', ')}`;
+                }
+                
+                // Add status update notification if all specs are allocated
+                if (statusUpdated && allAllocated) {
+                    message += '\n\n✅ All specifications completed!\nQuotation marked as CLOSED.';
                 }
                 
                 Swal.fire({
@@ -4538,6 +5557,11 @@ $('#createSPKForm').on('submit', function(e) {
         }
     });
 });
+
+
+// Global Date Range Picker Callbacks for Quotations
+// Note: Callbacks are now handled by setupDataTableDateFilter() mixin
+// No need for manual callback definitions anymore!
 
 
 // Third $(document).ready() block removed - merged into main block above

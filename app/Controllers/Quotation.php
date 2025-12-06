@@ -678,40 +678,38 @@ class Quotation extends BaseController
                 ]);
             }
 
-            // Generate specification code
-            $spekKode = $this->quotationSpecificationModel->generateNextSpekKode($quotationId);
-            
-            // Prepare data using correct field names that match quotation_specifications table
+            // Prepare data using NEW field names
             $data = [
                 'id_quotation' => $quotationId,
-                'spek_kode' => $spekKode,
                 'specification_name' => $this->request->getPost('specification_name'),
+                'specification_type' => $this->request->getPost('specification_type') ?: 'UNIT',
                 'quantity' => (int)$this->request->getPost('quantity'),
-                'unit_price' => (float)$this->request->getPost('unit_price'),
-                'harga_per_unit_harian' => (float)$this->request->getPost('harga_per_unit_harian'),
+                'monthly_price' => (float)$this->request->getPost('unit_price'),
+                'daily_price' => (float)$this->request->getPost('harga_per_unit_harian'),
                 'departemen_id' => $this->request->getPost('departemen_id') ?: null,
                 'tipe_unit_id' => $this->request->getPost('tipe_unit_id') ?: null,
                 'kapasitas_id' => $this->request->getPost('kapasitas_id') ?: null,
-                'brand' => $this->request->getPost('merk_unit'),
-                'jenis_baterai' => $this->request->getPost('jenis_baterai'),
+                'brand_id' => $this->request->getPost('brand_id') ?: null,
+                'battery_id' => $this->request->getPost('battery_id') ?: null,
                 'charger_id' => $this->request->getPost('charger_id') ?: null,
-                'attachment_tipe' => $this->request->getPost('attachment_tipe'),
-                'valve_id' => $this->request->getPost('valve_id'),
-                'mast_id' => $this->request->getPost('mast_id'),
-                'ban_id' => $this->request->getPost('ban_id'),
-                'roda_id' => $this->request->getPost('roda_id'),
-                'is_active' => 1,
-                'sort_order' => 1
+                'attachment_id' => $this->request->getPost('attachment_id') ?: null,
+                'valve_id' => $this->request->getPost('valve_id') ?: null,
+                'mast_id' => $this->request->getPost('mast_id') ?: null,
+                'ban_id' => $this->request->getPost('ban_id') ?: null,
+                'roda_id' => $this->request->getPost('roda_id') ?: null,
+                'is_active' => 1
             ];
             
-            // Handle accessories array
+            // Handle accessories array - store in dedicated column
             $aksesoris = $this->request->getPost('aksesoris');
             if ($aksesoris && is_array($aksesoris)) {
-                $data['notes'] = 'Accessories: ' . implode(', ', $aksesoris);
+                $data['unit_accessories'] = implode(', ', $aksesoris);
+            } else {
+                $data['unit_accessories'] = '';
             }
             
-            // Calculate total price
-            $data['total_price'] = $data['quantity'] * $data['unit_price'];
+            // Calculate total price with NEW formula: (quantity * monthly_price) + daily_price
+            $data['total_price'] = ($data['quantity'] * $data['monthly_price']) + $data['daily_price'];
 
             $specId = $this->quotationSpecificationModel->insert($data);
             
@@ -727,15 +725,14 @@ class Quotation extends BaseController
                     'quotation_specification_created',
                     'quotation_specifications',
                     $specId,
-                    'Added specification ' . $spekKode . ' to quotation ' . $quotation['quotation_number']
+                    'Added specification to quotation ' . $quotation['quotation_number']
                 );
 
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Specification added successfully',
                     'data' => [
-                        'id' => $specId, 
-                        'spek_kode' => $spekKode,
+                        'id' => $specId,
                         'quotation_total' => $updatedQuotation['total_amount'] ?? 0
                     ]
                 ]);
@@ -795,18 +792,43 @@ class Quotation extends BaseController
                 ]);
             }
 
-            // Calculate total price if quantity or unit_price changed
-            if (isset($data['quantity']) && isset($data['unit_price'])) {
-                $data['total_price'] = $data['quantity'] * $data['unit_price'];
-            } elseif (isset($data['quantity'])) {
-                $data['total_price'] = $data['quantity'] * $specification['unit_price'];
-            } elseif (isset($data['unit_price'])) {
-                $data['total_price'] = $specification['quantity'] * $data['unit_price'];
+            // Rename old field names to new ones if sent from frontend
+            if (isset($data['unit_price'])) {
+                $data['monthly_price'] = $data['unit_price'];
+                unset($data['unit_price']);
+            }
+            if (isset($data['harga_per_unit_harian'])) {
+                $data['daily_price'] = $data['harga_per_unit_harian'];
+                unset($data['harga_per_unit_harian']);
+            }
+            if (isset($data['merk_unit'])) {
+                $data['brand_id'] = $data['merk_unit'];
+                unset($data['merk_unit']);
+            }
+            if (isset($data['jenis_baterai'])) {
+                $data['battery_id'] = $data['jenis_baterai'];
+                unset($data['jenis_baterai']);
+            }
+            if (isset($data['attachment_tipe'])) {
+                $data['attachment_id'] = $data['attachment_tipe'];
+                unset($data['attachment_tipe']);
             }
 
-            // Handle accessories array
+            // Calculate total price with NEW formula: (quantity * monthly_price) + daily_price
+            if (isset($data['quantity']) || isset($data['monthly_price']) || isset($data['daily_price'])) {
+                $qty = $data['quantity'] ?? $specification['quantity'];
+                $monthlyPrice = $data['monthly_price'] ?? $specification['monthly_price'];
+                $dailyPrice = $data['daily_price'] ?? $specification['daily_price'];
+                $data['total_price'] = ($qty * $monthlyPrice) + $dailyPrice;
+            }
+
+            // Handle accessories array - store in dedicated column
             if (isset($data['aksesoris']) && is_array($data['aksesoris'])) {
-                $data['aksesoris'] = implode(',', $data['aksesoris']);
+                $data['unit_accessories'] = implode(', ', $data['aksesoris']);
+                unset($data['aksesoris']); // Remove to avoid DB error
+            } elseif (isset($data['aksesoris'])) {
+                $data['unit_accessories'] = $data['aksesoris'];
+                unset($data['aksesoris']);
             }
 
             if ($this->quotationSpecificationModel->update($specId, $data)) {

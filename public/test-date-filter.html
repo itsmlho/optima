@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Filter Debug Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        h2 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
+        code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Date Filter System - Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>1. Check Global Variables</h2>
+        <button onclick="testGlobalVariables()">Run Test</button>
+        <div id="global-test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Check Function Availability</h2>
+        <button onclick="testFunctions()">Run Test</button>
+        <div id="function-test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Date Range Storage</h2>
+        <button onclick="testDateStorage()">Set Test Dates</button>
+        <button onclick="clearDateStorage()">Clear Dates</button>
+        <div id="storage-test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. Simulate Date Filter Change</h2>
+        <p>Test callback execution without actual picker</p>
+        <button onclick="simulateQuotationsFilter()">Quotations Filter</button>
+        <button onclick="simulateCustomerFilter()">Customer Filter</button>
+        <button onclick="simulateSPKFilter()">SPK Filter</button>
+        <div id="callback-test-results"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. Check Console Output</h2>
+        <p>Open browser console (F12) to see detailed logs</p>
+        <button onclick="testConsoleOutput()">Generate Test Logs</button>
+    </div>
+
+    <script>
+        function addResult(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.textContent = message;
+            container.appendChild(div);
+        }
+
+        function clearResults(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        function testGlobalVariables() {
+            clearResults('global-test-results');
+            
+            // Check window.currentDateRange
+            if (typeof window.currentDateRange !== 'undefined') {
+                addResult('global-test-results', '✅ window.currentDateRange exists', 'success');
+                addResult('global-test-results', `   Value: ${JSON.stringify(window.currentDateRange)}`, 'info');
+            } else {
+                addResult('global-test-results', '❌ window.currentDateRange NOT FOUND!', 'error');
+            }
+
+            // Check mixin function
+            if (typeof window.dataTableDateFilterMixin === 'function') {
+                addResult('global-test-results', '✅ dataTableDateFilterMixin function exists', 'success');
+            } else {
+                addResult('global-test-results', '❌ dataTableDateFilterMixin NOT FOUND!', 'error');
+            }
+
+            // Check setup function
+            if (typeof window.setupDataTableDateFilter === 'function') {
+                addResult('global-test-results', '✅ setupDataTableDateFilter function exists', 'success');
+            } else {
+                addResult('global-test-results', '❌ setupDataTableDateFilter NOT FOUND!', 'error');
+            }
+        }
+
+        function testFunctions() {
+            clearResults('function-test-results');
+
+            // Test pages callbacks
+            const callbacks = [
+                'quotationDateRangePickerOnRangeChange',
+                'quotationDateRangePickerOnClear',
+                'customerDateRangePickerOnRangeChange',
+                'customerDateRangePickerOnClear',
+                'spkDateRangePickerOnRangeChange',
+                'spkDateRangePickerOnClear'
+            ];
+
+            callbacks.forEach(callback => {
+                if (typeof window[callback] === 'function') {
+                    addResult('function-test-results', `✅ ${callback} registered`, 'success');
+                } else {
+                    addResult('function-test-results', `⚠️ ${callback} not registered (page not loaded?)`, 'info');
+                }
+            });
+        }
+
+        function testDateStorage() {
+            clearResults('storage-test-results');
+            
+            // Set test dates
+            window.currentDateRange = {
+                start: '2025-12-01',
+                end: '2025-12-06'
+            };
+            
+            addResult('storage-test-results', '✅ Set test dates:', 'success');
+            addResult('storage-test-results', `   Start: ${window.currentDateRange.start}`, 'info');
+            addResult('storage-test-results', `   End: ${window.currentDateRange.end}`, 'info');
+        }
+
+        function clearDateStorage() {
+            clearResults('storage-test-results');
+            
+            window.currentDateRange = {
+                start: null,
+                end: null
+            };
+            
+            addResult('storage-test-results', '✅ Dates cleared', 'success');
+            addResult('storage-test-results', `   Value: ${JSON.stringify(window.currentDateRange)}`, 'info');
+        }
+
+        function simulateQuotationsFilter() {
+            clearResults('callback-test-results');
+            
+            if (typeof window.quotationDateRangePickerOnRangeChange === 'function') {
+                addResult('callback-test-results', '🔄 Calling quotationDateRangePickerOnRangeChange...', 'info');
+                try {
+                    window.quotationDateRangePickerOnRangeChange('2025-12-01', '2025-12-06');
+                    addResult('callback-test-results', '✅ Callback executed (check console for details)', 'success');
+                } catch (e) {
+                    addResult('callback-test-results', `❌ Error: ${e.message}`, 'error');
+                }
+            } else {
+                addResult('callback-test-results', '❌ Quotations callback not found. Are you on quotations page?', 'error');
+            }
+        }
+
+        function simulateCustomerFilter() {
+            clearResults('callback-test-results');
+            
+            if (typeof window.customerDateRangePickerOnRangeChange === 'function') {
+                addResult('callback-test-results', '🔄 Calling customerDateRangePickerOnRangeChange...', 'info');
+                try {
+                    window.customerDateRangePickerOnRangeChange('2025-12-01', '2025-12-06');
+                    addResult('callback-test-results', '✅ Callback executed (check console for details)', 'success');
+                } catch (e) {
+                    addResult('callback-test-results', `❌ Error: ${e.message}`, 'error');
+                }
+            } else {
+                addResult('callback-test-results', '❌ Customer callback not found. Are you on customer management page?', 'error');
+            }
+        }
+
+        function simulateSPKFilter() {
+            clearResults('callback-test-results');
+            
+            if (typeof window.spkDateRangePickerOnRangeChange === 'function') {
+                addResult('callback-test-results', '🔄 Calling spkDateRangePickerOnRangeChange...', 'info');
+                try {
+                    window.spkDateRangePickerOnRangeChange('2025-12-01', '2025-12-06');
+                    addResult('callback-test-results', '✅ Callback executed (check console for details)', 'success');
+                } catch (e) {
+                    addResult('callback-test-results', `❌ Error: ${e.message}`, 'error');
+                }
+            } else {
+                addResult('callback-test-results', '❌ SPK callback not found. Are you on SPK page?', 'error');
+            }
+        }
+
+        function testConsoleOutput() {
+            console.group('🧪 Date Filter System Test');
+            console.log('1. Global Variables:');
+            console.log('   window.currentDateRange:', window.currentDateRange);
+            console.log('   dataTableDateFilterMixin:', typeof window.dataTableDateFilterMixin);
+            console.log('   setupDataTableDateFilter:', typeof window.setupDataTableDateFilter);
+            
+            console.log('\n2. Page Callbacks:');
+            console.log('   Quotations OnRangeChange:', typeof window.quotationDateRangePickerOnRangeChange);
+            console.log('   Customer OnRangeChange:', typeof window.customerDateRangePickerOnRangeChange);
+            console.log('   SPK OnRangeChange:', typeof window.spkDateRangePickerOnRangeChange);
+            
+            console.log('\n3. Test Date Change:');
+            if (typeof window.currentDateRange !== 'undefined') {
+                console.log('   Before:', JSON.stringify(window.currentDateRange));
+                window.currentDateRange = { start: '2025-12-01', end: '2025-12-06' };
+                console.log('   After:', JSON.stringify(window.currentDateRange));
+            }
+            
+            console.groupEnd();
+            alert('Check browser console (F12) for detailed output');
+        }
+
+        // Auto-run on load
+        window.addEventListener('load', function() {
+            console.log('🔍 Date Filter Debug Page Loaded');
+            console.log('Click buttons to run tests');
+        });
+    </script>
+</body>
+</html>

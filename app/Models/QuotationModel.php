@@ -298,9 +298,20 @@ class QuotationModel extends Model
      */
     public function getQuotationDetail($id)
     {
-        return $this->select('quotations.*')
-            ->where('quotations.id_quotation', $id)
-            ->first();
+        return $this->db->table('quotations q')
+            ->select('q.*, 
+                c.customer_name,
+                cl.location_name,
+                cl.address as location_address,
+                cl.contact_person as pic_name,
+                cl.phone as pic_phone,
+                k.no_kontrak as contract_number')
+            ->join('customers c', 'c.id = q.created_customer_id', 'left')
+            ->join('kontrak k', 'k.id = q.created_contract_id', 'left')
+            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+            ->where('q.id_quotation', $id)
+            ->get()
+            ->getRowArray();
     }
 
     /**

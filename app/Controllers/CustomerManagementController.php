@@ -8,10 +8,12 @@ use App\Models\CustomerLocationModel;
 use App\Models\AreaModel;
 use App\Models\CustomerContractModel;
 use App\Traits\ActivityLoggingTrait;
+use App\Traits\DateFilterTrait;
 
 class CustomerManagementController extends BaseController
 {
     use ActivityLoggingTrait;
+    use DateFilterTrait;
     protected $db;
     protected $customerModel;
     protected $locationModel;
@@ -126,10 +128,15 @@ class CustomerManagementController extends BaseController
                             ->orLike('cl_primary.phone', $searchValue)
                             ->orLike('cl_primary.email', $searchValue)
                             ->groupEnd();
+                // Apply date filter to count builder too
+                $this->applyDateFilter($countBuilder, 'customers.created_at');
                 $filteredRecords = count($countBuilder->get()->getResultArray());
             } else {
                 $filteredRecords = $totalRecords;
             }
+            
+            // Apply date filter if provided
+            $this->applyDateFilter($builder, 'customers.created_at');
             
             // Apply ordering and pagination
             $builder->orderBy($orderColumn, $orderDir)
@@ -1247,24 +1254,46 @@ class CustomerManagementController extends BaseController
     public function getCustomerStats()
     {
         try {
-            // Get total customers
-            $totalCustomers = $this->customerModel->countAllResults();
+            // Log date filter params for debugging
+            $params = $this->getDateFilterParams();
+            log_message('info', 'CustomerStats - Date filter params: ' . json_encode($params));
             
-            // Get active customers
-            $activeCustomers = $this->customerModel->where('is_active', 1)->countAllResults();
+            // Get total customers with date filter
+            $customerBuilder = $this->customerModel->builder();
+            $this->applyDateFilter($customerBuilder, 'created_at');
+            $totalCustomers = $customerBuilder->countAllResults();
             
-            // Get total contracts
-            $totalContracts = $this->db->table('kontrak')->countAllResults();
+            // Get active customers with date filter
+            $activeBuilder = $this->customerModel->builder();
+            $this->applyDateFilter($activeBuilder, 'created_at');
+            $activeCustomers = $activeBuilder->where('is_active', 1)->countAllResults();
             
-            // Get total units
-            $totalUnits = $this->db->table('inventory_unit')->countAllResults();
+            // Get total contracts for filtered customers
+            $contractBuilder = $this->db->table('kontrak k');
+            $contractBuilder->select('COUNT(*) as total')
+                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+                ->join('customers c', 'cl.customer_id = c.id', 'left');
+            $this->applyDateFilter($contractBuilder, 'c.created_at');
+            $contractResult = $contractBuilder->get()->getRow();
+            $totalContracts = $contractResult->total ?? 0;
             
-            // Get multi-location customers
-            $multiLocationCustomers = $this->db->table('customers c')
-                ->select('c.id')
+            // Get total units for filtered customers
+            $unitBuilder = $this->db->table('inventory_unit iu');
+            $unitBuilder->select('COUNT(*) as total')
+                ->join('kontrak k', 'iu.kontrak_id = k.id_kontrak', 'left')
+                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+                ->join('customers c', 'cl.customer_id = c.id', 'left');
+            $this->applyDateFilter($unitBuilder, 'c.created_at');
+            $unitResult = $unitBuilder->get()->getRow();
+            $totalUnits = $unitResult->total ?? 0;
+            
+            // Get multi-location customers with date filter
+            $multiLocationBuilder = $this->db->table('customers c');
+            $multiLocationBuilder->select('c.id')
                 ->join('customer_locations cl', 'c.id = cl.customer_id', 'left')
-                ->where('cl.is_active', 1)
-                ->groupBy('c.id')
+                ->where('cl.is_active', 1);
+            $this->applyDateFilter($multiLocationBuilder, 'c.created_at');
+            $multiLocationCustomers = $multiLocationBuilder->groupBy('c.id')
                 ->having('COUNT(cl.id) > 1')
                 ->countAllResults();
             
@@ -1275,6 +1304,8 @@ class CustomerManagementController extends BaseController
                 'total_units' => $totalUnits,
                 'multi_location_customers' => $multiLocationCustomers
             ];
+            
+            log_message('info', 'CustomerStats - Results: ' . json_encode($stats));
             
             return $this->response->setJSON([
                 'success' => true,

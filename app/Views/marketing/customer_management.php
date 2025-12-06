@@ -16,9 +16,17 @@ $can_export = $permissions['export'];
 
 <?= $this->section('content') ?>
 
-<!-- Statistics Cards -->
+<!-- Date Range Filter -->
+<div class="row mt-3">
+    <div class="col-md-12 text-end">
+        <div class="d-inline-block">
+            <?= view('components/date_range_filter', ['id' => 'customerDateRangePicker']) ?>
+        </div>
+    </div>
+</div>
 
-    <div class="row mt-3 mb-4">
+<!-- Statistics Cards -->
+<div class="row mt-3 mb-4">
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
             <div class="stat-card bg-primary-soft">
                 <div class="d-flex align-items-center">
@@ -1056,10 +1064,11 @@ function initializeCustomerTable() {
     console.log('🔄 Initializing DataTable...');
     
     try {
-        customerTable = $('#customerTable').DataTable({
+        // STEP 1: Create config WITHOUT ajax.data function
+        var customerConfig = {
             processing: true,
             serverSide: true,
-            deferRender: false, // Disable defer render to show table immediately
+            deferRender: false,
             pageLength: 15,
             lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]],
             stateSave: false,
@@ -1071,14 +1080,14 @@ function initializeCustomerTable() {
             ajax: {
                 url: '<?= base_url('marketing/customer-management/getCustomers') ?>',
                 type: 'POST',
-                timeout: 15000, // Increased timeout
+                timeout: 15000,
                 error: function(xhr, error, code) {
                     console.error('DataTable AJAX Error:', error);
                     $('#customerTable_processing').hide();
                     showNotification('Failed to load customer data. Please refresh the page.', 'error');
                 }
             },
-        columns: [
+            columns: [
             { 
                 data: 'customer_code', 
                 name: 'customer_code',
@@ -1163,6 +1172,18 @@ function initializeCustomerTable() {
         drawCallback: function(settings) {
             console.log('🎨 DataTable drawn with', settings.fnRecordsDisplay(), 'visible records');
         }
+    };
+    
+    // STEP 2: Apply date filter wrapper to config
+    applyDateFilterToConfig(customerConfig, 'customerDateRangePicker');
+    
+    // STEP 3: Initialize DataTable with modified config
+    customerTable = $('#customerTable').DataTable(customerConfig);
+    
+    // STEP 4: Setup automatic date filter reload callbacks
+    setupDataTableDateFilter(customerTable, 'customerDateRangePicker', function(startDate, endDate) {
+        console.log('📅 Customer date filter changed:', startDate, 'to', endDate);
+        loadStatistics(startDate, endDate);
     });
     
     } catch (error) {
@@ -1171,19 +1192,35 @@ function initializeCustomerTable() {
     }
 }
 
-// Load statistics
-function loadStatistics() {
+// Load statistics with optional date filter
+function loadStatistics(startDate, endDate) {
+    var data = {};
+    if (startDate && endDate) {
+        data = { start_date: startDate, end_date: endDate };
+        console.log('📊 Loading customer statistics WITH filter:', data);
+    } else {
+        console.log('📊 Loading customer statistics WITHOUT filter (all data)');
+    }
     $.ajax({
         url: '<?= base_url('marketing/customer-management/getCustomerStats') ?>',
-        type: 'GET',
+        type: 'POST',
+        data: data,
         success: function(response) {
             if (response.success) {
                 const stats = response.data;
+                console.log('✅ Statistics loaded:', stats);
                 $('#stat-total-customers').text(stats.total_customers || 0);
                 $('#stat-active-customers').text(stats.active_customers || 0);
                 $('#stat-total-contracts').text(stats.total_contracts || 0);
                 $('#stat-total-units').text(stats.total_units || 0);
+            } else {
+                console.error('❌ Failed to load statistics:', response.message);
             }
+        },
+        error: function(xhr, status, error) {
+            console.error('❌ AJAX error loading statistics:', error);
+            console.error('   Response:', xhr.responseText);
+        }
         }
     });
 }

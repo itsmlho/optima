@@ -13,34 +13,16 @@ class QuotationSpecificationModel extends Model
     protected $allowedFields = [
         'id_quotation',
         'specification_name',
-        'specification_description',
-        'category',
+        'specification_type',
         'quantity',
-        'unit',
-        'unit_price',
+        'monthly_price',
+        'daily_price',
         'total_price',
-        'equipment_type',
-        'brand',
-        'model',
-        'specifications',
-        'service_duration',
-        'service_frequency',
-        'service_scope',
-        'rental_duration',
-        'rental_rate_type',
-        'delivery_required',
-        'installation_required',
-        'delivery_cost',
-        'installation_cost',
-        'maintenance_included',
-        'warranty_period',
-        'notes',
-        'sort_order',
-        'is_optional',
+        'brand_id',
+        'battery_id',
+        'attachment_id',
+        'unit_accessories',
         'is_active',
-        'spek_kode',
-        'jumlah_tersedia',
-        'harga_per_unit_harian',
         'departemen_id',
         'tipe_unit_id',
         'kapasitas_id',
@@ -49,10 +31,7 @@ class QuotationSpecificationModel extends Model
         'ban_id',
         'roda_id',
         'valve_id',
-        'jenis_baterai',
-        'attachment_tipe',
-        'attachment_merk',
-        'aksesoris'
+        'original_kontrak_id'
     ];
 
     protected $useTimestamps = true;
@@ -70,18 +49,34 @@ class QuotationSpecificationModel extends Model
             qs.*,
             d.nama_departemen,
             tu.tipe as nama_tipe_unit,
-            tu.jenis as jenis_unit,
-            k.kapasitas_unit as kapasitas_nama,
-            c.merk_charger as nama_charger,
-            c.tipe_charger
+            tu.jenis as jenis_tipe_unit,
+            k.kapasitas_unit as nama_kapasitas,
+            mu.merk_unit,
+            mu.model_unit,
+            b.jenis_baterai,
+            c.merk_charger,
+            c.tipe_charger,
+            a.tipe as attachment_tipe,
+            a.merk as attachment_merk,
+            v.jumlah_valve as valve_name,
+            m.tipe_mast as mast_name,
+            tb.tipe_ban as tire_name,
+            jr.tipe_roda as wheel_name
         ');
         $builder->join('departemen d', 'qs.departemen_id = d.id_departemen', 'left');
         $builder->join('tipe_unit tu', 'qs.tipe_unit_id = tu.id_tipe_unit', 'left');
         $builder->join('kapasitas k', 'qs.kapasitas_id = k.id_kapasitas', 'left');
+        $builder->join('model_unit mu', 'qs.brand_id = mu.id_model_unit', 'left');
+        $builder->join('baterai b', 'qs.battery_id = b.id', 'left');
         $builder->join('charger c', 'qs.charger_id = c.id_charger', 'left');
+        $builder->join('attachment a', 'qs.attachment_id = a.id_attachment', 'left');
+        $builder->join('valve v', 'qs.valve_id = v.id_valve', 'left');
+        $builder->join('tipe_mast m', 'qs.mast_id = m.id_mast', 'left');
+        $builder->join('tipe_ban tb', 'qs.ban_id = tb.id_ban', 'left');
+        $builder->join('jenis_roda jr', 'qs.roda_id = jr.id_roda', 'left');
         $builder->where('qs.id_quotation', $quotationId);
         $builder->where('qs.is_active', 1);
-        $builder->orderBy('qs.sort_order, qs.created_at');
+        $builder->orderBy('qs.id_specification, qs.created_at');
         
         return $builder->get()->getResultArray();
     }
@@ -143,10 +138,7 @@ class QuotationSpecificationModel extends Model
         $result = $this->select('
             COUNT(*) as total_specifications,
             SUM(quantity) as total_quantity,
-            SUM(total_price) as total_value,
-            SUM(CASE WHEN is_optional = 1 THEN 1 ELSE 0 END) as optional_count,
-            SUM(CASE WHEN delivery_required = 1 THEN 1 ELSE 0 END) as delivery_count,
-            SUM(CASE WHEN installation_required = 1 THEN 1 ELSE 0 END) as installation_count
+            SUM(total_price) as total_value
         ')
         ->where('id_quotation', $quotationId)
         ->where('is_active', 1)

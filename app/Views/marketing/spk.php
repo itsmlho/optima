@@ -15,6 +15,15 @@ $can_export = $permissions['export'];
 
 <?= $this->section('content') ?>
 
+<!-- Date Range Filter -->
+<div class="row mt-3">
+    <div class="col-md-12 text-end">
+        <div class="d-inline-block">
+            <?= view('components/date_range_filter', ['id' => 'spkDateRangePicker']) ?>
+        </div>
+    </div>
+</div>
+
     
     <?php if (!$can_view): ?>
     <div class="alert alert-warning">
@@ -745,8 +754,22 @@ $can_export = $permissions['export'];
         });
     }
     
-    function loadSpk(){
-        fetch('<?= base_url('marketing/spk/list') ?>').then(r=>r.json()).then(j=>{
+    function loadSpk(startDate, endDate){
+        const url = '<?= base_url('marketing/spk/list') ?>';
+        const data = {};
+        if (startDate && endDate) {
+            data.start_date = startDate;
+            data.end_date = endDate;
+        }
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(data)
+        }).then(r=>r.json()).then(j=>{
             const data = j.data || [];
             allSpkData = data; // Store for filtering
             
@@ -813,6 +836,17 @@ $can_export = $permissions['export'];
     loadSpk();
     loadKontrakOptions('');
     loadMonitoring();
+    
+    // Setup date range filter callback
+    window.spkDateRangePickerOnRangeChange = function(startDate, endDate) {
+        console.log('📅 SPK date filter changed:', startDate, 'to', endDate);
+        loadSpk(startDate, endDate);
+    };
+    
+    window.spkDateRangePickerOnClear = function() {
+        console.log('✖️ SPK date filter cleared');
+        loadSpk(); // Load without date filter
+    };
     
     // Initialize SPK workflow dropdowns
     setupSpkWorkflowDropdowns();

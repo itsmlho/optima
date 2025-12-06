@@ -17,12 +17,14 @@ use App\Models\DeliveryInstructionModel;
 use App\Models\DeliveryItemModel;
 use App\Models\NotificationModel;
 use App\Traits\ActivityLoggingTrait;
+use App\Traits\DateFilterTrait;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
 class Marketing extends BaseDataTableController
 {
     use ActivityLoggingTrait;
+    use DateFilterTrait;
     
     protected $db;
     protected $spkModel;
@@ -382,10 +384,17 @@ class Marketing extends BaseDataTableController
             $search = $this->request->getPost('search') ?: [];
             $searchValue = isset($search['value']) ? $search['value'] : '';
             
+            // Get date range filter
+            $startDate = $this->request->getPost('start_date');
+            $endDate = $this->request->getPost('end_date');
+            
             // Get total records
             $totalRecords = $this->quotationModel->countAll();
             
             $builder = $this->quotationModel->builder();
+            
+            // Apply date range filter using trait
+            $this->applyDateFilter($builder, 'quotation_date');
             
             // Apply search filter
             if (!empty($searchValue)) {
@@ -688,7 +697,6 @@ class Marketing extends BaseDataTableController
                         'model_number' => $spec['model_number'] ?? '',
                         'specifications' => $spec['specifications'] ?? '',
                         'notes' => $spec['notes'] ?? '',
-                        'sort_order' => $spec['sort_order'] ?? 0,
                         'is_active' => 1
                     ];
                     
@@ -915,7 +923,7 @@ class Marketing extends BaseDataTableController
         $specifications = $this->quotationSpecificationModel
             ->where('id_quotation', $quotationId)
             ->where('is_active', 1)
-            ->orderBy('sort_order', 'ASC')
+            ->orderBy('id_specification', 'ASC')
             ->findAll();
         
         $data = [
@@ -1137,23 +1145,41 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(403);
         }
 
-        $stats = $this->getQuotationStatsData();
+        // Log date filter params for debugging
+        $params = $this->getDateFilterParams();
+        log_message('info', 'QuotationStats - Date filter params: ' . json_encode($params));
+
+        $builder = $this->quotationModel->builder();
+
+        // Apply date filters using trait (supports both GET and POST)
+        $this->applyDateFilter($builder, 'quotations.quotation_date');
+
+        // Count total
+        $total = $builder->countAllResults(false);
+
+        // Count by stage
+        $pending = (clone $builder)->where('quotations.stage', 'SENT')->countAllResults(false);
+        $approved = (clone $builder)->where('quotations.stage', 'ACCEPTED')->countAllResults(false);
+        $rejected = (clone $builder)->where('quotations.stage', 'REJECTED')->countAllResults(false);
         
         // Calculate total value
-        $totalValue = $this->quotationModel
+        $totalValueBuilder = $this->quotationModel->builder();
+        $this->applyDateFilter($totalValueBuilder, 'quotation_date');
+        $totalValue = $totalValueBuilder
             ->selectSum('total_amount')
             ->where('stage !=', 'REJECTED')
             ->get()
             ->getRow()
             ->total_amount ?? 0;
 
-        $stats['total_value'] = $totalValue;
-
         return $this->response
             ->setContentType('application/json')
             ->setJSON([
-                'success' => true,
-                'data' => $stats
+                'total' => $total,
+                'pending' => $pending,
+                'approved' => $approved,
+                'rejected' => $rejected,
+                'total_value' => $totalValue
             ]);
     }
 
@@ -1201,7 +1227,8 @@ class Marketing extends BaseDataTableController
         $quotation = $this->db->table('quotations q')
             ->select('q.*, 
                 c.customer_name, 
-                cl.location_name, 
+                cl.location_name,
+                cl.address as location_address,
                 cl.contact_person as pic_name, 
                 cl.phone as pic_phone,
                 k.no_kontrak as contract_number')
@@ -1244,23 +1271,39 @@ class Marketing extends BaseDataTableController
                 ->select('qs.id_specification,
                           qs.id_quotation,
                           qs.specification_name,
-                          qs.specification_description,
+                          qs.specification_type,
                           qs.quantity,
-                          qs.category,
-                          qs.brand as merk_unit,
-                          qs.model as model_unit,
-                          qs.equipment_type as tipe_jenis,
+                          qs.monthly_price,
+                          qs.monthly_price as unit_price,
+                          qs.monthly_price as harga_per_unit,
+                          qs.daily_price,
+                          qs.daily_price as harga_per_unit_harian,
+                          qs.total_price,
+                          COALESCE(qs.unit_accessories, "") as unit_accessories,
+                          COALESCE(qs.unit_accessories, "") as aksesoris,
+                          qs.brand_id,
+                          mu.merk_unit,
+                          mu.merk_unit as brand,
+                          mu.model_unit,
                           qs.departemen_id,
                           qs.tipe_unit_id,
                           qs.kapasitas_id,
-                          qs.attachment_tipe,
-                          qs.attachment_merk,
-                          qs.jenis_baterai,
+                          qs.attachment_id,
+                          a.tipe as attachment_tipe,
+                          a.merk as attachment_merk,
+                          qs.battery_id,
+                          b.jenis_baterai,
                           qs.charger_id,
+                          c.merk_charger,
+                          c.tipe_charger,
                           qs.mast_id,
+                          m.tipe_mast as mast_name,
                           qs.ban_id,
+                          tb.tipe_ban as tire_name,
                           qs.roda_id,
+                          jr.tipe_roda as wheel_name,
                           qs.valve_id,
+                          v.jumlah_valve as valve_name,
                           d.nama_departemen, 
                           tu.tipe as nama_tipe_unit,
                           tu.jenis as jenis_tipe_unit,
@@ -1268,6 +1311,14 @@ class Marketing extends BaseDataTableController
                 ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
                 ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
                 ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = qs.brand_id', 'left')
+                ->join('baterai b', 'b.id = qs.battery_id', 'left')
+                ->join('attachment a', 'a.id_attachment = qs.attachment_id', 'left')
+                ->join('charger c', 'c.id_charger = qs.charger_id', 'left')
+                ->join('tipe_mast m', 'm.id_mast = qs.mast_id', 'left')
+                ->join('tipe_ban tb', 'tb.id_ban = qs.ban_id', 'left')
+                ->join('jenis_roda jr', 'jr.id_roda = qs.roda_id', 'left')
+                ->join('valve v', 'v.id_valve = qs.valve_id', 'left')
                 ->where('qs.id_quotation', $quotationId)
                 ->get()
                 ->getResultArray();
@@ -2668,7 +2719,20 @@ class Marketing extends BaseDataTableController
     // --- SPK Minimal APIs for integrated workflow ---
     public function spkList()
     {
-    $data = $this->spkModel->orderBy('id','DESC')->findAll();
+        $builder = $this->spkModel->builder();
+        
+        // Apply date filter if provided (supports both GET and POST)
+        $hasFilter = $this->hasDateFilter();
+        log_message('info', 'SPK List - Date Filter: ' . ($hasFilter ? 'YES (' . $this->getDateFilterParams()['start'] . ' to ' . $this->getDateFilterParams()['end'] . ')' : 'NO'));
+        
+        if ($hasFilter) {
+            $this->applyDateFilter($builder, 'created_at');
+        }
+        
+        $data = $builder->orderBy('id','DESC')->get()->getResultArray();
+        
+        log_message('info', 'SPK List - Returned ' . count($data) . ' records');
+        
         return $this->response->setJSON(['data'=>$data,'csrf_hash'=>csrf_hash()]);
     }
 
@@ -3842,17 +3906,35 @@ class Marketing extends BaseDataTableController
                 throw new \Exception('Failed to create any SPK. Please check your selections.');
             }
 
-            // Update quotation status if needed
-            // You might want to mark quotation as having SPKs created
+            // Check if ALL specifications are now fully allocated
+            $allSpecsAllocated = $this->checkAllSpecificationsAllocated($quotationId);
+            $statusUpdated = false;
+            
+            if ($allSpecsAllocated) {
+                // Update quotation status to closed/completed
+                $this->quotationModel->update($quotationId, [
+                    'status' => 'closed',
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+                $statusUpdated = true;
+                log_message('info', "Quotation {$quotationId} marked as closed - all specifications have SPKs");
+            }
             
             $this->db->transCommit();
 
+            $message = count($createdSPKs) . ' SPK(s) created successfully! Numbers: ' . implode(', ', $spkNumbers);
+            if ($statusUpdated) {
+                $message .= ' | ✅ Quotation marked as CLOSED (all specifications completed)';
+            }
+
             return $this->response->setJSON([
                 'success' => true,
-                'message' => count($createdSPKs) . ' SPK(s) created successfully! Numbers: ' . implode(', ', $spkNumbers),
+                'message' => $message,
                 'spk_count' => count($createdSPKs),
                 'spk_numbers' => $spkNumbers,
                 'spk_ids' => $createdSPKs,
+                'all_specs_allocated' => $allSpecsAllocated,
+                'status_updated' => $statusUpdated,
                 'csrf_hash' => csrf_hash()
             ]);
 
@@ -3865,6 +3947,55 @@ class Marketing extends BaseDataTableController
                 'message' => $e->getMessage(),
                 'csrf_hash' => csrf_hash()
             ]);
+        }
+    }
+
+    /**
+     * Check if all specifications in a quotation are fully allocated with SPKs
+     * 
+     * @param int $quotationId
+     * @return bool True if all specs are allocated, false otherwise
+     */
+    private function checkAllSpecificationsAllocated($quotationId)
+    {
+        try {
+            // Get all specifications for this quotation
+            $specifications = $this->db->table('quotation_specifications')
+                ->select('id_specification, quantity')
+                ->where('quotation_id', $quotationId)
+                ->get()
+                ->getResultArray();
+            
+            if (empty($specifications)) {
+                return false; // No specifications = not allocated
+            }
+            
+            // Check each specification
+            foreach ($specifications as $spec) {
+                // Count existing SPK units for this specification
+                $existingSPKs = $this->db->table('spk')
+                    ->selectSum('jumlah_unit', 'total_units')
+                    ->where('quotation_specification_id', $spec['id_specification'])
+                    ->where('status !=', 'CANCELLED')
+                    ->get()
+                    ->getRowArray();
+                
+                $existingUnits = (int)($existingSPKs['total_units'] ?? 0);
+                $totalQty = (int)($spec['quantity'] ?? 0);
+                
+                // If any specification still has available units, return false
+                if ($existingUnits < $totalQty) {
+                    log_message('info', "Spec {$spec['id_specification']} not fully allocated: {$existingUnits}/{$totalQty}");
+                    return false;
+                }
+            }
+            
+            // All specifications are fully allocated
+            return true;
+            
+        } catch (\Exception $e) {
+            log_message('error', 'checkAllSpecificationsAllocated failed: ' . $e->getMessage());
+            return false;
         }
     }
 
@@ -4001,14 +4132,34 @@ class Marketing extends BaseDataTableController
             return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
         }
         if ($type === 'merk_unit') {
+            // Return FK ID for brand
             $rows = $this->db->table('model_unit')
-                ->select('DISTINCT TRIM(merk_unit) as name', false)
-        ->where('merk_unit IS NOT NULL', null, false)
+                ->select('id_model_unit as id, CONCAT(merk_unit, " - ", model_unit) as name')
+                ->where('merk_unit IS NOT NULL', null, false)
                 ->where("TRIM(merk_unit) <> ''", null, false)
-                ->orderBy('name','ASC')
+                ->orderBy('merk_unit, model_unit','ASC')
                 ->limit(200)
                 ->get()->getResultArray();
-            $rows = array_map(fn($r)=>['id'=>$r['name'],'name'=>$r['name']], $rows);
+            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+        }
+        if ($type === 'battery' || $type === 'jenis_baterai') {
+            // Return FK ID for battery
+            $rows = $this->db->table('baterai')
+                ->select('id, CONCAT(merk_baterai, " - ", tipe_baterai, " (", jenis_baterai, ")") as name')
+                ->where('jenis_baterai IS NOT NULL', null, false)
+                ->orderBy('merk_baterai, tipe_baterai','ASC')
+                ->limit(200)
+                ->get()->getResultArray();
+            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
+        }
+        if ($type === 'attachment' || $type === 'attachment_tipe') {
+            // Return FK ID for attachment
+            $rows = $this->db->table('attachment')
+                ->select('id_attachment as id, CONCAT(tipe, " - ", merk, " ", model) as name')
+                ->where('tipe IS NOT NULL', null, false)
+                ->orderBy('tipe, merk, model','ASC')
+                ->limit(200)
+                ->get()->getResultArray();
             return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
         }
         if ($type === 'valve') {
@@ -4017,39 +4168,6 @@ class Marketing extends BaseDataTableController
                 ->orderBy('jumlah_valve','ASC')
                 ->limit(200)
                 ->get()->getResultArray();
-            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
-        }
-    if ($type === 'jenis_baterai') {
-            $rows = $this->db->table('baterai')
-                ->select('DISTINCT TRIM(jenis_baterai) as name', false)
-        ->where('jenis_baterai IS NOT NULL', null, false)
-                ->where("TRIM(jenis_baterai) <> ''", null, false)
-                ->orderBy('name','ASC')
-                ->limit(200)
-                ->get()->getResultArray();
-            $rows = array_map(fn($r)=>['id'=>$r['name'],'name'=>$r['name']], $rows);
-            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
-        }
-        if ($type === 'attachment_tipe') {
-            $rows = $this->db->table('attachment')
-                ->select('DISTINCT TRIM(tipe) as name', false)
-        ->where('tipe IS NOT NULL', null, false)
-                ->where("TRIM(tipe) <> ''", null, false)
-                ->orderBy('name','ASC')
-                ->limit(200)
-                ->get()->getResultArray();
-            $rows = array_map(fn($r)=>['id'=>$r['name'],'name'=>$r['name']], $rows);
-            return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
-        }
-        if ($type === 'attachment_merk') {
-            $rows = $this->db->table('attachment')
-                ->select('DISTINCT TRIM(merk) as name', false)
-                ->where('merk IS NOT NULL', null, false)
-                ->where("TRIM(merk) <> ''", null, false)
-                ->orderBy('name','ASC')
-                ->limit(200)
-                ->get()->getResultArray();
-            $rows = array_map(fn($r)=>['id'=>$r['name'],'name'=>$r['name']], $rows);
             return $this->response->setJSON(['success'=>true,'data'=>$rows,'csrf_hash'=>csrf_hash()]);
         }
         if ($type === 'roda') {

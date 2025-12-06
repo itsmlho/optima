@@ -111,6 +111,7 @@ $routes->group('unitRolling', static function ($routes) {
 $routes->group('marketing',  static function ($routes) {
     $routes->get('/', 'Marketing::index');
     $routes->get('quotations', 'Marketing::quotations');
+    $routes->get('quotations/stats', 'Marketing::getQuotationStats');
     $routes->post('quotations/data', 'Marketing::getQuotationsData');
     $routes->post('quotations/linkContract', 'Marketing::linkContract');
     $routes->get('quotations/getQuotation/(:num)', 'Marketing::getQuotation/$1');
@@ -161,7 +162,7 @@ $routes->group('marketing',  static function ($routes) {
     });
     // SPK Marketing
     $routes->get('spk', 'Marketing::spk');
-    $routes->get('spk/list', 'Marketing::spkList');
+    $routes->match(['get', 'post'], 'spk/list', 'Marketing::spkList'); // Support both GET and POST for date filtering
     $routes->get('spk/kontrak-options', 'Marketing::kontrakOptions');
     $routes->get('spk/spec-options', 'Marketing::specOptions');
     $routes->get('spk/monitoring', 'Marketing::spkMonitoring');
