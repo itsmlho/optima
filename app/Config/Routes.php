@@ -156,7 +156,7 @@ $routes->group('marketing',  static function ($routes) {
         // Debug endpoint (development only)
         $routes->get('debug-test-insert', 'Kontrak::debugTestInsert');
         
-        // For SPK workflow
+        // For SPK workflow - use Marketing controller methods
         $routes->get('get-active-contracts', 'Marketing::getActiveContracts');
         $routes->get('get-kontrak/(:num)', 'Marketing::getKontrak/$1');
         $routes->get('find-by-spesifikasi/(:num)', 'Marketing::findBySpesifikasi/$1');
@@ -268,10 +268,11 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('kontrak/detail/(:num)', 'Kontrak::detail/$1'); // Add missing detail route
     $routes->get('kontrak/units/(:num)', 'Marketing::kontrakUnits/$1');
     $routes->get('kontrak/customer-locations/(:num)', 'Marketing::customerLocations/$1');
+    $routes->get('kontrak/locations/(:num)', 'Kontrak::getLocationsByCustomer/$1'); // Load customer locations for SPK
+    $routes->get('kontrak/spesifikasi/(:num)', 'Kontrak::spesifikasi/$1'); // Load contract specifications for SPK
     // Route removed - handled by kontrak/detail/(:num) in kontrak group (Kontrak::detail)
     // All kontrak CRUD operations moved to Kontrak controller for better structure
     // Routes: marketing/kontrak/customers -> kontrak/customers
-    // Routes: marketing/kontrak/locations/(:num) -> kontrak/locations/(:num)
     // Routes: marketing/kontrak/store -> kontrak/store
     // Routes: marketing/kontrak/update/(:num) -> kontrak/update/(:num)
     // Routes: marketing/kontrak/delete/(:num) -> kontrak/delete/(:num)

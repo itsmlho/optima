@@ -5215,19 +5215,17 @@ function showSPKCreationModal(quotation, specifications) {
                     </div>
                     
                     <div class="row g-2 small">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <strong>Department:</strong> ${spec.nama_departemen || '-'}
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <strong>Unit Type:</strong> ${spec.jenis_tipe_unit || spec.nama_tipe_unit || '-'}
                         </div>
-                        <div class="col-md-4">
-                            <strong>Capacity:</strong> ${spec.nama_kapasitas || '-'}
-                        </div>
-                    </div>
-                    <div class="row g-2 small mt-2">
-                        <div class="col-md-12">
+                        <div class="col-md-3">
                             <strong>Brand & Model:</strong> ${spec.merk_unit || '-'} ${spec.model_unit ? '- ' + spec.model_unit : ''}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Capacity:</strong> ${spec.nama_kapasitas || '-'}
                         </div>
                     </div>
                     
@@ -5358,7 +5356,6 @@ function buildSpecificationDescription(spec) {
     } else if (spec.nama_tipe_unit) {
         parts.push(`<strong>Unit Type:</strong> ${spec.nama_tipe_unit}`);
     }
-    
     // Capacity
     if (spec.nama_kapasitas) {
         parts.push(`<strong>Capacity:</strong> ${spec.nama_kapasitas}`);

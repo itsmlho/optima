@@ -816,16 +816,51 @@ class Kontrak extends BaseController
                 log_message('debug', 'Kontrak not found for ID: ' . $kontrakId);
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Kontrak tidak ditemukan'
+                    'message' => 'Contract not found'
                 ]);
             }
 
-            $spesifikasi = $this->kontrakSpesifikasiModel->getByKontrakId($kontrakId);
-            $summary = $this->kontrakSpesifikasiModel->getKontrakSummary($kontrakId);
+            // Get specifications from quotation_specifications table
+            $builder = $this->db->table('quotation_specifications qs');
+            $builder->select('qs.id_specification, qs.specification_name, qs.specification_type, 
+                qs.quantity, qs.monthly_price, qs.daily_price, qs.total_price,
+                qs.brand_id, qs.departemen_id, qs.tipe_unit_id, qs.kapasitas_id,
+                qs.charger_id, qs.mast_id, qs.ban_id, qs.roda_id, qs.valve_id, 
+                qs.battery_id, qs.attachment_id, qs.kontrak_id,
+                d.nama_departemen,
+                tu.tipe as nama_tipe_unit, tu.jenis as jenis_unit,
+                k.kapasitas_unit as nama_kapasitas,
+                ch.tipe_charger, ch.merk_charger,
+                m.tipe_mast, m.tinggi_mast,
+                bn.tipe_ban,
+                r.tipe_roda,
+                v.jumlah_valve,
+                bt.jenis_baterai, bt.merk_baterai, bt.tipe_baterai,
+                att.tipe as attachment_type, att.merk as attachment_brand, att.model as attachment_model');
+            $builder->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left');
+            $builder->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left');
+            $builder->join('charger ch', 'ch.id_charger = qs.charger_id', 'left');
+            $builder->join('tipe_mast m', 'm.id_mast = qs.mast_id', 'left');
+            $builder->join('tipe_ban bn', 'bn.id_ban = qs.ban_id', 'left');
+            $builder->join('jenis_roda r', 'r.id_roda = qs.roda_id', 'left');
+            $builder->join('valve v', 'v.id_valve = qs.valve_id', 'left');
+            $builder->join('baterai bt', 'bt.id = qs.battery_id', 'left');
+            $builder->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left');
+            $builder->where('qs.kontrak_id', $kontrakId);
+            $builder->where('qs.is_active', 1);
+            $spesifikasi = $builder->get()->getResultArray();
 
-            log_message('debug', 'Found ' . count($spesifikasi) . ' spesifikasi for kontrak ' . $kontrakId);
-            log_message('debug', 'Spesifikasi data: ' . json_encode($spesifikasi));
-            log_message('debug', 'Summary data: ' . json_encode($summary));
+            // Calculate summary
+            $summary = [
+                'total_specifications' => count($spesifikasi),
+                'total_quantity' => array_sum(array_column($spesifikasi, 'quantity')),
+                'total_monthly_value' => array_sum(array_column($spesifikasi, 'monthly_price')),
+                'total_daily_value' => array_sum(array_column($spesifikasi, 'daily_price')),
+                'total_value' => array_sum(array_column($spesifikasi, 'total_price'))
+            ];
+
+            log_message('debug', 'Found ' . count($spesifikasi) . ' specifications for kontrak ' . $kontrakId);
 
             return $this->response->setJSON([
                 'success' => true,
@@ -1809,7 +1844,7 @@ class Kontrak extends BaseController
     {
         try {
             $builder = $this->db->table('customer_locations');
-            $builder->select('id, location_name, address, contact_person, phone, is_primary');
+            $builder->select('id, location_name, address, city, contact_person, phone, is_primary');
             $builder->where('customer_id', (int)$customerId);
             $builder->where('is_active', 1);
             $builder->orderBy('is_primary', 'DESC');

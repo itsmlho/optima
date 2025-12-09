@@ -2771,6 +2771,7 @@ class Marketing extends BaseDataTableController
             'ban_id'        => ['table'=>'tipe_ban','id'=>'id_ban','name'=>'tipe_ban'],
             'valve_id'      => ['table'=>'valve','id'=>'id_valve','name'=>'jumlah_valve'],
             'roda_id'       => ['table'=>'jenis_roda','id'=>'id_roda','name'=>'tipe_roda'],
+            'charger_id'    => ['table'=>'charger','id'=>'id_charger','name'=>'tipe_charger'],
         ];
         foreach ($mapQueries as $key => $cfg) {
             if (!empty($spec[$key])) {
@@ -2914,6 +2915,33 @@ class Marketing extends BaseDataTableController
                     // Keep as string if parsing fails
                 }
             }
+            
+            // Enrich kontrak_spec with human-readable names
+            if ($kontrak_spec) {
+                $kontrakEnrichMap = [
+                    'departemen_id' => ['table'=>'departemen','id'=>'id_departemen','name'=>'nama_departemen'],
+                    'kapasitas_id'  => ['table'=>'kapasitas','id'=>'id_kapasitas','name'=>'kapasitas_unit'],
+                    'mast_id'       => ['table'=>'tipe_mast','id'=>'id_mast','name'=>'tipe_mast'],
+                    'ban_id'        => ['table'=>'tipe_ban','id'=>'id_ban','name'=>'tipe_ban'],
+                    'valve_id'      => ['table'=>'valve','id'=>'id_valve','name'=>'jumlah_valve'],
+                    'roda_id'       => ['table'=>'jenis_roda','id'=>'id_roda','name'=>'tipe_roda'],
+                    'charger_id'    => ['table'=>'charger','id'=>'id_charger','name'=>'tipe_charger'],
+                ];
+                
+                foreach ($kontrakEnrichMap as $key => $cfg) {
+                    if (!empty($kontrak_spec[$key])) {
+                        $val = $kontrak_spec[$key];
+                        $rec = $this->db->table($cfg['table'])
+                            ->select($cfg['name'].' as name', false)
+                            ->where($cfg['id'], $val)
+                            ->get()
+                            ->getRowArray();
+                        if ($rec && isset($rec['name'])) {
+                            $kontrak_spec[$key.'_name'] = $rec['name'];
+                        }
+                    }
+                }
+            }
         }
         
         return $this->response->setJSON([
@@ -2990,11 +3018,11 @@ class Marketing extends BaseDataTableController
         $q = trim($this->request->getGet('q') ?? '');
         $status = trim($this->request->getGet('status') ?? 'Pending');
         
-        // Use database query builder with proper JOINs
+        // Use database query builder with proper JOINs - updated to use quotation_specifications
         $builder = $this->db->table('kontrak k');
         $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
         $builder->join('customers c', 'cl.customer_id = c.id', 'left');
-        $builder->join('kontrak_spesifikasi ks', 'ks.kontrak_id = k.id', 'inner');
+        $builder->join('quotation_specifications qs', 'qs.kontrak_id = k.id', 'inner');
         $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name as pelanggan, cl.location_name as lokasi');
         $builder->whereIn('k.status', ['Aktif', 'Pending']);
         $builder->groupBy('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name, cl.location_name');
@@ -3029,11 +3057,11 @@ class Marketing extends BaseDataTableController
     public function getActiveContracts()
     {
         try {
-            // Get contracts with specifications - using safe column names
+            // Get contracts with specifications from quotation_specifications
             $builder = $this->db->table('kontrak k');
             $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
             $builder->join('customers c', 'cl.customer_id = c.id', 'left');
-            $builder->join('kontrak_spesifikasi ks', 'ks.kontrak_id = k.id', 'inner');
+            $builder->join('quotation_specifications qs', 'qs.kontrak_id = k.id', 'inner');
             
             // Use safe column selection - only select columns that exist
             $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name as pelanggan, cl.location_name as lokasi');
@@ -3042,13 +3070,17 @@ class Marketing extends BaseDataTableController
             $builder->groupBy('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name, cl.location_name');
             $rows = $builder->orderBy('k.dibuat_pada', 'DESC')->get()->getResultArray();
             
+            log_message('info', 'getActiveContracts found ' . count($rows) . ' contracts');
+            
             $contracts = array_map(function($r){
+                $label = ($r['no_kontrak'] ?? 'No Contract') . ' - ' . ($r['pelanggan'] ?? 'Unknown Customer');
                 return [
                     'id' => (int)$r['id'],
-                    'no_kontrak' => $r['no_kontrak'],
-                    'no_po_marketing' => $r['no_po_marketing'],
-                    'pelanggan' => $r['pelanggan'],
-                    'lokasi' => $r['lokasi'],
+                    'no_kontrak' => $r['no_kontrak'] ?? '',
+                    'no_po_marketing' => $r['no_po_marketing'] ?? '',
+                    'pelanggan' => $r['pelanggan'] ?? '',
+                    'lokasi' => $r['lokasi'] ?? '',
+                    'label' => $label,
                     'pic' => '', // Will be filled separately if needed
                     'kontak' => '' // Will be filled separately if needed
                 ];
@@ -3056,10 +3088,12 @@ class Marketing extends BaseDataTableController
             
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $contracts
+                'data' => $contracts,
+                'count' => count($contracts)
             ]);
             
         } catch (\Exception $e) {
+            log_message('error', 'getActiveContracts Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error loading contracts: ' . $e->getMessage()
@@ -3077,8 +3111,8 @@ class Marketing extends BaseDataTableController
             $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
             $builder->join('customers c', 'cl.customer_id = c.id', 'left');
             
-            // Use safe column selection - only select columns that exist
-            $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name as pelanggan, cl.location_name as lokasi');
+            // Include customer_id for loading customer locations
+            $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.id as customer_id, c.customer_name as pelanggan, cl.location_name as lokasi');
             $builder->where('k.id', $id);
             $row = $builder->get()->getRowArray();
             
@@ -3095,10 +3129,9 @@ class Marketing extends BaseDataTableController
                     'id' => (int)$row['id'],
                     'no_kontrak' => $row['no_kontrak'],
                     'no_po_marketing' => $row['no_po_marketing'],
+                    'customer_id' => (int)$row['customer_id'],
                     'pelanggan' => $row['pelanggan'],
-                    'lokasi' => $row['lokasi'],
-                    'pic' => '', // Will be filled separately if needed
-                    'kontak' => '' // Will be filled separately if needed
+                    'lokasi' => $row['lokasi']
                 ]
             ]);
             
@@ -3290,21 +3323,28 @@ class Marketing extends BaseDataTableController
             log_message('info', 'Marketing::spkCreate - jumlah_unit: ' . $jumlahUnit);
 
             if ($kontrakSpesifikasiId && $kontrakSpesifikasiId > 0) {
-                // New workflow: Create SPK based on contract specification
-                log_message('info', 'Marketing::spkCreate - Using specification workflow for kontrak_spesifikasi_id: ' . $kontrakSpesifikasiId);
-                $spesifikasi = $this->kontrakSpesifikasiModel->find($kontrakSpesifikasiId);
+                // New workflow: Create SPK based on contract specification from quotation_specifications
+                log_message('info', 'Marketing::spkCreate - Using specification workflow for id_specification: ' . $kontrakSpesifikasiId);
+                
+                // Query quotation_specifications directly
+                $spesifikasi = $this->db->table('quotation_specifications')
+                    ->where('id_specification', $kontrakSpesifikasiId)
+                    ->where('is_active', 1)
+                    ->get()
+                    ->getRowArray();
+                    
                 log_message('info', 'Marketing::spkCreate - Found spesifikasi: ' . json_encode($spesifikasi));
                 if (!$spesifikasi) {
                     throw new \Exception('Spesifikasi kontrak tidak ditemukan.');
                 }
 
-                // Check if enough units are needed
-                $available = $spesifikasi['jumlah_dibutuhkan'] - $spesifikasi['jumlah_tersedia'];
+                // For quotation_specifications, use quantity field
+                $available = $spesifikasi['quantity'];
                 if ($jumlahUnit > $available) {
-                    throw new \Exception("Jumlah unit melebihi yang dibutuhkan. Maksimal: {$available} unit");
+                    throw new \Exception("Jumlah unit melebihi yang tersedia. Maksimal: {$available} unit");
                 }
 
-                // Get contract info
+                // Get contract info using kontrak_id from quotation_specifications
                 $kontrak = $this->kontrakModel->find($spesifikasi['kontrak_id']);
                 if (!$kontrak) {
                     throw new \Exception('Kontrak tidak ditemukan.');
@@ -3315,17 +3355,17 @@ class Marketing extends BaseDataTableController
                 $allowedJenis = ['UNIT','ATTACHMENT'];
                 if (!in_array($jenis, $allowedJenis, true)) { $jenis = 'UNIT'; }
 
-                // Build specification array from kontrak_spesifikasi
+                // Build specification array from quotation_specifications
                 $spec = [
                     'departemen_id' => $spesifikasi['departemen_id'],
                     'tipe_unit_id' => $spesifikasi['tipe_unit_id'],
-                    'tipe_jenis' => $spesifikasi['tipe_jenis'],
-                    'merk_unit' => $spesifikasi['merk_unit'],
-                    'model_unit' => $spesifikasi['model_unit'],
+                    'tipe_jenis' => null, // Not in quotation_specifications
+                    'merk_unit' => null, // Not in quotation_specifications
+                    'model_unit' => null, // Not in quotation_specifications
                     'kapasitas_id' => $spesifikasi['kapasitas_id'],
-                    'attachment_tipe' => $spesifikasi['attachment_tipe'],
-                    'attachment_merk' => $spesifikasi['attachment_merk'],
-                    'jenis_baterai' => $spesifikasi['jenis_baterai'],
+                    'attachment_tipe' => null, // Will be loaded from attachment table
+                    'attachment_merk' => null, // Will be loaded from attachment table
+                    'jenis_baterai' => null, // Will be loaded from baterai table
                     'charger_id' => $spesifikasi['charger_id'],
                     'mast_id' => $spesifikasi['mast_id'],
                     'ban_id' => $spesifikasi['ban_id'],
@@ -3401,7 +3441,7 @@ class Marketing extends BaseDataTableController
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
                     'jenis_spk' => $jenis,
                     'kontrak_id' => $kontrak['id'],
-                    'kontrak_spesifikasi_id' => $kontrakSpesifikasiId,
+                    'quotation_specification_id' => $kontrakSpesifikasiId,
                     'jumlah_unit' => $jumlahUnit,
                     'po_kontrak_nomor' => $kontrak['no_kontrak'],
                     'pelanggan' => $this->request->getPost('pelanggan') ?: $kontrak['pelanggan'],
@@ -3417,7 +3457,7 @@ class Marketing extends BaseDataTableController
                 ];
 
             } elseif ($kontrakId && $kontrakId > 0) {
-                // Fallback: Create SPK based on contract ID only (when no specification is selected or kontrak_spesifikasi_id is 0)
+                // Fallback: Create SPK based on contract ID only (when no specification is selected)
                 log_message('info', 'Marketing::spkCreate - Using kontrak_id fallback workflow for kontrak: ' . $kontrakId);
                 $kontrak = $this->kontrakModel->find($kontrakId);
                 log_message('info', 'Marketing::spkCreate - Found kontrak: ' . json_encode($kontrak));
@@ -3425,8 +3465,13 @@ class Marketing extends BaseDataTableController
                     throw new \Exception('Kontrak tidak ditemukan.');
                 }
 
-                // Get first available specification for this contract, or create basic spec
-                $spesifikasiList = $this->kontrakSpesifikasiModel->getByKontrakId($kontrakId);
+                // Get first available specification for this contract from quotation_specifications
+                $spesifikasiList = $this->db->table('quotation_specifications')
+                    ->where('kontrak_id', $kontrakId)
+                    ->where('is_active', 1)
+                    ->get()
+                    ->getResultArray();
+                    
                 log_message('info', 'Marketing::spkCreate - Found ' . count($spesifikasiList) . ' specifications for kontrak ' . $kontrakId);
                 
                 $firstSpecId = null;
@@ -3439,17 +3484,17 @@ class Marketing extends BaseDataTableController
                     // Use the first specification as template
                     $firstSpec = $spesifikasiList[0];
                     log_message('info', 'Marketing::spkCreate - Using first spec as template: ' . json_encode($firstSpec));
-                    $firstSpecId = $firstSpec['id']; // Store the ID for kontrak_spesifikasi_id
+                    $firstSpecId = $firstSpec['id_specification']; // Use id_specification field
                     $spec = [
                         'departemen_id' => $firstSpec['departemen_id'] ?? null,
                         'tipe_unit_id' => $firstSpec['tipe_unit_id'] ?? null,
-                        'tipe_jenis' => $firstSpec['tipe_jenis'] ?? null,
-                        'merk_unit' => $firstSpec['merk_unit'] ?? null,
-                        'model_unit' => $firstSpec['model_unit'] ?? null,
+                        'tipe_jenis' => null, // Not in quotation_specifications
+                        'merk_unit' => null, // Not in quotation_specifications
+                        'model_unit' => null, // Not in quotation_specifications
                         'kapasitas_id' => $firstSpec['kapasitas_id'] ?? null,
-                        'attachment_tipe' => $firstSpec['attachment_tipe'] ?? null,
-                        'attachment_merk' => $firstSpec['attachment_merk'] ?? null,
-                        'jenis_baterai' => $firstSpec['jenis_baterai'] ?? null,
+                        'attachment_tipe' => null, // Not in quotation_specifications
+                        'attachment_merk' => null, // Not in quotation_specifications
+                        'jenis_baterai' => null, // Not in quotation_specifications
                         'charger_id' => $firstSpec['charger_id'] ?? null,
                         'mast_id' => $firstSpec['mast_id'] ?? null,
                         'ban_id' => $firstSpec['ban_id'] ?? null,
@@ -3470,7 +3515,7 @@ class Marketing extends BaseDataTableController
                     'nomor_spk' => method_exists($this->spkModel,'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
                     'jenis_spk' => $jenis,
                     'kontrak_id' => $kontrak['id'],
-                    'kontrak_spesifikasi_id' => $firstSpecId, // Use the first spec ID if available
+                    'quotation_specification_id' => $firstSpecId, // Use the first spec ID if available
                     'jumlah_unit' => $jumlahUnit,
                     'po_kontrak_nomor' => $kontrak['no_kontrak'],
                     'pelanggan' => $this->request->getPost('pelanggan') ?: $kontrak['pelanggan'],
