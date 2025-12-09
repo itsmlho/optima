@@ -1775,10 +1775,10 @@ class Marketing extends BaseDataTableController
         helper('simple_rbac');
         
         return view('marketing/spk', [
-            'title' => 'Surat Perintah Kerja (SPK)',
+            'title' => 'Work Orders (SPK)',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
-                '/marketing/spk' => 'Surat Perintah Kerja (SPK)'
+                '/marketing/spk' => 'Work Orders (SPK)'
             ],
             'can_view_marketing' => can_view('marketing'),
             'can_create_marketing' => $this->canManage('marketing'),
@@ -2896,23 +2896,30 @@ class Marketing extends BaseDataTableController
             $enriched['prepared_units_detail'] = $preparedUnitsFromStages;
         }
         
-        // Get kontrak_spesifikasi data if available
+        // Get quotation_specifications data if available (new system)
         $kontrak_spec = null;
-        if (!empty($row['kontrak_spesifikasi_id'])) {
-            $kontrak_spec = $this->db->table('kontrak_spesifikasi')
-                ->where('id', $row['kontrak_spesifikasi_id'])
+        if (!empty($row['quotation_specification_id'])) {
+            $kontrak_spec = $this->db->table('quotation_specifications')
+                ->where('id_specification', $row['quotation_specification_id'])
                 ->get()
                 ->getRowArray();
                 
-            // Process aksesoris if it's stored as JSON
-            if ($kontrak_spec && isset($kontrak_spec['aksesoris']) && is_string($kontrak_spec['aksesoris'])) {
+            // Process unit_accessories if it's stored as JSON or CSV
+            if ($kontrak_spec && isset($kontrak_spec['unit_accessories']) && !empty($kontrak_spec['unit_accessories'])) {
+                $accessories_raw = trim($kontrak_spec['unit_accessories']);
+                
+                // Try JSON first
                 try {
-                    $decoded_aksesoris = json_decode($kontrak_spec['aksesoris'], true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
+                    $decoded_aksesoris = json_decode($accessories_raw, true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded_aksesoris)) {
                         $kontrak_spec['aksesoris'] = $decoded_aksesoris;
+                    } else {
+                        // Not JSON, treat as CSV string
+                        $kontrak_spec['aksesoris'] = array_map('trim', explode(',', $accessories_raw));
                     }
                 } catch (\Exception $e) {
-                    // Keep as string if parsing fails
+                    // Treat as CSV string
+                    $kontrak_spec['aksesoris'] = array_map('trim', explode(',', $accessories_raw));
                 }
             }
             
@@ -2920,12 +2927,16 @@ class Marketing extends BaseDataTableController
             if ($kontrak_spec) {
                 $kontrakEnrichMap = [
                     'departemen_id' => ['table'=>'departemen','id'=>'id_departemen','name'=>'nama_departemen'],
+                    'tipe_unit_id'  => ['table'=>'tipe_unit','id'=>'id_tipe_unit','name'=>'jenis'],
+                    'brand_id'      => ['table'=>'model_unit','id'=>'id_model_unit','name'=>'merk_unit'],
                     'kapasitas_id'  => ['table'=>'kapasitas','id'=>'id_kapasitas','name'=>'kapasitas_unit'],
                     'mast_id'       => ['table'=>'tipe_mast','id'=>'id_mast','name'=>'tipe_mast'],
                     'ban_id'        => ['table'=>'tipe_ban','id'=>'id_ban','name'=>'tipe_ban'],
                     'valve_id'      => ['table'=>'valve','id'=>'id_valve','name'=>'jumlah_valve'],
                     'roda_id'       => ['table'=>'jenis_roda','id'=>'id_roda','name'=>'tipe_roda'],
                     'charger_id'    => ['table'=>'charger','id'=>'id_charger','name'=>'tipe_charger'],
+                    'battery_id'    => ['table'=>'baterai','id'=>'id','name'=>'jenis_baterai'],
+                    'attachment_id' => ['table'=>'attachment','id'=>'id_attachment','name'=>'tipe'],
                 ];
                 
                 foreach ($kontrakEnrichMap as $key => $cfg) {

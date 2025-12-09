@@ -93,9 +93,9 @@ $can_export = true;
     <div class="card">
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">Daftar SPK Service</h6>
+                <h6 class="mb-0">Work Orders (SPK) List</h6>
                 <div>
-                    <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="Cari SPK..." style="width: 250px;">
+                    <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="Search SPK..." style="width: 250px;">
                 </div>
             </div>
         </div>
@@ -139,7 +139,7 @@ $can_export = true;
             </div>
             <div class="table-responsive">
                 <table class="table table-striped table-hover table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
-                    <thead><tr><th>No. SPK</th><th>Jenis</th><th>Kontrak/PO</th><th>Nama Perusahaan</th><th>PIC</th><th>Kontak</th><th>Status</th><th>Total Unit</th><th data-no-sort>Aksi</th></tr></thead>
+                    <thead><tr><th>SPK No.</th><th>Type</th><th>Contract/PO</th><th>Company Name</th><th>PIC</th><th>Contact</th><th>Status</th><th>Total Units</th><th data-no-sort>Action</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -163,24 +163,24 @@ $can_export = true;
 	<div class="modal fade" id="assignItemsModal" tabindex="-1" style="z-index: 9999;">
 		<div class="modal-dialog modal-lg modal-dialog-centered">
 			<div class="modal-content">
-				<div class="modal-header"><h6 class="modal-title">Pilih Unit & Attachment</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+				<div class="modal-header"><h6 class="modal-title">Select Unit & Attachment</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
 				<form id="assignItemsForm">
 					<div class="modal-body">
 						<input type="hidden" name="spk_id" id="assignSpkId">
 						<div class="mb-2">
-							<label class="form-label">Pilih Unit (Stock Aset/Non Aset)</label>
-							<input type="text" class="form-control" id="unitSearch" placeholder="Cari no unit / serial / merk / model" autocomplete="off">
+							<label class="form-label">Select Unit (Asset/Non-Asset Stock)</label>
+							<input type="text" class="form-control" id="unitSearch" placeholder="Search unit no / serial / brand / model" autocomplete="off">
 							<select class="form-select mt-2" id="unitPick" name="unit_id"></select>
-							<div class="form-text">Ketik untuk mencari, lalu pilih dari daftar.</div>
+							<div class="form-text">Type to search, then select from list.</div>
 						</div>
 						<div class="mb-2">
-							<label class="form-label">Pilih Attachment (opsional)</label>
-							<input type="text" class="form-control" id="attSearch" placeholder="Cari tipe/merk/model/SN/lokasi" autocomplete="off">
+							<label class="form-label">Select Attachment (optional)</label>
+							<input type="text" class="form-control" id="attSearch" placeholder="Search type/brand/model/SN/location" autocomplete="off">
 							<select class="form-select mt-2" id="attPick" name="inventory_attachment_id"></select>
-							<div class="form-text">Data dari inventory_attachment (status 7/8).</div>
+							<div class="form-text">Data from inventory_attachment (status 7/8).</div>
 						</div>
 					</div>
-					<div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" type="submit">Simpan & Tandai READY</button></div>
+					<div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Save & Mark READY</button></div>
 				</form>
 			</div>
 		</div>
@@ -191,24 +191,24 @@ $can_export = true;
 		<div class="modal-dialog">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h6 class="modal-title">Konfirmasi Approval - <span id="approvalStageTitle"></span></h6>
+					<h6 class="modal-title">Approval Confirmation - <span id="approvalStageTitle"></span></h6>
 					<button class="btn-close" data-bs-dismiss="modal"></button>
 				</div>
 				<form id="approvalStageForm">
 					<div class="modal-body">
 						<!-- Common fields for all stages -->
 						<div class="mb-3">
-							<label class="form-label">Nama Mekanik <span class="text-danger">*</span></label>
+							<label class="form-label">Mechanics <span class="text-danger">*</span></label>
 							<input type="text" class="form-control" id="approvalMekanik" name="mekanik" required 
-								   placeholder="Masukkan nama mekanik yang bertanggung jawab">
+								   placeholder="Enter the name of the responsible mechanic">
 						</div>
 						<div class="row">
 							<div class="col-6">
-								<label class="form-label">Estimasi Mulai <span class="text-danger">*</span></label>
+								<label class="form-label">Estimated Start <span class="text-danger">*</span></label>
 								<input type="date" class="form-control" id="approvalEstimasiMulai" name="estimasi_mulai" required>
 							</div>
 							<div class="col-6">
-								<label class="form-label">Estimasi Selesai <span class="text-danger">*</span></label>
+								<label class="form-label">Estimated Completion <span class="text-danger">*</span></label>
 								<input type="date" class="form-control" id="approvalEstimasiSelesai" name="estimasi_selesai" required>
 							</div>
 						</div>
@@ -217,12 +217,12 @@ $can_export = true;
 						<div id="stageSpecificContent"></div>
 
 						<div class="form-text mt-2">
-							<small>Data ini akan muncul di PDF SPK sebagai estimasi pekerjaan dan tanda tangan approval.</small>
+							<small>This data will appear in the SPK PDF as the estimated work timeline and approval signature.</small>
 						</div>
 					</div>
 					<div class="modal-footer">
-						<button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Batal</button>
-						<button class="btn btn-success" type="submit">Approve & Simpan</button>
+						<button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+						<button class="btn btn-success" type="submit">Approve & Save</button>
 					</div>
 				</form>
 			</div>
@@ -234,7 +234,7 @@ $can_export = true;
 		<div class="modal-dialog modal-lg modal-dialog-scrollable">
 			<div class="modal-content">
 				<div class="modal-header">
-					<h6 class="modal-title">Detail SPK</h6>
+					<h6 class="modal-title">Detail SPK <span id="spkNumberHeader" class="text-primary"></span></h6>
 					<button class="btn-close" data-bs-dismiss="modal"></button>
 				</div>
 				<div class="modal-body">
@@ -527,42 +527,38 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (!persiapanDone && !isAttachmentSpk) {
 					// Normal workflow: Start with Persiapan Unit (UNIT SPK only)
 					const nextUnit = getNextUnitNumber('persiapan_unit');
-					const unitText = nextUnit ? ` ke-${nextUnit}` : '';
+					const unitText = nextUnit ? ` #${nextUnit}` : '';
 					const unitIndex = nextUnit || 1;
-					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('persiapan_unit', 'Bag. Persiapan Unit', ${r.id}, ${unitIndex})">Persiapan Unit${unitText}</button>`);
+					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('persiapan_unit', 'Unit Preparation Dept.', ${r.id}, ${unitIndex})">Unit Preparation${unitText}</button>`);
 				} else if ((!fabrikasiDone && persiapanDone) || (!fabrikasiDone && isAttachmentSpk)) {
 					// Next stage: Fabrikasi (after Persiapan Unit for UNIT SPK, or directly for ATTACHMENT SPK)
 					const nextUnit = getNextUnitNumber('fabrikasi');
-					const unitText = nextUnit ? ` ke-${nextUnit}` : '';
+					const unitText = nextUnit ? ` #${nextUnit}` : '';
 					const unitIndex = nextUnit || 1;
-					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('fabrikasi', 'Bag. Fabrikasi', ${r.id}, ${unitIndex})">Fabrikasi${unitText}</button>`);
+					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('fabrikasi', 'Fabrication Dept.', ${r.id}, ${unitIndex})">Fabrication${unitText}</button>`);
 				} else if (!paintingDone) {
 					const nextUnit = getNextUnitNumber('painting');
-					const unitText = nextUnit ? ` ke-${nextUnit}` : '';
+					const unitText = nextUnit ? ` #${nextUnit}` : '';
 					const unitIndex = nextUnit || 1;
-					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('painting', 'Bag. Painting', ${r.id}, ${unitIndex})">Painting${unitText}</button>`);
+					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('painting', 'Painting Dept.', ${r.id}, ${unitIndex})">Painting${unitText}</button>`);
 				} else if (!pdiDone) {
 					const nextUnit = getNextUnitNumber('pdi');
-					const unitText = nextUnit ? ` ke-${nextUnit}` : '';
+					const unitText = nextUnit ? ` #${nextUnit}` : '';
 					const unitIndex = nextUnit || 1;
-					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('pdi', 'Bag. PDI Pengecekan', ${r.id}, ${unitIndex})">PDI Pengecekan${unitText}</button>`);
-				} else {
-					// All approvals done - should be READY status already
-					approvalButtons.push('<span class="text-info">Menunggu update status ke READY</span>');
-				}
-				
-				// Add small completed badges (skip Persiapan Unit badge for ATTACHMENT SPK)
-				const completedBadges = [];
-				if (persiapanDone && !isAttachmentSpk) completedBadges.push('<small class="badge bg-success me-1">✓ Persiapan Unit</small>');
-				if (isAttachmentSpk && !persiapanDone) completedBadges.push('<small class="badge bg-info me-1">Skip Persiapan Unit</small>'); // Indicator that this step was skipped
-				if (fabrikasiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Fabrikasi</small>');
-				if (paintingDone) completedBadges.push('<small class="badge bg-success me-1">✓ Painting</small>');
-				if (pdiDone) completedBadges.push('<small class="badge bg-success me-1">✓ PDI</small>');
-				
-				// No edit button on main page - edit options will be in detail modal
+					approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('pdi', 'PDI Inspection Dept.', ${r.id}, ${unitIndex})">PDI Inspection${unitText}</button>`);
+			} else {
+				// All approvals done - should be READY status already
+				approvalButtons.push('<span class="text-info">Waiting for READY status update</span>');
+			}			// Add small completed badges (skip Unit Preparation badge for ATTACHMENT SPK)
+			const completedBadges = [];
+			if (persiapanDone && !isAttachmentSpk) completedBadges.push('<small class="badge bg-success me-1">✓ Unit Preparation</small>');
+			if (isAttachmentSpk && !persiapanDone) completedBadges.push('<small class="badge bg-info me-1">Skip Unit Preparation</small>'); // Indicator that this step was skipped
+			if (fabrikasiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Fabrication</small>');
+			if (paintingDone) completedBadges.push('<small class="badge bg-success me-1">✓ Painting</small>');
+			if (pdiDone) completedBadges.push('<small class="badge bg-success me-1">✓ PDI</small>');				// No edit button on main page - edit options will be in detail modal
 				actionBtn = approvalButtons.join(' ') + (completedBadges.length > 0 ? '<br>' + completedBadges.join('') : '');
 			} else if (r.status === 'READY') {
-				actionBtn = '<span class="text-success">Siap untuk delivery</span>';
+				actionBtn = '<span class="text-success">Ready for delivery</span>';
 			} else if (r.status === 'COMPLETED' || r.status === 'DELIVERED') {
 				actionBtn = '<span class="text-success">Completed</span>';
 			} else {
@@ -803,12 +799,18 @@ document.addEventListener('DOMContentLoaded', () => {
 	window.openDetail = (id) => {
 		currentSpkId = id;
 		const body = document.getElementById('spkDetailBody');
+		const headerSpan = document.getElementById('spkNumberHeader');
 		body.innerHTML = '<p class="text-muted">Memuat...</p>';
 
 		fetch('<?= base_url('service/spk/detail/') ?>' + id).then(r=>r.json()).then(j=>{
 			if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; return; }
             const d = j.data || {};
             const s = j.spesifikasi || {};
+			
+			// Update modal title with SPK number
+			if (headerSpan && d.nomor_spk) {
+				headerSpan.textContent = '#' + d.nomor_spk;
+			}
 			const status = d.status || 'SUBMITTED';
 			
 			// Update action buttons based on status
@@ -857,21 +859,21 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				// Add buttons for incomplete stages
 				if (!persiapanDone && !isAttachmentSpk) {
-					// Normal workflow: Start with Persiapan Unit (UNIT SPK only)
-					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'persiapan_unit\', \'Bag. Persiapan Unit\')">Persiapan Unit</button>');
+					// Normal workflow: Start with Unit Preparation (UNIT SPK only)
+					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'persiapan_unit\', \'Unit Preparation Dept.\')">Unit Preparation</button>');
 				} else if ((!fabrikasiDone && persiapanDone) || (!fabrikasiDone && isAttachmentSpk)) {
-					// Next stage: Fabrikasi (after Persiapan Unit for UNIT SPK, or directly for ATTACHMENT SPK)
-					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'fabrikasi\', \'Bag. Fabrikasi\')">Fabrikasi</button>');
+					// Next stage: Fabrication (after Unit Preparation for UNIT SPK, or directly for ATTACHMENT SPK)
+					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'fabrikasi\', \'Fabrication Dept.\')">Fabrication</button>');
 				} else if (!paintingDone) {
-					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'painting\', \'Bag. Painting\')">Painting</button>');
+					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'painting\', \'Painting Dept.\')">Painting</button>');
 				} else if (!pdiDone) {
-					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'pdi\', \'Bag. PDI Pengecekan\')">PDI Pengecekan</button>');
+					approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'pdi\', \'PDI Inspection Dept.\')">PDI Inspection</button>');
 				}
 				
-				// Show completed stages with checkmarks (skip Persiapan Unit for ATTACHMENT SPK)
-				if (persiapanDone && !isAttachmentSpk) approvalButtons.push('<span class="badge bg-success me-1">✓ Persiapan Unit</span>');
-				if (isAttachmentSpk && !persiapanDone) approvalButtons.push('<span class="badge bg-info me-1">Skip Persiapan Unit</span>'); // Indicator that this step was skipped
-				if (fabrikasiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Fabrikasi</span>');
+				// Show completed stages with checkmarks (skip Unit Preparation for ATTACHMENT SPK)
+				if (persiapanDone && !isAttachmentSpk) approvalButtons.push('<span class="badge bg-success me-1">✓ Unit Preparation</span>');
+				if (isAttachmentSpk && !persiapanDone) approvalButtons.push('<span class="badge bg-info me-1">Skip Unit Preparation</span>'); // Indicator that this step was skipped
+				if (fabrikasiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Fabrication</span>');
 				if (paintingDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Painting</span>');
 				if (pdiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ PDI</span>');
 				
@@ -985,35 +987,36 @@ document.addEventListener('DOMContentLoaded', () => {
 				for (let i = 1; i <= totalUnits; i++) { itemsHtml += renderItemBlock(i, totalUnits); }
 			}
 
+			// Use kontrak_spec as primary source for specification data if available
+			const ks = j.kontrak_spec || {};
+
 			body.innerHTML = `
 				<div class="row g-2">
-					<div class="col-12"><h5 class="mb-2">Detail #${d.nomor_spk}</h5></div>
-					<div class="col-6"><strong>Jenis SPK:</strong> <span class="badge bg-dark">${d.jenis_spk||'UNIT'}</span></div>
-					<div class="col-6"><strong>No SPK:</strong> ${d.nomor_spk}</div>
-					<div class="col-6"><strong>Kontrak/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
-					<div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>
-					<div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
+					<div class="col-6"><strong>SPK Type:</strong> ${d.jenis_spk||'-'}</div>
+					<div class="col-6"><strong>Contract/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
+					<div class="col-6"><strong>Company Name:</strong> ${d.pelanggan||'-'}</div>
+					<div class="col-6"><strong>Location:</strong> ${d.lokasi||'-'}</div>
+					<div class="col-6"><strong>Pic:</strong> ${d.pic||'-'}</div>
+					<div class="col-6"><strong>Contact:</strong> ${d.kontak||'-'}</div>
+					<div class="col-6"><strong>SPK Created:</strong> ${d.dibuat_pada ? (new Date(d.dibuat_pada)).toLocaleDateString('id-ID', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '-'}</div>
 					<div class="col-6"><strong>Delivery Plan:</strong> ${d.delivery_plan||'-'}</div>
-					<div class="col-6"><strong>PIC:</strong> ${d.pic||'-'}</div>
-					<div class="col-6"><strong>Kontak:</strong> ${d.kontak||'-'}</div>
 					<div class="col-12"><hr></div>
-					<div class="col-12"><h6 class="mb-2">Spesifikasi yang diminta</h6></div>
+					<div class="col-12"><strong>Unit Information:</strong></div>
 					<div class="col-6"><strong>Total Unit:</strong> ${d.jumlah_unit || 0}</div>
-					${totalUnits>1 ? `<div class="col-12">
-						<div class="progress" style="height:14px"><div class="progress-bar" role="progressbar" style="width:${Math.min(100, Math.round((preparedCount/totalUnits)*100))}%">${preparedCount}/${totalUnits} disiapkan</div></div>
+					${totalUnits>1 ? `<div class="col-6">
+						<div class="progress" style="height:14px"><div class="progress-bar" role="progressbar" style="width:${Math.min(100, Math.round((preparedCount/totalUnits)*100))}%">${preparedCount}/${totalUnits} prepared</div></div>
 					</div>`:''}
-					<div class="col-6"><strong>Tipe Unit:</strong> ${s.tipe_jenis||'-'}</div>
-					<div class="col-6"><strong>Merk Unit:</strong> ${s.merk_unit||'-'}</div>
-					<div class="col-6"><strong>Valve:</strong> ${s.valve_id_name||s.valve_id||'-'}</div>
-					<div class="col-6"><strong>Baterai:</strong> ${s.jenis_baterai||'-'}</div>
-					<div class="col-6"><strong>Charger:</strong> ${s.charger_id_name||'-'}</div>
-					<div class="col-6"><strong>Attachment (Tipe):</strong> ${s.attachment_tipe||'-'}</div>
-					<div class="col-6"><strong>Roda:</strong> ${s.roda_id_name||s.roda_id||'-'}</div>
-                    <div class="col-6"><strong>Departemen:</strong> ${s.departemen_id_name||s.departemen_id||'-'}</div>
-					<div class="col-6"><strong>Kapasitas:</strong> ${s.kapasitas_id_name||s.kapasitas_id||'-'}</div>
-					<div class="col-6"><strong>Mast:</strong> ${s.mast_id_name||s.mast_id||'-'}</div>
-					<div class="col-6"><strong>Ban:</strong> ${s.ban_id_name||s.ban_id||'-'}</div>
-					<div class="col-12"><strong>Aksesoris:</strong> ${aksText}</div>
+					<div class="col-6"><strong>Department:</strong> ${ks.departemen_id_name || s.departemen_id_name||'-'}</div>
+					<div class="col-6"><strong>Type & Brand:</strong> ${[ks.tipe_unit_id_name || s.tipe_jenis, ks.brand_id_name || ks.merk_unit || s.merk_unit].filter(x=>x).join(' ') || '-'}</div>
+					<div class="col-6"><strong>Capacity:</strong> ${ks.kapasitas_id_name || s.kapasitas_id_name||'-'}</div>
+					<div class="col-6"><strong>Battery (Type):</strong> ${ks.battery_id_name || ks.jenis_baterai || s.jenis_baterai||'-'}</div>
+					<div class="col-6"><strong>Charger:</strong> ${ks.charger_id_name || s.charger_id_name||'-'}</div>
+					<div class="col-6"><strong>Attachment (Type):</strong> ${ks.attachment_id_name || ks.attachment_tipe || s.attachment_tipe||'-'}</div>
+					<div class="col-6"><strong>Valve:</strong> ${ks.valve_id_name || s.valve_id_name||'-'}</div>
+					<div class="col-6"><strong>Mast:</strong> ${ks.mast_id_name || s.mast_id_name||'-'}</div>
+					<div class="col-6"><strong>Wheel:</strong> ${ks.roda_id_name || s.roda_id_name||'-'}</div>
+					<div class="col-6"><strong>Tire:</strong> ${ks.ban_id_name || s.ban_id_name||'-'}</div>
+					<div class="col-12"><strong>Accessories :</strong> ${aksText}</div>
 					
 					${status === 'IN_PROGRESS' || status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED' ? `
 					<div class="col-12"><hr></div>
@@ -1023,58 +1026,58 @@ document.addEventListener('DOMContentLoaded', () => {
 						<div class="row g-2">
 							${(d.jenis_spk && d.jenis_spk.toUpperCase() === 'ATTACHMENT') ? `
 								<div class="col-12">
-									<strong>1. Persiapan Unit:</strong> 
+									<strong>1. Unit Preparation:</strong> 
 									<span class="badge bg-info">Skip (SPK Attachment)</span>
 								</div>
 								<div class="col-6">
-									<strong>2. Fabrikasi:</strong> 
+									<strong>2. Fabrication:</strong> 
 									${d.fabrikasi_tanggal_approve ? 
-										'<span class="badge bg-success">✓ Selesai</span><br>' +
-										'<small>Oleh: ' + (d.fabrikasi_mekanik||'-') + ' <br>' +
-										'Tanggal: ' + (d.fabrikasi_tanggal_approve||'-') + '<br>' +
+										'<span class="badge bg-success">✓ Completed</span><br>' +
+										'<small>By: ' + (d.fabrikasi_mekanik||'-') + ' <br>' +
+										'Date: ' + (d.fabrikasi_tanggal_approve||'-') + '<br>' +
 										'Attachment ID: ' + (workflowData.fabrikasi_attachment_id||'-') + '</small>' 
-										: '<span class="badge bg-warning">Menunggu</span>'}
+										: '<span class="badge bg-warning">Waiting</span>'}
 								</div>
 							` : `
 								<div class="col-6">
-									<strong>1. Persiapan Unit:</strong> 
+									<strong>1. Unit Preparation:</strong> 
 									${d.stage_status && d.stage_status.unit_stages ? 
 										Object.keys(d.stage_status.unit_stages).some(unitIndex => 
 											d.stage_status.unit_stages[unitIndex].persiapan_unit && 
 											d.stage_status.unit_stages[unitIndex].persiapan_unit.completed
 										) ? 
-										'<span class="badge bg-success">✓ Selesai</span><br>' +
+										'<span class="badge bg-success">✓ Completed</span><br>' +
 										'<small>Unit: ' + Object.keys(d.stage_status.unit_stages).filter(unitIndex => 
 											d.stage_status.unit_stages[unitIndex].persiapan_unit && 
 											d.stage_status.unit_stages[unitIndex].persiapan_unit.completed
 										).length + '/' + d.jumlah_unit + '</small>' 
-										: '<span class="badge bg-warning">Menunggu</span>'
+										: '<span class="badge bg-warning">Waiting</span>'
 									: (d.persiapan_unit_tanggal_approve ? 
-										'<span class="badge bg-success">✓ Selesai</span><br>' +
-										'<small>Oleh: ' + (d.persiapan_unit_mekanik||'-') + ' <br>' +
-										'Tanggal: ' + (d.persiapan_unit_tanggal_approve||'-') + '<br>' +
+										'<span class="badge bg-success">✓ Completed</span><br>' +
+										'<small>By: ' + (d.persiapan_unit_mekanik||'-') + ' <br>' +
+										'Date: ' + (d.persiapan_unit_tanggal_approve||'-') + '<br>' +
 										'Unit ID: ' + (workflowData.persiapan_unit_id||'-') + '</small>' 
-										: '<span class="badge bg-warning">Menunggu</span>')}
+										: '<span class="badge bg-warning">Waiting</span>')}
 								</div>
 								<div class="col-6">
-									<strong>2. Fabrikasi:</strong> 
+									<strong>2. Fabrication:</strong> 
 									${d.stage_status && d.stage_status.unit_stages ? 
 										Object.keys(d.stage_status.unit_stages).some(unitIndex => 
 											d.stage_status.unit_stages[unitIndex].fabrikasi && 
 											d.stage_status.unit_stages[unitIndex].fabrikasi.completed
 										) ? 
-										'<span class="badge bg-success">✓ Selesai</span><br>' +
+										'<span class="badge bg-success">✓ Completed</span><br>' +
 										'<small>Unit: ' + Object.keys(d.stage_status.unit_stages).filter(unitIndex => 
 											d.stage_status.unit_stages[unitIndex].fabrikasi && 
 											d.stage_status.unit_stages[unitIndex].fabrikasi.completed
 										).length + '/' + d.jumlah_unit + '</small>' 
-										: '<span class="badge bg-warning">Menunggu</span>'
+										: '<span class="badge bg-warning">Waiting</span>'
 									: (d.fabrikasi_tanggal_approve ? 
-										'<span class="badge bg-success">✓ Selesai</span><br>' +
-										'<small>Oleh: ' + (d.fabrikasi_mekanik||'-') + ' <br>' +
-										'Tanggal: ' + (d.fabrikasi_tanggal_approve||'-') + '<br>' +
+										'<span class="badge bg-success">✓ Completed</span><br>' +
+										'<small>By: ' + (d.fabrikasi_mekanik||'-') + ' <br>' +
+										'Date: ' + (d.fabrikasi_tanggal_approve||'-') + '<br>' +
 										'Attachment ID: ' + (workflowData.fabrikasi_attachment_id||'-') + '</small>' 
-										: '<span class="badge bg-warning">Menunggu</span>')}
+										: '<span class="badge bg-warning">Waiting</span>')}
 								</div>
 							`}
 							<div class="col-6">
@@ -1084,36 +1087,36 @@ document.addEventListener('DOMContentLoaded', () => {
 										d.stage_status.unit_stages[unitIndex].painting && 
 										d.stage_status.unit_stages[unitIndex].painting.completed
 									) ? 
-									'<span class="badge bg-success">✓ Selesai</span><br>' +
+									'<span class="badge bg-success">✓ Completed</span><br>' +
 									'<small>Unit: ' + Object.keys(d.stage_status.unit_stages).filter(unitIndex => 
 										d.stage_status.unit_stages[unitIndex].painting && 
 										d.stage_status.unit_stages[unitIndex].painting.completed
 									).length + '/' + d.jumlah_unit + '</small>' 
-									: '<span class="badge bg-warning">Menunggu</span>'
+									: '<span class="badge bg-warning">Waiting</span>'
 								: (d.painting_tanggal_approve ? 
-									`<span class="badge bg-success">✓ Selesai</span><br>
-									<small>Oleh: ${d.painting_mekanik||'-'} <br>
-									Tanggal: ${d.painting_tanggal_approve||'-'}</small>` 
-									: '<span class="badge bg-warning">Menunggu</span>')}
+									`<span class="badge bg-success">✓ Completed</span><br>
+									<small>By: ${d.painting_mekanik||'-'} <br>
+									Date: ${d.painting_tanggal_approve||'-'}</small>` 
+									: '<span class="badge bg-warning">Waiting</span>')}
 							</div>
 							<div class="col-6">
-								<strong>4. PDI Pengecekan:</strong> 
+								<strong>4. PDI Done :</strong> 
 								${d.stage_status && d.stage_status.unit_stages ? 
 									Object.keys(d.stage_status.unit_stages).some(unitIndex => 
 										d.stage_status.unit_stages[unitIndex].pdi && 
 										d.stage_status.unit_stages[unitIndex].pdi.completed
 									) ? 
-									'<span class="badge bg-success">✓ Selesai</span><br>' +
+									'<span class="badge bg-success">✓ Completed</span><br>' +
 									'<small>Unit: ' + Object.keys(d.stage_status.unit_stages).filter(unitIndex => 
 										d.stage_status.unit_stages[unitIndex].pdi && 
 										d.stage_status.unit_stages[unitIndex].pdi.completed
 									).length + '/' + d.jumlah_unit + '</small>' 
-									: '<span class="badge bg-warning">Menunggu</span>'
+									: '<span class="badge bg-warning">Waiting</span>'
 								: (d.pdi_tanggal_approve ? 
-									'<span class="badge bg-success">✓ Selesai</span><br>' +
-									'<small>Oleh: ' + (d.pdi_mekanik||'-') + ' <br>' +
-									'Tanggal: ' + (d.pdi_tanggal_approve||'-') + '</small>' 
-									: '<span class="badge bg-warning">Menunggu</span>')}
+									'<span class="badge bg-success">✓ Completed</span><br>' +
+									'<small>By: ' + (d.pdi_mekanik||'-') + ' <br>' +
+									'Date: ' + (d.pdi_tanggal_approve||'-') + '</small>' 
+									: '<span class="badge bg-warning">Waiting</span>')}
 							</div>
 						</div>
 					</div>
@@ -1121,13 +1124,13 @@ document.addEventListener('DOMContentLoaded', () => {
 					${workflowData.persiapan_aksesoris_tersedia ? `
 					<div class="col-12"><hr></div>
 					<div class="col-12">
-						<strong>📦 Aksesoris Tersedia (Persiapan Unit):</strong><br>
+						<strong>📦 Accessories Available (Unit Preparation):</strong><br>
 						<small class="text-success">${workflowData.persiapan_aksesoris_tersedia}</small>
 					</div>` : ''}
 					
 					${workflowData.pdi_catatan ? `
 					<div class="col-12">
-						<strong>📝 Catatan PDI:</strong><br>
+						<strong>📝 PDI Notes:</strong><br>
 						<small class="text-info">${workflowData.pdi_catatan}</small>
 					</div>` : ''}
 					` : ''}
@@ -1151,11 +1154,11 @@ document.addEventListener('DOMContentLoaded', () => {
 							body: formData
 						}).then(r=>r.json()).then(result=>{
 							if (result && result.success) {
-								notify('SPK berhasil diproses. Status menjadi IN_PROGRESS.', 'success');
+								notify('SPK successfully processed. Status changed to IN_PROGRESS.', 'success');
 								bootstrap.Modal.getInstance(document.getElementById('spkDetailModal')).hide();
 								load(); // Reload table
 							} else {
-								notify(result.message || 'Gagal memproses SPK', 'error');
+								notify(result.message || 'Failed to process SPK', 'error');
 							}
 						});
 					});
@@ -1195,7 +1198,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		if (q) url.searchParams.set('q', q);
 		fetch(url).then(r=>r.json()).then(j=>{
 			const sel = document.getElementById('unitPick');
-			sel.innerHTML = '<option value="">- Pilih Unit -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
+			sel.innerHTML = '<option value="">- Select Unit -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
 		});
 	});
 	const attSearch = document.getElementById('attSearch');
@@ -1216,9 +1219,9 @@ document.addEventListener('DOMContentLoaded', () => {
 				if (j && j.success) {
 					bootstrap.Modal.getInstance(document.getElementById('assignItemsModal')).hide();
 					load();
-					notify('Item tersimpan. Status SPK menjadi READY.', 'success');
+					notify('Item saved. SPK status changed to READY.', 'success');
 				} else {
-					notify(j.message || 'Gagal menyimpan item', 'error');
+					notify(j.message || 'Failed to save item', 'error');
 				}
 			});
 	});
@@ -1259,41 +1262,41 @@ document.addEventListener('DOMContentLoaded', () => {
 				<div class="card-header">
 					<h6 class="mb-0">
 						<i class="fas fa-cogs me-2"></i>
-						Unit ${unitIndex} dari ${totalUnits}
+						Unit ${unitIndex} of ${totalUnits}
 					</h6>
 				</div>
 				<div class="card-body">
 					<div class="mb-3">
-						<label class="form-label">Pilih Unit <span class="text-danger">*</span></label>
-						<input type="text" class="form-control" id="approvalUnitSearch${suffix}" placeholder="Cari no unit / serial / merk / model" autocomplete="off">
+						<label class="form-label">Select Unit <span class="text-danger">*</span></label>
+						<input type="text" class="form-control" id="approvalUnitSearch${suffix}" placeholder="Search unit number / serial / brand / model" autocomplete="off">
 						<select class="form-select mt-2" id="approvalUnitPick${suffix}" name="unit_id" required></select>
-						<div class="form-text">Ketik untuk mencari, lalu pilih dari daftar.</div>
+						<div class="form-text">Type to search, then select from the list.</div>
 					</div>
 					<div class="mb-3">
-						<label class="form-label">Pilih Area <span class="text-danger">*</span></label>
+						<label class="form-label">Select Area <span class="text-danger">*</span></label>
 						<select class="form-select" id="approvalAreaPick${suffix}" name="area_id" required>
-							<option value="">- Pilih Area -</option>
+							<option value="">- Select Area -</option>
 						</select>
-						<div class="form-text">Pilih area untuk unit ini. Area menentukan penugasan foreman dan mekanik untuk work order.</div>
+						<div class="form-text">Select an area for this unit. The area determines the assignment of foreman and mechanic for the work order.</div>
 					</div>
 					<div id="electricFields${suffix}" class="mb-3" style="display: none;">
-						<!-- Smart Component Management akan inject content di sini -->
+						<!-- Smart Component Management will inject content here -->
 						<div id="electricFieldsContent${suffix}">
-							<!-- Legacy fallback jika smart detection gagal -->
+							<!-- Legacy fallback if smart detection fails -->
 							<div class="alert alert-info">
-								<i class="fas fa-battery-full me-2"></i>Unit Electric memerlukan pemilihan Battery dan Charger
+								<i class="fas fa-battery-full me-2"></i>Unit Electric requires selection of Battery and Charger
 							</div>
 							<div class="row">
 								<div class="col-md-6">
-									<label class="form-label">Pilih Battery <span class="text-danger">*</span></label>
+									<label class="form-label">Select Battery <span class="text-danger">*</span></label>
 									<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id">
-										<option value="">- Pilih Battery -</option>
+										<option value="">- Select Battery -</option>
 									</select>
 								</div>
 								<div class="col-md-6">
-									<label class="form-label">Pilih Charger <span class="text-danger">*</span></label>
+									<label class="form-label">Select Charger <span class="text-danger">*</span></label>
 									<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id">
-										<option value="">- Pilih Charger -</option>
+										<option value="">- Select Charger -</option>
 									</select>
 								</div>
 							</div>
@@ -1302,15 +1305,15 @@ document.addEventListener('DOMContentLoaded', () => {
 					<div id="fabrikasiFields${suffix}" class="mb-3" style="display: none;">
 						<!-- Smart Attachment Management untuk Fabrikasi akan inject content di sini -->
 						<div id="fabrikasiFieldsContent${suffix}">
-							<!-- Legacy fallback jika smart detection gagal -->
+							<!-- Legacy fallback if smart detection fails -->
 							<div class="alert alert-info">
-								<i class="fas fa-tools me-2"></i>Unit Fabrikasi memerlukan pemilihan Attachment
+								<i class="fas fa-tools me-2"></i>Fabrication unit requires selection of Attachment
 							</div>
 							<div class="row">
 								<div class="col-md-12">
-									<label class="form-label">Pilih Attachment <span class="text-danger">*</span></label>
+									<label class="form-label">Select Attachment <span class="text-danger">*</span></label>
 									<select class="form-select" id="attachmentPick${suffix}" name="attachment_id">
-										<option value="">- Pilih Attachment -</option>
+										<option value="">- Select Attachment -</option>
 									</select>
 								</div>
 							</div>
@@ -1369,7 +1372,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							</div>`
 						).join('');
 					} else {
-						aksesorisCheckboxes = '<p class="text-muted">Tidak ada aksesoris yang diminta</p>';
+						aksesorisCheckboxes = '<p class="text-muted">No accessories requested</p>';
 					}
 					
 					// Generate unit form for the specific unit index
@@ -1383,27 +1386,27 @@ document.addEventListener('DOMContentLoaded', () => {
 						isEditing = preparedUnits.length >= unitIndex;
 					}
 					
-					const editIndicator = isEditing ? `<div class="alert alert-info"><i class="fas fa-edit me-2"></i>Mengedit Unit ${unitIndex}</div>` : '';
+					const editIndicator = isEditing ? `<div class="alert alert-info"><i class="fas fa-edit me-2"></i>Editing Unit ${unitIndex}</div>` : '';
 					
 					container.innerHTML = `
 						<hr>
 						<div class="mb-3">
 							<h6 class="text-primary">
 								<i class="fas fa-truck me-2"></i>
-								${isEditing ? 'Edit' : 'Persiapan'} Unit ${unitIndex} dari ${totalUnits}
+								${isEditing ? 'Edit' : 'Preparation'} Unit ${unitIndex} of ${totalUnits}
 							</h6>
 							${editIndicator}
-							${preparedUnits.length > 0 && !isEditing ? `<div class="alert alert-success"><i class="fas fa-check me-2"></i>${preparedUnits.length} unit sebelumnya sudah dipersiapkan</div>` : ''}
+							${preparedUnits.length > 0 && !isEditing ? `<div class="alert alert-success"><i class="fas fa-check me-2"></i>${preparedUnits.length} units previously prepared</div>` : ''}
 						</div>
 						
 						${unitFormsHtml}
 						
 						<div class="mb-3">
-							<label class="form-label">Konfirmasi Aksesoris Tersedia</label>
+							<label class="form-label">Confirm Available Accessories</label>
 							<div class="border p-3 rounded bg-light">
 								${aksesorisCheckboxes}
 							</div>
-							<div class="form-text">Centang aksesoris yang sudah tersedia sesuai permintaan Marketing.</div>
+							<div class="form-text">Check the accessories that are available as requested by Marketing.</div>
 						</div>
 					`;
 					
@@ -1429,7 +1432,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					<div id="fabrikasiAttachmentContent">
 						<div class="text-muted">Loading attachment options...</div>
 					</div>
-					<div class="form-text">Khusus untuk fabrikasi attachment. Data dari inventory_attachment.</div>
+					<div class="form-text">Specifically for fabrication attachments. Data from inventory_attachment.</div>
 				</div>
 			`;
 			
@@ -1447,10 +1450,10 @@ document.addEventListener('DOMContentLoaded', () => {
 			container.innerHTML = `
 				<hr>
 				<div class="mb-3">
-					<label class="form-label">Catatan PDI <span class="text-danger">*</span></label>
+					<label class="form-label">PDI Notes <span class="text-danger">*</span></label>
 					<textarea class="form-control" id="pdiCatatan" name="catatan" rows="4" required 
-							  placeholder="Masukkan hasil pengecekan PDI dan konfirmasi bahwa semua sesuai dengan permintaan..."></textarea>
-					<div class="form-text">Catatan ini akan menandai SPK siap untuk delivery (status READY).</div>
+							  placeholder="Enter the results of the PDI check and confirm that everything matches the request..."></textarea>
+					<div class="form-text">These notes will mark the SPK as ready for delivery (status READY).</div>
 				</div>
 			`;
 			
@@ -1487,7 +1490,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	function populateAreaDropdown(areaSelect, areas) {
 		if (!areaSelect || !areas) return;
 		
-		areaSelect.innerHTML = '<option value="">- Pilih Area -</option>';
+		areaSelect.innerHTML = '<option value="">- Select Area -</option>';
 		
 		// Group areas by department
 		const dieselAreas = [];
@@ -1615,14 +1618,14 @@ document.addEventListener('DOMContentLoaded', () => {
 					const options = (j.data||[]).map(x => {
 						const isAssigned = x.is_assigned_in_spk;
 						const disabled = isAssigned ? 'disabled' : '';
-						const assignedText = isAssigned ? ' (Sudah digunakan di SPK ini)' : '';
+						const assignedText = isAssigned ? ' (Already used in this SPK)' : '';
 						const serialInfo = x.serial_info || 'SN: -';
 						return `<option value="${x.id}" ${disabled} data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}" style="white-space: normal; line-height: 1.4; padding: 8px;">
 							${x.label}${assignedText}
 							${serialInfo}
 						</option>`;
 					}).join('');
-					currentUnitPick.innerHTML = '<option value="">- Pilih Unit -</option>' + options;
+					currentUnitPick.innerHTML = '<option value="">- Select Unit -</option>' + options;
 				}
 			}).catch(err => {
 				console.error('Error loading units:', err);
@@ -1657,10 +1660,10 @@ document.addEventListener('DOMContentLoaded', () => {
 						const options = (j.data||[]).map(x => {
 							const isAssigned = x.is_assigned_in_spk;
 							const disabled = isAssigned ? 'disabled' : '';
-							const assignedText = isAssigned ? ' (Sudah digunakan di SPK ini)' : '';
+							const assignedText = isAssigned ? ' (Already used in this SPK)' : '';
 							return `<option value="${x.id}" ${disabled} data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}">${x.label}${assignedText}</option>`;
 						}).join('');
-						currentUnitPick.innerHTML = '<option value="">- Pilih Unit -</option>' + options;
+						currentUnitPick.innerHTML = '<option value="">- Select Unit -</option>' + options;
 					}
 				});
 			});
@@ -1763,8 +1766,8 @@ document.addEventListener('DOMContentLoaded', () => {
 								if (electricFields) {
 									electricFields.innerHTML = `
 										<div class="alert alert-warning">
-											<i class="fas fa-exclamation-triangle me-2"></i>Unit ${departemenName} tidak memerlukan battery dan charger.
-											<br>Battery dan charger yang terpasang akan otomatis dilepas dari unit ini.
+											<i class="fas fa-exclamation-triangle me-2"></i>Unit ${departemenName} does not require a battery and charger.
+											<br>The battery and charger installed will be automatically detached from this unit.
 										</div>
 									`;
 									electricFields.style.display = 'block';
@@ -1775,7 +1778,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							
 							// PERBAIKAN: Handle Attachment hanya untuk stage FABRIKASI, bukan Persiapan Unit
 							// Di Persiapan Unit, attachment tidak perlu ditampilkan
-							if (currentApprovalStage === 'fabrikasi') {
+							if (currentApprovalStage === 'fabrication' || currentApprovalStage === 'fabrikasi') {
 								// Handle Attachment untuk SEMUA unit (bukan hanya fabrikasi departments)
 								if (fabrikasiFields) {
 									if (hasAttachment) {
@@ -1789,7 +1792,7 @@ document.addEventListener('DOMContentLoaded', () => {
 											// Component UI already rendered, just show attachment-only message
 											fabrikasiFields.innerHTML = `
 												<div class="alert alert-info">
-													<i class="fas fa-tools me-2"></i>Komponen dan attachment untuk unit ini sudah ditampilkan di atas.
+													<i class="fas fa-tools me-2"></i>Components and attachments for this unit have already been displayed above.
 												</div>
 											`;
 										}
@@ -1797,13 +1800,13 @@ document.addEventListener('DOMContentLoaded', () => {
 										// Unit belum memiliki attachment - tampilkan pilihan attachment baru
 										fabrikasiFields.innerHTML = `
 											<div class="alert alert-info">
-												<i class="fas fa-tools me-2"></i>Unit ini belum memiliki Attachment. Pilih attachment yang akan dipasang.
+												<i class="fas fa-tools me-2"></i>This unit does not have an Attachment. Please select an attachment to install.
 											</div>
 											<div class="row">
 												<div class="col-md-12">
-													<label class="form-label">Pilih Attachment</label>
+													<label class="form-label">Select Attachment</label>
 													<select class="form-select" id="attachmentPick${suffix}" name="attachment_id">
-														<option value="">- Pilih Attachment -</option>
+														<option value="">- Select Attachment -</option>
 													</select>
 												</div>
 											</div>
@@ -1836,13 +1839,13 @@ document.addEventListener('DOMContentLoaded', () => {
 							if (currentApprovalStage === 'fabrikasi' && fabrikasiFields) {
 								fabrikasiFields.innerHTML = `
 									<div class="alert alert-info">
-										<i class="fas fa-tools me-2"></i>Pilih attachment yang akan dipasang pada unit ini.
+										<i class="fas fa-tools me-2"></i>Select the attachment to be installed on this unit.
 									</div>
 									<div class="row">
 										<div class="col-md-12">
-											<label class="form-label">Pilih Attachment</label>
+											<label class="form-label">Select Attachment</label>
 											<select class="form-select" id="attachmentPick${suffix}" name="attachment_id">
-												<option value="">- Pilih Attachment -</option>
+												<option value="">- Select Attachment -</option>
 											</select>
 										</div>
 									</div>
@@ -1871,13 +1874,13 @@ document.addEventListener('DOMContentLoaded', () => {
 						if (currentApprovalStage === 'fabrikasi' && fabrikasiFields) {
 							fabrikasiFields.innerHTML = `
 								<div class="alert alert-info">
-									<i class="fas fa-tools me-2"></i>Pilih attachment yang akan dipasang pada unit ini.
+									<i class="fas fa-tools me-2"></i>Select the attachment to be installed on this unit.
 								</div>
 								<div class="row">
 									<div class="col-md-12">
-										<label class="form-label">Pilih Attachment</label>
+										<label class="form-label">Select Attachment</label>
 										<select class="form-select" id="attachmentPick${suffix}" name="attachment_id">
-											<option value="">- Pilih Attachment -</option>
+											<option value="">- Select Attachment -</option>
 										</select>
 									</div>
 								</div>
@@ -1930,7 +1933,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			fetch(url).then(r=>r.json()).then(j=>{
 				const sel = document.getElementById('approvalUnitPick');
 				if (sel) {
-					sel.innerHTML = '<option value="">- Pilih Unit -</option>' + (j.data||[]).map(x=>{
+					sel.innerHTML = '<option value="">- Select Unit -</option>' + (j.data||[]).map(x=>{
 						const serialInfo = x.serial_info || 'SN: -';
 						return `<option value="${x.id}" data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}" style="white-space: normal; line-height: 1.4; padding: 8px;">
 							${x.label}
@@ -1947,7 +1950,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				fetch(url).then(r=>r.json()).then(j=>{
 					const sel = document.getElementById('approvalUnitPick');
 					if (sel) {
-						sel.innerHTML = '<option value="">- Pilih Unit -</option>' + (j.data||[]).map(x=>{
+						sel.innerHTML = '<option value="">- Select Unit -</option>' + (j.data||[]).map(x=>{
 						const serialInfo = x.serial_info || 'SN: -';
 						return `<option value="${x.id}" data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}" style="white-space: normal; line-height: 1.4; padding: 8px;">
 							${x.label}
@@ -1968,7 +1971,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.then(data => {
 				const batterySelect = document.getElementById('batteryPick');
 				if (batterySelect && Array.isArray(data)) {
-					batterySelect.innerHTML = '<option value="">- Pilih Battery -</option>' + 
+					batterySelect.innerHTML = '<option value="">- Select Battery -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
 							const serialInfo = item.sn_baterai || 'SN: -';
@@ -1987,7 +1990,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.then(data => {
 				const chargerSelect = document.getElementById('chargerPick');
 				if (chargerSelect && Array.isArray(data)) {
-					chargerSelect.innerHTML = '<option value="">- Pilih Charger -</option>' + 
+					chargerSelect.innerHTML = '<option value="">- Select Charger -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
 							return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_charger||'-'}</option>`;
@@ -2017,7 +2020,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.then(data => {
 				const batterySelect = document.getElementById(batteryPickId);
 				if (batterySelect && Array.isArray(data)) {
-					batterySelect.innerHTML = '<option value="">- Pilih Battery -</option>' + 
+					batterySelect.innerHTML = '<option value="">- Select Battery -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_baterai||'-'} ${item.tipe_baterai||''} ${item.jenis_baterai||''}`.trim();
 							const serialInfo = item.sn_baterai || 'SN: -';
@@ -2069,7 +2072,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				console.log(`🔌 Charger select element:`, chargerSelect);
 				
 				if (chargerSelect && Array.isArray(data)) {
-					const options = '<option value="">- Pilih Charger -</option>' + 
+					const options = '<option value="">- Select Charger -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
 							const serialInfo = item.sn_charger || 'SN: -';
@@ -2123,25 +2126,25 @@ document.addEventListener('DOMContentLoaded', () => {
 		
 		Swal.fire({
 			icon: 'warning',
-			title: `${itemType} Sedang Digunakan`,
+			title: `${itemType} In Use`,
 			html: `<div class="text-start">
-				<p class="mb-2"><strong>Perhatian!</strong> ${itemType} yang Anda pilih sedang terpasang di unit lain:</p>
+				<p class="mb-2"><strong>Attention!</strong> The selected ${itemType} is currently installed on another unit:</p>
 				<div class="alert alert-warning mb-3">
-					<strong>Unit Saat Ini:</strong><br>
-					<i class="fas fa-forklift me-2"></i>No Unit: ${installedUnitNo || 'N/A'}<br>
+					<strong>Current Unit:</strong><br>
+					<i class="fas fa-forklift me-2"></i>Unit No: ${installedUnitNo || 'N/A'}<br>
 					<i class="fas fa-barcode me-2"></i>Serial: ${installedSN || 'N/A'}<br>
 					<i class="fas fa-cube me-2"></i>${installedMerk || ''} ${installedModel || ''}
 				</div>
-				<p class="mb-2"><strong>Pilihan:</strong></p>
+				<p class="mb-2"><strong>Options:</strong></p>
 				<ul class="mb-0">
-					<li><strong>YA</strong> - Pindahkan ${itemType} dari unit lama ke unit baru (proses kanibal)</li>
-					<li><strong>BATAL</strong> - Batalkan pemilihan ${itemType} ini</li>
+					<li><strong>YES</strong> - Move the ${itemType} from the old unit to the new unit (cannibalization process)</li>
+					<li><strong>CANCEL</strong> - Cancel the selection of this ${itemType}</li>
 				</ul>
 			</div>`,
 			showCancelButton: true,
-			confirmButtonText: 'YA, PINDAHKAN',
+			confirmButtonText: 'YES, MOVE IT',
 			confirmButtonColor: '#ff9800',
-			cancelButtonText: 'BATAL',
+			cancelButtonText: 'CANCEL',
 			cancelButtonColor: '#6c757d',
 			allowOutsideClick: false
 		}).then((result) => {
@@ -2171,7 +2174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.then(data => {
 				const attachmentSelect = document.getElementById(attachmentPickId);
 				if (attachmentSelect && Array.isArray(data)) {
-					attachmentSelect.innerHTML = '<option value="">- Pilih Attachment -</option>' + 
+					attachmentSelect.innerHTML = '<option value="">- Select Attachment -</option>' + 
 						data.map(item => {
 							const serialInfo = item.sn_attachment || 'SN: -';
 							return `<option value="${item.id_inventory_attachment}" style="white-space: normal; line-height: 1.4; padding: 8px;">
@@ -2206,7 +2209,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			.then(data => {
 				const attachmentSelect = document.getElementById('attachmentPick');
 				if (attachmentSelect && Array.isArray(data)) {
-					attachmentSelect.innerHTML = '<option value="">- Pilih Attachment -</option>' + 
+					attachmentSelect.innerHTML = '<option value="">- Select Attachment -</option>' + 
 						data.map(item => {
 							const serialInfo = item.sn_attachment || 'SN: -';
 							return `<option value="${item.id_inventory_attachment}" style="white-space: normal; line-height: 1.4; padding: 8px;">
@@ -2236,39 +2239,39 @@ document.addEventListener('DOMContentLoaded', () => {
 				<div class="modal-dialog">
 					<div class="modal-content">
 						<div class="modal-header">
-							<h5 class="modal-title">Unit ${unitType} Belum Memiliki No Unit</h5>
+							<h5 class="modal-title">Unit ${unitType} No Unit Missing</h5>
 							<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 						</div>
 						<div class="modal-body">
 							<div class="text-start">
 								<p><strong>Unit:</strong> ${unitLabel}</p>
-								<p class="text-warning mb-3">Unit ini belum memiliki No Unit (nomor aset).</p>
+								<p class="text-warning mb-3">This unit does not have a Unit No (asset number).</p>
 								
 								<div class="mb-3">
 									<div class="form-check mb-2">
 										<input class="form-check-input" type="radio" name="noUnitAction" id="generateNoUnit" value="generate" checked>
 										<label class="form-check-label" for="generateNoUnit">
-											Generate No Unit otomatis
+											Generate Unit Number automatically during approval process
 										</label>
 									</div>
 									<div class="form-check">
 										<input class="form-check-input" type="radio" name="noUnitAction" id="manualNoUnit" value="manual">
 										<label class="form-check-label" for="manualNoUnit">
-											Input No Unit manual
+											Enter Unit Number manually
 										</label>
 									</div>
 								</div>
 								
 								<div id="manualInputContainer" style="display: none;">
-									<label class="form-label">No Unit Manual:</label>
-									<input type="number" class="form-control" id="manualNoUnitInput" placeholder="Masukkan nomor unit" min="1">
-									<div class="form-text">Masukkan nomor unit yang akan digunakan.</div>
+									<label class="form-label">Manual Unit Number:</label>
+									<input type="number" class="form-control" id="manualNoUnitInput" placeholder="Enter unit number" min="1">
+									<div class="form-text">Enter the unit number to be used.</div>
 								</div>
 							</div>
 						</div>
 						<div class="modal-footer">
-							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-							<button type="button" class="btn btn-primary" id="confirmNoUnitBtn">Lanjutkan</button>
+							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+							<button type="button" class="btn btn-primary" id="confirmNoUnitBtn">Continue</button>
 						</div>
 					</div>
 				</div>
@@ -2465,33 +2468,33 @@ document.addEventListener('DOMContentLoaded', () => {
 					<div class="d-flex align-items-center">
 						<i class="fas fa-info-circle me-2"></i>
 						<div>
-							<strong>Attachment Existing Terdeteksi:</strong><br>
+							<strong>Existing Attachment Detected:</strong><br>
 							<small>${attachmentLabel}</small>
 						</div>
 					</div>
 				</div>
 				
 				<div class="mb-3">
-					<label class="form-label">Pilih Aksi Attachment:</label>
+					<label class="form-label">Select Attachment Action:</label>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="attachment_action" id="attachment_keep" value="keep_existing" checked>
 						<label class="form-check-label" for="attachment_keep">
-							<strong>Keep Existing</strong> - Gunakan attachment yang sudah ada
+							<strong>Keep Existing</strong> - Use the existing attachment
 						</label>
 					</div>
 					<div class="form-check">
 						<input class="form-check-input" type="radio" name="attachment_action" id="attachment_replace" value="replace">
 						<label class="form-check-label" for="attachment_replace">
-							<strong>Replace</strong> - Ganti dengan attachment lain
+							<strong>Replace</strong> - Replace with another attachment
 						</label>
 					</div>
 				</div>
 				
 				<div id="attachment_replace_section" style="display: none;">
-					<label class="form-label">Pilih Attachment Pengganti:</label>
-					<input type="text" class="form-control mb-2" id="fabrikasiAttSearch" placeholder="Cari tipe/merk/model/SN/lokasi" autocomplete="off">
+					<label class="form-label">Select Replacement Attachment:</label>
+					<input type="text" class="form-control mb-2" id="fabrikasiAttSearch" placeholder="Search type/brand/model/SN/location" autocomplete="off">
 					<select class="form-select" id="fabrikasiAttPick" name="new_attachment_id">
-						<option value="">-- Pilih Attachment --</option>
+						<option value="">-- Select Attachment --</option>
 					</select>
 				</div>
 				
@@ -2511,17 +2514,17 @@ document.addEventListener('DOMContentLoaded', () => {
 					<div class="d-flex align-items-center">
 						<i class="fas fa-exclamation-triangle me-2"></i>
 						<div>
-							<strong>Tidak Ada Attachment Existing</strong><br>
-							<small>Unit ini belum memiliki attachment. Anda bisa menambahkan attachment baru.</small>
+							<strong>No Existing Attachment</strong><br>
+							<small>This unit does not have an attachment. You can add a new attachment.</small>
 						</div>
 					</div>
 				</div>
 				
 				<div class="mb-3">
-					<label class="form-label">Pilih Attachment (Opsional):</label>
-					<input type="text" class="form-control mb-2" id="fabrikasiAttSearch" placeholder="Cari tipe/merk/model/SN/lokasi" autocomplete="off">
+					<label class="form-label">Select Attachment (Optional):</label>
+					<input type="text" class="form-control mb-2" id="fabrikasiAttSearch" placeholder="Search type/brand/model/SN/location" autocomplete="off">
 					<select class="form-select" id="fabrikasiAttPick" name="new_attachment_id">
-						<option value="">-- Pilih Attachment (Opsional) --</option>
+						<option value="">-- Select Attachment (Optional) --</option>
 					</select>
 				</div>
 				
@@ -2582,7 +2585,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					const options = (data.data || []).map(item => 
 						`<option value="${item.id}" data-is-used="${item.is_used || false}" data-installed-unit='${JSON.stringify(item.installed_unit || null)}'>${item.label}</option>`
 					).join('');
-					select.innerHTML = '<option value="">-- Pilih Attachment --</option>' + options;
+					select.innerHTML = '<option value="">-- Select Attachment --</option>' + options;
 					
 					// Add change event listener for used attachments (prevent duplicates)
 					if (!select.hasAttribute('data-listener-attached')) {
@@ -2627,36 +2630,36 @@ document.addEventListener('DOMContentLoaded', () => {
 						<div class="modal-header bg-warning">
 							<h5 class="modal-title">
 								<i class="fas fa-exclamation-triangle me-2"></i>
-								Attachment Sudah Terpasang
+								Attachment Already In Use
 							</h5>
 							<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
 						</div>
 						<div class="modal-body">
 							<div class="alert alert-warning">
-								<strong>Peringatan!</strong> Attachment ini sudah terpasang pada unit lain.
+								<strong>Warning!</strong> This attachment is already installed on another unit.
 							</div>
 							<div class="mb-3">
-								<strong>Detail Unit yang Terpasang:</strong>
+								<strong>Details of Installed Unit:</strong>
 								<ul class="list-unstyled mt-2">
-									<li><strong>No Unit:</strong> ${installedUnit.no_unit || 'N/A'}</li>
+									<li><strong>Unit Number:</strong> ${installedUnit.no_unit || 'N/A'}</li>
 									<li><strong>Serial Number:</strong> ${installedUnit.serial_number || 'N/A'}</li>
-									<li><strong>Merk & Model:</strong> ${installedUnit.merk_unit || ''} ${installedUnit.model_unit || ''}</li>
+									<li><strong>Brand & Model:</strong> ${installedUnit.merk_unit || ''} ${installedUnit.model_unit || ''}</li>
 								</ul>
 							</div>
 							<div class="mb-3">
-								<strong>Pilihan:</strong>
+								<strong>Options:</strong>
 								<ul>
-									<li><strong>YA</strong> - Pindahkan attachment dari unit lama ke unit baru (proses kanibal)</li>
-									<li><strong>TIDAK</strong> - Batalkan pemilihan attachment ini</li>
+									<li><strong>YES</strong> - Transfer the attachment from the old unit to the new unit (cannibalization process)</li>
+									<li><strong>NO</strong> - Cancel the selection of this attachment</li>
 								</ul>
 							</div>
 						</div>
 						<div class="modal-footer">
 							<button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="cancelUsedAttachment()">
-								<i class="fas fa-times me-1"></i>TIDAK
+								<i class="fas fa-times me-1"></i>NO, CANCEL
 							</button>
 							<button type="button" class="btn btn-warning" onclick="confirmUsedAttachment()">
-								<i class="fas fa-exchange-alt me-1"></i>YA, PINDAHKAN
+								<i class="fas fa-exchange-alt me-1"></i>YES, TRANSFER
 							</button>
 						</div>
 					</div>
@@ -2773,7 +2776,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		const confirmBtn = document.querySelector('#usedAttachmentModal .btn-warning');
 		if (confirmBtn) {
 			confirmBtn.disabled = true;
-			confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+			confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 		}
 		
 		// Remove all event listeners from button to prevent multiple calls
@@ -3008,7 +3011,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				
 				// Show validation errors if any
 				if (validationErrors.length > 0) {
-					alert('Validasi komponen gagal:\n\n' + validationErrors.join('\n'));
+					alert('Component validation failed:\n\n' + validationErrors.join('\n'));
 					return;
 				}
 			} else {
@@ -3034,7 +3037,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					
 					// Only require battery for Electric units, charger is optional if unit doesn't support it
 					if (!batteryValid) {
-						alert('Untuk unit Electric, Battery wajib dipilih!\n\nPilih salah satu:\n- Gunakan battery existing (centang checkbox)\n- Pilih battery baru dari dropdown');
+						alert('For Electric units, Battery is required!\n\nChoose one:\n- Use existing battery (check the checkbox)\n- Select a new battery from the dropdown');
 						return;
 					}
 					
@@ -3113,16 +3116,16 @@ document.addEventListener('DOMContentLoaded', () => {
 				load();
 				
 				// Display success message with no_unit info if available
-				let successMessage = j.message || 'Approval berhasil disimpan';
+				let successMessage = j.message || 'Approval Successfully Saved';
 				
 				// Get stage-specific message
 				const stageMessages = {
-					'persiapan_unit': 'Persiapan Unit sudah berhasil dilakukan',
-					'fabrikasi': 'Proses Fabrikasi sudah berhasil diselesaikan',
-					'painting': 'Proses Painting sudah berhasil diselesaikan',
-					'pdi': 'Pengecekan PDI sudah berhasil dilakukan'
+					'persiapan_unit': 'Unit Preparation Successfully Completed',
+					'fabrikasi': 'Fabrication Process Successfully Completed',
+					'painting': 'Painting Process Successfully Completed',
+					'pdi': 'PDI Inspection Successfully Completed'
 				};
-				const stageSuccessMsg = stageMessages[currentApprovalStage] || 'Stage berhasil disetujui';
+				const stageSuccessMsg = stageMessages[currentApprovalStage] || 'Stage successfully approved';
 				
 				// Show notifications based on what happened
 				if (j.no_unit) {
@@ -3133,14 +3136,14 @@ document.addEventListener('DOMContentLoaded', () => {
 					setTimeout(() => {
 						Swal.fire({
 							icon: 'info',
-							title: 'Nomor Unit Telah Ditetapkan',
+							title: 'Unit Number Assigned',
 							html: `<div class="text-center">
-								<p class="mb-2">Unit ini telah diberikan nomor:</p>
+								<p class="mb-2">This unit has been assigned the number:</p>
 								<div class="p-2 bg-white bg-opacity-10 rounded">
 									<h2 class="display-4 fw-bold text-primary mb-0">${j.no_unit}</h2>
 								</div>
 							</div>`,
-							confirmButtonText: 'OK, Mengerti',
+							confirmButtonText: 'OK, Understand',
 							confirmButtonColor: '#000000',
 							allowOutsideClick: false,
 							width: '400px'
@@ -3152,7 +3155,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					if (j.data && j.data.attachment_transferred) {
 						console.log('✅ Attachment transfer detected, showing alert in 1.5s');
 						setTimeout(() => {
-							notify('Attachment akan dipindahkan dari unit lain', 'info');
+							notify('Attachment will be transferred from another unit', 'info');
 						}, 1500);
 					} else {
 						console.log('❌ No attachment transfer detected');
@@ -3164,7 +3167,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					// Additional alert: Attachment transfer (if applicable)
 					if (j.data && j.data.attachment_transferred) {
 						setTimeout(() => {
-							notify('Attachment akan dipindahkan dari unit lain', 'info');
+							notify('Attachment will be transferred from another unit', 'info');
 						}, 500);
 					}
 				}
@@ -3172,11 +3175,11 @@ document.addEventListener('DOMContentLoaded', () => {
 				// Reset editing unit index
 				currentEditingUnitIndex = null;
 			} else {
-				notify(j.message || 'Gagal menyimpan approval', 'error');
+				notify(j.message || 'Failed to save approval', 'error');
 			}
 		}).catch(error => {
 			console.error('Fetch error:', error);
-			notify('Gagal mengirim request ke server', 'error');
+			notify('Failed to send request to server', 'error');
 		});
 	});
 
@@ -3227,7 +3230,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			})
 			.catch(error => {
 				console.error('Error loading SPK data:', error);
-				alert('Gagal memuat data SPK: ' + error.message);
+				alert('Failed to load SPK data: ' + error.message);
 			});
 	}
 	
@@ -3271,7 +3274,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				editOptionsHtml += `
 					<div class="d-flex align-items-center justify-content-between py-2 border-bottom">
 						<div class="d-flex align-items-center">
-							<span class="fw-bold me-3">Unit ke-${i}:</span>
+							<span class="fw-bold me-3">Unit #${i}:</span>
 							<div class="d-flex gap-2">
 				`;
 
@@ -3322,7 +3325,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 
 			if (!completedStageFound) {
-				editOptionsHtml += `<div class="col-12 text-center text-muted">Belum ada stage yang bisa diedit.</div>`;
+				editOptionsHtml += `<div class="col-12 text-center text-muted">No stages available for editing.</div>`;
 			}
 			editOptionsHtml += `</div>`;
 		}
@@ -3330,7 +3333,7 @@ document.addEventListener('DOMContentLoaded', () => {
 		editOptionsHtml += `
 			</div>
 			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
 			</div>
 		`;
 
@@ -3446,33 +3449,33 @@ document.addEventListener('DOMContentLoaded', () => {
 		openApprovalModal(stage, getStageDisplayName(stage), spkId, unitIndex);
 	}
 
-	// Helper function untuk mendapatkan display name stage
+	// Helper function to get stage display name
 	function getStageDisplayName(stage) {
 		const stageNames = {
-			'persiapan_unit': 'Bag. Persiapan Unit',
-			'fabrikasi': 'Bag. Fabrikasi',
-			'painting': 'Bag. Painting',
-			'pdi': 'Bag. PDI'
+			'persiapan_unit': 'Unit Preparation Dept.',
+			'fabrikasi': 'Fabrication Dept.',
+			'painting': 'Painting Dept.',
+			'pdi': 'PDI Inspection Dept.'
 		};
 		return stageNames[stage] || stage;
 	}
 	
-	// Function untuk buka modal persiapan unit - SIMPLE SOLUTION
+	// Function to open unit preparation modal - SIMPLE SOLUTION
 	function openPersiapanUnitModal(spkId) {
-		console.log('Opening Persiapan Unit Modal for SPK ID:', spkId);
+		console.log('Opening Unit Preparation Modal for SPK ID:', spkId);
 		
 		// Set unitIndex to 1 for editing (single unit SPK)
 		// This prevents the "Unit 2 dari 1" bug
 		currentEditingUnitIndex = 1;
 		
-		// SOLUSI SIMPLE: Langsung buka modal approval yang sudah ada
-		// Sama seperti modal awal ketika mengisi persiapan unit
-		openApprovalModal('persiapan_unit', 'Bag. Persiapan Unit', spkId, 1);
+		// SIMPLE SOLUTION: Open existing approval modal
+		// Same as initial modal when filling unit preparation
+		openApprovalModal('persiapan_unit', 'Unit Preparation Dept.', spkId, 1);
 	}
 	
-	// Function untuk buka modal persiapan unit dengan info unit spesifik
+	// Function to open unit preparation modal with specific unit info
 	function openPersiapanUnitModalWithUnit(spkId, unitNumber) {
-		console.log('Opening Persiapan Unit Modal for SPK ID:', spkId, 'Unit:', unitNumber);
+		console.log('Opening Unit Preparation Modal for SPK ID:', spkId, 'Unit:', unitNumber);
 		
 		// Fetch existing data first, then open modal with pre-populated data
 		fetch(`<?= base_url('service/spk/detail') ?>/${spkId}`, {
@@ -3486,7 +3489,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			if (data.success && data.spk) {
 				const spk = data.spk;
 				
-				// Pre-populate modal dengan data existing
+				// Pre-populate modal with existing data
 				if (spk.persiapan_unit_mekanik) {
 					document.getElementById('mekanik').value = spk.persiapan_unit_mekanik;
 				}
@@ -3497,81 +3500,81 @@ document.addEventListener('DOMContentLoaded', () => {
 					document.getElementById('estimasi_selesai').value = spk.persiapan_unit_estimasi_selesai;
 				}
 				
-				// Set unit index untuk pre-select unit yang benar
+				// Set unit index to pre-select correct unit
 				currentEditingUnitIndex = unitNumber;
 				
-				// Buka modal dengan title yang menunjukkan unit
-				openApprovalModal('persiapan_unit', `Bag. Persiapan Unit (Unit ${unitNumber})`, spkId);
+				// Open modal with title showing unit
+				openApprovalModal('persiapan_unit', `Unit Preparation Dept. (Unit ${unitNumber})`, spkId);
 			} else {
-				// Fallback jika data tidak bisa di-fetch
-				openApprovalModal('persiapan_unit', `Bag. Persiapan Unit (Unit ${unitNumber})`, spkId);
+				// Fallback if data cannot be fetched
+				openApprovalModal('persiapan_unit', `Unit Preparation Dept. (Unit ${unitNumber})`, spkId);
 			}
 		})
 		.catch(error => {
 			console.error('Error fetching SPK data:', error);
-			// Fallback jika error
-			openApprovalModal('persiapan_unit', `Bag. Persiapan Unit (Unit ${unitNumber})`, spkId);
+			// Fallback if error
+			openApprovalModal('persiapan_unit', `Unit Preparation Dept. (Unit ${unitNumber})`, spkId);
 		});
 	}
 	
-	// Function untuk buka modal fabrikasi - SIMPLE SOLUTION
+	// Function to open fabrication modal - SIMPLE SOLUTION
 	function openFabrikasiModal(spkId) {
-		console.log('Opening Fabrikasi Modal for SPK ID:', spkId);
+		console.log('Opening Fabrication Modal for SPK ID:', spkId);
 		
 		// Set unitIndex to 1 for editing (single unit SPK)
 		currentEditingUnitIndex = 1;
 		
-		// SOLUSI SIMPLE: Langsung buka modal approval yang sudah ada
-		// Sama seperti modal awal ketika mengisi fabrikasi
-		openApprovalModal('fabrikasi', 'Bag. Fabrikasi', spkId, 1);
+		// SIMPLE SOLUTION: Open existing approval modal
+		// Same as initial modal when filling fabrication
+		openApprovalModal('fabrikasi', 'Fabrication Dept.', spkId, 1);
 	}
 	
-	// Function untuk buka modal fabrikasi dengan info unit spesifik
+	// Function to open fabrication modal with specific unit info
 	function openFabrikasiModalWithUnit(spkId, unitNumber) {
-		console.log('Opening Fabrikasi Modal for SPK ID:', spkId, 'Unit:', unitNumber);
+		console.log('Opening Fabrication Modal for SPK ID:', spkId, 'Unit:', unitNumber);
 		
-		// SOLUSI SIMPLE: Langsung buka modal approval yang sudah ada dengan info unit
-		openApprovalModal('fabrikasi', `Bag. Fabrikasi (Unit ${unitNumber})`, spkId);
+		// SIMPLE SOLUTION: Open existing approval modal with unit info
+		openApprovalModal('fabrikasi', `Fabrication Dept. (Unit ${unitNumber})`, spkId);
 	}
 	
-	// Function untuk buka modal painting - SIMPLE SOLUTION
+	// Function to open painting modal - SIMPLE SOLUTION
 	function openPaintingModal(spkId) {
 		console.log('Opening Painting Modal for SPK ID:', spkId);
 		
 		// Set unitIndex to 1 for editing (single unit SPK)
 		currentEditingUnitIndex = 1;
 		
-		// SOLUSI SIMPLE: Langsung buka modal approval yang sudah ada
-		// Sama seperti modal awal ketika mengisi painting
-		openApprovalModal('painting', 'Bag. Painting', spkId, 1);
+		// SIMPLE SOLUTION: Open existing approval modal
+		// Same as initial modal when filling painting
+		openApprovalModal('painting', 'Painting Dept.', spkId, 1);
 	}
 	
-	// Function untuk buka modal painting dengan info unit spesifik
+	// Function to open painting modal with specific unit info
 	function openPaintingModalWithUnit(spkId, unitNumber) {
 		console.log('Opening Painting Modal for SPK ID:', spkId, 'Unit:', unitNumber);
 		
-		// SOLUSI SIMPLE: Langsung buka modal approval yang sudah ada dengan info unit
-		openApprovalModal('painting', `Bag. Painting (Unit ${unitNumber})`, spkId);
+		// SIMPLE SOLUTION: Open existing approval modal with unit info
+		openApprovalModal('painting', `Painting Dept. (Unit ${unitNumber})`, spkId);
 	}
 	
-	// Function untuk buka modal PDI - SIMPLE SOLUTION
+	// Function to open PDI modal - SIMPLE SOLUTION
 	function openPdiModal(spkId) {
 		console.log('Opening PDI Modal for SPK ID:', spkId);
 		
 		// Set unitIndex to 1 for editing (single unit SPK)
 		currentEditingUnitIndex = 1;
 		
-		// SOLUSI SIMPLE: Langsung buka modal approval yang sudah ada
-		// Sama seperti modal awal ketika mengisi PDI
-		openApprovalModal('pdi', 'Bag. PDI', spkId, 1);
+		// SIMPLE SOLUTION: Open existing approval modal
+		// Same as initial modal when filling PDI
+		openApprovalModal('pdi', 'PDI Inspection Dept.', spkId, 1);
 	}
 	
-	// Function untuk buka modal PDI dengan info unit spesifik
+	// Function to open PDI modal with specific unit info
 	function openPdiModalWithUnit(spkId, unitNumber) {
 		console.log('Opening PDI Modal for SPK ID:', spkId, 'Unit:', unitNumber);
 		
-		// SOLUSI SIMPLE: Langsung buka modal approval yang sudah ada dengan info unit
-		openApprovalModal('pdi', `Bag. PDI (Unit ${unitNumber})`, spkId);
+		// SIMPLE SOLUTION: Open existing approval modal with unit info
+		openApprovalModal('pdi', `PDI Inspection Dept. (Unit ${unitNumber})`, spkId);
 	}
 
 	// Show edit modal - SIMPLIFIED VERSION (LEGACY - tidak digunakan lagi)
@@ -3592,7 +3595,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			<div class="modal-body">
 				<div class="alert alert-info">
 					<i class="fas fa-info-circle me-2"></i>
-					<strong>Info:</strong> Edit ${stageDisplayName} untuk SPK ID ${spkId}
+					<strong>Info:</strong> Edit ${stageDisplayName} for SPK ID ${spkId}
 				</div>
 				
 				<div class="row">
@@ -3703,15 +3706,15 @@ document.addEventListener('DOMContentLoaded', () => {
 								<h6 class="card-title">Informasi SPK</h6>
 								<p><strong>Nomor SPK:</strong> ${spk.nomor_spk || '-'}</p>
 								<p><strong>Status:</strong> <span class="badge bg-${getStatusColor(spk.status)}">${spk.status || '-'}</span></p>
-								<p><strong>Stage yang akan di-rollback:</strong> ${getStageDisplayName(stage)}</p>
+								<p><strong>Rollback Stage:</strong> ${getStageDisplayName(stage)}</p>
 					`;
 					
 					if (stage === 'persiapan_unit' && spk.persiapan_unit_id) {
-						infoHtml += `<p><strong>Unit saat ini:</strong> Unit ID ${spk.persiapan_unit_id}</p>`;
+						infoHtml += `<p><strong>Current Unit:</strong> Unit ID ${spk.persiapan_unit_id}</p>`;
 					}
 					
 					if (stage === 'fabrikasi' && spk.fabrikasi_tanggal_approve) {
-						infoHtml += `<p><strong>Tanggal approve:</strong> ${spk.fabrikasi_tanggal_approve}</p>`;
+						infoHtml += `<p><strong>Approval Date:</strong> ${spk.fabrikasi_tanggal_approve}</p>`;
 					}
 					
 					infoHtml += `
@@ -3723,7 +3726,7 @@ document.addEventListener('DOMContentLoaded', () => {
 				}
 			})
 			.catch(error => {
-				infoDiv.innerHTML = '<div class="alert alert-danger">Gagal memuat informasi SPK</div>';
+				infoDiv.innerHTML = '<div class="alert alert-danger">Failed to load SPK information</div>';
 			});
 	}
 	
@@ -3746,7 +3749,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						return `<option value="${unit.unit_index}">Unit ${unit.unit_index}: ${unitInfo}</option>`;
 					}).join('');
 					
-					selectElement.innerHTML = '<option value="">-- Pilih Unit yang Akan Diubah --</option>' + options;
+					selectElement.innerHTML = '<option value="">-- Select Unit to Change --</option>' + options;
 				}
 			})
 			.catch(error => console.log('Error loading SPK units:', error));
@@ -3765,7 +3768,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					const options = data.data.map(unit => 
 						`<option value="${unit.id}">${unit.label}</option>`
 					).join('');
-					selectElement.innerHTML = '<option value="">-- Pilih Unit Baru --</option>' + options;
+					selectElement.innerHTML = '<option value="">-- Select New Unit --</option>' + options;
 				}
 			})
 			.catch(error => console.log('Error loading units:', error));
@@ -3781,7 +3784,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							const options = data.data.map(unit => 
 								`<option value="${unit.id}">${unit.label}</option>`
 							).join('');
-							selectElement.innerHTML = '<option value="">-- Pilih Unit Baru --</option>' + options;
+							selectElement.innerHTML = '<option value="">-- Select New Unit --</option>' + options;
 						}
 					})
 					.catch(error => console.log('Error searching units:', error));
@@ -3803,12 +3806,12 @@ document.addEventListener('DOMContentLoaded', () => {
 			const unitIndex = document.getElementById('rollbackUnitIndexSelect').value;
 			
 			if (!newUnitId) {
-				alert('Unit baru wajib dipilih!');
+				alert('New unit must be selected!');
 				return;
 			}
 			
 			if (!unitIndex) {
-				alert('Unit yang akan diubah wajib dipilih!');
+				alert('Unit to be changed must be selected!');
 				return;
 			}
 			
@@ -3957,7 +3960,7 @@ document.addEventListener('DOMContentLoaded', () => {
 									});
 								}
 							} catch (e) {
-								console.log('Error parsing aksesoris:', e);
+								console.log('Error parsing accessories:', e);
 							}
 						}
 					}
@@ -3965,7 +3968,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					// Handle fabrikasi stage data
 					if (stage === 'fabrikasi' && unit.stages && unit.stages.fabrikasi) {
 						const fabrikasiData = unit.stages.fabrikasi;
-						console.log('Loading existing fabrikasi data:', fabrikasiData);
+						console.log('Loading existing fabrication data:', fabrikasiData);
 						
 						// Load existing attachment data for fabrikasi
 						if (fabrikasiData.completed && fabrikasiData.attachment_inventory_attachment_id) {
@@ -4052,7 +4055,7 @@ async function fetchUnitComponentData(unitId) {
  * @param {string} suffix - Suffix untuk ID unik
  */
 function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix = '', uiType = 'component') {
-	let html = '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Unit ini memiliki komponen terpasang. Pilih opsi yang diinginkan:</div>';
+	let html = '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>This unit has installed components. Please choose the desired options:</div>';
 	
 	console.log('generateComponentSelectionUI called with:', {
 		apiData,
@@ -4084,7 +4087,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 				
 				<div class="card bg-light mb-2">
 					<div class="card-body py-2">
-						<small><strong>Battery Terpasang:</strong> ${batteryName} • SN: ${batterySn}</small>
+						<small><strong>Battery Installed:</strong> ${batteryName} • SN: ${batterySn}</small>
 					</div>
 				</div>
 				<div class="row">
@@ -4092,7 +4095,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 						<div class="form-check">
 							<input class="form-check-input" type="checkbox" id="useExistingBattery${suffix}" onchange="toggleBatteryOptions('existing', this.checked, '${suffix}')" checked>
 							<label class="form-check-label" for="useExistingBattery${suffix}">
-								<i class="fas fa-check-circle text-success me-1"></i>Gunakan Battery Existing
+								<i class="fas fa-check-circle text-success me-1"></i>Use Existing Battery
 							</label>
 						</div>
 					</div>
@@ -4100,26 +4103,26 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 						<div class="form-check">
 							<input class="form-check-input" type="checkbox" id="replaceBattery${suffix}" onchange="toggleBatteryOptions('replace', this.checked, '${suffix}')">
 							<label class="form-check-label" for="replaceBattery${suffix}">
-								<i class="fas fa-exchange-alt text-warning me-1"></i>Ganti Battery Baru
+								<i class="fas fa-exchange-alt text-warning me-1"></i>Replace Battery with New
 							</label>
 						</div>
 					</div>
 				</div>
 				<div id="replaceBatteryOptions${suffix}" style="display: none;" class="mt-2">
-					<label class="form-label">Pilih Battery Pengganti <span class="text-danger">*</span></label>
+					<label class="form-label">Select Replacement Battery <span class="text-danger">*</span></label>
 					<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id" data-old-battery-id="${battery.id_inventory_attachment}">
-						<option value="">- Pilih Battery Baru -</option>
+						<option value="">- Select New Battery -</option>
 					</select>
 				</div>`;
 		} else if (options.battery) {
 			// Department requires battery but no existing battery - need to assign new
 			html += `
 				<div class="alert alert-warning py-2 mb-2">
-					<small><i class="fas fa-exclamation-triangle me-1"></i>Unit ini memerlukan Battery</small>
+					<small><i class="fas fa-exclamation-triangle me-1"></i>This unit requires a Battery</small>
 				</div>
-				<label class="form-label">Pilih Battery <span class="text-danger">*</span></label>
+				<label class="form-label">Select Battery <span class="text-danger">*</span></label>
 				<select class="form-select" id="batteryPick${suffix}" name="battery_inventory_attachment_id">
-					<option value="">- Pilih Battery -</option>
+					<option value="">- Select Battery -</option>
 				</select>`;
 		}
 		
@@ -4150,7 +4153,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 				
 				<div class="card bg-light mb-2">
 					<div class="card-body py-2">
-						<small><strong>Charger Terpasang:</strong> ${chargerName} • SN: ${chargerSn}</small>
+						<small><strong>Charger Installed:</strong> ${chargerName} • SN: ${chargerSn}</small>
 					</div>
 				</div>
 				<div class="row">
@@ -4158,7 +4161,7 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 						<div class="form-check">
 							<input class="form-check-input" type="checkbox" id="useExistingCharger${suffix}" onchange="toggleChargerOptions('existing', this.checked, '${suffix}')" checked>
 							<label class="form-check-label" for="useExistingCharger${suffix}">
-								<i class="fas fa-check-circle text-success me-1"></i>Gunakan Charger Existing
+								<i class="fas fa-check-circle text-success me-1"></i>Use Existing Charger
 							</label>
 						</div>
 					</div>
@@ -4166,26 +4169,26 @@ function generateComponentSelectionUI(apiData, options = {}, unitId = '', suffix
 						<div class="form-check">
 							<input class="form-check-input" type="checkbox" id="replaceCharger${suffix}" onchange="toggleChargerOptions('replace', this.checked, '${suffix}')">
 							<label class="form-check-label" for="replaceCharger${suffix}">
-								<i class="fas fa-exchange-alt text-warning me-1"></i>Ganti Charger Baru
+								<i class="fas fa-exchange-alt text-warning me-1"></i>Replace Charger with New
 							</label>
 						</div>
 					</div>
 				</div>
 				<div id="replaceChargerOptions${suffix}" style="display: none;" class="mt-2">
-					<label class="form-label">Pilih Charger Pengganti <span class="text-danger">*</span></label>
+					<label class="form-label">Select Replacement Charger <span class="text-danger">*</span></label>
 					<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id" data-old-charger-id="${charger.id_inventory_attachment}">
-						<option value="">- Pilih Charger Baru -</option>
+						<option value="">- Select New Charger -</option>
 					</select>
 				</div>`;
 		} else if (options.charger) {
 			// Department requires charger but no existing charger - need to assign new
 			html += `
 				<div class="alert alert-warning py-2 mb-2">
-					<small><i class="fas fa-exclamation-triangle me-1"></i>Unit ini memerlukan Charger</small>
+					<small><i class="fas fa-exclamation-triangle me-1"></i>This unit requires a Charger</small>
 				</div>
-				<label class="form-label">Pilih Charger <span class="text-danger">*</span></label>
+				<label class="form-label">Select Charger <span class="text-danger">*</span></label>
 				<select class="form-select" id="chargerPick${suffix}" name="charger_inventory_attachment_id">
-					<option value="">- Pilih Charger -</option>
+					<option value="">- Select Charger -</option>
 				</select>`;
 		}
 		
@@ -4301,7 +4304,7 @@ function toggleChargerOptions(type, isChecked, suffix = '') {
 				.then(r => r.json())
 				.then(data => {
 					if (chargerPick && Array.isArray(data)) {
-						chargerPick.innerHTML = '<option value="">- Pilih Charger Baru -</option>' + 
+						chargerPick.innerHTML = '<option value="">- Select New Charger -</option>' + 
 							data.map(item => {
 								const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
 								return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_charger||'-'}</option>`;
@@ -4377,7 +4380,7 @@ function toggleAttachmentOptions(type, isChecked, suffix = '') {
 				.then(r => r.json())
 				.then(data => {
 					if (attachmentPick && Array.isArray(data)) {
-						attachmentPick.innerHTML = '<option value="">- Pilih Attachment Baru -</option>' + 
+						attachmentPick.innerHTML = '<option value="">- Select New Attachment -</option>' + 
 							data.map(item => {
 								const name = `${item.tipe||'-'} ${item.merk||'-'} ${item.model||''}`.trim();
 								return `<option value="${item.id_inventory_attachment}">${name} • SN: ${item.sn_attachment||'-'}</option>`;
@@ -4705,18 +4708,18 @@ async function openFabrikasiModal(detail) {
       <div class="mb-2">
         <label class="form-label">Attachment (inventory)</label>
         <select class="form-select" name="attachment_inventory_id" required>
-          <option value="">-- pilih --</option>${attOptions}
+          <option value="">-- select --</option>${attOptions}
         </select>
       </div>
       ${depId===2 ? `
       <div class="mb-2">
         <label class="form-label">Charger (inventory)</label>
         <select class="form-select" name="charger_inventory_attachment_id" required>
-          <option value="">-- pilih --</option>${chgOptions}
+          <option value="">-- select --</option>${chgOptions}
         </select>
       </div>`:''}
       <div class="mb-2">
-        <label class="form-label">Mekanik</label>
+        <label class="form-label">Mechanic</label>
         <input class="form-control" name="mekanik" required>
       </div>
     </form>
@@ -4728,15 +4731,15 @@ async function openFabrikasiModal(detail) {
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
-          <h5 class="modal-title">Fabrikasi - SPK #${detail.nomor_spk}</h5>
+          <h5 class="modal-title">Fabrication - SPK #${detail.nomor_spk}</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           ${html}
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-          <button type="button" class="btn btn-primary" onclick="submitFabrikasi()">Simpan & Approve Fabrikasi</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="submitFabrikasi()">Save & Approve Fabrication</button>
         </div>
       </div>
     </div>
@@ -4812,9 +4815,9 @@ function validateDuplicateSelection(selectElement, type) {
 		
 		Swal.fire({
 			icon: 'warning',
-			title: 'Duplikasi Terdeteksi!',
-			html: `<p><strong>${typeLabel}</strong> yang dipilih sudah digunakan pada <strong>${conflictingUnitLabel}</strong>.</p>
-			       <p>Silakan pilih ${typeLabel.toLowerCase()} yang berbeda.</p>`,
+			title: 'Duplicate Detected!',
+			html: `<p><strong>${typeLabel}</strong> that you selected is already used in <strong>${conflictingUnitLabel}</strong>.</p>
+			       <p>Please select a different ${typeLabel.toLowerCase()}.</p>`,
 			confirmButtonText: 'OK',
 			confirmButtonColor: '#f39c12'
 		});
@@ -4845,14 +4848,14 @@ function updateDropdownAvailability(selectElement, type) {
 	const options = selectElement.querySelectorAll('option');
 	options.forEach(option => {
 		if (option.value && selectedValues.includes(option.value)) {
-			if (!option.textContent.includes('(Sudah dipilih)')) {
-				option.textContent += ' (Sudah dipilih)';
+			if (!option.textContent.includes('(Already selected)')) {
+				option.textContent += ' (Already selected)';
 				option.style.color = '#6c757d';
 				option.style.fontStyle = 'italic';
 			}
 		} else {
-			// Remove "(Sudah dipilih)" if it exists
-			option.textContent = option.textContent.replace(' (Sudah dipilih)', '');
+			// Remove "(Already selected)" if it exists
+			option.textContent = option.textContent.replace(' (Already selected)', '');
 			option.style.color = '';
 			option.style.fontStyle = '';
 		}
@@ -4987,9 +4990,9 @@ function handleDepartmentalRules(departmentName, unitId, suffix) {
 			const warningMessage = `
 				<div class="alert alert-warning">
 					<i class="fas fa-exclamation-triangle me-2"></i>
-					<strong>Aturan Departemen ${departmentName}:</strong><br>
-					Unit ${departmentName} tidak memerlukan battery dan charger.<br>
-					Komponen electric yang terpasang akan otomatis dilepas dari unit ini.
+					<strong>Dept Rules ${departmentName}:</strong><br>
+					Unit ${departmentName} does not require a battery or charger.<br>
+					Electric components installed will be automatically detached from this unit.
 				</div>
 			`;
 			

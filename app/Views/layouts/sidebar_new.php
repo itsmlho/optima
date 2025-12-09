@@ -47,7 +47,7 @@
                         <i class="fas fa-file-invoice-dollar"></i> Quotations
                     </a>
                     <a href="<?= base_url('/marketing/spk') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'marketing/spk') !== false ? 'active' : '' ?>">
-                        <i class="fas fa-file-contract"></i> SPK (Surat Perintah Kerja)
+                        <i class="fas fa-file-contract"></i> Work Orders (SPK)
                     </a>
                     <a href="<?= base_url('/marketing/di') ?>" class="nav-dropdown-item">
                         <i class="fas fa-shipping-fast"></i> Delivery Instructions (DI)
@@ -66,10 +66,10 @@
                     <div class="nav-dropdown-header">Service & Maintenance</div>
                     <?php if (can_view('service')): ?>
                     <a href="<?= base_url('/service/spk_service') ?>" class="nav-dropdown-item">
-                        <i class="fas fa-clipboard-list"></i> SPK Service (Penyiapan Unit)
+                        <i class="fas fa-clipboard-list"></i> Work Orders SPK (Unit Preparation)
                     </a>
                     <a href="<?= base_url('/service/work-orders') ?>" class="nav-dropdown-item">
-                        <i class="fas fa-wrench"></i> Work Orders
+                        <i class="fas fa-wrench"></i> Work Orders (Complaint Management)
                     </a>
                     <a href="<?= base_url('/service/pmps') ?>" class="nav-dropdown-item">
                         <i class="fas fa-calendar-check"></i> Preventive Maintenance (PMPS)
@@ -238,7 +238,7 @@
             <!-- Quotations -->
             <?php if (can_view('marketing')): ?>
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/quotations') ?>"
+                <a class="nav-link" href="<?= base_url('/marketing/quotations') ?>"
                    data-search-terms="marketing quotations proposals quotes"
                    data-tooltip="Quotations">
                     <i class="fas fa-file-invoice-dollar"></i>
@@ -264,10 +264,10 @@
             <li class="nav-item">
                 <a class="nav-link <?= strpos(current_url(), 'marketing/spk') !== false ? 'active' : '' ?>" 
                    href="<?= base_url('/marketing/spk') ?>"
-                   data-search-terms="spk surat perintah kerja"
-                   data-tooltip="SPK (Surat Perintah Kerja)">
+                   data-search-terms="spk work orders surat perintah kerja"
+                   data-tooltip="Work Orders (SPK)">
                     <i class="fas fa-file-contract"></i>
-                    <span class="nav-link-text">SPK (Surat Perintah Kerja)</span>
+                    <span class="nav-link-text">Work Orders (SPK)</span>
                 </a>
             </li>
             <?php endif; ?>
@@ -295,10 +295,10 @@
             <?php if (can_view('service')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/spk_service') ?>"
-                   data-search-terms="spk service penyiapan unit"
-                   data-tooltip="SPK Service (Penyiapan Unit)">
+                   data-search-terms="spk service unit preparation"
+                   data-tooltip="Work Orders SPK (Unit Preparation)">
                     <i class="fas fa-clipboard-list"></i>
-                    <span class="nav-link-text">SPK Service (Penyiapan Unit)</span>
+                    <span class="nav-link-text">Work Orders SPK (Unit Preparation)</span>
                 </a>
             </li>
             <?php endif; ?>

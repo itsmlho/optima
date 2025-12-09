@@ -445,7 +445,7 @@ $placeholder = ($status === 'SUBMITTED');
         </div>
         <div class="header-center">
             <div class="title">PT SARANA MITRA LUAS Tbk</div>
-            <div class="subtitle">SURAT PERINTAH KERJA</div>
+            <div class="subtitle">Work Orders (SPK)</div>
         </div>
         <div class="header-right">
             <div class="document-info">

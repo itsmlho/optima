@@ -275,7 +275,7 @@ $can_export = $permissions['export'];
                             <!-- Specification Detail -->
                             <div id="spesifikasiDetail" style="display: none;">
                                 <div class="card border-primary mb-3">
-                                    <div class="card-header bg-primary text-white">
+                                    <div class="card-header bg-primary text-white9, ">
                                         <h6 class="mb-0">Selected Specification Details</h6>
                                     </div>
                                     <div class="card-body">
@@ -2163,6 +2163,7 @@ $can_export = $permissions['export'];
         const pdfBtn = document.getElementById('btnPrintPdf');
         if (pdfBtn) { pdfBtn.href = `<?= base_url('marketing/spk/print/') ?>${id}`; }
         const body = document.getElementById('spkDetailBody');
+        const headerSpan = document.getElementById('spkNumberHeader');
         body.innerHTML = '<p class="text-muted">Memuat...</p>';
         
         fetch(`<?= base_url('marketing/spk/detail/') ?>${id}`)
@@ -2179,21 +2180,13 @@ $can_export = $permissions['export'];
                 }
             // Main data comes from j.data (the spk table data)
             const d = j.data || {};
-            
-            // Update modal header with SPK number
-            const headerSpan = document.getElementById('spkNumberHeader');
-            if (headerSpan) {
-                headerSpan.textContent = d.nomor_spk ? `- ${d.nomor_spk}` : '';
-            }
-            
-            // Check if kontrak_spesifikasi_id exists in the main data
-            const kontrakSpecId = d.kontrak_spesifikasi_id || null;
-            
-            // Specification data comes from j.spesifikasi (enriched data from the controller)
             const s = j.spesifikasi || {};
-            
-            // Use kontrak_spec as primary source for specification data if available
             const ks = j.kontrak_spec || {};
+            
+            // Update header with SPK number
+            if (headerSpan && d.nomor_spk) {
+                headerSpan.textContent = '#' + d.nomor_spk;
+            }
             
             // Get specification code from the provided spek_kode
             let specDisplay = '-';
@@ -2244,33 +2237,108 @@ $can_export = $permissions['export'];
             try {
                 body.innerHTML = `
                     <div class="row g-2">
-                        <div class="col-6"><strong>Jenis SPK:</strong> ${d.jenis_spk||'-'}</div>
-                        <div class="col-6"><strong>No SPK:</strong> ${d.nomor_spk||'-'}</div>
-                        <div class="col-6"><strong>Kontrak/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
-                        <div class="col-6"><strong>Pelanggan:</strong> ${d.pelanggan||'-'}</div>
-                        <div class="col-6"><strong>Lokasi:</strong> ${d.lokasi||'-'}</div>
-                        <div class="col-6"><strong>Delivery Plan:</strong> ${d.delivery_plan||'-'}</div>
+                        <div class="col-6"><strong>SPK Type:</strong> ${d.jenis_spk||'-'}</div>
+                        <div class="col-6"><strong>Contract/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
+                        <div class="col-6"><strong>Company Name:</strong> ${d.pelanggan||'-'}</div>
+                        <div class="col-6"><strong>Location:</strong> ${d.lokasi||'-'}</div>
                         <div class="col-6"><strong>Pic:</strong> ${d.pic||'-'}</div>
-                        <div class="col-6"><strong>Kontak:</strong> ${d.kontak||'-'}</div>
+                        <div class="col-6"><strong>Contact:</strong> ${d.kontak||'-'}</div>
+                        <div class="col-6"><strong>SPK Created:</strong> ${d.dibuat_pada ? (new Date(d.dibuat_pada)).toLocaleDateString('id-ID', {year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'}) : '-'}</div>
+                        <div class="col-6"><strong>Delivery Plan:</strong> ${d.delivery_plan||'-'}</div>
                         <div class="col-12"><hr></div>
-                        <div class="col-12"><strong>Informasi Unit:</strong></div>
-                        <div class="col-6"><strong>Spesifikasi:</strong> ${specDisplay}</div>
+                        <div class="col-12"><strong>Unit Information:</strong></div>
                         <div class="col-6"><strong>Total Unit:</strong> ${d.jumlah_unit || 0}</div>
-                        <div class="col-6"><strong>Departemen:</strong> ${ks.departemen_id_name || s.departemen_id_name||'-'}</div>
-                        <div class="col-6"><strong>Tipe & Merk:</strong> ${[ks.tipe_jenis || s.tipe_jenis, ks.merk_unit || s.merk_unit].filter(x=>x).join(' ') || '-'}</div>
-                        <div class="col-6"><strong>Kapasitas:</strong> ${ks.kapasitas_id_name || s.kapasitas_id_name||'-'}</div>
-                        <div class="col-6"><strong>Baterai (Jenis):</strong> ${ks.jenis_baterai || s.jenis_baterai||'-'}</div>
+                        <div class="col-6"><strong>Department:</strong> ${ks.departemen_id_name || s.departemen_id_name||'-'}</div>
+                        <div class="col-6"><strong>Type & Brand:</strong> ${[ks.tipe_unit_id_name || s.tipe_jenis, ks.brand_id_name || ks.merk_unit || s.merk_unit].filter(x=>x).join(' ') || '-'}</div>
+                        <div class="col-6"><strong>Capacity:</strong> ${ks.kapasitas_id_name || s.kapasitas_id_name||'-'}</div>
+                        <div class="col-6"><strong>Battery (Type):</strong> ${ks.battery_id_name || ks.jenis_baterai || s.jenis_baterai||'-'}</div>
                         <div class="col-6"><strong>Charger:</strong> ${ks.charger_id_name || s.charger_id_name||'-'}</div>
-                        <div class="col-6"><strong>Attachment (Tipe):</strong> ${ks.attachment_tipe || s.attachment_tipe||'-'}</div>
+                        <div class="col-6"><strong>Attachment (Type):</strong> ${ks.attachment_id_name || ks.attachment_tipe || s.attachment_tipe||'-'}</div>
                         <div class="col-6"><strong>Valve:</strong> ${ks.valve_id_name || s.valve_id_name||'-'}</div>
                         <div class="col-6"><strong>Mast:</strong> ${ks.mast_id_name || s.mast_id_name||'-'}</div>
-                        <div class="col-6"><strong>Roda:</strong> ${ks.roda_id_name || s.roda_id_name||'-'}</div>
-                        <div class="col-6"><strong>Ban:</strong> ${ks.ban_id_name || s.ban_id_name||'-'}</div>
-                        <div class="col-12"><strong>Aksesoris:</strong> ${aksText}</div>
+                        <div class="col-6"><strong>Wheel:</strong> ${ks.roda_id_name || s.roda_id_name||'-'}</div>
+                        <div class="col-6"><strong>Tire:</strong> ${ks.ban_id_name || s.ban_id_name||'-'}</div>
+                        <div class="col-12"><strong>Accessories :</strong> ${aksText}</div>
                         <div class="col-12"><hr></div>
-                        <div class="col-12"><strong>Item Terpilih:</strong></div>
+                        
+                        <!-- Approval Workflow Section (Read-only for Marketing) -->
+                        ${d.stage_status || d.persiapan_unit_tanggal_approve || d.fabrikasi_tanggal_approve || d.painting_tanggal_approve || d.pdi_tanggal_approve ? `
+                        <div class="col-12"><strong>Approval Workflow:</strong></div>
+                        ${(() => {
+                            const totalUnits = parseInt(d.jumlah_unit) || 1;
+                            const index = 0; // For multi-unit, show first unit's status
+                            
+                            // Check new structure first, fallback to old fields
+                            const persiapanDone = d.stage_status?.unit_stages?.[index]?.persiapan_unit?.completed || !!d.persiapan_unit_tanggal_approve;
+                            const fabrikasiDone = d.stage_status?.unit_stages?.[index]?.fabrikasi?.completed || !!d.fabrikasi_tanggal_approve;
+                            const paintingDone = d.stage_status?.unit_stages?.[index]?.painting?.completed || !!d.painting_tanggal_approve;
+                            const pdiDone = d.stage_status?.unit_stages?.[index]?.pdi?.completed || !!d.pdi_tanggal_approve;
+                            
+                            // Get mechanic names and dates
+                            const persiapanMech = d.stage_status?.unit_stages?.[index]?.persiapan_unit?.mekanik_id_name || d.persiapan_unit_mekanik_id_name || '-';
+                            const persiapanDate = d.stage_status?.unit_stages?.[index]?.persiapan_unit?.tanggal_approve || d.persiapan_unit_tanggal_approve || '-';
+                            
+                            const fabrikasiMech = d.stage_status?.unit_stages?.[index]?.fabrikasi?.mekanik_id_name || d.fabrikasi_mekanik_id_name || '-';
+                            const fabrikasiDate = d.stage_status?.unit_stages?.[index]?.fabrikasi?.tanggal_approve || d.fabrikasi_tanggal_approve || '-';
+                            
+                            const paintingMech = d.stage_status?.unit_stages?.[index]?.painting?.mekanik_id_name || d.painting_mekanik_id_name || '-';
+                            const paintingDate = d.stage_status?.unit_stages?.[index]?.painting?.tanggal_approve || d.painting_tanggal_approve || '-';
+                            
+                            const pdiMech = d.stage_status?.unit_stages?.[index]?.pdi?.mekanik_id_name || d.pdi_mekanik_id_name || '-';
+                            const pdiDate = d.stage_status?.unit_stages?.[index]?.pdi?.tanggal_approve || d.pdi_tanggal_approve || '-';
+                            
+                            const preparedCount = (d.stage_status?.prepared_count !== undefined) ? d.stage_status.prepared_count : (pdiDone ? 1 : 0);
+                            
+                            let html = '';
+                            
+                            // Persiapan Unit (skip for ATTACHMENT)
+                            if(d.jenis_spk !== 'ATTACHMENT') {
+                                html += `<div class="col-12 mb-1">
+                                    <strong>1. Unit Preparation:</strong> 
+                                    <span class="badge ${persiapanDone ? 'bg-success' : 'bg-secondary'}">${persiapanDone ? '✓ Completed' : 'Waiting'}</span>
+                                    ${persiapanDone ? `<br><small class="text-muted">Mechanic: ${persiapanMech} | Date: ${persiapanDate}</small>` : ''}
+                                    ${totalUnits > 1 ? `<br><small>Unit: ${preparedCount >= 1 ? '1' : '0'}/${totalUnits}</small>` : ''}
+                                </div>`;
+                            }
+                            
+                            // Fabrikasi
+                            html += `<div class="col-12 mb-1">
+                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '1' : '2'}. Fabrication:</strong> 
+                                <span class="badge ${fabrikasiDone ? 'bg-success' : 'bg-secondary'}">${fabrikasiDone ? '✓ Completed' : 'Waiting'}</span>
+                                ${fabrikasiDone ? `<br><small class="text-muted">Mechanic: ${fabrikasiMech} | Date: ${fabrikasiDate}</small>` : ''}
+                                ${totalUnits > 1 ? `<br><small>Unit: ${preparedCount >= 2 ? Math.min(preparedCount-1, totalUnits) : '0'}/${totalUnits}</small>` : ''}
+                            </div>`;
+                            
+                            // Painting
+                            html += `<div class="col-12 mb-1">
+                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '2' : '3'}. Painting:</strong> 
+                                <span class="badge ${paintingDone ? 'bg-success' : 'bg-secondary'}">${paintingDone ? '✓ Completed' : 'Waiting'}</span>
+                                ${paintingDone ? `<br><small class="text-muted">Mechanic: ${paintingMech} | Date: ${paintingDate}</small>` : ''}
+                                ${totalUnits > 1 ? `<br><small>Unit: ${preparedCount >= 3 ? Math.min(preparedCount-2, totalUnits) : '0'}/${totalUnits}</small>` : ''}
+                            </div>`;
+                            
+                            // PDI
+                            html += `<div class="col-12 mb-1">
+                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '3' : '4'}. PDI Inspection:</strong> 
+                                <span class="badge ${pdiDone ? 'bg-success' : 'bg-secondary'}">${pdiDone ? '✓ Completed' : 'Waiting'}</span>
+                                ${pdiDone ? `<br><small class="text-muted">Mechanic: ${pdiMech} | Date: ${pdiDate}</small>` : ''}
+                                ${totalUnits > 1 ? `<br><small>Unit: ${preparedCount >= 4 ? Math.min(preparedCount-3, totalUnits) : '0'}/${totalUnits}</small>` : ''}
+                                ${d.pdi_catatan ? `<br><small class="text-muted">Notes: ${d.pdi_catatan}</small>` : ''}
+                            </div>`;
+                            
+                            // Accessories available
+                            if(d.aksesoris_tersedia) {
+                                html += `<div class="col-12"><small class="text-muted">Accessories Available: ${d.aksesoris_tersedia}</small></div>`;
+                            }
+                            
+                            return html;
+                        })()}
+                        <div class="col-12"><hr></div>
+                        ` : ''}
+                        
+                        <div class="col-12"><strong>Selected Item:</strong></div>
                         <div class="col-12" id="svcUnitDetailBlock">
-                            ${u ? '<div class="text-muted">Memuat detail unit...</div>' : '<div class="text-muted">Unit: -</div>'}
+                            ${u ? '<div class="text-muted">Loading unit details...</div>' : '<div class="text-muted">Unit: -</div>'}
                         </div>
                         ${a ? 
                           `<div class="col-12">
