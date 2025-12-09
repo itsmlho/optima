@@ -23,7 +23,6 @@ $assetService = new \App\Services\AssetMinificationService();
 <div id="alertContainer" class="mb-3"></div>
 
 <!-- Statistics Cards -->
-
 <div class="row mt-3 mb-4">
     <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
         <div class="stat-card bg-primary-soft">
@@ -746,22 +745,30 @@ $(document).ready(function() {
     }, 100);
     
     // Initialize DataTables for both tabs
-    let progressTable = $('#progressWorkOrdersTable').DataTable({
-        processing: true,
-        serverSide: true,
-        responsive: true,
-        pageLength: 25,
-        scrollX: true,
-        autoWidth: false,
-        ajax: {
-            url: '<?= base_url('service/work-orders/data') ?>',
-            type: 'POST',
-            data: function(d) {
-                d.tab = 'progress'; // Filter for non-closed work orders
-                d.useOptimized = true; // Phase 3: Enable optimized model
+    let progressTable = window.initDataTableWithDateFilter({
+        tableSelector: '#progressWorkOrdersTable',
+        ajaxUrl: '<?= base_url('service/work-orders/data') ?>',
+        filterId: 'progress',
+        ajaxData: function(d) {
+            d.tab = 'progress';
+            d.useOptimized = true;
+            d.status = $('#filter-status-progress').val();
+            d.priority = $('#filter-priority-progress').val();
+        },
+        autoCalculateStats: true,
+        statsConfig: {
+            'stat-total-work-orders': { type: 'count' },
+            'stat-open': {
+                type: 'filtered-count',
+                filter: (row) => $(row).find('td:eq(7)').text().includes('Open')
             },
-            error: function(xhr, error, thrown) {
-                console.log('Error loading progress data:', xhr.responseText);
+            'stat-in-progress': {
+                type: 'filtered-count',
+                filter: (row) => $(row).find('td:eq(7)').text().includes('In Progress')
+            },
+            'stat-completed': {
+                type: 'filtered-count',
+                filter: (row) => $(row).find('td:eq(7)').text().includes('Completed')
             }
         },
         columns: [
@@ -811,23 +818,15 @@ $(document).ready(function() {
         }
     });
 
-    let closedTable = $('#closedWorkOrdersTable').DataTable({
-        processing: true,
-        serverSide: true,
-        responsive: true,
-        pageLength: 25,
-        scrollX: true,
-        autoWidth: false,
-        ajax: {
-            url: '<?= base_url('service/work-orders/data') ?>',
-            type: 'POST',
-            data: function(d) {
-                d.tab = 'closed'; // Filter for closed work orders only
-                d.useOptimized = true; // Phase 3: Enable optimized model
-            },
-            error: function(xhr, error, thrown) {
-                console.log('Error loading closed data:', xhr.responseText);
-            }
+    let closedTable = window.initDataTableWithDateFilter({
+        tableSelector: '#closedWorkOrdersTable',
+        ajaxUrl: '<?= base_url('service/work-orders/data') ?>',
+        filterId: 'closed',
+        ajaxData: function(d) {
+            d.tab = 'closed';
+            d.useOptimized = true;
+            d.priority = $('#filter-priority-closed').val();
+            d.month = $('#filter-month-closed').val();
         },
         columns: [
             { data: 0, orderable: false, searchable: false }, // Row number
@@ -931,37 +930,14 @@ $(document).ready(function() {
         }, 100);
     });
 
-    // Filter handlers for Progress tab
-    $('#filter-status-progress, #filter-priority-progress, #filter-start-date-progress, #filter-end-date-progress').on('change', function() {
-        let statusFilter = $('#filter-status-progress').val();
-        let priorityFilter = $('#filter-priority-progress').val();
-        let startDate = $('#filter-start-date-progress').val();
-        let endDate = $('#filter-end-date-progress').val();
-        
-        let filterUrl = '<?= base_url('service/work-orders/data') ?>?' + 
-            'tab=progress&' +
-            'status=' + statusFilter + 
-            '&priority=' + priorityFilter + 
-            '&start_date=' + startDate + 
-            '&end_date=' + endDate;
-        
-        progressTable.ajax.url(filterUrl).load();
+    // Filter handlers for Progress tab (status and priority only, date handled by helper)
+    $('#filter-status-progress, #filter-priority-progress').on('change', function() {
+        progressTable.ajax.reload();
     });
 
-    // Filter handlers for Closed tab
-    $('#filter-priority-closed, #filter-start-date-closed, #filter-end-date-closed, #filter-month-closed').on('change', function() {
-        let priorityFilter = $('#filter-priority-closed').val();
-        let startDate = $('#filter-start-date-closed').val();
-        let endDate = $('#filter-end-date-closed').val();
-        let monthFilter = $('#filter-month-closed').val();
-        
-        closedTable.ajax.url('<?= base_url('service/work-orders/data') ?>?' + 
-            'tab=closed&' +
-            'priority=' + priorityFilter + 
-            '&start_date=' + startDate + 
-            '&end_date=' + endDate +
-            '&month=' + monthFilter
-        ).load();
+    // Filter handlers for Closed tab (priority and month only, date handled by helper)
+    $('#filter-priority-closed, #filter-month-closed').on('change', function() {
+        closedTable.ajax.reload();
     });
 
     // Update all table references to use progressTable as default

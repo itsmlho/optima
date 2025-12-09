@@ -674,14 +674,20 @@ function refreshSupplierTable() {
 }
 
 // Load suppliers data (like SPK pattern)
-function loadSuppliers() {
+function loadSuppliers(startDate = null, endDate = null) {
     // Show loading indicator
     const refreshBtn = $('button[onclick="refreshTableData()"]');
     const originalText = refreshBtn.html();
     refreshBtn.html('<i class="fas fa-spinner fa-spin me-1"></i>Loading...').prop('disabled', true);
     
+    // Build URL with date parameters
+    let url = '<?= base_url('purchasing/suppliers-list') ?>';
+    if (startDate && endDate) {
+        url += `?start_date=${startDate}&end_date=${endDate}`;
+    }
+    
     // Fetch suppliers data
-    fetch('<?= base_url('purchasing/suppliers-list') ?>')
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.success) {

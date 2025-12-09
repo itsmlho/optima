@@ -15,15 +15,6 @@ $can_export = $permissions['export'];
 
 <?= $this->section('content') ?>
 
-<!-- Date Range Filter -->
-<div class="row mt-3">
-    <div class="col-md-12 text-end">
-        <div class="d-inline-block">
-            <?= view('components/date_range_filter', ['id' => 'spkDateRangePicker']) ?>
-        </div>
-    </div>
-</div>
-
     
     <?php if (!$can_view): ?>
     <div class="alert alert-warning">
@@ -833,20 +824,25 @@ $can_export = $permissions['export'];
         console.error('Unhandled promise rejection:', e.reason);
     });
 
-    loadSpk();
-    loadKontrakOptions('');
-    loadMonitoring();
-    
-    // Setup date range filter callback
-    window.spkDateRangePickerOnRangeChange = function(startDate, endDate) {
-        console.log('📅 SPK date filter changed:', startDate, 'to', endDate);
-        loadSpk(startDate, endDate);
-    };
-    
-    window.spkDateRangePickerOnClear = function() {
-        console.log('✖️ SPK date filter cleared');
-        loadSpk(); // Load without date filter
-    };
+    // Initialize page date filter using new helper
+    initPageDateFilter({
+        pickerId: 'spkDateRangePicker',
+        onInit: function() {
+            console.log('🚀 SPK: Initial load without filter');
+            loadSpk(); // Load without date filter
+            loadKontrakOptions('');
+            loadMonitoring();
+        },
+        onDateChange: function(startDate, endDate) {
+            console.log('📅 SPK: Date filter changed, reloading data');
+            loadSpk(startDate, endDate);
+        },
+        onDateClear: function() {
+            console.log('✖️ SPK: Date filter cleared, reloading all data');
+            loadSpk(); // Load without date filter
+        },
+        debug: true
+    });
     
     // Initialize SPK workflow dropdowns
     setupSpkWorkflowDropdowns();

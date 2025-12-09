@@ -739,12 +739,10 @@
                 url: '<?= base_url('warehouse/inventory/invent_attachment') ?>',
                 type: 'POST',
                 data: function(d) {
-                    // Use currentTypeFilter and currentStatusFilter
                     d.tipe_item = currentTypeFilter;
                     d.status_filter = currentStatusFilter;
                     d['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
                     console.log('Sending data to server:', d);
-                    return d;
                 },
                 error: function(xhr, error, thrown) {
                     console.log('DataTables Ajax Error:');

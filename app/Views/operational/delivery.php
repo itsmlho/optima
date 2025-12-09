@@ -152,13 +152,20 @@ let entriesPerPage = 10;
 document.addEventListener('DOMContentLoaded', ()=>{
   const tb = document.querySelector('#diTable tbody');
   
-  function load(){
-    fetch('<?= base_url('operational/delivery/list') ?>').then(r=>r.json()).then(j=>{
+  function load(startDate = null, endDate = null){
+    let url = '<?= base_url('operational/delivery/list') ?>';
+    if (startDate && endDate) {
+      url += `?start_date=${startDate}&end_date=${endDate}`;
+    }
+    fetch(url).then(r=>r.json()).then(j=>{
       allDIData = j.data || [];
       updateStatistics();
       applyFilters();
     });
   }
+  
+  // Load initial data
+  load();
   
   function updateStatistics() {
     const total = allDIData.length;

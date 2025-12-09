@@ -32,37 +32,6 @@ $can_export = $permissions['export'];
 
 
 
-<!-- Global Filters -->
-<div class="card filter-card mb-4">
-    <div class="card-body">
-        <h5 class="card-title mb-3">
-            <i class="fas fa-filter me-2"></i>Global Filters
-        </h5>
-        <div class="row g-3">
-            <div class="col-md-3">
-                <label for="globalFilterStatus" class="form-label">Status</label>
-                <select id="globalFilterStatus" class="form-select">
-                    <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="completed">Completed</option>
-                    <option value="Selesai dengan Catatan">Selesai dengan Catatan</option>
-                    <option value="cancelled">Cancelled</option>
-                </select>
-            </div>
-            <!-- Supplier filter removed per request -->
-            <div class="col-md-3">
-                <label for="globalFilterDateFrom" class="form-label">Dari Tanggal</label>
-                <input type="date" id="globalFilterDateFrom" class="form-control" value="2025-01-01">
-            </div>
-            <div class="col-md-3">
-                <label for="globalFilterDateTo" class="form-label">Sampai Tanggal</label>
-                <input type="date" id="globalFilterDateTo" class="form-control" value="2025-12-31">
-            </div>
-        </div>
-    </div>
-</div>
-
 <!-- Main Card -->
 <div class="card table-card">
     <div class="card-header bg-light">
@@ -745,10 +714,13 @@ $can_export = $permissions['export'];
             initCreatePOModal();
         }, 100);
         
-        // Global filter event handlers
-        $('#globalFilterStatus, #globalFilterDateFrom, #globalFilterDateTo').on('change', function() {
+        // Global status filter handler (date filter handled by helper)
+        $('#globalFilterStatus').on('change', function() {
             if (unitAttachmentPOTable) {
                 unitAttachmentPOTable.ajax.reload();
+            }
+            if (poDeliveryTable) {
+                poDeliveryTable.ajax.reload();
             }
             if (unitAttachmentPOCompletedTable) {
                 unitAttachmentPOCompletedTable.ajax.reload();
@@ -878,12 +850,14 @@ function initUnitAttachmentPOTable() {
             url: '<?= base_url('/purchasing/api/get-unified-po-data') ?>',
             type: 'POST',
             data: function(d) {
-                d.po_type = 'unit_attachment'; // Filter for Unit & Attachment
-                d.tab_type = 'progres'; // Filter for progres tab
+                d.po_type = 'unit_attachment';
+                d.tab_type = 'progres';
                 d.status = $('#globalFilterStatus').val();
-                // supplier filter removed
-                d.start_date = $('#globalFilterDateFrom').val();
-                d.end_date = $('#globalFilterDateTo').val();
+                // Add date filter from global date picker
+                if (window.globalDateRangeStart && window.globalDateRangeEnd) {
+                    d.start_date = window.globalDateRangeStart;
+                    d.end_date = window.globalDateRangeEnd;
+                }
             }
         },
         columns: [
@@ -1192,9 +1166,11 @@ function initPODeliveryTable() {
             type: 'POST',
             data: function(d) {
                 d.status = $('#globalFilterStatus').val();
-                // supplier filter removed
-                d.start_date = $('#globalFilterDateFrom').val();
-                d.end_date = $('#globalFilterDateTo').val();
+                // Add date filter
+                if (window.globalDateRangeStart && window.globalDateRangeEnd) {
+                    d.start_date = window.globalDateRangeStart;
+                    d.end_date = window.globalDateRangeEnd;
+                }
             }
         },
         columns: [
@@ -1384,12 +1360,14 @@ function initUnitAttachmentPOCompletedTable() {
             url: '<?= base_url('/purchasing/api/get-unified-po-data') ?>',
             type: 'POST',
             data: function(d) {
-                d.po_type = 'unit_attachment'; // Filter for Unit & Attachment
-                d.tab_type = 'completed'; // Filter for completed tab
+                d.po_type = 'unit_attachment';
+                d.tab_type = 'completed';
                 d.status = $('#globalFilterStatus').val();
-                // supplier filter removed
-                d.start_date = $('#globalFilterDateFrom').val();
-                d.end_date = $('#globalFilterDateTo').val();
+                // Add date filter
+                if (window.globalDateRangeStart && window.globalDateRangeEnd) {
+                    d.start_date = window.globalDateRangeStart;
+                    d.end_date = window.globalDateRangeEnd;
+                }
             }
         },
         columns: [

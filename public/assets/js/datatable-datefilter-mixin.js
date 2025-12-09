@@ -27,7 +27,6 @@
     // Initialize global date range storage
     if (typeof window.currentDateRange === 'undefined') {
         window.currentDateRange = { start: null, end: null };
-        console.log('✅ Global date range storage initialized');
     }
 
     /**
@@ -62,19 +61,11 @@
                 window.currentDateRange.end) {
                 d.start_date = window.currentDateRange.start;
                 d.end_date = window.currentDateRange.end;
-                
-                console.log('📅 DataTable request WITH date filter:', {
-                    start_date: d.start_date,
-                    end_date: d.end_date
-                });
-            } else {
-                console.log('📅 DataTable request WITHOUT date filter (showing all data)');
             }
 
             return d;
         };
 
-        console.log('✅ Date filter applied to DataTable config for:', datePickerId);
         return config;
     };
 
@@ -98,8 +89,6 @@
     window.setupDataTableDateFilter = function(dataTableInstance, datePickerId, onFilterChange) {
         datePickerId = datePickerId || 'globalDateRangePicker';
         
-        console.log('🔧 Setting up DataTable date filter for:', datePickerId);
-        
         // Verify DataTable instance exists
         if (!dataTableInstance) {
             console.error('❌ DataTable instance is null/undefined!');
@@ -108,58 +97,39 @@
         
         // Setup range change callback
         window[datePickerId + 'OnRangeChange'] = function(startDate, endDate) {
-            console.log('📅 Date range changed, reloading DataTable...');
-            console.log('   Start:', startDate, 'End:', endDate);
-            
             window.currentDateRange.start = startDate;
             window.currentDateRange.end = endDate;
             
-            console.log('   Updated global range:', window.currentDateRange);
-            
             // Reload DataTable
             if (dataTableInstance && dataTableInstance.ajax) {
-                console.log('   Calling DataTable.ajax.reload()...');
                 dataTableInstance.ajax.reload();
             } else {
-                console.error('   ❌ DataTable ajax method not available!');
+                console.error('❌ DataTable ajax method not available!');
             }
             
             // Call custom callback if provided
             if (typeof onFilterChange === 'function') {
-                console.log('   Calling custom callback...');
                 onFilterChange(startDate, endDate);
             }
         };
         
         // Setup clear callback
         window[datePickerId + 'OnClear'] = function() {
-            console.log('✖️ Date filter cleared, reloading DataTable...');
-            
             window.currentDateRange.start = null;
             window.currentDateRange.end = null;
             
-            console.log('   Cleared global range:', window.currentDateRange);
-            
             // Reload DataTable
             if (dataTableInstance && dataTableInstance.ajax) {
-                console.log('   Calling DataTable.ajax.reload()...');
                 dataTableInstance.ajax.reload();
             } else {
-                console.error('   ❌ DataTable ajax method not available!');
+                console.error('❌ DataTable ajax method not available!');
             }
             
             // Call custom callback if provided
             if (typeof onFilterChange === 'function') {
-                console.log('   Calling custom callback with null dates...');
                 onFilterChange(null, null);
             }
         };
-        
-        console.log('✅ DataTable date filter setup complete for:', datePickerId);
-        console.log('   Callbacks registered:', {
-            onRangeChange: datePickerId + 'OnRangeChange',
-            onClear: datePickerId + 'OnClear'
-        });
     };
     
 })(window, jQuery);

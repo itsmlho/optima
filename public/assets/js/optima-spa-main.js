@@ -17,7 +17,6 @@ class OptimaSPAMain {
             console.warn('❌ SPA: Content container not found. Using full reload mode.');
         }
 
-        console.log('🚀 OPTIMA SPA Main System Initialized (Enhanced Reload Mode)');
         this.init();
     }
 

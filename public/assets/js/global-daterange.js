@@ -10,7 +10,6 @@
     // Initialize global date range storage immediately
     if (typeof window.currentDateRange === 'undefined') {
         window.currentDateRange = { start: null, end: null };
-        console.log('✅ Global date range storage initialized');
     }
 
     let retryCount = 0;
@@ -21,7 +20,6 @@
         if (typeof $ === 'undefined' || typeof moment === 'undefined' || typeof $.fn.daterangepicker === 'undefined') {
             retryCount++;
             if (retryCount < maxRetries) {
-                console.warn('Dependencies not loaded yet, retrying... (' + retryCount + '/' + maxRetries + ')');
                 setTimeout(initializeDateRangePickers, 100);
                 return;
             } else {
@@ -30,13 +28,10 @@
             }
         }
 
-        console.log('DateRangePicker loaded successfully, initializing...');
-
         // Find all date range picker inputs
         const dateRangePickers = $('.global-date-range-picker');
         
         if (dateRangePickers.length === 0) {
-            console.log('No date range pickers found on this page');
             return;
         }
 
@@ -71,8 +66,6 @@
             try {
                 // Initialize daterangepicker
                 $element.daterangepicker(options);
-                
-                console.log('Date Range Picker initialized:', pickerId);
 
                 // Store instance globally for access
                 window[pickerId + 'Instance'] = $element.data('daterangepicker');
@@ -85,8 +78,6 @@
                     // Update input display
                     $(this).val(startDate.format('MMM D, YYYY') + ' - ' + endDate.format('MMM D, YYYY'));
                     
-                    console.log('Date range selected:', startDate.format('YYYY-MM-DD'), 'to', endDate.format('YYYY-MM-DD'));
-                    
                     // Trigger custom callback if defined
                     const rangeCallback = window[pickerId + 'OnRangeChange'];
                     if (typeof rangeCallback === 'function') {
@@ -97,8 +88,6 @@
                 // Event: When cancel button clicked
                 $element.on('cancel.daterangepicker', function(ev, picker) {
                     $(this).val('');
-                    
-                    console.log('Date range cleared');
                     
                     // Trigger clear callback if defined
                     const clearCallback = window[pickerId + 'OnClear'];

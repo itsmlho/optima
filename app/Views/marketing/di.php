@@ -835,8 +835,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // END WORKFLOW BARU
   // =====================================================
   
-  function loadDI(){
-    fetch('<?= base_url('marketing/di/list') ?>').then(r=>r.json()).then(j=>{
+  function loadDI(startDate = null, endDate = null){
+    let url = '<?= base_url('marketing/di/list') ?>';
+    if (startDate && endDate) {
+      url += `?start_date=${startDate}&end_date=${endDate}`;
+    }
+    fetch(url).then(r=>r.json()).then(j=>{
       allDIData = j.data || [];
       updateStatistics();
       applyFilters();
@@ -844,6 +848,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       console.error('Error loading DI data:', error);
     });
   }
+  
+  // Load initial data
+  loadDI();
   
   function updateStatistics() {
     const total = allDIData.length;

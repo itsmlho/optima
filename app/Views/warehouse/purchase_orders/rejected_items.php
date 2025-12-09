@@ -16,6 +16,16 @@ $can_export = $permissions['export'];
 
 <?= $this->section('content') ?>
 
+<div class="row mt-3">
+    <div class="col-md-12 text-end">
+        <div class="d-inline-block">
+            <?= view('components/date_range_filter', [
+                'id' => 'rejectedItemsDateRangePicker'
+            ]) ?>
+        </div>
+    </div>
+</div>
+
 
     <!-- Statistics Cards -->
     <div class="row mt-3 mb-4">

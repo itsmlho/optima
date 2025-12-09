@@ -749,13 +749,23 @@ class Marketing extends BaseDataTableController
             return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
         }
         
-        $validation = \Config\Services::validation();
-        $validation->setRules([
-            'prospect_name' => 'required|max_length[255]',
-            'prospect_contact_person' => 'required|max_length[255]',
+        // Check if linking to existing customer
+        $existingCustomerId = $this->request->getPost('existing_customer_id');
+        
+        // Dynamic validation rules based on customer type
+        $validationRules = [
             'quotation_title' => 'required|max_length[255]',
             'valid_until' => 'required|valid_date'
-        ]);
+        ];
+        
+        // Only require prospect fields if NOT linking to existing customer
+        if (empty($existingCustomerId)) {
+            $validationRules['prospect_name'] = 'required|max_length[255]';
+            $validationRules['prospect_contact_person'] = 'required|max_length[255]';
+        }
+        
+        $validation = \Config\Services::validation();
+        $validation->setRules($validationRules);
         
         if (!$validation->withRequest($this->request)->run()) {
             return $this->response->setJSON([
@@ -1224,17 +1234,20 @@ class Marketing extends BaseDataTableController
         }
 
         // Get quotation with customer location and contract details
+        // First, try to get location from contract, if no contract then get primary location
         $quotation = $this->db->table('quotations q')
             ->select('q.*, 
                 c.customer_name, 
-                cl.location_name,
-                cl.address as location_address,
-                cl.contact_person as pic_name, 
-                cl.phone as pic_phone,
+                COALESCE(cl_contract.location_name, cl_primary.location_name) as location_name,
+                COALESCE(cl_contract.address, cl_primary.address) as location_address,
+                COALESCE(cl_contract.contact_person, cl_primary.contact_person) as pic_name, 
+                COALESCE(cl_contract.phone, cl_primary.phone) as pic_phone,
+                COALESCE(cl_contract.id, cl_primary.id) as customer_location_id,
                 k.no_kontrak as contract_number')
             ->join('customers c', 'c.id = q.created_customer_id', 'left')
             ->join('kontrak k', 'k.id = q.created_contract_id', 'left')
-            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+            ->join('customer_locations cl_contract', 'cl_contract.id = k.customer_location_id', 'left')
+            ->join('customer_locations cl_primary', 'cl_primary.customer_id = q.created_customer_id AND cl_primary.is_primary = 1 AND cl_primary.is_active = 1', 'left')
             ->where('q.id_quotation', $quotationId)
             ->get()
             ->getRowArray();
@@ -3689,6 +3702,9 @@ class Marketing extends BaseDataTableController
      */
     public function createSPKFromQuotation()
     {
+        // Initialize database connection
+        $this->db = \Config\Database::connect();
+        
         // EXTREME DEBUG - This MUST show up
         error_log("============ CREATE SPK FROM QUOTATION CALLED ============");
         log_message('error', 'createSPKFromQuotation - Function called');
@@ -3784,7 +3800,11 @@ class Marketing extends BaseDataTableController
 
                 // Get specification details
                 $spec = $this->db->table('quotation_specifications qs')
-                    ->select('qs.*, d.nama_departemen, tu.tipe as nama_tipe_unit, tu.jenis as jenis_tipe_unit, k.kapasitas_unit as nama_kapasitas')
+                    ->select('qs.*, 
+                        d.nama_departemen, 
+                        tu.tipe as nama_tipe_unit, 
+                        tu.jenis as jenis_tipe_unit, 
+                        k.kapasitas_unit as nama_kapasitas')
                     ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
                     ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
                     ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
@@ -3796,8 +3816,12 @@ class Marketing extends BaseDataTableController
                     log_message('error', "Specification not found: ID {$specId}");
                     continue;
                 }
+                
+                // Build brand and model manually from available data
+                $spec['brand'] = $spec['brand_id'] ?? 'N/A';
+                $spec['model'] = ($spec['nama_tipe_unit'] ?? 'N/A') . ' - ' . ($spec['jenis_tipe_unit'] ?? '');
 
-                log_message('error', "Spec {$specId} found: " . json_encode(['brand' => $spec['brand'], 'model' => $spec['model'], 'qty' => $spec['quantity'], 'quotation_id' => $spec['quotation_id'] ?? 'null']));
+                log_message('error', "Spec {$specId} found: " . json_encode(['brand_id' => $spec['brand_id'] ?? 'N/A', 'model' => $spec['model'] ?? 'N/A', 'qty' => $spec['quantity'], 'quotation_id' => $spec['id_quotation'] ?? 'null']));
 
                 // Check existing SPKs for this specification
                 $existingSPKs = $this->db->table('spk')
@@ -3830,13 +3854,13 @@ class Marketing extends BaseDataTableController
                 $spesifikasiData = [
                     'departemen_id' => $spec['departemen_id'] ?? null,
                     'tipe_unit_id' => $spec['tipe_unit_id'] ?? null,
-                    'tipe_jenis' => $spec['equipment_type'] ?? null,
+                    'tipe_jenis' => $spec['jenis_tipe_unit'] ?? null,
                     'merk_unit' => $spec['brand'] ?? null,
                     'model_unit' => $spec['model'] ?? null,
                     'kapasitas_id' => $spec['kapasitas_id'] ?? null,
-                    'attachment_tipe' => $spec['attachment_tipe'] ?? null,
-                    'attachment_merk' => $spec['attachment_merk'] ?? null,
-                    'jenis_baterai' => $spec['jenis_baterai'] ?? null,
+                    'attachment_tipe' => $spec['attachment_id'] ?? null,
+                    'attachment_merk' => null,
+                    'jenis_baterai' => $spec['battery_id'] ?? null,
                     'charger_id' => $spec['charger_id'] ?? null,
                     'mast_id' => $spec['mast_id'] ?? null,
                     'ban_id' => $spec['ban_id'] ?? null,
@@ -3911,13 +3935,15 @@ class Marketing extends BaseDataTableController
             $statusUpdated = false;
             
             if ($allSpecsAllocated) {
-                // Update quotation status to closed/completed
-                $this->quotationModel->update($quotationId, [
-                    'status' => 'closed',
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
+                // Mark quotation as SPK created using query builder to avoid "no data to update" error
+                $this->db->table('quotations')
+                    ->where('id_quotation', $quotationId)
+                    ->update([
+                        'spk_created' => 1,
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
                 $statusUpdated = true;
-                log_message('info', "Quotation {$quotationId} marked as closed - all specifications have SPKs");
+                log_message('info', "Quotation {$quotationId} marked with spk_created=1 - all specifications have SPKs");
             }
             
             $this->db->transCommit();
@@ -3962,7 +3988,7 @@ class Marketing extends BaseDataTableController
             // Get all specifications for this quotation
             $specifications = $this->db->table('quotation_specifications')
                 ->select('id_specification, quantity')
-                ->where('quotation_id', $quotationId)
+                ->where('id_quotation', $quotationId)
                 ->get()
                 ->getResultArray();
             
@@ -6873,13 +6899,30 @@ class Marketing extends BaseDataTableController
                 ]);
             }
 
+            // Get customer primary location or first location
+            $customerLocation = $this->db->table('customer_locations')
+                ->where('customer_id', $quotation['created_customer_id'])
+                ->where('is_active', 1)
+                ->orderBy('is_primary', 'DESC')
+                ->orderBy('id', 'ASC')
+                ->get()
+                ->getRowArray();
+
+            if (!$customerLocation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'No active location found for this customer. Please add a location first.'
+                ]);
+            }
+
             // Generate contract number
             $contractNumber = $this->generateContractNumberInternal();
 
-            // Create contract record
+            // Create contract record with customer_location_id
             $contractData = [
                 'no_kontrak' => $contractNumber,
                 'customer_id' => $quotation['created_customer_id'],
+                'customer_location_id' => $customerLocation['id'],
                 'quotation_id' => $quotationId,
                 'nilai_total' => $quotation['total_amount'],
                 'tanggal_mulai' => date('Y-m-d'),
@@ -6889,13 +6932,21 @@ class Marketing extends BaseDataTableController
                 'created_at' => date('Y-m-d H:i:s')
             ];
 
+            log_message('info', 'Creating contract with location: ' . json_encode([
+                'customer_id' => $quotation['created_customer_id'],
+                'location_id' => $customerLocation['id'],
+                'location_name' => $customerLocation['location_name'],
+                'is_primary' => $customerLocation['is_primary']
+            ]));
+
             $kontrakModel = new \App\Models\KontrakModel();
             $contractId = $kontrakModel->insert($contractData);
 
             if ($contractId) {
-                // Update quotation with contract_id
+                // Update quotation with contract_id and mark contract as complete
                 $quotationModel->update($quotationId, [
                     'created_contract_id' => $contractId,
+                    'customer_contract_complete' => 1,
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
 

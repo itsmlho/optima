@@ -369,12 +369,21 @@ window.loadSPKData = function() {
 document.addEventListener('DOMContentLoaded', () => {
 	const tbody = document.querySelector('#spkList tbody');
 	
-	const load = () => fetch('<?= base_url('service/spk/list') ?>').then(r=>r.json()).then(j=>{
-		window.allSPKData = j.data || [];
-		allSPKData = window.allSPKData; // Keep local reference
-		updateStatistics();
-		applyFilters();
-	});
+	const load = (startDate = null, endDate = null) => {
+		let url = '<?= base_url('service/spk/list') ?>';
+		if (startDate && endDate) {
+			url += `?start_date=${startDate}&end_date=${endDate}`;
+		}
+		return fetch(url).then(r=>r.json()).then(j=>{
+			window.allSPKData = j.data || [];
+			allSPKData = window.allSPKData; // Keep local reference
+			updateStatistics();
+			applyFilters();
+		});
+	};
+	
+	// Load initial data
+	load();
 	
 	// Make load function globally accessible
 	window.load = load;

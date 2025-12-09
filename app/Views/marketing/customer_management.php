@@ -1047,8 +1047,8 @@ $(document).ready(function() {
         initializeCustomerTable();
     }, 100); // Small delay to ensure DOM is ready
     
-    // Load statistics
-    loadStatistics();
+    // Statistics will be auto-calculated by helper
+    // No need to call loadStatistics() manually
     
     // Setup tab event handlers
     setupTabHandlers();
@@ -1061,10 +1061,10 @@ function initializeCustomerTable() {
         $('#customerTable').DataTable().destroy();
     }
     
-    console.log('🔄 Initializing DataTable...');
+    console.log('🔄 Initializing Customer DataTable with date filter helper...');
     
     try {
-        // STEP 1: Create config WITHOUT ajax.data function
+        // DataTable configuration
         var customerConfig = {
             processing: true,
             serverSide: true,
@@ -1170,20 +1170,42 @@ function initializeCustomerTable() {
             console.log('📊 Loaded', json.recordsTotal, 'total records');
         },
         drawCallback: function(settings) {
-            console.log('🎨 DataTable drawn with', settings.fnRecordsDisplay(), 'visible records');
+            // Use DataTable API to get record count
+            const api = this.api();
+            const recordsDisplay = api.page.info().recordsDisplay;
+            console.log('🎨 DataTable drawn with', recordsDisplay, 'visible records');
         }
     };
     
-    // STEP 2: Apply date filter wrapper to config
-    applyDateFilterToConfig(customerConfig, 'customerDateRangePicker');
-    
-    // STEP 3: Initialize DataTable with modified config
-    customerTable = $('#customerTable').DataTable(customerConfig);
-    
-    // STEP 4: Setup automatic date filter reload callbacks
-    setupDataTableDateFilter(customerTable, 'customerDateRangePicker', function(startDate, endDate) {
-        console.log('📅 Customer date filter changed:', startDate, 'to', endDate);
-        loadStatistics(startDate, endDate);
+    // Initialize DataTable with date filter using new helper
+    customerTable = initDataTableWithDateFilter({
+        pickerId: 'customerDateRangePicker',
+        tableId: 'customerTable',
+        tableConfig: customerConfig,
+        autoCalculateStats: true, // Enable auto-calculate dari data table
+        statsConfig: {
+            total: '#stat-total-customers', // Count semua rows
+            active: {
+                selector: '#stat-active-customers',
+                filter: row => row.is_active == 1
+            },
+            contracts: {
+                selector: '#stat-total-contracts',
+                calculate: function(data) {
+                    return data.reduce((sum, row) => sum + (parseInt(row.contracts_count) || 0), 0);
+                }
+            },
+            units: {
+                selector: '#stat-total-units',
+                calculate: function(data) {
+                    return data.reduce((sum, row) => sum + (parseInt(row.total_units) || 0), 0);
+                }
+            }
+        },
+        onTableReady: function(table) {
+            console.log('✅ Customer table ready with auto-calculated stats');
+        },
+        debug: true
     });
     
     } catch (error) {
@@ -1220,7 +1242,6 @@ function loadStatistics(startDate, endDate) {
         error: function(xhr, status, error) {
             console.error('❌ AJAX error loading statistics:', error);
             console.error('   Response:', xhr.responseText);
-        }
         }
     });
 }
@@ -2461,14 +2482,14 @@ function refreshData() {
         if (customerTable && $.fn.DataTable.isDataTable('#customerTable')) {
             customerTable.ajax.reload(function(json) {
                 console.log('✅ DataTable reloaded successfully');
-                loadStatistics();
+                // Statistics auto-calculated by helper on draw
                 showNotification('Data refreshed successfully', 'success');
             }, false); // false = don't reset paging
         } else {
             console.warn('⚠️ DataTable not initialized, reinitializing...');
             // Reinitialize table if it doesn't exist
             initializeCustomerTable();
-            loadStatistics();
+            // Statistics auto-calculated by helper
             showNotification('Table reinitialized', 'info');
         }
     } catch (error) {

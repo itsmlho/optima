@@ -973,7 +973,7 @@
 var quotationsTable;
 
 $(document).ready(function() {
-    // Initialize DataTable with date filter
+    // DataTable configuration
     var quotationsConfig = {
         processing: true,
         serverSide: true,
@@ -1020,31 +1020,52 @@ $(document).ready(function() {
         }
     };
     
-    // Apply date filter to config
-    applyDateFilterToConfig(quotationsConfig, 'quotationDateRangePicker');
-    
-    // Initialize DataTable with modified config
-    quotationsTable = $('#quotationsTable').DataTable(quotationsConfig);
-    
-    // Add row click functionality
-    $('#quotationsTable tbody').on('click', 'tr', function(e) {
-        // Don't trigger row click if user clicked on action buttons
-        if (!$(e.target).closest('.btn, .dropdown').length) {
-            var data = quotationsTable.row(this).data();
-            if (data && data.id_quotation) {
-                viewQuotation(data.id_quotation);
+    // Initialize DataTable with date filter using new helper
+    quotationsTable = initDataTableWithDateFilter({
+        pickerId: 'quotationDateRangePicker',
+        tableId: 'quotationsTable',
+        tableConfig: quotationsConfig,
+        autoCalculateStats: true, // Enable auto-calculate dari data table
+        statsConfig: {
+            total: '#stat-total-quotations', // Count semua rows
+            pending: { 
+                selector: '#stat-pending',
+                filter: row => {
+                    const stage = (row.workflow_stage || '').toUpperCase();
+                    return stage.includes('PENDING') || stage.includes('DRAFT') || stage.includes('SENT');
+                }
+            },
+            approved: {
+                selector: '#stat-approved',
+                filter: row => {
+                    const stage = (row.workflow_stage || '').toUpperCase();
+                    return stage.includes('ACCEPTED') || stage.includes('APPROVED') || stage.includes('WON');
+                }
+            },
+            rejected: {
+                selector: '#stat-rejected',
+                filter: row => {
+                    const stage = (row.workflow_stage || '').toUpperCase();
+                    return stage.includes('REJECT') || stage.includes('LOST') || stage.includes('CANCEL');
+                }
             }
-        }
+        },
+        onTableReady: function(table) {
+            // Table initialization complete
+            
+            // Add row click functionality
+            $('#quotationsTable tbody').on('click', 'tr', function(e) {
+                // Don't trigger row click if user clicked on action buttons
+                if (!$(e.target).closest('.btn, .dropdown').length) {
+                    var data = table.row(this).data();
+                    if (data && data.id_quotation) {
+                        viewQuotation(data.id_quotation);
+                    }
+                }
+            });
+        },
+        debug: true
     });
-    
-    // Setup automatic DataTable reload on date filter change
-    setupDataTableDateFilter(quotationsTable, 'quotationDateRangePicker', function(startDate, endDate) {
-        // Also reload statistics when date changes
-        loadStatistics(startDate, endDate);
-    });
-
-    // Load statistics
-    loadStatistics();
 
     // Form submission
     $('#quotationForm').on('submit', function(e) {
@@ -1182,7 +1203,7 @@ $(document).ready(function() {
             
             // Store location ID globally for contract creation
             window.currentSelectedLocationId = selectedLocation;
-            console.log('Stored selected location ID:', window.currentSelectedLocationId);
+            // Location ID stored for contract creation
             
             // Mark workflow completed and close modal
             $('#selectCustomerLocationModal').data('workflowCompleted', true);
@@ -1200,11 +1221,8 @@ $(document).ready(function() {
         const selectedValue = $(this).val();
         const contractFormSection = $('#contractFormSection');
         
-        console.log('Contract dropdown changed:', selectedValue);
-        
         if (selectedValue === '__ADD_NEW__') {
             // Show empty form for new contract
-            console.log('Add new contract selected');
             resetContractForm();
             contractFormSection.slideDown();
             
@@ -1223,7 +1241,6 @@ $(document).ready(function() {
             
         } else if (selectedValue) {
             // Load existing contract data - 100% READ-ONLY
-            console.log('Existing contract selected, ID:', selectedValue);
             const selectedOption = $(this).find('option:selected');
             const contractData = selectedOption.data('contract');
             
@@ -1240,13 +1257,10 @@ $(document).ready(function() {
                 
                 // Change button text to indicate linking/using existing contract
                 $('#submitContractBtn').html('<i class="fas fa-link me-2"></i>Use This Contract');
-                
-                console.log('✅ All fields set to READ-ONLY for existing contract');
             }
             
         } else {
             // No selection - hide form
-            console.log('No selection - hiding form');
             contractFormSection.slideUp();
             resetContractForm();
         }
@@ -1277,7 +1291,6 @@ $(document).ready(function() {
         
         if (selectedContractId && selectedContractId !== '__ADD_NEW__') {
             // OPTION 1: Link existing contract to quotation (READ-ONLY, no update)
-            console.log('Linking existing contract:', selectedContractId);
             linkExistingContract(selectedContractId, quotationId);
             
         } else {
@@ -1340,11 +1353,7 @@ $(document).ready(function() {
     // === CUSTOMER SEARCH INITIALIZATION (moved from third ready block) ===
     initCustomerSearch();
     
-    // Auto-run basic system test after page fully loads
-    setTimeout(() => {
-        console.log('Auto-running basic system test...');
-        testWorkflowComplete();
-    }, 2000);
+    // Auto-run disabled - enable manually in console if needed: testWorkflowComplete()
 });
 
 // Debounce utility function to prevent multiple rapid clicks
@@ -1367,9 +1376,6 @@ function loadStatistics(startDate = null, endDate = null) {
     if (startDate && endDate) {
         params.start_date = startDate;
         params.end_date = endDate;
-        console.log('📊 Loading quotation statistics WITH filter:', params);
-    } else {
-        console.log('📊 Loading quotation statistics WITHOUT filter (all data)');
     }
     
     $.ajax({
@@ -1377,7 +1383,6 @@ function loadStatistics(startDate = null, endDate = null) {
         type: 'POST',
         data: params,
         success: function(data) {
-            console.log('✅ Quotation statistics loaded:', data);
             $('#stat-total-quotations').text(data.total || 0);
             $('#stat-pending').text(data.pending || 0);
             $('#stat-approved').text(data.approved || 0);
@@ -1394,11 +1399,7 @@ function viewQuotation(id) {
     // Set current quotation ID for specifications
     currentQuotationId = id;
     
-    $.get('<?= base_url('marketing/quotations/get-quotation/') ?>' + id, function(response) {
-        console.log('Response received:', response); // Debug log
-        console.log('Response type:', typeof response); // Debug log
-        console.log('Response status:', response.status); // Debug log
-        
+    $.get('<?= base_url('marketing/quotations/getQuotation/') ?>' + id, function(response) {
         // Handle different response formats
         if (response.status === 'error') {
             console.error('API returned error:', response.message);
@@ -1430,9 +1431,9 @@ function viewQuotation(id) {
                     ${data.quotation_number || 'undefined'}<br><br>
                     <strong>Customer:</strong><br>
                     ${data.customer_name || data.prospect_name || 'undefined'}<br><br>
-                    ${data.location_name ? `
                     <strong>Amount:</strong><br>
-                    <strong class="text-success"> Rp ${data.total_amount ? parseFloat(data.total_amount).toLocaleString('id-ID') : 'NaN'}</strong> <br><br>
+                    <strong class="text-success">Rp ${data.total_amount ? parseFloat(data.total_amount).toLocaleString('id-ID') : '0'}</strong><br><br>
+                    ${data.location_name ? `
                     <strong>Customer Location:</strong><br>
                     <div class="ms-2 p-2 bg-light rounded border">
                         <div class="mb-1"><i class="fas fa-map-marker-alt text-primary me-2"></i><strong>${data.location_name}</strong></div>
@@ -1594,7 +1595,6 @@ let currentQuotationId = null;
 // Enhanced tab switching with proper cleanup
 $(document).on('shown.bs.tab', '#quotationDetailTabs button[data-bs-toggle="tab"]', function (e) {
     const targetTab = $(e.target).attr('data-bs-target');
-    console.log('Tab switched to:', targetTab);
     
     // Clear any lingering active states
     $('#quotationDetailTabs .nav-link').removeClass('active').attr('aria-selected', 'false');
@@ -1607,22 +1607,17 @@ $(document).on('shown.bs.tab', '#quotationDetailTabs button[data-bs-toggle="tab"
 
 // Event handler for specifications tab click
 $(document).on('click', '#specifications-tab', function() {
-    console.log('Specifications tab clicked, currentQuotationId:', currentQuotationId);
-    
     if (!currentQuotationId) {
-        console.warn('No currentQuotationId set');
         return;
     }
     
     // Check if tab is already loaded
     if ($(this).hasClass('loaded')) {
-        console.log('Tab already loaded');
         return;
     }
     
     // Check quotation workflow stage before loading specifications
     $.get('<?= base_url('marketing/quotations/get-quotation/') ?>' + currentQuotationId, function(response) {
-        console.log('Specifications API Response:', response);
         
         // Handle error responses
         if (response.status === 'error') {
@@ -1690,7 +1685,6 @@ $(document).on('click', '#specifications-tab', function() {
 
 // Load quotation specifications
 function loadQuotationSpecifications(quotationId) {
-    console.log('Loading specifications for quotation:', quotationId);
     const container = document.getElementById('spesifikasiListContract');
     if (!container) {
         console.error('spesifikasiListContract container not found!');
@@ -1794,8 +1788,8 @@ function displayQuotationSpecifications(specifications) {
         details.push(`<div class="col-md-3"><small class="text-muted">Total Price</small><div class="fw-bold text-primary">Rp ${formatNumber(totalPrice)}</div></div>`);
         
         // Brand and Model
-        if (spec.merk_unit || spec.brand) {
-            details.push(`<div class="col-md-3"><small class="text-muted">Brand</small><div>${spec.merk_unit || spec.brand}</div></div>`);
+        if (spec.merk_unit) {
+            details.push(`<div class="col-md-3"><small class="text-muted">Brand</small><div>${spec.merk_unit}</div></div>`);
         }
         
         if (spec.model_unit) {
@@ -1983,14 +1977,6 @@ function proceedWithSpecificationModal() {
     $('#specCharger').html('<option value="">-- Select Charger --</option>');
     
     $('#addSpecificationModal').modal('show');
-    
-    // Test data loading after modal is shown
-    setTimeout(() => {
-        console.log('Testing data loading...');
-        console.log('Window.allTipeUnitData:', window.allTipeUnitData);
-        console.log('Departemen options count:', $('#specDepartemen option').length);
-        console.log('TipeUnit options count:', $('#specTipeUnit option').length);
-    }, 1000);
 }
 
 // Open add attachment modal
@@ -2047,8 +2033,6 @@ $(document).on('change', '#specTipeUnit', function() {
     const selectedTipeUnit = $(this).val();
     const selectedText = $(this).find('option:selected').text();
     
-    console.log('Unit Type selected:', selectedTipeUnit, selectedText);
-    
     if (selectedTipeUnit) {
         // Filter kapasitas based on unit type if needed
         // For now we load all kapasitas, but this can be enhanced
@@ -2065,16 +2049,13 @@ $(document).on('change', '#specTipeUnit', function() {
 
 // Functions to load dropdown data - consistent with kontrak spesifikasi pattern
 function loadDepartemenForSpecification() {
-    console.log('Loading departemen data...');
     return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=departemen', function(response) {
-        console.log('Departemen API Response:', response);
         if (response.success) {
             let options = '<option value="">-- Select Department --</option>';
             response.data.forEach(dept => {
                 options += `<option value="${dept.id}">${dept.name}</option>`;
             });
             $('#specDepartemen').html(options);
-            console.log('Loaded', response.data.length, 'departments');
         } else {
             console.error('Departemen API error:', response.message);
             $('#specDepartemen').html('<option value="">Error: ' + (response.message || 'Unknown error') + '</option>');
@@ -2090,17 +2071,13 @@ function loadDepartemenForSpecification() {
 }
 
 function loadTipeUnitForSpecification() {
-    console.log('Loading tipe unit data...');
     return $.ajax({
         url: '<?= base_url('marketing/customer-management/getTipeUnit') ?>',
         method: 'GET',
         success: function(response) {
-            console.log('Tipe Unit API Response:', response);
             if (response.success) {
                 // Store all unit type data globally for filtering
                 window.allTipeUnitData = response.data;
-                
-                console.log('Loaded', response.data.length, 'tipe unit records');
                 
                 // Initially show placeholder only
                 $('#specTipeUnit').html('<option value="">-- Pilih Tipe Unit --</option>');
@@ -2127,66 +2104,49 @@ function updateTipeUnitOptions() {
     const selectedDeptText = $('#specDepartemen option:selected').text();
     const select = $('#specTipeUnit');
     
-    console.log('updateTipeUnitOptions called - Department:', selectedDept, selectedDeptText);
-    
     select.empty().append('<option value="">-- Pilih Tipe Unit --</option>');
     
     if (!selectedDept || !window.allTipeUnitData) {
-        console.log('No department selected or no tipe unit data available');
         if (!window.allTipeUnitData) {
-            console.log('allTipeUnitData is not loaded yet, trying to load...');
             // Try to load tipe unit data if it's not loaded
             loadTipeUnitForSpecification();
         }
         return;
     }
     
-    console.log('All Tipe Unit Data:', window.allTipeUnitData);
-    
     // Filter and show only units for selected department
     const filteredUnits = window.allTipeUnitData.filter(unit => {
-        console.log('Checking unit:', unit, 'department match:', unit.id_departemen == selectedDept);
         return unit.id_departemen == selectedDept;
     });
     
-    console.log('Filtered Units for department', selectedDept + ':', filteredUnits);
-    
     if (filteredUnits.length === 0) {
         select.append('<option value="">No unit types available for this department</option>');
-        console.log('No units found for department:', selectedDept);
         return;
     }
     
     // Group by jenis to avoid duplicates
     const uniqueJenis = [...new Set(filteredUnits.map(unit => unit.jenis))];
-    console.log('Unique jenis found:', uniqueJenis);
     
     uniqueJenis.sort().forEach(jenis => {
         // Find the first unit with this jenis to get the id
         const unitWithJenis = filteredUnits.find(unit => unit.jenis === jenis);
         if (unitWithJenis) {
-            console.log('Adding option:', unitWithJenis.id_tipe_unit, jenis);
             select.append(`<option value="${unitWithJenis.id_tipe_unit}" data-dept="${selectedDept}">${jenis}</option>`);
         }
     });
-    
-    console.log('Updated Tipe Unit options count:', uniqueJenis.length);
     
     // Also clear dependent dropdowns when unit type changes
     $('#specKapasitas').html('<option value="">-- Select Capacity --</option>');
 }
 
 function loadKapasitasForSpecification() {
-    console.log('Loading kapasitas data...');
     return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=kapasitas', function(response) {
-        console.log('Kapasitas API Response:', response);
         if (response.success) {
             let options = '<option value="">-- Select Capacity --</option>';
             response.data.forEach(cap => {
                 options += `<option value="${cap.id}">${cap.name}</option>`;
             });
             $('#specKapasitas').html(options);
-            console.log('Loaded', response.data.length, 'capacities');
         } else {
             console.error('Kapasitas API error:', response.message);
             $('#specKapasitas').html('<option value="">Error: ' + (response.message || 'Unknown error') + '</option>');
@@ -2226,9 +2186,7 @@ function loadChargersForSpecification() {
 }
 
 function loadUnitBrandsForSpecification() {
-    console.log('📋 Loading Unit Brands...');
     return $.get('<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit', function(response) {
-        console.log('Unit Brands API Response:', response);
         if (response.success) {
             let options = '<option value="">-- Select Brand --</option>';
             response.data.forEach(brand => {
@@ -2236,7 +2194,6 @@ function loadUnitBrandsForSpecification() {
                 options += `<option value="${brand.id}">${brand.name}</option>`;
             });
             $('#specMerkUnit').html(options);
-            console.log('✅ Loaded', response.data.length, 'unit brands');
         }
     }).fail(function(xhr) {
         console.error('❌ Failed to load unit brands:', xhr.responseText);
@@ -2245,22 +2202,16 @@ function loadUnitBrandsForSpecification() {
 }
 
 function loadBatteriesForSpecification() {
-    console.log('📋 Loading Batteries...');
     const selectedDeptId = $('#specDepartemen').val();
     const selectedDeptText = $('#specDepartemen option:selected').text().toLowerCase();
     const isElectric = selectedDeptText.includes('electric') || selectedDeptText.includes('listrik');
     
-    console.log('  - Department ID:', selectedDeptId);
-    console.log('  - Is Electric:', isElectric);
-    
     if (!isElectric || !selectedDeptId) {
-        console.log('⚠️ Not electric or no department - skipping battery load');
         $('#specJenisBaterai').html('<option value="">Hanya tersedia untuk unit Electric</option>');
         return Promise.resolve();
     }
     
     return $.get(`<?= base_url('marketing/spk/spec-options') ?>?type=jenis_baterai&departemen_id=${selectedDeptId}`, function(response) {
-        console.log('Batteries API Response:', response);
         if (response.success) {
             let options = '<option value="">-- Pilih Baterai --</option>';
             response.data.forEach(battery => {
@@ -2268,7 +2219,6 @@ function loadBatteriesForSpecification() {
                 options += `<option value="${battery.id}">${battery.name}</option>`;
             });
             $('#specJenisBaterai').html(options);
-            console.log('✅ Loaded', response.data.length, 'batteries');
         }
     }).fail(function(xhr) {
         console.error('❌ Failed to load batteries:', xhr.responseText);
@@ -2415,12 +2365,6 @@ $('#addSpecificationForm').on('submit', function(e) {
     const formData = new FormData(this);
     const submitBtn = $('#submitSpecificationBtn');
     
-    // Log form data for debugging
-    console.log('Form submission data:');
-    for (let [key, value] of formData.entries()) {
-        console.log(key, ':', value);
-    }
-    
     // Determine endpoint based on mode
     const endpoint = isEditMode 
         ? '<?= base_url('marketing/quotations/update-specification') ?>' 
@@ -2438,7 +2382,6 @@ $('#addSpecificationForm').on('submit', function(e) {
         processData: false,
         contentType: false,
         success: function(response) {
-            console.log('Specification save response:', response);
             if (response.success) {
                 $('#addSpecificationModal').modal('hide');
                 Swal.fire('Success', response.message || successMsg, 'success');
@@ -2447,11 +2390,6 @@ $('#addSpecificationForm').on('submit', function(e) {
                 if (currentQuotationId) {
                     $('#specifications-tab').removeClass('loaded');
                     loadQuotationSpecifications(currentQuotationId);
-                    
-                    // Update quotation total if provided
-                    if (response.quotation_total) {
-                        console.log('Updated quotation total:', response.quotation_total);
-                    }
                 }
                 
                 // Reset form for next entry
@@ -2523,12 +2461,6 @@ $('#addAttachmentForm').on('submit', function(e) {
     const formData = new FormData(this);
     const submitBtn = $('#submitAttachmentBtn');
     
-    // Log form data for debugging
-    console.log('Attachment form submission data:');
-    for (let [key, value] of formData.entries()) {
-        console.log(key, ':', value);
-    }
-    
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');
     
     $.ajax({
@@ -2538,7 +2470,6 @@ $('#addAttachmentForm').on('submit', function(e) {
         processData: false,
         contentType: false,
         success: function(response) {
-            console.log('Attachment save response:', response);
             if (response.success) {
                 $('#addAttachmentModal').modal('hide');
                 Swal.fire('Success', response.message || 'Attachment added successfully', 'success');
@@ -2547,11 +2478,6 @@ $('#addAttachmentForm').on('submit', function(e) {
                 if (currentQuotationId) {
                     $('#specifications-tab').removeClass('loaded');
                     loadQuotationSpecifications(currentQuotationId);
-                    
-                    // Update quotation total if provided
-                    if (response.quotation_total) {
-                        console.log('Updated quotation total:', response.quotation_total);
-                    }
                 }
                 
                 // Reset form for next entry
@@ -2590,10 +2516,6 @@ $('#addAttachmentForm').on('submit', function(e) {
 
 // Edit specification - reuse Add Specification modal
 function editSpecification(specId) {
-    console.log('=== EDIT SPECIFICATION STARTED ===');
-    console.log('Spec ID:', specId);
-    console.log('Current Quotation ID:', currentQuotationId);
-    
     if (!currentQuotationId) {
         console.error('No currentQuotationId set!');
         Swal.fire('Error', 'Quotation ID is missing', 'error');
@@ -2602,52 +2524,31 @@ function editSpecification(specId) {
     
     // First, load specification data
     const apiUrl = `<?= base_url('marketing/quotations/getSpecifications/') ?>${currentQuotationId}`;
-    console.log('Fetching from:', apiUrl);
     
     $.ajax({
         url: apiUrl,
         method: 'GET',
         success: function(response) {
-            console.log('API Response:', response);
-            console.log('Response type:', typeof response);
-            
             if (!response || !response.success) {
                 console.error('API returned error or no success flag');
-                console.error('Full response:', response);
                 Swal.fire('Error', response?.message || 'Failed to load specification data', 'error');
                 return;
             }
             
             if (!response.data || !Array.isArray(response.data)) {
                 console.error('Invalid response data structure');
-                console.error('response.data:', response.data);
                 Swal.fire('Error', 'Invalid data structure received', 'error');
                 return;
             }
-
-            console.log('Total specifications:', response.data.length);
-            console.log('Looking for spec ID:', specId);
             
             // Find the specification with matching ID
             const spec = response.data.find(s => s.id_specification == specId);
             
             if (!spec) {
                 console.error('Specification not found in data');
-                console.error('Available spec IDs:', response.data.map(s => s.id_specification));
                 Swal.fire('Error', 'Specification not found', 'error');
                 return;
             }
-
-            console.log('✓ Found specification:', spec);
-            console.log('All spec fields:', Object.keys(spec));
-            
-            // Log critical field values for debugging
-            console.log('🔍 Field values to populate:');
-            console.log('  - kapasitas_id:', spec.kapasitas_id);
-            console.log('  - brand_id:', spec.brand_id, '(brand name:', spec.brand, spec.merk_unit, ')');
-            console.log('  - attachment_id:', spec.attachment_id, '(tipe:', spec.attachment_tipe, ')');
-            console.log('  - battery_id:', spec.battery_id, '(jenis_baterai:', spec.jenis_baterai, ')');
-            console.log('  - charger_id:', spec.charger_id);
 
             // Change modal title and button for edit mode
             $('#specModalHeader').removeClass('bg-success').addClass('bg-primary');
@@ -2685,7 +2586,7 @@ function editSpecification(specId) {
                 console.log('📌 Setting Capacity:', spec.kapasitas_id);
                 $('#specKapasitas').val(spec.kapasitas_id || '');
                 
-                console.log('📌 Setting Unit Brand:', spec.brand || spec.merk_unit);
+                console.log('📌 Setting Unit Brand:', spec.merk_unit);
                 $('#specMerkUnit').val(spec.brand_id || '');
                 
                 console.log('📌 Setting Attachment Type:', spec.attachment_tipe);
@@ -3223,10 +3124,36 @@ $('#createProspectForm').on('submit', function(e) {
         },
         error: function(xhr, status, error) {
             console.error('Error creating prospect:', error);
+            console.error('XHR Response:', xhr);
+            console.error('Response JSON:', xhr.responseJSON);
+            
             let errorMessage = 'Failed to create prospect';
-            if (xhr.responseJSON && xhr.responseJSON.message) {
-                errorMessage = xhr.responseJSON.message;
+            
+            // Check for validation errors
+            if (xhr.responseJSON) {
+                if (xhr.responseJSON.message) {
+                    errorMessage = xhr.responseJSON.message;
+                }
+                
+                // Display detailed validation errors if available
+                if (xhr.responseJSON.errors) {
+                    const errors = xhr.responseJSON.errors;
+                    let errorList = '<ul class="text-start">';
+                    Object.keys(errors).forEach(field => {
+                        errorList += `<li><strong>${field}:</strong> ${errors[field]}</li>`;
+                    });
+                    errorList += '</ul>';
+                    
+                    Swal.fire({
+                        title: 'Validation Error',
+                        html: errorMessage + errorList,
+                        icon: 'error',
+                        width: '600px'
+                    });
+                    return;
+                }
             }
+            
             Swal.fire('Error', errorMessage, 'error');
         },
         complete: function() {
@@ -3516,7 +3443,7 @@ function completeCustomerProfile(quotationId) {
 
 // Function to handle complete customer contract button
 function completeCustomerContract(quotationId) {
-    // Get quotation details to extract customer ID
+    // Get quotation details to extract customer ID and location ID
     $.get('<?= base_url('marketing/quotations/getQuotation/') ?>' + quotationId)
         .done(function(response) {
             if (response.success && response.data) {
@@ -3534,6 +3461,10 @@ function completeCustomerContract(quotationId) {
                     return;
                 }
                 
+                // Extract customer location ID from quotation data
+                const customerLocationId = response.data.customer_location_id || response.data.location_id;
+                console.log('📍 Extracted customer location ID from quotation:', customerLocationId);
+                
                 // Verify customer exists
                 $.get('<?= base_url('customers/get/') ?>' + response.data.created_customer_id)
                     .done(function(customerResponse) {
@@ -3547,8 +3478,8 @@ function completeCustomerContract(quotationId) {
                             return;
                         }
                         
-                        // Customer exists, proceed with contract check
-                        checkCustomerContracts(response.data.created_customer_id, quotationId, 'Please select or create a contract to proceed with SPK creation.');
+                        // Customer exists, proceed with contract check, passing location ID
+                        checkCustomerContracts(response.data.created_customer_id, quotationId, customerLocationId, 'Please select or create a contract to proceed with SPK creation.');
                     })
                     .fail(function(xhr) {
                         Swal.fire({
@@ -4012,20 +3943,23 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
 }
 
 // Function to check customer contracts and proceed to next workflow
-function checkCustomerContracts(customerId, quotationId, message) {
-    console.log('Checking customer contracts for customer:', customerId);
+function checkCustomerContracts(customerId, quotationId, customerLocationId, message) {
+    console.log('Checking customer contracts for customer:', customerId, 'location:', customerLocationId);
     
     // Directly show create/select contract modal (unified modal)
-    showCreateContractModal(customerId, quotationId, message);
+    showCreateContractModal(customerId, quotationId, customerLocationId, message);
 }
 
 // Function to show create contract modal
-function showCreateContractModal(customerId, quotationId, message) {
-    console.log('showCreateContractModal called:', {customerId, quotationId, message});
+function showCreateContractModal(customerId, quotationId, customerLocationId, message) {
+    console.log('showCreateContractModal called:', {customerId, quotationId, customerLocationId, message});
     
     // Store in global variables for contract form
     window.currentContractQuotationId = quotationId;
     window.currentContractCustomerId = customerId;
+    window.currentSelectedLocationId = customerLocationId; // Store location ID
+    
+    console.log('✅ Stored location ID in window.currentSelectedLocationId:', customerLocationId);
     
     // Show modal immediately with loading state
     $('#addContractModal').modal('show');
@@ -4674,7 +4608,12 @@ function createSPK(quotationId) {
             
             // Check if contract is linked
             if (!quotation.created_contract_id) {
-                Swal.fire('Error', 'Contract must be linked before creating SPK. Please complete contract selection.', 'error');
+                Swal.fire({
+                    title: 'Contract Required',
+                    html: 'Please create contract first using <strong>"Complete Customer Profile"</strong> button.',
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                });
                 return;
             }
             
@@ -4854,21 +4793,10 @@ function testCascadingDropdowns() {
     openAddSpecificationModal();
     
     setTimeout(() => {
-        console.log('Loading test data for cascading...');
         loadDepartemenForSpecification();
         loadTipeUnitForSpecification();
     }, 500);
 }
-
-// Console commands for easy testing
-console.log('=== OPTIMA QUOTATION WORKFLOW TESTING ===');
-console.log('Available test commands:');
-console.log('- testWorkflowComplete()     : Test all system components');
-console.log('- simulateWorkflow()         : Simulate complete workflow with test data');
-console.log('- testProspectCreation()     : Test prospect creation modal');
-console.log('- testSpecificationModal()   : Test specification modal (need active quotation)');
-console.log('- testCascadingDropdowns()   : Test dropdown cascading functionality');
-console.log('=====================================');
 
 // Smart Customer Search Functions
 function initCustomerSearch() {
@@ -5065,6 +4993,45 @@ $(document).on('hidden.bs.modal', '#detailModal', function () {
     $('#detailModal').off('shown.bs.modal');
 });
 
+// Function to create contract for quotation
+function createContractForQuotation(quotationId) {
+    // Show loading
+    Swal.fire({
+        title: 'Creating Contract',
+        text: 'Please wait...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    $.ajax({
+        url: `<?= base_url('marketing/quotations/createContract/') ?>${quotationId}`,
+        method: 'POST',
+        success: function(response) {
+            if (response.success) {
+                Swal.fire({
+                    title: 'Success!',
+                    html: `Contract created successfully!<br><strong>${response.contract_number}</strong>`,
+                    icon: 'success',
+                    confirmButtonText: 'Continue to SPK'
+                }).then(() => {
+                    // Retry opening SPK modal
+                    createSPKFromQuotation(quotationId);
+                });
+            } else {
+                Swal.fire('Error', response.message || 'Failed to create contract', 'error');
+            }
+        },
+        error: function(xhr) {
+            console.error('Error creating contract:', xhr);
+            const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to create contract';
+            Swal.fire('Error', errorMsg, 'error');
+        }
+    });
+}
+
 // Function to create SPK from quotation specifications
 function createSPKFromQuotation(quotationId) {
     console.log('Opening SPK creation modal for quotation:', quotationId);
@@ -5088,7 +5055,12 @@ function createSPKFromQuotation(quotationId) {
             }
             
             if (!quotation.created_contract_id) {
-                Swal.fire('Error', 'Contract must be linked first. Please complete contract selection.', 'error');
+                Swal.fire({
+                    title: 'Contract Required',
+                    html: 'Please create contract first using <strong>"Complete Customer Profile"</strong> button.',
+                    icon: 'warning',
+                    confirmButtonText: 'OK'
+                });
                 return;
             }
             
@@ -5169,10 +5141,19 @@ function showSPKCreationModal(quotation, specifications) {
         </div>
     `);
     
+    // Determine the correct contract ID from available fields
+    const contractId = quotation.created_contract_id || quotation.contract_id || quotation.id_kontrak;
+    
     // Set hidden fields
     $('#spk_quotation_id').val(quotation.id_quotation);
     $('#spk_customer_id').val(quotation.created_customer_id);
-    $('#spk_contract_id').val(quotation.created_contract_id);
+    $('#spk_contract_id').val(contractId);
+    
+    // Debug log
+    console.log('📋 Setting SPK form fields:');
+    console.log('  - quotation_id:', quotation.id_quotation);
+    console.log('  - customer_id:', quotation.created_customer_id);
+    console.log('  - contract_id:', contractId);
     
     // Set default delivery date (today + 7 days)
     const deliveryDate = new Date();
@@ -5384,8 +5365,8 @@ function buildSpecificationDescription(spec) {
     }
     
     // Brand and Model
-    if (spec.merk_unit || spec.brand) {
-        parts.push(`<strong>Brand:</strong> ${spec.merk_unit || spec.brand}`);
+    if (spec.merk_unit) {
+        parts.push(`<strong>Brand:</strong> ${spec.merk_unit}`);
     }
     if (spec.model_unit && spec.model_unit.trim() !== '') {
         parts.push(`<strong>Model:</strong> ${spec.model_unit}`);

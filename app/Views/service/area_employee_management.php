@@ -894,31 +894,26 @@ $(document).ready(function() {
 function initializeAreaTable() {
   try {
     areasTable = $('#areasTable').DataTable({
-    processing: true,
-    serverSide: true,
-    ajax: {
-      url: '<?= base_url('service/area-management/getAreas') ?>',
-      type: 'POST',
-      data: function(d) {
-        // Add any additional data if needed
-        return d;
-      },
-      dataSrc: function(json) {
-        console.log('DataTable Response:', json);
-        if (json && json.data) {
-          return json.data;
-        } else {
-          console.error('Invalid response format:', json);
+      processing: true,
+      serverSide: true,
+      ajax: {
+        url: '<?= base_url('service/area-management/getAreas') ?>',
+        type: 'POST',
+        dataSrc: function(json) {
+          console.log('DataTable Response:', json);
+          if (json && json.data) {
+            return json.data;
+          } else {
+            console.error('Invalid response format:', json);
+            return [];
+          }
+        },
+        error: function(xhr, error, code) {
+          console.error('DataTable AJAX Error:', error, code);
+          console.error('Response:', xhr.responseText);
           return [];
         }
       },
-      error: function(xhr, error, code) {
-        console.error('DataTable AJAX Error:', error, code);
-        console.error('Response:', xhr.responseText);
-        // Return empty array to prevent DataTable error
-        return [];
-      }
-    },
     columns: [
       { data: 'area_code', render: d => `<span class="employee-code">${d}</span>` },
       { data: 'area_name', render: d => `<span class="text-dark font-weight-medium">${d}</span>` },
@@ -962,7 +957,10 @@ function initializeEmployeeTable() {
   employeesTable = $('#employeesTable').DataTable({
     processing: true,
     serverSide: true,
-    ajax: { url: '<?= base_url('service/area-management/getEmployees') ?>', type: 'POST' },
+    ajax: {
+      url: '<?= base_url('service/area-management/getEmployees') ?>',
+      type: 'POST'
+    },
     columns: [
       { data: 'staff_code', render: d => `<span class="employee-code">${d}</span>` },
       { data: 'staff_name', render: d => `<span class="text-dark font-weight-medium">${d}</span>` },

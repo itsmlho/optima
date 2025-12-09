@@ -14,7 +14,6 @@
         const sidebar = document.querySelector('.sidebar-nav');
         if (sidebar) {
             sessionStorage.setItem(STORAGE_KEY, sidebar.scrollTop.toString());
-            console.log('Sidebar scroll position saved:', sidebar.scrollTop);
         }
     }
     
@@ -26,7 +25,6 @@
         if (sidebar && savedPosition !== null) {
             const position = parseInt(savedPosition);
             sidebar.scrollTop = position;
-            console.log('Sidebar scroll position restored:', position);
         }
     }
     
@@ -46,7 +44,6 @@
                     !e.defaultPrevented) {
                     
                     saveSidebarScrollPosition();
-                    console.log('Navigation detected, saving scroll position for:', href);
                 }
             }
         });
@@ -62,8 +59,6 @@
         
         // Also save position before page unload as a backup
         window.addEventListener('beforeunload', saveSidebarScrollPosition);
-        
-        console.log('Sidebar scroll management initialized');
     }
     
     // Start initialization

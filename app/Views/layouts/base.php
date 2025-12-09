@@ -429,6 +429,9 @@
     <!-- DataTable Date Filter Mixin -->
     <script src="<?= base_url('assets/js/datatable-datefilter-mixin.js') ?>?v=<?= time() ?>"></script>
     
+    <!-- Page Date Filter Helper (Universal API for all pages) -->
+    <script src="<?= base_url('assets/js/page-date-filter-helper.js') ?>?v=<?= time() ?>"></script>
+    
     <!-- Pickr -->
     <script defer src="https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.8.2/dist/pickr.min.js"></script>
     <!-- noUiSlider -->
