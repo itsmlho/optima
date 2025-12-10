@@ -115,10 +115,11 @@
                                       <tr>
                                           <th>Area Code</th>
                                           <th>Area Name</th>
+                                          <th>Type</th>
                                           <th>Description</th>
                                           <th>Customers</th>
-                                          <th>Employees</th>
-                                          <th>Assignments</th>
+                                          <th>Employee Details</th>
+                                          <th>Status</th>
                                       </tr>
                                   </thead>
                                   <tbody></tbody>
@@ -142,6 +143,7 @@
                                   </button>
                               </div>
                           </div>
+                          
                           <div class="table-responsive">
                               <table id="employeesTable" class="table table-striped dt-responsive nowrap">
                                   <thead>
@@ -150,6 +152,7 @@
                                           <th>Name</th>
                                           <th>Role</th>
                                           <th>Department</th>
+                                          <th>Assigned To</th>
                                           <th>Phone</th>
                                           <th>Email</th>
                                       </tr>
@@ -304,6 +307,17 @@
             <input type="text" name="area_name" class="form-control" required maxlength="255" placeholder="Enter area name">
           </div>
           <div class="form-group">
+            <label>Area Type <span class="text-danger">*</span></label>
+            <select name="area_type" class="form-control" required>
+              <option value="BRANCH">BRANCH - Handle all departments</option>
+              <option value="CENTRAL">CENTRAL - Department-specific focus</option>
+            </select>
+            <small class="form-text text-muted">
+              <strong>BRANCH:</strong> For branch locations (employees handle all departments)<br>
+              <strong>CENTRAL:</strong> For HQ/Central locations (employees focus on specific departments)
+            </small>
+          </div>
+          <div class="form-group">
             <label>Description</label>
             <textarea name="area_description" class="form-control" rows="3" placeholder="Enter area description (optional)"></textarea>
           </div>
@@ -429,6 +443,20 @@
               <option value="BACKUP">BACKUP</option>
               <option value="TEMPORARY">TEMPORARY</option>
             </select>
+          </div>
+          <div class="form-group">
+            <label>Department Scope <span class="text-danger">*</span></label>
+            <select name="department_scope" id="assignment_dept_scope" class="form-control" required>
+              <option value="ALL">ALL - All Departments</option>
+              <option value="ELECTRIC">ELECTRIC - Electric Only</option>
+              <option value="DIESEL">DIESEL - Diesel Only</option>
+              <option value="GASOLINE">GASOLINE - Gasoline Only</option>
+              <option value="DIESEL,GASOLINE">DIESEL & GASOLINE</option>
+            </select>
+            <small class="form-text text-muted">
+              <strong>ALL:</strong> For branch employees (handle all departments)<br>
+              <strong>Specific:</strong> For central HQ employees (focus on specific departments)
+            </small>
           </div>
           <div class="form-group">
             <label>Start Date <span class="text-danger">*</span></label>
@@ -801,6 +829,111 @@
 
 <?= $this->endSection() ?>
 
+<?= $this->section('styles') ?>
+<style>
+/* DataTables Search Styling */
+.dataTables_wrapper .dataTables_filter {
+    float: right;
+    text-align: right;
+    margin-bottom: 1rem;
+}
+
+.dataTables_wrapper .dataTables_filter input {
+    border: 1px solid #d1d3e2;
+    border-radius: 0.35rem;
+    padding: 0.375rem 0.75rem;
+    margin-left: 0.5em;
+    width: 250px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.dataTables_wrapper .dataTables_filter input:focus {
+    border-color: #4e73df;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+}
+
+.dataTables_wrapper .dataTables_length {
+    float: left;
+    margin-bottom: 1rem;
+}
+
+.dataTables_wrapper .dataTables_length select {
+    border: 1px solid #d1d3e2;
+    border-radius: 0.35rem;
+    padding: 0.375rem 1.75rem 0.375rem 0.75rem;
+    margin: 0 0.5em;
+}
+
+/* DataTables Info & Pagination */
+.dataTables_wrapper .dataTables_info {
+    padding-top: 0.85em;
+    color: #858796;
+}
+
+.dataTables_wrapper .dataTables_paginate {
+    float: right;
+    text-align: right;
+    padding-top: 0.25em;
+}
+
+/* Employee Breakdown Styling */
+.employee-breakdown {
+    font-size: 0.85rem;
+    line-height: 1.3;
+}
+
+.employee-breakdown small {
+    margin: 2px 0;
+    font-weight: 500;
+}
+
+.employee-breakdown .fas {
+    width: 14px;
+    text-align: center;
+    margin-right: 4px;
+}
+
+.employee-breakdown .text-muted {
+    font-weight: 600;
+    border-top: 1px solid #e3e6f0;
+    padding-top: 2px;
+    margin-top: 4px;
+}
+
+/* Processing indicator */
+.dataTables_wrapper .dataTables_processing {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    margin-left: -100px;
+    margin-top: -26px;
+    text-align: center;
+    padding: 1em 0;
+    background: rgba(78, 115, 223, 0.9);
+    color: white;
+    border-radius: 0.35rem;
+    box-shadow: 0 0.15rem 1.75rem 0 rgba(58, 59, 69, 0.15);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .dataTables_wrapper .dataTables_filter input {
+        width: 100%;
+        margin-left: 0;
+        margin-top: 0.5rem;
+    }
+    
+    .dataTables_wrapper .dataTables_filter,
+    .dataTables_wrapper .dataTables_length {
+        float: none;
+        text-align: left;
+    }
+}
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('javascript') ?>
 <script src="https://cdn.datatables.net/1.11.3/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.11.3/js/dataTables.bootstrap4.min.js"></script>
@@ -810,10 +943,17 @@
 <script>
 let areasTable, employeesTable;
 let employeesByRoleChart, assignmentsByAreaChart;
+// Filter functionality removed for simplicity
 
 $(document).ready(function() {
-  initializeAreaTable();
-  initializeEmployeeTable();
+  // Initialize tables only once
+  if (!areasTable) {
+    initializeAreaTable();
+  }
+  if (!employeesTable) {
+    initializeEmployeeTable();
+  }
+  
   initializeCharts();
   bindForms();
   buildRoleCoverageMatrix();
@@ -822,29 +962,31 @@ $(document).ready(function() {
   restoreActiveTab();
   
   // Track current active tab
-  window.currentActiveTab = 'areasTab'; // Default active tab
+  window.currentActiveTab = 'areasTab';
   
-  // Explicitly activate the first tab to prevent stacking issues
+  // Explicitly activate the first tab
   setTimeout(function() {
     $('#areas-tab').tab('show');
-    console.log('✅ Explicitly activated Areas tab to prevent stacking');
   }, 100);
   
   // Tab change tracking
   $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-    const targetTab = $(e.target).attr('href').substring(1); // Remove # from href
+    const targetTab = $(e.target).attr('href').substring(1);
     window.currentActiveTab = targetTab;
-    console.log('Active tab changed to:', targetTab);
+    
+    // Adjust columns when switching tabs
+    if (targetTab === 'areasTab' && areasTable) {
+      areasTable.columns.adjust().responsive.recalc();
+    } else if (targetTab === 'employeesTab' && employeesTable) {
+      employeesTable.columns.adjust().responsive.recalc();
+    }
   });
   
-  // Fix modal close button functionality - comprehensive fix
+  // Modal close button functionality
   $(document).on('click', '.modal .close, .modal [data-dismiss="modal"]', function(e) {
-    console.log('Close button clicked:', this);
     e.preventDefault();
     e.stopPropagation();
-    const modal = $(this).closest('.modal');
-    console.log('Modal found:', modal);
-    modal.modal('hide');
+    $(this).closest('.modal').modal('hide');
   });
   
   // Fix modal backdrop click
@@ -861,22 +1003,19 @@ $(document).ready(function() {
     }
   });
   
-  // Specific fix for all modal close buttons with more specific selectors
+  // Additional modal close handlers
   $(document).on('click', 'button[data-dismiss="modal"]', function(e) {
-    console.log('Data-dismiss button clicked:', this);
     e.preventDefault();
     e.stopPropagation();
     const modal = $(this).closest('.modal');
-    if (modal.length) {
-      modal.modal('hide');
-    }
+    if (modal.length) modal.modal('hide');
   });
   
-  // Specific fix for Cancel buttons
+  // Cancel button handler
   $(document).on('click', '.btn-secondary', function(e) {
-    console.log('Cancel button clicked:', this);
     const modal = $(this).closest('.modal');
-    if (modal.length && $(this).text().toLowerCase().includes('cancel') || $(this).text().toLowerCase().includes('close') || $(this).text().toLowerCase().includes('tutup')) {
+    const text = $(this).text().toLowerCase();
+    if (modal.length && (text.includes('cancel') || text.includes('close') || text.includes('tutup'))) {
       e.preventDefault();
       e.stopPropagation();
       modal.modal('hide');
@@ -892,46 +1031,81 @@ $(document).ready(function() {
 
 /* ===================== TABLE INITIALIZATIONS ===================== */
 function initializeAreaTable() {
+  if ($.fn.DataTable.isDataTable('#areasTable')) {
+    return;
+  }
+  
   try {
     areasTable = $('#areasTable').DataTable({
       processing: true,
       serverSide: true,
+      searching: true,
+      searchDelay: 500,
+      dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
       ajax: {
         url: '<?= base_url('service/area-management/getAreas') ?>',
         type: 'POST',
+        data: function(d) {
+          // DataTables akan mengirim parameter search, order, pagination secara otomatis
+          return d;
+        },
         dataSrc: function(json) {
-          console.log('DataTable Response:', json);
-          if (json && json.data) {
-            return json.data;
-          } else {
-            console.error('Invalid response format:', json);
-            return [];
-          }
+          return (json && json.data) ? json.data : [];
         },
         error: function(xhr, error, code) {
-          console.error('DataTable AJAX Error:', error, code);
-          console.error('Response:', xhr.responseText);
+          console.error('Areas AJAX error:', error, xhr.responseText);
           return [];
         }
       },
     columns: [
       { data: 'area_code', render: d => `<span class="employee-code">${d}</span>` },
       { data: 'area_name', render: d => `<span class="text-dark font-weight-medium">${d}</span>` },
+      { 
+        data: 'area_type', 
+        render: function(data, type, row) {
+          if (!data) return '<span class="text-muted">-</span>';
+          return data === 'CENTRAL' 
+            ? '<span class="text-primary font-weight-bold">CENTRAL</span>' 
+            : '<span class="text-success font-weight-bold">BRANCH</span>';
+        }
+      },
       { data: 'description', render: d => d ? (d.length > 50 ? `<span class="text-dark">${d.substring(0,50)}</span><span class="text-muted">…</span>` : `<span class="text-dark">${d}</span>`) : '<span class="text-muted">-</span>' },
-      { data: 'customers_count', render: d => `<span class="badge badge-info">${d || 0}</span>` },
-      { data: 'employees_count', render: d => `<span class="badge badge-primary">${d || 0}</span>` },
-      { data: 'assignment_summary', orderable:false, render: renderAssignmentSummary }
+      { data: 'customers_count', render: d => `<strong class="text-dark">${d || 0}</strong>` },
+      { 
+        data: null, 
+        orderable: false,
+        render: function(data, type, row) {
+          const foreman = row.employees_breakdown?.foreman || 0;
+          const mechanic = row.employees_breakdown?.mechanic || 0;
+          const helper = row.employees_breakdown?.helper || 0;
+          
+          return `<div class="employee-breakdown">
+            <small class="d-block text-success"><i class="fas fa-user-tie"></i> Foreman: ${foreman}</small>
+            <small class="d-block text-primary"><i class="fas fa-wrench"></i> Mechanic: ${mechanic}</small>
+            <small class="d-block text-info"><i class="fas fa-hand-holding"></i> Helper: ${helper}</small>
+          </div>`;
+        }
+      },
+      { 
+        data: 'is_active',
+        render: function(data, type, row) {
+          return data == 1 
+            ? '<span class="badge bg-success">Active</span>' 
+            : '<span class="badge bg-secondary">Inactive</span>';
+        }
+      }
     ],
     order: [[1,'asc']],
     pageLength: 25,
     language: {
       emptyTable: "No areas found",
       info: "Showing _START_ to _END_ of _TOTAL_ areas",
-      infoEmpty: "Showing 0 to 0 of 0 areas"
+      infoEmpty: "Showing 0 to 0 of 0 areas",
+      search: "Search:",
+      searchPlaceholder: "Search areas...",
+      lengthMenu: "Show _MENU_ entries"
     },
     drawCallback: function(settings) {
-      console.log('DataTable draw completed');
-      
       // Add click event to table rows
       $('#areasTable tbody').off('click', 'tr').on('click', 'tr', function() {
         const data = areasTable.row(this).data();
@@ -946,6 +1120,15 @@ function initializeAreaTable() {
       );
     }
   });
+  
+  // Add search event listener for debugging
+
+  
+  // Ensure search input is properly bound
+  setTimeout(function() {
+    $('div.dataTables_filter input').attr('placeholder', 'Search areas...');
+  }, 100);
+  
   } catch (error) {
     console.error('Error initializing Areas DataTable:', error);
     // Fallback: show error message
@@ -954,18 +1137,73 @@ function initializeAreaTable() {
 }
 
 function initializeEmployeeTable() {
+  // Destroy existing instance if any
+  if ($.fn.DataTable.isDataTable('#employeesTable')) {
+    $('#employeesTable').DataTable().destroy();
+  }
+  
   employeesTable = $('#employeesTable').DataTable({
     processing: true,
     serverSide: true,
+    destroy: true,
+    searching: true,
+    searchDelay: 500,
+    dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
     ajax: {
       url: '<?= base_url('service/area-management/getEmployees') ?>',
-      type: 'POST'
+      type: 'POST',
+      data: function(d) {
+        // DataTables akan mengirim parameter search, order, pagination secara otomatis
+        return d;
+      },
+      dataSrc: function(json) {
+        console.log('Employees response:', json);
+        return (json && json.data) ? json.data : [];
+      },
+      error: function(xhr, error, thrown) {
+        console.error('Employees AJAX error:', error, xhr.responseText);
+      }
     },
     columns: [
       { data: 'staff_code', render: d => `<span class="employee-code">${d}</span>` },
       { data: 'staff_name', render: d => `<span class="text-dark font-weight-medium">${d}</span>` },
-      { data: 'staff_role', render: r => `<span class="badge badge-pill badge-${roleBadgeColor(r)} employee-role">${r}</span>` },
+      { 
+        data: 'staff_role', 
+        render: function(data, type, row) {
+          if (!data) return '<span class="text-muted">N/A</span>';
+          const colors = {
+            'SUPERVISOR': 'danger',
+            'FOREMAN': 'warning',
+            'ADMIN': 'primary',
+            'MECHANIC': 'success',
+            'HELPER': 'secondary'
+          };
+          const color = colors[data] || 'secondary';
+          return `<strong class="text-${color}">${data}</strong>`;
+        }
+      },
       { data: 'departemen', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' },
+      { 
+        data: 'area_assignments',
+        orderable: false,
+        render: function(data, type, row) {
+          if (!data || data.length === 0) {
+            return '<span class="text-warning">⚠️ Unassigned</span>';
+          }
+          // Group by area type
+          const central = data.filter(a => a.area_type === 'CENTRAL');
+          const branch = data.filter(a => a.area_type === 'BRANCH');
+          
+          let output = [];
+          if (central.length > 0) {
+            output.push(`<span class="text-primary mr-1">🏢 ${central.length} Central</span>`);
+          }
+          if (branch.length > 0) {
+            output.push(`<span class="text-success">🏭 ${branch.length} Branch</span>`);
+          }
+          return output.join('<br>');
+        }
+      },
       { data: 'phone', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' },
       { data: 'email', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' }
     ],
@@ -974,7 +1212,10 @@ function initializeEmployeeTable() {
     language: {
       emptyTable: "No employees found",
       info: "Showing _START_ to _END_ of _TOTAL_ employees",
-      infoEmpty: "Showing 0 to 0 of 0 employees"
+      infoEmpty: "Showing 0 to 0 of 0 employees",
+      search: "Search:",
+      searchPlaceholder: "Search employees...",
+      lengthMenu: "Show _MENU_ entries"
     },
     drawCallback: function(settings) {
       // Add click event to table rows
@@ -991,6 +1232,17 @@ function initializeEmployeeTable() {
       );
     }
   });
+  
+  // Add search event listener for debugging
+  $('#employeesTable').on('search.dt', function() {
+    const searchValue = employeesTable.search();
+    console.log('Employees table search triggered:', searchValue);
+  });
+  
+  // Ensure search input is properly bound
+  setTimeout(function() {
+    $('#employeesTable_wrapper div.dataTables_filter input').attr('placeholder', 'Search employees...');
+  }, 100);
 }
 
 /* ===================== CHARTS ===================== */
@@ -1054,21 +1306,21 @@ function buildRoleCoverageMatrix() {
         
         // Foreman 
         if (area.assignment_summary && area.assignment_summary.foreman) {
-          html += `<td><span class='badge badge-success'>1</span></td>`;
+          html += `<td><strong class='text-success'>1</strong></td>`;
         } else {
           html += '<td>-</td>';
         }
         
         // Mechanic
         if (area.assignment_summary && area.assignment_summary.mechanics && area.assignment_summary.mechanics.length > 0) {
-          html += `<td><span class='badge badge-success'>${area.assignment_summary.mechanics.length}</span></td>`;
+          html += `<td><strong class='text-success'>${area.assignment_summary.mechanics.length}</strong></td>`;
         } else {
           html += '<td>-</td>';
         }
         
         // Helper
         if (area.assignment_summary && area.assignment_summary.helpers && area.assignment_summary.helpers.length > 0) {
-          html += `<td><span class='badge badge-success'>${area.assignment_summary.helpers.length}</span></td>`;
+          html += `<td><strong class='text-success'>${area.assignment_summary.helpers.length}</strong></td>`;
         } else {
           html += '<td>-</td>';
         }
@@ -1092,20 +1344,20 @@ function renderAssignmentSummary(summary) {
   // Add foreman if exists (check if it's a string or number)
   if (summary.foreman && (typeof summary.foreman === 'string' || summary.foreman > 0)) {
     if (typeof summary.foreman === 'string') {
-      output.push(`<span class='badge badge-warning mr-1'>1 Foreman</span>`);
+      output.push(`<span class='text-warning font-weight-bold mr-2'>👷 1 Foreman</span>`);
     } else {
-      output.push(`<span class='badge badge-warning mr-1'>${summary.foreman} Foreman</span>`);
+      output.push(`<span class='text-warning font-weight-bold mr-2'>👷 ${summary.foreman} Foreman</span>`);
     }
   }
   
   // Add mechanics if exist
   if (summary.mechanics && Array.isArray(summary.mechanics) && summary.mechanics.length > 0) {
-    output.push(`<span class='badge badge-primary mr-1'>${summary.mechanics.length} Mechanic${summary.mechanics.length > 1 ? 's' : ''}</span>`);
+    output.push(`<span class='text-primary font-weight-bold mr-2'>🔧 ${summary.mechanics.length} Mechanic${summary.mechanics.length > 1 ? 's' : ''}</span>`);
   }
   
   // Add helpers if exist
   if (summary.helpers && Array.isArray(summary.helpers) && summary.helpers.length > 0) {
-    output.push(`<span class='badge badge-success mr-1'>${summary.helpers.length} Helper${summary.helpers.length > 1 ? 's' : ''}</span>`);
+    output.push(`<span class='text-success font-weight-bold mr-2'>🔨 ${summary.helpers.length} Helper${summary.helpers.length > 1 ? 's' : ''}</span>`);
   }
   
   return output.length > 0 ? output.join('') : '<span class="text-muted">No assignments</span>';
@@ -1113,12 +1365,12 @@ function renderAssignmentSummary(summary) {
 
 function roleBadgeColor(role) {
   switch(role) {
-    case 'SUPERVISOR': return 'dark';      // Hitam - untuk supervisor
-    case 'FOREMAN': return 'warning';      // Kuning - untuk foreman
-    case 'ADMIN': return 'info';           // Biru muda - untuk admin
-    case 'MECHANIC': return 'success';     // Hijau - untuk mechanic
-    case 'HELPER': return 'secondary';     // Abu-abu - untuk helper
-    default: return 'light';               // Putih - untuk role yang tidak dikenal
+    case 'SUPERVISOR': return 'danger';      // Merah - untuk supervisor (tertinggi)
+    case 'FOREMAN': return 'warning';        // Kuning - untuk foreman
+    case 'ADMIN': return 'primary';          // Biru - untuk admin
+    case 'MECHANIC': return 'success';       // Hijau - untuk mechanic
+    case 'HELPER': return 'secondary';       // Abu-abu - untuk helper
+    default: return 'light';                 // Putih - untuk role yang tidak dikenal
   }
 }
 
@@ -1144,13 +1396,9 @@ function bindForms() {
     $errorDiv.html('').hide();
     
     $.post('<?= base_url('service/area-management/saveArea') ?>', $form.serialize(), function(resp){
-      console.log('📝 Add area response:', resp); // Debug response
       if (resp.success) {
         $('#addAreaModal').modal('hide');
         notify('Area created successfully','success');
-        
-        console.log('🔄 Manual refresh after area creation...');
-        // Use manual refresh only - no auto page reload
         refreshAreas();
         
         $form[0].reset();
@@ -1170,21 +1418,15 @@ function bindForms() {
     const $form = $(this);
     $form.find('.form-errors').html('');
     $.post('<?= base_url('service/area-management/saveEmployee') ?>', $form.serialize(), function(resp){
-      console.log('📝 Add employee response:', resp); // Debug response
       if (resp.success) {
         $('#addEmployeeModal').modal('hide');
         notify('Employee created','success');
-        
-        console.log('🔄 Manual refresh after employee creation...');
-        // Use manual refresh only - no auto page reload
         refreshEmployees();
         
         $form[0].reset();
       } else {
-        console.log('❌ Add employee validation errors:', resp.errors);
         if (resp.errors) {
           showFormErrors($form, resp.errors);
-          // Also show detailed error in notification
           let errorDetails = Object.keys(resp.errors).map(field => `${field}: ${resp.errors[field]}`).join('\\n');
           notify(`Validation errors:\\n${errorDetails}`, 'error');
         } else {
@@ -1192,7 +1434,6 @@ function bindForms() {
         }
       }
     }, 'json').fail(function(xhr, status, error) {
-      console.log('❌ AJAX Error:', xhr.responseText);
       notify('Network error: ' + error, 'error');
     });
   });
@@ -1253,9 +1494,6 @@ function bindForms() {
         const areaId = $('#assignAreaSelect').val();
         if (areaId) loadAreaAssignments();
         buildRoleCoverageMatrix();
-        
-        console.log('🔄 Manual refresh after assignment creation...');
-        // Use manual refresh only - no auto page reload
         forceRefreshAssignments();
         
         $form[0].reset();
@@ -1331,9 +1569,6 @@ function deleteArea(id) {
     success: function(resp){
       if (resp.success) {
         notify('Area deleted','success');
-        
-        console.log('🔄 Manual refresh after area deletion...');
-        // Use manual refresh only - no auto page reload
         refreshAreas();
         
       } else {
@@ -1378,9 +1613,6 @@ function deleteEmployee(id) {
     success: function(resp){
       if (resp.success) {
         notify('Employee deactivated successfully','success');
-        
-        console.log('🔄 Manual refresh after employee deactivation...');
-        // Use manual refresh only - no auto page reload
         refreshEmployees();
         
       } else {
@@ -1396,7 +1628,6 @@ function deleteEmployee(id) {
 /* ===================== ASSIGNMENTS ===================== */
 function loadAreaAssignments() {
   const areaId = $('#assignAreaSelect').val();
-  console.log('Loading assignments for area ID:', areaId);
   
   if (!areaId) {
     $('#areaAssignmentsTable').html('<div class="text-center text-muted">Select an area to view assignments</div>');
@@ -1404,40 +1635,28 @@ function loadAreaAssignments() {
     return;
   }
   
-  // Show loading state
   $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin"></i><br>Loading assignments...</div>');
   
-  // Add cache busting to ensure fresh data
   const timestamp = Date.now();
   const url = `<?= base_url('service/area-management/getAreaAssignments') ?>/${areaId}?_=${timestamp}`;
   
   $.getJSON(url, function(resp){
-    console.log('Area assignments response:', resp);
     if (!resp.success) {
-      console.error('Failed to load assignments:', resp);
       $('#areaAssignmentsTable').html('<div class="text-center text-danger py-4"><i class="fas fa-exclamation-triangle"></i><br>Error loading assignments</div>');
       return;
     }
     const assignments = resp.data || [];
-    console.log('Assignments data:', assignments);
     renderAssignmentsTable(assignments);
     updateAreaAssignmentSummary(assignments);
   }).fail(function(xhr, status, error) {
-    console.error('AJAX Error loading assignments:', error);
-    console.error('Response:', xhr.responseText);
     $('#areaAssignmentsTable').html('<div class="text-center text-danger py-4"><i class="fas fa-exclamation-triangle"></i><br>Network error loading assignments<br><button class="btn btn-sm btn-primary mt-2" onclick="loadAreaAssignments()">Retry</button></div>');
   });
 }
 
-// Force refresh assignments - useful when data gets out of sync
 function forceRefreshAssignments() {
-  console.log('🔄 Force refreshing assignments...');
   const areaId = $('#assignAreaSelect').val();
   if (areaId) {
-    // Clear current table first
-    $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-sync fa-spin"></i><br>Force refreshing...</div>');
-    
-    // Reload with strong cache busting
+    $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-sync fa-spin"></i><br>Refreshing...</div>');
     setTimeout(function() {
       loadAreaAssignments();
     }, 300);
@@ -1447,14 +1666,9 @@ function forceRefreshAssignments() {
 
 
 function renderAssignmentsTable(assignments) {
-  console.log('📊 Rendering assignments table with data:', assignments);
-  console.log('📊 Assignment count:', assignments.length);
-  
   const filterRole = $('#filterRoleAssignments').val();
   let filtered = assignments;
   if (filterRole) filtered = assignments.filter(a => a.staff_role === filterRole);
-  
-  console.log('📊 Filtered assignment count:', filtered.length);
   
   if (filtered.length === 0) {
     $('#areaAssignmentsTable').html('<div class="text-center text-muted py-4"><i class="fas fa-users-slash"></i><br>No assignments found for the selected role</div>');
@@ -1468,8 +1682,8 @@ function renderAssignmentsTable(assignments) {
     const role = a.staff_role || a.role || 'UNKNOWN';
     html += `<tr id="assignment-row-${a.id}">
       <td><strong>${a.staff_name}</strong><br><small class="text-muted">${a.staff_code || ''}</small></td>
-      <td><span class='badge badge-${roleBadgeColor(role)}'>${role}</span></td>
-      <td><span class='badge badge-${assignmentTypeColor}'>${a.assignment_type}</span></td>
+      <td><strong class='text-${roleBadgeColor(role)}'>${role}</strong></td>
+      <td><strong class='text-${assignmentTypeColor}'>${a.assignment_type}</strong></td>
       <td>${a.start_date ? new Date(a.start_date).toLocaleDateString('en-GB') : '-'}</td>
       <td>${a.end_date ? new Date(a.end_date).toLocaleDateString('en-GB') : '-'}</td>
       <td>
@@ -1507,12 +1721,12 @@ function updateAreaAssignmentSummary(assignments) {
     html += `<div class="mb-2">
       <div class="d-flex justify-content-between align-items-center">
         <strong class="text-dark">${r}</strong>
-        <span class="badge badge-primary">${total} Assigned</span>
+        <strong class="text-primary">${total} Assigned</strong>
       </div>
       <div class="small text-muted">
-        <span class='badge badge-success mr-1'>Primary: ${v.primary}</span>
-        <span class='badge badge-warning mr-1'>Backup: ${v.backup}</span>
-        <span class='badge badge-info'>Temporary: ${v.temporary}</span>
+        <span class='text-success mr-2'>✅ Primary: ${v.primary}</span>
+        <span class='text-warning mr-2'>⚠️ Backup: ${v.backup}</span>
+        <span class='text-info'>⏱️ Temporary: ${v.temporary}</span>
       </div>
     </div>`;
   });
@@ -1521,7 +1735,6 @@ function updateAreaAssignmentSummary(assignments) {
   $('#areaAssignmentSummary').html(html);
 }
 
-function filterAssignments() { loadAreaAssignments(); }
 function filterAssignments() { loadAreaAssignments(); }
 
 function loadAvailableEmployeesForAssignment() {
@@ -1690,7 +1903,6 @@ function editEmployee(id) {
 function editAssignment(id) {
   $.getJSON(`<?= base_url('service/area-management/showAssignment') ?>/${id}`, function(resp){
     if(!resp.success) {
-      console.log('Edit assignment error:', resp);
       return notify(resp.message,'error');
     }
     const a = resp.data;
@@ -1705,7 +1917,6 @@ function editAssignment(id) {
     $('#edit_assignment_notes').val(a.notes || '');
     $('#editAssignmentModal').modal('show');
   }).fail(function(xhr, status, error) {
-    console.log('AJAX Error for assignment:', xhr.responseText);
     notify('Network error: ' + error, 'error');
   });
 }
@@ -1717,17 +1928,12 @@ $('#editAreaForm').on('submit', function(e){
   const formData = $(this).serialize();
   
   $.post(`<?= base_url('service/area-management/updateArea') ?>/${id}`, formData, function(resp){
-    console.log('📝 Edit area response:', resp); // Debug response
     if(resp.success){
       notify('Area updated','success');
       $('#editAreaModal').modal('hide');
-      
-      console.log('🔄 Manual refresh after area edit...');
-      // Use manual refresh only - no auto page reload
       refreshAreas();
       
     } else {
-      console.log('❌ Update area error:', resp);
       if (resp.errors) {
         let errorMsg = 'Validation errors:\n';
         Object.keys(resp.errors).forEach(key => {
@@ -1739,7 +1945,6 @@ $('#editAreaForm').on('submit', function(e){
       }
     }
   }, 'json').fail(function(xhr, status, error) {
-    console.log('AJAX Error:', xhr.responseText);
     notify('Network error: ' + error, 'error');
   });
 });
@@ -1750,17 +1955,12 @@ $('#editEmployeeForm').on('submit', function(e){
   const formData = $(this).serialize();
   
   $.post(`<?= base_url('service/area-management/updateEmployee') ?>/${id}`, formData, function(resp){
-    console.log('📝 Edit employee response:', resp); // Debug response
     if(resp.success){
       notify('Employee updated','success');
       $('#editEmployeeModal').modal('hide');
-      
-      console.log('🔄 Manual refresh after employee edit...');
-      // Use manual refresh only - no auto page reload
       refreshEmployees();
       
     } else {
-      console.log('❌ Update employee error:', resp);
       if (resp.errors) {
         let errorMsg = 'Validation errors:\n';
         Object.keys(resp.errors).forEach(key => {
@@ -1772,7 +1972,6 @@ $('#editEmployeeForm').on('submit', function(e){
       }
     }
   }, 'json').fail(function(xhr, status, error) {
-    console.log('AJAX Error:', xhr.responseText);
     notify('Network error: ' + error, 'error');
   });
 });
@@ -1786,9 +1985,6 @@ $('#editAssignmentForm').on('submit', function(e){
       $('#editAssignmentModal').modal('hide');
       loadAreaAssignments();
       buildRoleCoverageMatrix();
-      
-      console.log('🔄 Manual refresh after assignment update...');
-      // Use manual refresh only - no auto page reload
       forceRefreshAssignments();
       
     } else {
@@ -1818,12 +2014,11 @@ function viewEmployeeDetail(employeeId) {
     type: 'GET',
     dataType: 'json',
     success: function(response) {
-      console.log('Employee detail response:', response);
       if (response.success && response.data) {
         const emp = response.data;
         $('#detail_staff_code').text(emp.staff_code || '-');
         $('#detail_staff_name').text(emp.staff_name || '-');
-        $('#detail_staff_role').html(emp.staff_role ? `<span class="badge badge-pill badge-${roleBadgeColor(emp.staff_role)}">${emp.staff_role}</span>` : '<span class="text-muted">-</span>');
+        $('#detail_staff_role').html(emp.staff_role ? `<strong class="text-${roleBadgeColor(emp.staff_role)}">${emp.staff_role}</strong>` : '<span class="text-muted">-</span>');
         $('#detail_departemen').text(emp.departemen || '-');
         $('#detail_phone').text(emp.phone || '-');
         $('#detail_email').text(emp.email || '-');
@@ -1836,8 +2031,8 @@ function viewEmployeeDetail(employeeId) {
           emp.assignments.forEach(assign => {
             assignmentsHtml += `<tr>
               <td><strong>${assign.area_name || '-'}</strong></td>
-              <td><span class="badge badge-${assign.assignment_type === 'PRIMARY' ? 'primary' : 'secondary'}">${assign.assignment_type || '-'}</span></td>
-              <td><span class="badge badge-${assign.is_active ? 'success' : 'danger'}">${assign.is_active ? 'Active' : 'Inactive'}</span></td>
+              <td><strong class="text-${assign.assignment_type === 'PRIMARY' ? 'success' : 'secondary'}">${assign.assignment_type || '-'}</strong></td>
+              <td><strong class="text-${assign.is_active ? 'success' : 'danger'}">${assign.is_active ? '✅ Active' : '❌ Inactive'}</strong></td>
             </tr>`;
           });
           assignmentsHtml += '</tbody></table></div>';
@@ -1851,8 +2046,6 @@ function viewEmployeeDetail(employeeId) {
       }
     },
     error: function(xhr, status, error) {
-      console.error('Error loading employee details:', error);
-      console.error('Response:', xhr.responseText);
       notify('Error loading employee details', 'error');
       $('#employeeDetailModal').modal('hide');
     }
@@ -1897,9 +2090,9 @@ function loadAreaDetailAssignments(areaId) {
       response.data.forEach(assign => {
         assignmentsHtml += `<tr>
           <td>${assign.staff_name}</td>
-          <td><span class="badge badge-pill badge-${roleBadgeColor(assign.staff_role)}">${assign.staff_role}</span></td>
-          <td><span class="badge badge-${assign.assignment_type === 'PRIMARY' ? 'primary' : 'secondary'}">${assign.assignment_type}</span></td>
-          <td><span class="badge badge-${assign.is_active ? 'success' : 'danger'}">${assign.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td><strong class="text-${roleBadgeColor(assign.staff_role)}">${assign.staff_role}</strong></td>
+          <td><strong class="text-${assign.assignment_type === 'PRIMARY' ? 'success' : 'secondary'}">${assign.assignment_type}</strong></td>
+          <td><strong class="text-${assign.is_active ? 'success' : 'danger'}">${assign.is_active ? '✅ Active' : '❌ Inactive'}</strong></td>
         </tr>`;
       });
       assignmentsHtml += '</tbody></table></div>';
@@ -2001,173 +2194,75 @@ function deleteEmployeeFromDetail() {
   deleteEmployee(currentEmployeeId);
 }
 
-/* ===================== REFRESHERS ===================== */
-function refreshAreaTable(){ areasTable.ajax.reload(); buildRoleCoverageMatrix(); }
-function refreshEmployeeTable(){ employeesTable.ajax.reload(); }
+/* ===================== REFRESH FUNCTIONS ===================== */
+// Unified refresh functions - simplified and optimized
 
-/* ===================== UTILITIES ===================== */
-// Smart tab refresh - only refresh current active tab data
+function refreshAreas() {
+  if (areasTable) {
+    areasTable.ajax.reload(function() {
+      buildRoleCoverageMatrix();
+    }, false);
+  } else {
+    initializeAreaTable();
+  }
+}
+
+function refreshEmployees() {
+  if (employeesTable) {
+    employeesTable.ajax.reload(null, false);
+  } else {
+    initializeEmployeeTable();
+  }
+}
+
+function refreshAssignments() {
+  const areaId = $('#assignAreaSelect').val();
+  if (areaId) {
+    loadAreaAssignments();
+  }
+}
+
 function refreshCurrentTab() {
   const activeTab = window.currentActiveTab || 'areasTab';
-  console.log('🔄 Refreshing active tab:', activeTab);
   
   switch(activeTab) {
     case 'areasTab':
-      if (areasTable) {
-        console.log('📊 Reloading areas table...');
-        // Force cache busting by adding timestamp
-        const originalUrl = areasTable.ajax.url();
-        const bustCache = originalUrl.includes('?') ? '&_=' : '?_=';
-        const cacheBustUrl = originalUrl + bustCache + Date.now();
-        
-        console.log('🔄 Cache bust URL for areas:', cacheBustUrl);
-        
-        areasTable.ajax.url(cacheBustUrl).load(function(json) {
-          console.log('✅ Areas table reload completed with cache busting:', json);
-          // Reset URL back to original
-          areasTable.ajax.url(originalUrl);
-          buildRoleCoverageMatrix();
-        }, false);
-      } else {
-        console.error('❌ areasTable is not initialized');
-      }
+      refreshAreas();
       break;
-      
     case 'employeesTab':
-      if (employeesTable) {
-        console.log('📊 Reloading employees table...');
-        // Also add cache busting for employees
-        const originalUrl = employeesTable.ajax.url();
-        const bustCache = originalUrl.includes('?') ? '&_=' : '?_=';
-        const cacheBustUrl = originalUrl + bustCache + Date.now();
-        
-        console.log('🔄 Cache bust URL for employees:', cacheBustUrl);
-        
-        employeesTable.ajax.url(cacheBustUrl).load(function(json) {
-          console.log('✅ Employees table reload completed with cache busting:', json);
-          // Reset URL back to original
-          employeesTable.ajax.url(originalUrl);
-        }, false);
-      } else {
-        console.error('❌ employeesTable is not initialized');
-      }
+      refreshEmployees();
       break;
-      
     case 'assignmentsTab':
-      // Refresh assignments if area is selected
-      const selectedArea = $('#assignAreaSelect').val();
-      if (selectedArea) {
-        console.log('📊 Reloading assignments for area:', selectedArea);
-        loadAreaAssignments();
-      }
+      refreshAssignments();
       break;
-      
     case 'analyticsTab':
-      // Refresh charts and matrix
-      console.log('📊 Reloading analytics...');
       buildRoleCoverageMatrix();
-      if (typeof initializeCharts === 'function') {
-        initializeCharts();
-      }
+      if (typeof initializeCharts === 'function') initializeCharts();
       break;
   }
 }
 
-// Alternative refresh method - page reload with tab preservation
-function refreshWithPageReload() {
-  const activeTab = window.currentActiveTab || 'areasTab';
-  console.log('🔄 Using page reload method, preserving tab:', activeTab);
-  
-  // Save current tab to localStorage
-  localStorage.setItem('area_management_active_tab', activeTab);
-  
-  // Reload page
-  window.location.reload();
-}
+// Legacy function names - for backward compatibility
+function refreshAreaTable() { refreshAreas(); }
+function refreshEmployeeTable() { refreshEmployees(); }
+function refreshAssignmentsTable() { refreshAssignments(); }
 
-// Restore tab on page load
+/* ===================== UTILITIES ===================== */
 function restoreActiveTab() {
   const savedTab = localStorage.getItem('area_management_active_tab');
   if (savedTab && savedTab !== 'areasTab') {
     setTimeout(function() {
-      console.log('🔄 Restoring saved tab:', savedTab);
       $(`a[href="#${savedTab}"]`).tab('show');
       window.currentActiveTab = savedTab;
-      // Clear saved tab
       localStorage.removeItem('area_management_active_tab');
     }, 500);
   }
-}
-
-// Cross-tab refresh - refresh other tabs that might be affected
-function refreshRelatedTabs(excludeCurrentTab = false) {
-  const activeTab = window.currentActiveTab || 'areasTab';
-  console.log('Refreshing related tabs, current active:', activeTab);
-  
-  // Always refresh the current active tab first
-  if (!excludeCurrentTab) {
-    refreshCurrentTab();
-  }
-  
-  // Also refresh areas table if we're not already on it (for cross-tab consistency)
-  if (activeTab !== 'areasTab' && areasTable) {
-    console.log('Also refreshing areas table for cross-tab consistency...');
-    areasTable.ajax.reload(null, false);
-  }
-  
-  // Always refresh matrix for consistency
-  buildRoleCoverageMatrix();
-}
-
-// Refresh utilities
-function refreshAllTables() {
-  if (areasTable) {
-    const originalUrl = areasTable.ajax.url();
-    const cacheBustUrl = originalUrl + (originalUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    areasTable.ajax.url(cacheBustUrl).load(function(json) {
-      areasTable.ajax.url(originalUrl);
-    }, false);
-  }
-  if (employeesTable) {
-    const originalUrl = employeesTable.ajax.url();
-    const cacheBustUrl = originalUrl + (originalUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    employeesTable.ajax.url(cacheBustUrl).load(function(json) {
-      employeesTable.ajax.url(originalUrl);
-    }, false);
-  }
-  loadAreaAssignments(); // For assignments table
-}
-
-function refreshAreasTable() {
-  if (areasTable) {
-    const originalUrl = areasTable.ajax.url();
-    const cacheBustUrl = originalUrl + (originalUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    areasTable.ajax.url(cacheBustUrl).load(function(json) {
-      areasTable.ajax.url(originalUrl);
-      buildRoleCoverageMatrix();
-    }, false);
-  }
-}
-
-function refreshEmployeesTable() {
-  if (employeesTable) {
-    const originalUrl = employeesTable.ajax.url();
-    const cacheBustUrl = originalUrl + (originalUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    employeesTable.ajax.url(cacheBustUrl).load(function(json) {
-      employeesTable.ajax.url(originalUrl);
-    }, false);
-  }
-}
-
-function refreshAssignmentsTable() {
-  loadAreaAssignments();
 }
 
 // Unified notifier (same as SPK service for consistency)
 function notify(msg, type='success'){
 	if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
 	if (typeof showNotification==='function') return showNotification(msg, type);
-	// Use SweetAlert2 for consistent notification across all pages
 	if (typeof Swal !== 'undefined') {
 		const iconMap = { 'success': 'success', 'error': 'error', 'info': 'info', 'warning': 'warning' };
 		Swal.fire({
@@ -2184,282 +2279,6 @@ function notify(msg, type='success'){
 	}
 }
 
-
-// Refresh method - destroy and recreate everything
-function refreshAreas() {
-  console.log('🔄 Refreshing areas...');
-  if (areasTable) {
-    // Show loading indicator
-    $('#areasTable tbody').html('<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Refreshing...</td></tr>');
-    
-    // Destroy table completely
-    areasTable.destroy();
-    
-    // Restore original table HTML structure
-    $('#areasTable').html(`
-      <thead>
-        <tr>
-          <th>Area Code</th>
-          <th>Area Name</th>
-          <th>Description</th>
-          <th>Customers</th>
-          <th>Employees</th>
-          <th>Assignments</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    `);
-    
-    // Clear any cached data
-    if (typeof areasTable !== 'undefined') {
-      areasTable = null;
-    }
-    
-    // Reinitialize table from scratch
-    setTimeout(function() {
-      initializeAreaTable();
-      buildRoleCoverageMatrix();
-    }, 200);
-  }
-}
-
-function refreshEmployees() {
-  console.log('🔄 Refreshing employees...');
-  if (employeesTable) {
-    // Show loading indicator
-    $('#employeesTable tbody').html('<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Refreshing...</td></tr>');
-    
-    // Destroy table completely
-    employeesTable.destroy();
-    
-    // Restore original table HTML structure
-    $('#employeesTable').html(`
-      <thead>
-        <tr>
-          <th>Staff Code</th>
-          <th>Name</th>
-          <th>Role</th>
-          <th>Department</th>
-          <th>Phone</th>
-          <th>Email</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    `);
-    
-    // Clear any cached data
-    if (typeof employeesTable !== 'undefined') {
-      employeesTable = null;
-    }
-    
-    // Reinitialize table from scratch
-    setTimeout(function() {
-      initializeEmployeeTable();
-    }, 200);
-  }
-}
-
-// Ultimate refresh method with multiple fallbacks
-function ultimateRefreshAreas() {
-  console.log('🔄 Ultimate refresh for areas...');
-  if (areasTable) {
-    // Show loading indicator
-    $('#areasTable tbody').html('<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Refreshing...</td></tr>');
-    
-    // Method 1: Force reload with cache busting
-    const originalUrl = areasTable.ajax.url();
-    const cacheBustUrl = originalUrl + (originalUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    
-    console.log('🔄 Original URL:', originalUrl);
-    console.log('🔄 Cache bust URL:', cacheBustUrl);
-    
-    // Temporarily change URL for cache busting
-    areasTable.ajax.url(cacheBustUrl);
-    
-    // Reload with cache busting
-    areasTable.ajax.reload(function(json) {
-      console.log('✅ Areas table force refreshed with cache busting:', json);
-      
-      // Restore original URL
-      areasTable.ajax.url(originalUrl);
-      
-      // Force redraw the table
-      areasTable.draw(false);
-      
-      // Update related components
-      buildRoleCoverageMatrix();
-      notify('Areas refreshed successfully', 'success');
-    }, false); // false = keep paging position
-    
-    // Method 2: Also try direct AJAX call as backup
-    setTimeout(function() {
-      console.log('🔄 Backup refresh method for areas...');
-      $.ajax({
-        url: originalUrl,
-        type: 'POST',
-        data: { draw: 1, start: 0, length: 25, _t: Date.now() },
-        success: function(response) {
-          console.log('✅ Backup areas refresh successful:', response);
-          if (response && response.data) {
-            // Force table redraw with new data
-            areasTable.clear().rows.add(response.data).draw();
-            buildRoleCoverageMatrix();
-          }
-        },
-        error: function(xhr, status, error) {
-          console.error('❌ Backup areas refresh failed:', error);
-        }
-      });
-    }, 1000);
-    
-  } else {
-    console.error('❌ Areas table not initialized');
-    notify('Areas table not initialized', 'error');
-  }
-}
-
-function ultimateRefreshEmployees() {
-  console.log('🔄 Ultimate refresh for employees...');
-  if (employeesTable) {
-    // Show loading indicator
-    $('#employeesTable tbody').html('<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Refreshing...</td></tr>');
-    
-    // Method 1: Force reload with cache busting
-    const originalUrl = employeesTable.ajax.url();
-    const cacheBustUrl = originalUrl + (originalUrl.includes('?') ? '&' : '?') + '_t=' + Date.now();
-    
-    console.log('🔄 Original URL:', originalUrl);
-    console.log('🔄 Cache bust URL:', cacheBustUrl);
-    
-    // Temporarily change URL for cache busting
-    employeesTable.ajax.url(cacheBustUrl);
-    
-    // Reload with cache busting
-    employeesTable.ajax.reload(function(json) {
-      console.log('✅ Employees table force refreshed with cache busting:', json);
-      
-      // Restore original URL
-      employeesTable.ajax.url(originalUrl);
-      
-      // Force redraw the table
-      employeesTable.draw(false);
-      
-      notify('Employees refreshed successfully', 'success');
-    }, false); // false = keep paging position
-    
-    // Method 2: Also try direct AJAX call as backup
-    setTimeout(function() {
-      console.log('🔄 Backup refresh method for employees...');
-      $.ajax({
-        url: originalUrl,
-        type: 'POST',
-        data: { draw: 1, start: 0, length: 25, _t: Date.now() },
-        success: function(response) {
-          console.log('✅ Backup employees refresh successful:', response);
-          if (response && response.data) {
-            // Force table redraw with new data
-            employeesTable.clear().rows.add(response.data).draw();
-          }
-        },
-        error: function(xhr, status, error) {
-          console.error('❌ Backup employees refresh failed:', error);
-        }
-      });
-    }, 1000);
-    
-  } else {
-    console.error('❌ Employees table not initialized');
-    notify('Employees table not initialized', 'error');
-  }
-}
-
-// Ultimate refresh method - page reload with tab preservation
-function ultimateRefresh() {
-  const activeTab = window.currentActiveTab || 'areasTab';
-  console.log('🔄 Ultimate refresh - page reload preserving tab:', activeTab);
-  
-  // Save current tab to localStorage
-  localStorage.setItem('area_management_active_tab', activeTab);
-  
-  // Reload page
-  window.location.reload();
-}
-
-// Debug function to check table status
-function debugTableStatus() {
-  console.log('🔍 Debug Table Status:');
-  console.log('Areas Table:', areasTable ? 'Initialized' : 'Not Initialized');
-  console.log('Employees Table:', employeesTable ? 'Initialized' : 'Not Initialized');
-  
-  if (areasTable) {
-    console.log('Areas Table URL:', areasTable.ajax.url());
-    console.log('Areas Table Data:', areasTable.data());
-  }
-  
-  if (employeesTable) {
-    console.log('Employees Table URL:', employeesTable.ajax.url());
-    console.log('Employees Table Data:', employeesTable.data());
-  }
-}
-
-// Test refresh function with detailed logging
-function testRefreshAreas() {
-  console.log('🧪 Testing Areas Refresh...');
-  console.log('Current Areas Table Status:', areasTable ? 'OK' : 'NULL');
-  
-  if (areasTable) {
-    console.log('Areas Table URL:', areasTable.ajax.url());
-    console.log('Areas Table Settings:', areasTable.settings());
-    
-    // Try to get current data
-    const currentData = areasTable.data();
-    console.log('Current Areas Data Count:', currentData.length);
-    
-    // Try refresh
-    areasTable.ajax.reload(function(json) {
-      console.log('✅ Test refresh successful:', json);
-      console.log('New data count:', json.data ? json.data.length : 'No data');
-    }, false);
-  } else {
-    console.error('❌ Areas table not available for testing');
-  }
-}
-
-function testRefreshEmployees() {
-  console.log('🧪 Testing Employees Refresh...');
-  console.log('Current Employees Table Status:', employeesTable ? 'OK' : 'NULL');
-  
-  if (employeesTable) {
-    console.log('Employees Table URL:', employeesTable.ajax.url());
-    console.log('Employees Table Settings:', employeesTable.settings());
-    
-    // Try to get current data
-    const currentData = employeesTable.data();
-    console.log('Current Employees Data Count:', currentData.length);
-    
-    // Try refresh
-    employeesTable.ajax.reload(function(json) {
-      console.log('✅ Test refresh successful:', json);
-      console.log('New data count:', json.data ? json.data.length : 'No data');
-    }, false);
-  } else {
-    console.error('❌ Employees table not available for testing');
-  }
-}
-
 </script>
 <?= $this->endSection() ?>
-
-<?= $this->section('styles') ?>
-<link rel="stylesheet" href="https://cdn.datatables.net/1.11.3/css/dataTables.bootstrap4.min.css">
-<link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.2.9/css/responsive.bootstrap4.min.css">
-<style>
-.mini-stats-wid { border: none; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
-.mini-stats-wid .avatar-sm { height: 3rem; width: 3rem; }
-.mini-stats-wid .mini-stat-icon { line-height: 3rem; text-align:center; }
-.badge { font-size: 0.70rem; }
-.table-sm td, .table-sm th { padding: .4rem; }
-.nav-tabs .nav-link { padding: .5rem 1rem; }
-.toast { opacity: 0.95; }
-</style>
-<?= $this->endSection() ?>
+  

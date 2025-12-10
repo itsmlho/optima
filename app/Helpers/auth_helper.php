@@ -98,6 +98,7 @@ if (!function_exists('quick_login_as_superadmin')) {
 
 if (!function_exists('get_user_division_departments')) {
     /**
+     * DEPRECATED: Use get_user_area_department_scope() instead
      * Get allowed department IDs based on user's division
      * Service Diesel -> Departments: DIESEL (1) and GASOLINE (3)
      * Service Electric -> Department: ELECTRIC (2)
@@ -182,6 +183,152 @@ if (!function_exists('get_user_division_departments')) {
             // Log error but don't break the application
             log_message('error', 'Error in get_user_division_departments: ' . $e->getMessage());
             return null; // Return null on error to show all data
+        }
+    }
+}
+
+if (!function_exists('get_user_area_department_scope')) {
+    /**
+     * NEW: Get user's area and department access scope based on area_employee_assignments
+     * 
+     * Returns:
+     * - null: Full access (superadmin or no filter needed)
+     * - array: ['areas' => [...], 'departments' => [...], 'has_full_access' => bool]
+     * 
+     * Logic:
+     * - Central HQ admin: Limited to specific departments (ELECTRIC or DIESEL+GASOLINE)
+     * - Branch admin: Full access to all departments (department_scope = 'ALL')
+     * - Superadmin/No assignment: Full access (null)
+     * 
+     * @return array|null
+     */
+    function get_user_area_department_scope()
+    {
+        // TEMPORARY: Disable all scope filtering to show all data for administrators
+        log_message('debug', 'Scope filtering temporarily disabled - returning null for full access');
+        return null;
+        
+        try {
+            $session = session();
+            
+            // Check if user is logged in
+            if (!$session->get('isLoggedIn')) {
+                return null;
+            }
+            
+            $userId = $session->get('user_id');
+            if (!$userId) {
+                return null;
+            }
+            
+            // Check if user is administrator - give full access
+            $userRole = $session->get('role');
+            log_message('debug', "User role check: " . ($userRole ?? 'NULL'));
+            log_message('debug', "All session data: " . json_encode($session->get()));
+            
+            if (in_array($userRole, ['administrator', 'admin', 'superadmin', 'super_admin'])) {
+                log_message('debug', 'Administrator detected, granting full access to all areas');
+                return null; // Full access for administrators
+            }
+            
+            $db = \Config\Database::connect();
+            
+            // Check if tables exist
+            if (!$db->tableExists('area_employee_assignments') || !$db->tableExists('employees')) {
+                log_message('debug', 'Area assignment tables not found, skipping filter');
+                return null;
+            }
+            
+            // Get user's area assignments with department scope
+            $assignments = $db->table('area_employee_assignments aea')
+                ->select('aea.area_id, aea.department_scope, a.area_name, a.area_type, a.area_code')
+                ->join('areas a', 'a.id = aea.area_id', 'left')
+                ->where('aea.employee_id', $userId)
+                ->where('aea.is_active', 1)
+                ->get()
+                ->getResultArray();
+            
+            // No assignments = superadmin or full access
+            if (empty($assignments)) {
+                return null;
+            }
+            
+            $result = [
+                'areas' => [],
+                'departments' => [],
+                'has_full_access' => false
+            ];
+            
+            foreach ($assignments as $assign) {
+                $result['areas'][] = $assign['area_id'];
+                
+                $scope = $assign['department_scope'] ?? 'ALL';
+                
+                // If ANY assignment has ALL scope, user has full access
+                if ($scope === 'ALL') {
+                    $result['has_full_access'] = true;
+                    return null; // Branch admin - no filter needed
+                }
+                
+                // Parse scope: 'ELECTRIC', 'DIESEL', 'DIESEL,GASOLINE'
+                $depts = array_map('trim', explode(',', $scope));
+                foreach ($depts as $dept) {
+                    if ($dept === 'ELECTRIC') $result['departments'][] = 2;
+                    if ($dept === 'DIESEL') $result['departments'][] = 1;
+                    if ($dept === 'GASOLINE') $result['departments'][] = 3;
+                }
+            }
+            
+            $result['areas'] = array_unique($result['areas']);
+            $result['departments'] = array_unique($result['departments']);
+            
+            // If no departments specified, return null (full access)
+            if (empty($result['departments'])) {
+                return null;
+            }
+            
+            return $result;
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error in get_user_area_department_scope: ' . $e->getMessage());
+            return null; // Return null on error to show all data
+        }
+    }
+}
+
+if (!function_exists('apply_area_department_filter')) {
+    /**
+     * Helper to apply area/department filter to query builder
+     * 
+     * Usage:
+     * $builder = $db->table('inventory_units');
+     * apply_area_department_filter($builder, 'inventory_units');
+     * 
+     * @param object $builder CodeIgniter Query Builder instance
+     * @param string $table Table name or alias
+     * @param string $areaColumn Column name for area_id (default: 'area_id')
+     * @param string $deptColumn Column name for departemen_id (default: 'departemen_id')
+     * @return void
+     */
+    function apply_area_department_filter($builder, $table = null, $areaColumn = 'area_id', $deptColumn = 'departemen_id')
+    {
+        $scope = get_user_area_department_scope();
+        
+        // No filter needed
+        if ($scope === null) {
+            return;
+        }
+        
+        $prefix = $table ? "$table." : '';
+        
+        // Apply area filter if areas are specified
+        if (!empty($scope['areas'])) {
+            $builder->whereIn($prefix . $areaColumn, $scope['areas']);
+        }
+        
+        // Apply department filter if departments are specified
+        if (!empty($scope['departments'])) {
+            $builder->whereIn($prefix . $deptColumn, $scope['departments']);
         }
     }
 }

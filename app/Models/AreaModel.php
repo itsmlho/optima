@@ -16,7 +16,9 @@ class AreaModel extends Model
     protected $allowedFields = [
         'area_code', 
         'area_name', 
-        'area_description', 
+        'area_description',
+        'area_type',  // NEW: CENTRAL or BRANCH
+        'departemen_id', // DEPRECATED: Keep for reference only
         'area_coordinates', 
         'is_active'
     ];
@@ -31,6 +33,8 @@ class AreaModel extends Model
         'area_code' => 'required|max_length[10]|is_unique[areas.area_code,id,{id}]',
         'area_name' => 'required|max_length[100]',
         'area_description' => 'permit_empty|string',
+        'area_type' => 'permit_empty|in_list[CENTRAL,BRANCH]',
+        'departemen_id' => 'permit_empty|integer',
         'is_active' => 'permit_empty|in_list[0,1]'
     ];
     
@@ -65,6 +69,36 @@ class AreaModel extends Model
     public function getActiveAreas()
     {
         return $this->where('is_active', 1)->findAll();
+    }
+    
+    /**
+     * Get active areas by type
+     */
+    public function getAreasByType($type = null)
+    {
+        $builder = $this->where('is_active', 1);
+        
+        if ($type && in_array($type, ['CENTRAL', 'BRANCH'])) {
+            $builder->where('area_type', $type);
+        }
+        
+        return $builder->findAll();
+    }
+    
+    /**
+     * Get central HQ areas
+     */
+    public function getCentralAreas()
+    {
+        return $this->getAreasByType('CENTRAL');
+    }
+    
+    /**
+     * Get branch areas
+     */
+    public function getBranchAreas()
+    {
+        return $this->getAreasByType('BRANCH');
     }
     
     /**

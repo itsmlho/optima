@@ -20,7 +20,8 @@ class AreaEmployeeAssignmentModel extends Model
         'start_date',
         'end_date',
         'is_active',
-        'notes'
+        'notes',
+        'department_scope'  // NEW: ALL, ELECTRIC, DIESEL, DIESEL,GASOLINE, etc.
     ];
 
     protected $useTimestamps = true;
@@ -36,7 +37,8 @@ class AreaEmployeeAssignmentModel extends Model
         'start_date' => 'required|valid_date',
         'end_date' => 'permit_empty|valid_date',
         'is_active' => 'permit_empty|in_list[0,1]',
-        'notes' => 'permit_empty'
+        'notes' => 'permit_empty',
+        'department_scope' => 'permit_empty|string|max_length[100]'
     ];
 
     protected $validationMessages = [
@@ -73,7 +75,7 @@ class AreaEmployeeAssignmentModel extends Model
     public function getAssignmentsByArea($areaId)
     {
         return $this->db->table($this->table . ' aea')
-                       ->select('aea.*, e.staff_name, e.staff_role, d.nama_departemen, a.area_name')
+                       ->select('aea.*, e.staff_name, e.staff_role, d.nama_departemen, a.area_name, a.area_type')
                        ->join('employees e', 'aea.employee_id = e.id', 'inner')
                        ->join('departemen d', 'e.departemen_id = d.id_departemen', 'left')
                        ->join('areas a', 'aea.area_id = a.id', 'left')
@@ -92,7 +94,7 @@ class AreaEmployeeAssignmentModel extends Model
     public function getAssignmentsByEmployee($employeeId)
     {
         return $this->db->table($this->table . ' aea')
-                       ->select('aea.*, e.staff_name, e.staff_role, d.nama_departemen, a.area_name, a.area_code')
+                       ->select('aea.*, e.staff_name, e.staff_role, d.nama_departemen, a.area_name, a.area_code, a.area_type')
                        ->join('employees e', 'aea.employee_id = e.id', 'inner')
                        ->join('departemen d', 'e.departemen_id = d.id_departemen', 'left')
                        ->join('areas a', 'aea.area_id = a.id', 'left')
@@ -102,6 +104,44 @@ class AreaEmployeeAssignmentModel extends Model
                        ->orderBy('aea.start_date', 'DESC')
                        ->get()
                        ->getResultArray();
+    }
+    
+    /**
+     * Get assignments by employee with department scope filter
+     */
+    public function getEmployeeAssignmentsWithScope($employeeId)
+    {
+        $assignments = $this->getAssignmentsByEmployee($employeeId);
+        
+        $result = [
+            'areas' => [],
+            'departments' => [],
+            'has_full_access' => false
+        ];
+        
+        foreach ($assignments as $assign) {
+            $result['areas'][] = $assign['area_id'];
+            
+            $scope = $assign['department_scope'] ?? 'ALL';
+            
+            if ($scope === 'ALL') {
+                $result['has_full_access'] = true;
+                return $result; // Return immediately for full access
+            }
+            
+            // Parse scope: 'ELECTRIC', 'DIESEL', 'DIESEL,GASOLINE'
+            $depts = array_map('trim', explode(',', $scope));
+            foreach ($depts as $dept) {
+                if ($dept === 'ELECTRIC') $result['departments'][] = 2;
+                if ($dept === 'DIESEL') $result['departments'][] = 1;
+                if ($dept === 'GASOLINE') $result['departments'][] = 3;
+            }
+        }
+        
+        $result['areas'] = array_unique($result['areas']);
+        $result['departments'] = array_unique($result['departments']);
+        
+        return $result;
     }
 
     /**

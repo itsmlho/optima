@@ -13,6 +13,7 @@ class ServiceAreaManagementController extends BaseController
     protected $employeeModel;
     protected $assignmentModel;
     protected $customerModel;
+    protected $db;
     
     public function __construct()
     {
@@ -20,6 +21,7 @@ class ServiceAreaManagementController extends BaseController
         $this->employeeModel = new EmployeeModel();
         $this->assignmentModel = new AreaEmployeeAssignmentModel();
         $this->customerModel = new CustomerModel();
+        $this->db = \Config\Database::connect();
         
         // Load auth helper for division filtering
         helper('auth');
@@ -38,28 +40,26 @@ class ServiceAreaManagementController extends BaseController
         // Data for dashboard stats
         $db = \Config\Database::connect();
         
-        // Apply department filter for dashboard stats
-        $allowedDepartments = get_user_division_departments();
+        // NEW: Apply area-department scope filter
+        $scope = get_user_area_department_scope();
         
-        // Check if departemen_id column exists
-        $fields = $db->getFieldData('areas');
-        $hasDepartemenId = false;
-        foreach ($fields as $field) {
-            if ($field->name === 'departemen_id') {
-                $hasDepartemenId = true;
-                break;
-            }
-        }
-        
+        // Count total areas with scope filter
         $areaBuilder = $db->table('areas');
-        if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
-            $areaBuilder->whereIn('departemen_id', $allowedDepartments);
+        if ($scope !== null && !empty($scope['areas'])) {
+            $areaBuilder->whereIn('id', $scope['areas']);
         }
         $totalAreas = $areaBuilder->where('is_active', 1)->countAllResults();
         
+        // Count employees with scope filter
+        $employeeBuilder = $db->table('employees');
+        if ($scope !== null && !empty($scope['departments'])) {
+            $employeeBuilder->whereIn('departemen_id', $scope['departments']);
+        }
+        $totalEmployees = $employeeBuilder->where('is_active', 1)->countAllResults();
+        
         $dashboardData = [
             'totalAreas' => $totalAreas,
-            'totalEmployees' => $db->table('employees')->where('is_active', 1)->countAllResults(),
+            'totalEmployees' => $totalEmployees,
             'totalAssignments' => $db->table('area_employee_assignments')->where('is_active', 1)->countAllResults(),
             'breadcrumbs' => [
                 '/' => 'Dashboard',
@@ -67,18 +67,19 @@ class ServiceAreaManagementController extends BaseController
             ]
         ];
         
-        // Get active areas with department filter
+        // Get active areas with scope filter
         $areas = [];
         try {
             $areaBuilder = $db->table('areas');
-            $areaBuilder->select('areas.id, areas.area_code, areas.area_name');
+            $areaBuilder->select('areas.id, areas.area_code, areas.area_name, areas.area_type');
             $areaBuilder->where('areas.is_active', 1);
             
-            // Apply department filter if column exists
-            if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
-                $areaBuilder->whereIn('areas.departemen_id', $allowedDepartments);
+            // Apply scope filter
+            if ($scope !== null && !empty($scope['areas'])) {
+                $areaBuilder->whereIn('areas.id', $scope['areas']);
             }
             
+            $areaBuilder->orderBy('areas.area_type', 'ASC');
             $areaBuilder->orderBy('areas.area_name', 'ASC');
             $areas = $areaBuilder->get()->getResultArray();
         } catch (\Exception $e) {
@@ -120,11 +121,7 @@ class ServiceAreaManagementController extends BaseController
                 WHERE a.is_active = 1
             ";
             
-            // Add department filter if column exists
-            if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
-                $deptIds = implode(',', array_map('intval', $allowedDepartments));
-                $sql .= " AND a.departemen_id IN ($deptIds)";
-            }
+            // Department filter removed - not applicable for areas table
             
             $sql .= "
                 GROUP BY a.id, a.area_name, a.area_code
@@ -161,165 +158,149 @@ class ServiceAreaManagementController extends BaseController
     /**
      * Get areas for DataTable
      */
+    /**
+     * Get areas data for DataTables with server-side processing
+     * Supports search and pagination
+     */
     public function getAreas()
     {
-        // Handle both GET and POST requests (DataTables can use either)
-        $request = $this->request->getMethod() === 'post' 
-            ? $this->request->getPost() 
-            : $this->request->getGet();
-        
-        // Debug: Log the request
-        log_message('debug', 'DataTable request: ' . json_encode($request));
-        log_message('debug', 'Draw parameter: ' . ($request['draw'] ?? 'not set'));
-        
-        // Apply division-based department filter for areas using global helper
-        $allowedDepartments = get_user_division_departments();
-        
-        // Check if departemen_id column exists in areas table
-        $db = \Config\Database::connect();
-        $fields = $db->getFieldData('areas');
-        $hasDepartemenId = false;
-        foreach ($fields as $field) {
-            if ($field->name === 'departemen_id') {
-                $hasDepartemenId = true;
-                break;
-            }
-        }
-        
-        // Total records - apply department filter if needed
-        $totalBuilder = $this->areaModel->builder();
-        if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
-            $totalBuilder->whereIn('departemen_id', $allowedDepartments);
-        }
-        $totalRecords = $totalBuilder->countAllResults();
-        
-        // Build query dengan join yang benar setelah migration area_id ke customer_locations
-        $builder = $this->areaModel->builder();
-        $builder->select('areas.*, COUNT(DISTINCT c.id) as customers_count');
-        $builder->join('customer_locations cl', 'cl.area_id = areas.id', 'left');
-        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
-        
-        // Apply department filter directly on areas.departemen_id if column exists
-        if ($hasDepartemenId && $allowedDepartments !== null && is_array($allowedDepartments)) {
-            // Simple filter: areas.departemen_id IN allowed departments
-            $builder->whereIn('areas.departemen_id', $allowedDepartments);
-        } elseif ($allowedDepartments !== null && is_array($allowedDepartments)) {
-            // Fallback: if departemen_id column doesn't exist, use complex join
-            // Get area IDs that have units in allowed departments
-            $areaQuery = $db->table('areas a')
-                ->select('DISTINCT a.id')
-                ->join('customer_locations cl', 'cl.area_id = a.id', 'inner')
-                ->join('kontrak k', 'k.customer_location_id = cl.id', 'inner')
-                ->join('inventory_unit iu', 'iu.kontrak_id = k.id', 'inner')
-                ->whereIn('iu.departemen_id', $allowedDepartments)
-                ->get();
-            $allowedAreaIds = array_column($areaQuery->getResultArray(), 'id');
+        try {
+            // Get request data
+            $post = $this->request->getPost();
+            $get = $this->request->getGet();
+            $request = array_merge($get, $post);
             
-            // If no areas found, return empty result
-            if (empty($allowedAreaIds)) {
-                return $this->response->setJSON([
-                    'draw' => isset($request['draw']) ? intval($request['draw']) : 1,
-                    'recordsTotal' => 0,
-                    'recordsFiltered' => 0,
-                    'data' => []
-                ]);
+            // Extract search value
+            $searchValue = isset($request['search']['value']) && !empty($request['search']['value'])
+                ? trim($request['search']['value'])
+                : null;
+                
+            // Get pagination
+            $start = isset($request['start']) ? (int)$request['start'] : 0;
+            $length = isset($request['length']) ? (int)$request['length'] : 10;
+            
+            // Get scope - administrators should see all data
+            $scope = get_user_area_department_scope();
+            
+            // Debug logging
+            log_message('debug', 'User scope: ' . json_encode($scope));
+            log_message('debug', 'User role from session: ' . session()->get('role'));
+            
+            // Build query with scope
+            $whereClause = "";
+            $params = [];
+            
+            // Add scope condition (skip for administrators)
+            if ($scope !== null && !empty($scope['areas'])) {
+                $whereClause = " WHERE id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
+                $params = $scope['areas'];
             }
             
-            $builder->whereIn('areas.id', $allowedAreaIds);
-        }
-        
-        $builder->groupBy('areas.id');
-        
-        // Apply search filter
-        if (isset($request['search']['value']) && !empty($request['search']['value'])) {
-            $searchValue = $request['search']['value'];
-            $builder->groupStart()
-                ->like('areas.area_name', $searchValue)
-                ->orLike('areas.area_code', $searchValue)
-                ->orLike('areas.area_description', $searchValue)
-            ->groupEnd();
-        }
-        
-        // Count filtered records
-        $recordsFiltered = $builder->countAllResults(false);
-        
-        // Apply order
-        if (isset($request['order']) && !empty($request['order'])) {
-            $order = $request['order'][0];
-            $column = $request['columns'][$order['column']]['data'];
-            $dir = $order['dir'];
+            // Add search condition
+            if ($searchValue) {
+                $searchWhere = $whereClause ? " AND " : " WHERE ";
+                $whereClause .= $searchWhere . "(area_name LIKE ? OR area_code LIKE ? OR area_description LIKE ?)";
+                $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%"]);
+            }
             
-            // Pastikan kolom yang valid untuk pengurutan
-            if (in_array($column, ['area_code', 'area_name', 'description', 'customers_count', 'employees_count', 'created_at'])) {
-                // Jika column adalah customers_count atau employees_count, gunakan cast untuk pengurutan numerik
-                if (in_array($column, ['customers_count', 'employees_count'])) {
-                    $builder->orderBy("CAST($column AS UNSIGNED)", $dir);
-                } else {
-                    // Untuk kolom lain, tambahkan prefiks areas. jika diperlukan
-                    $orderColumn = in_array($column, ['area_code', 'area_name', 'created_at']) ? "areas.$column" : $column;
-                    $builder->orderBy($orderColumn, $dir);
-                }
+            // Count total records (with scope, without search)
+            $totalSql = "SELECT COUNT(*) as total FROM areas";
+            if ($scope !== null && !empty($scope['areas'])) {
+                $totalSql .= " WHERE id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
+                $totalResult = $this->db->query($totalSql, $scope['areas']);
             } else {
-                $builder->orderBy('areas.area_name', 'ASC');
+                $totalResult = $this->db->query($totalSql);
             }
-        } else {
-            $builder->orderBy('areas.area_name', 'ASC');
+            $totalRecords = $totalResult->getRow()->total;
+            
+            // Count filtered records (with scope and search)
+            $filteredSql = "SELECT COUNT(*) as total FROM areas" . $whereClause;
+            $filteredResult = $this->db->query($filteredSql, $params);
+            $filteredRecords = $filteredResult->getRow()->total;
+            
+            // Get actual data
+            $dataSql = "SELECT * FROM areas" . $whereClause . " ORDER BY area_name ASC LIMIT ? OFFSET ?";
+            $dataParams = array_merge($params, [$length, $start]);
+            $dataResult = $this->db->query($dataSql, $dataParams);
+            $areas = $dataResult->getResultArray();
+            
+            // Format data
+            $data = [];
+            foreach ($areas as $area) {
+                // Get customer count
+                $customerSql = "SELECT COUNT(DISTINCT customer_id) as count FROM customer_locations WHERE area_id = ?";
+                $customerResult = $this->db->query($customerSql, [$area['id']]);
+                $customerCount = $customerResult->getRow()->count ?? 0;
+                
+                // Get employee breakdown from area_employee_assignments table
+                $employeeBreakdown = [
+                    'foreman' => 0,
+                    'mechanic' => 0,
+                    'helper' => 0
+                ];
+                
+                try {
+                    if ($this->db->tableExists('area_employee_assignments')) {
+                        // First, let's just count total assignments for this area
+                        $empSql = "SELECT COUNT(*) as count FROM area_employee_assignments WHERE area_id = ? AND is_active = 1";
+                        $empResult = $this->db->query($empSql, [$area['id']]);
+                        $totalAssignments = $empResult->getRow()->count ?? 0;
+                        
+                        // For now, distribute assignments as mechanics since we don't have employee roles
+                        if ($totalAssignments > 0) {
+                            $employeeBreakdown['mechanic'] = (int) $totalAssignments;
+                        }
+                        
+                        log_message('debug', "Area {$area['area_name']} (ID: {$area['id']}) has {$totalAssignments} assignments");
+                    }
+                } catch (\Exception $e) {
+                    log_message('error', 'Employee count error for area ' . $area['id'] . ': ' . $e->getMessage());
+                    log_message('debug', 'SQL Error details: ' . $e->getMessage());
+                }
+                
+                $totalEmployees = $employeeBreakdown['foreman'] + $employeeBreakdown['mechanic'] + $employeeBreakdown['helper'];
+                
+                $data[] = [
+                    'id' => $area['id'],
+                    'area_code' => $area['area_code'],
+                    'area_name' => $area['area_name'],
+                    'area_type' => $area['area_type'] ?? 'BRANCH',
+                    'description' => $area['area_description'] ?? '',
+                    'customers_count' => (int) $customerCount,
+                    'employees_count' => $totalEmployees,
+                    'employees_breakdown' => $employeeBreakdown,
+                    'created_at' => $area['created_at'],
+                    'updated_at' => $area['updated_at'],
+                    'is_active' => $area['is_active']
+                ];
+            }
+            
+            return $this->response->setJSON([
+                'draw' => isset($request['draw']) ? intval($request['draw']) : 1,
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $filteredRecords,
+                'data' => $data
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Areas DataTable error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            
+            // Return error response with debug info
+            return $this->response->setJSON([
+                'draw' => 1,
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => true,
+                'message' => 'Error loading areas: ' . $e->getMessage(),
+                'debug_info' => [
+                    'error_message' => $e->getMessage(),
+                    'error_line' => $e->getLine(),
+                    'error_file' => $e->getFile()
+                ]
+            ]);
         }
-        
-        // Apply limit and offset
-        if (isset($request['length']) && $request['length'] != -1) {
-            $builder->limit($request['length'], isset($request['start']) ? $request['start'] : 0);
-        }
-        
-        // Get results
-        $query = $builder->get();
-        $results = $query->getResultArray();
-        
-        // Format data for DataTable
-        $data = [];
-        foreach ($results as $row) {
-            $foreman = $this->getAreaForeman($row['id']);
-            $mechanic = $this->getAreaMechanics($row['id']);
-            $helper = $this->getAreaHelpers($row['id']);
-            
-            // Count employees (Foreman + Mechanics + Helpers)
-            $employeesCount = ($foreman ? 1 : 0) + count($mechanic) + count($helper);
-            
-            // Create assignment summary for display
-            $assignmentSummary = [
-                'foreman' => $foreman ? $foreman['staff_name'] : null,
-                'mechanics' => $mechanic ? array_column($mechanic, 'staff_name') : [],
-                'helpers' => $helper ? array_column($helper, 'staff_name') : []
-            ];
-            
-            $formattedRow = [
-                'id' => $row['id'],
-                'area_code' => $row['area_code'],
-                'area_name' => $row['area_name'],
-                'description' => $row['area_description'] ?? '',
-                'customers_count' => isset($row['customers_count']) ? (int)$row['customers_count'] : 0,
-                'employees_count' => $employeesCount,
-                'assignment_summary' => $assignmentSummary,
-                'is_active' => $row['is_active'],
-                'created_at' => $row['created_at'],
-                'updated_at' => $row['updated_at'],
-                'actions' => '<div class="btn-group">
-                    <button type="button" class="btn btn-sm btn-info view-area" data-id="'.$row['id'].'"><i class="fas fa-eye"></i></button>
-                    <button type="button" class="btn btn-sm btn-primary edit-area" data-id="'.$row['id'].'"><i class="fas fa-edit"></i></button>
-                    <button type="button" class="btn btn-sm btn-danger delete-area" data-id="'.$row['id'].'"><i class="fas fa-trash"></i></button>
-                </div>'
-            ];
-            
-            $data[] = $formattedRow;
-        }
-        
-        // Return data in DataTable format
-        return $this->response->setJSON([
-            'draw' => isset($request['draw']) ? intval($request['draw']) : 1,
-            'recordsTotal' => $totalRecords,
-            'recordsFiltered' => $recordsFiltered,
-            'data' => $data
-        ]);
     }
 
     /**
@@ -388,6 +369,7 @@ class ServiceAreaManagementController extends BaseController
             'area_code' => $input['area_code'],
             'area_name' => $input['area_name'],
             'area_description' => !empty($input['area_description']) ? $input['area_description'] : null,
+            'area_type' => !empty($input['area_type']) ? $input['area_type'] : 'BRANCH',
             'is_active' => 1,
             'created_by' => session()->get('user_id')
         ];
@@ -457,7 +439,7 @@ class ServiceAreaManagementController extends BaseController
             'area_code' => $input['area_code'],
             'area_name' => $input['area_name'],
             'area_description' => !empty($input['area_description']) ? $input['area_description'] : null,
-            'departemen_id' => !empty($input['departemen_id']) ? (int)$input['departemen_id'] : null,
+            'area_type' => !empty($input['area_type']) ? $input['area_type'] : 'BRANCH',
             'updated_at' => date('Y-m-d H:i:s') // Force update
         ];
         
@@ -559,96 +541,157 @@ class ServiceAreaManagementController extends BaseController
      */
     public function getEmployees()
     {
-        $request = $this->request->getGet();
-        
-        // Total records without filtering
-        $totalRecords = $this->employeeModel->where('is_active', 1)->countAllResults();
-        
-        // Build query
-        $builder = $this->employeeModel->builder();
-        $builder->select('employees.*, d.nama_departemen');
-        $builder->join('departemen d', 'employees.departemen_id = d.id_departemen', 'left');
-        $builder->where('employees.is_active', 1);
-        
-        // Apply division-based department filter for employees using global helper
-        $allowedDepartments = get_user_division_departments();
-        
-        if ($allowedDepartments !== null && is_array($allowedDepartments)) {
-            $builder->whereIn('employees.departemen_id', $allowedDepartments);
-        }
-        
-        // Apply search filter
-        if (isset($request['search']['value']) && !empty($request['search']['value'])) {
-            $searchValue = $request['search']['value'];
-            $builder->groupStart()
-                ->like('employees.staff_code', $searchValue)
-                ->orLike('employees.staff_name', $searchValue)
-                ->orLike('employees.staff_role', $searchValue)
-                ->orLike('employees.phone', $searchValue)
-                ->orLike('employees.email', $searchValue)
-                ->orLike('d.nama_departemen', $searchValue)
-            ->groupEnd();
-        }
-        
-        // Count filtered records
-        $recordsFiltered = $builder->countAllResults(false);
-        
-        // Apply order
-        if (isset($request['order']) && !empty($request['order'])) {
-            $order = $request['order'][0];
-            $column = $request['columns'][$order['column']]['data'];
-            $dir = $order['dir'];
+        try {
+            // Handle both GET and POST requests (DataTables uses POST)
+            $request = $this->request->getMethod() === 'post' 
+                ? $this->request->getPost() 
+                : $this->request->getGet();
             
-            // Handle custom ordering
-            switch ($column) {
-                case 'departemen':
-                    $builder->orderBy('d.nama_departemen', $dir);
-                    break;
-                default:
-                    $builder->orderBy($column, $dir);
-                    break;
+            // Debug: Log the request
+            log_message('debug', 'Employees DataTable request: ' . json_encode($request));
+            log_message('debug', 'Employees Search value: ' . ($request['search']['value'] ?? 'empty'));
+            
+            // Apply division-based department filter first
+            $allowedDepartments = get_user_division_departments();
+            
+            // Total records without filtering (apply department filter)
+            $totalBuilder = $this->db->table('employees');
+            $totalBuilder->where('is_active', 1);
+            if ($allowedDepartments !== null && is_array($allowedDepartments)) {
+                $totalBuilder->whereIn('departemen_id', $allowedDepartments);
             }
-        } else {
-            $builder->orderBy('employees.staff_name', 'ASC');
-        }
-        
-        // Apply limit and offset
-        if (isset($request['length']) && $request['length'] != -1) {
-            $builder->limit($request['length'], isset($request['start']) ? $request['start'] : 0);
-        }
-        
-        // Get results
-        $query = $builder->get();
-        $results = $query->getResultArray();
-        
-        // Format data for DataTable
-        $data = [];
-        foreach ($results as $row) {
-            $formattedRow = [
-                'id' => $row['id'],
-                'staff_code' => $row['staff_code'],
-                'staff_name' => $row['staff_name'],
-                'staff_role' => $row['staff_role'],
-                'departemen' => $row['nama_departemen'] ?? '-',
-                'phone' => $row['phone'],
-                'email' => $row['email'],
-                'address' => $row['address'],
-                'hire_date' => $row['hire_date'],
-                'is_active' => $row['is_active'],
-                'created_at' => $row['created_at'],
-                'updated_at' => $row['updated_at']
-            ];
+            $totalRecords = $totalBuilder->countAllResults();
             
-            $data[] = $formattedRow;
+            // Build query
+            $builder = $this->db->table('employees');
+            $builder->select('employees.*, d.nama_departemen');
+            $builder->join('departemen d', 'employees.departemen_id = d.id_departemen', 'left');
+            $builder->where('employees.is_active', 1);
+            
+            // Apply department filter to main builder
+            if ($allowedDepartments !== null && is_array($allowedDepartments)) {
+                $builder->whereIn('employees.departemen_id', $allowedDepartments);
+            }
+            
+            // Apply search filter
+            if (isset($request['search']['value']) && !empty($request['search']['value'])) {
+                $searchValue = $request['search']['value'];
+                $builder->groupStart()
+                    ->like('employees.staff_code', $searchValue)
+                    ->orLike('employees.staff_name', $searchValue)
+                    ->orLike('employees.staff_role', $searchValue)
+                    ->orLike('employees.phone', $searchValue)
+                    ->orLike('employees.email', $searchValue)
+                    ->orLike('d.nama_departemen', $searchValue)
+                ->groupEnd();
+            }
+            
+            // Count filtered records (clone builder for count to avoid side effects)
+            $countBuilder = clone $builder;
+            $recordsFiltered = $countBuilder->countAllResults();
+            
+            // Debug logging
+            log_message('debug', 'Employees - Total records: ' . $totalRecords);
+            log_message('debug', 'Employees - Filtered records: ' . $recordsFiltered);
+            log_message('debug', 'Employees - Search applied: ' . (isset($request['search']['value']) && !empty($request['search']['value']) ? 'YES' : 'NO'));
+            
+            // Apply order
+            if (isset($request['order']) && !empty($request['order'])) {
+                $order = $request['order'][0];
+                $column = $request['columns'][$order['column']]['data'];
+                $dir = $order['dir'];
+                
+                // Handle custom ordering
+                switch ($column) {
+                    case 'departemen':
+                        $builder->orderBy('d.nama_departemen', $dir);
+                        break;
+                    default:
+                        if (in_array($column, ['staff_code', 'staff_name', 'staff_role', 'phone', 'email'])) {
+                            $builder->orderBy('employees.' . $column, $dir);
+                        }
+                        break;
+                }
+            } else {
+                $builder->orderBy('employees.staff_name', 'ASC');
+            }
+            
+            // Apply limit and offset
+            if (isset($request['length']) && $request['length'] != -1) {
+                $builder->limit($request['length'], isset($request['start']) ? $request['start'] : 0);
+            }
+            
+            // Get results
+            $query = $builder->get();
+            $results = $query->getResultArray();
+            
+            // Get all employee IDs for batch assignment query
+            $employeeIds = array_column($results, 'id');
+            
+            // Batch fetch all assignments to avoid N+1 queries
+            $assignmentsMap = [];
+            if (!empty($employeeIds)) {
+                $assignmentsQuery = $this->db->table('area_employee_assignments aea')
+                    ->select('aea.employee_id, a.area_name, a.area_code, a.area_type, aea.assignment_type')
+                    ->join('areas a', 'a.id = aea.area_id')
+                    ->whereIn('aea.employee_id', $employeeIds)
+                    ->where('aea.is_active', 1)
+                    ->where('aea.deleted_at IS NULL', null, false)
+                    ->get()
+                    ->getResultArray();
+                
+                // Group by employee_id
+                foreach ($assignmentsQuery as $assignment) {
+                    $empId = $assignment['employee_id'];
+                    unset($assignment['employee_id']);
+                    if (!isset($assignmentsMap[$empId])) {
+                        $assignmentsMap[$empId] = [];
+                    }
+                    $assignmentsMap[$empId][] = $assignment;
+                }
+            }
+            
+            // Format data for DataTable
+            $data = [];
+            foreach ($results as $row) {
+                // Get assignments from map (already fetched)
+                $assignments = $assignmentsMap[$row['id']] ?? [];
+                
+                $formattedRow = [
+                    'id' => $row['id'],
+                    'staff_code' => $row['staff_code'],
+                    'staff_name' => $row['staff_name'],
+                    'staff_role' => $row['staff_role'],
+                    'departemen' => $row['nama_departemen'] ?? '-',
+                    'area_assignments' => $assignments,
+                    'phone' => $row['phone'],
+                    'email' => $row['email'],
+                    'address' => $row['address'] ?? null,
+                    'hire_date' => $row['hire_date'] ?? null,
+                    'is_active' => $row['is_active'],
+                    'created_at' => $row['created_at'],
+                    'updated_at' => $row['updated_at']
+                ];
+                
+                $data[] = $formattedRow;
+            }
+            
+            // Return data in DataTable format
+            return $this->response->setJSON([
+                'draw' => isset($request['draw']) ? intval($request['draw']) : 1,
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $recordsFiltered,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error in getEmployees: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            return $this->response->setStatusCode(500)->setJSON([
+                'error' => true,
+                'message' => 'Error loading employees: ' . $e->getMessage(),
+                'trace' => ENVIRONMENT === 'development' ? $e->getTraceAsString() : null
+            ]);
         }
-        
-        // Return data in DataTable format
-        return $this->response->setJSON([
-            'draw' => isset($request['draw']) ? intval($request['draw']) : 1,
-            'recordsTotal' => $totalRecords,
-            'recordsFiltered' => $recordsFiltered,
-            'data' => $data
-        ]);
     }
 
     /**
@@ -1090,6 +1133,7 @@ class ServiceAreaManagementController extends BaseController
             'area_id' => 'required|integer',
             'employee_id' => 'required|integer',
             'assignment_type' => 'required|in_list[PRIMARY,BACKUP,TEMPORARY]',
+            'department_scope' => 'permit_empty|string|max_length[100]',
             'start_date' => 'required|valid_date',
             'end_date' => 'permit_empty|valid_date',
             'notes' => 'permit_empty'
@@ -1143,6 +1187,7 @@ class ServiceAreaManagementController extends BaseController
             'area_id' => $input['area_id'],
             'employee_id' => $input['employee_id'],
             'assignment_type' => $input['assignment_type'],
+            'department_scope' => !empty($input['department_scope']) ? $input['department_scope'] : 'ALL',
             'start_date' => $input['start_date'],
             'end_date' => !empty($input['end_date']) ? $input['end_date'] : null,
             'notes' => $input['notes'] ?? null,
