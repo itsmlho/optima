@@ -13,78 +13,85 @@ class AddResourcePermissions extends Migration
         // Resource permissions untuk cross-division access
         $resourcePermissions = [
             [
-                'key' => 'warehouse.inventory.view',
-                'name' => 'View Inventory (Cross-Division)',
+                'module' => 'warehouse',
+                'page' => 'inventory',
+                'action' => 'view_cross_division',
+                'key_name' => 'warehouse.inventory.view_cross_division',
+                'display_name' => 'View Inventory (Cross-Division)',
                 'description' => 'View inventory across divisions - untuk divisi lain yang perlu cek ketersediaan unit',
-                'module' => 'warehouse',
                 'category' => 'resource',
-                'is_system_permission' => 1,
                 'is_active' => 1,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ],
             [
-                'key' => 'warehouse.inventory.manage',
-                'name' => 'Manage Inventory (Cross-Division)',
+                'module' => 'warehouse',
+                'page' => 'inventory',
+                'action' => 'manage_cross_division',
+                'key_name' => 'warehouse.inventory.manage_cross_division',
+                'display_name' => 'Manage Inventory (Cross-Division)',
                 'description' => 'Manage inventory across divisions - untuk Service yang perlu update status unit setelah maintenance',
-                'module' => 'warehouse',
                 'category' => 'resource',
-                'is_system_permission' => 1,
                 'is_active' => 1,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ],
             [
-                'key' => 'marketing.kontrak.view',
-                'name' => 'View Kontrak (Cross-Division)',
-                'description' => 'View kontrak across divisions - untuk Service, Operational, Warehouse, Accounting',
                 'module' => 'marketing',
+                'page' => 'kontrak',
+                'action' => 'view_cross_division',
+                'key_name' => 'marketing.kontrak.view_cross_division',
+                'display_name' => 'View Kontrak (Cross-Division)',
+                'description' => 'View kontrak across divisions - untuk Service, Operational, Warehouse, Accounting',
                 'category' => 'resource',
-                'is_system_permission' => 1,
                 'is_active' => 1,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ],
             [
-                'key' => 'service.workorder.view',
-                'name' => 'View Work Order (Cross-Division)',
-                'description' => 'View work order across divisions - untuk Marketing, Warehouse, Accounting',
                 'module' => 'service',
+                'page' => 'workorder',
+                'action' => 'view_cross_division',
+                'key_name' => 'service.workorder.view_cross_division',
+                'display_name' => 'View Work Order (Cross-Division)',
+                'description' => 'View work order across divisions - untuk Marketing, Warehouse, Accounting',
                 'category' => 'resource',
-                'is_system_permission' => 1,
                 'is_active' => 1,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ],
             [
-                'key' => 'purchasing.po.view',
-                'name' => 'View PO (Cross-Division)',
-                'description' => 'View purchase order across divisions - untuk Marketing, Warehouse, Accounting',
                 'module' => 'purchasing',
+                'page' => 'po',
+                'action' => 'view_cross_division',
+                'key_name' => 'purchasing.po.view_cross_division',
+                'display_name' => 'View PO (Cross-Division)',
+                'description' => 'View purchase order across divisions - untuk Marketing, Warehouse, Accounting',
                 'category' => 'resource',
-                'is_system_permission' => 1,
                 'is_active' => 1,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ],
             [
-                'key' => 'operational.delivery.view',
-                'name' => 'View Delivery (Cross-Division)',
-                'description' => 'View delivery across divisions - untuk Marketing, Warehouse',
                 'module' => 'operational',
+                'page' => 'delivery',
+                'action' => 'view_cross_division',
+                'key_name' => 'operational.delivery.view_cross_division',
+                'display_name' => 'View Delivery (Cross-Division)',
+                'description' => 'View delivery across divisions - untuk Marketing, Warehouse',
                 'category' => 'resource',
-                'is_system_permission' => 1,
                 'is_active' => 1,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
             ],
             [
-                'key' => 'accounting.financial.view',
-                'name' => 'View Financial (Cross-Division)',
-                'description' => 'View financial data across divisions - untuk Marketing, Service, Purchasing',
                 'module' => 'accounting',
+                'page' => 'financial',
+                'action' => 'view_cross_division',
+                'key_name' => 'accounting.financial.view_cross_division',
+                'display_name' => 'View Financial (Cross-Division)',
+                'description' => 'View financial data across divisions - untuk Marketing, Service, Purchasing',
                 'category' => 'resource',
-                'is_system_permission' => 1,
                 'is_active' => 1,
                 'created_at' => date('Y-m-d H:i:s'),
                 'updated_at' => date('Y-m-d H:i:s')
@@ -94,7 +101,7 @@ class AddResourcePermissions extends Migration
         // Insert resource permissions (skip if already exists)
         foreach ($resourcePermissions as $perm) {
             $existing = $this->db->table('permissions')
-                ->where('key', $perm['key'])
+                ->where('key_name', $perm['key_name'])
                 ->get()
                 ->getRowArray();
             
@@ -108,18 +115,18 @@ class AddResourcePermissions extends Migration
     {
         // Remove resource permissions
         $resourcePermissionKeys = [
-            'warehouse.inventory.view',
-            'warehouse.inventory.manage',
-            'marketing.kontrak.view',
-            'service.workorder.view',
-            'purchasing.po.view',
-            'operational.delivery.view',
-            'accounting.financial.view'
+            'warehouse.inventory.view_cross_division',
+            'warehouse.inventory.manage_cross_division',
+            'marketing.kontrak.view_cross_division',
+            'service.workorder.view_cross_division',
+            'purchasing.po.view_cross_division',
+            'operational.delivery.view_cross_division',
+            'accounting.financial.view_cross_division'
         ];
 
         // Get permission IDs
         $permissionIds = $this->db->table('permissions')
-            ->whereIn('key', $resourcePermissionKeys)
+            ->whereIn('key_name', $resourcePermissionKeys)
             ->select('id')
             ->get()
             ->getResultArray();

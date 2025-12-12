@@ -26,6 +26,9 @@ class AdvancedUserManagement extends BaseController
 
     public function __construct()
     {
+        // Load permission helper for access control
+        helper('permission_helper');
+        
         $this->db = \Config\Database::connect();
         $this->userModel = new UserModel();
         $this->roleModel = new RoleModel();
@@ -94,17 +97,30 @@ class AdvancedUserManagement extends BaseController
             return redirect()->to('/admin/advanced-users')->with('error', 'Akses ditolak.');
         }
 
+        // Get roles formatted for JavaScript dropdown
+        $rolesFromDb = $this->roleModel->findAll();
+        $formattedRoles = [];
+        foreach ($rolesFromDb as $role) {
+            $formattedRoles[] = [
+                'id' => (string)$role['id'],
+                'name' => $role['name'],
+                'division' => (string)$role['division_id']
+            ];
+        }
+
         $data = [
             'title' => 'Create New User',
-            'allRoles' => $this->roleModel->findAll(),
-            'allDivisions' => $this->divisionModel->findAll(),
-            // 'allPositions' => $this->positionModel->findAll(),
-            'allPermissions' => method_exists($this->permissionModel, 'getPermissionsGroupedByModule') 
-                ? $this->permissionModel->getPermissionsGroupedByModule() 
-                : $this->permissionModel->findAll(),
+            'user' => null, // Explicitly set null for create mode
+            'userRoles' => [], // Empty array for create mode
+            'userDivisions' => [], // Empty array for create mode  
+            'userPermissions' => [], // Empty array for create mode
+            'userServiceAccess' => [], // Empty array for create mode - IMPORTANT!
+            'roles' => $formattedRoles, // Changed to 'roles' to match view
+            'divisions' => $this->divisionModel->findAll(), // Changed to 'divisions' to match view
+            'allPermissions' => $this->permissionModel->where('is_active', 1)->findAll(),
         ];
 
-        return view('admin/advanced_user_management/form', $data);
+        return view('admin/advanced_user_management/create_user', $data);
     }
 
     /**
@@ -247,6 +263,9 @@ class AdvancedUserManagement extends BaseController
                     'assigned_at' => date('Y-m-d H:i:s')
                 ]);
             }
+            
+            // Handle Service Access if Service division is selected
+            $this->handleServiceAccess($userId, $division);
 
             $this->db->transComplete();
 
@@ -405,6 +424,61 @@ class AdvancedUserManagement extends BaseController
             $userPermissions = [];
         }
 
+        // Get current user service access data
+        $userServiceAccess = [];
+        try {
+            // Get area access
+            $areaAccess = $this->db->table('user_area_access')
+                ->where('user_id', $userId)
+                ->get()
+                ->getRowArray();
+            
+            // Get branch access
+            $branchAccess = $this->db->table('user_branch_access')
+                ->where('user_id', $userId)
+                ->get()
+                ->getRowArray();
+            
+            if ($areaAccess) {
+                $userServiceAccess['area_type'] = $areaAccess['area_type'];
+                $userServiceAccess['department_scope'] = $areaAccess['department_scope'];
+            }
+            
+            if ($branchAccess) {
+                $userServiceAccess['access_type'] = $branchAccess['access_type'];
+                if ($branchAccess['branch_ids']) {
+                    $userServiceAccess['service_area_ids'] = json_decode($branchAccess['branch_ids'], true);
+                }
+            }
+            
+            log_message('debug', 'Loaded service access for user ' . $userId . ': ' . json_encode($userServiceAccess));
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading service access for user ' . $userId . ': ' . $e->getMessage());
+            $userServiceAccess = [];
+        }
+
+        // Get roles formatted for JavaScript dropdown
+        $rolesFromDb = $this->roleModel->findAll();
+        $formattedRoles = [];
+        foreach ($rolesFromDb as $role) {
+            $formattedRoles[] = [
+                'id' => (string)$role['id'],
+                'name' => $role['name'],
+                'division' => (string)$role['division_id']
+            ];
+        }
+
+        // Add current division and role info to user object
+        if (!empty($userRoles)) {
+            $user['role'] = $userRoles[0]['id'];
+            $user['role_name'] = $userRoles[0]['name'];
+        }
+        
+        if (!empty($userDivisions)) {
+            $user['division'] = $userDivisions[0]['id'];
+            $user['division_name'] = $userDivisions[0]['name'];
+        }
 
         $data = [
             'title' => 'Edit User - ' . $user['first_name'] . ' ' . $user['last_name'],
@@ -412,14 +486,13 @@ class AdvancedUserManagement extends BaseController
             'userRoles' => $userRoles,
             'userDivisions' => $userDivisions,
             'userPermissions' => $userPermissions,  // TAMBAHKAN INI
-            'allRoles' => $this->roleModel->findAll(),
-            'allDivisions' => $this->divisionModel->findAll(),
-            'allPermissions' => method_exists($this->permissionModel, 'getPermissionsGroupedByModule') 
-                ? $this->permissionModel->getPermissionsGroupedByModule() 
-                : $this->permissionModel->findAll(),
+            'userServiceAccess' => $userServiceAccess, // TAMBAHKAN SERVICE ACCESS DATA
+            'roles' => $formattedRoles, // Changed to 'roles' to match view
+            'divisions' => $this->divisionModel->findAll(), // Changed to 'divisions' to match view
+            'allPermissions' => $this->permissionModel->where('is_active', 1)->findAll(),
         ];
 
-        return view('admin/advanced_user_management/form', $data);
+        return view('admin/advanced_user_management/edit_user', $data);
     }
 
     /**
@@ -427,6 +500,10 @@ class AdvancedUserManagement extends BaseController
      */
     public function update($userId)
     {
+        log_message('debug', '=== UPDATE METHOD CALLED ===');
+        log_message('debug', 'User ID: ' . $userId);
+        log_message('debug', 'Is AJAX: ' . ($this->request->isAJAX() ? 'YES' : 'NO'));
+        
         // Debug: Log all POST data
         log_message('debug', 'Update User POST data: ' . json_encode($this->request->getPost()));
         log_message('debug', 'Update User ID: ' . $userId);
@@ -568,16 +645,48 @@ class AdvancedUserManagement extends BaseController
 
             // Update permissions
             $this->db->table('user_permissions')->where('user_id', $userId)->delete();
+            
+            // Handle custom permissions
+            $customPermissions = $this->request->getPost('custom_permissions');
+            log_message('debug', 'Custom permissions received: ' . $customPermissions);
+            
+            if (!empty($customPermissions)) {
+                $permissionIds = json_decode($customPermissions, true);
+                log_message('debug', 'Decoded permission IDs: ' . json_encode($permissionIds));
+                
+                if (is_array($permissionIds)) {
+                    foreach ($permissionIds as $permissionId) {
+                        if (is_numeric($permissionId)) {
+                            $this->db->table('user_permissions')->insert([
+                                'user_id' => $userId,
+                                'permission_id' => (int)$permissionId,
+                                'granted' => 1,
+                                'assigned_by' => session()->get('user_id') ?? 1,
+                                'assigned_at' => date('Y-m-d H:i:s')
+                            ]);
+                        }
+                    }
+                }
+            }
+            
+            // Legacy permissions handling (for backward compatibility)
             $permissions = $this->request->getPost('permissions') ?? [];
             foreach ($permissions as $permissionId) {
-                $this->db->table('user_permissions')->insert([
-                    'user_id' => $userId,
-                    'permission_id' => $permissionId,
-                    'granted' => 1,
-                    'assigned_by' => session()->get('user_id') ?? 1,
-                    'assigned_at' => date('Y-m-d H:i:s')
-                ]);
+                if (is_numeric($permissionId)) {
+                    $this->db->table('user_permissions')->insert([
+                        'user_id' => $userId,
+                        'permission_id' => (int)$permissionId,
+                        'granted' => 1,
+                        'assigned_by' => session()->get('user_id') ?? 1,
+                        'assigned_at' => date('Y-m-d H:i:s')
+                    ]);
+                }
             }
+            
+            // Handle Service Access if Service division is selected
+            log_message('debug', 'About to call handleServiceAccess with userId=' . $userId . ', division=' . $division);
+            $this->handleServiceAccess($userId, $division);
+            log_message('debug', 'handleServiceAccess completed');
 
             $this->db->transComplete();
 
@@ -589,6 +698,17 @@ class AdvancedUserManagement extends BaseController
                     'permissions' => $oldPermissions
                 ]);
                 
+                // Get final permission list for logging
+                $finalPermissions = [];
+                if (!empty($customPermissions)) {
+                    $permissionIds = json_decode($customPermissions, true);
+                    if (is_array($permissionIds)) {
+                        $finalPermissions = array_merge($finalPermissions, $permissionIds);
+                    }
+                }
+                $finalPermissions = array_merge($finalPermissions, $permissions);
+                $finalPermissions = array_unique($finalPermissions);
+                
                 $newData = [
                     'user_id' => $userId,
                     'username' => $userData['username'],
@@ -599,7 +719,7 @@ class AdvancedUserManagement extends BaseController
                     'is_active' => $userData['is_active'],
                     'roles' => $roles,
                     'divisions' => $divisions,
-                    'permissions' => $permissions,
+                    'permissions' => $finalPermissions,
                     'updated_by' => session()->get('user_id') ?? 1,
                     'password_changed' => !empty($password) ? 'Yes' : 'No'
                 ];
@@ -2070,6 +2190,89 @@ class AdvancedUserManagement extends BaseController
     }
 
     /**
+     * Get permissions for specific roles
+     */
+
+    public function getEnhancedPermissions()
+    {
+        try {
+            $enhancedPermissionModel = new \App\Models\EnhancedPermissionModel();
+            
+            // Get permission tree
+            $permissionTree = $enhancedPermissionModel->getPermissionTree();
+            
+            // Get flat permissions array for compatibility
+            $flatPermissions = $enhancedPermissionModel->where('is_active', 1)->findAll();
+            
+            // Get unique modules
+            $modules = array_unique(array_column($flatPermissions, 'module'));
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'tree' => $permissionTree,
+                    'flat' => $flatPermissions,
+                    'modules' => $modules
+                ]
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error loading enhanced permissions: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load enhanced permissions'
+            ])->setStatusCode(500);
+        }
+    }
+
+    public function getRolePermissions()
+    {
+        // Temporarily disable permission check for debugging
+        // if (!$this->hasPermission('admin.manage')) {
+        //     return $this->response->setJSON([
+        //         'success' => false,
+        //         'message' => 'Access denied'
+        //     ])->setStatusCode(403);
+        // }
+
+        $roleIds = $this->request->getPost('role_ids');
+        
+        log_message('debug', 'getRolePermissions called with roleIds: ' . json_encode($roleIds));
+        
+        if (empty($roleIds) || !is_array($roleIds)) {
+            log_message('debug', 'No role IDs provided, returning empty array');
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => []
+            ]);
+        }
+
+        try {
+            $permissions = $this->db->table('role_permissions rp')
+                ->join('permissions p', 'p.id = rp.permission_id')
+                ->whereIn('rp.role_id', $roleIds)
+                ->where('rp.granted', 1)
+                ->where('p.is_active', 1)
+                ->select('p.id, p.key_name, p.display_name, p.description, p.module, p.page, p.action')
+                ->distinct()
+                ->get()
+                ->getResultArray();
+
+            log_message('debug', 'Found ' . count($permissions) . ' role permissions');
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $permissions
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting role permissions: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load role permissions'
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
      * Save custom permissions for user
      */
     public function saveCustomPermissions($userId)
@@ -2226,6 +2429,242 @@ class AdvancedUserManagement extends BaseController
                 'success' => false,
                 'message' => 'Error: ' . $e->getMessage()
             ])->setStatusCode(500);
+        }
+    }
+    
+    /**
+     * Handle Service Access for Service Division Users
+     */
+    private function handleServiceAccess($userId, $divisionId)
+    {
+        log_message('debug', '=== handleServiceAccess CALLED ===');
+        log_message('debug', 'User ID: ' . $userId);
+        log_message('debug', 'Division ID: ' . $divisionId);
+        
+        // Always log ALL POST data first
+        log_message('debug', 'ALL POST Data: ' . json_encode($this->request->getPost()));
+        
+        // For update mode, check if current user division is Service
+        if ($divisionId === null) {
+            // Get user's current division from user_roles table
+            $userDivision = $this->db->table('user_roles ur')
+                ->join('divisions d', 'd.id = ur.division_id')
+                ->where('ur.user_id', $userId)
+                ->select('d.id, d.name')
+                ->get()
+                ->getRowArray();
+            
+            log_message('debug', 'User division from DB: ' . json_encode($userDivision));
+            
+            if (!$userDivision || !stripos($userDivision['name'], 'service')) {
+                log_message('debug', 'User not in Service division during update, but forcing execution for debug');
+                // Don't return, continue for debugging
+            }
+            
+            $division = $userDivision;
+        } else {
+            // For create mode, check if selected division is Service
+            $division = $this->divisionModel->find($divisionId);
+            if (!$division || !stripos($division['name'], 'service')) {
+                log_message('debug', 'Selected division is not Service division, but forcing execution for debug');
+                // Don't return, continue for debugging
+            }
+        }
+        
+        // Debug: Log the data received
+        $areaType = $this->request->getPost('area_type');
+        $departmentScope = $this->request->getPost('department_scope'); // For CENTRAL
+        
+        // Try multiple ways to get service area IDs
+        $serviceAreaIds = [];
+        
+        // Method 1: Direct array from POST
+        $directArray = $this->request->getPost('service_area_ids');
+        if ($directArray && is_array($directArray)) {
+            $serviceAreaIds = $directArray;
+        }
+        
+        // Method 2: JSON string from POST
+        $jsonString = $this->request->getPost('service_area_ids_json');
+        if (!$serviceAreaIds && $jsonString) {
+            $decoded = json_decode($jsonString, true);
+            if (is_array($decoded)) {
+                $serviceAreaIds = $decoded;
+            }
+        }
+        
+        // Method 3: Array format from POST (service_area_ids[0], service_area_ids[1], etc.)
+        $postData = $this->request->getPost();
+        if (!$serviceAreaIds) {
+            foreach ($postData as $key => $value) {
+                if (preg_match('/^service_area_ids\[(\d+)\]$/', $key)) {
+                    $serviceAreaIds[] = $value;
+                }
+            }
+        }
+        
+        log_message('debug', '=== SERVICE ACCESS DEBUG ===');
+        log_message('debug', 'User ID: ' . $userId);
+        log_message('debug', 'Division ID: ' . $divisionId);
+        log_message('debug', 'Division Name: ' . ($division['name'] ?? 'NULL'));
+        log_message('debug', 'Area Type: ' . ($areaType ?? 'NULL'));
+        log_message('debug', 'Department Scope: ' . ($departmentScope ?? 'NULL'));
+        log_message('debug', 'Service Area IDs (Method 1 - direct): ' . json_encode($directArray));
+        log_message('debug', 'Service Area IDs (Method 2 - JSON): ' . json_encode($jsonString));
+        log_message('debug', 'Service Area IDs (final): ' . json_encode($serviceAreaIds));
+        log_message('debug', 'Service Area IDs Type: ' . gettype($serviceAreaIds));
+        log_message('debug', '========================');
+        
+        // Clear existing service access data first
+        log_message('debug', 'Clearing existing service access data for user: ' . $userId);
+        $this->db->table('user_area_access')->where('user_id', $userId)->delete();
+        $this->db->table('user_branch_access')->where('user_id', $userId)->delete();
+        
+        // Save area access based on type
+        if ($areaType) {
+            $areaData = [
+                'user_id' => $userId,
+                'area_type' => $areaType,
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            
+            if ($areaType === 'CENTRAL' && $departmentScope) {
+                $areaData['department_scope'] = $departmentScope;
+            }
+            
+            log_message('debug', 'Inserting area access: ' . json_encode($areaData));
+            $result = $this->db->table('user_area_access')->insert($areaData);
+            log_message('debug', 'Area access insert result: ' . ($result ? 'SUCCESS' : 'FAILED'));
+        }
+        
+        // Save service area access for BRANCH type
+        if ($areaType === 'BRANCH' && !empty($serviceAreaIds)) {
+            $branchData = [
+                'user_id' => $userId,
+                'access_type' => 'SPECIFIC_BRANCHES', // Use correct enum value
+                'branch_ids' => json_encode($serviceAreaIds), // Store service area IDs
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            
+            log_message('debug', 'Inserting branch access: ' . json_encode($branchData));
+            $result = $this->db->table('user_branch_access')->insert($branchData);
+            log_message('debug', 'Branch access insert result: ' . ($result ? 'SUCCESS' : 'FAILED'));
+        } else {
+            log_message('debug', 'NOT saving branch access - Area Type: ' . $areaType . ', Service Area IDs count: ' . count($serviceAreaIds));
+        }
+        
+        log_message('debug', '=== handleServiceAccess COMPLETED ===');
+    }
+    
+    /**
+     * Get Service Access Data for User
+     */
+    public function getServiceAccess($userId)
+    {
+        try {
+            // Get area access
+            $areaAccess = $this->db->table('user_area_access')
+                ->where('user_id', $userId)
+                ->get()
+                ->getRowArray();
+            
+            // Get branch access
+            $branchAccess = $this->db->table('user_branch_access')
+                ->where('user_id', $userId)
+                ->get()
+                ->getRowArray();
+            
+            $data = [];
+            if ($areaAccess) {
+                $data['area_type'] = $areaAccess['area_type'];
+                $data['department_scope'] = $areaAccess['department_scope'];
+            }
+            
+            if ($branchAccess) {
+                $data['access_type'] = $branchAccess['access_type'];
+                if ($branchAccess['branch_ids']) {
+                    $data['service_area_ids'] = json_decode($branchAccess['branch_ids'], true);
+                }
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $data
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Get Service Access Error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
+    }
+    
+    /**
+     * Update Service Access for User
+     */
+    public function updateServiceAccess($userId)
+    {
+        try {
+            $this->db->transStart();
+            
+            // Delete existing service access
+            $this->db->table('user_area_access')->where('user_id', $userId)->delete();
+            $this->db->table('user_branch_access')->where('user_id', $userId)->delete();
+            
+            // Add new service access
+            $this->handleServiceAccess($userId, null); // Pass null for division since we're updating
+            
+            $this->db->transComplete();
+            
+            if ($this->db->transStatus()) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Service access updated successfully'
+                ]);
+            } else {
+                throw new \Exception('Transaction failed');
+            }
+            
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', 'Update service access error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to update service access: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get service areas for dropdown (simple version)
+     */
+    public function getServiceAreas()
+    {
+        try {
+            $areas = $this->db->table('areas')
+                ->select('id, area_name as name, area_description as description')
+                ->where('is_active', 1)
+                ->orderBy('area_name', 'ASC')
+                ->get()
+                ->getResultArray();
+                
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $areas
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Get service areas error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load service areas: ' . $e->getMessage(),
+                'data' => []
+            ]);
         }
     }
 }

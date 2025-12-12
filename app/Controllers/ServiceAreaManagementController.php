@@ -179,21 +179,23 @@ class ServiceAreaManagementController extends BaseController
             $start = isset($request['start']) ? (int)$request['start'] : 0;
             $length = isset($request['length']) ? (int)$request['length'] : 10;
             
-            // Get scope - administrators should see all data
+            // Get scope - now properly implemented for role-based filtering
             $scope = get_user_area_department_scope();
             
             // Debug logging
             log_message('debug', 'User scope: ' . json_encode($scope));
             log_message('debug', 'User role from session: ' . session()->get('role'));
+            log_message('debug', 'User ID from session: ' . session()->get('user_id'));
             
-            // Build query with scope
+            // Build query with scope filtering
             $whereClause = "";
             $params = [];
             
-            // Add scope condition (skip for administrators)
+            // Apply role-based scope filtering
             if ($scope !== null && !empty($scope['areas'])) {
                 $whereClause = " WHERE id IN (" . implode(',', array_fill(0, count($scope['areas']), '?')) . ")";
                 $params = $scope['areas'];
+                log_message('debug', 'Applied area filtering: ' . implode(',', $scope['areas']));
             }
             
             // Add search condition

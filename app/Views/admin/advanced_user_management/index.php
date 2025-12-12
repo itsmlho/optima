@@ -1,6 +1,10 @@
 <?= $this->extend('layouts/base') ?>
 
 <?= $this->section('content') ?>
+<?php
+// Load permission helper for UI conditionals
+helper('permission_helper');
+?>
 
 <!-- Success/Error Messages -->
 <?php if (session()->getFlashdata('success')): ?>
@@ -875,4 +879,5 @@ function cleanExpiredPermissions() {
     }
 }
 </script>
+<?= $this->endSection() ?>
 <?= $this->endSection() ?>

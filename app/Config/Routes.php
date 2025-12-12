@@ -873,6 +873,15 @@ $routes->group('admin', static function ($routes) {
         $routes->post('save-custom-permissions/(:num)', 'Admin\AdvancedUserManagement::saveCustomPermissions/$1');
         $routes->post('remove-custom-permission/(:num)', 'Admin\AdvancedUserManagement::removeCustomPermission/$1');
         
+        // Service Access routes
+        $routes->get('get-service-access/(:num)', 'Admin\AdvancedUserManagement::getServiceAccess/$1');
+        $routes->post('update-service-access/(:num)', 'Admin\AdvancedUserManagement::updateServiceAccess/$1');
+        $routes->get('get-service-areas', 'Admin\AdvancedUserManagement::getServiceAreas');
+        
+        // Role Permissions routes
+        $routes->post('get-role-permissions', 'Admin\AdvancedUserManagement::getRolePermissions');
+        $routes->get('get-enhanced-permissions', 'Admin\AdvancedUserManagement::getEnhancedPermissions');
+        
         // Division management routes
         $routes->get('division/(:num)', 'Admin\AdvancedUserManagement::divisionUsers/$1');
         $routes->get('division-users/(:num)', 'Admin\AdvancedUserManagement::divisionUsers/$1');

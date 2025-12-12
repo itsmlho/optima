@@ -75,11 +75,6 @@
                         <div class="text-muted">Custom Permissions</div>
                     </div>
                 </div>
-                        <div class="align-self-center">
-                            <i class="fas fa-user-cog fa-2x opacity-75"></i>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
