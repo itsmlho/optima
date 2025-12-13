@@ -1132,7 +1132,7 @@ function loadExistingPermissions() {
         console.log('⚠️ No roles found for user');
         // If no roles, just render with custom permissions
         if (allPermissionsData && allPermissionsData.length > 0) {
-            renderPermissions(allPermissionsData);
+            renderPermissionsByModuleAndPage(allPermissionsData);
         }
     }
     
@@ -1165,7 +1165,7 @@ function loadRoleBasedPermissions() {
                 updateCustomPermissionsDisplay();
                 // Re-render permissions to update the display with role badges
                 if (allPermissionsData && allPermissionsData.length > 0) {
-                    renderPermissions(allPermissionsData);
+                    renderPermissionsByModuleAndPage(allPermissionsData);
                 }
             }
         },
@@ -1529,106 +1529,6 @@ function updatePermissionCardStyle(card, isChecked, isRoleBased) {
         card.removeClass('border-warning bg-light');
         card.find('.fas.fa-user-cog').removeClass('fas fa-user-cog text-warning').addClass('far fa-circle text-muted');
     }
-}
-
-function renderPermissions(permissions) {
-    let html = '';
-    const groupedByModule = {};
-    
-    // Group permissions by module
-    permissions.forEach(permission => {
-        const module = permission.module || 'General';
-        if (!groupedByModule[module]) {
-            groupedByModule[module] = [];
-        }
-        groupedByModule[module].push(permission);
-    });
-    
-    // Render grouped permissions
-    Object.keys(groupedByModule).forEach(module => {
-        html += `
-            <div class="mb-4">
-                <h6 class="text-primary border-bottom border-primary pb-1 mb-3">
-                    <i class="fas fa-folder me-2"></i>${module}
-                </h6>
-                <div class="row">
-        `;
-        
-        groupedByModule[module].forEach(permission => {
-            const permId = parseInt(permission.id);
-            const isRoleBased = roleBasedPermissions.includes(permId);
-            const isCustom = selectedCustomPermissions.includes(permId);
-            const hasAnyAccess = isRoleBased || isCustom;
-            
-            let statusBadge = '';
-            let cardClass = '';
-            let checkboxState = '';
-            
-            if (isRoleBased && isCustom) {
-                statusBadge = '<span class="badge bg-info">Role + Custom</span>';
-                cardClass = 'border-info bg-light';
-                checkboxState = 'checked';
-            } else if (isRoleBased) {
-                statusBadge = '<span class="badge bg-success">Role</span>';
-                cardClass = 'border-success bg-light';
-                checkboxState = 'checked disabled';
-            } else if (isCustom) {
-                statusBadge = '<span class="badge bg-warning">Custom</span>';
-                cardClass = 'border-warning bg-light';
-                checkboxState = 'checked';
-            }
-            
-            html += `
-                <div class="col-md-6 mb-2">
-                    <div class="card ${cardClass} permission-item" style="cursor: ${isRoleBased && !isCustom ? 'default' : 'pointer'}; transition: all 0.2s;">
-                        <div class="card-body p-2">
-                            <div class="form-check d-flex justify-content-between align-items-start">
-                                <div class="flex-grow-1">
-                                    <input class="form-check-input" type="checkbox" 
-                                           value="${permId}" id="perm_${permId}" ${checkboxState}
-                                           ${isRoleBased && !isCustom ? 'data-role-based="true"' : ''}>
-                                    <label class="form-check-label small" for="perm_${permId}">
-                                        <strong>${permission.display_name}</strong>
-                                        ${permission.description ? `<br><small class="text-muted">${permission.description}</small>` : ''}
-                                    </label>
-                                </div>
-                                <div class="ms-2">
-                                    ${statusBadge}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        });
-        
-        html += `
-                </div>
-            </div>
-        `;
-    });
-    
-    if (html === '') {
-        html = '<div class="text-center p-3"><span class="text-muted">No permissions found</span></div>';
-    }
-    
-    $('#permissionsList').html(html);
-    
-    // Add click handlers for cards
-    $('.permission-item').on('click', function() {
-        const checkbox = $(this).find('input[type="checkbox"]');
-        
-        // Don't allow clicking on role-based only permissions
-        if (checkbox.data('role-based') && !checkbox.prop('checked')) {
-            return;
-        }
-        
-        // Only toggle if it's not disabled
-        if (!checkbox.prop('disabled')) {
-            checkbox.prop('checked', !checkbox.prop('checked'));
-            $(this).toggleClass('border-warning bg-light', checkbox.prop('checked') && !checkbox.data('role-based'));
-        }
-    });
 }
 
 function filterPermissions() {

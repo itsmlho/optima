@@ -81,7 +81,7 @@ class RoleController extends BaseController
                 ->join('permissions p', 'p.id = role_permissions.permission_id')
                 ->where('role_permissions.role_id', $roleId)
                 ->where('role_permissions.granted', 1)
-                ->select('p.*')
+                ->select('p.id, p.display_name, p.key_name, p.module, p.page, p.action, p.description')
                 ->findAll();
 
             return $this->response->setJSON([
@@ -194,11 +194,25 @@ class RoleController extends BaseController
      */
     private function getAllPermissions()
     {
-        $permissions = $this->permissionModel->orderBy('module', 'ASC')->orderBy('level', 'ASC')->findAll();
+        $permissions = $this->permissionModel
+            ->orderBy('module', 'ASC')
+            ->orderBy('page', 'ASC') 
+            ->orderBy('action', 'ASC')
+            ->findAll();
         
         $grouped = [];
         foreach ($permissions as $permission) {
-            $grouped[$permission['module']][] = $permission;
+            $module = $permission['module'] ?? 'general';
+            $page = $permission['page'] ?? 'general';
+            
+            if (!isset($grouped[$module])) {
+                $grouped[$module] = [];
+            }
+            if (!isset($grouped[$module][$page])) {
+                $grouped[$module][$page] = [];
+            }
+            
+            $grouped[$module][$page][] = $permission;
         }
         
         return $grouped;

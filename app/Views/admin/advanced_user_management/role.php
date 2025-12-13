@@ -308,22 +308,12 @@
 
                     <div class="mb-3">
                         <h6>Permissions</h6>
-                        <p class="text-muted small">Select permission level for each module</p>
+                        <p class="text-muted small">Select permissions for each module and page</p>
                         
-                        <div class="permission-container">
-                            <table class="simple-permission-table">
-                                <thead>
-                                    <tr>
-                                        <th class="module-name">Module</th>
-                                        <th>View</th>
-                                        <th>Edit</th>
-                                        <th>Full Access</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="permissionsTable">
-                                    <!-- Permissions will be loaded here -->
-                                </tbody>
-                            </table>
+                        <div class="permission-container" style="max-height: 400px; overflow-y: auto;">
+                            <div id="permissionsTable">
+                                <!-- Permissions will be loaded here as cards -->
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -452,62 +442,115 @@ function displayPermissions(permissions) {
     const permissionsTable = document.getElementById('permissionsTable');
     permissionsTable.innerHTML = '';
 
-    const modules = {};
-    Object.keys(permissions).forEach(module => {
-        modules[module] = {};
-        permissions[module].forEach(perm => {
-            modules[module][perm.level] = perm;
-        });
-    });
+    console.log('🔐 Displaying permissions:', permissions);
 
-    Object.keys(modules).forEach(module => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td class="module-name">${module.charAt(0).toUpperCase() + module.slice(1)}</td>
-            <td>
-                <input type="checkbox" class="permission-checkbox" 
-                       data-module="${module}" data-level="1" 
-                       onchange="updatePermissionLevel('${module}', 1, this.checked)">
-                <div class="permission-level">View Only</div>
-            </td>
-            <td>
-                <input type="checkbox" class="permission-checkbox" 
-                       data-module="${module}" data-level="2" 
-                       onchange="updatePermissionLevel('${module}', 2, this.checked)">
-                <div class="permission-level">View + Edit</div>
-            </td>
-            <td>
-                <input type="checkbox" class="permission-checkbox" 
-                       data-module="${module}" data-level="3" 
-                       onchange="updatePermissionLevel('${module}', 3, this.checked)">
-                <div class="permission-level">Full Access</div>
-            </td>
-        `;
-        permissionsTable.appendChild(row);
-    });
-}
-
-// Update permission level
-function updatePermissionLevel(module, level, checked) {
-    const checkboxes = document.querySelectorAll(`input[data-module="${module}"]`);
+    // Render dengan struktur yang sama seperti edit_user.php
+    let html = '';
     
-    if (checked) {
-        // If checking a higher level, check all lower levels
-        for (let i = 1; i <= level; i++) {
-            const checkbox = document.querySelector(`input[data-module="${module}"][data-level="${i}"]`);
-            if (checkbox) {
-                checkbox.checked = true;
-            }
+    // Group permissions by module and page
+    const grouped = {};
+    
+    // Flatten permissions dari format bertingkat ke array sederhana
+    Object.keys(permissions).forEach(module => {
+        if (typeof permissions[module] === 'object') {
+            Object.keys(permissions[module]).forEach(page => {
+                const pagePermissions = permissions[module][page];
+                
+                if (Array.isArray(pagePermissions) && pagePermissions.length > 0) {
+                    if (!grouped[module]) {
+                        grouped[module] = {};
+                    }
+                    if (!grouped[module][page]) {
+                        grouped[module][page] = [];
+                    }
+                    grouped[module][page] = pagePermissions;
+                }
+            });
         }
-    } else {
-        // If unchecking a lower level, uncheck all higher levels
-        for (let i = level; i <= 3; i++) {
-            const checkbox = document.querySelector(`input[data-module="${module}"][data-level="${i}"]`);
-            if (checkbox) {
-                checkbox.checked = false;
-            }
-        }
+    });
+    
+    // Render grouped permissions dengan card layout
+    Object.keys(grouped).sort().forEach(module => {
+        html += `
+            <div class="col-12">
+                <div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">
+                            <i class="fas fa-layer-group me-2"></i>
+                            ${module.charAt(0).toUpperCase() + module.slice(1)} Module
+                        </h6>
+                    </div>
+                    <div class="card-body p-0">
+        `;
+        
+        Object.keys(grouped[module]).sort().forEach(page => {
+            const pagePermissions = grouped[module][page];
+            
+            html += `
+                <div class="border-bottom">
+                    <div class="p-3 bg-light">
+                        <h6 class="mb-2 text-primary">
+                            <i class="fas fa-file-alt me-2"></i>
+                            ${page.charAt(0).toUpperCase() + page.slice(1)} Page
+                        </h6>
+                        <div class="row">
+            `;
+            
+            pagePermissions.forEach(permission => {
+                const permId = parseInt(permission.id);
+                
+                html += `
+                    <div class="col-md-6 col-lg-4 mb-2">
+                        <div class="card border h-100" style="cursor: pointer; transition: all 0.2s;">
+                            <div class="card-body p-2">
+                                <div class="d-flex align-items-start">
+                                    <div class="me-2 mt-1">
+                                        <i class="fas fa-key text-primary"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <div class="form-check">
+                                            <input class="form-check-input permission-checkbox" type="checkbox" 
+                                                   value="${permId}" id="perm_${permId}"
+                                                   data-module="${module}" data-page="${page}" data-action="${permission.action}">
+                                            <label class="form-check-label small" for="perm_${permId}">
+                                                <strong>${permission.display_name}</strong>
+                                                <div class="text-muted small">${permission.key_name}</div>
+                                                ${permission.description ? `<div class="text-muted small">${permission.description}</div>` : ''}
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += `
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    
+    if (html === '') {
+        html = '<div class="text-center p-3"><span class="text-muted">No permissions found</span></div>';
     }
+    
+    // Update table structure untuk card layout
+    permissionsTable.innerHTML = `
+        <div class="row">
+            ${html}
+        </div>
+       
+    `;
 }
 
 // Populate role form
@@ -521,20 +564,23 @@ function populateRoleForm(role, permissions) {
     loadPermissions().then(() => {
         // Set checked states based on role permissions
         setTimeout(() => {
-            console.log('Setting permissions for role:', role.name);
-            console.log('Role permissions:', permissions);
+            console.log('🔐 Setting permissions for role:', role.name);
+            console.log('🔐 Role permissions:', permissions);
             
+            // Clear all checkboxes first
+            document.querySelectorAll('.permission-checkbox').forEach(cb => cb.checked = false);
+            
+            // Set checked states for role permissions
             permissions.forEach(perm => {
-                console.log('Setting permission:', perm.module, 'level:', perm.level);
-                const checkbox = document.querySelector(`input[data-module="${perm.module}"][data-level="${perm.level}"]`);
+                const checkbox = document.getElementById(`perm_${perm.id}`);
                 if (checkbox) {
                     checkbox.checked = true;
-                    console.log('Permission set:', perm.module, perm.level);
+                    console.log('✅ Permission set:', perm.display_name);
                 } else {
-                    console.log('Checkbox not found for:', perm.module, perm.level);
+                    console.log('❌ Checkbox not found for permission ID:', perm.id);
                 }
             });
-        }, 1000);
+        }, 500);
     });
 }
 
@@ -543,50 +589,38 @@ function saveRole() {
     const formData = new FormData(document.getElementById('roleForm'));
     const permissions = [];
     
-    // Collect permission data
+    // Collect permission data from checked checkboxes
     document.querySelectorAll('.permission-checkbox:checked').forEach(checkbox => {
-        const module = checkbox.dataset.module;
-        const level = parseInt(checkbox.dataset.level);
-        
-        // Find permission ID for this module and level
-        const permissionId = getPermissionId(module, level);
-        if (permissionId) {
-            permissions.push({
-                permission_id: permissionId,
-                module: module,
-                level: level
-            });
-        }
+        permissions.push({
+            permission_id: parseInt(checkbox.value),
+            granted: 1
+        });
     });
-
-    console.log('Saving role with permissions:', permissions);
-
-    const data = {
-        role_id: formData.get('role_id'),
+    
+    const roleData = {
+        role_id: formData.get('role_id') || null,
         name: formData.get('name'),
         description: formData.get('description'),
-        is_active: formData.get('is_active'),
+        is_active: parseInt(formData.get('is_active')),
         permissions: permissions
     };
-
-    const saveBtn = document.getElementById('saveRoleBtn');
-    saveBtn.disabled = true;
-    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
-
-    fetch('<?= base_url('admin/roles/save-role') ?>', {
+    
+    console.log('🔐 Saving role data:', roleData);
+    
+    fetch('<?= base_url('admin/roles/saveRole') ?>', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-Requested-With': 'XMLHttpRequest'
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(roleData)
     })
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert('Role saved successfully!');
             bootstrap.Modal.getInstance(document.getElementById('roleModal')).hide();
             loadRoles();
+            alert('Role saved successfully!');
         } else {
             alert('Error saving role: ' + data.message);
         }
@@ -594,29 +628,8 @@ function saveRole() {
     .catch(error => {
         console.error('Error:', error);
         alert('Error saving role');
-    })
-    .finally(() => {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Role';
     });
 }
 
-// Get permission ID for module and level
-function getPermissionId(module, level) {
-    // This would need to be populated from the server
-    // For now, we'll use a simple mapping
-    const permissionMap = {
-        'admin': {1: 1, 2: 2, 3: 3},
-        'marketing': {1: 4, 2: 5, 3: 6},
-        'service': {1: 7, 2: 8, 3: 9},
-        'purchasing': {1: 10, 2: 11, 3: 12},
-        'warehouse': {1: 13, 2: 14, 3: 15},
-        'operational': {1: 16, 2: 17, 3: 18},
-        'perizinan': {1: 19, 2: 20, 3: 21},
-        'accounting': {1: 22, 2: 23, 3: 24}
-    };
-    
-    return permissionMap[module] ? permissionMap[module][level] : null;
-}
 </script>
 <?= $this->endSection() ?>

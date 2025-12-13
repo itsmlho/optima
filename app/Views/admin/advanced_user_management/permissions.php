@@ -48,16 +48,16 @@
             </div>
         </div>
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-            <div class="stat-card bg-info-soft">
+            <div class="stat-card bg-success-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
-                        <i class="bi bi-shield-check stat-icon text-info"></i>
+                        <i class="bi bi-check-circle stat-icon text-success"></i>
                     </div>
                     <div>
-                        <div class="stat-value" id="stat-system-permissions">
-                            <?= $stats['system'] ?? 0 ?>
+                        <div class="stat-value" id="stat-active-permissions">
+                            <?= $stats['active'] ?? 0 ?>
                         </div>
-                        <div class="text-muted">System Permissions</div>
+                        <div class="text-muted">Active Permissions</div>
                     </div>
                 </div>
             </div>
@@ -66,13 +66,13 @@
             <div class="stat-card bg-warning-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
-                        <i class="bi bi-gear stat-icon text-warning"></i>
+                        <i class="bi bi-file-earmark-text stat-icon text-warning"></i>
                     </div>
                     <div>
-                        <div class="stat-value" id="stat-custom-permissions">
-                            <?= $stats['custom'] ?? 0 ?>
+                        <div class="stat-value" id="stat-pages-count">
+                            <?= $stats['pages'] ?? 0 ?>
                         </div>
-                        <div class="text-muted">Custom Permissions</div>
+                        <div class="text-muted">Total Pages</div>
                     </div>
                 </div>
             </div>
@@ -93,18 +93,18 @@
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="system-permissions-tab" data-filter="system" type="button">
-                        <i class="fas fa-shield-alt me-2"></i>System
-                        <span class="badge bg-success ms-2" id="system-permissions-count">
-                            <?= $stats['system'] ?? 0 ?>
+                    <button class="nav-link" id="active-permissions-tab" data-filter="active" type="button">
+                        <i class="fas fa-check-circle me-2"></i>Active
+                        <span class="badge bg-success ms-2" id="active-permissions-count">
+                            <?= $stats['active'] ?? 0 ?>
                         </span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="custom-permissions-tab" data-filter="custom" type="button">
-                        <i class="fas fa-user-cog me-2"></i>Custom
-                        <span class="badge bg-warning ms-2" id="custom-permissions-count">
-                            <?= $stats['custom'] ?? 0 ?>
+                    <button class="nav-link" id="inactive-permissions-tab" data-filter="inactive" type="button">
+                        <i class="fas fa-times-circle me-2"></i>Inactive
+                        <span class="badge bg-secondary ms-2" id="inactive-permissions-count">
+                            <?= $stats['inactive'] ?? 0 ?>
                         </span>
                     </button>
                 </li>
@@ -143,10 +143,12 @@
                         <table class="table table-striped table-hover align-middle" id="permissionsTable">
                             <thead>
                                 <tr>
-                                    <th><i class="fas fa-key me-1"></i>Permission Key</th>
                                     <th><i class="fas fa-tag me-1"></i>Display Name</th>
+                                    <th><i class="fas fa-key me-1"></i>Key</th>
+                                    <th><i class="fas fa-cube me-1"></i>Module</th>
+                                    <th><i class="fas fa-file me-1"></i>Page</th>
+                                    <th><i class="fas fa-cog me-1"></i>Action</th>
                                     <th><i class="fas fa-info-circle me-1"></i>Description</th>
-                                    <th class="text-center"><i class="fas fa-cube me-1"></i>Module</th>
                                     <th class="text-center"><i class="fas fa-cogs me-1"></i>Actions</th>
                                 </tr>
                             </thead>
@@ -183,23 +185,23 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">
-                                    <i class="fas fa-key me-1"></i>Permission Key*
+                                    <i class="fas fa-tag me-1"></i>Display Name*
                                 </label>
-                                <input type="text" class="form-control" name="key" required 
-                                       placeholder="e.g., users.create">
-                                <div class="form-text">
-                                    Use format: <code>module.action</code> (example: users.view, reports.export, dashboard.access)
-                                </div>
+                                <input type="text" class="form-control" name="display_name" required
+                                       placeholder="e.g., Create Users">
+                                <div class="form-text">Human-readable name for this permission</div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">
-                                    <i class="fas fa-tag me-1"></i>Display Name
+                                    <i class="fas fa-key me-1"></i>Permission Key*
                                 </label>
-                                <input type="text" class="form-control" name="name" 
-                                       placeholder="e.g., Create Users">
-                                <div class="form-text">Human-readable name for this permission</div>
+                                <input type="text" class="form-control" name="key_name" required 
+                                       placeholder="e.g., users.create">
+                                <div class="form-text">
+                                    Use format: <code>module.action</code> (example: users.view, reports.export, dashboard.access)
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -212,25 +214,60 @@
                                   placeholder="Describe what this permission allows..."></textarea>
                     </div>
                     
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">
-                            <i class="fas fa-cube me-1"></i>Module
-                        </label>
-                        <select class="form-select" name="module">
-                            <option value="">Select Module</option>
-                            <option value="dashboard">Dashboard</option>
-                            <option value="users">User Management</option>
-                            <option value="roles">Role Management</option>
-                            <option value="permissions">Permission Management</option>
-                            <option value="service">Service Management</option>
-                            <option value="marketing">Marketing</option>
-                            <option value="warehouse">Warehouse</option>
-                            <option value="purchasing">Purchasing</option>
-                            <option value="finance">Finance</option>
-                            <option value="accounting">Accounting</option>
-                            <option value="reports">Reports</option>
-                            <option value="system">System</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-cube me-1"></i>Module*
+                                </label>
+                                <select class="form-select" name="module" required>
+                                    <option value="">Select Module</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="dashboard">Dashboard</option>
+                                    <option value="users">User Management</option>
+                                    <option value="roles">Role Management</option>
+                                    <option value="permissions">Permission Management</option>
+                                    <option value="service">Service Management</option>
+                                    <option value="marketing">Marketing</option>
+                                    <option value="warehouse">Warehouse</option>
+                                    <option value="purchasing">Purchasing</option>
+                                    <option value="finance">Finance</option>
+                                    <option value="accounting">Accounting</option>
+                                    <option value="reports">Reports</option>
+                                    <option value="system">System</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-file me-1"></i>Page*
+                                </label>
+                                <input type="text" class="form-control" name="page" required
+                                       placeholder="e.g., users, dashboard, reports">
+                                <div class="form-text">Page or section name</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-cog me-1"></i>Action*
+                                </label>
+                                <select class="form-select" name="action" required>
+                                    <option value="">Select Action</option>
+                                    <option value="view">View</option>
+                                    <option value="create">Create</option>
+                                    <option value="edit">Edit</option>
+                                    <option value="delete">Delete</option>
+                                    <option value="manage">Manage</option>
+                                    <option value="export">Export</option>
+                                    <option value="import">Import</option>
+                                    <option value="approve">Approve</option>
+                                    <option value="reject">Reject</option>
+                                    <option value="access">Access</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -263,17 +300,17 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">
-                                    <i class="fas fa-key me-1"></i>Permission Key*
+                                    <i class="fas fa-tag me-1"></i>Display Name*
                                 </label>
-                                <input type="text" class="form-control" id="editPermissionKey" name="key" required>
+                                <input type="text" class="form-control" id="editPermissionDisplayName" name="display_name" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label fw-bold">
-                                    <i class="fas fa-tag me-1"></i>Display Name
+                                    <i class="fas fa-key me-1"></i>Permission Key*
                                 </label>
-                                <input type="text" class="form-control" id="editPermissionName" name="name">
+                                <input type="text" class="form-control" id="editPermissionKeyName" name="key_name" required>
                             </div>
                         </div>
                     </div>
@@ -285,25 +322,58 @@
                         <textarea class="form-control" id="editPermissionDescription" name="description" rows="3"></textarea>
                     </div>
                     
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">
-                            <i class="fas fa-cube me-1"></i>Module
-                        </label>
-                        <select class="form-select" id="editPermissionModule" name="module">
-                            <option value="">Select Module</option>
-                            <option value="dashboard">Dashboard</option>
-                            <option value="users">User Management</option>
-                            <option value="roles">Role Management</option>
-                            <option value="permissions">Permission Management</option>
-                            <option value="service">Service Management</option>
-                            <option value="marketing">Marketing</option>
-                            <option value="warehouse">Warehouse</option>
-                            <option value="purchasing">Purchasing</option>
-                            <option value="finance">Finance</option>
-                            <option value="accounting">Accounting</option>
-                            <option value="reports">Reports</option>
-                            <option value="system">System</option>
-                        </select>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-cube me-1"></i>Module*
+                                </label>
+                                <select class="form-select" id="editPermissionModule" name="module" required>
+                                    <option value="">Select Module</option>
+                                    <option value="admin">Admin</option>
+                                    <option value="dashboard">Dashboard</option>
+                                    <option value="users">User Management</option>
+                                    <option value="roles">Role Management</option>
+                                    <option value="permissions">Permission Management</option>
+                                    <option value="service">Service Management</option>
+                                    <option value="marketing">Marketing</option>
+                                    <option value="warehouse">Warehouse</option>
+                                    <option value="purchasing">Purchasing</option>
+                                    <option value="finance">Finance</option>
+                                    <option value="accounting">Accounting</option>
+                                    <option value="reports">Reports</option>
+                                    <option value="system">System</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-file me-1"></i>Page*
+                                </label>
+                                <input type="text" class="form-control" id="editPermissionPage" name="page" required>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">
+                                    <i class="fas fa-cog me-1"></i>Action*
+                                </label>
+                                <select class="form-select" id="editPermissionAction" name="action" required>
+                                    <option value="">Select Action</option>
+                                    <option value="view">View</option>
+                                    <option value="create">Create</option>
+                                    <option value="edit">Edit</option>
+                                    <option value="delete">Delete</option>
+                                    <option value="manage">Manage</option>
+                                    <option value="export">Export</option>
+                                    <option value="import">Import</option>
+                                    <option value="approve">Approve</option>
+                                    <option value="reject">Reject</option>
+                                    <option value="access">Access</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -327,11 +397,13 @@
 
 <script>
 const columnsDefault = [
-    { data: 0, name: 'key', width: '20%' },
-    { data: 1, name: 'name', width: '20%' },
-    { data: 2, name: 'description', width: '35%' },
-    { data: 3, name: 'module', width: '15%', className: 'text-center' },
-    { data: 4, name: 'actions', orderable: false, searchable: false, width: '10%', className: 'text-center' }
+    { data: 0, name: 'display_name', width: '18%' }, // Display Name
+    { data: 1, name: 'key_name', width: '18%' },     // Key Name
+    { data: 2, name: 'module', width: '12%', className: 'text-center' }, // Module
+    { data: 3, name: 'page', width: '12%' },         // Page
+    { data: 4, name: 'action', width: '10%', className: 'text-center' }, // Action
+    { data: 5, name: 'description', width: '20%' },  // Description
+    { data: 6, name: 'actions', orderable: false, searchable: false, width: '10%', className: 'text-center' } // Actions
 ];
 const columnsByModule = [
     { data: 'module', name: 'module', width: '80%' },
@@ -468,7 +540,7 @@ function initializeDataTable() {
             }
         },
         columns: columnsDefault, // default
-        order: [[3, 'asc'], [0, 'asc']],
+        order: [[2, 'asc'], [3, 'asc'], [0, 'asc']], // Order by: Module, Page, Display Name
         language: {
             processing: '<i class="fas fa-spinner fa-spin"></i> Loading...',
             emptyTable: 'No permissions found',
@@ -659,10 +731,12 @@ function editPermission(id) {
         if (response.success) {
             const permission = response.permission;
             $('#editPermissionId').val(permission.id);
-            $('#editPermissionKey').val(permission.key);
-            $('#editPermissionName').val(permission.name);
+            $('#editPermissionDisplayName').val(permission.display_name);
+            $('#editPermissionKeyName').val(permission.key_name);
             $('#editPermissionDescription').val(permission.description);
             $('#editPermissionModule').val(permission.module);
+            $('#editPermissionPage').val(permission.page);
+            $('#editPermissionAction').val(permission.action);
             $('#editPermissionModal').modal('show');
         } else {
             Swal.fire('Error!', response.message || 'Failed to load permission.', 'error');
@@ -730,9 +804,9 @@ function deletePermission(id) {
 }
 
 // Auto-generate display name from key
-$(document).on('input', 'input[name="key"]', function() {
+$(document).on('input', 'input[name="key_name"]', function() {
     const key = $(this).val();
-    const nameField = $(this).closest('form').find('input[name="name"]');
+    const nameField = $(this).closest('form').find('input[name="display_name"]');
     
     if (key && !nameField.val()) {
         // Convert key to readable name

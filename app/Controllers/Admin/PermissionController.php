@@ -74,10 +74,12 @@ class PermissionController extends BaseController
         }
 
         $validation = $this->validate([
-            'key' => "required|min_length[3]|max_length[100]|is_unique[permissions.key]",
-            'name' => 'permit_empty|max_length[100]',
+            'key_name' => "required|min_length[3]|max_length[100]|is_unique[permissions.key_name]",
+            'display_name' => 'required|max_length[100]',
             'description' => 'permit_empty|max_length[255]',
-            'module' => 'permit_empty|max_length[50]'
+            'module' => 'required|max_length[50]',
+            'page' => 'required|max_length[50]',
+            'action' => 'required|max_length[50]'
         ]);
 
         if (!$validation) {
@@ -89,12 +91,14 @@ class PermissionController extends BaseController
         }
 
         try {
-            // Hanya sertakan kolom yang ada di tabel permissions
+            // Gunakan field baru sesuai struktur database
             $permissionData = [
-                'key' => $this->request->getPost('key'),
-                'name' => $this->request->getPost('name') ?: $this->request->getPost('key'),
+                'key_name' => $this->request->getPost('key_name'),
+                'display_name' => $this->request->getPost('display_name'),
                 'description' => $this->request->getPost('description'),
                 'module' => $this->request->getPost('module'),
+                'page' => $this->request->getPost('page'),
+                'action' => $this->request->getPost('action'),
                 'is_active' => 1 // Default active
             ];
 
@@ -107,10 +111,12 @@ class PermissionController extends BaseController
             // Log permission creation using trait
             $this->logCreate('permissions', $permissionId, [
                 'permission_id' => $permissionId,
-                'key' => $permissionData['key'],
-                'name' => $permissionData['name'],
+                'key_name' => $permissionData['key_name'],
+                'display_name' => $permissionData['display_name'],
                 'description' => $permissionData['description'],
                 'module' => $permissionData['module'],
+                'page' => $permissionData['page'],
+                'action' => $permissionData['action'],
                 'created_by' => session()->get('user_id') ?? 1
             ]);
 
@@ -146,10 +152,12 @@ class PermissionController extends BaseController
         // Manual validation untuk update
         $validation = \Config\Services::validation();
         $validation->setRules([
-            'key' => "required|min_length[3]|max_length[150]|is_unique[permissions.key,id,{$permissionId}]",
-            'name' => 'permit_empty|max_length[100]',
+            'key_name' => "required|min_length[3]|max_length[150]|is_unique[permissions.key_name,id,{$permissionId}]",
+            'display_name' => 'required|max_length[100]',
             'description' => 'permit_empty|max_length[255]',
-            'module' => 'permit_empty|max_length[50]'
+            'module' => 'required|max_length[50]',
+            'page' => 'required|max_length[50]',
+            'action' => 'required|max_length[50]'
         ]);
 
         if (!$validation->run($this->request->getPost())) {
@@ -161,12 +169,14 @@ class PermissionController extends BaseController
         }
 
         try {
-            // Hanya sertakan kolom yang ada di tabel permissions
+            // Gunakan field baru sesuai struktur database
             $permissionData = [
-                'key' => $this->request->getPost('key'),
-                'name' => $this->request->getPost('name') ?: $this->request->getPost('key'),
+                'key_name' => $this->request->getPost('key_name'),
+                'display_name' => $this->request->getPost('display_name'),
                 'description' => $this->request->getPost('description'),
-                'module' => $this->request->getPost('module')
+                'module' => $this->request->getPost('module'),
+                'page' => $this->request->getPost('page'),
+                'action' => $this->request->getPost('action')
             ];
 
             $result = $this->permissionModel->update($permissionId, $permissionData);
@@ -177,15 +187,19 @@ class PermissionController extends BaseController
 
             // Log permission update using trait
             $this->logUpdate('permissions', $permissionId, [
-                'key' => $permission['key'],
-                'name' => $permission['name'],
+                'key_name' => $permission['key_name'],
+                'display_name' => $permission['display_name'],
                 'description' => $permission['description'],
-                'module' => $permission['module']
+                'module' => $permission['module'],
+                'page' => $permission['page'],
+                'action' => $permission['action']
             ], [
-                'key' => $permissionData['key'],
-                'name' => $permissionData['name'],
+                'key_name' => $permissionData['key_name'],
+                'display_name' => $permissionData['display_name'],
                 'description' => $permissionData['description'],
-                'module' => $permissionData['module']
+                'module' => $permissionData['module'],
+                'page' => $permissionData['page'],
+                'action' => $permissionData['action']
             ], [
                 'updated_by' => session()->get('user_id') ?? 1
             ]);
@@ -242,10 +256,12 @@ class PermissionController extends BaseController
             // Log permission deletion using trait
             $this->logDelete('permissions', $permissionId, [
                 'permission_id' => $permissionId,
-                'key' => $permission['key'],
-                'name' => $permission['name'],
+                'key_name' => $permission['key_name'],
+                'display_name' => $permission['display_name'],
                 'description' => $permission['description'],
                 'module' => $permission['module'],
+                'page' => $permission['page'],
+                'action' => $permission['action'],
                 'deleted_by' => session()->get('user_id') ?? 1
             ]);
 
@@ -316,20 +332,18 @@ class PermissionController extends BaseController
             $filter = $this->request->getPost('filter') ?? 'all';
 
             // Column mapping untuk DataTable
-            $columns = ['key', 'name', 'description', 'module', 'actions'];
-            $orderByColumn = $columns[$orderColumn] ?? 'key';
+            $columns = ['key_name', 'display_name', 'description', 'module', 'actions'];
+            $orderByColumn = $columns[$orderColumn] ?? 'key_name';
 
-            // Build query - hanya select kolom yang ada
+            // Build query - gunakan field baru
             $builder = $this->db->table('permissions');
-            $builder->select('id, `key`, name, description, module, is_active');
+            $builder->select('id, key_name, display_name, description, module, page, action, is_active');
 
             // Filter berdasarkan tipe
-            if ($filter === 'system') {
-                $builder->where('module', 'system');
-            } elseif ($filter === 'custom') {
-                $builder->where('module IS NOT NULL');
-                $builder->where('module !=', 'system');
-                $builder->where('module !=', '');
+            if ($filter === 'active') {
+                $builder->where('is_active', 1);
+            } elseif ($filter === 'inactive') {
+                $builder->where('is_active', 0);
             } elseif ($filter === 'module') {
                 // Ambil daftar module unik
                 $modules = $this->db->table('permissions')
@@ -358,10 +372,12 @@ class PermissionController extends BaseController
             // Search
             if (!empty($searchValue)) {
                 $builder->groupStart();
-                $builder->like('`key`', $searchValue);
-                $builder->orLike('name', $searchValue);
+                $builder->like('key_name', $searchValue);
+                $builder->orLike('display_name', $searchValue);
                 $builder->orLike('description', $searchValue);
                 $builder->orLike('module', $searchValue);
+                $builder->orLike('page', $searchValue);
+                $builder->orLike('action', $searchValue);
                 $builder->groupEnd();
             }
 
@@ -373,19 +389,15 @@ class PermissionController extends BaseController
             $filteredRecords = $tempBuilder->countAllResults(false);
 
             // Apply ordering - hindari order by actions
-            if ($orderByColumn !== 'actions' && in_array($orderByColumn, ['key', 'name', 'description', 'module'])) {
-                if ($orderByColumn === 'key') {
-                    $builder->orderBy('`key`', $orderDir);
-                } else {
-                    $builder->orderBy($orderByColumn, $orderDir);
-                }
+            if ($orderByColumn !== 'actions' && in_array($orderByColumn, ['key_name', 'display_name', 'description', 'module'])) {
+                $builder->orderBy($orderByColumn, $orderDir);
             } else {
                 // Default ordering untuk filter module
                 if ($filter === 'module') {
                     $builder->orderBy('module', 'asc');
-                    $builder->orderBy('`key`', 'asc');
+                    $builder->orderBy('key_name', 'asc');
                 } else {
-                    $builder->orderBy('`key`', 'asc');
+                    $builder->orderBy('key_name', 'asc');
                 }
             }
             
@@ -416,26 +428,28 @@ class PermissionController extends BaseController
                     </div>';
 
                 // Untuk filter module, tambahkan header module
-                $keyDisplay = esc($permission['key']);
+                $keyDisplay = esc($permission['key_name']);
                 $moduleDisplay = $permission['module'] ?? 'General';
                 
                 if ($filter === 'module') {
                     // Jika module berubah, tampilkan sebagai header
                     if ($currentModule !== $moduleDisplay) {
                         $currentModule = $moduleDisplay;
-                        $keyDisplay = '<strong class="text-primary">' . ucfirst($moduleDisplay) . '</strong><br><span class="ms-3">' . esc($permission['key']) . '</span>';
+                        $keyDisplay = '<strong class="text-primary">' . ucfirst($moduleDisplay) . '</strong><br><span class="ms-3">' . esc($permission['key_name']) . '</span>';
                     } else {
-                        $keyDisplay = '<span class="ms-4">' . esc($permission['key']) . '</span>';
+                        $keyDisplay = '<span class="ms-4">' . esc($permission['key_name']) . '</span>';
                     }
                 }
 
-                // Return sebagai indexed array, bukan associative
+                // Return sebagai indexed array, bukan associative - sesuai dengan kolom tabel baru
                 $data[] = [
-                    '<div>' . $keyDisplay . '<br><small class="text-muted">' . $statusBadge . '</small></div>', // column 0
-                    esc($permission['name'] ?? $permission['key']), // column 1
-                    esc($permission['description'] ?? '-'), // column 2
-                    '<span class="badge bg-info">' . esc($moduleDisplay) . '</span>', // column 3
-                    $actions // column 4
+                    esc($permission['display_name'] ?? $permission['key_name']), // column 0: Display Name
+                    '<code>' . esc($permission['key_name']) . '</code>', // column 1: Key Name
+                    '<span class="badge bg-primary">' . esc($moduleDisplay) . '</span>', // column 2: Module
+                    esc($permission['page'] ?? '-'), // column 3: Page
+                    '<span class="badge bg-info">' . esc($permission['action'] ?? '-') . '</span>', // column 4: Action
+                    esc($permission['description'] ?? '-'), // column 5: Description
+                    $actions // column 6: Actions
                 ];
             }
 
@@ -563,11 +577,13 @@ class PermissionController extends BaseController
                 $permission['user_override_count'] = 0;
             }
 
-            // Ensure required fields
-            $permission['key'] = $permission['key'] ?? '';
-            $permission['name'] = $permission['name'] ?? $permission['key'];
+            // Ensure required fields - update untuk field baru
+            $permission['key_name'] = $permission['key_name'] ?? '';
+            $permission['display_name'] = $permission['display_name'] ?? $permission['key_name'];
             $permission['description'] = $permission['description'] ?? '';
             $permission['module'] = $permission['module'] ?? '';
+            $permission['page'] = $permission['page'] ?? '';
+            $permission['action'] = $permission['action'] ?? '';
             $permission['is_active'] = $permission['is_active'] ?? 1;
         }
 
@@ -579,14 +595,12 @@ class PermissionController extends BaseController
         try {
             $total = $this->db->table('permissions')->countAllResults();
             
-            $system = $this->db->table('permissions')
-                ->where('module', 'system')
+            $active = $this->db->table('permissions')
+                ->where('is_active', 1)
                 ->countAllResults();
             
-            $custom = $this->db->table('permissions')
-                ->where('module IS NOT NULL')
-                ->where('module !=', 'system')
-                ->where('module !=', '')
+            $inactive = $this->db->table('permissions')
+                ->where('is_active', 0)
                 ->countAllResults();
             
             $modules = $this->db->table('permissions')
@@ -595,12 +609,20 @@ class PermissionController extends BaseController
                 ->where('module !=', '')
                 ->groupBy('module')
                 ->countAllResults();
+            
+            $pages = $this->db->table('permissions')
+                ->select('page')
+                ->where('page IS NOT NULL')
+                ->where('page !=', '')
+                ->groupBy('page')
+                ->countAllResults();
 
             return [
                 'total' => $total,
-                'system' => $system,
-                'custom' => $custom,
-                'modules' => $modules
+                'active' => $active,
+                'inactive' => $inactive,
+                'modules' => $modules,
+                'pages' => $pages
             ];
         } catch (\Exception $e) {
             log_message('error', 'Permission Stats Error: ' . $e->getMessage());
