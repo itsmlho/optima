@@ -76,8 +76,8 @@ abstract class BaseController extends Controller
                 ->limit(1)->get()->getRowArray();
             if ($super) return true;
 
-            // Resolve permission id by key
-            $perm = $db->table('permissions')->select('id')->where('key', $permissionKey)->get()->getRowArray();
+            // Resolve permission id by key_name (updated field)
+            $perm = $db->table('permissions')->select('id')->where('key_name', $permissionKey)->get()->getRowArray();
             if (!$perm || empty($perm['id'])) {
                 // Permission key not registered yet – do not block
                 return true;

@@ -47,6 +47,10 @@ class RoleController extends BaseController
      */
     public function getRoles()
     {
+        if (!$this->hasPermission('admin.role_management')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+        }
+
         try {
             $roles = $this->roleModel->findAll();
             
@@ -67,6 +71,10 @@ class RoleController extends BaseController
      */
     public function getRole($roleId)
     {
+        if (!$this->hasPermission('admin.role_management')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+        }
+
         try {
             $role = $this->roleModel->find($roleId);
             if (!$role) {
@@ -102,6 +110,10 @@ class RoleController extends BaseController
      */
     public function getPermissions()
     {
+        if (!$this->hasPermission('admin.role_management')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+        }
+
         try {
             $permissions = $this->getAllPermissions();
             
@@ -122,6 +134,10 @@ class RoleController extends BaseController
      */
     public function saveRole()
     {
+        if (!$this->hasPermission('admin.role_management')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access denied'])->setStatusCode(403);
+        }
+
         try {
             $input = $this->request->getJSON(true);
             
