@@ -582,6 +582,8 @@ class ServiceAreaManagementController extends BaseController
                     ->like('employees.staff_code', $searchValue)
                     ->orLike('employees.staff_name', $searchValue)
                     ->orLike('employees.staff_role', $searchValue)
+                    ->orLike('employees.job_description', $searchValue)
+                    ->orLike('employees.work_location', $searchValue)
                     ->orLike('employees.phone', $searchValue)
                     ->orLike('employees.email', $searchValue)
                     ->orLike('d.nama_departemen', $searchValue)
@@ -664,6 +666,8 @@ class ServiceAreaManagementController extends BaseController
                     'staff_code' => $row['staff_code'],
                     'staff_name' => $row['staff_name'],
                     'staff_role' => $row['staff_role'],
+                    'job_description' => $row['job_description'] ?? '-',
+                    'work_location' => $row['work_location'] ?? '-',
                     'departemen' => $row['nama_departemen'] ?? '-',
                     'area_assignments' => $assignments,
                     'phone' => $row['phone'],

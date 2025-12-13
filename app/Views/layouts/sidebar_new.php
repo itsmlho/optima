@@ -95,11 +95,6 @@ helper('permission_helper');
                         <i class="fas fa-map-marked-alt"></i> Area Management
                     </a>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('service', 'user')): ?>
-                    <a href="<?= base_url('/service/user-management') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'service/user-management') !== false) ? 'active' : '' ?>">
-                        <i class="fas fa-users-cog"></i> Service User Management
-                    </a>
-                    <?php endif; ?>
                 </div>
             </li>
             <?php endif; ?>

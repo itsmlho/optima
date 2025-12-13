@@ -151,10 +151,9 @@
                                           <th>Staff Code</th>
                                           <th>Name</th>
                                           <th>Role</th>
+                                          <th>Work Location</th>
                                           <th>Department</th>
                                           <th>Assigned To</th>
-                                          <th>Phone</th>
-                                          <th>Email</th>
                                       </tr>
                                   </thead>
                                   <tbody></tbody>
@@ -354,13 +353,32 @@
           </div>
           <div class="form-group">
             <label>Role <span class="text-danger">*</span></label>
-            <select name="staff_role" class="form-control" required>
+            <select name="staff_role" class="form-control" required onchange="updateJobDescriptionOptions()">
               <option value="">-- Select Role --</option>
+              <option value="ADMIN">Admin</option>
               <option value="SUPERVISOR">Supervisor</option>
               <option value="FOREMAN">Foreman</option>
-              <option value="ADMIN">Admin</option>
-              <option value="MECHANIC">Mechanic</option>
+              <option value="MECHANIC_SERVICE_AREA">Mechanic - Service Area</option>
+              <option value="MECHANIC_UNIT_PREP">Mechanic - Unit Preparation</option>
+              <option value="MECHANIC_FABRICATION">Mechanic - Fabrication</option>
               <option value="HELPER">Helper</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Job Description <span class="text-danger">*</span></label>
+            <textarea name="job_description" id="job_description" class="form-control" rows="3" required 
+                      placeholder="Describe the main responsibilities and tasks for this position"></textarea>
+            <small class="form-text text-muted">Will auto-populate based on role selection, but you can customize it.</small>
+          </div>
+          
+          <div class="form-group">
+            <label>Work Location <span class="text-danger">*</span></label>
+            <select name="work_location" class="form-control" required>
+              <option value="">-- Select Work Location --</option>
+              <option value="CENTRAL">Central (Head Office)</option>
+              <option value="BRANCH">Branch Office</option>
+              <option value="BOTH">Both (Flexible)</option>
             </select>
           </div>
           <div class="form-group">
@@ -383,10 +401,6 @@
           <div class="form-group">
             <label>Address</label>
             <textarea name="address" class="form-control" rows="2"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea name="description" class="form-control" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -573,37 +587,42 @@
           </div>
           <div class="form-group">
             <label>Role <span class="text-danger">*</span></label>
-            <select name="staff_role" id="edit_staff_role" class="form-control" required>
+            <select name="staff_role" id="edit_staff_role" class="form-control" required onchange="updateEditJobDescription()">
+              <option value="">-- Select Role --</option>
+              <option value="ADMIN">Admin</option>
               <option value="SUPERVISOR">Supervisor</option>
               <option value="FOREMAN">Foreman</option>
-              <option value="ADMIN">Admin</option>
-              <option value="MECHANIC">Mechanic</option>
+              <option value="MECHANIC_SERVICE_AREA">Mechanic - Service Area</option>
+              <option value="MECHANIC_UNIT_PREP">Mechanic - Unit Preparation</option>
+              <option value="MECHANIC_FABRICATION">Mechanic - Fabrication</option>
               <option value="HELPER">Helper</option>
             </select>
           </div>
+          
+          <div class="form-group">
+            <label>Job Description <span class="text-danger">*</span></label>
+            <textarea name="job_description" id="edit_job_description" class="form-control" rows="3" required 
+                      placeholder="Describe the main responsibilities and tasks for this position"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label>Work Location <span class="text-danger">*</span></label>
+            <select name="work_location" id="edit_work_location" class="form-control" required>
+              <option value="">-- Select Work Location --</option>
+              <option value="CENTRAL">Central (Head Office)</option>
+              <option value="BRANCH">Branch Office</option>
+              <option value="BOTH">Both (Flexible)</option>
+            </select>
+          </div>
+          
           <div class="form-group">
             <label>Department</label>
             <select name="departemen_id" id="edit_staff_departemen_id" class="form-control">
               <option value="">-- Select Department --</option>
               <option value="1">DIESEL</option>
               <option value="2">ELECTRIC</option>
+              <option value="3">GASOLINE</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label>Phone</label>
-            <input type="text" name="phone" id="edit_staff_phone" class="form-control" maxlength="20">
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" name="email" id="edit_staff_email" class="form-control" maxlength="100">
-          </div>
-          <div class="form-group">
-            <label>Address</label>
-            <textarea name="address" id="edit_staff_address" class="form-control" rows="2"></textarea>
-          </div>
-          <div class="form-group">
-            <label>Description</label>
-            <textarea name="description" id="edit_staff_description" class="form-control" rows="2"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -1171,15 +1190,14 @@ function initializeEmployeeTable() {
         data: 'staff_role', 
         render: function(data, type, row) {
           if (!data) return '<span class="text-muted">N/A</span>';
-          const colors = {
-            'SUPERVISOR': 'danger',
-            'FOREMAN': 'warning',
-            'ADMIN': 'primary',
-            'MECHANIC': 'success',
-            'HELPER': 'secondary'
-          };
-          const color = colors[data] || 'secondary';
-          return `<strong class="text-${color}">${data}</strong>`;
+          return `<strong class="text-${roleBadgeColor(data)}">${data}</strong>`;
+        }
+      },
+      { 
+        data: 'work_location',
+        render: function(data, type, row) {
+          if (!data || data === '-') return '<span class="text-muted">-</span>';
+          return `<strong class="text-${locationBadgeColor(data)}">${data}</strong>`;
         }
       },
       { data: 'departemen', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' },
@@ -1190,22 +1208,19 @@ function initializeEmployeeTable() {
           if (!data || data.length === 0) {
             return '<span class="text-warning">⚠️ Unassigned</span>';
           }
-          // Group by area type
           const central = data.filter(a => a.area_type === 'CENTRAL');
           const branch = data.filter(a => a.area_type === 'BRANCH');
           
           let output = [];
           if (central.length > 0) {
-            output.push(`<span class="text-primary mr-1">🏢 ${central.length} Central</span>`);
+            output.push(`<strong class="text-primary">${central.length} Central</strong>`);
           }
           if (branch.length > 0) {
-            output.push(`<span class="text-success">🏭 ${branch.length} Branch</span>`);
+            output.push(`<strong class="text-success">${branch.length} Branch</strong>`);
           }
-          return output.join('<br>');
+          return output.join(' | ');
         }
-      },
-      { data: 'phone', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' },
-      { data: 'email', render: d => d ? `<span class="text-dark">${d}</span>` : '<span class="text-muted">-</span>' }
+      }
     ],
     order: [[1,'asc']],
     pageLength: 25,
@@ -1365,12 +1380,24 @@ function renderAssignmentSummary(summary) {
 
 function roleBadgeColor(role) {
   switch(role) {
+    case 'ADMIN': return 'primary';          // Biru - untuk admin
     case 'SUPERVISOR': return 'danger';      // Merah - untuk supervisor (tertinggi)
     case 'FOREMAN': return 'warning';        // Kuning - untuk foreman
-    case 'ADMIN': return 'primary';          // Biru - untuk admin
     case 'MECHANIC': return 'success';       // Hijau - untuk mechanic
+    case 'MECHANIC_SERVICE_AREA': return 'info';     // Cyan - untuk mechanic area
+    case 'MECHANIC_UNIT_PREP': return 'purple';      // Ungu - untuk mechanic prep
+    case 'MECHANIC_FABRICATION': return 'dark';      // Hitam - untuk mechanic fab
     case 'HELPER': return 'secondary';       // Abu-abu - untuk helper
-    default: return 'light';                 // Putih - untuk role yang tidak dikenal
+    default: return 'muted';                 // Abu muda - untuk role yang tidak dikenal
+  }
+}
+
+function locationBadgeColor(location) {
+  switch(location) {
+    case 'CENTRAL': return 'primary';       // Biru - untuk central
+    case 'BRANCH': return 'success';        // Hijau - untuk branch
+    case 'BOTH': return 'info';             // Cyan - untuk both
+    default: return 'muted';                // Abu muda - untuk default
   }
 }
 
@@ -2019,6 +2046,8 @@ function viewEmployeeDetail(employeeId) {
         $('#detail_staff_code').text(emp.staff_code || '-');
         $('#detail_staff_name').text(emp.staff_name || '-');
         $('#detail_staff_role').html(emp.staff_role ? `<strong class="text-${roleBadgeColor(emp.staff_role)}">${emp.staff_role}</strong>` : '<span class="text-muted">-</span>');
+        $('#detail_work_location').html(emp.work_location ? `<strong class="text-${locationBadgeColor(emp.work_location)}">${emp.work_location}</strong>` : '<span class="text-muted">-</span>');
+        $('#detail_job_description').text(emp.job_description || '-');
         $('#detail_departemen').text(emp.departemen || '-');
         $('#detail_phone').text(emp.phone || '-');
         $('#detail_email').text(emp.email || '-');
@@ -2248,6 +2277,46 @@ function refreshEmployeeTable() { refreshEmployees(); }
 function refreshAssignmentsTable() { refreshAssignments(); }
 
 /* ===================== UTILITIES ===================== */
+
+// Auto-populate job description based on selected role
+function updateJobDescriptionOptions() {
+  const roleSelect = document.querySelector('select[name="staff_role"]');
+  const jobDescTextarea = document.getElementById('job_description');
+  
+  if (!roleSelect || !jobDescTextarea) return;
+  
+  populateJobDescription(roleSelect.value, jobDescTextarea);
+}
+
+// For edit modal
+function updateEditJobDescription() {
+  const roleSelect = document.getElementById('edit_staff_role');
+  const jobDescTextarea = document.getElementById('edit_job_description');
+  
+  if (!roleSelect || !jobDescTextarea) return;
+  
+  populateJobDescription(roleSelect.value, jobDescTextarea);
+}
+
+// Common function to populate job description
+function populateJobDescription(role, textarea) {
+  const jobDescriptions = {
+    'ADMIN': 'Administrator - Mengelola operasional administrasi, dokumentasi, dan koordinasi dengan berbagai departemen. Dapat bekerja di central office maupun branch office.',
+    'SUPERVISOR': 'Supervisor - Mengawasi dan mengkoordinir aktivitas operasional serta memastikan target kinerja tercapai. Bertanggung jawab terhadap manajemen tim di branch yang ditugaskan.',
+    'FOREMAN': 'Foreman - Memimpin tim teknis, mengawasi pekerjaan lapangan, dan bertanggung jawab terhadap kualitas hasil kerja. Mengkoordinir aktivitas harian tim mekanik.',
+    'MECHANIC_SERVICE_AREA': 'Mechanic Service Branch - Bertanggung jawab untuk service, maintenance, dan perbaikan unit forklift di branch yang ditugaskan. Melakukan perjalanan ke lokasi customer untuk service on-site.',
+    'MECHANIC_UNIT_PREP': 'Mechanic Unit Preparation - Bertanggung jawab untuk persiapan, setup, dan konfigurasi unit forklift baru sesuai spesifikasi SPK. Bekerja di central workshop untuk memastikan unit siap kirim.',
+    'MECHANIC_FABRICATION': 'Mechanic Fabrication - Bertanggung jawab untuk fabrikasi, modifikasi, dan persiapan attachment/aksesori forklift sesuai spesifikasi SPK. Menguasai teknik pengelasan dan machining di central workshop.',
+    'HELPER': 'Helper - Membantu aktivitas teknis dan operasional, mendukung mechanic dalam pekerjaan service dan maintenance. Dapat ditempatkan di central office atau branch office sesuai kebutuhan.'
+  };
+  
+  if (role && jobDescriptions[role]) {
+    textarea.value = jobDescriptions[role];
+  } else {
+    textarea.value = '';
+  }
+}
+
 function restoreActiveTab() {
   const savedTab = localStorage.getItem('area_management_active_tab');
   if (savedTab && savedTab !== 'areasTab') {
