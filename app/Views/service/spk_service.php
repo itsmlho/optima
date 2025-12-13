@@ -1234,6 +1234,7 @@ document.addEventListener('DOMContentLoaded', () => {
 	window.openApprovalModal = (stage, stageTitle, spkId, unitIndex = null) => {
 		currentApprovalStage = stage;
 		currentApprovalSpkId = spkId || currentSpkId; // Use passed spkId or fallback to currentSpkId
+		console.log('🆔 SPK ID Debug:', {spkId, currentSpkId, currentApprovalSpkId});
 		document.getElementById('approvalStageTitle').textContent = stageTitle;
 		document.getElementById('approvalMekanik').value = '';
 		document.getElementById('approvalEstimasiMulai').value = '';
@@ -1414,7 +1415,7 @@ document.addEventListener('DOMContentLoaded', () => {
 					setTimeout(() => {
 						console.log('Setting up unit search for unitIndex:', unitIndex);
 						setupUnitSearch(unitIndex);
-						loadAreaOptions();
+						loadAreaOptions(''); // Pass empty suffix for current implementation
 						
 						// If editing, try to load existing data
 						if (isEditing) {
@@ -1492,32 +1493,29 @@ document.addEventListener('DOMContentLoaded', () => {
 		
 		areaSelect.innerHTML = '<option value="">- Select Area -</option>';
 		
-		// Group areas by department
-		const dieselAreas = [];
-		const electricAreas = [];
-		const otherAreas = [];
+		// Group areas by area_type (CENTRAL vs BRANCH)
+		const centralAreas = [];
+		const branchAreas = [];
 		
 		areas.forEach(area => {
-			if (area.area_code && area.area_code.startsWith('D-')) {
-				dieselAreas.push(area);
-			} else if (area.area_code && area.area_code.startsWith('E-')) {
-				electricAreas.push(area);
+			if (area.area_type === 'CENTRAL') {
+				centralAreas.push(area);
 			} else {
-				otherAreas.push(area);
+				branchAreas.push(area);
 			}
 		});
 		
-		// Add Diesel section
-		if (dieselAreas.length > 0) {
-			const dieselHeader = document.createElement('option');
-			dieselHeader.disabled = true;
-			dieselHeader.textContent = '─── DIESEL DEPARTEMENT ───';
-			dieselHeader.style.fontWeight = 'bold';
-			dieselHeader.style.backgroundColor = '#f8f9fa';
-			dieselHeader.style.color = '#495057';
-			areaSelect.appendChild(dieselHeader);
+		// Add Central section
+		if (centralAreas.length > 0) {
+			const centralHeader = document.createElement('option');
+			centralHeader.disabled = true;
+			centralHeader.textContent = '─── CENTRAL AREAS ───';
+			centralHeader.style.fontWeight = 'bold';
+			centralHeader.style.backgroundColor = '#f8f9fa';
+			centralHeader.style.color = '#495057';
+			areaSelect.appendChild(centralHeader);
 			
-			dieselAreas.forEach(area => {
+			centralAreas.forEach(area => {
 				const option = document.createElement('option');
 				option.value = area.id;
 				option.textContent = `${area.area_code} - ${area.area_name}`;
@@ -1526,36 +1524,17 @@ document.addEventListener('DOMContentLoaded', () => {
 			});
 		}
 		
-		// Add Electric section
-		if (electricAreas.length > 0) {
-			const electricHeader = document.createElement('option');
-			electricHeader.disabled = true;
-			electricHeader.textContent = '─── ELECTRIC DEPARTEMENT ───';
-			electricHeader.style.fontWeight = 'bold';
-			electricHeader.style.backgroundColor = '#f8f9fa';
-			electricHeader.style.color = '#495057';
-			areaSelect.appendChild(electricHeader);
+		// Add Branch section
+		if (branchAreas.length > 0) {
+			const branchHeader = document.createElement('option');
+			branchHeader.disabled = true;
+			branchHeader.textContent = '─── BRANCH AREAS ───';
+			branchHeader.style.fontWeight = 'bold';
+			branchHeader.style.backgroundColor = '#f8f9fa';
+			branchHeader.style.color = '#495057';
+			areaSelect.appendChild(branchHeader);
 			
-			electricAreas.forEach(area => {
-				const option = document.createElement('option');
-				option.value = area.id;
-				option.textContent = `${area.area_code} - ${area.area_name}`;
-				option.style.paddingLeft = '20px';
-				areaSelect.appendChild(option);
-			});
-		}
-		
-		// Add other areas (if any)
-		if (otherAreas.length > 0) {
-			const otherHeader = document.createElement('option');
-			otherHeader.disabled = true;
-			otherHeader.textContent = '─── OTHER AREAS ───';
-			otherHeader.style.fontWeight = 'bold';
-			otherHeader.style.backgroundColor = '#f8f9fa';
-			otherHeader.style.color = '#495057';
-			areaSelect.appendChild(otherHeader);
-			
-			otherAreas.forEach(area => {
+			branchAreas.forEach(area => {
 				const option = document.createElement('option');
 				option.value = area.id;
 				option.textContent = `${area.area_code} - ${area.area_name}`;
@@ -1566,19 +1545,41 @@ document.addEventListener('DOMContentLoaded', () => {
 	}
 
 	// Load area options for SPK Service
-	function loadAreaOptions() {
+	function loadAreaOptions(suffix = '') {
+		console.log('Loading areas for element:', `approvalAreaPick${suffix}`);
 		fetch('<?= base_url('service/areas') ?>')
-			.then(response => response.json())
+			.then(response => {
+				console.log('Areas fetch response status:', response.status);
+				console.log('Areas fetch response headers:', response.headers);
+				return response.json();
+			})
 			.then(data => {
+				console.log('🏢 Areas response received:', data);
+				console.log('📊 Areas filtering applied by user scope - Count:', data.data?.length || 0);
 				if (data.success && data.data) {
-					const areaSelect = document.getElementById('approvalAreaPick');
+					// Log area types for filtering verification
+					const areaTypes = [...new Set(data.data.map(area => area.area_type))];
+					console.log('🎯 Available area types after filtering:', areaTypes);
+					
+					const areaSelect = document.getElementById(`approvalAreaPick${suffix}`);
 					if (areaSelect) {
+						console.log('✅ Populating area dropdown with', data.data.length, 'filtered areas');
 						populateAreaDropdown(areaSelect, data.data);
+						console.log('✅ Area dropdown populated successfully');
+					} else {
+						console.error('❌ Area select element not found:', `approvalAreaPick${suffix}`);
+						// Let's also check what elements are actually available
+						console.log('Available elements with "area" in ID:', 
+							Array.from(document.querySelectorAll('[id*="area" i]')).map(el => el.id)
+						);
 					}
+				} else {
+					console.error('❌ Areas API response error - success:', data.success, 'data:', data.data);
+					console.error('Full response object:', data);
 				}
 			})
 			.catch(error => {
-				console.error('Error loading areas:', error);
+				console.error('Error loading areas (network/parse error):', error);
 			});
 	}
 	
@@ -1604,13 +1605,106 @@ document.addEventListener('DOMContentLoaded', () => {
 			console.log('Event listener cleaned and replaced for unitPick');
 			
 			console.log('Loading initial units...');
-			// Load initial units, exclude already assigned units in this SPK
-			const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
-			if (currentApprovalSpkId) {
-				url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
+			// First, get SPK department to filter units accordingly
+			if (!currentApprovalSpkId) {
+				console.warn('⚠️ No SPK ID available for department filtering');
+				// Load units without department filtering
+				loadUnitsWithoutDepartmentFilter();
+				return;
 			}
-			fetch(url).then(r=>r.json()).then(j=>{
-				console.log('Units loaded:', j.data?.length || 0, 'units');
+			
+			const spkDepartmentUrl = `<?= base_url('service/spk-department/') ?>${currentApprovalSpkId}`;
+			console.log('🔍 Fetching SPK department from:', spkDepartmentUrl);
+			
+			fetch(spkDepartmentUrl)
+				.then(response => {
+					if (!response.ok) {
+						throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+					}
+					return response.json();
+				})
+				.then(deptData => {
+					console.log('🎯 SPK Department Info:', deptData);
+					
+					// Load initial units with department filtering
+					const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
+					if (currentApprovalSpkId) {
+						url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
+					}
+					
+					// Add SPK department filter for precise unit matching
+					if (deptData.success && deptData.department) {
+						url.searchParams.set('spk_department', deptData.department);
+						console.log(`🔍 Filtering units to match SPK department: ${deptData.department}`);
+					} else {
+						console.warn('⚠️ SPK department not found, loading all units');
+					}
+					
+					return fetch(url);
+				})
+				.catch(error => {
+					console.error('❌ Error fetching SPK department:', error);
+					console.log('🔄 Falling back to load units without department filtering');
+					// Load units without department filtering as fallback
+					loadUnitsWithoutDepartmentFilter();
+					return null; // Return null to skip the next then block
+				})
+				.then(r=>{
+					// Skip this block if we got null from catch block
+					if (r === null) return null;
+					
+					return r.json();
+				})
+				.then(j=>{
+					// Skip this block if we got null or undefined from previous then
+					if (j === null || j === undefined) return;
+					
+					console.log('🚗 Units loaded from API:', j.data?.length || 0, 'units');
+					
+					// Log department filtering info for debugging
+					if (j.data && j.data.length > 0) {
+						const departments = [...new Set(j.data.map(unit => unit.departemen_name).filter(Boolean))];
+						console.log('🎯 Departments represented in filtered units:', departments);
+					}
+					
+					// Process and display the units
+					processUnitsDisplay(j, suffix);
+				})
+				.catch(error => {
+					console.error('❌ Error loading units:', error);
+					processUnitsDisplay({data: []}, suffix);
+				});
+				
+			// Function to load units without department filtering (fallback)
+			function loadUnitsWithoutDepartmentFilter() {
+				console.log('🔄 Loading units without department filtering...');
+				const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
+				if (currentApprovalSpkId) {
+					url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
+				}
+				
+				fetch(url)
+					.then(r => r.json())
+					.then(j => {
+						console.log('🚗 Units loaded from API (no dept filter):', j.data?.length || 0, 'units');
+						
+						// Show departments for debugging
+						if (j.data && j.data.length > 0) {
+							const departments = [...new Set(j.data.map(unit => unit.departemen_name).filter(Boolean))];
+							console.log('🎯 All departments in units:', departments);
+						}
+						
+						processUnitsDisplay(j, suffix);
+					})
+					.catch(error => {
+						console.error('❌ Error loading units (fallback):', error);
+						processUnitsDisplay({data: []}, suffix);
+					});
+			}
+			
+			// Function to process and display units
+			function processUnitsDisplay(j, suffix) {
+				
 				// Use fresh reference after cloning
 				const currentUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
 				if (currentUnitPick) {
@@ -1627,45 +1721,90 @@ document.addEventListener('DOMContentLoaded', () => {
 					}).join('');
 					currentUnitPick.innerHTML = '<option value="">- Select Unit -</option>' + options;
 				}
-			}).catch(err => {
-				console.error('Error loading units:', err);
-			});
+			};
 			
-			// Load area options for this unit
-			fetch('<?= base_url('service/areas') ?>')
-				.then(response => response.json())
-				.then(data => {
-					if (data.success && data.data) {
-						const areaSelect = document.getElementById(`approvalAreaPick${suffix}`);
-						if (areaSelect) {
-							populateAreaDropdown(areaSelect, data.data);
-						}
-					}
-				})
-				.catch(error => {
-					console.error('Error loading areas:', error);
-			});
+			// Areas are loaded centrally via loadAreaOptions() call
 			
 			searchBox.addEventListener('input', function(){
 				const q = this.value.trim();
-				const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
-				if (q) url.searchParams.set('q', q);
-				if (currentApprovalSpkId) {
-					url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
+				
+				// Get SPK department again for search filtering
+				if (!currentApprovalSpkId) {
+					console.warn('⚠️ No SPK ID for search filtering');
+					// Search without department filtering
+					searchUnitsWithoutDepartmentFilter(q);
+					return;
 				}
-				fetch(url).then(r=>r.json()).then(j=>{
-					const currentUnitPick = document.getElementById(`approvalUnitPick${suffix}`);
-					if (currentUnitPick) {
-						// Generate options with disabled attribute for already assigned units
-						const options = (j.data||[]).map(x => {
-							const isAssigned = x.is_assigned_in_spk;
-							const disabled = isAssigned ? 'disabled' : '';
-							const assignedText = isAssigned ? ' (Already used in this SPK)' : '';
-							return `<option value="${x.id}" ${disabled} data-no-unit="${x.no_unit||''}" data-needs-no-unit="${x.needs_no_unit||false}" data-status-unit="${x.status_unit_id||''}" data-departemen-id="${x.departemen_id||''}" data-departemen="${x.departemen_name||''}">${x.label}${assignedText}</option>`;
-						}).join('');
-						currentUnitPick.innerHTML = '<option value="">- Select Unit -</option>' + options;
+				
+				const spkDepartmentUrl = `<?= base_url('service/spk-department/') ?>${currentApprovalSpkId}`;
+				
+				fetch(spkDepartmentUrl)
+					.then(response => {
+						if (!response.ok) {
+							throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+						}
+						return response.json();
+					})
+					.then(deptData => {
+						const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
+						if (q) url.searchParams.set('q', q);
+						if (currentApprovalSpkId) {
+							url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
+						}
+						
+						// Apply SPK department filter for search as well
+						if (deptData.success && deptData.department) {
+							url.searchParams.set('spk_department', deptData.department);
+							console.log(`🔍 Search filtering for department: ${deptData.department}`);
+						} else {
+							console.warn('⚠️ SPK department not found for search');
+						}
+						
+						return fetch(url);
+					})
+					.catch(error => {
+						console.error('❌ Error fetching SPK department for search:', error);
+						console.log('🔄 Falling back to search without department filtering');
+						// Search without department filtering as fallback
+						searchUnitsWithoutDepartmentFilter(q);
+						return null; // Return null to skip the next then block
+					})
+					.then(r => {
+						// Skip this block if we got null from catch block
+						if (r === null) return null;
+						
+						return r.json();
+					})
+					.then(j => {
+						// Skip this block if we got null or undefined from previous then
+						if (j === null || j === undefined) return;
+						
+						processUnitsDisplay(j, suffix);
+					})
+					.catch(error => {
+						console.error('❌ Error searching units:', error);
+						processUnitsDisplay({data: []}, suffix);
+					});
+				
+				// Function to search units without department filtering (fallback)
+				function searchUnitsWithoutDepartmentFilter(query) {
+					const url = new URL('<?= base_url('service/data-unit/simple') ?>', window.location.origin);
+					if (query) url.searchParams.set('q', query);
+					if (currentApprovalSpkId) {
+						url.searchParams.set('exclude_spk_id', currentApprovalSpkId);
 					}
-				});
+					
+					fetch(url)
+						.then(r => r.json())
+						.then(j => {
+							console.log(`🔍 Search results (no dept filter): ${j.data?.length || 0} units`);
+							processUnitsDisplay(j, suffix);
+						})
+						.catch(error => {
+							console.error('❌ Error searching units (fallback):', error);
+							processUnitsDisplay({data: []}, suffix);
+						});
+				}
 			});
 			
 			// Add change event listener to fresh element

@@ -402,6 +402,8 @@ $routes->group('service', static function ($routes) {
     $routes->get('pmps', 'Service::pmps');
         $routes->get('data-unit', 'Service::dataUnit');
         $routes->get('areas', 'Service::areas');
+        $routes->get('user-scope', 'Service::userScope'); // Debug endpoint for user scope
+        $routes->get('spk-department/(:num)', 'Service::getSpkDepartment/$1'); // Get SPK department for filtering
     // Data Unit (Service) AJAX endpoints
     $routes->post('data-unit/data', 'Service::dataUnitData');
     $routes->get('data-unit/detail/(:num)', 'Service::unitDetail/$1');

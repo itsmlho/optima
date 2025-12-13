@@ -296,14 +296,34 @@ class Service extends BaseController
     {
         try {
             $db = \Config\Database::connect();
-            $areas = $db->table('areas a')
-                         ->select('a.id, a.area_code, a.area_name, d.nama_departemen')
-                         ->join('departemen d', 'a.departemen_id = d.id_departemen', 'left')
-                         ->where('a.is_active', 1)
-                         ->orderBy('d.nama_departemen', 'ASC')
-                         ->orderBy('a.area_name', 'ASC')
-                         ->get()
-                         ->getResultArray();
+            
+            if (!$db) {
+                log_message('error', 'Areas endpoint: Database connection failed');
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Database connection failed'
+                ]);
+            }
+            
+            // Get user's area and department scope for filtering
+            $scope = get_user_area_department_scope();
+            
+            $builder = $db->table('areas a');
+            $builder->select('a.id, a.area_code, a.area_name, a.area_type')
+                    ->where('a.is_active', 1);
+            
+            // Apply area filtering if user has limited scope
+            if ($scope !== null && !empty($scope['areas'])) {
+                $builder->whereIn('a.id', $scope['areas']);
+                log_message('info', 'Areas filtering applied: User limited to areas: ' . implode(',', $scope['areas']));
+            }
+            
+            $areas = $builder->orderBy('a.area_type', 'ASC')
+                           ->orderBy('a.area_name', 'ASC')
+                           ->get()
+                           ->getResultArray();
+            
+            log_message('info', 'Areas loaded successfully: ' . count($areas) . ' areas found');
             
             return $this->response->setJSON([
                 'success' => true,
@@ -312,9 +332,85 @@ class Service extends BaseController
             
         } catch (\Exception $e) {
             log_message('error', 'Error loading areas: ' . $e->getMessage());
+            log_message('error', 'Areas error trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading areas'
+                'message' => 'Error loading areas: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    // Debug endpoint to check current user scope
+    public function userScope()
+    {
+        try {
+            $scope = get_user_area_department_scope();
+            $session = session();
+            
+            $debugInfo = [
+                'user_id' => $session->get('user_id'),
+                'username' => $session->get('username'),
+                'role' => $session->get('role'),
+                'division' => $session->get('division_id'),
+                'scope' => $scope,
+                'allowed_departments' => $this->getAllowedServiceDepartemenIds()
+            ];
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $debugInfo
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+    
+    // Get SPK department for filtering units
+    public function getSpkDepartment($spkId)
+    {
+        try {
+            // Validate SPK ID
+            if (empty($spkId) || !is_numeric($spkId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid SPK ID provided'
+                ]);
+            }
+            
+            log_message('info', "Getting department for SPK ID: {$spkId}");
+            
+            // Updated query to use quotation_specifications instead of deprecated kontrak_spec
+            $spk = $this->db->table('spk s')
+                ->select('d.nama_departemen')
+                ->join('quotation_specifications qs', 's.quotation_specification_id = qs.id_specification', 'left')
+                ->join('departemen d', 'qs.departemen_id = d.id_departemen', 'left')
+                ->where('s.id', $spkId)
+                ->get()
+                ->getRowArray();
+                
+            if (empty($spk)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'SPK not found'
+                ]);
+            }
+                
+            log_message('info', "SPK department found: " . ($spk['nama_departemen'] ?? 'null'));
+                
+            return $this->response->setJSON([
+                'success' => true,
+                'department' => $spk['nama_departemen'] ?? null
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting SPK department: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error getting SPK department'
             ]);
         }
     }
@@ -1996,8 +2092,26 @@ EOF;
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
         $excludeSpkId = trim((string)($this->request->getGet('exclude_spk_id') ?? ''));
+        $spkDepartment = trim((string)($this->request->getGet('spk_department') ?? ''));
+        
         $allowed = $this->getAllowedServiceDepartemenIds();
         if (!$allowed) { return $this->response->setJSON(['success'=>true,'data'=>[],'csrf_hash'=>csrf_hash()]); }
+        
+        // If SPK has specific department, filter units to match that department only
+        if (!empty($spkDepartment)) {
+            $departmentMap = [
+                'ELECTRIC' => 2,
+                'DIESEL' => 1, 
+                'GASOLINE' => 3
+            ];
+            
+            $spkDeptId = $departmentMap[strtoupper($spkDepartment)] ?? null;
+            if ($spkDeptId && in_array($spkDeptId, $allowed)) {
+                // Only show units that match SPK department
+                $allowed = [$spkDeptId];
+                log_message('info', "SPK Unit filtering: SPK requires {$spkDepartment} department, filtering to department ID: {$spkDeptId}");
+            }
+        }
         
         $qb = $this->serviceBaseQuery($allowed)
             ->select('iu.id_inventory_unit as id, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, iu.status_unit_id')
@@ -2212,19 +2326,20 @@ EOF;
         return $qb;
     }
 
-    /** Placeholder RBAC logic: obtain allowed departemen IDs for service scope */
+    /** RBAC logic: obtain allowed departemen IDs for service scope based on user department scope */
     private function getAllowedServiceDepartemenIds(): array
     {
-        // Future: derive from session / permissions. For now restrict to 1,2,3 intersection.
-        $default = [1,2,3];
-        // Example session key (if exists) 'user_departemen_ids'
-        $sess = session();
-        $userAllowed = $sess->get('user_departemen_ids');
-        if (is_array($userAllowed) && $userAllowed) {
-            $filtered = array_values(array_intersect(array_map('intval',$userAllowed), $default));
-            return $filtered ?: $default;
+        // Get user's area and department scope
+        $scope = get_user_area_department_scope();
+        
+        // If user has full access (null scope) or no department restrictions, allow all
+        if ($scope === null || empty($scope['departments'])) {
+            return [1, 2, 3]; // All departments: DIESEL, ELECTRIC, GASOLINE
         }
-        return $default;
+        
+        // Return user's allowed departments based on their scope
+        log_message('info', 'Service filtering: User allowed departments: ' . implode(',', $scope['departments']));
+        return $scope['departments'];
     }
     
     /** Add new inventory attachment via unit verification modal */
