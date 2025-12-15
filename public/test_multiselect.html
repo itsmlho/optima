@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Multi-Select Component</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>SPK Mechanic Multi-Select Test</h2>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Unit Preparation Stage</h4>
+                <div id="unitPrepContainer"></div>
+            </div>
+            <div class="col-md-6">
+                <h4>Fabrication Stage</h4>
+                <div id="fabricationContainer"></div>
+            </div>
+        </div>
+        
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <h4>PDI Stage</h4>
+                <div id="pdiContainer"></div>
+            </div>
+        </div>
+        
+        <div class="mt-4">
+            <button class="btn btn-primary" onclick="testValidation()">Test Validation</button>
+            <button class="btn btn-info" onclick="showSelected()">Show Selected</button>
+        </div>
+        
+        <div id="output" class="mt-4"></div>
+    </div>
+
+    <script src="assets/js/spk-mechanic-multiselect.js"></script>
+    <script>
+        let unitPrepSelector, fabricationSelector, pdiSelector;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Testing SPK Mechanic Multi-Select Component');
+            
+            // Test if class is available
+            if (typeof window.SPKMechanicMultiSelect === 'undefined') {
+                document.getElementById('output').innerHTML = 
+                    '<div class="alert alert-danger">❌ SPKMechanicMultiSelect class not available</div>';
+                return;
+            }
+            
+            // Initialize different stage selectors
+            try {
+                unitPrepSelector = new window.SPKMechanicMultiSelect('unitPrepContainer', {
+                    stage: 'persiapan_unit',
+                    allowedRoles: ['MECHANIC_UNIT_PREP', 'HELPER'],
+                    maxMechanics: 2,
+                    maxHelpers: 2
+                });
+                
+                fabricationSelector = new window.SPKMechanicMultiSelect('fabricationContainer', {
+                    stage: 'fabrikasi',
+                    allowedRoles: ['MECHANIC_FABRICATION', 'HELPER'],
+                    maxMechanics: 2,
+                    maxHelpers: 2
+                });
+                
+                pdiSelector = new window.SPKMechanicMultiSelect('pdiContainer', {
+                    stage: 'pdi',
+                    allowedRoles: ['FOREMAN', 'SUPERVISOR', 'HELPER'],
+                    maxMechanics: 2,
+                    maxHelpers: 1
+                });
+                
+                document.getElementById('output').innerHTML = 
+                    '<div class="alert alert-success">✅ All selectors initialized successfully</div>';
+                    
+            } catch (error) {
+                console.error('Error initializing selectors:', error);
+                document.getElementById('output').innerHTML = 
+                    '<div class="alert alert-danger">❌ Error: ' + error.message + '</div>';
+            }
+        });
+        
+        function testValidation() {
+            const results = [
+                { name: 'Unit Prep', selector: unitPrepSelector, valid: unitPrepSelector?.isValid() },
+                { name: 'Fabrication', selector: fabricationSelector, valid: fabricationSelector?.isValid() },
+                { name: 'PDI', selector: pdiSelector, valid: pdiSelector?.isValid() }
+            ];
+            
+            let html = '<h5>Validation Results:</h5>';
+            results.forEach(result => {
+                const icon = result.valid ? '✅' : '❌';
+                const selectedCount = result.selector?.getSelectedEmployees()?.length || 0;
+                const allEmployeesCount = result.selector?.allEmployees?.length || 0;
+                html += `<div>${icon} ${result.name}: ${result.valid ? 'Valid' : 'Invalid'} (Selected: ${selectedCount}, Available: ${allEmployeesCount})</div>`;
+            });
+            
+            document.getElementById('output').innerHTML = html;
+        }
+        
+        function showSelected() {
+            const results = [
+                { name: 'Unit Prep', employees: unitPrepSelector?.getSelectedEmployees() || [] },
+                { name: 'Fabrication', employees: fabricationSelector?.getSelectedEmployees() || [] },
+                { name: 'PDI', employees: pdiSelector?.getSelectedEmployees() || [] }
+            ];
+            
+            let html = '<h5>Selected Employees:</h5>';
+            results.forEach(result => {
+                html += `<h6>${result.name}:</h6>`;
+                if (result.employees.length === 0) {
+                    html += '<div class="text-muted">No employees selected</div>';
+                } else {
+                    result.employees.forEach(emp => {
+                        const primary = emp.isPrimary ? ' (Primary)' : '';
+                        html += `<div>• ${emp.name} - ${emp.roleLabel}${primary}</div>`;
+                    });
+                }
+                html += '<br>';
+            });
+            
+            document.getElementById('output').innerHTML = html;
+        }
+    </script>
+</body>
+</html>

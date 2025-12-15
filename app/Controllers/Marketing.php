@@ -2462,7 +2462,6 @@ class Marketing extends BaseDataTableController
                             ->getRowArray();
                         
                         // Check if unit is already in active DI (not SAMPAI_LOKASI or SELESAI)
-                        // Also check delivery_instruction_items as fallback
                         $activeDI = $this->db->query("
                             SELECT di.nomor_di, di.status_di, di.pelanggan
                             FROM delivery_items di_items
@@ -2474,16 +2473,8 @@ class Marketing extends BaseDataTableController
                         ", [$unitId])->getRowArray();
                         
                         if (!$activeDI) {
-                            // Fallback check to delivery_instruction_items
-                            $activeDI = $this->db->query("
-                                SELECT di.nomor_di, di.status_di, di.pelanggan
-                                FROM delivery_instruction_items dii
-                                INNER JOIN delivery_instructions di ON di.id = dii.delivery_instruction_id
-                                WHERE dii.unit_id = ?
-                                AND di.status_di NOT IN ('SAMPAI_LOKASI', 'SELESAI', 'DIBATALKAN')
-                                AND dii.item_type = 'UNIT'
-                                LIMIT 1
-                            ", [$unitId])->getRowArray();
+                            // No fallback needed - delivery_items table already checked above
+                            log_message('debug', "No active DI found for unit {$unitId}");
                         }
                         
                         if ($activeDI) {
@@ -2891,9 +2882,34 @@ class Marketing extends BaseDataTableController
         $stageStatus = $this->getSpkStageStatusData($id);
         $preparedUnitsFromStages = $this->getPreparedUnitsDetail($id, $stageStatus);
         
-        // If we have prepared units from stages, use those instead
+        // If we have prepared units from stages, map to expected format
         if (!empty($preparedUnitsFromStages)) {
-            $enriched['prepared_units_detail'] = $preparedUnitsFromStages;
+            $mappedPreparedUnits = [];
+            foreach ($preparedUnitsFromStages as $unit) {
+                $mappedPreparedUnits[] = [
+                    'unit_id' => $unit['unit_id'],
+                    'unit_label' => $unit['no_unit'] ?? '-',
+                    'no_unit' => $unit['no_unit'] ?? '-',
+                    'serial_number' => $unit['serial_number'] ?? '-',
+                    'merk_unit' => '',  // Will be extracted from jenis_unit
+                    'model_unit' => '', // Will be extracted from jenis_unit
+                    'tipe_jenis' => $unit['jenis_unit'] ?? '-',
+                    'attachment_label' => $unit['attachment_sn'] ?? '-',
+                    'mekanik' => $unit['departemen_name'] ?? '-', // Using available data
+                    'catatan' => $unit['combined_notes'] ?? '',
+                    'timestamp' => date('Y-m-d H:i:s'),
+                    'aksesoris_tersedia' => $unit['aksesoris'] ?? '',
+                    // Additional fields from new structure
+                    'kapasitas_name' => $unit['kapasitas_name'] ?? '-',
+                    'mast_name' => $unit['mast_name'] ?? '-',
+                    'roda_name' => $unit['roda_name'] ?? '-',
+                    'ban_name' => $unit['ban_name'] ?? '-',
+                    'valve_name' => $unit['valve_name'] ?? '-',
+                    'baterai_sn' => $unit['baterai_sn'] ?? '-',
+                    'charger_sn' => $unit['charger_sn'] ?? '-'
+                ];
+            }
+            $enriched['prepared_units_detail'] = $mappedPreparedUnits;
         }
         
         // Get quotation_specifications data if available (new system)
@@ -2963,7 +2979,14 @@ class Marketing extends BaseDataTableController
             'prepared_units' => $preparedUnits,
             'prepared_units_detail' => $enriched['prepared_units_detail'] ?? [],
             'kontrak_spec' => $kontrak_spec,
-            'csrf_hash' => csrf_hash()
+            'stage_status' => $stageStatus, // Include stage status data
+            'csrf_hash' => csrf_hash(),
+            // Debug info
+            'debug' => [
+                'stageStatus_count' => count($stageStatus['unit_stages'] ?? []),
+                'preparedUnitsFromStages_count' => count($preparedUnitsFromStages),
+                'enriched_prepared_units_detail_count' => count($enriched['prepared_units_detail'] ?? [])
+            ]
         ]);
     }
 

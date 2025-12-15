@@ -1089,6 +1089,9 @@ class Service extends BaseController
             // Save the approval
             $this->saveStageApproval($stageData, $approvalData);
             
+            // Check if all stages are completed and update SPK status if needed
+            $this->checkAndUpdateSpkStatus($id);
+            
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Stage ' . $approvalData['stage'] . ' berhasil di-approve'
@@ -1255,9 +1258,31 @@ class Service extends BaseController
         $attachment_id = $this->request->getPost('attachment_inventory_attachment_id');
         $transfer_attachment = $this->request->getPost('transfer_attachment') === 'true';
 
-        // Basic validation
-        if (!$mekanik) {
-            throw new \Exception('Mekanik harus diisi');
+        // Extract multi-mechanic data
+        $mechanicsDataJson = $this->request->getPost('mechanics_data');
+        $mechanicsData = [];
+        if ($mechanicsDataJson) {
+            $mechanicsData = json_decode($mechanicsDataJson, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception('Invalid mechanics data format');
+            }
+        }
+        
+        // Primary mechanic ID from multi-select
+        $primaryMechanicId = $this->request->getPost('primary_mechanic_id');
+
+        // Basic validation - check if we have mechanics data
+        if (empty($mechanicsData) && !$mekanik) {
+            throw new \Exception('At least one mechanic must be selected');
+        }
+
+        // If no legacy mechanic name but have mechanics data, use primary mechanic name
+        if (!$mekanik && !empty($mechanicsData)) {
+            $primaryMechanic = array_filter($mechanicsData, function($m) { return $m['isPrimary']; });
+            $primaryMechanic = reset($primaryMechanic);
+            if ($primaryMechanic) {
+                $mekanik = $primaryMechanic['name'];
+            }
         }
 
         // Stage-specific validation
@@ -1274,7 +1299,9 @@ class Service extends BaseController
         return [
             'stage' => $stage,
             'unitIndex' => $unitIndex,
-            'mekanik' => $mekanik,
+            'mekanik' => $mekanik, // Keep for legacy compatibility
+            'mechanics_data' => $mechanicsData,
+            'primary_mechanic_id' => $primaryMechanicId,
             'estimasi_mulai' => $estimasi_mulai,
             'estimasi_selesai' => $estimasi_selesai,
             'attachment_id' => $attachment_id,
@@ -1287,15 +1314,24 @@ class Service extends BaseController
      */
     private function prepareBaseStageData($id, $approvalData)
     {
-        return [
+        $baseData = [
             'spk_id' => $id,
             'unit_index' => $approvalData['unitIndex'],
             'stage_name' => $approvalData['stage'],
-            'mekanik' => $approvalData['mekanik'],
+            'mekanik' => $approvalData['mekanik'], // Keep for backwards compatibility
             'estimasi_mulai' => $approvalData['estimasi_mulai'],
             'estimasi_selesai' => $approvalData['estimasi_selesai'],
             'tanggal_approve' => date('Y-m-d H:i:s')
         ];
+        
+        // Add multi-mechanic data if available
+        if (!empty($approvalData['mechanics_data'])) {
+            $baseData['mechanics_json'] = json_encode($approvalData['mechanics_data']);
+            $baseData['primary_mechanic_id'] = $approvalData['primary_mechanic_id'];
+            $baseData['mechanics_count'] = count($approvalData['mechanics_data']);
+        }
+        
+        return $baseData;
     }
 
     /**
@@ -1635,6 +1671,11 @@ class Service extends BaseController
                 log_message('info', 'Inserted new stage data');
             }
             
+            // Save individual mechanic assignments if we have multi-mechanic data
+            if (!empty($approvalData['mechanics_data'])) {
+                $this->saveMechanicAssignments($stageData, $approvalData);
+            }
+            
             $this->db->transComplete();
             
             // Handle attachment updates for fabrikasi stage
@@ -1646,6 +1687,41 @@ class Service extends BaseController
             $this->db->transRollback();
             throw $e;
         }
+    }
+    
+    /**
+     * Save individual mechanic assignments to spk_stage_mechanics table
+     */
+    private function saveMechanicAssignments($stageData, $approvalData)
+    {
+        $spkId = $stageData['spk_id'];
+        $unitIndex = $stageData['unit_index'];
+        $stageName = $stageData['stage_name'];
+        
+        // Delete existing assignments for this stage
+        $this->db->table('spk_stage_mechanics')
+            ->where('spk_id', $spkId)
+            ->where('unit_index', $unitIndex)
+            ->where('stage_name', $stageName)
+            ->delete();
+        
+        // Insert new assignments
+        foreach ($approvalData['mechanics_data'] as $mechanic) {
+            $assignmentData = [
+                'spk_id' => $spkId,
+                'unit_index' => $unitIndex,
+                'stage_name' => $stageName,
+                'employee_id' => $mechanic['id'],
+                'employee_role' => $mechanic['role'],
+                'is_primary' => $mechanic['isPrimary'] ? 1 : 0,
+                'assigned_at' => date('Y-m-d H:i:s'),
+                'assigned_by' => session()->get('user_id') ?? 1
+            ];
+            
+            $this->db->table('spk_stage_mechanics')->insert($assignmentData);
+        }
+        
+        log_message('info', 'Saved ' . count($approvalData['mechanics_data']) . ' mechanic assignments for SPK ' . $spkId);
     }
 
     /**
@@ -2305,6 +2381,53 @@ EOF;
             ];
         }, $rows);
         return $this->response->setJSON(['success'=>true,'data'=>$data,'csrf_hash'=>csrf_hash()]);
+    }
+    
+    /**
+     * Get employees by roles for multi-select mechanic dropdown
+     */
+    public function employeesByRoles()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+        
+        $rolesParam = $this->request->getGet('roles');
+        if (empty($rolesParam)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Roles parameter required']);
+        }
+        
+        $roles = explode(',', $rolesParam);
+        
+        // Validate roles
+        $validRoles = ['MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION', 'MECHANIC_SERVICE_AREA', 'FOREMAN', 'SUPERVISOR', 'HELPER'];
+        $roles = array_intersect($roles, $validRoles);
+        
+        if (empty($roles)) {
+            return $this->response->setJSON(['success' => false, 'message' => 'No valid roles provided']);
+        }
+        
+        try {
+            $employees = $this->db->table('employees')
+                ->select('id, staff_name, staff_role, job_description, departemen_id')
+                ->whereIn('staff_role', $roles)
+                ->where('is_active', 1)
+                ->orderBy('staff_role ASC, staff_name ASC')
+                ->get()
+                ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $employees,
+                'csrf_hash' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error fetching employees by roles: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false, 
+                'message' => 'Error fetching employees'
+            ]);
+        }
     }
 
     private function serviceBaseQuery(array $allowed = [1,2,3]): \CodeIgniter\Database\BaseBuilder

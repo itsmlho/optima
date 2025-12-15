@@ -196,11 +196,10 @@ $can_export = true;
 				</div>
 				<form id="approvalStageForm">
 					<div class="modal-body">
-						<!-- Common fields for all stages -->
-						<div class="mb-3">
-							<label class="form-label">Mechanics <span class="text-danger">*</span></label>
-							<input type="text" class="form-control" id="approvalMekanik" name="mekanik" required 
-								   placeholder="Enter the name of the responsible mechanic">
+						<!-- Multi-mechanic selection -->
+						<div id="mechanicSelectionContainer" class="mb-3" style="min-height: 60px; border: 1px dashed #ddd; padding: 10px; background: #f8f9fa;">
+							<!-- Multi-select dropdown will be initialized here -->
+							<div class="text-muted">Loading mechanic selection...</div>
 						</div>
 						<div class="row">
 							<div class="col-6">
@@ -310,6 +309,7 @@ $can_export = true;
 
 <?= $this->section('javascript') ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="<?= base_url('assets/js/spk-mechanic-multiselect.js') ?>"></script>
 <script>
 // Global variables (use var to avoid redeclaration errors)
 if (typeof window.allSPKData === 'undefined') {
@@ -884,13 +884,13 @@ document.addEventListener('DOMContentLoaded', () => {
 				const showEdit = persiapanDone || fabrikasiDone || paintingDone || pdiDone;
 				
 				actionButtons = `
-					<a class="btn btn-outline-secondary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener">Print PDF</a>
+					<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener">Print PDF</a>
 					${approvalButtons.join(' ')}
 					${showAssign ? '<button class="btn btn-primary btn-sm" onclick="openAssign(' + id + '); bootstrap.Modal.getInstance(document.getElementById(\'spkDetailModal\')).hide();">Pilih Unit & Attachment</button>' : ''}
 					${showEdit ? '<button class="btn btn-outline-primary btn-sm edit-spk-btn" data-spk-id="' + id + '" title="Edit Options"><i class="fas fa-edit me-1"></i>Edit</button>' : ''}
 				`;
 			} else if (status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED') {
-				actionButtons = `<a class="btn btn-outline-secondary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener">Print PDF</a>`;
+				actionButtons = `<a class="btn btn-primary btn-sm" id="btnPrintPdfSvc" href="<?= base_url('service/spk/print/') ?>${id}" target="_blank" rel="noopener">Print PDF</a>`;
 			}
 			
 			actionDiv.innerHTML = actionButtons;
@@ -1003,9 +1003,6 @@ document.addEventListener('DOMContentLoaded', () => {
 					<div class="col-12"><hr></div>
 					<div class="col-12"><strong>Unit Information:</strong></div>
 					<div class="col-6"><strong>Total Unit:</strong> ${d.jumlah_unit || 0}</div>
-					${totalUnits>1 ? `<div class="col-6">
-						<div class="progress" style="height:14px"><div class="progress-bar" role="progressbar" style="width:${Math.min(100, Math.round((preparedCount/totalUnits)*100))}%">${preparedCount}/${totalUnits} prepared</div></div>
-					</div>`:''}
 					<div class="col-6"><strong>Department:</strong> ${ks.departemen_id_name || s.departemen_id_name||'-'}</div>
 					<div class="col-6"><strong>Type & Brand:</strong> ${[ks.tipe_unit_id_name || s.tipe_jenis, ks.brand_id_name || ks.merk_unit || s.merk_unit].filter(x=>x).join(' ') || '-'}</div>
 					<div class="col-6"><strong>Capacity:</strong> ${ks.kapasitas_id_name || s.kapasitas_id_name||'-'}</div>
@@ -1018,108 +1015,123 @@ document.addEventListener('DOMContentLoaded', () => {
 					<div class="col-6"><strong>Tire:</strong> ${ks.ban_id_name || s.ban_id_name||'-'}</div>
 					<div class="col-12"><strong>Accessories :</strong> ${aksText}</div>
 					
+
 					${status === 'IN_PROGRESS' || status === 'READY' || status === 'DELIVERED' || status === 'COMPLETED' ? `
 					<div class="col-12"><hr></div>
 					<div class="col-12"><h6 class="mb-2">📋 Status Approval Workflow</h6></div>
-					
-					<div class="col-12">
-						<div class="row g-2">
-							${(d.jenis_spk && d.jenis_spk.toUpperCase() === 'ATTACHMENT') ? `
-								<div class="col-12">
-									<strong>1. Unit Preparation:</strong> 
-									<span class="badge bg-info">Skip (SPK Attachment)</span>
+					${(() => {
+						const totalUnits = parseInt(d.jumlah_unit) || 1;
+						const stageStatus = d.stage_status || {};
+						const unitStages = stageStatus.unit_stages || {};
+						
+						let workflowHtml = '';
+						
+						// Multi-unit progress bar
+						if (totalUnits > 1) {
+							const completedUnits = Object.keys(unitStages).filter(unitIndex => {
+								const unit = unitStages[unitIndex];
+								return unit.persiapan_unit?.completed && unit.fabrikasi?.completed && 
+									   unit.painting?.completed && unit.pdi?.completed;
+							}).length;
+							
+							workflowHtml += `<div class="col-12 mb-3">
+								<div class="progress" style="height:16px">
+									<div class="progress-bar" role="progressbar" style="width:${Math.min(100, Math.round((completedUnits/totalUnits)*100))}%">
+										${completedUnits}/${totalUnits} units completed
+									</div>
 								</div>
-								<div class="col-6">
-									<strong>2. Fabrication:</strong> 
-									${d.fabrikasi_tanggal_approve ? 
-										'<span class="badge bg-success">✓ Completed</span><br>' +
-										'<small>By: ' + (d.fabrikasi_mekanik||'-') + ' <br>' +
-										'Date: ' + (d.fabrikasi_tanggal_approve||'-') + '<br>' +
-										'Attachment ID: ' + (workflowData.fabrikasi_attachment_id||'-') + '</small>' 
-										: '<span class="badge bg-warning">Waiting</span>'}
-								</div>
-							` : `
-								<div class="col-6">
-									<strong>1. Unit Preparation:</strong> 
-									${d.stage_status && d.stage_status.unit_stages ? 
-										Object.keys(d.stage_status.unit_stages).some(unitIndex => 
-											d.stage_status.unit_stages[unitIndex].persiapan_unit && 
-											d.stage_status.unit_stages[unitIndex].persiapan_unit.completed
-										) ? 
-										'<span class="badge bg-success">✓ Completed</span><br>' +
-										'<small>Unit: ' + Object.keys(d.stage_status.unit_stages).filter(unitIndex => 
-											d.stage_status.unit_stages[unitIndex].persiapan_unit && 
-											d.stage_status.unit_stages[unitIndex].persiapan_unit.completed
-										).length + '/' + d.jumlah_unit + '</small>' 
-										: '<span class="badge bg-warning">Waiting</span>'
-									: (d.persiapan_unit_tanggal_approve ? 
-										'<span class="badge bg-success">✓ Completed</span><br>' +
-										'<small>By: ' + (d.persiapan_unit_mekanik||'-') + ' <br>' +
-										'Date: ' + (d.persiapan_unit_tanggal_approve||'-') + '<br>' +
-										'Unit ID: ' + (workflowData.persiapan_unit_id||'-') + '</small>' 
-										: '<span class="badge bg-warning">Waiting</span>')}
-								</div>
-								<div class="col-6">
-									<strong>2. Fabrication:</strong> 
-									${d.stage_status && d.stage_status.unit_stages ? 
-										Object.keys(d.stage_status.unit_stages).some(unitIndex => 
-											d.stage_status.unit_stages[unitIndex].fabrikasi && 
-											d.stage_status.unit_stages[unitIndex].fabrikasi.completed
-										) ? 
-										'<span class="badge bg-success">✓ Completed</span><br>' +
-										'<small>Unit: ' + Object.keys(d.stage_status.unit_stages).filter(unitIndex => 
-											d.stage_status.unit_stages[unitIndex].fabrikasi && 
-											d.stage_status.unit_stages[unitIndex].fabrikasi.completed
-										).length + '/' + d.jumlah_unit + '</small>' 
-										: '<span class="badge bg-warning">Waiting</span>'
-									: (d.fabrikasi_tanggal_approve ? 
-										'<span class="badge bg-success">✓ Completed</span><br>' +
-										'<small>By: ' + (d.fabrikasi_mekanik||'-') + ' <br>' +
-										'Date: ' + (d.fabrikasi_tanggal_approve||'-') + '<br>' +
-										'Attachment ID: ' + (workflowData.fabrikasi_attachment_id||'-') + '</small>' 
-										: '<span class="badge bg-warning">Waiting</span>')}
-								</div>
-							`}
-							<div class="col-6">
-								<strong>3. Painting:</strong> 
-								${d.stage_status && d.stage_status.unit_stages ? 
-									Object.keys(d.stage_status.unit_stages).some(unitIndex => 
-										d.stage_status.unit_stages[unitIndex].painting && 
-										d.stage_status.unit_stages[unitIndex].painting.completed
-									) ? 
-									'<span class="badge bg-success">✓ Completed</span><br>' +
-									'<small>Unit: ' + Object.keys(d.stage_status.unit_stages).filter(unitIndex => 
-										d.stage_status.unit_stages[unitIndex].painting && 
-										d.stage_status.unit_stages[unitIndex].painting.completed
-									).length + '/' + d.jumlah_unit + '</small>' 
-									: '<span class="badge bg-warning">Waiting</span>'
-								: (d.painting_tanggal_approve ? 
-									`<span class="badge bg-success">✓ Completed</span><br>
-									<small>By: ${d.painting_mekanik||'-'} <br>
-									Date: ${d.painting_tanggal_approve||'-'}</small>` 
-									: '<span class="badge bg-warning">Waiting</span>')}
-							</div>
-							<div class="col-6">
-								<strong>4. PDI Done :</strong> 
-								${d.stage_status && d.stage_status.unit_stages ? 
-									Object.keys(d.stage_status.unit_stages).some(unitIndex => 
-										d.stage_status.unit_stages[unitIndex].pdi && 
-										d.stage_status.unit_stages[unitIndex].pdi.completed
-									) ? 
-									'<span class="badge bg-success">✓ Completed</span><br>' +
-									'<small>Unit: ' + Object.keys(d.stage_status.unit_stages).filter(unitIndex => 
-										d.stage_status.unit_stages[unitIndex].pdi && 
-										d.stage_status.unit_stages[unitIndex].pdi.completed
-									).length + '/' + d.jumlah_unit + '</small>' 
-									: '<span class="badge bg-warning">Waiting</span>'
-								: (d.pdi_tanggal_approve ? 
-									'<span class="badge bg-success">✓ Completed</span><br>' +
-									'<small>By: ' + (d.pdi_mekanik||'-') + ' <br>' +
-									'Date: ' + (d.pdi_tanggal_approve||'-') + '</small>' 
-									: '<span class="badge bg-warning">Waiting</span>')}
-							</div>
-						</div>
-					</div>
+							</div>`;
+						}
+						
+						workflowHtml += '<div class="row g-2">';
+						
+						// Helper function to get stage completion info
+						const getStageInfo = (stageName) => {
+							let completedCount = 0;
+							let lastMechanic = '-';
+							let lastDate = '-';
+							let mechanics = [];
+							
+							Object.keys(unitStages).forEach(unitIndex => {
+								const stage = unitStages[unitIndex][stageName];
+								if (stage?.completed) {
+									completedCount++;
+									if (stage.mekanik) lastMechanic = stage.mekanik;
+									if (stage.tanggal_approve) lastDate = stage.tanggal_approve;
+									if (stage.mechanics_data) {
+										mechanics = mechanics.concat(stage.mechanics_data.map(m => m.name || m.id).filter(Boolean));
+									}
+								}
+							});
+							
+							const isCompleted = completedCount > 0;
+							const displayMechanics = mechanics.length > 0 ? mechanics.join(', ') : lastMechanic;
+							
+							return {
+								isCompleted,
+								completedCount,
+								totalUnits,
+								mechanic: displayMechanics,
+								date: lastDate,
+								badge: isCompleted ? 'bg-success' : 'bg-secondary',
+								icon: isCompleted ? '✓ Completed' : 'Waiting'
+							};
+						};
+						
+						// Unit Preparation (skip for ATTACHMENT)
+						if (d.jenis_spk !== 'ATTACHMENT') {
+							const persiapan = getStageInfo('persiapan_unit');
+							workflowHtml += `<div class="col-6">
+								<strong>1. Unit Preparation:</strong><br>
+								<span class="badge ${persiapan.badge}">${persiapan.icon}</span>
+								${persiapan.isCompleted ? `<br><small class="text-muted">
+									Mechanic: ${persiapan.mechanic}<br>
+									Date: ${persiapan.date}
+									${totalUnits > 1 ? `<br>Units: ${persiapan.completedCount}/${totalUnits}` : ''}
+								</small>` : ''}
+							</div>`;
+						}
+						
+						// Fabrication
+						const fabrikasi = getStageInfo('fabrikasi');
+						workflowHtml += `<div class="col-6">
+							<strong>${d.jenis_spk === 'ATTACHMENT' ? '1' : '2'}. Fabrication:</strong><br>
+							<span class="badge ${fabrikasi.badge}">${fabrikasi.icon}</span>
+							${fabrikasi.isCompleted ? `<br><small class="text-muted">
+								Mechanic: ${fabrikasi.mechanic}<br>
+								Date: ${fabrikasi.date}
+								${totalUnits > 1 ? `<br>Units: ${fabrikasi.completedCount}/${totalUnits}` : ''}
+							</small>` : ''}
+						</div>`;
+						
+						// Painting
+						const painting = getStageInfo('painting');
+						workflowHtml += `<div class="col-6">
+							<strong>${d.jenis_spk === 'ATTACHMENT' ? '2' : '3'}. Painting:</strong><br>
+							<span class="badge ${painting.badge}">${painting.icon}</span>
+							${painting.isCompleted ? `<br><small class="text-muted">
+								Mechanic: ${painting.mechanic}<br>
+								Date: ${painting.date}
+								${totalUnits > 1 ? `<br>Units: ${painting.completedCount}/${totalUnits}` : ''}
+							</small>` : ''}
+						</div>`;
+						
+						// PDI
+						const pdi = getStageInfo('pdi');
+						workflowHtml += `<div class="col-6">
+							<strong>${d.jenis_spk === 'ATTACHMENT' ? '3' : '4'}. PDI Inspection:</strong><br>
+							<span class="badge ${pdi.badge}">${pdi.icon}</span>
+							${pdi.isCompleted ? `<br><small class="text-muted">
+								Mechanic: ${pdi.mechanic}<br>
+								Date: ${pdi.date}
+								${totalUnits > 1 ? `<br>Units: ${pdi.completedCount}/${totalUnits}` : ''}
+							</small>` : ''}
+						</div>`;
+						
+						workflowHtml += '</div>';
+						
+						return workflowHtml;
+					})()}
 					
 					${workflowData.persiapan_aksesoris_tersedia ? `
 					<div class="col-12"><hr></div>
@@ -1236,9 +1248,6 @@ document.addEventListener('DOMContentLoaded', () => {
 		currentApprovalSpkId = spkId || currentSpkId; // Use passed spkId or fallback to currentSpkId
 		console.log('🆔 SPK ID Debug:', {spkId, currentSpkId, currentApprovalSpkId});
 		document.getElementById('approvalStageTitle').textContent = stageTitle;
-		document.getElementById('approvalMekanik').value = '';
-		document.getElementById('approvalEstimasiMulai').value = '';
-		document.getElementById('approvalEstimasiSelesai').value = '';
 		
 		// Set unit index if provided (for multi-unit SPK editing)
 		if (unitIndex !== null) {
@@ -1246,10 +1255,100 @@ document.addEventListener('DOMContentLoaded', () => {
 			console.log('Setting currentEditingUnitIndex to:', unitIndex);
 		}
 		
+		// Initialize multi-mechanic selection based on stage
+		setTimeout(() => {
+			initializeMechanicSelection(stage);
+		}, 100);  // Small delay to ensure modal is fully rendered
+		
+		// Set default dates
+		const today = new Date().toISOString().split('T')[0];
+		document.getElementById('approvalEstimasiMulai').value = today;
+		document.getElementById('approvalEstimasiSelesai').value = today;
+		
 		// Load stage-specific content
 		loadStageSpecificContent(stage, currentApprovalSpkId);
 		
 		new bootstrap.Modal(document.getElementById('approvalStageModal')).show();
+	}
+	
+	// Global variable to store the current mechanic selector instance
+	let currentMechanicSelector = null;
+	
+	// Initialize multi-mechanic selection based on stage
+	function initializeMechanicSelection(stage) {
+		console.log('🔧 Initializing mechanic selection for stage:', stage);
+		
+		// Check if container exists
+		const container = document.getElementById('mechanicSelectionContainer');
+		console.log('📦 Container check:', {
+			exists: !!container,
+			visible: container ? container.offsetHeight > 0 : false,
+			display: container ? getComputedStyle(container).display : 'none'
+		});
+		
+		if (!container) {
+			console.error('❌ mechanicSelectionContainer not found in DOM');
+			return;
+		}
+		
+		// Clear previous instance
+		if (currentMechanicSelector) {
+			console.log('🗑️ Resetting previous selector');
+			currentMechanicSelector.reset();
+		}
+		
+		// Stage-specific configuration
+		const stageConfig = {
+			'persiapan_unit': {
+				stage: 'persiapan_unit',
+				allowedRoles: ['MECHANIC_UNIT_PREP', 'HELPER'],
+				maxMechanics: 2,
+				maxHelpers: 2,
+				placeholder: 'Select unit preparation team...'
+			},
+			'fabrikasi': {
+				stage: 'fabrikasi',
+				allowedRoles: ['MECHANIC_FABRICATION', 'HELPER'],
+				maxMechanics: 2,
+				maxHelpers: 2,
+				placeholder: 'Select fabrication team...'
+			},
+			'painting': {
+				stage: 'painting',
+				allowedRoles: ['MECHANIC_UNIT_PREP', 'MECHANIC_FABRICATION', 'MECHANIC_SERVICE_AREA', 'HELPER'],
+				maxMechanics: 2,
+				maxHelpers: 2,
+				placeholder: 'Select painting team...'
+			},
+			'pdi': {
+				stage: 'pdi',
+				allowedRoles: ['FOREMAN', 'SUPERVISOR', 'HELPER'],
+				maxMechanics: 2, // For foreman/supervisor
+				maxHelpers: 1,
+				placeholder: 'Select PDI inspection team...'
+			}
+		};
+		
+		const config = stageConfig[stage] || stageConfig['persiapan_unit'];
+		
+		// Check if the class is available
+		if (typeof window.SPKMechanicMultiSelect === 'undefined') {
+			console.error('❌ SPKMechanicMultiSelect class not available');
+			return;
+		}
+		
+		// Initialize the multi-select component
+		currentMechanicSelector = new window.SPKMechanicMultiSelect('mechanicSelectionContainer', config);
+		
+		console.log('✅ Mechanic selector initialized for stage:', stage);
+		
+		// Remove loading message
+		setTimeout(() => {
+			const loadingMsg = container.querySelector('.text-muted');
+			if (loadingMsg && loadingMsg.textContent.includes('Loading')) {
+				loadingMsg.remove();
+			}
+		}, 500);
 	}
 	
 	// Generate unit form untuk multi-unit support
@@ -3026,6 +3125,23 @@ document.addEventListener('DOMContentLoaded', () => {
 		e.preventDefault();
 		const fd = new FormData(this);
 		fd.append('stage', currentApprovalStage);
+		
+		// Validate and add multi-mechanic data
+		if (!currentMechanicSelector || !currentMechanicSelector.isValid()) {
+			notify('Please select at least one mechanic for this stage', 'error');
+			return;
+		}
+		
+		// Get selected mechanics data
+		const selectedMechanics = currentMechanicSelector.getSelectedEmployees();
+		fd.append('mechanics_data', JSON.stringify(selectedMechanics));
+		
+		// Set primary mechanic for backwards compatibility
+		const primaryMechanic = selectedMechanics.find(m => m.isPrimary);
+		if (primaryMechanic) {
+			fd.append('mekanik', primaryMechanic.name);
+			fd.append('primary_mechanic_id', primaryMechanic.id);
+		}
 		
 		// Handle aksesoris checkbox for persiapan_unit
 		if (currentApprovalStage === 'persiapan_unit') {

@@ -423,6 +423,9 @@ $routes->group('service', static function ($routes) {
     $routes->get('spk/units-with-edit/(:num)', 'Service::getSpkUnitsWithEdit/$1');
     $routes->post('spk/confirm-ready/(:num)', 'Service::spkConfirmReady/$1');
     
+    // Multi-mechanic selection endpoint
+    $routes->get('employees/by-roles', 'Service::employeesByRoles');
+    
     // Edit system routes
     $routes->get('spk/edit-options/(:num)', 'Service::getSpkEditOptions/$1');
     $routes->post('spk/edit-stage/(:num)', 'Service::editSpkStage/$1');

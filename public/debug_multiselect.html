@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Multi-Select</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container mt-5">
+        <h2>Debug SPK Multi-Select Component</h2>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Unit Preparation Team Selection</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="debugContainer"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Debug Info</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-sm btn-info mb-2" onclick="showSelected()">Show Selected</button>
+                        <button class="btn btn-sm btn-warning mb-2" onclick="validateAll()">Validate</button>
+                        <button class="btn btn-sm btn-secondary mb-2" onclick="clearDebug()">Clear Log</button>
+                        <div id="debugOutput" style="max-height: 400px; overflow-y: auto; font-size: 11px;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/spk-mechanic-multiselect.js"></script>
+    <script>
+        let debugSelector;
+        let debugLog = [];
+        
+        // Override console.log to capture debug info
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            debugLog.push(args.join(' '));
+            updateDebugOutput();
+        };
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Starting debug test...');
+            
+            if (typeof window.SPKMechanicMultiSelect === 'undefined') {
+                document.getElementById('debugOutput').innerHTML = 
+                    '<div class="alert alert-danger">❌ SPKMechanicMultiSelect class not found!</div>';
+                return;
+            }
+            
+            try {
+                debugSelector = new window.SPKMechanicMultiSelect('debugContainer', {
+                    stage: 'persiapan_unit',
+                    allowedRoles: ['MECHANIC_UNIT_PREP', 'HELPER'],
+                    maxMechanics: 2,
+                    maxHelpers: 2
+                });
+                
+                console.log('✅ Debug selector created successfully');
+                
+            } catch (error) {
+                console.error('❌ Error creating selector:', error);
+                document.getElementById('debugOutput').innerHTML = 
+                    '<div class="alert alert-danger">Error: ' + error.message + '</div>';
+            }
+        });
+        
+        function showSelected() {
+            if (!debugSelector) return;
+            
+            const selected = debugSelector.getSelectedEmployees();
+            console.log('📋 Currently selected:', selected);
+            
+            let html = '<h6>Selected Employees:</h6>';
+            if (selected.length === 0) {
+                html += '<div class="text-muted">None selected</div>';
+            } else {
+                selected.forEach(emp => {
+                    const primary = emp.isPrimary ? ' (Primary)' : '';
+                    html += `<div>• ${emp.name} - ${emp.roleLabel}${primary}</div>`;
+                });
+            }
+            
+            document.getElementById('debugOutput').innerHTML = html;
+        }
+        
+        function validateAll() {
+            if (!debugSelector) return;
+            
+            const isValid = debugSelector.isValid();
+            console.log('🔍 Validation result:', isValid);
+        }
+        
+        function clearDebug() {
+            debugLog = [];
+            updateDebugOutput();
+        }
+        
+        function updateDebugOutput() {
+            const output = document.getElementById('debugOutput');
+            if (output && debugLog.length > 0) {
+                const last5 = debugLog.slice(-10); // Show last 10 entries
+                output.innerHTML = last5.map(log => `<div style="border-bottom: 1px solid #eee; padding: 2px 0;">${log}</div>`).join('');
+                output.scrollTop = output.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>

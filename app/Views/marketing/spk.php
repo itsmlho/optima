@@ -2142,7 +2142,7 @@ $can_export = $permissions['export'];
                     <div id="spkDetailBody"><p class="text-muted">Loading...</p></div>
                 </div>
                 <div class="modal-footer">
-                    <a class="btn btn-outline-secondary" id="btnPrintPdf" href="#" target="_blank" rel="noopener">Print PDF</a>
+                    <a class="btn btn-primary" id="btnPrintPdf" href="#" target="_blank" rel="noopener">Print PDF</a>
                     <button class="btn btn-warning" id="btnEditSpk" onclick="editSpk()">
                         <i class="fas fa-edit"></i> Edit
                     </button>
@@ -2261,94 +2261,206 @@ $can_export = $permissions['export'];
                         <div class="col-12"><strong>Accessories :</strong> ${aksText}</div>
                         <div class="col-12"><hr></div>
                         
-                        <!-- Approval Workflow Section (Read-only for Marketing) -->
-                        ${d.stage_status || d.persiapan_unit_tanggal_approve || d.fabrikasi_tanggal_approve || d.painting_tanggal_approve || d.pdi_tanggal_approve ? `
-                        <div class="col-12"><strong>Approval Workflow:</strong></div>
+                        <!-- Status Approval Workflow Section (Read-only for Marketing) -->
+                        <div class="col-12"><h6 class="mb-2">📋 Status Approval Workflow</h6></div>
                         ${(() => {
                             const totalUnits = parseInt(d.jumlah_unit) || 1;
-                            const index = 0; // For multi-unit, show first unit's status
+                            const stageStatus = j.stage_status || {};
+                            const unitStages = stageStatus.unit_stages || {};
                             
-                            // Check new structure first, fallback to old fields
-                            const persiapanDone = d.stage_status?.unit_stages?.[index]?.persiapan_unit?.completed || !!d.persiapan_unit_tanggal_approve;
-                            const fabrikasiDone = d.stage_status?.unit_stages?.[index]?.fabrikasi?.completed || !!d.fabrikasi_tanggal_approve;
-                            const paintingDone = d.stage_status?.unit_stages?.[index]?.painting?.completed || !!d.painting_tanggal_approve;
-                            const pdiDone = d.stage_status?.unit_stages?.[index]?.pdi?.completed || !!d.pdi_tanggal_approve;
+                            let workflowHtml = '';
                             
-                            // Get mechanic names and dates
-                            const persiapanMech = d.stage_status?.unit_stages?.[index]?.persiapan_unit?.mekanik_id_name || d.persiapan_unit_mekanik_id_name || '-';
-                            const persiapanDate = d.stage_status?.unit_stages?.[index]?.persiapan_unit?.tanggal_approve || d.persiapan_unit_tanggal_approve || '-';
-                            
-                            const fabrikasiMech = d.stage_status?.unit_stages?.[index]?.fabrikasi?.mekanik_id_name || d.fabrikasi_mekanik_id_name || '-';
-                            const fabrikasiDate = d.stage_status?.unit_stages?.[index]?.fabrikasi?.tanggal_approve || d.fabrikasi_tanggal_approve || '-';
-                            
-                            const paintingMech = d.stage_status?.unit_stages?.[index]?.painting?.mekanik_id_name || d.painting_mekanik_id_name || '-';
-                            const paintingDate = d.stage_status?.unit_stages?.[index]?.painting?.tanggal_approve || d.painting_tanggal_approve || '-';
-                            
-                            const pdiMech = d.stage_status?.unit_stages?.[index]?.pdi?.mekanik_id_name || d.pdi_mekanik_id_name || '-';
-                            const pdiDate = d.stage_status?.unit_stages?.[index]?.pdi?.tanggal_approve || d.pdi_tanggal_approve || '-';
-                            
-                            const preparedCount = (d.stage_status?.prepared_count !== undefined) ? d.stage_status.prepared_count : (pdiDone ? 1 : 0);
-                            
-                            let html = '';
-                            
-                            // Persiapan Unit (skip for ATTACHMENT)
-                            if(d.jenis_spk !== 'ATTACHMENT') {
-                                html += `<div class="col-12 mb-1">
-                                    <strong>1. Unit Preparation:</strong> 
-                                    <span class="badge ${persiapanDone ? 'bg-success' : 'bg-secondary'}">${persiapanDone ? '✓ Completed' : 'Waiting'}</span>
-                                    ${persiapanDone ? `<br><small class="text-muted">Mechanic: ${persiapanMech} | Date: ${persiapanDate}</small>` : ''}
-                                    ${totalUnits > 1 ? `<br><small>Unit: ${preparedCount >= 1 ? '1' : '0'}/${totalUnits}</small>` : ''}
+                            // Multi-unit progress bar
+                            if (totalUnits > 1) {
+                                const completedUnits = Object.keys(unitStages).filter(unitIndex => {
+                                    const unit = unitStages[unitIndex];
+                                    return unit.persiapan_unit?.completed && unit.fabrikasi?.completed && 
+                                           unit.painting?.completed && unit.pdi?.completed;
+                                }).length;
+                                
+                                workflowHtml += `<div class="col-12 mb-3">
+                                    <div class="progress" style="height:16px">
+                                        <div class="progress-bar" role="progressbar" style="width:${Math.min(100, Math.round((completedUnits/totalUnits)*100))}%">
+                                            ${completedUnits}/${totalUnits} units completed
+                                        </div>
+                                    </div>
                                 </div>`;
                             }
                             
-                            // Fabrikasi
-                            html += `<div class="col-12 mb-1">
-                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '1' : '2'}. Fabrication:</strong> 
-                                <span class="badge ${fabrikasiDone ? 'bg-success' : 'bg-secondary'}">${fabrikasiDone ? '✓ Completed' : 'Waiting'}</span>
-                                ${fabrikasiDone ? `<br><small class="text-muted">Mechanic: ${fabrikasiMech} | Date: ${fabrikasiDate}</small>` : ''}
-                                ${totalUnits > 1 ? `<br><small>Unit: ${preparedCount >= 2 ? Math.min(preparedCount-1, totalUnits) : '0'}/${totalUnits}</small>` : ''}
+                            workflowHtml += '<div class="row g-2">';
+                            
+                            // Helper function to get stage completion info
+                            const getStageInfo = (stageName) => {
+                                let completedCount = 0;
+                                let lastMechanic = '-';
+                                let lastDate = '-';
+                                let mechanics = [];
+                                
+                                Object.keys(unitStages).forEach(unitIndex => {
+                                    const stage = unitStages[unitIndex][stageName];
+                                    if (stage?.completed) {
+                                        completedCount++;
+                                        if (stage.mekanik) lastMechanic = stage.mekanik;
+                                        if (stage.tanggal_approve) lastDate = stage.tanggal_approve;
+                                        if (stage.mechanics_data) {
+                                            mechanics = mechanics.concat(stage.mechanics_data.map(m => m.name || m.id).filter(Boolean));
+                                        }
+                                    }
+                                });
+                                
+                                const isCompleted = completedCount > 0;
+                                const displayMechanics = mechanics.length > 0 ? mechanics.join(', ') : lastMechanic;
+                                
+                                return {
+                                    isCompleted,
+                                    completedCount,
+                                    totalUnits,
+                                    mechanic: displayMechanics,
+                                    date: lastDate,
+                                    badge: isCompleted ? 'bg-success' : 'bg-secondary',
+                                    icon: isCompleted ? '✓ Completed' : 'Waiting'
+                                };
+                            };
+                            
+                            // Unit Preparation (skip for ATTACHMENT)
+                            if (d.jenis_spk !== 'ATTACHMENT') {
+                                const persiapan = getStageInfo('persiapan_unit');
+                                workflowHtml += `<div class="col-6">
+                                    <strong>1. Unit Preparation:</strong><br>
+                                    <span class="badge ${persiapan.badge}">${persiapan.icon}</span>
+                                    ${persiapan.isCompleted ? `<br><small class="text-muted">
+                                        Mechanic: ${persiapan.mechanic}<br>
+                                        Date: ${persiapan.date}
+                                        ${totalUnits > 1 ? `<br>Units: ${persiapan.completedCount}/${totalUnits}` : ''}
+                                    </small>` : ''}
+                                </div>`;
+                            }
+                            
+                            // Fabrication
+                            const fabrikasi = getStageInfo('fabrikasi');
+                            workflowHtml += `<div class="col-6">
+                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '1' : '2'}. Fabrication:</strong><br>
+                                <span class="badge ${fabrikasi.badge}">${fabrikasi.icon}</span>
+                                ${fabrikasi.isCompleted ? `<br><small class="text-muted">
+                                    Mechanic: ${fabrikasi.mechanic}<br>
+                                    Date: ${fabrikasi.date}
+                                    ${totalUnits > 1 ? `<br>Units: ${fabrikasi.completedCount}/${totalUnits}` : ''}
+                                </small>` : ''}
                             </div>`;
                             
                             // Painting
-                            html += `<div class="col-12 mb-1">
-                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '2' : '3'}. Painting:</strong> 
-                                <span class="badge ${paintingDone ? 'bg-success' : 'bg-secondary'}">${paintingDone ? '✓ Completed' : 'Waiting'}</span>
-                                ${paintingDone ? `<br><small class="text-muted">Mechanic: ${paintingMech} | Date: ${paintingDate}</small>` : ''}
-                                ${totalUnits > 1 ? `<br><small>Unit: ${preparedCount >= 3 ? Math.min(preparedCount-2, totalUnits) : '0'}/${totalUnits}</small>` : ''}
+                            const painting = getStageInfo('painting');
+                            workflowHtml += `<div class="col-6">
+                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '2' : '3'}. Painting:</strong><br>
+                                <span class="badge ${painting.badge}">${painting.icon}</span>
+                                ${painting.isCompleted ? `<br><small class="text-muted">
+                                    Mechanic: ${painting.mechanic}<br>
+                                    Date: ${painting.date}
+                                    ${totalUnits > 1 ? `<br>Units: ${painting.completedCount}/${totalUnits}` : ''}
+                                </small>` : ''}
                             </div>`;
                             
                             // PDI
-                            html += `<div class="col-12 mb-1">
-                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '3' : '4'}. PDI Inspection:</strong> 
-                                <span class="badge ${pdiDone ? 'bg-success' : 'bg-secondary'}">${pdiDone ? '✓ Completed' : 'Waiting'}</span>
-                                ${pdiDone ? `<br><small class="text-muted">Mechanic: ${pdiMech} | Date: ${pdiDate}</small>` : ''}
-                                ${totalUnits > 1 ? `<br><small>Unit: ${preparedCount >= 4 ? Math.min(preparedCount-3, totalUnits) : '0'}/${totalUnits}</small>` : ''}
-                                ${d.pdi_catatan ? `<br><small class="text-muted">Notes: ${d.pdi_catatan}</small>` : ''}
+                            const pdi = getStageInfo('pdi');
+                            workflowHtml += `<div class="col-6">
+                                <strong>${d.jenis_spk === 'ATTACHMENT' ? '3' : '4'}. PDI Inspection:</strong><br>
+                                <span class="badge ${pdi.badge}">${pdi.icon}</span>
+                                ${pdi.isCompleted ? `<br><small class="text-muted">
+                                    Mechanic: ${pdi.mechanic}<br>
+                                    Date: ${pdi.date}
+                                    ${totalUnits > 1 ? `<br>Units: ${pdi.completedCount}/${totalUnits}` : ''}
+                                </small>` : ''}
                             </div>`;
                             
-                            // Accessories available
-                            if(d.aksesoris_tersedia) {
-                                html += `<div class="col-12"><small class="text-muted">Accessories Available: ${d.aksesoris_tersedia}</small></div>`;
-                            }
+                            workflowHtml += '</div>';
                             
-                            return html;
+                            return workflowHtml;
                         })()}
                         <div class="col-12"><hr></div>
-                        ` : ''}
                         
-                        <div class="col-12"><strong>Selected Item:</strong></div>
-                        <div class="col-12" id="svcUnitDetailBlock">
-                            ${u ? '<div class="text-muted">Loading unit details...</div>' : '<div class="text-muted">Unit: -</div>'}
-                        </div>
-                        ${a ? 
-                          `<div class="col-12">
-                            <div><strong>Attachment:</strong> 
-                              ${a.tipe||'-'} ${a.merk||''} ${a.model||''}
-                              ${a.sn_attachment ? ` [SN: ${a.sn_attachment}]` : ''}
-                              ${a.lokasi_penyimpanan ? ` @ ${a.lokasi_penyimpanan}` : ''}
-                            </div>
-                           </div>` 
-                          : ''}
+                        <!-- Item yang dipilih Section (fixed data structure) -->
+                        <div class="col-12"><hr></div>
+                        ${(() => {
+                            const totalUnits = parseInt(d.jumlah_unit||1);
+                            
+                            // Debug: log available data
+                            console.log('📊 Item yang dipilih Debug:', {
+                                'j.prepared_units_detail': j.prepared_units_detail,
+                                'j.spesifikasi': j.spesifikasi,
+                                'j.spesifikasi.prepared_units_detail': j.spesifikasi?.prepared_units_detail,
+                                'totalUnits': totalUnits
+                            });
+                            
+                            // Priority 1: Check prepared_units_detail from API response (new workflow)
+                            let preparedDetails = [];
+                            if (Array.isArray(j.prepared_units_detail) && j.prepared_units_detail.length > 0) {
+                                preparedDetails = j.prepared_units_detail;
+                                console.log('✅ Using j.prepared_units_detail:', preparedDetails.length, 'units');
+                            } else if (j.spesifikasi && Array.isArray(j.spesifikasi.prepared_units_detail) && j.spesifikasi.prepared_units_detail.length > 0) {
+                                preparedDetails = j.spesifikasi.prepared_units_detail;
+                                console.log('✅ Using j.spesifikasi.prepared_units_detail:', preparedDetails.length, 'units');
+                            } else {
+                                console.log('⚠️ No prepared_units_detail found in response');
+                            }
+                            
+                            let itemsHtml = '';
+                            
+                            if (preparedDetails.length > 0) {
+                                // New workflow: show distinct prepared units
+                                console.log('✅ Using prepared_units_detail:', preparedDetails.length, 'units');
+                                itemsHtml = preparedDetails.map((it, idx) => `
+                                    <div class="col-12"><strong>Item yang dipilih (${idx+1}):</strong></div>
+                                    <div class="col-12 svcUnitDetailBlock">
+                                        <div><strong>Unit:</strong> ${it.unit_label || '-'}</div>
+                                        <div><strong>Serial Number:</strong> ${it.serial_number || '-'}</div>
+                                        <div><strong>Tipe Unit:</strong> ${it.tipe_jenis || '-'}</div>
+                                        <div><strong>Merk/Model:</strong> ${(it.merk_unit || '-') + ' ' + (it.model_unit || '')}</div>
+                                        ${ it.attachment_label ? `<div><strong>Attachment:</strong> ${it.attachment_label}</div>` : ''}
+                                        ${ it.catatan ? `<div><strong>Catatan:</strong> ${it.catatan}</div>` : ''}
+                                        ${ it.mekanik ? `<div><strong>Mekanik:</strong> ${it.mekanik}</div>` : ''}
+                                        ${ it.timestamp ? `<div class="text-muted"><small>Waktu: ${it.timestamp}</small></div>` : ''}
+                                    </div>
+                                    <div class="col-12"><hr></div>
+                                `).join('');
+                            } else if (s.selected && s.selected.unit) {
+                                // Legacy workflow: show selected unit detail per jumlah_unit
+                                console.log('📝 Using legacy selected unit for', totalUnits, 'units');
+                                function renderItemBlock(i, total) {
+                                    return `
+                                        <div class="col-12"><strong>Item Terpilih${total > 1 ? ' ('+i+')' : ''}:</strong></div>
+                                        <div class="col-12 svcUnitDetailBlock">
+                                            <div><strong>Unit:</strong> ${s.selected.unit.label || ((s.selected.unit.no_unit || '-') + ' | ' + (s.selected.unit.merk_unit || '-') + ' | ' + (s.selected.unit.model_unit || '-'))}</div>
+                                            <div><strong>Serial Number:</strong> ${s.selected.unit.serial_number || '-'}</div>
+                                            <div><strong>Tipe Unit:</strong> ${s.selected.unit.tipe_jenis || '-'}</div>
+                                            <div><strong>Kapasitas:</strong> ${s.selected.unit.kapasitas_name || '-'}</div>
+                                            <div><strong>Mast:</strong> ${s.selected.unit.mast || s.selected.unit.mast_model || '-'}</div>
+                                            <div><strong>Roda:</strong> ${s.selected.unit.roda || '-'}</div>
+                                            <div><strong>Ban:</strong> ${s.selected.unit.ban || '-'}</div>
+                                            <div><strong>Valve:</strong> ${s.selected.unit.valve || '-'}</div>
+                                            ${ (s.selected && s.selected.attachment) ? `<div><strong>Attachment:</strong> ${s.selected.attachment.tipe || '-'} | ${s.selected.attachment.merk || '-'} | ${s.selected.attachment.model || '-'}${s.selected.attachment.sn_attachment ? (' [SN: ' + s.selected.attachment.sn_attachment + ']') : ''}${s.selected.attachment.lokasi_penyimpanan ? (' @ ' + s.selected.attachment.lokasi_penyimpanan) : ''}</div>` : ''}
+                                            <div><strong>Catatan:</strong> ${(s.selected && s.selected.catatan) ? s.selected.catatan : '-'}</div>
+                                        </div>
+                                        <div class="col-12"><hr></div>
+                                    `;
+                                }
+                                for (let i = 1; i <= totalUnits; i++) { 
+                                    itemsHtml += renderItemBlock(i, totalUnits); 
+                                }
+                            } else {
+                                // No data available
+                                console.log('⚠️ No item data available');
+                                itemsHtml = `
+                                    <div class="col-12">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle"></i> 
+                                            Item belum dipilih atau sedang dalam proses persiapan unit.
+                                        </div>
+                                    </div>
+                                `;
+                            }
+                            
+                            return itemsHtml;
+                        })()}
                     </div>`;
             } catch(error) {
                 body.innerHTML = `<div class="alert alert-danger">Error rendering SPK detail: ${error.message}</div>`;
@@ -2733,3 +2845,17 @@ $can_export = $permissions['export'];
     <?php endif; ?>
 </div>
 <?= $this->endSection() ?>
+
+<!-- CSS untuk svcUnitDetailBlock agar konsisten dengan Service -->
+<style>
+.svcUnitDetailBlock {
+    border-left: 3px solid #0d6efd;
+    padding-left: 15px;
+    background-color: #f8f9fa;
+    margin-bottom: 10px;
+}
+
+.svcUnitDetailBlock > div {
+    padding: 2px 0;
+}
+</style>
