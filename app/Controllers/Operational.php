@@ -960,18 +960,19 @@ class Operational extends BaseController
                             $updateUnitData['tanggal_kirim'] = date('Y-m-d');
                         }
 
-                        // Get pricing from kontrak_spesifikasi
+                        // Get pricing from quotation_specifications via SPK
                         if ($kontrakSpesifikasiId) {
-                            $kontrakSpec = $this->db->table('kontrak_spesifikasi')
+                            // kontrak_spesifikasi_id in SPK now refers to quotation_specifications.id
+                            $quotationSpec = $this->db->table('quotation_specifications')
                                 ->where('id', $kontrakSpesifikasiId)
                                 ->get()->getRowArray();
                             
-                            if ($kontrakSpec) {
-                                if (!empty($kontrakSpec['harga_per_unit_bulanan'])) {
-                                    $updateUnitData['harga_sewa_bulanan'] = $kontrakSpec['harga_per_unit_bulanan'];
+                            if ($quotationSpec) {
+                                if (!empty($quotationSpec['harga_per_unit_bulanan'])) {
+                                    $updateUnitData['harga_sewa_bulanan'] = $quotationSpec['harga_per_unit_bulanan'];
                                 }
-                                if (!empty($kontrakSpec['harga_per_unit_harian'])) {
-                                    $updateUnitData['harga_sewa_harian'] = $kontrakSpec['harga_per_unit_harian'];
+                                if (!empty($quotationSpec['harga_per_unit_harian'])) {
+                                    $updateUnitData['harga_sewa_harian'] = $quotationSpec['harga_per_unit_harian'];
                                 }
                             }
                         }

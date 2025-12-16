@@ -213,10 +213,11 @@ class MarketingOptimized extends BaseDataTableController
         if (empty($contractIds)) return [];
         
         $results = $this->db->query("
-            SELECT kontrak_id, COUNT(*) as count
-            FROM kontrak_spesifikasi 
-            WHERE kontrak_id IN (" . implode(',', $contractIds) . ")
-            GROUP BY kontrak_id
+            SELECT q.kontrak_id, COUNT(qs.id) as count
+            FROM quotations q
+            LEFT JOIN quotation_specifications qs ON q.id = qs.quotation_id
+            WHERE q.kontrak_id IN (" . implode(',', $contractIds) . ")
+            GROUP BY q.kontrak_id
         ")->getResultArray();
         
         return array_column($results, 'count', 'kontrak_id');
@@ -351,9 +352,10 @@ class MarketingOptimized extends BaseDataTableController
                 GROUP BY kontrak_id
             ) unit_stats ON k.id = unit_stats.kontrak_id
             LEFT JOIN (
-                SELECT kontrak_id, COUNT(*) as spec_count
-                FROM kontrak_spesifikasi 
-                GROUP BY kontrak_id
+                SELECT q.kontrak_id, COUNT(qs.id) as spec_count
+                FROM quotations q
+                LEFT JOIN quotation_specifications qs ON q.id = qs.quotation_id
+                GROUP BY q.kontrak_id
             ) spec_stats ON k.id = spec_stats.kontrak_id
             ORDER BY k.id ASC
             LIMIT ? OFFSET ?
