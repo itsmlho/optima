@@ -699,20 +699,35 @@ class Warehouse extends BaseController
             
             $data['attachments'] = $attachments;
             
-            // Get contract specifications if contract exists
+            // Get contract specifications from quotation if contract exists
             if ($data['kontrak_id']) {
-                $kontrakSpekQuery = $db->query('
-                    SELECT 
-                        ks.*,
-                        COALESCE(tu.tipe, "-") as spek_tipe_unit,
-                        COALESCE(ku.kapasitas_unit, "-") as spek_kapasitas
-                    FROM kontrak_spesifikasi ks
-                    LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = ks.tipe_unit_id
-                    LEFT JOIN kapasitas ku ON ku.id_kapasitas = ks.kapasitas_id
-                    WHERE ks.kontrak_id = ?
+                // Get quotation linked to this contract
+                $quotationQuery = $db->query('
+                    SELECT q.id_quotation as quotation_id
+                    FROM quotations q
+                    WHERE q.created_contract_id = ?
+                    LIMIT 1
                 ', [$data['kontrak_id']]);
                 
-                $data['kontrak_spesifikasi'] = $kontrakSpekQuery->getResultArray();
+                $quotation = $quotationQuery->getRowArray();
+                
+                if ($quotation) {
+                    // Get quotation specifications
+                    $kontrakSpekQuery = $db->query('
+                        SELECT 
+                            qs.*,
+                            COALESCE(tu.tipe, "-") as spek_tipe_unit,
+                            COALESCE(ku.kapasitas_unit, "-") as spek_kapasitas
+                        FROM quotation_specifications qs
+                        LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = qs.tipe_unit_id
+                        LEFT JOIN kapasitas ku ON ku.id_kapasitas = qs.kapasitas_id
+                        WHERE qs.id_quotation = ?
+                    ', [$quotation['quotation_id']]);
+                    
+                    $data['kontrak_spesifikasi'] = $kontrakSpekQuery->getResultArray();
+                } else {
+                    $data['kontrak_spesifikasi'] = [];
+                }
             } else {
                 $data['kontrak_spesifikasi'] = [];
             }

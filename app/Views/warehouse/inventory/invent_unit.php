@@ -165,7 +165,7 @@ $can_export = $permissions['export'];
 
 <!-- Modal View Unit Detail - Enhanced Modern Design -->
 <div class="modal fade" id="viewUnitModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-light border-bottom">
                 <h5 class="modal-title fw-bold"><i class="fas fa-cube me-2 text-secondary"></i>Detail Unit Lengkap</h5>

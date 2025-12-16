@@ -319,17 +319,34 @@ class ActivityLogViewer extends BaseController
 
     private function generateKontrakSpesifikasiDescription($row, $db)
     {
-        // Get spek_kode and kontrak info
-        $spekQuery = $db->table('kontrak_spesifikasi ks')
-            ->select('ks.spek_kode, k.nomor_kontrak, k.nama_customer')
-            ->join('kontrak k', 'k.id = ks.kontrak_id', 'left')
-            ->where('ks.id', $row['record_id'])
-            ->get();
-        $spekData = $spekQuery->getRowArray();
+        // This function reads HISTORICAL LOGS from activity_log table
+        // Even though kontrak_spesifikasi table is migrated to quotation_specifications,
+        // the activity_log still has old records with table_name='kontrak_spesifikasi'
         
-        $spekKode = $spekData['spek_kode'] ?? 'SPEK#' . $row['record_id'];
-        $kontrakNumber = $spekData['nomor_kontrak'] ?? 'Unknown';
-        $customer = $spekData['nama_customer'] ?? '';
+        // Try to extract info from log's old_values/new_values JSON
+        $oldValues = json_decode($row['old_values'] ?? '{}', true);
+        $newValues = json_decode($row['new_values'] ?? '{}', true);
+        
+        // Get spek_kode from log data
+        $spekKode = $newValues['spek_kode'] ?? $oldValues['spek_kode'] ?? 'SPEK#' . $row['record_id'];
+        $kontrakId = $newValues['kontrak_id'] ?? $oldValues['kontrak_id'] ?? null;
+        
+        // Try to get kontrak info if kontrak_id exists in log
+        $kontrakNumber = 'Unknown';
+        $customer = '';
+        if ($kontrakId) {
+            $kontrakQuery = $db->table('kontrak k')
+                ->select('k.no_kontrak, cl.location_name, c.customer_name')
+                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+                ->join('customers c', 'cl.customer_id = c.id', 'left')
+                ->where('k.id', $kontrakId)
+                ->get();
+            $kontrakData = $kontrakQuery->getRowArray();
+            if ($kontrakData) {
+                $kontrakNumber = $kontrakData['no_kontrak'];
+                $customer = $kontrakData['customer_name'];
+            }
+        }
         
         if ($row['action_type'] === 'CREATE') {
             $customerInfo = $customer ? " untuk {$customer}" : "";
