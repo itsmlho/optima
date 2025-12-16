@@ -3273,6 +3273,12 @@ function openSpecificationsModal(quotationId) {
     });
 }
 
+function printQuotation(quotationId) {
+    // Open print quotation in new window
+    const printUrl = '<?= base_url('marketing/quotations/print/') ?>' + quotationId;
+    window.open(printUrl, '_blank', 'noopener,noreferrer');
+}
+
 function sendQuotation(quotationId) {
     Swal.fire({
         title: 'Send Quotation?',

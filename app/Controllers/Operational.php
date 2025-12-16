@@ -511,25 +511,31 @@ class Operational extends BaseController
 
     public function diDetail($id)
     {
-        // Get DI with user name resolution for dibuat_oleh field
-        $di = $this->db->table('delivery_instructions di')
-            ->select('di.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, di.dibuat_oleh) as dibuat_oleh_name')
-            ->join('users u', 'u.id = di.dibuat_oleh', 'left')
-            ->where('di.id', (int)$id)
-            ->get()->getRowArray();
-            
-        if (!$di) {
-            return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'DI tidak ditemukan']);
-        }
-        
-        $spk = null;
-        if (!empty($di['spk_id'])) {
-            $spk = $this->db->table('spk s')
-                ->select('s.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, s.dibuat_oleh) as created_by_name')
-                ->join('users u', 'u.id = s.dibuat_oleh', 'left')
-                ->where('s.id', (int)$di['spk_id'])
+        try {
+            // Get DI with user name resolution for dibuat_oleh field
+            $di = $this->db->table('delivery_instructions di')
+                ->select('di.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, di.dibuat_oleh) as dibuat_oleh_name')
+                ->join('users u', 'u.id = di.dibuat_oleh', 'left')
+                ->where('di.id', (int)$id)
                 ->get()->getRowArray();
-        }
+                
+            if (!$di) {
+                return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'DI tidak ditemukan']);
+            }
+            
+            $spk = null;
+            if (!empty($di['spk_id'])) {
+                try {
+                    $spk = $this->db->table('spk s')
+                        ->select('s.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, s.dibuat_oleh) as created_by_name')
+                        ->join('users u', 'u.id = s.dibuat_oleh', 'left')
+                        ->where('s.id', (int)$di['spk_id'])
+                        ->get()->getRowArray();
+                } catch (\Exception $e) {
+                    log_message('error', 'Error loading SPK for DI detail: ' . $e->getMessage());
+                    $spk = null;
+                }
+            }
 
         // Get all delivery items with detailed information, grouping by unit
         $rawItems = $this->db->query("
@@ -703,13 +709,15 @@ class Operational extends BaseController
             if ($kontrak) {
                 $kontrakData = $kontrak;
                 
-                // Also get kontrak spesifikasi for attachment data
-                $kontrakSpesifikasi = $this->db->table('kontrak_spesifikasi ks')
-                    ->where('ks.kontrak_id', $kontrak['id'])
-                    ->get()->getRowArray();
-                if ($kontrakSpesifikasi) {
-                    // Merge kontrak spesifikasi data into kontrakData
-                    $kontrakData = array_merge($kontrakData, $kontrakSpesifikasi);
+                // Also get quotation specification for attachment data if available
+                if (!empty($spk['quotation_specification_id'])) {
+                    $quotationSpec = $this->db->table('quotation_specifications')
+                        ->where('id_specification', $spk['quotation_specification_id'])
+                        ->get()->getRowArray();
+                    if ($quotationSpec) {
+                        // Merge quotation specification data into kontrakData
+                        $kontrakData = array_merge($kontrakData, $quotationSpec);
+                    }
                 }
             }
         }
@@ -730,16 +738,24 @@ class Operational extends BaseController
             $formattedStandaloneAttachments = [$attachmentFromSpesifikasi];
         }
 
-        return $this->response->setJSON([
-            'success'=>true,
-            'data'=>$di,
-            'spk'=>$spk,
-            'spesifikasi'=>$spesifikasi,
-            'kontrak'=>$kontrakData,
-            'items'=>$structuredItems,
-            'attachments'=>$formattedStandaloneAttachments,
-            'csrf_hash'=>csrf_hash()
-        ]);
+            return $this->response->setJSON([
+                'success'=>true,
+                'data'=>$di,
+                'spk'=>$spk,
+                'spesifikasi'=>$spesifikasi,
+                'kontrak'=>$kontrakData,
+                'items'=>$structuredItems,
+                'attachments'=>$formattedStandaloneAttachments,
+                'csrf_hash'=>csrf_hash()
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Error in diDetail: ' . $e->getMessage() . ' at line ' . $e->getLine());
+            return $this->response->setStatusCode(500)->setJSON([
+                'success'=>false,
+                'message'=>'Terjadi kesalahan saat memuat detail DI: ' . $e->getMessage()
+            ]);
+        }
     }
 
     public function diApproveStage($id)

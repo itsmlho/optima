@@ -521,6 +521,10 @@ class Marketing extends BaseDataTableController
                 $actions .= '</button>';
                 
                 if ($hasSpecs) {
+                    $actions .= '<button class="btn btn-sm btn-secondary me-1" onclick="printQuotation(' . $quotationId . ')" title="Print PDF">';
+                    $actions .= '<i class="fas fa-print me-1"></i>Print';
+                    $actions .= '</button>';
+                    
                     $actions .= '<button class="btn btn-sm btn-info" onclick="sendQuotation(' . $quotationId . ')" title="Send Quotation">';
                     $actions .= '<i class="fas fa-paper-plane me-1"></i>Send';
                     $actions .= '</button>';
@@ -531,7 +535,11 @@ class Marketing extends BaseDataTableController
                 }
                 break;
                 
-            case 'SENT':              
+            case 'SENT':
+                $actions .= '<button class="btn btn-sm btn-secondary me-1" onclick="printQuotation(' . $quotationId . ')" title="Print PDF">';
+                $actions .= '<i class="fas fa-print me-1"></i>Print';
+                $actions .= '</button>';
+                              
                 $actions .= '<button class="btn btn-sm btn-success me-1" onclick="markAsDeal(' . $quotationId . ')" title="Mark as Deal">';
                 $actions .= '<i class="fas fa-handshake me-1"></i>Deal';
                 $actions .= '</button>';
@@ -541,6 +549,11 @@ class Marketing extends BaseDataTableController
                 break;
                 
             case 'DEAL':
+                // Print button available for all DEAL quotations
+                $actions .= '<button class="btn btn-sm btn-secondary me-1" onclick="printQuotation(' . $quotationId . ')" title="Print PDF">';
+                $actions .= '<i class="fas fa-print me-1"></i>Print';
+                $actions .= '</button>';
+                
                 // STRICT SEQUENTIAL WORKFLOW - Use database flags for reliable state
                 $customerLocationComplete = !empty($quotation['customer_location_complete']);
                 $customerContractComplete = !empty($quotation['customer_contract_complete']);
@@ -1961,11 +1974,11 @@ class Marketing extends BaseDataTableController
         }
         $enriched = $spec;
         
-        // Load kontrak_spesifikasi data (for Equipment section - data permintaan marketing)
+        // Load quotation_specifications data (for Equipment section - data permintaan marketing)
         $kontrak_spec = null;
-        if (!empty($row['kontrak_spesifikasi_id'])) {
-            $kontrak_spec = $this->db->table('kontrak_spesifikasi ks')
-                ->select('ks.*')
+        if (!empty($row['quotation_specification_id'])) {
+            $kontrak_spec = $this->db->table('quotation_specifications qs')
+                ->select('qs.*')
                 ->select('tu.jenis as kontrak_jenis_unit, tu.tipe as kontrak_tipe_unit')
                 ->select('k.kapasitas_unit as kontrak_kapasitas_name')
                 ->select('d.nama_departemen as kontrak_departemen_name')
@@ -1974,27 +1987,64 @@ class Marketing extends BaseDataTableController
                 ->select('tb.tipe_ban as kontrak_ban_name')
                 ->select('v.jumlah_valve as kontrak_valve_name')
                 ->select('chr.merk_charger as kontrak_merk_charger, chr.tipe_charger as kontrak_tipe_charger')
-                ->join('tipe_unit tu', 'tu.id_tipe_unit = ks.tipe_unit_id', 'left')
-                ->join('kapasitas k', 'k.id_kapasitas = ks.kapasitas_id', 'left')
-                ->join('departemen d', 'd.id_departemen = ks.departemen_id', 'left')
-                ->join('tipe_mast tm', 'tm.id_mast = ks.mast_id', 'left')
-                ->join('jenis_roda jr', 'jr.id_roda = ks.roda_id', 'left')
-                ->join('tipe_ban tb', 'tb.id_ban = ks.ban_id', 'left')
-                ->join('valve v', 'v.id_valve = ks.valve_id', 'left')
-                ->join('charger chr', 'chr.id_charger = ks.charger_id', 'left')
-                ->where('ks.id', $row['kontrak_spesifikasi_id'])
+                ->select('mu.merk_unit, mu.model_unit')
+                ->select('att.tipe as attachment_tipe, att.merk as attachment_merk, att.model as attachment_model')
+                ->select('bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai')
+                ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
+                ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
+                ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
+                ->join('tipe_mast tm', 'tm.id_mast = qs.mast_id', 'left')
+                ->join('jenis_roda jr', 'jr.id_roda = qs.roda_id', 'left')
+                ->join('tipe_ban tb', 'tb.id_ban = qs.ban_id', 'left')
+                ->join('valve v', 'v.id_valve = qs.valve_id', 'left')
+                ->join('charger chr', 'chr.id_charger = qs.charger_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = qs.brand_id', 'left')
+                ->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left')
+                ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
+                ->where('qs.id_specification', $row['quotation_specification_id'])
                 ->get()
                 ->getRowArray();
 
-            // Decode aksesoris JSON if stored as string
-            if ($kontrak_spec && isset($kontrak_spec['aksesoris']) && is_string($kontrak_spec['aksesoris'])) {
-                try {
-                    $decoded_aks = json_decode($kontrak_spec['aksesoris'], true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $kontrak_spec['aksesoris'] = $decoded_aks;
+            // Map quotation_specifications fields to expected kontrak_spesifikasi format
+            if ($kontrak_spec) {
+                // Map new field names to legacy names for compatibility
+                $kontrak_spec['jumlah_dibutuhkan'] = $kontrak_spec['quantity'] ?? 1;
+                
+                // Map battery information
+                if (!empty($kontrak_spec['merk_baterai']) || !empty($kontrak_spec['tipe_baterai']) || !empty($kontrak_spec['jenis_baterai'])) {
+                    $batteryParts = array_filter([
+                        $kontrak_spec['merk_baterai'] ?? '',
+                        $kontrak_spec['tipe_baterai'] ?? '',
+                        $kontrak_spec['jenis_baterai'] ?? ''
+                    ]);
+                    $kontrak_spec['jenis_baterai'] = implode(' ', $batteryParts);
+                }
+                
+                // Map attachment information
+                if (!empty($kontrak_spec['attachment_tipe'])) {
+                    $kontrak_spec['attachment_name'] = $kontrak_spec['attachment_tipe'];
+                    if (!empty($kontrak_spec['attachment_merk'])) {
+                        $kontrak_spec['attachment_name'] .= ' ' . $kontrak_spec['attachment_merk'];
                     }
-                } catch (\Exception $e) {
-                    // keep original string on failure
+                    if (!empty($kontrak_spec['attachment_model'])) {
+                        $kontrak_spec['attachment_name'] .= ' ' . $kontrak_spec['attachment_model'];
+                    }
+                }
+                
+                // Decode unit_accessories JSON if stored as string
+                if (isset($kontrak_spec['unit_accessories']) && is_string($kontrak_spec['unit_accessories'])) {
+                    try {
+                        $decoded_aks = json_decode($kontrak_spec['unit_accessories'], true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $kontrak_spec['aksesoris'] = $decoded_aks;
+                        } else {
+                            $kontrak_spec['aksesoris'] = $kontrak_spec['unit_accessories'];
+                        }
+                    } catch (\Exception $e) {
+                        $kontrak_spec['aksesoris'] = $kontrak_spec['unit_accessories'];
+                    }
+                } else {
+                    $kontrak_spec['aksesoris'] = $kontrak_spec['unit_accessories'] ?? '';
                 }
             }
             
@@ -7157,6 +7207,68 @@ class Marketing extends BaseDataTableController
                 'message' => 'Failed to create SPK: ' . $e->getMessage()
             ]);
         }
+    }
+
+    /**
+     * Print Quotation PDF - Professional format for customer
+     */
+    public function quotationPrint($id)
+    {
+        $id = (int)$id;
+        
+        // Get quotation data
+        $quotation = $this->quotationModel->find($id);
+        if (!$quotation) {
+            return $this->response->setStatusCode(404)->setBody('Quotation tidak ditemukan');
+        }
+
+        // Get quotation specifications with related data
+        $specifications = $this->db->table('quotation_specifications qs')
+            ->select('qs.*')
+            ->select('tu.jenis as unit_type, tu.tipe as unit_subtype')
+            ->select('k.kapasitas_unit as capacity_name')
+            ->select('d.nama_departemen as department_name')
+            ->select('mu.merk_unit as brand_name, mu.model_unit as model_name')
+            ->select('tm.tipe_mast as mast_name')
+            ->select('jr.tipe_roda as wheel_name')
+            ->select('tb.tipe_ban as tire_name')
+            ->select('v.jumlah_valve as valve_name')
+            ->select('chr.merk_charger as charger_brand, chr.tipe_charger as charger_type')
+            ->select('att.tipe as attachment_type, att.merk as attachment_brand, att.model as attachment_model')
+            ->select('bat.merk_baterai as battery_brand, bat.tipe_baterai as battery_type, bat.jenis_baterai as jenis_baterai')
+            ->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left')
+            ->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left')
+            ->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = qs.brand_id', 'left')
+            ->join('tipe_mast tm', 'tm.id_mast = qs.mast_id', 'left')
+            ->join('jenis_roda jr', 'jr.id_roda = qs.roda_id', 'left')
+            ->join('tipe_ban tb', 'tb.id_ban = qs.ban_id', 'left')
+            ->join('valve v', 'v.id_valve = qs.valve_id', 'left')
+            ->join('charger chr', 'chr.id_charger = qs.charger_id', 'left')
+            ->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left')
+            ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
+            ->where('qs.id_quotation', $id)
+            ->where('qs.is_active', 1)
+            ->orderBy('qs.specification_type', 'ASC')
+            ->orderBy('qs.id_specification', 'ASC')
+            ->get()
+            ->getResultArray();
+
+        // Get created by user info
+        $createdBy = $this->db->table('users')->where('id', $quotation['created_by'])->get()->getRowArray();
+        $quotation['created_by_name'] = $createdBy['nama'] ?? $createdBy['username'] ?? 'Unknown';
+        $quotation['created_by_phone'] = $createdBy['no_hp'] ?? $createdBy['phone'] ?? '';
+
+        // Get assigned to user info
+        if (!empty($quotation['assigned_to'])) {
+            $assignedTo = $this->db->table('users')->where('id', $quotation['assigned_to'])->get()->getRowArray();
+            $quotation['assigned_to_name'] = $assignedTo['nama'] ?? $assignedTo['username'] ?? 'Unknown';
+        }
+
+        return view('marketing/print_quotation', [
+            'quotation' => $quotation,
+            'specifications' => $specifications
+        ]);
     }
 
     /**

@@ -1,7 +1,7 @@
 <?php
 $spk = $spk ?? [];
 $s   = $spesifikasi ?? [];
-$k   = $kontrak_spesifikasi ?? []; // Data kontrak untuk Equipment section
+$k   = $kontrak_spesifikasi ?? []; // Data quotation_specifications untuk Equipment section
 $status = strtoupper((string)($spk['status'] ?? $spk['status_spk'] ?? ''));
 $placeholder = ($status === 'SUBMITTED');
 ?>
@@ -477,7 +477,7 @@ $placeholder = ($status === 'SUBMITTED');
     <!-- Keterangan section untuk kontrak spesifikasi -->
     <div class="specification-section">
         <div class="mb-1" style="font-style: italic; color: #666;">
-            Permintaan Spesifikasi (Data Kontrak)
+            Permintaan Spesifikasi (Data Quotation Specifications)
         </div>
 
     <table class="table">
@@ -511,7 +511,7 @@ $placeholder = ($status === 'SUBMITTED');
                 </td>
                 <td class="align-top">
                     <?php 
-                        // Use kontrak data for Equipment section (data permintaan marketing)
+                        // Use quotation_specifications data for Equipment section (data permintaan marketing)
                         $jumlahUnit = $k['jumlah_dibutuhkan'] ?? $spk['jumlah_unit'] ?? '';
                         $merkUnit = $k['merk_unit'] ?? '';
                         $modelUnit = $k['model_unit'] ?? '';
@@ -524,10 +524,10 @@ $placeholder = ($status === 'SUBMITTED');
                         $banName = $k['kontrak_ban_name'] ?? $k['ban_name'] ?? '';
                         $valveName = $k['kontrak_valve_name'] ?? $k['valve_name'] ?? '';
                         
-                        // Attachment dari kontrak (bukan dari spesifikasi SPK)
+                        // Attachment dari quotation_specifications (bukan dari spesifikasi SPK)
                         $attachmentType = $k['attachment_tipe'] ?? $k['attachment_name'] ?? '';
                         
-                        // Battery dan Charger dari kontrak
+                        // Battery dan Charger dari quotation_specifications
                         $batteryType = $k['jenis_baterai'] ?? $k['baterai_type'] ?? '';
                         $chargerType = $k['kontrak_charger_model'] ?? $k['charger_model'] ?? '';
                     ?>
@@ -567,10 +567,10 @@ $placeholder = ($status === 'SUBMITTED');
                 <td class="text-center align-middle">3.</td>
                 <td class="align-middle"><strong>Aksesoris</strong></td>
                 <td class="val"><?php
-                    // Use aksesoris from kontrak (data permintaan marketing)
+                    // Use aksesoris from quotation_specifications (data permintaan marketing)
                     $aksText = '..............................';
                     
-                    // Prioritaskan aksesoris dari kontrak_spesifikasi
+                    // Prioritaskan aksesoris dari quotation_specifications
                     if (!empty($k['aksesoris'])) {
                         if (is_array($k['aksesoris'])) {
                             $aksText = implode(', ', $k['aksesoris']);
@@ -588,7 +588,7 @@ $placeholder = ($status === 'SUBMITTED');
                             }
                         }
                     } elseif (!empty($s['aksesoris'])) {
-                        // Fallback ke spesifikasi jika kontrak tidak ada
+                        // Fallback ke spesifikasi jika quotation_specifications tidak ada
                         if (is_array($s['aksesoris'])) {
                             $aksText = implode(', ', $s['aksesoris']);
                         } else if (is_string($s['aksesoris'])) {

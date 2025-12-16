@@ -114,6 +114,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('quotations/stats', 'Marketing::getQuotationStats');
     $routes->post('quotations/data', 'Marketing::getQuotationsData');
     $routes->post('quotations/linkContract', 'Marketing::linkContract');
+    $routes->get('quotations/print/(:num)', 'Marketing::quotationPrint/$1');
     $routes->get('quotations/getQuotation/(:num)', 'Marketing::getQuotation/$1');
     $routes->get('quotations/getSpecifications/(:num)', 'Marketing::getSpecifications/$1');
     $routes->get('quotations/getCustomerProfileStatus/(:num)', 'Marketing::getCustomerProfileStatus/$1');

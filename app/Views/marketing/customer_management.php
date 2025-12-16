@@ -135,7 +135,7 @@ $can_export = $permissions['export'];
                     <small class="text-muted" id="customerCode"></small>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-outline-primary btn-sm" id="printCustomerPDF" title="Print PDF Report">
+                    <button type="button" class="btn btn-primary btn-sm text-white" id="printCustomerPDF" title="Print PDF Report">
                         <i class="bi bi-file-earmark-pdf me-1"></i>Print PDF
                     </button>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
