@@ -51,11 +51,11 @@
 <div class="modal-optimized" id="activityDetailModal" tabindex="-1">
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title">
                     <i class="fas fa-list-alt me-2"></i>Activity Log Detail
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="activityDetailContent" data-dynamic="true">
                 <!-- Content loaded dynamically for performance -->

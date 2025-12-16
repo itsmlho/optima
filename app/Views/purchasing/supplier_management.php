@@ -143,7 +143,7 @@
 <div class="modal fade" id="supplierDetailModal" tabindex="-1" aria-labelledby="supplierDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title" id="supplierDetailModalLabel">
                     <i class="fas fa-building me-2"></i>Detail Supplier
                 </h5>

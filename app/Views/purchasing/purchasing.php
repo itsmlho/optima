@@ -513,7 +513,7 @@ $can_export = $permissions['export'];
 <div class="modal fade" id="createPoModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title">
                     <i class="fas fa-plus me-2"></i>Buat Purchase Order - Unit & Attachment
                 </h5>

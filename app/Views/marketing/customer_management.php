@@ -241,7 +241,7 @@ $can_export = $permissions['export'];
 
 <!-- Contract Detail Modal -->
 <div class="modal fade" id="contractDetailModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -263,32 +263,16 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
 
-                <!-- Contract Tabs -->
-                <ul class="nav nav-tabs" id="contractDetailTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="locations-tab-contract" data-bs-toggle="tab" data-bs-target="#locations-content-contract" type="button">
-                            <i class="fas fa-map-marker-alt me-1"></i>Locations & Units
-                        </button>
-                    </li>
-                </ul>
-
-                <!-- Tab Content -->
-                <div class="tab-content mt-3" id="contractDetailTabContent">
-                    <!-- Locations & Units Tab -->
-                    <div class="tab-pane fade show active" id="locations-content-contract" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><strong>Locations & Units</strong></h6>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="accordion" id="locationsAccordion">
-                                    <!-- Locations loaded dynamically -->
-                                </div>
-                            </div>
+                <!-- Locations & Units Section -->
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h6 class="mb-0"><i class="fas fa-map-marker-alt me-2"></i><strong>Locations & Units</strong></h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="accordion" id="locationsAccordion">
+                            <!-- Locations loaded dynamically -->
                         </div>
                     </div>
-
-
                 </div>
             </div>
             <div class="modal-footer bg-light">
@@ -300,7 +284,7 @@ $can_export = $permissions['export'];
 
 <!-- Unit Detail Modal -->
 <div class="modal fade" id="unitDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -317,60 +301,6 @@ $can_export = $permissions['export'];
             <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-white" data-bs-dismiss="modal">Close</button>
             </div>
-        </div>
-    </div>
-</div>
-
-<!-- Add Attachment Spesifikasi Modal -->
-<div class="modal fade" id="addAttachmentSpesifikasiModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h6 class="modal-title">Tambah Spesifikasi Attachment</h6>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="addAttachmentSpesifikasiForm" method="post" action="javascript:void(0)">
-                <div class="modal-body">
-                    <input type="hidden" name="kontrak_id" id="attachmentSpekKontrakId">
-                    
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Tipe Attachment <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" name="attachment_tipe" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Merk Attachment</label>
-                            <input type="text" class="form-control" name="attachment_merk" placeholder="Sesuai Kebutuhan">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Jumlah Dibutuhkan <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="jumlah_dibutuhkan" min="1" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Departemen</label>
-                            <input type="text" class="form-control" name="nama_departemen">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Harga Bulanan <span class="text-danger">*</span></label>
-                            <input type="number" class="form-control" name="harga_per_unit_bulanan" min="0" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Harga Harian</label>
-                            <input type="number" class="form-control" name="harga_per_unit_harian" min="0">
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label">Catatan Spesifikasi</label>
-                            <textarea class="form-control" name="catatan_spek" rows="3"></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-save me-1"></i>Simpan Attachment
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 </div>
@@ -708,244 +638,6 @@ $can_export = $permissions['export'];
     </div>
 </div>
 
-<!-- Add Spesifikasi Modal -->
-<div class="modal fade" id="addSpesifikasiModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h6 class="modal-title">Tambah Spesifikasi Unit</h6>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form id="addSpesifikasiForm" method="post" action="javascript:void(0)">
-                <div class="modal-body">
-                    <input type="hidden" name="kontrak_id" id="spekKontrakId">
-                    
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Jumlah Unit Dibutuhkan</label>
-                            <input type="number" class="form-control" name="jumlah_dibutuhkan" min="1" value="1" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Nama Spesifikasi Unit</label>
-                            <input type="text" class="form-control" name="catatan_spek" placeholder="Opsional">
-                            <small class="text-muted">Masukan keterangan, misalnya "Spesifikasi 1", "Unit Spare", "Tambahan Unit", dst.</small>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <label class="form-label">Harga Sewa Bulanan <span class="text-danger" id="hargaRequired">*</span></label>
-                            <input type="number" class="form-control" name="harga_per_unit_bulanan" step="0.01" placeholder="Rp per unit per bulan" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Harga Sewa Harian</label>
-                            <input type="number" class="form-control" name="harga_per_unit_harian" step="0.01" placeholder="Rp per unit per hari">
-                        </div>
-                        
-                        <div class="col-12"><hr><h6>Spesifikasi Teknis</h6></div>
-                        
-                        <div class="col-md-4">
-                            <label class="form-label">Departemen <span class="text-danger">*</span></label>
-                            <select class="form-select" name="departemen_id" id="spekDepartemen" required></select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Tipe Unit <span class="text-danger">*</span></label>
-                            <select class="form-select" name="tipe_unit_id" id="spekTipeUnit" required>
-                                <option value="">-- Pilih Tipe Unit --</option>
-                            </select>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label class="form-label">Kapasitas</label>
-                            <select class="form-select" name="kapasitas_id" id="spekKapasitas">
-                                <option value="">-- Pilih Kapasitas --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Merk Unit</label>
-                            <select class="form-select" name="merk_unit" id="spekMerkUnit">
-                                <option value="">-- Pilih Merk --</option>
-                            </select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Baterai</label>
-                            <select class="form-select" name="jenis_baterai" id="spekJenisBaterai">
-                                <option value="">-- Pilih Baterai --</option>
-                            </select>
-                            <small class="text-muted">Hanya tersedia untuk unit Electric</small>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Charger</label>
-                            <select class="form-select" name="charger_id" id="spekCharger"></select>
-                            <small class="text-muted">Hanya tersedia untuk unit Electric</small>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Attachment Tipe</label>
-                            <select class="form-select" name="attachment_tipe" id="spekAttachmentTipe"></select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Valve</label>
-                            <select class="form-select" name="valve_id" id="spekValve"></select>
-                        </div>
-                        
-                        <div class="col-md-4">
-                            <label class="form-label">Mast</label>
-                            <select class="form-select" name="mast_id" id="spekMast"></select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Ban</label>
-                            <select class="form-select" name="ban_id" id="spekBan"></select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Roda</label>
-                            <select class="form-select" name="roda_id" id="spekRoda"></select>
-                        </div>
-                        
-
-                        
-                        <!-- Accessories Section -->
-                        <div class="col-12"><hr><h6>Aksesoris Unit</h6></div>
-                        <div class="col-12">
-                            <div class="row g-2">
-                                <!-- Row 1 -->
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="LAMPU UTAMA" id="acc_lampu_utama">
-                                        <label class="form-check-label" for="acc_lampu_utama">Lampu</label>
-                                        <small class="text-muted">(Utama, Mundur, Sign, Stop)</small>
-                                    </div>
-                                </div>
-                                
-                                <!-- Row 2 -->
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BLUE SPOT" id="acc_blue_spot">
-                                        <label class="form-check-label" for="acc_blue_spot">Blue Spot</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="RED LINE" id="acc_red_line">
-                                        <label class="form-check-label" for="acc_red_line">Red Line</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="WORK LIGHT" id="acc_work_light">
-                                        <label class="form-check-label" for="acc_work_light">Work Light</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="ROTARY LAMP" id="acc_rotary_lamp">
-                                        <label class="form-check-label" for="acc_rotary_lamp">Rotary Lamp</label>
-                                    </div>
-                                </div>
-                                
-                                <!-- Row 3 -->
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BACK BUZZER" id="acc_back_buzzer">
-                                        <label class="form-check-label" for="acc_back_buzzer">Back Buzzer</label>
-                                    </div>
-
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="CAMERA AI" id="acc_camera_ai">
-                                        <label class="form-check-label" for="acc_camera_ai">Camera AI</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="CAMERA" id="acc_camera">
-                                        <label class="form-check-label" for="acc_camera">Camera</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SENSOR PARKING" id="acc_sensor_parking">
-                                        <label class="form-check-label" for="acc_sensor_parking">Sensor Parking</label>
-                                    </div>
-                                </div>
-                                
-                                <!-- Row 4 -->
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SPEED LIMITER" id="acc_speed_limiter">
-                                        <label class="form-check-label" for="acc_speed_limiter">Speed Limiter</label>
-                                    </div>
-
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="LASER FORK" id="acc_laser_fork">
-                                        <label class="form-check-label" for="acc_laser_fork">Laser Fork</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="VOICE ANNOUNCER" id="acc_voice_announcer">
-                                        <label class="form-check-label" for="acc_voice_announcer">Voice Announcer</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="HORN SPEAKER" id="acc_horn_speaker">
-                                        <label class="form-check-label" for="acc_horn_speaker">Horn Speaker</label>
-                                    </div>
-                                </div>
-                                
-                                <!-- Row 5 -->
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="HORN KLASON" id="acc_horn_klason">
-                                        <label class="form-check-label" for="acc_horn_klason">Horn Klason</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BIO METRIC" id="acc_bio_metric">
-                                        <label class="form-check-label" for="acc_bio_metric">Bio Metric</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="ACRYLIC" id="acc_acrylic">
-                                        <label class="form-check-label" for="acc_acrylic">Acrylic</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="P3K" id="acc_p3k">
-                                        <label class="form-check-label" for="acc_p3k">P3K</label>
-                                    </div>
-                                </div>
-                                
-                                <!-- Row 6 -->
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SAFETY BELT INTERLOC" id="acc_safety_belt">
-                                        <label class="form-check-label" for="acc_safety_belt">Safety Belt Interloc</label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SPARS ARRESTOR" id="acc_spars_arrestor">
-                                        <label class="form-check-label" for="acc_spars_arrestor">Spars Arrestor</label>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary" id="submitSpesifikasiBtn">Simpan Spesifikasi</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <!-- Modal SPK dari Kontrak -->
 <div class="modal fade" id="spkFromKontrakModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -957,7 +649,7 @@ $can_export = $permissions['export'];
             <form id="spkFromKontrakForm">
                 <div class="modal-body">
                     <input type="hidden" name="kontrak_id" id="spkKontrakId">
-                    <input type="hidden" name="kontrak_spesifikasi_id" id="spkSpesifikasiId">
+                    <input type="hidden" name="qoutation_specifications_id" id="spkSpesifikasiId">
                     <div class="mb-3">
                         <label class="form-label">Jenis SPK</label>
                         <select class="form-select" name="jenis_spk" id="spkJenisSpk" required>
@@ -1417,110 +1109,137 @@ function displayContractDetail(contract) {
     `;
     $('#contractInfo').html(contractHtml);
     
-    // Clear cached content when opening a NEW contract (to force fresh data)
-    // This ensures data is reloaded when switching between different contracts
-    $('#locationsAccordion').html('');
-    $('#spesifikasiListContract').html('');
+    // Clear previous content when opening a new contract
+    $('#locationsAccordion').html('<div class="text-center p-3"><i class="fas fa-spinner fa-spin me-2"></i>Memuat data unit...</div>');
     
-    // Load units for this contract (only for the currently active tab)
+    // Load units for this contract
     loadContractUnits(currentContractId);
-    
-    // DON'T auto-load spesifikasi here - let user click tab to load it
-    // This prevents unnecessary data loading and preserves scroll position when switching tabs
 }
 
 // Load contract units grouped by location - using same endpoint as kontrak.php
 function loadContractUnits(contractId) {
+    console.log('🔍 Loading units for contract ID:', contractId);
+    console.log('📡 Calling URL:', `<?= base_url('marketing/kontrak/units/') ?>${contractId}`);
+    
     $.ajax({
         url: `<?= base_url('marketing/kontrak/units/') ?>${contractId}`,
         type: 'GET',
         success: function(response) {
+            console.log('✅ Response received:', response);
+            console.log('📦 Units data:', response.data);
+            console.log('🔢 Units count:', response.count);
+            
             if (response.success) {
-                displayUnitsAccordion(response.data);
+                if (response.data && response.data.length > 0) {
+                    displayUnitsAccordion(response.data);
+                } else {
+                    console.warn('⚠️ Response success but no units found');
+                    $('#locationsAccordion').html('<div class="alert alert-warning">Belum ada unit yang terdaftar untuk kontrak ini.</div>');
+                }
             } else {
-                console.error('Failed to load units:', response.message);
+                console.error('❌ Response success=false:', response.message);
                 $('#locationsAccordion').html('<div class="alert alert-warning">Tidak ada unit ditemukan untuk kontrak ini.</div>');
             }
         },
         error: function(xhr, status, error) {
-            console.error('Error loading units:', error);
+            console.error('❌ AJAX Error:', {xhr, status, error});
+            console.error('Response Text:', xhr.responseText);
             $('#locationsAccordion').html('<div class="alert alert-danger">Gagal memuat data unit.</div>');
         }
     });
 }
 
-// Display units in accordion by location - ENHANCED
+// Display units in accordion by location - FIXED
 function displayUnitsAccordion(units) {
-    // Group units by location with better handling
+    console.log('📦 Displaying units:', units);
+    console.log('📦 First unit structure:', units[0]);
+    
+    if (!units || units.length === 0) {
+        $('#locationsAccordion').html('<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>Tidak ada unit ditemukan untuk kontrak ini.</div>');
+        return;
+    }
+    
+    // Group units by location
     const locationGroups = {};
     
     units.forEach(unit => {
-        // Better location handling
-        let locationKey = unit.lokasi || unit.location_name || unit.alamat || 'Lokasi Utama';
-        
-        // If still empty, try to get from contract data
-        if (locationKey === 'Lokasi Utama' && unit.contract_location) {
-            locationKey = unit.contract_location;
-        }
+        const locationKey = unit.lokasi || 'Lokasi Belum Ditentukan';
         
         if (!locationGroups[locationKey]) {
-            locationGroups[locationKey] = [];
+            locationGroups[locationKey] = {
+                locationName: locationKey,
+                units: []
+            };
         }
-        locationGroups[locationKey].push(unit);
+        locationGroups[locationKey].units.push(unit);
     });
     
     let html = '';
     let index = 0;
     
-    for (const [location, locationUnits] of Object.entries(locationGroups)) {
+    for (const [locationKey, locationData] of Object.entries(locationGroups)) {
+        const locationUnits = locationData.units;
+        
         html += `
             <div class="accordion-item">
                 <h2 class="accordion-header" id="heading${index}">
                     <button class="accordion-button ${index > 0 ? 'collapsed' : ''}" type="button" 
                             data-bs-toggle="collapse" data-bs-target="#collapse${index}">
-                        <i class="fas fa-map-marker-alt me-2"></i>
-                        <strong>${location}</strong>
-                        <span class="badge bg-primary ms-2">${locationUnits.length} UNITS</span>
+                        <i class="fas fa-map-marker-alt me-2 text-primary"></i>
+                        <div>
+                            <strong>${locationData.locationName}</strong>
+                        </div>
+                        <span class="badge bg-primary ms-auto">${locationUnits.length} Unit${locationUnits.length > 1 ? 's' : ''}</span>
                     </button>
                 </h2>
                 <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
                      data-bs-parent="#locationsAccordion">
-                    <div class="accordion-body">
+                    <div class="accordion-body p-0">
                         <div class="table-responsive">
                             <table class="table table-sm table-hover mb-0">
-                                <thead>
-                                <tr>
-                                    <th>No Unit</th>
-                                    <th>Merk/Model</th>
-                                    <th>Kapasitas</th>
-                                    <th>Jenis Unit</th>
-                                    <th>Departemen</th>
-                                    <th>Harga Bulanan</th>
-                                    <th>Harga Harian</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>No Unit</th>
+                                        <th>Serial Number</th>
+                                        <th>Tipe</th>
+                                        <th>Merk/Model</th>
+                                        <th>Kapasitas</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
         `;
         
         locationUnits.forEach(unit => {
+            // Use field names from Kontrak::getContractUnits response
+            const unitId = unit.id || unit.id_inventory_unit;
+            const tipe = unit.jenis_unit || '-';
+            const merk = unit.merk || '-';
+            const model = unit.model || '';
+            const merkModel = (merk === '-' || merk === 'N/A') && (model === '' || model === 'N/A') ? '-' : `${merk} ${model}`.trim();
+            const kapasitas = unit.kapasitas || '-';
+            const status = unit.status || 'N/A';
+            const statusId = unit.status_unit_id;
+            const statusColor = getStatusColor(status, statusId);
+            
             html += `
-                <tr class="unit-row" onclick="showUnitDetail(${unit.id})">
+                <tr style="cursor: pointer;" onclick="showUnitDetail(${unitId})" 
+                    onmouseover="this.style.backgroundColor='#f8f9fa'" 
+                    onmouseout="this.style.backgroundColor=''">
                     <td><strong>${unit.no_unit || '-'}</strong></td>
-                    <td>${unit.merk || '-'} ${unit.model || ''}</td>
-                    <td>${unit.kapasitas || '-'}</td>
-                    <td>${unit.jenis_unit || '-'}</td>
-                    <td>${unit.departemen || '-'}</td>
-                    <td class="text-success fw-bold">Rp ${formatNumber(unit.harga_per_unit_bulanan || unit.harga_bulanan || 0)}</td>
-                    <td class="text-info fw-bold">Rp ${formatNumber(unit.harga_per_unit_harian || unit.harga_harian || 0)}</td>
-                    <td><span class="badge bg-success">${unit.status || 'TERSEDIA'}</span></td>
+                    <td><code>${unit.serial_number || '-'}</code></td>
+                    <td>${tipe}</td>
+                    <td>${merkModel}</td>
+                    <td>${kapasitas}</td>
+                    <td><span class="text-${statusColor}"><i class="fas fa-circle me-1" style="font-size: 0.6rem;"></i>${status}</span></td>
                 </tr>
             `;
         });
         
         html += `
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1528,429 +1247,31 @@ function displayUnitsAccordion(units) {
         index++;
     }
     
-    $('#locationsAccordion').html(html || '<div class="text-center text-muted p-3">No units found</div>');
-    
-    // Update total units count in contract detail
-    const totalUnits = units.length;
-    $('#contractTotalUnits').text(totalUnits);
+    $('#locationsAccordion').html(html);
 }
 
-// Contract spesifikasi functions removed - now handled in quotations module
-
-
-// Load all spesifikasi for a customer (from all contracts)
-// Customer spesifikasi functions removed - now handled in quotations module
-
-// Load contract spesifikasi with correct display - EXACT COPY from customer management
-function loadContractSpesifikasiCorrect(kontrakId) {
-    console.log('loadContractSpesifikasiCorrect called with kontrakId:', kontrakId);
-    const container = document.getElementById('spesifikasiListContract');
-    if (!container) {
-        console.error('spesifikasiListContract container not found!');
-        return;
+// Helper function to get status color (simplified)
+function getStatusColor(status, statusId) {
+    if (statusId) {
+        if (statusId >= 1 && statusId <= 3) return 'info';
+        if (statusId >= 4 && statusId <= 6) return 'success';
+        if (statusId >= 7 && statusId <= 9) return 'primary';
+        if (statusId >= 10) return 'warning';
     }
     
-    console.log('Container found, setting loading message...');
-    container.innerHTML = '<p class="text-muted">Memuat spesifikasi...</p>';
+    if (!status) return 'secondary';
     
-    const url = `<?= base_url('marketing/kontrak/spesifikasi/') ?>${kontrakId}`;
-    console.log('Fetching URL:', url);
-    
-    fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status, response.statusText);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            return response.json();
-        })
-        .then(j => {
-            console.log('Spesifikasi response:', j);
-            if (!j.success) {
-                console.error('API returned error:', j.message);
-                container.innerHTML = '<div class="text-danger">Gagal memuat spesifikasi: ' + (j.message || 'Unknown error') + '</div>';
-                return;
-            }
-            
-            const spesifikasi = j.data || [];
-            const summary = j.summary || {};
-            
-            console.log('Processing spesifikasi data, count:', spesifikasi.length);
-            
-            // Update tab counter
-            const spekCountElement = document.getElementById('spekCountContract');
-            if (spekCountElement) {
-                spekCountElement.textContent = spesifikasi.length;
-            }
-            
-            if (spesifikasi.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-5">
-                        <div class="mb-4">
-                            <i class="fas fa-clipboard-list fa-3x text-muted"></i>
-                        </div>
-                        <h5 class="text-muted">Belum Ada Spesifikasi</h5>
-                        <p class="text-muted mb-4">
-                            Kontrak ini belum memiliki spesifikasi unit yang dibutuhkan.<br>
-                            Tambahkan spesifikasi untuk menentukan jenis unit, jumlah, dan harga yang diperlukan.
-                        </p>
-                        <div class="d-flex flex-column align-items-center gap-2">
-                            <button class="btn btn-primary btn-lg" onclick="openAddSpesifikasiModal()">
-                                <i class="fas fa-plus me-2"></i>Tambah Spesifikasi Pertama
-                            </button>
-                            <small class="text-muted">
-                                <i class="fas fa-info-circle me-1"></i>
-                                Setelah menambah spesifikasi, nilai kontrak akan dihitung otomatis
-                            </small>
-                        </div>
-                    </div>
-                `;
-                return;
-            }
-            
-            displayContractSpesifikasiCorrect(spesifikasi);
-        })
-        .catch(error => {
-            console.error('Error loading specifications:', error);
-            container.innerHTML = '<div class="text-danger">Gagal memuat spesifikasi: ' + error.message + '</div>';
-        });
-}
-
-// Display contract spesifikasi with correct layout - EXACT COPY from customer management
-function displayContractSpesifikasiCorrect(spesifikasi) {
-    const container = document.getElementById('spesifikasiListContract');
-    const spekCountElement = document.getElementById('spekCountContract');
-    
-    // Update tab counter
-    if (spekCountElement) {
-        spekCountElement.textContent = spesifikasi.length;
-    }
-    
-    if (spesifikasi.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-5">
-                <div class="mb-4">
-                    <i class="fas fa-clipboard-list fa-3x text-muted"></i>
-                </div>
-                <h5 class="text-muted">Belum Ada Spesifikasi</h5>
-                <p class="text-muted mb-4">
-                    Kontrak ini belum memiliki spesifikasi unit yang dibutuhkan.<br>
-                    Tambahkan spesifikasi untuk menentukan jenis unit, jumlah, dan harga yang diperlukan.
-                </p>
-                <div class="d-flex flex-column align-items-center gap-2">
-                    <button class="btn btn-primary btn-lg" onclick="openAddSpesifikasiModal()">
-                        <i class="fas fa-plus me-2"></i>Tambah Spesifikasi Pertama
-                    </button>
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Setelah menambah spesifikasi, nilai kontrak akan dihitung otomatis
-                    </small>
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = ``;
-    
-    spesifikasi.forEach((spek, index) => {
-        console.log(`Processing spek ${index + 1}:`, spek.spek_kode);
-        
-        try {
-            const progress = spek.jumlah_dibutuhkan > 0 ? 
-                Math.round((spek.jumlah_tersedia / spek.jumlah_dibutuhkan) * 100) : 0;
-            const progressClass = progress === 100 ? 'success' : progress > 0 ? 'warning' : 'secondary';
-            
-            // Determine if this is an attachment-only specification
-            const isAttachmentSpec = spek.attachment_tipe && (!spek.tipe_unit_id || spek.tipe_unit_id === '0');
-            const cardClass = isAttachmentSpec ? 'border-success' : 'border-primary';
-            const badgeClass = isAttachmentSpec ? 'bg-success' : 'bg-primary';
-            const specType = isAttachmentSpec ? 'Attachment' : 'Unit';
-        
-        html += `
-            <div class="card mb-3 ${cardClass}" data-spek-id="${spek.id}" data-jumlah-dibutuhkan="${spek.jumlah_dibutuhkan}" data-jumlah-tersedia="${spek.jumlah_tersedia}" data-is-attachment="${isAttachmentSpec ? 'true' : 'false'}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">
-                        <span class="badge ${badgeClass} me-2">${spek.spek_kode}</span>
-                        <span class="badge bg-light text-dark me-2">${specType}</span>
-                        ${spek.catatan_spek || 'Spesifikasi ' + spek.spek_kode}
-                    </h6>
-                    <div>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editSpesifikasi(${spek.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSpesifikasi(${spek.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-md-4">
-                            <small class="text-muted">Total ${isAttachmentSpec ? 'Attachment' : 'Unit'}</small>
-                            <div class="fw-bold">${spek.jumlah_dibutuhkan}</div>
-                        </div>
-                        <div class="col-md-4">
-                            <small class="text-muted">Harga Bulanan</small>
-                            <div class="fw-bold text-success">Rp ${formatNumber(spek.harga_per_unit_bulanan || 0)}</div>
-                        </div>
-                        <div class="col-md-4">
-                            <small class="text-muted">Harga Harian</small>
-                            <div class="fw-bold text-info">Rp ${formatNumber(spek.harga_per_unit_harian || 0)}</div>
-                        </div>
-                    </div>
-                    
-                    <div class="row g-2 mt-2">
-                        <div class="col-md-4">
-                            <small class="text-muted">Departemen</small>
-                            <div>${spek.nama_departemen || '-'}</div>
-                        </div>
-                        ${isAttachmentSpec ? `
-                            <div class="col-md-4">
-                                <small class="text-muted">Tipe Attachment</small>
-                                <div>${spek.attachment_tipe || '-'}</div>
-                            </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">Merk Attachment</small>
-                                <div>${spek.attachment_merk || 'Sesuai Kebutuhan'}</div>
-                            </div>
-                        ` : `
-                            <div class="col-md-4">
-                                <small class="text-muted">Tipe/Jenis</small>
-                                <div>${spek.tipe_unit_name || spek.tipe_jenis || '-'}</div>
-                            </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">Kapasitas</small>
-                                <div>${spek.kapasitas_name || '-'}</div>
-                            </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">Merk/Model</small>
-                                <div>${spek.merk_unit || '-'} ${spek.model_unit || ''}</div>
-                            </div>
-                            ${spek.attachment_tipe ? `
-                                <div class="col-md-4">
-                                    <small class="text-muted">Attachment</small>
-                                    <div>${spek.attachment_tipe || '-'} ${spek.attachment_merk || ''}</div>
-                                </div>
-                            ` : ''}
-                        `}
-                        ${spek.jenis_baterai || spek.charger_name ? `
-                            <div class="col-md-4">
-                                <small class="text-muted">Baterai/Charger</small>
-                                <div>${spek.jenis_baterai || '-'} / ${spek.charger_name || '-'}</div>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    ${spek.aksesoris && spek.aksesoris.length > 0 ? `
-                        <div class="row g-2 mt-2">
-                            <div class="col-12">
-                                <small class="text-muted">Aksesoris</small>
-                                <div class="d-flex flex-wrap gap-1 mt-1">
-                                    ${spek.aksesoris.map(acc => `<span class="badge bg-secondary text-white">${acc}</span>`).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    ${spek.jumlah_tersedia < spek.jumlah_dibutuhkan ? `
-                        <div class="mt-2">
-                            <button class="btn btn-sm ${isAttachmentSpec ? 'btn-success' : 'btn-primary'}" onclick="openSpkModalFromKontrak(${spek.id})">
-                                <i class="fas fa-file-alt me-1"></i>Buat SPK ${specType}
-                            </button>
-                            <small class="text-muted d-block mt-1">
-                                <i class="fas fa-info-circle me-1"></i>SPK yang dibuat: ${spek.jumlah_spk || 0}
-                            </small>
-                        </div>
-                    ` : `
-                        <div class="mt-2">
-                            <span class="badge ${isAttachmentSpec ? 'bg-success' : 'bg-success'}">
-                                <i class="fas fa-check me-1"></i>SPK ${specType} Lengkap (${spek.jumlah_spk || 0} SPK dibuat)
-                            </span>
-                        </div>
-                    `}
-                </div>
-            </div>
-        `;
-        } catch (error) {
-            console.error(`Error processing spek ${index + 1}:`, error);
-        }
-    });
-    
-    container.innerHTML = html;
-}
-
-// Display customer spesifikasi - EXACT COPY from kontrak.php
-function displayCustomerSpesifikasi(spesifikasi) {
-    const container = document.getElementById('spesifikasiList');
-    const spekCountElement = document.getElementById('spekCount');
-    
-    // Update tab counter
-    if (spekCountElement) {
-        spekCountElement.textContent = spesifikasi.length;
-    }
-    
-    if (spesifikasi.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-5">
-                <div class="mb-4">
-                    <i class="fas fa-clipboard-list fa-3x text-muted"></i>
-                </div>
-                <h5 class="text-muted">Belum Ada Spesifikasi</h5>
-                <p class="text-muted mb-4">
-                    Customer ini belum memiliki spesifikasi unit yang dibutuhkan.<br>
-                    Tambahkan spesifikasi untuk menentukan jenis unit, jumlah, dan harga yang diperlukan.
-                </p>
-                <div class="d-flex flex-column align-items-center gap-2">
-                    <button class="btn btn-primary btn-lg" onclick="openAddSpesifikasiModal()">
-                        <i class="fas fa-plus me-2"></i>Tambah Spesifikasi Pertama
-                    </button>
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Setelah menambah spesifikasi, nilai kontrak akan dihitung otomatis
-                    </small>
-                </div>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = ``;
-    
-    spesifikasi.forEach((spek, index) => {
-        console.log(`Processing spek ${index + 1}:`, spek.spek_kode);
-        
-        try {
-            const progress = spek.jumlah_dibutuhkan > 0 ? 
-                Math.round((spek.jumlah_tersedia / spek.jumlah_dibutuhkan) * 100) : 0;
-            const progressClass = progress === 100 ? 'success' : progress > 0 ? 'warning' : 'secondary';
-            
-            // Determine if this is an attachment-only specification
-            const isAttachmentSpec = spek.attachment_tipe && (!spek.tipe_unit_id || spek.tipe_unit_id === '0');
-            const cardClass = isAttachmentSpec ? 'border-success' : 'border-primary';
-            const badgeClass = isAttachmentSpec ? 'bg-success' : 'bg-primary';
-            const specType = isAttachmentSpec ? 'Attachment' : 'Unit';
-        
-        html += `
-            <div class="card mb-3 ${cardClass}" data-spek-id="${spek.id}" data-jumlah-dibutuhkan="${spek.jumlah_dibutuhkan}" data-jumlah-tersedia="${spek.jumlah_tersedia}" data-is-attachment="${isAttachmentSpec ? 'true' : 'false'}">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h6 class="mb-0">
-                        <span class="badge ${badgeClass} me-2">${spek.spek_kode}</span>
-                        <span class="badge bg-light text-dark me-2">${specType}</span>
-                        ${spek.catatan_spek || 'Spesifikasi ' + spek.spek_kode}
-                    </h6>
-                    <div>
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editSpesifikasi(${spek.id})">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteSpesifikasi(${spek.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div class="row g-2">
-                        <div class="col-md-4">
-                            <small class="text-muted">Total ${isAttachmentSpec ? 'Attachment' : 'Unit'}</small>
-                            <div class="fw-bold">${spek.jumlah_dibutuhkan}</div>
-                        </div>
-                        <div class="col-md-4">
-                            <small class="text-muted">Harga Bulanan</small>
-                            <div class="fw-bold text-success">Rp ${formatNumber(spek.harga_per_unit_bulanan || 0)}</div>
-                        </div>
-                        <div class="col-md-4">
-                            <small class="text-muted">Harga Harian</small>
-                            <div class="fw-bold text-info">Rp ${formatNumber(spek.harga_per_unit_harian || 0)}</div>
-                        </div>
-                    </div>
-                    
-                    <div class="row g-2 mt-2">
-                        <div class="col-md-4">
-                            <small class="text-muted">Departemen</small>
-                            <div>${spek.nama_departemen || '-'}</div>
-                        </div>
-                        ${isAttachmentSpec ? `
-                            <div class="col-md-4">
-                                <small class="text-muted">Tipe Attachment</small>
-                                <div>${spek.attachment_tipe || '-'}</div>
-                            </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">Merk Attachment</small>
-                                <div>${spek.attachment_merk || 'Sesuai Kebutuhan'}</div>
-                            </div>
-                        ` : `
-                            <div class="col-md-4">
-                                <small class="text-muted">Tipe/Jenis</small>
-                                <div>${spek.tipe_unit_name || spek.tipe_jenis || '-'}</div>
-                            </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">Kapasitas</small>
-                                <div>${spek.kapasitas_name || '-'}</div>
-                            </div>
-                            <div class="col-md-4">
-                                <small class="text-muted">Merk/Model</small>
-                                <div>${spek.merk_unit || '-'} ${spek.model_unit || ''}</div>
-                            </div>
-                            ${spek.attachment_tipe ? `
-                                <div class="col-md-4">
-                                    <small class="text-muted">Attachment</small>
-                                    <div>${spek.attachment_tipe || '-'} ${spek.attachment_merk || ''}</div>
-                                </div>
-                            ` : ''}
-                        `}
-                        ${spek.jenis_baterai || spek.charger_name ? `
-                            <div class="col-md-4">
-                                <small class="text-muted">Baterai/Charger</small>
-                                <div>${spek.jenis_baterai || '-'} / ${spek.charger_name || '-'}</div>
-                            </div>
-                        ` : ''}
-                    </div>
-                    
-                    ${spek.aksesoris && spek.aksesoris.length > 0 ? `
-                        <div class="row g-2 mt-2">
-                            <div class="col-12">
-                                <small class="text-muted">Aksesoris</small>
-                                <div class="d-flex flex-wrap gap-1 mt-1">
-                                    ${spek.aksesoris.map(acc => `<span class="badge bg-secondary text-white">${acc}</span>`).join('')}
-                                </div>
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    ${spek.jumlah_tersedia < spek.jumlah_dibutuhkan ? `
-                        <div class="mt-2">
-                            <button class="btn btn-sm ${isAttachmentSpec ? 'btn-success' : 'btn-primary'}" onclick="openSpkModalFromKontrak(${spek.id})">
-                                <i class="fas fa-file-alt me-1"></i>Buat SPK ${specType}
-                            </button>
-                            <small class="text-muted d-block mt-1">
-                                <i class="fas fa-info-circle me-1"></i>SPK yang dibuat: ${spek.jumlah_spk || 0}
-                            </small>
-                        </div>
-                    ` : `
-                        <div class="mt-2">
-                            <span class="badge ${isAttachmentSpec ? 'bg-success' : 'bg-success'}">
-                                <i class="fas fa-check me-1"></i>SPK ${specType} Lengkap (${spek.jumlah_spk || 0} SPK dibuat)
-                            </span>
-                        </div>
-                    `}
-                </div>
-            </div>
-        `;
-        } catch (error) {
-            console.error(`Error processing spek ${index + 1}:`, error);
-        }
-    });
-    
-    console.log('Generated HTML length:', html.length);
-    console.log('Setting container HTML...');
-    
-    try {
-        container.innerHTML = html;
-        console.log('Container HTML set successfully');
-        console.log('Container children count:', container.children.length);
-    } catch (error) {
-        console.error('Error setting container HTML:', error);
-        container.innerHTML = '<div class="text-danger">Error displaying data: ' + error.message + '</div>';
+    const statusUpper = status.toUpperCase();
+    if (statusUpper.includes('RENTAL') || statusUpper.includes('ACTIVE') || statusUpper.includes('IN USE')) {
+        return 'primary';
+    } else if (statusUpper.includes('DELIVERED') || statusUpper.includes('SOLD')) {
+        return 'success';
+    } else if (statusUpper.includes('MAINTENANCE') || statusUpper.includes('REPAIR') || statusUpper.includes('RETURN')) {
+        return 'warning';
+    } else if (statusUpper.includes('AVAILABLE') || statusUpper.includes('STOK') || statusUpper.includes('READY')) {
+        return 'info';
+    } else {
+        return 'secondary';
     }
 }
 
@@ -2075,126 +1396,6 @@ function openEditLocationModal(locationId) {
     });
 }
 
-// Modal functions for spesifikasi - same as kontrak.php
-function openAddSpesifikasiModal() {
-    // Check if we have a current contract
-    if (!currentContractId) {
-        showNotification('Pilih kontrak terlebih dahulu', 'warning');
-        return;
-    }
-    
-    // Reset form completely
-    $('#addSpesifikasiForm')[0].reset();
-    
-    // Set the contract ID in the form
-    $('#spekKontrakId').val(currentContractId);
-    
-    // Clear any previous form errors
-    clearFormErrors('#addSpesifikasiForm');
-    
-    // Uncheck all accessories
-    $('input[name="aksesoris[]"]').prop('checked', false);
-    
-    // Remove edit mode hidden field if exists
-    $('#spekEditId').remove();
-    
-    // Reset modal title and button text
-    $('#addSpesifikasiModal .modal-title').text('Tambah Spesifikasi Unit');
-    $('#submitSpesifikasiBtn').text('Simpan Spesifikasi');
-    
-    // Load dropdown data
-    loadDepartemenForSpesifikasi();
-    loadTipeUnitForSpesifikasi();
-    loadKapasitasForSpesifikasi();
-    loadMerkUnitForSpesifikasi();
-    loadJenisBateraiForSpesifikasi();
-    loadChargerForSpesifikasi();
-    loadAttachmentTipeForSpesifikasi();
-    loadValveForSpesifikasi();
-    loadMastForSpesifikasi();
-    loadBanForSpesifikasi();
-    loadRodaForSpesifikasi();
-    
-    // Open the add spesifikasi modal
-    $('#addSpesifikasiModal').modal('show');
-}
-
-// Event handler for departemen change to filter tipe unit and lock/unlock fields
-$(document).on('change', '#spekDepartemen', function() {
-    updateTipeUnitOptions();
-    updateFieldAvailability();
-    loadChargerForSpesifikasi(); // Reload charger when departemen changes
-});
-
-function updateFieldAvailability() {
-    const selectedDepartemen = $('#spekDepartemen').val();
-    const isElectric = selectedDepartemen === '2'; // ELECTRIC has id_departemen = 2
-    
-    // Lock/unlock Baterai field
-    const bateraiField = $('#spekJenisBaterai');
-    const chargerField = $('#spekCharger');
-    
-    if (isElectric) {
-        bateraiField.prop('disabled', false);
-        chargerField.prop('disabled', false);
-        bateraiField.closest('.col-md-4').find('.text-muted').removeClass('text-muted').addClass('text-success');
-        chargerField.closest('.col-md-4').find('.text-muted').removeClass('text-muted').addClass('text-success');
-    } else {
-        bateraiField.prop('disabled', true).val('');
-        chargerField.prop('disabled', true).val('');
-        bateraiField.closest('.col-md-4').find('.text-muted').removeClass('text-success').addClass('text-muted');
-        chargerField.closest('.col-md-4').find('.text-muted').removeClass('text-success').addClass('text-muted');
-    }
-}
-
-function openAddAttachmentSpesifikasiModal() {
-    // Check if we have a current contract
-    if (!currentContractId) {
-        showNotification('Pilih kontrak terlebih dahulu', 'warning');
-        return;
-    }
-    
-    // Set the contract ID in the form
-    $('#attachmentSpekKontrakId').val(currentContractId);
-    
-    // Clear any previous form errors
-    clearFormErrors('#addAttachmentSpesifikasiForm');
-    
-    // Open the add attachment spesifikasi modal
-    $('#addAttachmentSpesifikasiModal').modal('show');
-}
-
-function editSpesifikasi(spekId) {
-    // Edit spesifikasi function (this should be implemented in kontrak.php)
-    console.log('Edit spesifikasi:', spekId);
-    notify('Fitur edit spesifikasi akan diimplementasikan', 'info');
-}
-
-function deleteSpesifikasi(spekId) {
-    if (!confirm('Apakah Anda yakin ingin menghapus spesifikasi ini?')) {
-        return;
-    }
-    
-    $.ajax({
-        url: `<?= base_url('marketing/kontrak/delete-spesifikasi/') ?>${spekId}`,
-        type: 'DELETE',
-        success: function(response) {
-            if (response.success) {
-                notify('Spesifikasi berhasil dihapus', 'success');
-                // Reload spesifikasi tab
-                if (currentContractId) {
-                    loadContractSpesifikasi(currentContractId);
-                }
-            } else {
-                notify(response.message || 'Gagal menghapus spesifikasi', 'error');
-            }
-        },
-        error: function(xhr, status, error) {
-            console.error('Delete AJAX error:', {xhr, status, error});
-            notify('Terjadi kesalahan pada sistem', 'error');
-        }
-    });
-}
 
 // Show unit detail
 function showUnitDetail(unitId) {
@@ -2212,188 +1413,166 @@ function showUnitDetail(unitId) {
 
 // Display unit detail - COMPREHENSIVE (from kontrak.php)
 function displayUnitDetail(unit) {
-    $('#unitSubtitle').text(`${unit.no_unit || 'N/A'} - ${unit.merk_unit || ''} ${unit.model_unit || ''}`);
-    
+    // Helper function untuk baris tabel agar code lebih rapi
+    const row = (label, val) => `
+        <tr>
+            <td class="text-muted pe-3" style="width: 140px; font-size: 0.9em;">${label}</td>
+            <td class="fw-medium text-dark" style="font-size: 0.95em;">${val || '-'}</td>
+        </tr>`;
+
+    // Helper untuk section header kecil
+    const sectionHeader = (title, icon) => `
+        <tr>
+            <td colspan="2" class="pt-3 pb-1">
+                <h6 class="text-primary border-bottom pb-1 mb-0" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                    <i class="${icon} me-2"></i>${title.toUpperCase()}
+                </h6>
+            </td>
+        </tr>`;
+
+    // Set subtitle modal
+    $('#unitSubtitle').html(`
+        <span class="badge bg-secondary me-2">${unit.merk_unit || 'N/A'}</span>
+        <span class="text-muted">${unit.model_unit || ''}</span>
+    `);
+
     let detailHtml = `
-        <div class="row g-4">
-            <!-- Basic Information -->
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header bg-primary">
-                        <h6 class="mb-0 text-dark"><i class="fas fa-info-circle me-2"></i><strong>Informasi Dasar</strong></h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-2">
-                            <div class="col-6"><strong>No Unit:</strong></div>
-                            <div class="col-6">${unit.no_unit || '-'}</div>
-                            
-                            <div class="col-6"><strong>Serial Number:</strong></div>
-                            <div class="col-6">${unit.serial_number_po || '-'}</div>
-                            
-                            <div class="col-6"><strong>Merk:</strong></div>
-                            <div class="col-6">${unit.merk_unit || '-'}</div>
-                            
-                            <div class="col-6"><strong>Model:</strong></div>
-                            <div class="col-6">${unit.model_unit || '-'}</div>
-                            
-                            <div class="col-6"><strong>Tahun:</strong></div>
-                            <div class="col-6">${unit.tahun_po || '-'}</div>
-                            
-                            <div class="col-6"><strong>Tipe Unit:</strong></div>
-                            <div class="col-6">${unit.nama_tipe_unit || '-'}</div>
-                            
-                            <div class="col-6"><strong>Kapasitas:</strong></div>
-                            <div class="col-6">${unit.kapasitas_unit || '-'}</div>
-                            
-                            <div class="col-6"><strong>Departemen:</strong></div>
-                            <div class="col-6">${unit.nama_departemen || '-'}</div>
-                            
-                            <div class="col-6"><strong>Status:</strong></div>
-                            <div class="col-6"><span class="badge bg-${getStatusBadgeClass(unit.status_unit_name)}">${unit.status_unit_name || '-'}</span></div>
-                            
-                            <div class="col-6"><strong>Lokasi:</strong></div>
-                            <div class="col-6">${unit.lokasi_unit || '-'}</div>
-                        </div>
+        <div class="container-fluid px-0">
+            <div class="d-flex align-items-center justify-content-between bg-light p-3 rounded mb-3 border">
+                <div>
+                    <div class="text-muted small text-uppercase" style="font-size: 0.75rem;">Nomor Unit</div>
+                    <h4 class="mb-0 fw-bold text-dark">${unit.no_unit || '-'}</h4>
+                </div>
+                <div class="text-end">
+                    <div class="text-muted small text-uppercase" style="font-size: 0.75rem;">Status</div>
+                    <div class="d-flex align-items-center justify-content-end text-${getStatusColor(unit.status_unit_name)}">
+                        <i class="fas fa-circle me-2" style="font-size: 0.6rem;"></i>
+                        <span class="fw-bold small">${unit.status_unit_name || '-'}</span>
                     </div>
                 </div>
             </div>
-            
-            <!-- Technical Specifications -->
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header bg-success">
-                        <h6 class="mb-0 text-dark"><i class="fas fa-cogs me-2"></i><strong>Spesifikasi Teknis</strong></h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row g-2">
+
+            <div class="row g-4">
+                <div class="col-lg-6 border-end-lg">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            ${sectionHeader('Informasi Umum', 'fas fa-info-circle')}
+                            ${row('Serial Number', unit.serial_number_po)}
+                            ${row('Tahun Pembuatan', unit.tahun_po)}
+                            ${row('Tipe Unit', unit.nama_tipe_unit)}
+                            ${row('Kapasitas', `<span class="fw-bold">${unit.kapasitas_unit || '-'}</span>`)}
+                            
+                            ${sectionHeader('Lokasi & Dept', 'fas fa-map-marker-alt')}
+                            ${row('Departemen', unit.nama_departemen)}
+                            ${row('Lokasi Saat Ini', unit.lokasi_unit)}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="col-lg-6">
+                    <table class="table table-sm table-borderless mb-0">
+                        <tbody>
+                            ${sectionHeader('Komponen Utama', 'fas fa-cogs')}
     `;
-    
-    // Mast Information
-    if (unit.mast_name || unit.sn_mast_po) {
-        detailHtml += `
-            <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2"><i class="fas fa-arrows-alt-v me-1"></i>Mast</h6></div>
-            <div class="col-6"><strong>Model Mast:</strong></div>
-            <div class="col-6">${unit.mast_name || '-'}</div>
-            <div class="col-6"><strong>SN Mast:</strong></div>
-            <div class="col-6">${unit.sn_mast_po || '-'}</div>`;
+
+    // Logic Spesifikasi Teknis
+    if (unit.model_mast && unit.model_mast !== 'Unknown') {
+        detailHtml += row('Mast Model', unit.model_mast);
+        detailHtml += row('Mast SN', unit.sn_mast_po);
     }
     
-    // Engine Information
-    if (unit.mesin_name || unit.sn_mesin_po) {
-        detailHtml += `
-            <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-engine me-1"></i>Mesin</h6></div>
-            <div class="col-6"><strong>Model Mesin:</strong></div>
-            <div class="col-6">${unit.mesin_name || '-'}</div>
-            <div class="col-6"><strong>SN Mesin:</strong></div>
-            <div class="col-6">${unit.sn_mesin_po || '-'}</div>`;
+    if (unit.model_mesin && unit.model_mesin !== 'Unknown') {
+        detailHtml += row('Engine Model', unit.model_mesin);
+        detailHtml += row('Engine SN', unit.sn_mesin_po);
     }
-    
-    // Battery Information
-    if (unit.baterai_name || unit.sn_baterai_po) {
-        detailHtml += `
-            <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-battery-full me-1"></i>Baterai</h6></div>
-            <div class="col-6"><strong>Model Baterai:</strong></div>
-            <div class="col-6">${unit.baterai_name || '-'}</div>
-            <div class="col-6"><strong>SN Baterai:</strong></div>
-            <div class="col-6">${unit.sn_baterai_po || '-'}</div>`;
-    }
-    
-    // Attachments Information
-    if (unit.attachments && unit.attachments.length > 0) {
-        detailHtml += `
-            <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-puzzle-piece me-1"></i>Attachment</h6></div>`;
-        unit.attachments.forEach((att, index) => {
-            detailHtml += `
-                <div class="col-6"><strong>${att.name || 'Attachment ' + (index + 1)}:</strong></div>
-                <div class="col-6">${att.merk || '-'}</div>
-                <div class="col-6"><strong>SN ${att.name || 'Att'}:</strong></div>
-                <div class="col-6">${att.serial_number || '-'}</div>`;
+
+    // Logic Ban/Roda
+    if (unit.jenis_ban && unit.jenis_ban !== 'Unknown') detailHtml += row('Jenis Ban', unit.jenis_ban);
+    if (unit.jenis_roda && unit.jenis_roda !== 'Unknown') detailHtml += row('Jenis Roda', unit.jenis_roda);
+
+    // Logic Baterai (Simplified list)
+    if (unit.batteries && unit.batteries.length > 0) {
+        detailHtml += sectionHeader('Power & Battery', 'fas fa-car-battery');
+        unit.batteries.forEach((bat, i) => {
+            detailHtml += row(`Baterai #${i+1}`, `${bat.name} <span class="text-muted small">(${bat.serial_number || '-'})</span>`);
         });
     }
-    
-    // Wheels and Parts
-    if (unit.ban_name || unit.roda_name || unit.valve_name) {
-        detailHtml += `
-            <div class="col-12"><h6 class="text-primary border-bottom pb-1 mb-2 mt-2"><i class="fas fa-circle me-1"></i>Ban & Roda</h6></div>`;
-        if (unit.ban_name) {
-            detailHtml += `
-                <div class="col-6"><strong>Ban:</strong></div>
-                <div class="col-6">${unit.ban_name}</div>`;
-        }
-        if (unit.roda_name) {
-            detailHtml += `
-                <div class="col-6"><strong>Roda:</strong></div>
-                <div class="col-6">${unit.roda_name}</div>`;
-        }
-        if (unit.valve_name) {
-            detailHtml += `
-                <div class="col-6"><strong>Valve:</strong></div>
-                <div class="col-6">${unit.valve_name}</div>`;
-        }
+
+    // Logic Charger
+    if (unit.chargers && unit.chargers.length > 0) {
+        unit.chargers.forEach((chr, i) => {
+             detailHtml += row(`Charger #${i+1}`, `${chr.name} <span class="text-muted small">(${chr.serial_number || '-'})</span>`);
+        });
     }
-    
+
     detailHtml += `
-                        </div>
-                    </div>
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </div>`;
-    
-    // Aksesori Terpasang
-    if (unit.aksesoris) {
-        let aksesoris = [];
-        try {
-            aksesoris = typeof unit.aksesoris === 'string' ? JSON.parse(unit.aksesoris) : unit.aksesoris;
-        } catch (e) {
-            aksesoris = unit.aksesoris.split(',').map(item => item.trim()).filter(item => item);
-        }
+            
+            <hr class="my-4 text-muted opacity-25">
+
+            <div class="row g-3">
+    `;
+
+    // Logic Attachment
+    if (unit.attachments && unit.attachments.length > 0) {
+        detailHtml += `
+            <div class="col-md-6">
+                <h6 class="small text-muted fw-bold text-uppercase mb-2"><i class="fas fa-puzzle-piece me-1"></i> Attachments</h6>
+                <div class="list-group list-group-flush border rounded-2">`;
         
-        if (aksesoris && aksesoris.length > 0) {
+        unit.attachments.forEach(att => {
             detailHtml += `
-                <div class="row mt-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header bg-info text-dark">
-                                <h6 class="mb-0"><i class="fas fa-puzzle-piece me-2"></i><strong>Aksesori Terpasang</strong></h6>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">`;
-            
-            if (Array.isArray(aksesoris)) {
-                aksesoris.forEach((item, index) => {
-                    detailHtml += `
-                        <div class="col-md-6 mb-2">
-                            <i class="fas fa-check-circle text-success me-1"></i>${item}
-                        </div>`;
-                });
-            }
-            
-            detailHtml += `
-                                </div>
-                            </div>
-                        </div>
+                <div class="list-group-item bg-light py-2 px-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="fw-medium small">${att.name || 'Attachment'}</span>
+                        <span class="badge bg-secondary text-light fw-normal" style="font-size:0.7em">${att.serial_number || 'No SN'}</span>
                     </div>
                 </div>`;
+        });
+        detailHtml += `</div></div>`;
+    }
+
+    // Logic Aksesoris
+    let aksesoris = [];
+    try {
+        aksesoris = typeof unit.aksesoris === 'string' ? JSON.parse(unit.aksesoris) : unit.aksesoris;
+    } catch (e) {
+        aksesoris = unit.aksesoris ? unit.aksesoris.split(',').map(i => i.trim()).filter(i => i) : [];
+    }
+
+    if (aksesoris && aksesoris.length > 0) {
+        detailHtml += `
+            <div class="col-md-6">
+                <h6 class="small text-muted fw-bold text-uppercase mb-2"><i class="fas fa-tools me-1"></i> Accessories</h6>
+                <div class="d-flex flex-wrap gap-1">`;
+        
+        if (Array.isArray(aksesoris)) {
+            aksesoris.forEach(item => {
+                detailHtml += `<span class="badge border text-dark bg-white fw-normal py-2 px-3"><i class="fas fa-check text-success me-1"></i>${item}</span>`;
+            });
         }
+        detailHtml += `</div></div>`;
     }
     
-    // Additional Notes
+    // Keterangan Full Width
     if (unit.keterangan) {
         detailHtml += `
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header bg-secondary text-white">
-                            <h6 class="mb-0"><i class="fas fa-sticky-note me-2"></i>Keterangan</h6>
-                        </div>
-                        <div class="card-body">
-                            <p class="mb-0">${unit.keterangan}</p>
-                        </div>
+            <div class="col-12 mt-3">
+                <div class="alert alert-secondary border-0 mb-0 py-2 d-flex align-items-start">
+                    <i class="fas fa-sticky-note me-2 mt-1"></i>
+                    <div>
+                        <strong class="small d-block text-uppercase">Catatan:</strong>
+                        <span class="small text-muted">${unit.keterangan}</span>
                     </div>
                 </div>
             </div>`;
     }
-    
+
+    detailHtml += `</div></div>`; // End row & container
+
     $('#unitDetailContent').html(detailHtml);
 }
 
@@ -2725,296 +1904,9 @@ function setupTabHandlers() {
         // If already loaded, just show it (no reload, scroll position maintained)
     });
     
-    // Handle Spesifikasi tab in Contract Details modal
-    $('#spesifikasi-tab-contract').on('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        // Check if data already loaded (to prevent unnecessary reload)
-        const spesifikasiContainer = document.getElementById('spesifikasiListContract');
-        const isAlreadyLoaded = spesifikasiContainer && 
-                                spesifikasiContainer.innerHTML.trim() !== '' && 
-                                !spesifikasiContainer.innerHTML.includes('Memuat spesifikasi');
-        
-        // Remove active class from contract modal tabs only
-        $('#contractDetailTabs .nav-link').removeClass('active');
-        $('#contractDetailTabContent .tab-pane').removeClass('show active');
-        
-        // Add active class to spesifikasi tab and show content
-        $(this).addClass('active');
-        $('#spesifikasi-content-contract').addClass('show active');
-        
-        // Only load data if NOT already loaded or if forced reload
-        console.log('Spesifikasi tab clicked, currentContractId:', currentContractId, 'Already loaded:', isAlreadyLoaded);
-        
-        if (!isAlreadyLoaded) {
-            if (currentContractId) {
-                // Call loadContractSpesifikasi for first time load
-                loadContractSpesifikasi(currentContractId);
-            } else {
-                console.warn('No currentContractId available for spesifikasi');
-                $('#spesifikasiListContract').html('<div class="alert alert-warning"><i class="fas fa-info-circle me-2"></i>Pilih kontrak terlebih dahulu untuk melihat spesifikasi</div>');
-            }
-        }
-        // If already loaded, just show it (no reload, scroll position maintained)
-    });
+    // Spesifikasi functionality removed - now handled in Quotations page
 }
 
-// Helper functions for modal dropdowns
-function loadDepartemenForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=departemen',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekDepartemen');
-                select.empty().append('<option value="">-- Pilih Departemen --</option>');
-                response.data.forEach(function(dept) {
-                    select.append(`<option value="${dept.id}">${dept.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading departemen');
-        }
-    });
-}
-
-function loadTipeUnitForSpesifikasi() {
-    // Load all tipe unit data with departemen info for filtering
-    $.ajax({
-        url: '<?= base_url('marketing/customer-management/getTipeUnit') ?>',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                // Store all tipe unit data globally for filtering
-                window.allTipeUnitData = response.data;
-                
-                // Initially show all options
-                updateTipeUnitOptions();
-            }
-        },
-        error: function() {
-            console.error('Error loading tipe unit');
-        }
-    });
-}
-
-function updateTipeUnitOptions() {
-    const select = $('#spekTipeUnit');
-    const selectedDepartemen = $('#spekDepartemen').val();
-    
-    select.empty().append('<option value="">-- Pilih Tipe Unit --</option>');
-    
-    if (window.allTipeUnitData) {
-        // Filter by departemen if selected
-        let filteredData = window.allTipeUnitData;
-        if (selectedDepartemen) {
-            filteredData = window.allTipeUnitData.filter(tipe => tipe.id_departemen == selectedDepartemen);
-        }
-        
-        // Remove duplicates based on tipe and jenis combination
-        const uniqueData = [];
-        const seen = new Set();
-        
-        filteredData.forEach(function(tipe) {
-            const key = `${tipe.tipe} - ${tipe.jenis}`;
-            if (!seen.has(key)) {
-                seen.add(key);
-                uniqueData.push(tipe);
-            }
-        });
-        
-        // Sort by tipe, then by jenis
-        uniqueData.sort((a, b) => {
-            if (a.tipe !== b.tipe) {
-                return a.tipe.localeCompare(b.tipe);
-            }
-            return a.jenis.localeCompare(b.jenis);
-        });
-        
-        // Populate dropdown with "Tipe - Jenis" format
-        uniqueData.forEach(function(tipe) {
-            select.append(`<option value="${tipe.id_tipe_unit}">${tipe.tipe} - ${tipe.jenis}</option>`);
-        });
-    }
-}
-
-function loadKapasitasForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=kapasitas',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekKapasitas');
-                select.empty().append('<option value="">-- Pilih Kapasitas --</option>');
-                response.data.forEach(function(kap) {
-                    select.append(`<option value="${kap.id}">${kap.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading kapasitas');
-        }
-    });
-}
-
-function loadMerkUnitForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=merk_unit',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekMerkUnit');
-                select.empty().append('<option value="">-- Pilih Merk --</option>');
-                response.data.forEach(function(merk) {
-                    select.append(`<option value="${merk.id}">${merk.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading merk unit');
-        }
-    });
-}
-
-function loadJenisBateraiForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=jenis_baterai',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekJenisBaterai');
-                select.empty().append('<option value="">-- Pilih Baterai --</option>');
-                response.data.forEach(function(baterai) {
-                    select.append(`<option value="${baterai.id}">${baterai.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading jenis baterai');
-        }
-    });
-}
-
-function loadChargerForSpesifikasi() {
-    const selectedDepartemen = $('#spekDepartemen').val();
-    const url = selectedDepartemen ? 
-        `<?= base_url('marketing/spk/spec-options') ?>?type=charger&departemen_id=${selectedDepartemen}` :
-        `<?= base_url('marketing/spk/spec-options') ?>?type=charger`;
-    
-    $.ajax({
-        url: url,
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekCharger');
-                select.empty().append('<option value="">-- Pilih Charger --</option>');
-                response.data.forEach(function(charger) {
-                    select.append(`<option value="${charger.id}">${charger.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading charger');
-        }
-    });
-}
-
-function loadAttachmentTipeForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=attachment_tipe',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekAttachmentTipe');
-                select.empty().append('<option value="">-- Pilih Attachment Tipe --</option>');
-                response.data.forEach(function(attachment) {
-                    select.append(`<option value="${attachment.id}">${attachment.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading attachment tipe');
-        }
-    });
-}
-
-function loadValveForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=valve',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekValve');
-                select.empty().append('<option value="">-- Pilih Valve --</option>');
-                response.data.forEach(function(valve) {
-                    select.append(`<option value="${valve.id}">${valve.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading valve');
-        }
-    });
-}
-
-function loadMastForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=mast',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekMast');
-                select.empty().append('<option value="">-- Pilih Mast --</option>');
-                response.data.forEach(function(mast) {
-                    select.append(`<option value="${mast.id}">${mast.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading mast');
-        }
-    });
-}
-
-function loadBanForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=ban',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekBan');
-                select.empty().append('<option value="">-- Pilih Ban --</option>');
-                response.data.forEach(function(ban) {
-                    select.append(`<option value="${ban.id}">${ban.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading ban');
-        }
-    });
-}
-
-function loadRodaForSpesifikasi() {
-    $.ajax({
-        url: '<?= base_url('marketing/spk/spec-options') ?>?type=roda',
-        method: 'GET',
-        success: function(response) {
-            if (response.success) {
-                const select = $('#spekRoda');
-                select.empty().append('<option value="">-- Pilih Roda --</option>');
-                response.data.forEach(function(roda) {
-                    select.append(`<option value="${roda.id}">${roda.name}</option>`);
-                });
-            }
-        },
-        error: function() {
-            console.error('Error loading roda');
-        }
-    });
-}
 
 function loadAreas() {
     $.ajax({
@@ -3063,6 +1955,7 @@ function loadLocationAreas() {
         }
     });
 }
+
 
 function loadCustomers() {
     $.ajax({
@@ -3211,68 +2104,6 @@ $(document).on('submit', '#addLocationForm', function(e) {
                 } else {
                     showNotification(response.message, 'error');
                 }
-            }
-        },
-        error: function() {
-            showNotification('Terjadi kesalahan pada sistem', 'error');
-        }
-    });
-});
-
-$(document).on('submit', '#addSpesifikasiForm', function(e) {
-    e.preventDefault();
-    clearFormErrors('#addSpesifikasiForm');
-
-    $.ajax({
-        url: '<?= base_url('marketing/kontrak/add-spesifikasi') ?>',
-        method: 'POST',
-        data: $(this).serialize(),
-        success: function(response) {
-            if (response.success) {
-                showNotification(response.message, 'success');
-                $('#addSpesifikasiModal').modal('hide');
-                $('#addSpesifikasiForm')[0].reset();
-                
-                // Reload spesifikasi if we're in a contract detail modal
-                if (currentContractId) {
-                    loadContractSpesifikasiCorrect(currentContractId);
-                }
-            } else {
-                if (response.errors) {
-                    showFormErrors('#addSpesifikasiForm', response.errors);
-                }
-                showNotification(response.message, 'error');
-            }
-        },
-        error: function() {
-            showNotification('Terjadi kesalahan pada sistem', 'error');
-        }
-    });
-});
-
-$(document).on('submit', '#addAttachmentSpesifikasiForm', function(e) {
-    e.preventDefault();
-    clearFormErrors('#addAttachmentSpesifikasiForm');
-
-    $.ajax({
-        url: '<?= base_url('marketing/kontrak/add-spesifikasi') ?>',
-        method: 'POST',
-        data: $(this).serialize(),
-        success: function(response) {
-            if (response.success) {
-                showNotification(response.message, 'success');
-                $('#addAttachmentSpesifikasiModal').modal('hide');
-                $('#addAttachmentSpesifikasiForm')[0].reset();
-                
-                // Reload spesifikasi if we're in a contract detail modal
-                if (currentContractId) {
-                    loadContractSpesifikasiCorrect(currentContractId);
-                }
-            } else {
-                if (response.errors) {
-                    showFormErrors('#addAttachmentSpesifikasiForm', response.errors);
-                }
-                showNotification(response.message, 'error');
             }
         },
         error: function() {
@@ -3634,8 +2465,9 @@ $(document).on('submit', '#spkFromKontrakForm', function(e) {
             const modalEl = document.getElementById('spkFromKontrakModal');
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
+            // Refresh contract details if needed
             if (currentContractId) {
-                loadContractSpesifikasiCorrect(currentContractId);
+                loadContractDetail(currentContractId);
             }
         } else {
             showNotification(res.message || 'Gagal membuat SPK.', 'error');

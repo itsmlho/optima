@@ -3041,28 +3041,64 @@ class Marketing extends BaseDataTableController
     public function kontrakUnits($kontrakId)
     {
         try {
-            // Get all units that have been delivered under this contract
+            log_message('debug', '=== kontrakUnits START === Kontrak ID: ' . $kontrakId);
+            
+            // Get all units associated with this contract
             $units = $this->db->table('inventory_unit iu')
-                ->select('iu.id_inventory_unit, iu.sn_unit, iu.tipe_unit_id, tu.tipe_jenis, mu.merk_unit, mu.model_unit, iu.status_unit_id, su.status_unit')
+                ->select('
+                    iu.id_inventory_unit, 
+                    iu.serial_number, 
+                    iu.no_unit,
+                    iu.tipe_unit_id,
+                    iu.kapasitas_unit_id,
+                    CONCAT(tu.tipe, " ", tu.jenis) as tipe_jenis,
+                    tu.tipe,
+                    tu.jenis,
+                    k.kapasitas_unit as kapasitas,
+                    mu.merk_unit, 
+                    mu.model_unit, 
+                    iu.status_unit_id,
+                    su.id_status,
+                    su.status_unit,
+                    iu.lokasi_unit,
+                    COALESCE(cl.location_name, iu.lokasi_unit, "Lokasi Belum Ditentukan") as lokasi,
+                    cl.address as alamat,
+                    iu.customer_location_id,
+                    iu.harga_sewa_bulanan,
+                    iu.tahun_pembuatan,
+                    iu.catatan
+                ')
                 ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
-                ->join('status_unit su', 'su.id_status_unit = iu.status_unit_id', 'left')
+                ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
+                ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                ->join('customer_locations cl', 'cl.id = iu.customer_location_id', 'left')
                 ->where('iu.kontrak_id', $kontrakId)
-                ->whereIn('iu.status_unit_id', [6, 7, 8]) // DELIVERED, IN_USE, or MAINTENANCE
-                ->orderBy('iu.sn_unit', 'ASC')
+                ->orderBy('cl.location_name', 'ASC')
+                ->orderBy('iu.serial_number', 'ASC')
                 ->get()
                 ->getResultArray();
             
+            log_message('debug', 'Units Found: ' . count($units));
+            
+            if (count($units) > 0) {
+                log_message('debug', 'First unit sample: ' . json_encode($units[0]));
+            }
+            
             return $this->response->setJSON([
                 'success' => true,
-                'units' => $units,
+                'data' => $units,
                 'count' => count($units),
+                'kontrak_id' => $kontrakId,
                 'csrf_hash' => csrf_hash()
             ]);
         } catch (\Exception $e) {
+            log_message('error', 'Error in kontrakUnits: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            
             return $this->response->setJSON([
                 'success' => false,
-                'message' => $e->getMessage(),
+                'message' => 'Error retrieving contract units: ' . $e->getMessage(),
                 'csrf_hash' => csrf_hash()
             ]);
         }
@@ -5388,9 +5424,7 @@ class Marketing extends BaseDataTableController
                             cl.phone as kontak,
                             cl.address as alamat,
                             (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as calculated_total_units,
-                            COALESCE(k.nilai_total, 
-                                    (SELECT SUM(jumlah_dibutuhkan * harga_per_unit_bulanan) FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id), 
-                                    0) as calculated_value');
+                            k.nilai_total as calculated_value');
 
             $kontrakData = $builder
                 ->orderBy('k.id', 'DESC')
@@ -5420,9 +5454,7 @@ class Marketing extends BaseDataTableController
                                 cl.contact_person as pic,
                                 cl.phone as kontak,
                                 (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as calculated_total_units,
-                                COALESCE(k.nilai_total, 
-                                        (SELECT SUM(jumlah_dibutuhkan * harga_per_unit_bulanan) FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id), 
-                                        0) as calculated_value')
+                                k.nilai_total as calculated_value')
                         ->orderBy('k.id','DESC')
                         ->limit($length, $start)
                         ->get()

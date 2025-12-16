@@ -267,7 +267,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('kontrak/getData', 'Marketing::getData');
     $routes->post('kontrak/getDataTable', 'Marketing::getDataTable');
     $routes->get('kontrak/detail/(:num)', 'Kontrak::detail/$1'); // Add missing detail route
-    $routes->get('kontrak/units/(:num)', 'Marketing::kontrakUnits/$1');
+    $routes->get('kontrak/units/(:num)', 'Kontrak::getContractUnits/$1'); // Use existing method with correct format
     $routes->get('kontrak/customer-locations/(:num)', 'Marketing::customerLocations/$1');
     $routes->get('kontrak/locations/(:num)', 'Kontrak::getLocationsByCustomer/$1'); // Load customer locations for SPK
     $routes->get('kontrak/spesifikasi/(:num)', 'Kontrak::spesifikasi/$1'); // Load contract specifications for SPK

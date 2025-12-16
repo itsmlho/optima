@@ -112,11 +112,11 @@ helper('permission_helper');
                     <a href="<?= base_url('/purchasing') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'purchasing') !== false && strpos(current_url(), 'sparepart') === false && strpos(current_url(), 'supplier') === false ? 'active' : '' ?>">
                         <i class="fas fa-truck"></i> PO Unit & Attachment
                     </a>
-                    <?php endif; ?>
+                    <!-- <?php endif; ?>
                     <?php if (canNavigateTo('purchasing', 'po_sparepart')): ?>
                     <a href="<?= base_url('/purchasing/po-sparepart-list') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'po-sparepart') !== false ? 'active' : '' ?>">
                         <i class="fas fa-tools"></i> PO Sparepart
-                    </a>
+                    </a> -->
                     <?php endif; ?>
                     <?php if (canNavigateTo('purchasing', 'po')): ?>
                     <a href="<?= base_url('/warehouse/purchase-orders/rejected-items') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'rejected-items') !== false ? 'active' : '' ?>">
@@ -441,14 +441,14 @@ helper('permission_helper');
             </li>
 
             <!-- PO Sparepart -->
-            <li class="nav-item">
+            <!-- <li class="nav-item">
                 <a class="nav-link <?= strpos(current_url(), 'po-sparepart') !== false ? 'active' : '' ?>" 
                    href="<?= base_url('/purchasing/po-sparepart-list') ?>"
                    data-search-terms="purchasing po sparepart parts">
                     <i class="fas fa-tools"></i>
                     <span class="nav-link-text">PO Sparepart</span>
                 </a>
-            </li>
+            </li> -->
 
             <!-- PO Reject -->
             <li class="nav-item">
