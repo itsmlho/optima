@@ -745,30 +745,21 @@ $(document).ready(function() {
     }, 100);
     
     // Initialize DataTables for both tabs
-    let progressTable = window.initDataTableWithDateFilter({
-        tableSelector: '#progressWorkOrdersTable',
-        ajaxUrl: '<?= base_url('service/work-orders/data') ?>',
-        filterId: 'progress',
-        ajaxData: function(d) {
-            d.tab = 'progress';
-            d.useOptimized = true;
-            d.status = $('#filter-status-progress').val();
-            d.priority = $('#filter-priority-progress').val();
-        },
-        autoCalculateStats: true,
-        statsConfig: {
-            'stat-total-work-orders': { type: 'count' },
-            'stat-open': {
-                type: 'filtered-count',
-                filter: (row) => $(row).find('td:eq(7)').text().includes('Open')
-            },
-            'stat-in-progress': {
-                type: 'filtered-count',
-                filter: (row) => $(row).find('td:eq(7)').text().includes('In Progress')
-            },
-            'stat-completed': {
-                type: 'filtered-count',
-                filter: (row) => $(row).find('td:eq(7)').text().includes('Completed')
+    let progressTable = null;
+    let closedTable = null;
+    
+    // Use standard DataTable initialization for better compatibility
+    progressTable = $('#progressWorkOrdersTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '<?= base_url('service/work-orders/data') ?>',
+            type: 'POST',
+            data: function(d) {
+                d.tab = 'progress';
+                d.useOptimized = true;
+                d.status = $('#filter-status-progress').val();
+                d.priority = $('#filter-priority-progress').val();
             }
         },
         columns: [
@@ -818,15 +809,18 @@ $(document).ready(function() {
         }
     });
 
-    let closedTable = window.initDataTableWithDateFilter({
-        tableSelector: '#closedWorkOrdersTable',
-        ajaxUrl: '<?= base_url('service/work-orders/data') ?>',
-        filterId: 'closed',
-        ajaxData: function(d) {
-            d.tab = 'closed';
-            d.useOptimized = true;
-            d.priority = $('#filter-priority-closed').val();
-            d.month = $('#filter-month-closed').val();
+    closedTable = $('#closedWorkOrdersTable').DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: '<?= base_url('service/work-orders/data') ?>',
+            type: 'POST',
+            data: function(d) {
+                d.tab = 'closed';
+                d.useOptimized = true;
+                d.priority = $('#filter-priority-closed').val();
+                d.month = $('#filter-month-closed').val();
+            }
         },
         columns: [
             { data: 0, orderable: false, searchable: false }, // Row number
@@ -874,6 +868,19 @@ $(document).ready(function() {
             $(row).data('status-code', statusCode);
         }
     });
+    
+    // Helper functions for safe table reload
+    function reloadProgressTable() {
+        if (progressTable && typeof progressTable.ajax !== 'undefined') {
+            progressTable.ajax.reload();
+        }
+    }
+    
+    function reloadClosedTable() {
+        if (closedTable && typeof closedTable.ajax !== 'undefined') {
+            closedTable.ajax.reload();
+        }
+    }
 
     // Update count functions
     function updateProgressCount(count) {
@@ -888,11 +895,15 @@ $(document).ready(function() {
     // Initialize closed table when closed tab is first shown
     $('#closed-tab').on('shown.bs.tab', function (e) {
         // Force reload closed table
-        closedTable.ajax.reload();
+        reloadClosedTable();
         // Adjust column sizing
         setTimeout(function() {
-            closedTable.columns.adjust();
-            closedTable.responsive.recalc();
+            if (closedTable && typeof closedTable.columns !== 'undefined') {
+                closedTable.columns.adjust();
+                if (closedTable.responsive) {
+                    closedTable.responsive.recalc();
+                }
+            }
         }, 100);
         console.log('Closed tab activated - reloading data');
     });
@@ -902,7 +913,7 @@ $(document).ready(function() {
         // Small delay to ensure tab is fully shown
         setTimeout(function() {
             if ($('#closed-tab').hasClass('active')) {
-                closedTable.ajax.reload();
+                reloadClosedTable();
                 // Adjust column sizing
                 setTimeout(function() {
                     closedTable.columns.adjust();
@@ -924,7 +935,7 @@ $(document).ready(function() {
         
         // Reload progress table to ensure data is loaded
         setTimeout(function() {
-            progressTable.ajax.reload();
+            reloadProgressTable();
             // Load initial statistics
             updateStatistics();
         }, 100);
@@ -932,12 +943,12 @@ $(document).ready(function() {
 
     // Filter handlers for Progress tab (status and priority only, date handled by helper)
     $('#filter-status-progress, #filter-priority-progress').on('change', function() {
-        progressTable.ajax.reload();
+        reloadProgressTable();
     });
 
     // Filter handlers for Closed tab (priority and month only, date handled by helper)
     $('#filter-priority-closed, #filter-month-closed').on('change', function() {
-        closedTable.ajax.reload();
+        reloadClosedTable();
     });
 
     // Update all table references to use progressTable as default
@@ -1091,7 +1102,7 @@ $(document).ready(function() {
                 if (response.success) {
                     showAlert('success', response.message);
                     $('#workOrderModal').modal('hide');
-                    progressTable.ajax.reload();
+                    reloadProgressTable();
                     updateStatistics();
                 } else {
                     showAlert('error', response.message);
@@ -1314,7 +1325,7 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     showAlert('success', response.message);
-                    progressTable.ajax.reload();
+                    reloadProgressTable();
                     updateStatistics();
                 } else {
                     showAlert('error', response.message);
@@ -1353,7 +1364,7 @@ $(document).ready(function() {
                     success: function(response) {
                         if (response.success) {
                             showAlert('success', response.message);
-                            progressTable.ajax.reload();
+                            reloadProgressTable();
                             updateStatistics();
                         } else {
                             showAlert('error', response.message);
@@ -1544,7 +1555,7 @@ $(document).ready(function() {
                         console.log('✅ Delete response:', response);
                         if (response.success) {
                             showAlert('success', response.message);
-                            progressTable.ajax.reload();
+                            reloadProgressTable();
                             updateStatistics();
                         } else {
                             console.log('❌ Delete failed:', response.message);
@@ -1590,7 +1601,7 @@ $(document).ready(function() {
                     success: function(response) {
                         if (response.success) {
                             showAlert('success', response.message);
-                            progressTable.ajax.reload();
+                            reloadProgressTable();
                             updateStatistics();
                         } else {
                             showAlert('error', response.message);
@@ -3210,4 +3221,5 @@ document.addEventListener('DOMContentLoaded', function() {
 <?php include 'unit_verification.php'; ?>
 
 <?= $this->endSection() ?>
+
 
