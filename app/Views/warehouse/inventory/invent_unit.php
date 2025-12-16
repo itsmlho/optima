@@ -908,8 +908,14 @@ $can_export = $permissions['export'];
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
-                                            <tr><td><strong>SPK ID</strong></td><td>: ${h(data.spk_id) || '-'}</td></tr>
-                                            <tr><td><strong>DI ID</strong></td><td>: ${h(data.delivery_instruction_id) || '-'}</td></tr>
+                                            <tr>
+                                                <td width="40%"><strong>No. SPK</strong></td>
+                                                <td>: ${h(data.nomor_spk) || '-'}</td>
+                                            </tr>
+                                            <tr>
+                                                <td><strong>No. Delivery</strong></td>
+                                                <td>: ${h(data.nomor_di) || '-'}</td>
+                                            </tr>
                                         </table>
                                     </div>
                                 </div>

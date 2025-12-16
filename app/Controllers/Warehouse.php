@@ -630,7 +630,9 @@ class Warehouse extends BaseController
                     
                     -- SPK & Delivery Info
                     iu.spk_id,
+                    COALESCE(spk.nomor_spk, "-") as nomor_spk,
                     iu.delivery_instruction_id,
+                    COALESCE(di.nomor_di, "-") as nomor_di,
                     iu.workflow_status,
                     iu.contract_disconnect_date,
                     iu.contract_disconnect_stage
@@ -651,6 +653,8 @@ class Warehouse extends BaseController
                 LEFT JOIN areas a ON a.id = iu.area_id
                 LEFT JOIN purchase_orders po ON po.id_po = iu.id_po
                 LEFT JOIN suppliers s ON s.id_supplier = po.supplier_id
+                LEFT JOIN spk ON spk.id = iu.spk_id
+                LEFT JOIN delivery_instructions di ON di.id = iu.delivery_instruction_id
                 WHERE iu.id_inventory_unit = ?
             ', [$id]);
             
@@ -658,6 +662,14 @@ class Warehouse extends BaseController
             if (!$data) {
                 return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.']);
             }
+            
+            // DEBUG: Log customer data
+            log_message('debug', 'Unit Detail - Customer Data: ' . json_encode([
+                'customer_id' => $data['customer_id'] ?? 'NULL',
+                'customer_name' => $data['customer_name'] ?? 'NULL',
+                'customer_location_id' => $data['customer_location_id'] ?? 'NULL',
+                'customer_location_name' => $data['customer_location_name'] ?? 'NULL'
+            ]));
             
             // Get attachments for this unit
             $attachmentQuery = $db->query('
