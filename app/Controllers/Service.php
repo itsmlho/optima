@@ -1386,8 +1386,8 @@ class Service extends BaseController
         // Update inventory_unit
         $this->updateInventoryUnit($unit_id, $area_id, $no_unit_action, $update_no_unit);
         
-        // Handle component attachments
-        $this->handleComponentAttachments($unit_id, $battery_id, $charger_id);
+        // Handle component attachments with SPK context for audit logging
+        $this->handleComponentAttachments($unit_id, $battery_id, $charger_id, $stageData['spk_id'], 'persiapan_unit');
     }
 
     /**
@@ -1496,22 +1496,22 @@ class Service extends BaseController
     /**
      * Handle component attachments (battery & charger)
      */
-    private function handleComponentAttachments($unit_id, $battery_id, $charger_id)
+    private function handleComponentAttachments($unit_id, $battery_id, $charger_id, $spk_id = null, $stage_name = 'persiapan_unit')
     {
         // Handle enhanced component data (battery & charger replacement)
         $enhancedComponentData = $this->request->getPost('enhanced_component_data');
         if ($enhancedComponentData) {
-            $this->processEnhancedComponentData($enhancedComponentData, $unit_id);
+            $this->processEnhancedComponentData($enhancedComponentData, $unit_id, $spk_id, $stage_name);
         } else {
             // Fallback: Legacy single field approach
-            $this->processLegacyComponentData($unit_id, $battery_id, $charger_id);
+            $this->processLegacyComponentData($unit_id, $battery_id, $charger_id, $spk_id, $stage_name);
         }
     }
 
     /**
      * Process enhanced component data for replacements
      */
-    private function processEnhancedComponentData($enhancedComponentData, $unit_id)
+    private function processEnhancedComponentData($enhancedComponentData, $unit_id, $spk_id = null, $stage_name = 'persiapan_unit')
     {
         $componentData = json_decode($enhancedComponentData, true);
         
@@ -1520,7 +1520,7 @@ class Service extends BaseController
         
         foreach ($units as $unitComponentData) {
             if (isset($unitComponentData['components'])) {
-                $this->processUnitComponents($unitComponentData['components'], $unit_id);
+                $this->processUnitComponents($unitComponentData['components'], $unit_id, $spk_id, $stage_name);
             }
         }
     }
@@ -1528,28 +1528,37 @@ class Service extends BaseController
     /**
      * Process unit components (battery/charger)
      */
-    private function processUnitComponents($components, $unit_id)
+    private function processUnitComponents($components, $unit_id, $spk_id = null, $stage_name = 'persiapan_unit')
     {
         // Handle Battery
         if (isset($components['battery'])) {
             $batteryComp = $components['battery'];
-            $this->handleComponentReplacement($batteryComp, $unit_id, 'battery');
+            $this->handleComponentReplacement($batteryComp, $unit_id, 'battery', $spk_id, $stage_name);
         }
         
         // Handle Charger
         if (isset($components['charger'])) {
             $chargerComp = $components['charger'];
-            $this->handleComponentReplacement($chargerComp, $unit_id, 'charger');
+            $this->handleComponentReplacement($chargerComp, $unit_id, 'charger', $spk_id, $stage_name);
         }
     }
 
     /**
      * Handle component replacement (battery or charger)
      */
-    private function handleComponentReplacement($componentData, $unit_id, $type)
+    private function handleComponentReplacement($componentData, $unit_id, $type, $spk_id = null, $stage_name = 'persiapan_unit')
     {
+        $old_unit_id = null;
+        
         // If action is 'replace', detach old component first
         if ($componentData['action'] === 'replace' && !empty($componentData['existing_model_id'])) {
+            // Get old unit_id before detaching for audit log
+            $oldAttachment = $this->db->table('inventory_attachment')
+                ->where('id_inventory_attachment', $componentData['existing_model_id'])
+                ->get()->getRowArray();
+            
+            $old_unit_id = $oldAttachment['id_inventory_unit'] ?? null;
+            
             $this->db->table('inventory_attachment')
                 ->where('id_inventory_attachment', $componentData['existing_model_id'])
                 ->update([
@@ -1557,6 +1566,8 @@ class Service extends BaseController
                     'attachment_status' => 'AVAILABLE',
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
+            
+            log_message('info', "Component {$type} ID {$componentData['existing_model_id']} detached from unit {$old_unit_id}");
         }
         
         // Attach new component
@@ -1568,13 +1579,32 @@ class Service extends BaseController
                     'attachment_status' => 'USED',
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
+            
+            // Log to audit table
+            $transferType = ($componentData['action'] === 'replace' && $old_unit_id) ? 'TRANSFER' : 'NEW_ASSIGNMENT';
+            $triggeredBy = $transferType === 'TRANSFER' ? 'KANIBAL_PERSIAPAN_UNIT' : 'PERSIAPAN_UNIT';
+            
+            $this->db->table('attachment_transfer_log')->insert([
+                'attachment_id' => $componentData['new_inventory_attachment_id'],
+                'from_unit_id' => $old_unit_id,
+                'to_unit_id' => $unit_id,
+                'transfer_type' => $transferType,
+                'triggered_by' => $triggeredBy,
+                'spk_id' => $spk_id,
+                'stage_name' => $stage_name,
+                'notes' => ucfirst($type) . ' ' . ($transferType === 'TRANSFER' ? 'transferred' : 'assigned'),
+                'created_by' => session('user_id') ?? 1,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            log_message('info', "Component {$type} ID {$componentData['new_inventory_attachment_id']} {$transferType} to unit {$unit_id}");
         }
     }
 
     /**
      * Process legacy component data (single fields)
      */
-    private function processLegacyComponentData($unit_id, $battery_id, $charger_id)
+    private function processLegacyComponentData($unit_id, $battery_id, $charger_id, $spk_id = null, $stage_name = 'persiapan_unit')
     {
         // Update battery attachment
         if ($battery_id) {
@@ -1585,6 +1615,20 @@ class Service extends BaseController
                     'attachment_status' => 'USED', 
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
+            
+            // Log to audit table
+            $this->db->table('attachment_transfer_log')->insert([
+                'attachment_id' => $battery_id,
+                'from_unit_id' => null,
+                'to_unit_id' => $unit_id,
+                'transfer_type' => 'NEW_ASSIGNMENT',
+                'triggered_by' => 'PERSIAPAN_UNIT',
+                'spk_id' => $spk_id,
+                'stage_name' => $stage_name,
+                'notes' => 'Battery assigned (legacy method)',
+                'created_by' => session('user_id') ?? 1,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
         }
         
         // Update charger attachment
@@ -1596,6 +1640,20 @@ class Service extends BaseController
                     'attachment_status' => 'USED', 
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
+            
+            // Log to audit table
+            $this->db->table('attachment_transfer_log')->insert([
+                'attachment_id' => $charger_id,
+                'from_unit_id' => null,
+                'to_unit_id' => $unit_id,
+                'transfer_type' => 'NEW_ASSIGNMENT',
+                'triggered_by' => 'PERSIAPAN_UNIT',
+                'spk_id' => $spk_id,
+                'stage_name' => $stage_name,
+                'notes' => 'Charger assigned (legacy method)',
+                'created_by' => session('user_id') ?? 1,
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
         }
     }
 
@@ -1822,9 +1880,17 @@ class Service extends BaseController
                 log_message('info', "Attachment ID: {$approvalData['attachment_id']}");
                 log_message('info', "Target Unit ID: {$persiapanStage['unit_id']}");
                 log_message('info', "Transfer Mode: " . ($approvalData['transfer_attachment'] ? 'KANIBAL' : 'NORMAL'));
+                log_message('info', "SPK ID: {$stageData['spk_id']}");
+                log_message('info', "Stage Name: {$approvalData['stage']}");
                 
-                // Create and execute background attachment update
-                $this->executeBackgroundAttachmentUpdate($approvalData['attachment_id'], $persiapanStage['unit_id'], $approvalData['transfer_attachment']);
+                // Create and execute background attachment update with audit info
+                $this->executeBackgroundAttachmentUpdate(
+                    $approvalData['attachment_id'], 
+                    $persiapanStage['unit_id'], 
+                    $approvalData['transfer_attachment'],
+                    $stageData['spk_id'],
+                    $approvalData['stage']
+                );
                 
             } catch (\Exception $e) {
                 log_message('error', 'Background attachment update failed: ' . $e->getMessage());
@@ -1836,7 +1902,7 @@ class Service extends BaseController
     /**
      * Execute background attachment update
      */
-    private function executeBackgroundAttachmentUpdate($attachment_id, $unit_id, $transfer_attachment)
+    private function executeBackgroundAttachmentUpdate($attachment_id, $unit_id, $transfer_attachment, $spk_id = null, $stage_name = 'fabrikasi')
     {
         // Get database config for script generation
         $db = \Config\Database::connect();
@@ -1870,20 +1936,100 @@ if ($mysqli->connect_error) {
     exit(1);
 }
 
-// Execute update
-$sql = "UPDATE inventory_attachment 
-        SET id_inventory_unit = $unit_id, 
-            attachment_status = 'USED', 
-            updated_at = '" . date('Y-m-d H:i:s') . "' 
-        WHERE id_inventory_attachment = $attachment_id";
+$mysqli->begin_transaction();
 
-$result = $mysqli->query($sql);
-$affected_rows = $mysqli->affected_rows;
-
-if ($result && $affected_rows > 0) {
-    error_log('✅ BACKGROUND ' . ($transfer_mode ? 'KANIBAL' : 'NORMAL') . ' SUCCESS: Attachment ' . $attachment_id . ' ' . ($transfer_mode ? 'transferred to' : 'assigned to') . ' unit ' . $unit_id . ' (affected rows: ' . $affected_rows . ')');
-} else {
-    error_log('❌ BACKGROUND UPDATE FAILED: Attachment ' . $attachment_id . ' update failed (result: ' . ($result ? 'true' : 'false') . ', affected_rows: ' . $affected_rows . ')');
+try {
+    if ($transfer_mode) {
+        // KANIBAL MODE: Two-step update for proper detach → attach workflow
+        
+        // Get old unit_id before detaching (for audit log)
+        $getOldUnit = $mysqli->query("SELECT id_inventory_unit FROM inventory_attachment WHERE id_inventory_attachment = $attachment_id");
+        $oldUnitData = $getOldUnit->fetch_assoc();
+        $old_unit_id = $oldUnitData['id_inventory_unit'] ?? null;
+        
+        // STEP 1: Detach from old unit
+        $sql1 = "UPDATE inventory_attachment 
+                 SET id_inventory_unit = NULL, 
+                     updated_at = '" . date('Y-m-d H:i:s') . "' 
+                 WHERE id_inventory_attachment = $attachment_id";
+        
+        $result1 = $mysqli->query($sql1);
+        $affected1 = $mysqli->affected_rows;
+        
+        if (!$result1) {
+            throw new Exception('KANIBAL STEP 1 FAILED: Detach failed - ' . $mysqli->error);
+        }
+        
+        error_log('✅ KANIBAL STEP 1 SUCCESS: Attachment ' . $attachment_id . ' detached from unit ' . ($old_unit_id ?? 'NULL') . ' (affected: ' . $affected1 . ')');
+        
+        // Wait 1 second to ensure trigger completes
+        sleep(1);
+        
+        // STEP 2: Attach to new unit
+        $sql2 = "UPDATE inventory_attachment 
+                 SET id_inventory_unit = $unit_id, 
+                     updated_at = '" . date('Y-m-d H:i:s') . "' 
+                 WHERE id_inventory_attachment = $attachment_id";
+        
+        $result2 = $mysqli->query($sql2);
+        $affected2 = $mysqli->affected_rows;
+        
+        if (!$result2) {
+            throw new Exception('KANIBAL STEP 2 FAILED: Attach failed - ' . $mysqli->error);
+        }
+        
+        error_log('✅ KANIBAL STEP 2 SUCCESS: Attachment ' . $attachment_id . ' attached to unit ' . $unit_id . ' (affected: ' . $affected2 . ')');
+        
+        // Insert audit log
+        $spk_id = %SPK_ID%;
+        $stage_name = '%STAGE_NAME%';
+        $created_by = %CREATED_BY%;
+        
+        $auditSql = "INSERT INTO attachment_transfer_log 
+                     (attachment_id, from_unit_id, to_unit_id, transfer_type, triggered_by, spk_id, stage_name, created_by, created_at) 
+                     VALUES 
+                     ($attachment_id, " . ($old_unit_id ? $old_unit_id : 'NULL') . ", $unit_id, 'TRANSFER', 'KANIBAL_FABRIKASI', $spk_id, '$stage_name', $created_by, '" . date('Y-m-d H:i:s') . "')";
+        
+        $mysqli->query($auditSql);
+        error_log('📝 AUDIT LOG: Transfer logged from unit ' . ($old_unit_id ?? 'NULL') . ' to unit ' . $unit_id);
+        
+    } else {
+        // NORMAL MODE: Direct assignment (new attachment from warehouse)
+        $sql = "UPDATE inventory_attachment 
+                SET id_inventory_unit = $unit_id, 
+                    updated_at = '" . date('Y-m-d H:i:s') . "' 
+                WHERE id_inventory_attachment = $attachment_id";
+        
+        $result = $mysqli->query($sql);
+        $affected_rows = $mysqli->affected_rows;
+        
+        if (!$result) {
+            throw new Exception('NORMAL MODE FAILED: Assignment failed - ' . $mysqli->error);
+        }
+        
+        error_log('✅ NORMAL MODE SUCCESS: Attachment ' . $attachment_id . ' assigned to unit ' . $unit_id . ' (affected rows: ' . $affected_rows . ')');
+        
+        // Insert audit log
+        $spk_id = %SPK_ID%;
+        $stage_name = '%STAGE_NAME%';
+        $created_by = %CREATED_BY%;
+        
+        $auditSql = "INSERT INTO attachment_transfer_log 
+                     (attachment_id, from_unit_id, to_unit_id, transfer_type, triggered_by, spk_id, stage_name, created_by, created_at) 
+                     VALUES 
+                     ($attachment_id, NULL, $unit_id, 'NEW_ASSIGNMENT', 'FABRIKASI', $spk_id, '$stage_name', $created_by, '" . date('Y-m-d H:i:s') . "')";
+        
+        $mysqli->query($auditSql);
+        error_log('📝 AUDIT LOG: New assignment logged to unit ' . $unit_id);
+    }
+    
+    $mysqli->commit();
+    error_log('✅ TRANSACTION COMMITTED: All updates successful');
+    
+} catch (Exception $e) {
+    $mysqli->rollback();
+    error_log('❌ TRANSACTION ROLLBACK: ' . $e->getMessage());
+    exit(1);
 }
 
 $mysqli->close();
@@ -1898,6 +2044,9 @@ EOF;
             '%ATTACHMENT_ID%',
             '%UNIT_ID%',
             '%TRANSFER_MODE%',
+            '%SPK_ID%',
+            '%STAGE_NAME%',
+            '%CREATED_BY%',
             '%HOSTNAME%',
             '%USERNAME%',
             '%PASSWORD%',
@@ -1906,6 +2055,9 @@ EOF;
             $attachment_id,
             $unit_id,
             $transferModeStr,
+            $spk_id ?? 0,
+            $stage_name,
+            session('user_id') ?? 1,
             $hostname,
             $username,
             $password,
