@@ -645,7 +645,7 @@ function formatCurrency($amount, $currency = 'IDR') {
                     <th class="col-center" style="width: 40px;">No</th>
                     <th>Deskripsi & Spesifikasi Unit</th>
                     <th class="col-center" style="width: 70px;">Qty</th>
-                    <th class="col-right" style="width: 140px;">Harga / Bulan</th>
+                    <th class="col-right" style="width: 140px;">Harga Sewa / Bulan / Unit</th>
                 </tr>
             </thead>
             <tbody>
@@ -685,7 +685,17 @@ function formatCurrency($amount, $currency = 'IDR') {
                         </td>
                         <td class="col-center"><?= number_format($spec['quantity'] ?? 1) ?></td>
                         <td class="col-right font-bold">
-                            <?= formatCurrency($spec['monthly_price'] ?? $spec['total_price'] ?? 0, $quotation['currency'] ?? 'IDR') ?>
+                            <?php 
+                            $priceToShow = 0;
+                            if (!empty($spec['monthly_price']) && floatval($spec['monthly_price']) > 0) {
+                                $priceToShow = $spec['monthly_price'];
+                            } elseif (!empty($spec['daily_price']) && floatval($spec['daily_price']) > 0) {
+                                $priceToShow = $spec['daily_price'];
+                            } elseif (!empty($spec['total_price']) && floatval($spec['total_price']) > 0) {
+                                $priceToShow = $spec['total_price'];
+                            }
+                            echo formatCurrency($priceToShow, $quotation['currency'] ?? 'IDR');
+                            ?>
                         </td>
                     </tr>
                     <?php endforeach; ?>

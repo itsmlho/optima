@@ -521,7 +521,7 @@ class Marketing extends BaseDataTableController
                 $actions .= '</button>';
                 
                 if ($hasSpecs) {
-                    $actions .= '<button class="btn btn-sm btn-secondary me-1" onclick="printQuotation(' . $quotationId . ')" title="Print PDF">';
+                    $actions .= '<button class="btn btn-sm btn-secondary me-1" onclick="openPrintSpecModal(' . $quotationId . ')" title="Print with Spec Selection">';
                     $actions .= '<i class="fas fa-print me-1"></i>Print';
                     $actions .= '</button>';
                     
@@ -536,7 +536,7 @@ class Marketing extends BaseDataTableController
                 break;
                 
             case 'SENT':
-                $actions .= '<button class="btn btn-sm btn-secondary me-1" onclick="printQuotation(' . $quotationId . ')" title="Print PDF">';
+                $actions .= '<button class="btn btn-sm btn-secondary me-1" onclick="openPrintSpecModal(' . $quotationId . ')" title="Print with Spec Selection">';
                 $actions .= '<i class="fas fa-print me-1"></i>Print';
                 $actions .= '</button>';
                               
@@ -549,10 +549,7 @@ class Marketing extends BaseDataTableController
                 break;
                 
             case 'DEAL':
-                // Print button available for all DEAL quotations
-                $actions .= '<button class="btn btn-sm btn-secondary me-1" onclick="printQuotation(' . $quotationId . ')" title="Print PDF">';
-                $actions .= '<i class="fas fa-print me-1"></i>Print';
-                $actions .= '</button>';
+                // DEAL stage - NO print button (only for QUOTATION and SENT stages)
                 
                 // STRICT SEQUENTIAL WORKFLOW - Use database flags for reliable state
                 $customerLocationComplete = !empty($quotation['customer_location_complete']);
@@ -7222,8 +7219,15 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(404)->setBody('Quotation tidak ditemukan');
         }
 
+        // Get selected specs from URL parameter
+        $selectedSpecs = $this->request->getGet('specs');
+        $specIds = [];
+        if (!empty($selectedSpecs)) {
+            $specIds = array_map('intval', explode(',', $selectedSpecs));
+        }
+
         // Get quotation specifications with related data
-        $specifications = $this->db->table('quotation_specifications qs')
+        $builder = $this->db->table('quotation_specifications qs')
             ->select('qs.*')
             ->select('tu.jenis as unit_type, tu.tipe as unit_subtype')
             ->select('k.kapasitas_unit as capacity_name')
@@ -7248,7 +7252,14 @@ class Marketing extends BaseDataTableController
             ->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left')
             ->join('baterai bat', 'bat.id = qs.battery_id', 'left')
             ->where('qs.id_quotation', $id)
-            ->where('qs.is_active', 1)
+            ->where('qs.is_active', 1);
+        
+        // Filter by selected specs if provided
+        if (!empty($specIds)) {
+            $builder->whereIn('qs.id_specification', $specIds);
+        }
+        
+        $specifications = $builder
             ->orderBy('qs.specification_type', 'ASC')
             ->orderBy('qs.id_specification', 'ASC')
             ->get()

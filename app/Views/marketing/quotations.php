@@ -3273,10 +3273,198 @@ function openSpecificationsModal(quotationId) {
     });
 }
 
-function printQuotation(quotationId) {
-    // Open print quotation in new window
-    const printUrl = '<?= base_url('marketing/quotations/print/') ?>' + quotationId;
+function openPrintSpecModal(quotationId) {
+    console.log('Opening print spec modal for quotation:', quotationId);
+    
+    // Get quotation specifications from the correct endpoint
+    $.get('<?= base_url('marketing/quotations/getSpecifications/') ?>' + quotationId)
+        .done(function(response) {
+            console.log('Specifications data received:', response);
+            
+            if (response.success && response.data) {
+                const specs = response.data || [];
+                console.log('Specifications:', specs);
+                
+                if (specs.length === 0) {
+                    Swal.fire('Info', 'No specifications found for this quotation', 'info');
+                    return;
+                }
+                
+                // Build modal content
+                let modalContent = `
+                    <div class="modal fade" id="printSpecModal" tabindex="-1">
+                        <div class="modal-dialog modal-lg">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Select Specifications to Print</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="selectAllSpecs(true)">
+                                            <i class="fas fa-check-square me-1"></i>Select All
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-secondary" onclick="selectAllSpecs(false)">
+                                            <i class="fas fa-square me-1"></i>Deselect All
+                                        </button>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered table-hover">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th width="50"><input type="checkbox" id="selectAll" onchange="toggleAllSpecs(this)" checked></th>
+                                                    <th>No</th>
+                                                    <th>Description</th>
+                                                    <th>Qty</th>
+                                                    <th>Price</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="specList">
+                `;
+                
+                specs.forEach((spec, index) => {
+                    let desc = '';
+                    if (spec.specification_type === 'UNIT') {
+                        // Format seperti di print
+                        const unitTitle = (spec.unit_type && spec.unit_subtype) 
+                            ? `${spec.unit_type} ${spec.unit_subtype}` 
+                            : (spec.unit_type || 'UNIT');
+                        const dept = spec.department_name ? spec.department_name.toUpperCase() : 'STANDARD';
+                        desc = `${unitTitle} - ${dept}`;
+                        
+                        // Tambahkan spesifikasi detail
+                        let details = [];
+                        if (spec.brand_name) details.push(`Merk: ${spec.brand_name}`);
+                        if (spec.capacity_name) details.push(`Cap. ${spec.capacity_name}`);
+                        if (spec.mast_name) details.push(`Mast ${spec.mast_name}`);
+                        if (spec.wheel_name) details.push(spec.wheel_name);
+                        if (spec.jenis_baterai) details.push(`Baterai: ${spec.jenis_baterai}`);
+                        if (spec.attachment_type) details.push(`Attachment: ${spec.attachment_type}`);
+                        if (spec.unit_accessories && spec.unit_accessories !== 'null') details.push(`Acc: ${spec.unit_accessories}`);
+                        
+                        if (details.length > 0) {
+                            desc += '<br><small class="text-muted">' + details.join(' | ') + '</small>';
+                        }
+                    } else {
+                        desc = spec.attachment_type || 'ATTACHMENT';
+                        let details = [];
+                        if (spec.attachment_brand) details.push(`Merk: ${spec.attachment_brand}`);
+                        if (spec.attachment_model) details.push(`Model: ${spec.attachment_model}`);
+                        if (details.length > 0) {
+                            desc += '<br><small class="text-muted">' + details.join(' - ') + '</small>';
+                        }
+                    }
+                    
+                    // Tentukan harga dan label
+                    let priceValue = 0;
+                    let priceLabel = '';
+                    
+                    if (spec.monthly_price && parseFloat(spec.monthly_price) > 0) {
+                        priceValue = parseFloat(spec.monthly_price);
+                        priceLabel = '/month';
+                    } else if (spec.daily_price && parseFloat(spec.daily_price) > 0) {
+                        priceValue = parseFloat(spec.daily_price);
+                        priceLabel = '/day';
+                    }
+                    
+                    const priceFormatted = new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0
+                    }).format(priceValue);
+                    
+                    const priceDisplay = priceValue > 0 ? `${priceFormatted}<small class="text-muted">${priceLabel}</small>` : 'Rp 0';
+                    
+                    modalContent += `
+                        <tr>
+                            <td><input type="checkbox" class="spec-checkbox" value="${spec.id_specification}" checked></td>
+                            <td>${index + 1}</td>
+                            <td>${desc}</td>
+                            <td>${spec.quantity || 1}</td>
+                            <td>${priceDisplay}</td>
+                        </tr>
+                    `;
+                });
+                
+                modalContent += `
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <button type="button" class="btn btn-primary" onclick="printSelectedSpecs(${quotationId})">
+                                        <i class="fas fa-print me-1"></i>Print Selected
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Remove existing modal if any
+                $('#printSpecModal').remove();
+                
+                // Append and show modal
+                $('body').append(modalContent);
+                const modal = new bootstrap.Modal(document.getElementById('printSpecModal'));
+                modal.show();
+                
+                console.log('Modal shown');
+                
+                // Clean up on modal hide
+                $('#printSpecModal').on('hidden.bs.modal', function() {
+                    $(this).remove();
+                });
+            } else {
+                console.error('Invalid response:', response);
+                Swal.fire('Error', 'Failed to load quotation data', 'error');
+            }
+        })
+        .fail(function(xhr, status, error) {
+            console.error('AJAX error:', status, error);
+            console.error('Response:', xhr.responseText);
+            Swal.fire('Error', 'Failed to load specifications: ' + error, 'error');
+        });
+}
+
+function toggleAllSpecs(checkbox) {
+    $('.spec-checkbox').prop('checked', checkbox.checked);
+}
+
+function selectAllSpecs(select) {
+    $('.spec-checkbox').prop('checked', select);
+    $('#selectAll').prop('checked', select);
+}
+
+function printSelectedSpecs(quotationId) {
+    const selectedSpecs = [];
+    $('.spec-checkbox:checked').each(function() {
+        selectedSpecs.push($(this).val());
+    });
+    
+    console.log('Selected specs:', selectedSpecs);
+    
+    if (selectedSpecs.length === 0) {
+        Swal.fire('Warning', 'Please select at least one specification', 'warning');
+        return;
+    }
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('printSpecModal'));
+    if (modal) {
+        modal.hide();
+    }
+    
+    // Open print with selected specs
+    const printUrl = '<?= base_url('marketing/quotations/print/') ?>' + quotationId + '?specs=' + selectedSpecs.join(',');
+    console.log('Opening print URL:', printUrl);
     window.open(printUrl, '_blank', 'noopener,noreferrer');
+}
+
+function printQuotation(quotationId) {
+    // Legacy function - redirect to new modal
+    openPrintSpecModal(quotationId);
 }
 
 function sendQuotation(quotationId) {

@@ -79,7 +79,8 @@ class Quotation extends BaseController
                 $row['status'] = strtolower($quotation['stage'] ?? 'draft');
                 $row['valid_until'] = date('d M Y', strtotime($quotation['valid_until']));
                 $row['created_at'] = date('d M Y H:i', strtotime($quotation['created_at']));
-                $row['actions'] = $this->getActionButtons($quotation['id_quotation']);
+                // Action buttons handled by Marketing controller
+                $row['actions'] = '';
                 
                 $data[] = $row;
             }
@@ -457,40 +458,6 @@ class Quotation extends BaseController
         ];
         
         return $badges[$stage] ?? '<span class="badge bg-light text-dark">' . $stage . '</span>';
-    }
-
-    /**
-     * Get action buttons for quotation
-     */
-    private function getActionButtons($quotationId)
-    {
-        $actions = '<div class="btn-group btn-group-sm">';
-        
-        if (can_view('marketing')) {
-            $actions .= '<button class="btn btn-info" onclick="viewQuotation(' . $quotationId . ')" title="View Quotation">
-                <i class="fas fa-eye"></i>
-            </button>';
-        }
-        
-        if (can_edit('marketing')) {
-            $actions .= '<button class="btn btn-warning" onclick="editQuotation(' . $quotationId . ')" title="Edit Quotation">
-                <i class="fas fa-edit"></i>
-            </button>';
-            
-            $actions .= '<button class="btn btn-success" onclick="markAsDeal(' . $quotationId . ')" title="Mark as Deal">
-                <i class="fas fa-handshake"></i>
-            </button>';
-        }
-        
-        if (can_delete('marketing')) {
-            $actions .= '<button class="btn btn-danger" onclick="deleteQuotation(' . $quotationId . ')" title="Delete Quotation">
-                <i class="fas fa-trash"></i>
-            </button>';
-        }
-        
-        $actions .= '</div>';
-        
-        return $actions;
     }
 
     /**
