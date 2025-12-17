@@ -541,8 +541,10 @@ $can_export = $permissions['export'];
                                 </div>
                                 <div class="col-md-4">
                                     <label for="id_supplier_modal" class="form-label">Supplier <span class="text-danger">*</span></label>
-                                    <select name="id_supplier" id="id_supplier_modal" class="form-select select2-modal" required>
+                                    <select name="id_supplier" id="id_supplier_modal" class="form-select" data-master-type="supplier" required>
                                         <option value="">Pilih Supplier...</option>
+                                        <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Supplier Baru</option>
+                                        <option disabled>─────────────</option>
                                         <?php if (isset($suppliers) && is_array($suppliers)): ?>
                                             <?php foreach ($suppliers as $item): ?>
                                                 <option value="<?= $item['id_supplier'] ?>"><?= esc($item['nama_supplier']) ?></option>
@@ -650,9 +652,9 @@ $can_export = $permissions['export'];
 <div class="modal fade" id="itemDetailModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title" id="itemModalTitle">Tambah Item</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="itemModalBody">
                 <!-- Content will be loaded dynamically -->
@@ -670,6 +672,9 @@ $can_export = $permissions['export'];
         </div>
     </div>
 </div>
+
+<!-- Quick Add Master Data Modal -->
+<?= $this->include('purchasing/components/quick_add_modal') ?>
 
 <?= $this->endSection() ?>
 
@@ -3659,12 +3664,19 @@ function initializeUnitDropdowns() {
         console.log('📍 Departemen changed:', $(this).val());
         const deptId = $(this).val();
         const $jenis = $('#unit_jenis');
+        const $jenisActions = $('#unit_jenis_actions');
         
         // Reset jenis dropdown
         $jenis.html('<option value="">Loading...</option>').prop('disabled', true);
+        if ($jenisActions.length) {
+            $jenisActions.prop('disabled', true);
+        }
         
         if (!deptId) {
             $jenis.html('<option value="">Pilih Departemen Dulu...</option>').prop('disabled', true);
+            if ($jenisActions.length) {
+                $jenisActions.prop('disabled', true);
+            }
             return;
         }
         
@@ -3689,10 +3701,17 @@ function initializeUnitDropdowns() {
                     });
                     
                     $jenis.html('<option value="">Pilih Jenis Unit...</option>');
+                    $jenis.append('<option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Jenis Unit Baru</option>');
+                    $jenis.append('<option disabled>─────────────</option>');
                     Object.keys(jenisMap).sort().forEach(jenisName => {
                         $jenis.append(`<option value="${jenisMap[jenisName]}">${jenisName}</option>`);
                     });
                     $jenis.prop('disabled', false);
+                    
+                    // Enable action button
+                    if ($jenisActions.length) {
+                        $jenisActions.prop('disabled', false);
+                    }
                     
                     // Re-initialize Select2 if available
                     if (typeof $.fn.select2 !== 'undefined') {
@@ -3707,6 +3726,9 @@ function initializeUnitDropdowns() {
                 } else {
                     console.warn('No jenis data found');
                     $jenis.html('<option value="">Tidak ada data</option>');
+                    if ($jenisActions.length) {
+                        $jenisActions.prop('disabled', true);
+                    }
                 }
             },
             error: function(xhr, status, error) {
@@ -3721,11 +3743,18 @@ function initializeUnitDropdowns() {
         console.log('🏷️ Merk changed:', $(this).val());
         const merk = $(this).find('option:selected').data('merk');
         const $model = $('#unit_model');
+        const $modelActions = $('#unit_model_actions');
         
         $model.html('<option value="">Loading...</option>').prop('disabled', true);
+        if ($modelActions.length) {
+            $modelActions.prop('disabled', true);
+        }
         
         if (!merk) {
             $model.html('<option value="">Pilih Brand Dulu...</option>').prop('disabled', true);
+            if ($modelActions.length) {
+                $modelActions.prop('disabled', true);
+            }
             return;
         }
         
@@ -3739,10 +3768,17 @@ function initializeUnitDropdowns() {
                 console.log('✅ Models loaded:', response);
                 if (response.success && response.data && response.data.length > 0) {
                     $model.html('<option value="">Pilih Model...</option>');
+                    $model.append('<option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Model Baru</option>');
+                    $model.append('<option disabled>─────────────</option>');
                     response.data.forEach(item => {
                         $model.append(`<option value="${item.id_model_unit}">${item.model_unit}</option>`);
                     });
                     $model.prop('disabled', false);
+                    
+                    // Enable action button
+                    if ($modelActions.length) {
+                        $modelActions.prop('disabled', false);
+                    }
                     
                     // Re-initialize Select2 if available
                     if (typeof $.fn.select2 !== 'undefined') {
@@ -3757,6 +3793,9 @@ function initializeUnitDropdowns() {
                 } else {
                     console.warn('No model data found');
                     $model.html('<option value="">Tidak ada model</option>');
+                    if ($modelActions.length) {
+                        $modelActions.prop('disabled', true);
+                    }
                 }
             },
             error: function(xhr, status, error) {

@@ -1945,7 +1945,7 @@ class Purchasing extends BaseController
             'departemens' => $this->departemenModel->findAll(),
             'tipeUnits' => $this->tipeUnitModel->findAll(),
             'kapasitas' => $this->kapasitasModel->findAll(),
-            'merks' => $this->modelUnitModel->select('merk_unit, id_model_unit')->groupBy('merk_unit')->findAll(),
+            'merks' => $this->modelUnitModel->select('merk_unit, MIN(id_model_unit) as id_model_unit')->groupBy('merk_unit')->findAll(),
             'attachments' => $this->attachmentModel->findAll(),
             'baterais' => $this->bateraiModel->findAll(),
             'chargers' => $this->chargerModel->findAll(),
@@ -2069,7 +2069,7 @@ class Purchasing extends BaseController
             case 'unit':
                 $data['departemens'] = $this->departemenModel->findAll();
                 $data['tipeUnits'] = $this->tipeUnitModel->findAll();
-                $data['merks'] = $this->modelUnitModel->select('merk_unit, id_model_unit')->groupBy('merk_unit')->findAll();
+                $data['merks'] = $this->modelUnitModel->select('merk_unit, MIN(id_model_unit) as id_model_unit')->groupBy('merk_unit')->findAll();
                 $data['kapasitas'] = $this->kapasitasModel->findAll();
                 $data['masts'] = $this->tipeMastModel->findAll();
                 $data['mesins'] = $this->mesinModel->findAll();
@@ -5501,6 +5501,343 @@ class Purchasing extends BaseController
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get master data configuration
+     */
+    private function getMasterDataConfig()
+    {
+        return [
+            'brand' => [
+                'title' => 'Brand & Model Unit',
+                'model' => 'modelUnitModel',
+                'fields' => [
+                    ['name' => 'merk_unit', 'label' => 'Brand', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: AVANT, BT, CAT, TOYOTA'],
+                    ['name' => 'model_unit', 'label' => 'Model', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: M420MSDTT, RRE160MC, EP15TCA']
+                ],
+                'return_field' => 'id_model_unit',
+                'refresh_related' => ['unit_merk', 'unit_model'],  // Refresh both Brand and Model dropdowns
+                'note' => 'Brand dan Model harus diisi bersamaan karena berasal dari tabel yang sama (model_unit)'
+            ],
+            'model' => [
+                'title' => 'Model Unit',
+                'model' => 'modelUnitModel',
+                'fields' => [
+                    ['name' => 'merk_unit', 'label' => 'Brand', 'type' => 'hidden', 'required' => true],
+                    ['name' => 'model_unit', 'label' => 'Model', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: M420MSDTT, RRE160MC, EP15TCA']
+                ],
+                'return_field' => 'id_model_unit'
+            ],
+            'kapasitas' => [
+                'title' => 'Kapasitas',
+                'model' => 'kapasitasModel',
+                'fields' => [
+                    ['name' => 'kapasitas_unit', 'label' => 'Kapasitas', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: 200 kg, 1.5 Ton, 2.5 Ton']
+                ],
+                'return_field' => 'id_kapasitas'
+            ],
+            'mast' => [
+                'title' => 'Tipe Mast',
+                'model' => 'tipeMastModel',
+                'fields' => [
+                    ['name' => 'tipe_mast', 'label' => 'Tipe Mast', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: Duplex (2-stage FFL) - ZM300, Simplex (2-stage mast) - V (3000)'],
+                    ['name' => 'tinggi_mast', 'label' => 'Tinggi Mast (Optional)', 'type' => 'text', 'required' => false, 'placeholder' => 'Contoh: 3000mm, 5000mm (opsional)']
+                ],
+                'return_field' => 'id_mast'
+            ],
+            'engine' => [
+                'title' => 'Tipe Mesin',
+                'model' => 'mesinModel',
+                'fields' => [
+                    ['name' => 'merk_mesin', 'label' => 'Merk Mesin', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: TOYOTA, ISUZU, MITSUBISHI'],
+                    ['name' => 'model_mesin', 'label' => 'Model Mesin', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: 1DZ-0196006, 4JG2, 6D34'],
+                    ['name' => 'bahan_bakar', 'label' => 'Bahan Bakar', 'type' => 'select', 'required' => true, 'options' => ['Diesel', 'Bensin', 'Electric', 'LPG', 'Hybrid']]
+                ],
+                'return_field' => 'id'
+            ],
+            'tire' => [
+                'title' => 'Tipe Ban',
+                'model' => 'tipeBanModel',
+                'fields' => [
+                    ['name' => 'tipe_ban', 'label' => 'Tipe Ban', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: Solid (Ban Mati), Pneumatic (Ban Angin), Cushion (Ban Bantal)']
+                ],
+                'return_field' => 'id_ban'
+            ],
+            'wheel' => [
+                'title' => 'Jenis Roda',
+                'model' => 'jenisRodaModel',
+                'fields' => [
+                    ['name' => 'tipe_roda', 'label' => 'Jenis Roda', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: 3-Wheel, 4-Wheel, 4-Way Multi-Directional (FFL)']
+                ],
+                'return_field' => 'id_roda'
+            ],
+            'valve' => [
+                'title' => 'Jumlah Valve',
+                'model' => 'valveModel',
+                'fields' => [
+                    ['name' => 'jumlah_valve', 'label' => 'Jumlah Valve', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: 2 Valve, 3 Valve, 4 Valve']
+                ],
+                'return_field' => 'id_valve'
+            ],
+            'battery' => [
+                'title' => 'Battery',
+                'model' => 'bateraiModel',
+                'fields' => [
+                    ['name' => 'merk_baterai', 'label' => 'Merk Battery', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: JUNGHEINRICH (JHR), GS ASTRA'],
+                    ['name' => 'tipe_baterai', 'label' => 'Tipe Battery', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: 48V / 775AH AQUAMATIC (5PZS775)'],
+                    ['name' => 'jenis_baterai', 'label' => 'Jenis Battery', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: Lead Acid, Lithium Ion']
+                ],
+                'return_field' => 'id',
+                'note' => 'Struktur DB: id, merk_baterai, tipe_baterai, jenis_baterai'
+            ],
+            'attachment_type' => [
+                'title' => 'Attachment',
+                'model' => 'attachmentModel',
+                'fields' => [
+                    ['name' => 'tipe', 'label' => 'Tipe Attachment', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: FORK POSITIONER, PAPER ROLL CLAMP, SIDE SHIFTER'],
+                    ['name' => 'merk', 'label' => 'Merk', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: CASCADE, KAUP, BOLZONI'],
+                    ['name' => 'model', 'label' => 'Model', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: 120K-FPS-CO82, 77F-RCP-01C']
+                ],
+                'return_field' => 'id_attachment'
+            ],
+            'charger' => [
+                'title' => 'Charger',
+                'model' => 'chargerModel',
+                'fields' => [
+                    ['name' => 'merk_charger', 'label' => 'Merk Charger', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: JUNGHEINRICH, STILL, HAWKER'],
+                    ['name' => 'tipe_charger', 'label' => 'Tipe Charger', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: SLT010nDe48/80P(48V / 80A), ECOTRON XM(80V / 125A)']
+                ],
+                'return_field' => 'id_charger'
+            ],
+            'departemen' => [
+                'title' => 'Departemen',
+                'model' => 'departemenModel',
+                'fields' => [
+                    ['name' => 'nama_departemen', 'label' => 'Nama Departemen', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: DIESEL, ELECTRIC, GASOLINE']
+                ],
+                'return_field' => 'id_departemen'
+            ],
+            'jenis_unit' => [
+                'title' => 'Jenis Unit',
+                'model' => 'tipeUnitModel',
+                'fields' => [
+                    ['name' => 'id_departemen', 'label' => 'Departemen', 'type' => 'select', 'required' => true, 'data_source' => 'departemenModel'],
+                    ['name' => 'tipe', 'label' => 'Tipe', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: Forklift, Alat Berat, Alat Kebersihan'],
+                    ['name' => 'jenis', 'label' => 'Jenis', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: COUNTER BALANCE, REACH TRUCK, PALLET STACKER']
+                ],
+                'return_field' => 'id_tipe_unit'
+            ],
+            'supplier' => [
+                'title' => 'Supplier',
+                'model' => 'supplierModel',
+                'fields' => [
+                    ['name' => 'kode_supplier', 'label' => 'Kode Supplier', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: SUP-0001, SUP-2025-001'],
+                    ['name' => 'nama_supplier', 'label' => 'Nama Supplier', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: PT. Forklift Jaya Abadi'],
+                    ['name' => 'contact_person', 'label' => 'Contact Person', 'type' => 'text', 'required' => false, 'placeholder' => 'Contoh: Bapak Budi (opsional)'],
+                    ['name' => 'phone', 'label' => 'Telepon', 'type' => 'text', 'required' => false, 'placeholder' => 'Contoh: 081234567890 (opsional)']
+                ],
+                'return_field' => 'id_supplier'
+            ]
+        ];
+    }
+
+    /**
+     * Get form configuration for quick add
+     */
+    public function getQuickAddForm()
+    {
+        try {
+            $type = $this->request->getGet('type');
+            $config = $this->getMasterDataConfig();
+            
+            if (!isset($config[$type])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Tipe master data tidak ditemukan'
+                ]);
+            }
+            
+            $formConfig = $config[$type];
+            
+            // Process fields to populate data_source for select fields
+            foreach ($formConfig['fields'] as &$field) {
+                if ($field['type'] === 'select' && isset($field['data_source'])) {
+                    // Load data from model
+                    $modelName = $field['data_source'];
+                    if (property_exists($this, $modelName)) {
+                        $model = $this->$modelName;
+                        $data = $model->findAll();
+                        
+                        // Format options based on model
+                        $options = [];
+                        foreach ($data as $row) {
+                            if ($modelName === 'departemenModel') {
+                                $options[] = [
+                                    'value' => $row['id_departemen'],
+                                    'label' => $row['nama_departemen']
+                                ];
+                            }
+                        }
+                        $field['options'] = $options;
+                    }
+                }
+            }
+            
+            // Get additional data if needed
+            $additionalData = [];
+            if ($type === 'model') {
+                // Get current selected brand
+                $additionalData['current_brand'] = $this->request->getGet('brand');
+            } elseif ($type === 'jenis_unit') {
+                // Get current selected departemen
+                $additionalData['current_departemen'] = $this->request->getGet('departemen');
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'config' => $formConfig,
+                'additionalData' => $additionalData
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Quick add master data via AJAX
+     */
+    public function quickAddMasterData()
+    {
+        try {
+            $type = $this->request->getPost('type');
+            $data = $this->request->getPost('data');
+            
+            $config = $this->getMasterDataConfig();
+            
+            if (!isset($config[$type])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Tipe master data tidak valid'
+                ]);
+            }
+            
+            $formConfig = $config[$type];
+            $modelName = $formConfig['model'];
+            $model = $this->$modelName;
+            
+            // Validate required fields
+            foreach ($formConfig['fields'] as $field) {
+                if ($field['required'] && empty($data[$field['name']])) {
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => $field['label'] . ' harus diisi'
+                    ]);
+                }
+            }
+            
+            // Insert data
+            $insertData = [];
+            foreach ($formConfig['fields'] as $field) {
+                if (isset($data[$field['name']])) {
+                    $insertData[$field['name']] = trim($data[$field['name']]);
+                }
+            }
+            
+            $insertId = $model->insert($insertData);
+            
+            if (!$insertId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal menyimpan data: ' . implode(', ', $model->errors())
+                ]);
+            }
+            
+            // Get inserted data
+            $insertedData = $model->find($insertId);
+            
+            // Log activity
+            $this->logActivity(
+                'create',
+                'master_data',
+                $insertId,
+                'Menambahkan ' . $formConfig['title'] . ': ' . json_encode($insertData)
+            );
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => $formConfig['title'] . ' berhasil ditambahkan',
+                'data' => $insertedData,
+                'id' => $insertId
+            ]);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Refresh dropdown data
+     */
+    public function refreshDropdownData()
+    {
+        try {
+            $type = $this->request->getPost('type');
+            $config = $this->getMasterDataConfig();
+            
+            if (!isset($config[$type])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Tipe tidak valid'
+                ]);
+            }
+            
+            $formConfig = $config[$type];
+            $modelName = $formConfig['model'];
+            $model = $this->$modelName;
+            
+            // Get data based on type
+            $data = [];
+            switch ($type) {
+                case 'brand':
+                    $data = $model->select('merk_unit, MIN(id_model_unit) as id_model_unit')->groupBy('merk_unit')->findAll();
+                    break;
+                case 'model':
+                    $brand = $this->request->getPost('brand');
+                    if ($brand) {
+                        $data = $model->where('merk_unit', $brand)->findAll();
+                    }
+                    break;
+                default:
+                    $data = $model->findAll();
+                    break;
+            }
+            
+            $response = [
+                'success' => true,
+                'data' => $data
+            ];
+            
+            // Add refresh_related if defined in config
+            if (isset($formConfig['refresh_related'])) {
+                $response['refresh_related'] = $formConfig['refresh_related'];
+            }
+            
+            return $this->response->setJSON($response);
+            
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
             ]);
         }
     }
