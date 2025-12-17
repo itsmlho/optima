@@ -882,7 +882,9 @@ class WarehousePO extends BaseController
             }
 
             // Serial number mandatory validation when status 'Sesuai'
-            if ($status === 'Sesuai' && (empty($snData['serial_number_po']) || empty($snData['sn_mesin_po']))) {
+            $snUnit = $this->request->getPost('sn_unit');
+            $snMesin = $this->request->getPost('sn_mesin');
+            if ($status === 'Sesuai' && (empty($snUnit) || empty($snMesin))) {
                 return $this->response->setJSON([
                     'statusCode' => 422,
                     'message' => 'Serial number unit dan mesin wajib diisi untuk status Sesuai.'

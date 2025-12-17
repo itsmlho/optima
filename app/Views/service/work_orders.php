@@ -32,7 +32,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <div>
                     <div class="stat-value" id="stat-total-work-orders">0</div>
-                    <div class="text-muted">Total Work Orders</div>
+                    <div class="text-muted">Work Orders Total</div>
                 </div>
             </div>
         </div>
@@ -86,7 +86,7 @@ $assetService = new \App\Services\AssetMinificationService();
 <div class="card table-card mb-4">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i> Daftar Work Orders</h5>
+            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i> List Work Orders</h5>
             <div class="d-flex gap-2">
                 <?php if ($can_export): ?>
                 <a href="<?= base_url('service/export_workorder') ?>" class="btn btn-outline-success btn-sm">
@@ -98,9 +98,9 @@ $assetService = new \App\Services\AssetMinificationService();
                 </a>
                 <?php endif; ?>
                 <?php if ($can_create): ?>
-                <button id="btn-add-wo" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> Tambah Work Order</button>
+                <button id="btn-add-wo" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> Add Work Order</button>
                 <?php else: ?>
-                <button id="btn-add-wo" class="btn btn-primary btn-sm disabled" onclick="return false;" title="Access Denied"><i class="fas fa-plus me-1"></i> Tambah Work Order</button>
+                <button id="btn-add-wo" class="btn btn-primary btn-sm disabled" onclick="return false;" title="Access Denied"><i class="fas fa-plus me-1"></i> Add Work Order</button>
                 <?php endif; ?>
             </div>
         </div>
@@ -135,7 +135,7 @@ $assetService = new \App\Services\AssetMinificationService();
                         <div class="form-group">
                             <label for="filter-status-progress">Status</label>
                             <select id="filter-status-progress" class="form-select form-select-sm">
-                                <option value="">Semua Status</option>
+                                <option value="">All Status</option>
                                 <?php foreach ($statuses as $status): ?>
                                     <?php if (strtolower($status['status_name']) !== 'closed'): ?>
                                     <option value="<?= $status['status_name'] ?>"><?= $status['status_name'] ?></option>
@@ -146,9 +146,9 @@ $assetService = new \App\Services\AssetMinificationService();
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-priority-progress">Prioritas</label>
+                            <label for="filter-priority-progress">Priority</label>
                             <select id="filter-priority-progress" class="form-select form-select-sm">
-                                <option value="">Semua Prioritas</option>
+                                <option value="">All Priority</option>
                                 <?php foreach ($priorities as $priority): ?>
                                 <option value="<?= $priority['priority_name'] ?>"><?= $priority['priority_name'] ?></option>
                                 <?php endforeach; ?>
@@ -157,13 +157,13 @@ $assetService = new \App\Services\AssetMinificationService();
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-start-date-progress">Tanggal Mulai</label>
+                            <label for="filter-start-date-progress">Start Date</label>
                             <input type="date" id="filter-start-date-progress" class="form-control form-control-sm">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-end-date-progress">Tanggal Akhir</label>
+                            <label for="filter-end-date-progress">End Date</label>
                             <input type="date" id="filter-end-date-progress" class="form-control form-control-sm">
                         </div>
                     </div>
@@ -182,14 +182,14 @@ $assetService = new \App\Services\AssetMinificationService();
                         <thead>
                             <tr>
                                 <th width="5%">No</th>
-                                <th>Nomor WO</th>
-                                <th>Tanggal</th>
+                                <th>Work Order</th>
+                                <th>Date</th>
                                 <th>Unit</th>
-                                <th>Tipe</th>
-                                <th>Prioritas</th>
-                                <th>Kategori</th>
+                                <th>Type</th>
+                                <th>Priority</th>
+                                <th>Category</th>
                                 <th>Status</th>
-                                <th width="10%">Aksi</th>
+                                <th width="10%">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -205,9 +205,9 @@ $assetService = new \App\Services\AssetMinificationService();
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-priority-closed">Prioritas</label>
+                            <label for="filter-priority-closed">Priority</label>
                             <select id="filter-priority-closed" class="form-select form-select-sm">
-                                <option value="">Semua Prioritas</option>
+                                <option value="">All Priority</option>
                                 <?php foreach ($priorities as $priority): ?>
                                 <option value="<?= $priority['priority_name'] ?>"><?= $priority['priority_name'] ?></option>
                                 <?php endforeach; ?>
@@ -216,33 +216,33 @@ $assetService = new \App\Services\AssetMinificationService();
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-start-date-closed">Tanggal Mulai</label>
+                            <label for="filter-start-date-closed">Start Date</label>
                             <input type="date" id="filter-start-date-closed" class="form-control form-control-sm">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-end-date-closed">Tanggal Akhir</label>
+                            <label for="filter-end-date-closed">End Date</label>
                             <input type="date" id="filter-end-date-closed" class="form-control form-control-sm">
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-month-closed">Filter Bulan</label>
+                            <label for="filter-month-closed">Filter Month</label>
                             <select id="filter-month-closed" class="form-select form-select-sm">
-                                <option value="">Semua Bulan</option>
-                                <option value="01">Januari</option>
-                                <option value="02">Februari</option>
-                                <option value="03">Maret</option>
+                                <option value="">All Months</option>
+                                <option value="01">January</option>
+                                <option value="02">February</option>
+                                <option value="03">March</option>
                                 <option value="04">April</option>
-                                <option value="05">Mei</option>
-                                <option value="06">Juni</option>
-                                <option value="07">Juli</option>
-                                <option value="08">Agustus</option>
+                                <option value="05">May</option>
+                                <option value="06">June</option>
+                                <option value="07">July</option>
+                                <option value="08">August</option>
                                 <option value="09">September</option>
-                                <option value="10">Oktober</option>
+                                <option value="10">October</option>
                                 <option value="11">November</option>
-                                <option value="12">Desember</option>
+                                <option value="12">December</option>
                             </select>
                         </div>
                     </div>
@@ -261,14 +261,14 @@ $assetService = new \App\Services\AssetMinificationService();
                         <thead>
                             <tr>
                                 <th width="5%">No</th>
-                                <th>Nomor WO</th>
-                                <th>Tanggal</th>
+                                <th>WO Number</th>
+                                <th>Date</th>
                                 <th>Unit</th>
-                                <th>Tipe</th>
-                                <th>Prioritas</th>
-                                <th>Kategori</th>
-                                <th>Tanggal Closed</th>
-                                <th width="10%">Aksi</th>
+                                <th>Type</th>
+                                <th>Priority</th>
+                                <th>Category</th>
+                                <th>Closed Date</th>
+                                <th width="10%">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -288,7 +288,7 @@ $assetService = new \App\Services\AssetMinificationService();
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="workOrderFormTitle"><i class="fas fa-plus-circle me-2"></i>Tambah Work Order Baru</h5>
+                <h5 class="modal-title" id="workOrderFormTitle"><i class="fas fa-plus-circle me-2"></i>Add New Work Order</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-4">
@@ -297,67 +297,67 @@ $assetService = new \App\Services\AssetMinificationService();
                     
                     <div class="card shadow-sm mb-4">
                         <div class="card-header">
-                            <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i>Informasi Utama Work Order</h6>
+                            <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i>Main Information of Work Order</h6>
                         </div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="work_order_number" class="form-label">Nomor Work Order</label>
+                                    <label for="work_order_number" class="form-label">WO Number</label>
                                     <input type="text" class="form-control" id="work_order_number" name="work_order_number" readonly>
-                                    <small class="form-text text-muted">Nomor WO akan terisi otomatis (+1 dari WO terakhir)</small>
+                                    <small class="form-text text-muted">WO Number will be filled automatically (+1 from the last WO)</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="order_type" class="form-label">Tipe Order <span class="text-danger">*</span></label>
+                                    <label for="order_type" class="form-label">Order Type <span class="text-danger">*</span></label>
                                     <select class="form-select" id="order_type" name="order_type" required>
-                                        <option value="" selected disabled>-- Pilih Tipe Order --</option>
+                                        <option value="" selected disabled>-- Select Order Type --</option>
                                         <option value="COMPLAINT">Complaint</option>
                                         <option value="PMPS">PMPS</option>
-                                        <option value="FABRIKASI">Fabrikasi</option>
-                                        <option value="PERSIAPAN">Persiapan</option>
+                                        <option value="FABRIKASI">Fabrication</option>
+                                        <option value="PERSIAPAN">Preparation</option>
                                     </select>
                                 </div>
                                 <div class="col-md-12 mb-3">
                                     <label for="unit_id" class="form-label">Unit <span class="text-danger">*</span></label>
                                     <select class="form-select" id="unit_id" name="unit_id" required>
-                                        <option value="" selected disabled>-- Pilih Unit --</option>
+                                        <option value="" selected disabled>-- Select Unit --</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="category_id" class="form-label">Kategori <span class="text-danger">*</span></label>
+                                    <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
                                     <select class="form-select" id="category_id" name="category_id" required>
-                                        <option value="" selected disabled>-- Pilih Kategori --</option>
+                                        <option value="" selected disabled>-- Select Category --</option>
                                         <?php foreach ($categories as $category): ?>
                                         <option value="<?= $category['id'] ?>" data-priority="<?= $category['default_priority_id'] ?? '' ?>"><?= $category['category_name'] ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="subcategory_id" class="form-label">Sub Kategori</label>
+                                    <label for="subcategory_id" class="form-label">Sub Category</label>
                                     <select class="form-select" id="subcategory_id" name="subcategory_id">
-                                        <option value="">-- Pilih Sub Kategori (jika ada) --</option>
+                                        <option value="">-- Select Sub Category (if any) --</option>
                                     </select>
-                                    <small class="form-text text-muted">Sub kategori akan muncul setelah memilih kategori</small>
+                                    <small class="form-text text-muted">Sub category will appear after selecting a category</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="priority_display" class="form-label">Prioritas</label>
-                                    <input type="text" class="form-control" id="priority_display" readonly placeholder="Otomatis berdasarkan kategori">
+                                    <label for="priority_display" class="form-label">Priority</label>
+                                    <input type="text" class="form-control" id="priority_display" readonly placeholder="Priority will be set automatically based on category & sub category">
                                     <input type="hidden" id="priority_id" name="priority_id">
-                                    <small class="form-text text-muted">Prioritas otomatis berdasarkan kategori & sub kategori</small>
+                                    <small class="form-text text-muted">Priority will be set automatically based on category & sub category</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="area" class="form-label">Area <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="area" name="area" readonly placeholder="Area akan terisi otomatis berdasarkan unit">
+                                    <input type="text" class="form-control" id="area" name="area" readonly placeholder="Area will be set automatically based on unit">
                                     <input type="hidden" id="area_id" name="area_id">
-                                    <small class="form-text text-muted">Area akan terisi otomatis berdasarkan unit yang dipilih</small>
+                                    <small class="form-text text-muted">Area will be set automatically based on selected unit</small>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="pic_name" class="form-label">PIC <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="pic_name" name="pic_name" placeholder="Masukkan nama PIC" required>
-                                    <small class="form-text text-muted">contoh: Adit (082136033596)</small>
+                                    <input type="text" class="form-control" id="pic_name" name="pic_name" placeholder="Enter PIC name" required>
+                                    <small class="form-text text-muted">example: Adit (082136033596)</small>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="complaint_description" class="form-label">Deskripsi Keluhan <span class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="complaint_description" name="complaint_description" rows="3" placeholder="Jelaskan keluhan atau permintaan pekerjaan secara detail..." required></textarea>
+                                    <label for="complaint_description" class="form-label">Complaint Description <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="complaint_description" name="complaint_description" rows="3" placeholder="Explain the complaint or work request in detail..." required></textarea>
                                 </div>
                             </div>
                         </div>
@@ -365,7 +365,7 @@ $assetService = new \App\Services\AssetMinificationService();
                     
                     <div class="card shadow-sm mb-4">
                         <div class="card-header">
-                            <h6 class="mb-0"><i class="fas fa-users-cog me-2"></i>Penugasan Staff</h6>
+                            <h6 class="mb-0"><i class="fas fa-users-cog me-2"></i>Staff Assignment</h6>
                         </div>
                         <div class="card-body">
                             <!-- Admin & Foreman - Auto Fill -->
@@ -374,30 +374,30 @@ $assetService = new \App\Services\AssetMinificationService();
                                     <label for="admin_id" class="form-label">Admin</label>
                                     <input type="text" class="form-control" id="admin_display" readonly>
                                     <input type="hidden" id="admin_id" name="admin_id">
-                                    <small class="form-text text-muted">Otomatis berdasarkan area</small>
+                                    <small class="form-text text-muted">Automatically based on area</small>
                                         </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="foreman_id" class="form-label">Foreman</label>
                                     <input type="text" class="form-control" id="foreman_display" readonly>
                                     <input type="hidden" id="foreman_id" name="foreman_id">
-                                    <small class="form-text text-muted">Otomatis berdasarkan area</small>
+                                    <small class="form-text text-muted">Automatically based on area</small>
                                 </div>
                             </div>
                             
                             <!-- Mekanik - Pilihan 1-2 orang -->
                             <div class="row mb-3">
                                 <div class="col-md-12 mb-3">
-                                    <label class="form-label">Mekanik <span class="text-danger">*</span> <small class="text-muted">(Min 1, Max 2)</small></label>
+                                    <label class="form-label">Mechanic <span class="text-danger">*</span> <small class="text-muted">(Min 1, Max 2)</small></label>
                                     <div id="mechanic-container">
                                         <div class="row">
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="mechanic_1" name="mechanic_id[]">
-                                                    <option value="" selected disabled>-- Pilih Mekanik 1 --</option>
+                                                    <option value="" selected disabled>-- Select Mechanic 1 --</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="mechanic_2" name="mechanic_id[]">
-                                                    <option value="" selected disabled>-- Pilih Mekanik 2 (Opsional) --</option>
+                                                    <option value="" selected disabled>-- Select Mechanic 2 (Optional) --</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -412,12 +412,12 @@ $assetService = new \App\Services\AssetMinificationService();
                                         <div class="row">
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="helper_1" name="helper_id[]">
-                                                    <option value="" selected disabled>-- Pilih Helper 1 --</option>
+                                                    <option value="" selected disabled>-- Select Helper 1 --</option>
                                                 </select>
                                             </div>
                                             <div class="col-md-6 mb-2">
                                                 <select class="form-select" id="helper_2" name="helper_id[]">
-                                                    <option value="" selected disabled>-- Pilih Helper 2 (Opsional) --</option>
+                                                    <option value="" selected disabled>-- Select Helper 2 (Optional) --</option>
                                                 </select>
                                             </div>
                                         </div>
@@ -430,17 +430,17 @@ $assetService = new \App\Services\AssetMinificationService();
                     <!-- Sparepart yang Dibawa -->
                     <div class="card shadow-sm mb-4">
                         <div class="card-header">
-                            <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Sparepart yang Dibawa</h6>
+                            <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Spareparts Brought</h6>
                             </div>
                         <div class="card-body">
                             <div class="table-responsive">
                                 <table class="table table-striped table-hover" id="sparepartTable">
                                     <thead>
                                         <tr>
-                                            <th width="50%">Nama Sparepart*</th>
-                                            <th width="20%">Kuantiti*</th>
-                                            <th width="20%">Satuan*</th>
-                                            <th width="10%">Aksi</th>
+                                            <th width="50%">Sparepart Name*</th>
+                                            <th width="20%">Quantity*</th>
+                                            <th width="20%">Unit*</th>
+                                            <th width="10%">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="sparepartTableBody">
@@ -450,7 +450,7 @@ $assetService = new \App\Services\AssetMinificationService();
                             </div>
                             <div class="mt-3">
                                 <button type="button" class="btn btn-success btn-sm" id="addSparepartRow">
-                                    <i class="fas fa-plus"></i> Tambah Sparepart
+                                    <i class="fas fa-plus"></i> Add Sparepart
                                 </button>
                             </div>
                         </div>
@@ -460,14 +460,14 @@ $assetService = new \App\Services\AssetMinificationService();
             </div>
             <div class="modal-footer d-flex justify-content-between flex-wrap">
                 <div class="d-flex align-items-center">
-                    <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Fields dengan tanda <span class="text-danger">*</span> wajib diisi</small>
+                    <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Fields with <span class="text-danger">*</span> are required</small>
                 </div>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="event.stopPropagation();">
-                        <i class="fas fa-times me-1"></i> Batal
+                        <i class="fas fa-times me-1"></i> Cancel
                     </button>
                     <button type="submit" class="btn btn-primary" form="workOrderForm" id="btnSubmitWo" onclick="event.stopPropagation();">
-                        <i class="fas fa-save me-1"></i> Simpan Work Order
+                        <i class="fas fa-save me-1"></i> Save Work Order
                     </button>
                 </div>
             </div>
@@ -482,7 +482,7 @@ $assetService = new \App\Services\AssetMinificationService();
             <div class="modal-header">
                 <h5 class="modal-title">
                     <i class="fas fa-file-alt text-primary me-2"></i>
-                    Detail Work Order: <span id="viewWoNumberHeader" class="fw-bold">-</span>
+                    Work Order Details: <span id="viewWoNumberHeader" class="fw-bold">-</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -492,47 +492,47 @@ $assetService = new \App\Services\AssetMinificationService();
                         <div class="card h-100">
                             <div class="card-body">
                                 <div class="mb-4">
-                                    <h6 class="mb-3 text-dark">Informasi Pekerjaan</h6>
+                                    <h6 class="mb-3 text-dark">Work Information</h6>
                                     <dl class="row mb-0">
-                                        <dt class="col-sm-4 text-muted">Tanggal Lapor</dt>
+                                        <dt class="col-sm-4 text-muted">Report Date</dt>
                                         <dd class="col-sm-8" id="viewWoReportDate">-</dd>
-                                        <dt class="col-sm-4 text-muted">Tipe Order</dt>
+                                        <dt class="col-sm-4 text-muted">Order Type</dt>
                                         <dd class="col-sm-8" id="viewWoType">-</dd>
-                                        <dt class="col-sm-4 text-muted">Kategori</dt>
+                                        <dt class="col-sm-4 text-muted">Category</dt>
                                         <dd class="col-sm-8" id="viewWoCategory">-</dd>
-                                        <dt class="col-sm-4 text-muted">Departemen</dt>
+                                        <dt class="col-sm-4 text-muted">Department</dt>
                                         <dd class="col-sm-8" id="viewWoDepartemen">-</dd>
                                     </dl>
                                 </div>
                                 <hr>
                                 <div>
-                                    <h6 class="mb-3 text-dark">Detail Unit & Komponen</h6>
+                                    <h6 class="mb-3 text-dark">Unit & Component Details</h6>
                                      <dl class="row mb-0">
-                                        <dt class="col-sm-4 text-muted">Nomor Unit</dt>
+                                        <dt class="col-sm-4 text-muted">Unit Number</dt>
                                         <dd class="col-sm-8 fw-bold text-primary" id="viewUnitNumber">-</dd>
-                                        <dt class="col-sm-4 text-muted">Merk & Model</dt>
+                                        <dt class="col-sm-4 text-muted">Brand & Model</dt>
                                         <dd class="col-sm-8" id="viewUnitModel">-</dd>
-                                        <dt class="col-sm-4 text-muted">Tipe Unit</dt>
+                                        <dt class="col-sm-4 text-muted">Unit Type</dt>
                                         <dd class="col-sm-8" id="viewUnitType">-</dd>
                                         <dt class="col-sm-4 text-muted">Serial Number</dt>
                                         <dd class="col-sm-8 font-monospace" id="viewUnitSerial">-</dd>
-                                        <dt class="col-sm-4 text-muted">Departemen</dt>
+                                        <dt class="col-sm-4 text-muted">Department</dt>
                                         <dd class="col-sm-8"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" id="viewUnitDepartemen">-</span></dd>
-                                        <dt class="col-sm-4 text-muted">Status Unit</dt>
+                                        <dt class="col-sm-4 text-muted">Unit Status</dt>
                                         <dd class="col-sm-8"><span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" id="viewUnitStatus">-</span></dd>
-                                        <dt class="col-sm-4 text-muted">Kapasitas</dt>
+                                        <dt class="col-sm-4 text-muted">Capacity</dt>
                                         <dd class="col-sm-8" id="viewUnitCapacity">-</dd>
-                                        <dt class="col-sm-4 text-muted">Tahun Unit</dt>
+                                        <dt class="col-sm-4 text-muted">Unit Year</dt>
                                         <dd class="col-sm-8" id="viewUnitYear">-</dd>
-                                        <dt class="col-sm-4 text-muted">Model Mesin</dt>
+                                        <dt class="col-sm-4 text-muted">Engine Model</dt>
                                         <dd class="col-sm-8" id="viewUnitEngine">-</dd>
-                                        <dt class="col-sm-4 text-muted">SN Mesin</dt>
+                                        <dt class="col-sm-4 text-muted">Engine SN</dt>
                                         <dd class="col-sm-8 font-monospace" id="viewUnitEngineSN">-</dd>
-                                        <dt class="col-sm-4 text-muted">Model Mast</dt>
+                                        <dt class="col-sm-4 text-muted">Mast Model</dt>
                                         <dd class="col-sm-8" id="viewUnitMast">-</dd>
-                                        <dt class="col-sm-4 text-muted">SN Mast</dt>
+                                        <dt class="col-sm-4 text-muted">Mast SN</dt>
                                         <dd class="col-sm-8 font-monospace" id="viewUnitMastSN">-</dd>
-                                        <dt class="col-sm-4 text-muted">Tinggi Mast</dt>
+                                        <dt class="col-sm-4 text-muted">Mast Height</dt>
                                         <dd class="col-sm-8" id="viewUnitMastHeight">-</dd>
 
                                         <div id="unitComponentsSection" class="contents" style="display: none;">
@@ -565,36 +565,36 @@ $assetService = new \App\Services\AssetMinificationService();
                                             <div><span class="badge fs-6" id="viewWoStatus">-</span></div>
                                         </div>
                                         <div class="col-6">
-                                            <label class="small text-muted mb-1">Prioritas</label>
+                                            <label class="small text-muted mb-1">Priority</label>
                                             <div><span class="badge fs-6" id="viewWoPriority">-</span></div>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <h6 class="mb-3 text-dark">Pelanggan & Lokasi</h6>
+                                <h6 class="mb-3 text-dark">Customer & Location</h6>
                                 <dl class="row mb-4">
-                                    <dt class="col-sm-4 text-muted">Pelanggan</dt>
+                                    <dt class="col-sm-4 text-muted">Customer</dt>
                                     <dd class="col-sm-8 fw-bold" id="viewUnitCustomer">-</dd>
-                                    <dt class="col-sm-4 text-muted">Lokasi</dt>
+                                    <dt class="col-sm-4 text-muted">Location</dt>
                                     <dd class="col-sm-8" id="viewUnitLocation">-</dd>
                                     <dt class="col-sm-4 text-muted">Area</dt>
                                     <dd class="col-sm-8" id="viewWoArea">-</dd>
                                 </dl>
                                 
-                                <h6 class="mb-3 text-dark">Penugasan Staff</h6>
+                                <h6 class="mb-3 text-dark">Staff Assignment</h6>
                                 <ul class="list-unstyled mb-4">
                                     <li class="d-flex align-items-center mb-2"><i class="fas fa-user-shield fa-fw me-2 text-muted"></i> <strong>Admin:</strong> <span class="ms-auto" id="viewWoAdmin">-</span></li>
                                     <li class="d-flex align-items-center mb-2"><i class="fas fa-user-tie fa-fw me-2 text-muted"></i> <strong>Foreman:</strong> <span class="ms-auto" id="viewWoForeman">-</span></li>
-                                    <li class="d-flex align-items-center mb-2"><i class="fas fa-user-cog fa-fw me-2 text-muted"></i> <strong>Mekanik:</strong> <span class="ms-auto" id="viewWoMechanic">-</span></li>
+                                    <li class="d-flex align-items-center mb-2"><i class="fas fa-user-cog fa-fw me-2 text-muted"></i> <strong>Mechanic:</strong> <span class="ms-auto" id="viewWoMechanic">-</span></li>
                                     <li class="d-flex align-items-center"><i class="fas fa-user-friends fa-fw me-2 text-muted"></i> <strong>Helper:</strong> <span class="ms-auto" id="viewWoHelper">-</span></li>
                                 </ul>
 
-                                <h6 class="mb-3 text-dark">Waktu & Tanggal</h6>
+                                <h6 class="mb-3 text-dark">Time & Date</h6>
                                 <dl class="row mb-0">
                                     <dt class="col-sm-4 text-muted">TTR</dt>
                                     <dd class="col-sm-8 fw-bold text-primary" id="viewWoTTR">-</dd>
-                                    <dt class="col-sm-4 text-muted">Tgl. Selesai</dt>
-                                    <dd class="col-sm-8" id="viewWoCompletionDate">Belum selesai</dd>
+                                    <dt class="col-sm-4 text-muted">Completion Date</dt>
+                                    <dd class="col-sm-8" id="viewWoCompletionDate">Not completed</dd>
                                 </dl>
                             </div>
                         </div>
@@ -603,7 +603,7 @@ $assetService = new \App\Services\AssetMinificationService();
 
                 <div id="unitAccessoriesSection" class="card mt-4" style="display: none;">
                     <div class="card-header">
-                         <h6 class="mb-0"><i class="fas fa-puzzle-piece me-2"></i>Aksesoris Unit</h6>
+                         <h6 class="mb-0"><i class="fas fa-puzzle-piece me-2"></i>Unit Accessories</h6>
                     </div>
                     <div class="card-body">
                         <div id="viewUnitAccessoriesList" class="component-list">
@@ -613,7 +613,7 @@ $assetService = new \App\Services\AssetMinificationService();
 
                 <div id="sparepartBroughtSection" class="card mt-4" style="display: none;">
                     <div class="card-header">
-                        <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Sparepart Dibawa</h6>
+                        <h6 class="mb-0"><i class="fas fa-tools me-2"></i>Sparepart</h6>
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
@@ -621,15 +621,15 @@ $assetService = new \App\Services\AssetMinificationService();
                                 <thead>
                                     <tr>
                                         <th style="width: 5%;">No</th>
-                                        <th style="width: 40%;">Nama Spare Part</th>
+                                        <th style="width: 40%;">Spare Part Name</th>
                                         <th style="width: 15%;">Code</th>
-                                        <th style="width: 10%;">QTY</th>
-                                        <th style="width: 30%;">Keterangan</th>
+                                        <th style="width: 10%;">Qty</th>
+                                        <th style="width: 30%;">Description</th>
                                     </tr>
                                 </thead>
                                 <tbody id="viewSparepartBroughtList">
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">Tidak ada sparepart yang dibawa</td>
+                                        <td colspan="5" class="text-center text-muted">No spare parts brought</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -639,24 +639,24 @@ $assetService = new \App\Services\AssetMinificationService();
 
                 <div class="card mt-4">
                     <div class="card-header">
-                        <h6 class="mb-0"><i class="fas fa-pencil-alt me-2"></i>Detail Pekerjaan & Catatan</h6>
+                        <h6 class="mb-0"><i class="fas fa-pencil-alt me-2"></i>Work Details & Notes</h6>
                     </div>
                     <div class="card-body">
                          <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted">Keluhan Pelanggan</label>
+                                <label class="form-label text-muted">Customer Complaint</label>
                                 <div class="p-3 rounded bg-light" style="min-height: 120px;" id="viewWoComplaint"></div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label text-muted">Analisa & Perbaikan</label>
+                                <label class="form-label text-muted">Analysis & Repair</label>
                                 <div class="p-3 rounded bg-light" style="min-height: 120px;" id="viewWoRepair"></div>
                             </div>
                             <div class="col-md-6 mb-3 mb-md-0">
-                                <label class="form-label text-muted">Sparepart Digunakan</label>
+                                <label class="form-label text-muted">Spare Parts Used</label>
                                 <div class="p-3 rounded bg-light" style="min-height: 80px;" id="viewWoSparepart"></div>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label text-muted">Catatan Tambahan</label>
+                                <label class="form-label text-muted">Additional Notes</label>
                                 <div class="p-3 rounded bg-light" style="min-height: 80px;" id="viewWoNotes"></div>
                             </div>
                         </div>
@@ -671,9 +671,9 @@ $assetService = new \App\Services\AssetMinificationService();
                     <i class="fas fa-edit me-1"></i>Edit Work Order
                 </button>
                 <button type="button" class="btn btn-danger btn-delete-from-view" data-id="" data-wo-number="">
-                    <i class="fas fa-trash me-1"></i>Hapus
+                    <i class="fas fa-trash me-1"></i>Delete Work Order
                 </button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -775,20 +775,20 @@ $(document).ready(function() {
         ],
         order: [[2, 'desc']], // Order by report_date descending
         language: {
-            "sProcessing": "Sedang memproses...",
-            "sLengthMenu": "Tampilkan _MENU_ data",
-            "sZeroRecords": "Tidak ditemukan data yang sesuai",
-            "sInfo": "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            "sInfoEmpty": "Menampilkan 0 sampai 0 dari 0 data",
-            "sInfoFiltered": "(disaring dari _MAX_ total data)",
+            "sProcessing": "Processing...",
+            "sLengthMenu": "Show _MENU_ entries",
+            "sZeroRecords": "No matching records found",
+            "sInfo": "Showing _START_ to _END_ of _TOTAL_ entries",
+            "sInfoEmpty": "Showing 0 to 0 of 0 entries",
+            "sInfoFiltered": "(filtered from _MAX_ total entries)",
             "sInfoPostFix": "",
-            "sSearch": "Cari:",
+            "sSearch": "Search:",
             "sUrl": "",
             "oPaginate": {
-                "sFirst": "Pertama",
-                "sPrevious": "Sebelumnya",
-                "sNext": "Selanjutnya",
-                "sLast": "Terakhir"
+                "sFirst": "First",
+                "sPrevious": "Previous",
+                "sNext": "Next",
+                "sLast": "Last"
             }
         },
         drawCallback: function(settings) {
@@ -835,20 +835,20 @@ $(document).ready(function() {
         ],
         order: [[7, 'desc']], // Order by closed_date descending
         language: {
-            "sProcessing": "Sedang memproses...",
-            "sLengthMenu": "Tampilkan _MENU_ data",
-            "sZeroRecords": "Tidak ditemukan data yang sesuai",
-            "sInfo": "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            "sInfoEmpty": "Menampilkan 0 sampai 0 dari 0 data",
-            "sInfoFiltered": "(disaring dari _MAX_ total data)",
+            "sProcessing": "Processing...",
+            "sLengthMenu": "Show _MENU_ entries",
+            "sZeroRecords": "No matching records found",
+            "sInfo": "Showing _START_ to _END_ of _TOTAL_ entries",
+            "sInfoEmpty": "Showing 0 to 0 of 0 entries",
+            "sInfoFiltered": "(filtered from _MAX_ total entries)",
             "sInfoPostFix": "",
-            "sSearch": "Cari:",
+            "sSearch": "Search:",
             "sUrl": "",
             "oPaginate": {
-                "sFirst": "Pertama",
-                "sPrevious": "Sebelumnya",
-                "sNext": "Selanjutnya",
-                "sLast": "Terakhir"
+                "sFirst": "First",
+                "sPrevious": "Previous",
+                "sNext": "Next",
+                "sLast": "Last"
             }
         },
         drawCallback: function(settings) {
@@ -1017,9 +1017,9 @@ $(document).ready(function() {
         $('#workOrderForm')[0].reset();
         
         // Reset modal title and action
-        $('#workOrderFormTitle').text('Tambah Work Order Baru');
+        $('#workOrderFormTitle').text('New Work Order');
         $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/store') ?>');
-        $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Simpan Work Order');
+        $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Save Work Order');
         
         // Reset custom dropdowns
         resetCustomDropdowns();
@@ -1034,21 +1034,21 @@ $(document).ready(function() {
     // Function to reset custom dropdowns
     function resetCustomDropdowns() {
         // Reset Unit dropdown
-        $('#unitSelectedText').text('-- Pilih Unit --');
+        $('#unitSelectedText').text('-- Select Unit --');
         $('#unit_id').val('');
         $('#unitDropdownList').empty();
         
         // Reset Staff dropdowns
         const staffTypes = ['admin', 'foreman', 'mechanic', 'helper'];
         staffTypes.forEach(function(type) {
-            $(`#${type}SelectedText`).text(`-- Pilih ${type.charAt(0).toUpperCase() + type.slice(1)} --`);
+            $(`#${type}SelectedText`).text(`-- Select ${type.charAt(0).toUpperCase() + type.slice(1)} --`);
             $(`#${type}_staff_id`).val('');
             $(`#${type}DropdownList`).empty();
             $(`#${type}Search`).val('');
         });
         
         // Reset subcategory dropdown
-        $('#subcategory_id').empty().append('<option value="">-- Pilih Sub Kategori (jika ada) --</option>');
+        $('#subcategory_id').empty().append('<option value="">-- Select Subcategory (if any) --</option>');
         
         // Reset sparepart table
         $('#sparepartTableBody select[id^="sparepart_"]').each(function() {
@@ -1096,7 +1096,7 @@ $(document).ready(function() {
             processData: false,
             contentType: false,
             beforeSend: function() {
-                $('#btnSubmitWo').prop('disabled', true).text('Menyimpan...');
+                $('#btnSubmitWo').prop('disabled', true).text('Saving...');
             },
             success: function(response) {
                 if (response.success) {
@@ -1116,14 +1116,14 @@ $(document).ready(function() {
                     if (response.errors) {
                         displayFormErrors(response.errors);
                     } else {
-                        showAlert('error', response.message || 'Terjadi kesalahan saat menyimpan data');
+                        showAlert('error', response.message || 'An error occurred while saving data');
                     }
                 } catch (e) {
-                    showAlert('error', 'Terjadi kesalahan saat menyimpan data');
+                    showAlert('error', 'An error occurred while saving data');
                 }
             },
             complete: function() {
-                $('#btnSubmitWo').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Simpan Work Order');
+                $('#btnSubmitWo').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Save Work Order');
             }
         });
     });
@@ -1157,12 +1157,12 @@ $(document).ready(function() {
                         }
                     }, 100);
                 } else {
-                    showAlert('error', response.message || 'Gagal memuat data');
+                    showAlert('error', response.message || 'Failed to load data');
                 }
             },
             error: function(xhr, status, error) {
                 hideAlert();
-                showAlert('error', 'Terjadi kesalahan saat memuat data: ' + error);
+                showAlert('error', 'An error occurred while loading data: ' + error);
             }
         });
     }
@@ -1181,10 +1181,10 @@ $(document).ready(function() {
         
         // Simple SweetAlert with print button
         Swal.fire({
-            title: 'Mulai Pekerjaan?',
+            title: 'Start Work?',
             html: `
-                <p>Pastikan dokumen Work Order dan Form Verifikasi Unit telah dicetak sebelum memulai pekerjaan.</p>
-                <p><strong>CATATAN:</strong> Verifikasi Unit wajib dilakukan dan didokumentasikan untuk menyelesaikan Work Order.</p>
+                <p>Make sure the Work Order document and Unit Verification Form have been printed before starting the work.</p>
+                <p><strong>NOTE:</strong> Unit Verification is mandatory and must be documented to complete the Work Order.</p>
                 <div class="mt-3">
                     <button type="button" class="btn btn-primary" onclick="window.open('<?= base_url('service/work-orders/print') ?>/' + ${id}, '_blank')">
                         <i class="fas fa-print me-2"></i>Print Work Order
@@ -1212,14 +1212,14 @@ $(document).ready(function() {
         let woNumber = $(this).data('wo-number');
         
         Swal.fire({
-            title: 'Pilih Jenis Pause',
-            text: woNumber ? `Work Order ${woNumber}` : 'Pilih jenis pause untuk work order ini',
+            title: 'Select Pause Type',
+            text: woNumber ? `Work Order ${woNumber}` : 'Select pause type for this work order',
             icon: 'question',
             showCancelButton: true,
             confirmButtonText: 'Pending',
-            cancelButtonText: 'Batal',
+            cancelButtonText: 'Cancel',
             showDenyButton: true,
-            denyButtonText: 'Menunggu Sparepart',
+            denyButtonText: 'Waiting for Sparepart',
             confirmButtonColor: '#ffc107',
             denyButtonColor: '#17a2b8',
             cancelButtonColor: '#6c757d',
@@ -1227,10 +1227,10 @@ $(document).ready(function() {
         }).then((result) => {
             if (result.isConfirmed) {
                 // User chose "Pending" - status ON_HOLD
-                showStatusUpdateModal(id, 'ON_HOLD', 'Pending Work Order', 'Berikan alasan pending');
+                showStatusUpdateModal(id, 'ON_HOLD', 'Pending Work Order', 'Provide reason for pending');
             } else if (result.isDenied) {
                 // User chose "Menunggu Sparepart" - status WAITING_PARTS
-                showStatusUpdateModal(id, 'WAITING_PARTS', 'Menunggu Sparepart', 'Berikan detail sparepart yang dibutuhkan');
+                showStatusUpdateModal(id, 'WAITING_PARTS', 'Waiting for Sparepart', 'Provide details of the required spare parts');
             }
         });
     });
@@ -1238,7 +1238,7 @@ $(document).ready(function() {
     // Resume Work
     $(document).on('click', '.btn-resume', function() {
         let id = $(this).data('id');
-        updateWorkOrderStatus(id, 'IN_PROGRESS', 'Work order dilanjutkan');
+        updateWorkOrderStatus(id, 'IN_PROGRESS', 'Work order resumed');
     });
     
     // Complete Work - Open Unit Verification Modal
@@ -1270,26 +1270,26 @@ $(document).ready(function() {
             window.openSparepartValidationModal(id, woNumber);
         } else {
             console.error('❌ Sparepart validation modal function not found');
-            showAlert('error', 'Error: Tidak dapat membuka modal validasi sparepart');
+            showAlert('error', 'Error: Unable to open sparepart validation modal');
         }
     });
     
     // Reopen Work Order
     $(document).on('click', '.btn-reopen', function() {
         let id = $(this).data('id');
-        updateWorkOrderStatus(id, 'PENDING', 'Work order dibuka kembali');
+        updateWorkOrderStatus(id, 'PENDING', 'Work order reopened');
     });
     
     // Cancel Work Order
     $(document).on('click', '.btn-cancel', function() {
         let id = $(this).data('id');
-        showStatusUpdateModal(id, 'CANCELLED', 'Cancel Work Order', 'Berikan alasan pembatalan');
+        showStatusUpdateModal(id, 'CANCELLED', 'Cancel Work Order', 'Provide reason for cancellation');
     });
     
     // Reassign Work Order
     $(document).on('click', '.btn-reassign', function() {
         let id = $(this).data('id');
-        showStatusUpdateModal(id, 'ASSIGNED', 'Reassign Work Order', 'Pilih teknisi baru');
+        showStatusUpdateModal(id, 'ASSIGNED', 'Reassign Work Order', 'Select new technician');
     });
 
     // Function to update work order status with confirmation
@@ -1297,12 +1297,12 @@ $(document).ready(function() {
         console.log('🚨 updateWorkOrderStatus called with:', { id, status, message, stack: new Error().stack });
         
         Swal.fire({
-            title: 'Konfirmasi',
-            text: 'Apakah Anda yakin ingin mengubah status work order?',
+            title: 'Confirmation',
+            text: 'Are you sure you want to change the work order status?',
             icon: 'question',
             showCancelButton: true,
-            confirmButtonText: 'Ya',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 updateWorkOrderStatusDirect(id, status, message);
@@ -1332,7 +1332,7 @@ $(document).ready(function() {
                 }
             },
             error: function() {
-                showAlert('error', 'Gagal mengubah status work order');
+                showAlert('error', 'Failed to update work order status');
             }
         });
     }
@@ -1345,10 +1345,10 @@ $(document).ready(function() {
             inputPlaceholder: placeholder,
             showCancelButton: true,
             confirmButtonText: 'Update',
-            cancelButtonText: 'Batal',
+            cancelButtonText: 'Cancel',
             inputValidator: (value) => {
                 if (!value && (status === 'CANCELLED' || status === 'ON_HOLD' || status === 'WAITING_PARTS')) {
-                    return 'Catatan wajib diisi untuk status ini'
+                    return 'Notes are required for this status'
                 }
             }
         }).then((result) => {
@@ -1371,7 +1371,7 @@ $(document).ready(function() {
                         }
                     },
                     error: function() {
-                        showAlert('error', 'Gagal mengubah status work order');
+                        showAlert('error', 'Failed to update work order status');
                     }
                 });
             }
@@ -1388,7 +1388,7 @@ $(document).ready(function() {
             window.open(printUrl, '_blank');
         } else {
             console.error('❌ No work order ID found for printing');
-            showAlert('error', 'Error: Tidak dapat menemukan ID work order untuk dicetak');
+            showAlert('error', 'Error: Unable to find work order ID for printing');
         }
     });
 
@@ -1398,7 +1398,7 @@ $(document).ready(function() {
         
         if (!id) {
             console.error('❌ No work order ID found for editing');
-            showAlert('error', 'Error: Tidak dapat menemukan ID work order untuk diedit');
+            showAlert('error', 'Error: Unable to find work order ID for editing');
             return;
         }
         
@@ -1433,7 +1433,7 @@ $(document).ready(function() {
                     }, 300);
                 } else {
                     console.error('❌ Edit failed:', response.message);
-                    Swal.fire('Error', response.message || 'Gagal memuat data work order', 'error');
+                    Swal.fire('Error', response.message || 'Failed to load work order data', 'error');
                 }
             },
             error: function(xhr, status, error) {
@@ -1444,7 +1444,7 @@ $(document).ready(function() {
                     error: error
                 });
                 
-                let errorMessage = 'Gagal memuat data work order';
+                let errorMessage = 'Failed to load work order data';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMessage = xhr.responseJSON.message;
                 } else if (xhr.responseText) {
@@ -1467,7 +1467,7 @@ $(document).ready(function() {
         
         if (!id) {
             console.error('❌ No work order ID found for editing');
-            showAlert('error', 'Error: Tidak dapat menemukan ID work order untuk diedit');
+            showAlert('error', 'Error: Unable to find work order ID for editing');
             return;
         }
         
@@ -1496,7 +1496,7 @@ $(document).ready(function() {
                     
                 } else {
                     console.error('❌ Edit failed:', response.message);
-                    Swal.fire('Error', response.message || 'Gagal memuat data work order', 'error');
+                    Swal.fire('Error', response.message || 'Failed to load work order data', 'error');
                 }
             },
             error: function(xhr, status, error) {
@@ -1507,7 +1507,7 @@ $(document).ready(function() {
                     error: error
                 });
                 
-                let errorMessage = 'Gagal memuat data work order';
+                let errorMessage = 'Failed to load work order data';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMessage = xhr.responseJSON.message;
                 } else if (xhr.responseText) {
@@ -1534,14 +1534,14 @@ $(document).ready(function() {
         $('#viewWorkOrderModal').modal('hide');
         
         Swal.fire({
-            title: 'Konfirmasi Hapus',
-            text: `Apakah Anda yakin ingin menghapus Work Order ${woNumber}?`,
+            title: 'Delete Confirmation',
+            text: `Are you sure you want to delete Work Order ${woNumber}?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#dc3545',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Hapus',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 console.log('🗑️ Confirmed deletion, sending request...');
@@ -1565,7 +1565,7 @@ $(document).ready(function() {
                     error: function(xhr, status, error) {
                         console.error('❌ Delete error:', error);
                         console.error('❌ Delete response:', xhr.responseText);
-                        showAlert('error', 'Gagal menghapus work order');
+                        showAlert('error', 'Failed to delete work order');
                     }
                 });
             } else {
@@ -1583,14 +1583,14 @@ $(document).ready(function() {
         let woNumber = $row.find('td:nth-child(2)').text(); // Get WO number from table row
         
         Swal.fire({
-            title: 'Konfirmasi Hapus',
-            text: `Apakah Anda yakin ingin menghapus Work Order ${woNumber}?`,
+            title: 'Delete Confirmation',
+            text: `Are you sure you want to delete Work Order ${woNumber}?`,
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#dc3545',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Hapus',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -1612,9 +1612,9 @@ $(document).ready(function() {
                         console.error('❌ Delete response:', xhr.responseText);
                         try {
                             let response = JSON.parse(xhr.responseText);
-                            showAlert('error', response.message || 'Gagal menghapus work order');
+                            showAlert('error', response.message || 'Failed to delete work order');
                         } catch (e) {
-                            showAlert('error', 'Gagal menghapus work order');
+                            showAlert('error', 'Failed to delete work order');
                         }
                     }
                 });
@@ -1629,7 +1629,7 @@ $(document).ready(function() {
         let subcategorySelect = $('#subcategory_id');
         
         // Clear and reset subcategory dropdown
-        subcategorySelect.empty().append('<option value="">-- Pilih Sub Kategori (jika ada) --</option>');
+        subcategorySelect.empty().append('<option value="">-- Select Subcategory (if any) --</option>');
         
         if (categoryId) {
             $.ajax({
@@ -1718,7 +1718,7 @@ $(document).ready(function() {
                 if (workOrder.subcategory_id && data.subcategories) {
                     setTimeout(function() {
                         let subcategorySelect = $('#subcategory_id');
-                        subcategorySelect.empty().append('<option value="">-- Pilih Sub Kategori (jika ada) --</option>');
+                        subcategorySelect.empty().append('<option value="">-- Select Subcategory (if any) --</option>');
                         
                         if (data.subcategories && data.subcategories.length > 0) {
                             data.subcategories.forEach(function(subcategory) {
@@ -1857,7 +1857,7 @@ $(document).ready(function() {
             
         } catch (error) {
             console.error('❌ Error populating edit form:', error);
-            Swal.fire('Error', 'Terjadi kesalahan saat mengisi form edit: ' + error.message, 'error');
+            Swal.fire('Error', 'An error occurred while populating the edit form: ' + error.message, 'error');
         }
     }
 
@@ -1918,19 +1918,19 @@ $(document).ready(function() {
         // Descriptions and Details  
         $('#viewWoComplaint').html(data.complaint_description ? 
             `<div class="text-dark">${data.complaint_description}</div>` : 
-            '<div class="text-muted fst-italic">Tidak ada deskripsi keluhan</div>');
+            '<div class="text-muted fst-italic">Not available</div>');
             
         $('#viewWoRepair').html(data.repair_description ? 
             `<div class="text-dark">${data.repair_description}</div>` : 
-            '<div class="text-muted fst-italic">Belum ada perbaikan</div>');
+            '<div class="text-muted fst-italic">Not available</div>');
             
         $('#viewWoSparepart').html(data.sparepart_used ? 
             `<div class="text-dark">${data.sparepart_used}</div>` : 
-            '<div class="text-muted fst-italic">Tidak ada sparepart yang digunakan</div>');
+            '<div class="text-muted fst-italic">Not available</div>');
             
         $('#viewWoNotes').html(data.notes ? 
             `<div class="text-dark">${data.notes}</div>` : 
-            '<div class="text-muted fst-italic">Tidak ada catatan</div>');
+            '<div class="text-muted fst-italic">Not available</div>');
         
         // Set data attributes for buttons
         $('.btn-print-from-view').data('id', data.id);
@@ -1992,7 +1992,7 @@ $(document).ready(function() {
             });
             container.text(textList.join(', '));
         } else {
-            container.html('<em class="text-muted">Tidak ada attachment</em>');
+            container.html('<em class="text-muted">Not available</em>');
         }
     }
 
@@ -2009,7 +2009,7 @@ $(document).ready(function() {
             });
             container.text(textList.join(', '));
         } else {
-            container.html('<em class="text-muted">Tidak ada battery</em>');
+            container.html('<em class="text-muted">Not available</em>');
         }
     }
 
@@ -2025,7 +2025,7 @@ $(document).ready(function() {
             });
             container.text(textList.join(', '));
         } else {
-            container.html('<em class="text-muted">Tidak ada charger</em>');
+            container.html('<em class="text-muted">Not available</em>');
         }
     }
 
@@ -2037,7 +2037,7 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     let subcategorySelect = $('#subcategory_id');
-                    subcategorySelect.empty().append('<option value="">Pilih Sub Kategori</option>');
+                    subcategorySelect.empty().append('<option value="">Select Subcategory</option>');
                     
                     $.each(response.data, function(index, subcategory) {
                         let selected = selectedSubcategoryId == subcategory.id ? 'selected' : '';
@@ -2067,7 +2067,7 @@ $(document).ready(function() {
             accessoriesArray = accessories;
         } else {
             console.log('Accessories data is neither array nor string:', accessories);
-            container.html('<div class="text-muted fst-italic">Tidak ada aksesoris</div>');
+            container.html('<div class="text-muted fst-italic">Not available</div>');
             $('#unitAccessoriesSection').hide();
             return;
         }
@@ -2098,11 +2098,11 @@ $(document).ready(function() {
                 container.html(`<div class="text-dark">${accessoryNames.join(', ')}</div>`);
                 $('#unitAccessoriesSection').show();
             } else {
-                container.html('<div class="text-muted fst-italic">Tidak ada aksesoris</div>');
+                container.html('<div class="text-muted fst-italic">Not available</div>');
                 $('#unitAccessoriesSection').hide();
             }
         } else {
-            container.html('<div class="text-muted fst-italic">Tidak ada aksesoris</div>');
+            container.html('<div class="text-muted fst-italic">Not available</div>');
             $('#unitAccessoriesSection').hide();
         }
     }
@@ -2130,7 +2130,7 @@ $(document).ready(function() {
             container.html(html);
             section.show();
         } else {
-            container.html('<tr><td colspan="5" class="text-center text-muted">Tidak ada sparepart yang dibawa</td></tr>');
+            container.html('<tr><td colspan="5" class="text-center text-muted">Not available</td></tr>');
             section.hide();
         }
     }
@@ -2262,9 +2262,9 @@ $(document).ready(function() {
         generateWorkOrderNumber();
         
         // Ensure form is set for create mode
-        $('#workOrderFormTitle').html('<i class="fas fa-plus-circle me-2"></i>Tambah Work Order Baru');
+        $('#workOrderFormTitle').html('<i class="fas fa-plus-circle me-2"></i>New Work Order');
         $('#workOrderForm').attr('action', '<?= base_url('service/work-orders/store') ?>');
-        $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Simpan Work Order');
+        $('#btnSubmitWo').html('<i class="fas fa-save me-1"></i> Save Work Order');
         $('#work_order_id').val('');
         
         // Initialize Select2 immediately before showing modal
@@ -2325,7 +2325,7 @@ $(document).ready(function() {
             type: 'POST',
             data: { query: query },
             beforeSend: function() {
-                $('#unit_search_results').html('<div class="list-group-item"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>').show();
+                $('#unit_search_results').html('<div class="list-group-item"><i class="fas fa-spinner fa-spin"></i> Searching...</div>').show();
             },
             success: function(response) {
                 if (response.success && response.data.length > 0) {
@@ -2341,11 +2341,11 @@ $(document).ready(function() {
                     });
                     $('#unit_search_results').html(html).show();
                 } else {
-                    $('#unit_search_results').html('<div class="list-group-item text-muted">Tidak ada unit yang ditemukan</div>').show();
+                    $('#unit_search_results').html('<div class="list-group-item text-muted">No units found</div>').show();
                 }
             },
             error: function() {
-                $('#unit_search_results').html('<div class="list-group-item text-danger">Error mencari unit</div>').show();
+                $('#unit_search_results').html('<div class="list-group-item text-danger">Error searching units</div>').show();
             }
         });
     }
@@ -2449,7 +2449,7 @@ $(document).ready(function() {
             type: 'POST',
             data: { query: query, staff_type: staffType },
             beforeSend: function() {
-                resultDiv.html('<div class="list-group-item"><i class="fas fa-spinner fa-spin"></i> Mencari...</div>').show();
+                resultDiv.html('<div class="list-group-item"><i class="fas fa-spinner fa-spin"></i> Searching...</div>').show();
             },
             success: function(response) {
                 if (response.success && response.data.length > 0) {
@@ -2465,11 +2465,11 @@ $(document).ready(function() {
                     });
                     resultDiv.html(html).show();
                 } else {
-                    resultDiv.html('<div class="list-group-item text-muted">Tidak ada staff yang ditemukan</div>').show();
+                    resultDiv.html('<div class="list-group-item text-muted">No staff found</div>').show();
                 }
             },
             error: function() {
-                resultDiv.html('<div class="list-group-item text-danger">Error mencari staff</div>').show();
+                resultDiv.html('<div class="list-group-item text-danger">Error searching staff</div>').show();
             }
         });
     }
@@ -2595,7 +2595,7 @@ $(document).ready(function() {
             $('#work_order_id').val('');
             
             // Reset modal title
-            $('#workOrderFormTitle').html('<i class="fas fa-plus-circle me-2"></i>Tambah Work Order Baru');
+            $('#workOrderFormTitle').html('<i class="fas fa-plus-circle me-2"></i>New Work Order');
             
             // Ensure modal body scroll is restored
             $('#workOrderModal .modal-body').css('overflow-y', 'auto');
@@ -2648,32 +2648,32 @@ $(document).ready(function() {
             minimumInputLength: 0,
             allowClear: true,
             placeholder: function() {
-                return $(this).data('placeholder') || '-- Pilih --';
+                return $(this).data('placeholder') || '-- Select --';
             },
             language: {
                 noResults: function() {
-                    return "Tidak ada hasil ditemukan";
+                    return "No results found";
                 },
                 searching: function() {
-                    return "Mencari...";
+                    return "Searching...";
                 }
             }
         };
 
         // Initialize searchable dropdowns (Unit and Sparepart only)
         const searchableSelectors = [
-            { id: '#unit_id', placeholder: '-- Pilih Unit --', searchable: true }
+            { id: '#unit_id', placeholder: '-- Select Unit --', searchable: true }
         ];
 
         // Initialize regular dropdowns (non-searchable) - Clean appearance
         const regularSelectors = [
-            { id: '#category_id', placeholder: '-- Pilih Kategori --' },
-            { id: '#subcategory_id', placeholder: '-- Pilih Sub Kategori --' },
-            { id: '#order_type', placeholder: '-- Pilih Tipe Order --' },
-            { id: '#mechanic_1', placeholder: '-- Pilih Mekanik 1 --' },
-            { id: '#mechanic_2', placeholder: '-- Pilih Mekanik 2 (Opsional) --' },
-            { id: '#helper_1', placeholder: '-- Pilih Helper 1 --' },
-            { id: '#helper_2', placeholder: '-- Pilih Helper 2 (Opsional) --' }
+            { id: '#category_id', placeholder: '-- Select Category --' },
+            { id: '#subcategory_id', placeholder: '-- Select Subcategory --' },
+            { id: '#order_type', placeholder: '-- Select Order Type --' },
+            { id: '#mechanic_1', placeholder: '-- Select Mechanic 1 --' },
+            { id: '#mechanic_2', placeholder: '-- Select Mechanic 2 (Optional) --' },
+            { id: '#helper_1', placeholder: '-- Select Helper 1 --' },
+            { id: '#helper_2', placeholder: '-- Select Helper 2 (Optional) --' }
         ];
 
         // Initialize searchable dropdowns - Only for fields that really need search
@@ -2732,7 +2732,7 @@ $(document).ready(function() {
         if ($('#spareparts').length && !$('#spareparts').hasClass('select2-hidden-accessible')) {
             $('#spareparts').select2({
                 ...searchableConfig,
-                placeholder: '-- Pilih Sparepart --',
+                placeholder: '-- Select Sparepart --',
                 multiple: true
             });
         }
@@ -2779,8 +2779,6 @@ $(document).ready(function() {
         console.log('🔄 Loading units dropdown...');
         const unitSelect = $('#unit_id');
         
-        // Show loading state
-        unitSelect.empty().append('<option value="">Memuat data unit...</option>');
         
         $.ajax({
             url: '<?= base_url('service/work-orders/units-dropdown') ?>',
@@ -2790,7 +2788,7 @@ $(document).ready(function() {
                 console.log('📦 Units response:', response);
                 
                 if (response.success && response.data) {
-                    unitSelect.empty().append('<option value="">-- Pilih Unit --</option>');
+                    unitSelect.empty().append('<option value="">-- Select Unit --</option>');
                     
                     if (response.data.length > 0) {
                         response.data.forEach(function(unit) {
@@ -2805,7 +2803,7 @@ $(document).ready(function() {
                         window.allUnits = response.data;
                         console.log('✅ Units loaded successfully:', response.data.length, 'units');
                     } else {
-                        unitSelect.append('<option value="">Tidak ada unit tersedia</option>');
+                        unitSelect.append('<option value="">No units available</option>');
                         console.warn('⚠️ No units found in response');
                     }
                     
@@ -2814,15 +2812,15 @@ $(document).ready(function() {
                         try {
                             // Always initialize (we already destroyed above if needed)
                             unitSelect.select2({
-                                placeholder: '-- Pilih Unit --',
+                                placeholder: '-- Select Unit --',
                                 allowClear: true,
                                 width: '100%',
                                 dropdownParent: $('#workOrderModal'),
                                 minimumInputLength: 0, // Enable search immediately
                                 minimumResultsForSearch: 0, // Always show search box
                                 language: {
-                                    noResults: function() { return "Tidak ada hasil ditemukan"; },
-                                    searching: function() { return "Mencari..."; }
+                                    noResults: function() { return "No results found"; },
+                                    searching: function() { return "Searching..."; }
                                 }
                             });
                             console.log('✅ Select2 initialized for unit dropdown with search,', response.data.length, 'options');
@@ -2831,7 +2829,7 @@ $(document).ready(function() {
                         }
                     }, 150);
                 } else {
-                    unitSelect.empty().append('<option value="">Error: ' + (response.message || 'Gagal memuat data') + '</option>');
+                    unitSelect.empty().append('<option value="">Error: ' + (response.message || 'Failed to load data') + '</option>');
                     console.error('❌ Error loading units:', response.message || 'Unknown error');
                 }
             },
@@ -2839,7 +2837,7 @@ $(document).ready(function() {
                 console.error('❌ AJAX Error loading units:', error);
                 console.error('❌ Status:', status);
                 console.error('❌ Response:', xhr.responseText);
-                unitSelect.empty().append('<option value="">Error memuat data unit</option>');
+                unitSelect.empty().append('<option value="">Error loading unit data</option>');
             }
         });
     }
@@ -2893,8 +2891,8 @@ $(document).ready(function() {
                     
                     // Clear existing options and add placeholder
                     let placeholderText = staffRole === 'MECHANIC' ? 
-                        (targetId === 'mechanic_1' ? '-- Pilih Mekanik 1 --' : '-- Pilih Mekanik 2 (Opsional) --') :
-                        (targetId === 'helper_1' ? '-- Pilih Helper 1 --' : '-- Pilih Helper 2 (Opsional) --');
+                        (targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --') :
+                        (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
                     
                     staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
                     
@@ -2916,8 +2914,8 @@ $(document).ready(function() {
                             dropdownParent: $('#workOrderModal'),
                             minimumInputLength: 0,
                             language: {
-                                noResults: function() { return "Tidak ada hasil ditemukan"; },
-                                searching: function() { return "Mencari..."; }
+                                noResults: function() { return "No results found"; },
+                                searching: function() { return "Searching..."; }
                             }
                         });
                     } else {
@@ -2932,8 +2930,8 @@ $(document).ready(function() {
                     // Still add placeholder even if no data
                     const staffSelect = $('#' + targetId);
                     let placeholderText = staffRole === 'MECHANIC' ? 
-                        (targetId === 'mechanic_1' ? '-- Pilih Mekanik 1 --' : '-- Pilih Mekanik 2 (Opsional) --') :
-                        (targetId === 'helper_1' ? '-- Pilih Helper 1 --' : '-- Pilih Helper 2 (Opsional) --');
+                        (targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --') :
+                        (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
                     
                     staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
                 }
@@ -2944,8 +2942,8 @@ $(document).ready(function() {
                 // Add placeholder even on error
                 const staffSelect = $('#' + targetId);
                 let placeholderText = staffRole === 'MECHANIC' ? 
-                    (targetId === 'mechanic_1' ? '-- Pilih Mekanik 1 --' : '-- Pilih Mekanik 2 (Opsional) --') :
-                    (targetId === 'helper_1' ? '-- Pilih Helper 1 --' : '-- Pilih Helper 2 (Opsional) --');
+                    (targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --') :
+                    (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
                 
                 staffSelect.empty().append(`<option value="">${placeholderText}</option>`);
             }
@@ -3087,7 +3085,7 @@ $(document).ready(function() {
             <tr>
                 <td>
                     <select class="form-select" name="sparepart_name[]" id="sparepart_${sparepartRowCount}" required>
-                        <option value="">-- Pilih Sparepart --</option>
+                        <option value="">-- Select Sparepart --</option>
                     </select>
                 </td>
                 <td>
@@ -3095,11 +3093,47 @@ $(document).ready(function() {
                 </td>
                 <td>
                     <select class="form-select form-select-sm" name="sparepart_unit[]" required>
-                        <option value="PCS">PCS</option>
-                        <option value="SET">SET</option>
-                        <option value="LITER">LITER</option>
-                        <option value="KG">KG</option>
-                        <option value="METER">METER</option>
+                        <optgroup label="📦 Barang / Unit">
+                            <option value="PCS">PCS (Pieces)</option>
+                            <option value="UNIT">UNIT</option>
+                            <option value="SET">SET</option>
+                            <option value="PASANG">PASANG</option>
+                            <option value="LUSIN">LUSIN (Dozen)</option>
+                            <option value="GROSS">GROSS</option>
+                        </optgroup>
+                        <optgroup label="🏭 Gudang / Kemasan">
+                            <option value="BOX">BOX</option>
+                            <option value="PACK">PACK</option>
+                            <option value="KARTON">KARTON</option>
+                            <option value="PALLET">PALLET</option>
+                            <option value="ROLL">ROLL</option>
+                            <option value="DRUM">DRUM</option>
+                            <option value="BAG">BAG (Kantong)</option>
+                            <option value="SAK">SAK</option>
+                        </optgroup>
+                        <optgroup label="⚖️ Berat">
+                            <option value="KG">KG (Kilogram)</option>
+                            <option value="GRAM">GRAM</option>
+                            <option value="TON">TON</option>
+                            <option value="OUNCE">OUNCE (Ons)</option>
+                        </optgroup>
+                        <optgroup label="📏 Dimensi / Panjang">
+                            <option value="METER">METER</option>
+                            <option value="CM">CM (Centimeter)</option>
+                            <option value="MM">MM (Millimeter)</option>
+                            <option value="INCH">INCH</option>
+                            <option value="FEET">FEET</option>
+                        </optgroup>
+                        <optgroup label="🧴 Volume / Cairan">
+                            <option value="LITER">LITER</option>
+                            <option value="ML">ML (Milliliter)</option>
+                            <option value="GALLON">GALLON</option>
+                            <option value="M3">M³ (Meter Kubik)</option>
+                        </optgroup>
+                        <optgroup label="📐 Area / Luas">
+                            <option value="M2">M² (Meter Persegi)</option>
+                            <option value="CM2">CM²</option>
+                        </optgroup>
                     </select>
                 </td>
                 <td>
@@ -3117,7 +3151,7 @@ $(document).ready(function() {
         const unitSelect = sparepartSelect.closest('tr').find('select[name="sparepart_unit[]"]');
         
         // 3. Tambahkan semua data sparepart ke dropdown (PERSIS seperti unit_id)
-        sparepartSelect.empty().append('<option value="">-- Pilih Sparepart --</option>');
+        sparepartSelect.empty().append('<option value="">-- Select Sparepart --</option>');
         
         if (window.sparepartsData && Array.isArray(window.sparepartsData) && window.sparepartsData.length > 0) {
             window.sparepartsData.forEach(function(sparepart) {
@@ -3145,15 +3179,15 @@ $(document).ready(function() {
                 
                 if (!sparepartElement.hasClass('select2-hidden-accessible')) {
                     sparepartElement.select2({
-                        placeholder: '-- Pilih Sparepart --',
+                        placeholder: '-- Select Sparepart --',
                         allowClear: true,
                         width: '100%',
                         dropdownParent: $('#workOrderModal'),
                         minimumInputLength: 0, // Enable search immediately
                         minimumResultsForSearch: 0, // Always show search box
                         language: {
-                            noResults: function() { return "Tidak ada hasil ditemukan"; },
-                            searching: function() { return "Mencari..."; }
+                            noResults: function() { return "No results found"; },
+                            searching: function() { return "Searching..."; }
                         }
                     });
                     console.log(`✅ Select2 initialized for sparepart_${sparepartRowCount} with search`);

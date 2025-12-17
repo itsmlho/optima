@@ -362,7 +362,7 @@
             if (spec.value && spec.value !== '-' && spec.value !== 'Belum ada SN') {
                 const fieldId = spec.fieldName || `verify_${spec.label.toLowerCase().replace(/\s+/g, '_')}`;
                 tableRows += `
-                    <tr data-spec-index="${index}">
+                    <tr data-spec-index="${index}" ${spec.fieldName ? `data-field="${spec.fieldName}"` : ''}>
                         <td style="font-weight: 500; background-color: #fafafa; padding: 8px;">${spec.label}${spec.required ? ' <span class="text-danger">*</span>' : ''}</td>
                         <td style="font-family: monospace; background-color: #fff; padding: 8px;"><input type="text" class="form-control form-control-sm" value="${spec.value}" readonly style="border: none; background: transparent; padding: 0;"></td>
                         <td style="background-color: #fff; padding: 8px;">
@@ -370,6 +370,7 @@
                                 <input type="text" class="form-control form-control-sm verify-field" 
                                        id="${fieldId}" 
                                        name="${fieldId}" 
+                                       data-field="${spec.fieldName}"
                                        value="${spec.value === 'Belum ada SN' ? '' : spec.value}" 
                                        placeholder="Masukkan ${spec.label.toLowerCase()} real"
                                        ${spec.required ? 'required' : ''}
@@ -393,13 +394,14 @@
                 // Always show required SN fields even if empty
                 const fieldId = spec.fieldName || `verify_${spec.label.toLowerCase().replace(/\s+/g, '_')}`;
                 tableRows += `
-                    <tr data-spec-index="${index}">
+                    <tr data-spec-index="${index}" ${spec.fieldName ? `data-field="${spec.fieldName}"` : ''}>
                         <td style="font-weight: 500; background-color: #fafafa; padding: 8px;">${spec.label} <span class="text-danger">*</span></td>
                         <td style="font-family: monospace; background-color: #fff; padding: 8px;"><input type="text" class="form-control form-control-sm" value="${spec.value || 'Belum ada SN'}" readonly style="border: none; background: transparent; padding: 0;"></td>
                         <td style="background-color: #fff; padding: 8px;">
                             <input type="text" class="form-control form-control-sm verify-field" 
                                    id="${fieldId}" 
                                    name="${fieldId}" 
+                                   data-field="${spec.fieldName}"
                                    placeholder="Masukkan ${spec.label.toLowerCase()} real"
                                    required
                                    style="border: 1px solid #333; border-radius: 4px; padding: 4px 8px;">
@@ -733,14 +735,11 @@
             // Collect SN data (prioritaskan real value jika ada, jika tidak gunakan db value)
             // SN selalu input text, bukan dropdown
             if (fieldName && (fieldName.includes('sn_') || fieldName === 'sn_unit' || fieldName === 'sn_mast' || fieldName === 'sn_mesin')) {
-                // Untuk SN, ambil dari input field langsung (bukan dari text option)
-                const snRealInput = row.find('.verify-field[data-field="' + fieldName + '"]');
-                const snDbInput = row.find('td:nth-child(2) input[data-field="' + fieldName + '"]');
-                const snRealVal = snRealInput.length > 0 ? snRealInput.val() || '' : '';
-                const snDbVal = snDbInput.length > 0 ? snDbInput.val() || '' : '';
-                const snValue = (snRealVal && snRealVal.trim() !== '') ? snRealVal : snDbVal;
-                if (snValue && snValue !== 'Belum ada SN' && snValue.trim() !== '') {
-                    snData[fieldName] = snValue.trim();
+                // Untuk SN, ambil langsung dari realValue yang sudah diambil di atas
+                // realValue sudah berisi nilai dari input field .verify-field
+                const snValue = realValue && realValue.trim() !== '' && realValue !== 'Belum ada SN' ? realValue.trim() : '';
+                if (snValue) {
+                    snData[fieldName] = snValue;
                 }
             }
         });
@@ -764,8 +763,13 @@
             finalStatus = 'Sesuai';
         }
         
+        // Debug: Log collected SN data
+        console.log('Collected SN Data:', snData);
+        console.log('Final Status:', finalStatus);
+        
         // Validate required SN fields untuk status "Sesuai"
         if (finalStatus === 'Sesuai' && (!snData['sn_unit'] || !snData['sn_mesin'])) {
+            console.log('Validation failed - Missing SN:', {sn_unit: snData['sn_unit'], sn_mesin: snData['sn_mesin']});
             Swal.fire({icon:'warning', title:'SN Wajib', text:'Serial number Unit dan Mesin wajib diisi untuk status Sesuai.'});
             return;
         }
