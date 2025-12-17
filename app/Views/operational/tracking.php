@@ -408,7 +408,7 @@
 
 <!-- Search Form -->
 <div class="search-card">
-  <h6><i class="fas fa-search me-2"></i>Pencarian Tracking Pengiriman</h6>
+  <h6><i class="fas fa-search me-2"></i>Shipment Tracking</h6>
   <form id="trackingSearchForm">
     <!-- Step 1: Initial Search -->
     <div id="searchStep1" class="search-step">
@@ -417,16 +417,16 @@
           <div class="input-group input-group-lg">
             <span class="input-group-text"><i class="fas fa-search"></i></span>
             <input type="text" class="form-control" id="searchValue" name="search_value" 
-                   placeholder="Masukkan No. Kontrak, SPK, atau DI..." autocomplete="off">
+                   placeholder="Enter Contract No., SPK, or DI..." autocomplete="off">
           </div>
           <small class="text-muted">
             <i class="fas fa-info-circle me-1"></i>
-            Sistem akan otomatis mendeteksi jenis dokumen
+            The system will automatically detect the document type based on your input.
           </small>
         </div>
         <div class="col-md-2">
           <button type="button" class="btn btn-primary btn-lg w-100" onclick="performSearch()">
-            <i class="fas fa-search me-2"></i> Cari
+            <i class="fas fa-search me-2"></i> Search
           </button>
         </div>
       </div>
@@ -436,22 +436,22 @@
     <div id="searchStep2" class="search-step" style="display: none;">
       <div class="row g-3">
         <div class="col-md-8">
-          <label class="form-label fw-bold">Pilih SPK:</label>
+          <label class="form-label fw-bold">Select SPK:</label>
           <select class="form-select form-select-lg" id="spkSelect">
-            <option value="">-- Pilih SPK --</option>
+            <option value="">-- Select SPK --</option>
           </select>
-          <small class="text-muted">Kontrak ini memiliki beberapa SPK, pilih salah satu</small>
+          <small class="text-muted">This contract has multiple SPKs, please select one</small>
         </div>
         <div class="col-md-2">
           <label class="form-label">&nbsp;</label>
           <button type="button" class="btn btn-secondary btn-lg w-100" onclick="backToStep1()">
-            <i class="fas fa-arrow-left me-2"></i> Kembali
+            <i class="fas fa-arrow-left me-2"></i> Back
           </button>
         </div>
         <div class="col-md-2">
           <label class="form-label">&nbsp;</label>
           <button type="button" class="btn btn-primary btn-lg w-100" onclick="proceedWithSPK()">
-            Lanjut <i class="fas fa-arrow-right ms-2"></i>
+            Next <i class="fas fa-arrow-right ms-2"></i>
           </button>
         </div>
       </div>
@@ -461,22 +461,22 @@
     <div id="searchStep3" class="search-step" style="display: none;">
       <div class="row g-3">
         <div class="col-md-8">
-          <label class="form-label fw-bold">Pilih DI:</label>
+          <label class="form-label fw-bold">Select DI:</label>
           <select class="form-select form-select-lg" id="diSelect">
-            <option value="">-- Pilih DI --</option>
+            <option value="">-- Select DI --</option>
           </select>
-          <small class="text-muted">SPK ini memiliki beberapa DI, pilih salah satu</small>
+          <small class="text-muted">This SPK has multiple DIs, please select one</small>
         </div>
         <div class="col-md-2">
           <label class="form-label">&nbsp;</label>
           <button type="button" class="btn btn-secondary btn-lg w-100" onclick="backToStep2()">
-            <i class="fas fa-arrow-left me-2"></i> Kembali
+            <i class="fas fa-arrow-left me-2"></i> Back
           </button>
         </div>
         <div class="col-md-2">
           <label class="form-label">&nbsp;</label>
           <button type="button" class="btn btn-primary btn-lg w-100" onclick="proceedWithDI()">
-            Lacak <i class="fas fa-search ms-2"></i>
+            Track <i class="fas fa-search ms-2"></i>
           </button>
         </div>
       </div>
@@ -490,11 +490,11 @@
   <div class="tracking-header">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div>
-        <h4><i class="fas fa-route me-2"></i>Tracking Pengiriman</h4>
+        <h4><i class="fas fa-route me-2"></i>Shipment Tracking</h4>
         <div class="tracking-id" id="trackingId">-</div>
       </div>
       <button class="btn btn-light btn-sm" onclick="resetSearch()">
-        <i class="fas fa-times me-1"></i> Tutup
+        <i class="fas fa-times me-1"></i> Close
       </button>
     </div>
     
@@ -505,15 +505,15 @@
   <!-- Progress Overview -->
   <div class="progress-overview">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <strong>Progress Keseluruhan</strong>
+      <strong>Overall Progress</strong>
       <span id="progressPercent" class="text-primary fw-bold">0%</span>
     </div>
     <div class="progress-bar-container">
       <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
     </div>
     <div class="progress-text">
-      <span id="progressSteps">0 dari 9 tahap selesai</span>
-      <span id="progressStatus">Dalam Proses</span>
+      <span id="progressSteps">0 out of 9 steps completed</span>
+      <span id="progressStatus">In Progress</span>
     </div>
   </div>
 
@@ -521,12 +521,12 @@
   <ul class="nav nav-tabs-custom" id="trackingTabs" role="tablist">
     <li class="nav-item">
       <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ringkasan">
-        <i class="fas fa-chart-pie"></i> Ringkasan
+        <i class="fas fa-chart-pie"></i> Summary
       </button>
     </li>
     <li class="nav-item">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-kontrak">
-        <i class="fas fa-file-contract"></i> Kontrak
+        <i class="fas fa-file-contract"></i> Contract
       </button>
     </li>
     <li class="nav-item">
@@ -541,7 +541,7 @@
     </li>
     <li class="nav-item">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-delivery">
-        <i class="fas fa-truck"></i> Pengiriman
+        <i class="fas fa-truck"></i> Delivery
       </button>
     </li>
   </ul>
@@ -553,7 +553,7 @@
       <div class="tab-content-card">
         <div class="row" id="ringkasanContent">
           <div class="col-md-12 text-center text-muted">
-            <div class="loading-spinner me-2"></div> Memuat data...
+            <div class="loading-spinner me-2"></div> Loading data...
           </div>
         </div>
       </div>
@@ -562,9 +562,9 @@
     <!-- Tab: Kontrak -->
     <div class="tab-pane fade" id="tab-kontrak">
       <div class="tab-content-card">
-        <h5 class="mb-4"><i class="fas fa-file-contract me-2 text-primary"></i>Detail Kontrak</h5>
+        <h5 class="mb-4"><i class="fas fa-file-contract me-2 text-primary"></i>Contract Details</h5>
         <div id="kontrakContent">
-          <p class="text-muted">Memuat data kontrak...</p>
+          <p class="text-muted">Loading contract data...</p>
         </div>
       </div>
     </div>
@@ -572,9 +572,9 @@
     <!-- Tab: SPK -->
     <div class="tab-pane fade" id="tab-spk">
       <div class="tab-content-card">
-        <h5 class="mb-4"><i class="fas fa-clipboard-list me-2 text-primary"></i>Detail SPK</h5>
+        <h5 class="mb-4"><i class="fas fa-clipboard-list me-2 text-primary"></i>SPK Details</h5>
         <div id="spkContent">
-          <p class="text-muted">Memuat data SPK...</p>
+          <p class="text-muted">Loading SPK data...</p>
         </div>
       </div>
     </div>
@@ -582,9 +582,9 @@
     <!-- Tab: Unit -->
     <div class="tab-pane fade" id="tab-unit">
       <div class="tab-content-card">
-        <h5 class="mb-4"><i class="fas fa-box me-2 text-primary"></i>Detail Unit</h5>
+        <h5 class="mb-4"><i class="fas fa-box me-2 text-primary"></i>Unit Details</h5>
         <div id="unitContent">
-          <p class="text-muted">Memuat data unit...</p>
+          <p class="text-muted">Loading unit data...</p>
         </div>
       </div>
     </div>
@@ -592,9 +592,9 @@
     <!-- Tab: Pengiriman -->
     <div class="tab-pane fade" id="tab-delivery">
       <div class="tab-content-card">
-        <h5 class="mb-4"><i class="fas fa-truck me-2 text-primary"></i>Detail Pengiriman</h5>
+        <h5 class="mb-4"><i class="fas fa-truck me-2 text-primary"></i>Delivery Details</h5>
         <div id="deliveryContent">
-          <p class="text-muted">Memuat data pengiriman...</p>
+          <p class="text-muted">Loading delivery data...</p>
         </div>
       </div>
     </div>
@@ -610,7 +610,7 @@ function performSearch() {
   const searchValue = document.getElementById('searchValue').value.trim();
   
   if (!searchValue) {
-    alert('Mohon masukkan nomor kontrak, SPK, atau DI');
+    alert('Please enter contract number, SPK, or DI');
     return;
   }
   
@@ -628,12 +628,12 @@ function performSearch() {
     if (result.success && result.data) {
       handleSearchResponse(result.data);
     } else {
-      alert(result.message || 'Data tidak ditemukan');
+      alert(result.message || 'Data not found');
     }
   })
   .catch(error => {
     console.error('Error:', error);
-    alert('Terjadi kesalahan saat mengambil data');
+    alert('An error occurred while fetching data');
   });
 }
 
@@ -662,7 +662,7 @@ function handleSearchResponse(data) {
 
 function showSPKSelection(spks) {
   const select = document.getElementById('spkSelect');
-  select.innerHTML = '<option value="">-- Pilih SPK --</option>';
+  select.innerHTML = '<option value="">-- Select SPK --</option>';
   
   spks.forEach(spk => {
     const option = document.createElement('option');
@@ -677,7 +677,7 @@ function showSPKSelection(spks) {
 
 function showDISelection(dis) {
   const select = document.getElementById('diSelect');
-  select.innerHTML = '<option value="">-- Pilih DI --</option>';
+  select.innerHTML = '<option value="">-- Select DI --</option>';
   
   dis.forEach(di => {
     const option = document.createElement('option');
@@ -694,7 +694,7 @@ function proceedWithSPK() {
   const spkId = document.getElementById('spkSelect').value;
   
   if (!spkId) {
-    alert('Mohon pilih SPK');
+    alert('Please select SPK');
     return;
   }
   
@@ -715,12 +715,12 @@ function proceedWithSPK() {
     if (result.success && result.data) {
       handleSearchResponse(result.data);
       } else {
-      alert('SPK tidak ditemukan: ' + (result.message || 'Unknown error'));
+      alert('SPK not found: ' + (result.message || 'Unknown error'));
       }
     })
     .catch(error => {
     console.error('Error in proceedWithSPK:', error);
-    alert('Terjadi kesalahan: ' + error.message);
+    alert('An error occurred: ' + error.message);
   });
 }
 
@@ -728,7 +728,7 @@ function proceedWithDI() {
   const diId = document.getElementById('diSelect').value;
   
   if (!diId) {
-    alert('Mohon pilih DI');
+    alert('Please select DI');
     return;
   }
   
@@ -747,7 +747,7 @@ function proceedWithDI() {
       currentTrackingData = result.data;
       renderTrackingData(result.data);
     } else {
-      alert('DI tidak ditemukan');
+      alert('DI not found');
     }
   });
 }
@@ -790,7 +790,7 @@ function renderTrackingData(data) {
   console.log('Rendering progress...');
   renderProgress(data);
   
-  console.log('Rendering ringkasan...');
+  console.log('Rendering summary...');
   renderRingkasan(data);
   
   console.log('Tracking data rendered successfully');
@@ -860,37 +860,37 @@ function getTooltipContent(step, stepIndex, data, isCompleted) {
   
   switch(stepIndex) {
     case 0: // SPK Dibuat
-      tooltip += `<strong>Dibuat oleh:</strong> ${data.spk?.created_by_name || 'Marketing'}<br>`;
-      tooltip += `<strong>Jenis:</strong> ${data.spk?.jenis_spk || '-'}<br>`;
-      tooltip += `<strong>Pelanggan:</strong> ${data.spk?.pelanggan || '-'}`;
+      tooltip += `<strong>Created at:</strong> ${data.spk?.created_by_name || 'Marketing'}<br>`;
+      tooltip += `<strong>Type:</strong> ${data.spk?.jenis_spk || '-'}<br>`;
+      tooltip += `<strong>Customer:</strong> ${data.spk?.pelanggan || '-'}`;
       break;
       
     case 1: // Persiapan Unit
       const persiapan = stages.persiapan_unit || {};
-      tooltip += `<strong>Mekanik:</strong> ${persiapan.mekanik || step.pic || '-'}<br>`;
+      tooltip += `<strong>Mechanic:</strong> ${persiapan.mekanik || step.pic || '-'}<br>`;
       const noUnit = persiapan.no_unit || firstUnit.no_unit || '-';
-      tooltip += `<strong>No Unit:</strong> ${noUnit !== '-' ? noUnit.split('(SN:')[0].trim() : '-'}<br>`;
+      tooltip += `<strong>Unit Number:</strong> ${noUnit !== '-' ? noUnit.split('(SN:')[0].trim() : '-'}<br>`;
       if (persiapan.aksesoris_tersedia) {
-        tooltip += `<strong>Aksesoris:</strong> ${persiapan.aksesoris_tersedia}`;
+        tooltip += `<strong>Accessories:</strong> ${persiapan.aksesoris_tersedia}`;
       }
       break;
       
     case 2: // Fabrikasi
       const fabrikasi = stages.fabrikasi || {};
-      tooltip += `<strong>Mekanik:</strong> ${fabrikasi.mekanik || step.pic || '-'}<br>`;
+      tooltip += `<strong>Mechanic:</strong> ${fabrikasi.mekanik || step.pic || '-'}<br>`;
       if (firstUnit.attachment_sn && firstUnit.attachment_sn !== '-') {
         tooltip += `<strong>Attachment:</strong> ${firstUnit.attachment_sn.split('(SN:')[0].trim()}<br>`;
       }
       if (fabrikasi.catatan) {
-        tooltip += `<strong>Catatan:</strong> ${fabrikasi.catatan}`;
+        tooltip += `<strong>Notes:</strong> ${fabrikasi.catatan}`;
       }
       break;
       
     case 3: // Painting
       const painting = stages.painting || {};
-      tooltip += `<strong>Mekanik:</strong> ${painting.mekanik || step.pic || '-'}<br>`;
+      tooltip += `<strong>Mechanic:</strong> ${painting.mekanik || step.pic || '-'}<br>`;
       if (painting.catatan) {
-        tooltip += `<strong>Catatan:</strong> ${painting.catatan}`;
+        tooltip += `<strong>Notes:</strong> ${painting.catatan}`;
       }
       break;
       
@@ -898,39 +898,39 @@ function getTooltipContent(step, stepIndex, data, isCompleted) {
       const pdi = stages.pdi || {};
       tooltip += `<strong>Inspector:</strong> ${pdi.mekanik || step.pic || '-'}<br>`;
       if (pdi.catatan) {
-        tooltip += `<strong>Hasil:</strong> ${pdi.catatan}<br>`;
+        tooltip += `<strong>Result:</strong> ${pdi.catatan}<br>`;
       }
       tooltip += `<strong>Status:</strong> <span style="color: #20c997;">PASS ✓</span>`;
       break;
       
     case 5: // DI Dibuat
-      tooltip += `<strong>Dibuat oleh:</strong> ${data.di?.dibuat_oleh_name || 'Operational'}<br>`;
-      tooltip += `<strong>No DI:</strong> ${data.di?.nomor_di || '-'}<br>`;
-      tooltip += `<strong>Tujuan:</strong> ${data.di?.lokasi || '-'}`;
+      tooltip += `<strong>Created at:</strong> ${data.di?.dibuat_oleh_name || 'Operational'}<br>`;
+      tooltip += `<strong>DI Number:</strong> ${data.di?.nomor_di || '-'}<br>`;
+      tooltip += `<strong>Destination:</strong> ${data.di?.lokasi || '-'}`;
       break;
       
     case 6: // Persiapan Kirim
-      tooltip += `<strong>Supir:</strong> ${data.di?.nama_supir || '-'}<br>`;
+      tooltip += `<strong>Driver:</strong> ${data.di?.nama_supir || '-'}<br>`;
       tooltip += `<strong>HP:</strong> ${data.di?.no_hp_supir || '-'}<br>`;
-      tooltip += `<strong>Kendaraan:</strong> ${data.di?.kendaraan || '-'} ${data.di?.no_polisi_kendaraan ? '(' + data.di.no_polisi_kendaraan + ')' : ''}<br>`;
-      tooltip += `<strong>Jadwal:</strong> ${formatDateTime(data.di?.tanggal_kirim)}`;
+      tooltip += `<strong>Vehicle:</strong> ${data.di?.kendaraan || '-'} ${data.di?.no_polisi_kendaraan ? '(' + data.di.no_polisi_kendaraan + ')' : ''}<br>`;
+      tooltip += `<strong>Schedule:</strong> ${formatDateTime(data.di?.tanggal_kirim)}`;
       break;
       
     case 7: // Berangkat
-      tooltip += `<strong>Supir:</strong> ${data.di?.nama_supir || '-'}<br>`;
-      tooltip += `<strong>Kendaraan:</strong> ${data.di?.kendaraan || '-'}<br>`;
-      tooltip += `<strong>Est. Sampai:</strong> ${formatDateTime(data.di?.estimasi_sampai)}`;
+      tooltip += `<strong>Driver:</strong> ${data.di?.nama_supir || '-'}<br>`;
+      tooltip += `<strong>Vehicle:</strong> ${data.di?.kendaraan || '-'}<br>`;
+      tooltip += `<strong>Est. Arrival:</strong> ${formatDateTime(data.di?.estimasi_sampai)}`;
       if (data.di?.catatan_berangkat) {
-        tooltip += `<br><strong>Catatan:</strong> ${data.di.catatan_berangkat}`;
+        tooltip += `<br><strong>Notes:</strong> ${data.di.catatan_berangkat}`;
       }
       break;
       
     case 8: // Sampai
-      tooltip += `<strong>Diterima:</strong> ${formatDateTime(data.di?.sampai_tanggal_approve)}<br>`;
-      tooltip += `<strong>Lokasi:</strong> ${data.di?.lokasi || '-'}<br>`;
-      tooltip += `<strong>PIC Penerima:</strong> ${data.di?.pic || '-'}`;
+      tooltip += `<strong>Received:</strong> ${formatDateTime(data.di?.sampai_tanggal_approve)}<br>`;
+      tooltip += `<strong>Location:</strong> ${data.di?.lokasi || '-'}<br>`;
+      tooltip += `<strong>Receiver PIC:</strong> ${data.di?.pic || '-'}`;
       if (data.di?.catatan_sampai) {
-        tooltip += `<br><strong>Catatan:</strong> ${data.di.catatan_sampai}`;
+        tooltip += `<br><strong>Notes:</strong> ${data.di.catatan_sampai}`;
       }
       break;
       
@@ -956,8 +956,8 @@ function renderProgress(data) {
   
   if (progressBar) progressBar.style.width = progress + '%';
   if (progressPercent) progressPercent.textContent = progress + '%';
-  if (progressSteps) progressSteps.textContent = `${completedSteps} dari ${steps.length} tahap selesai`;
-  if (progressStatus) progressStatus.textContent = progress === 100 ? 'Selesai' : 'Dalam Proses';
+  if (progressSteps) progressSteps.textContent = `${completedSteps} of ${steps.length} steps completed`;
+  if (progressStatus) progressStatus.textContent = progress === 100 ? 'Completed' : 'In Progress';
   
   console.log('Progress rendered');
 }
@@ -976,10 +976,10 @@ function renderRingkasan(data) {
       <div class="info-card">
         <div class="info-card-title">
           <i class="fas fa-building"></i>
-          <span>Informasi Pelanggan</span>
+          <span>Customer Information</span>
                     </div>
         <div class="info-item">
-          <div class="info-label">Nama Perusahaan</div>
+          <div class="info-label">Company Name</div>
           <div class="info-value large">${data.spk?.pelanggan || '-'}</div>
                         </div>
         <div class="info-item">
@@ -987,11 +987,11 @@ function renderRingkasan(data) {
           <div class="info-value">${data.spk?.pic || '-'}</div>
                         </div>
         <div class="info-item">
-          <div class="info-label">Kontak</div>
+          <div class="info-label">Contact</div>
           <div class="info-value">${data.spk?.kontak || '-'}</div>
                         </div>
         <div class="info-item">
-          <div class="info-label">Lokasi</div>
+          <div class="info-label">Location</div>
           <div class="info-value">${data.spk?.lokasi || '-'}</div>
                         </div>
                     </div>
@@ -1001,18 +1001,18 @@ function renderRingkasan(data) {
       <div class="info-card">
         <div class="info-card-title">
           <i class="fas fa-box"></i>
-          <span>Informasi Unit</span>
+          <span>Unit Information</span>
                             </div>
         <div class="info-item">
-          <div class="info-label">Jenis SPK</div>
+          <div class="info-label">SPK Type</div>
           <div class="info-value">${data.spk?.jenis_spk || '-'}</div>
                         </div>
         <div class="info-item">
-          <div class="info-label">Nomor SPK</div>
+          <div class="info-label">SPK Number</div>
           <div class="info-value">${data.spk?.nomor_spk || '-'}</div>
                     </div>
         <div class="info-item">
-          <div class="info-label">Spesifikasi</div>
+          <div class="info-label">Specification</div>
           <div class="info-value">${getUnitSummary(data)}</div>
         </div>
       </div>
@@ -1022,22 +1022,22 @@ function renderRingkasan(data) {
       <div class="info-card">
         <div class="info-card-title">
           <i class="fas fa-truck"></i>
-          <span>Status Pengiriman</span>
+          <span>Delivery Status</span>
         </div>
         <div class="info-item">
-          <div class="info-label">Nomor DI</div>
+          <div class="info-label">DI Number</div>
           <div class="info-value">${data.di?.nomor_di || '-'}</div>
         </div>
         <div class="info-item">
-          <div class="info-label">Status Terakhir</div>
+          <div class="info-label">Current Status</div>
           <div class="info-value">${getCurrentStatus(data)}</div>
         </div>
         <div class="info-item">
-          <div class="info-label">Tanggal Kirim</div>
+          <div class="info-label">Delivery Date</div>
           <div class="info-value">${formatDateTime(data.di?.tanggal_kirim)}</div>
         </div>
         <div class="info-item">
-          <div class="info-label">Lokasi Tujuan</div>
+          <div class="info-label">Destination Location</div>
           <div class="info-value">${data.di?.lokasi || '-'}</div>
                 </div>
             </div>
@@ -1082,15 +1082,15 @@ function getCurrentStatus(data) {
   const pdi = stages.pdi || {};
     
     return [
-    {step: 'SPK Dibuat', icon: 'fas fa-file-signature', actualDate: data.spk?.dibuat_pada},
-    {step: 'Persiapan Unit', icon: 'fas fa-tools', actualDate: persiapanUnit.tanggal_approve},
-    {step: 'Fabrikasi', icon: 'fas fa-hammer', actualDate: fabrikasi.tanggal_approve},
+    {step: 'SPK Created', icon: 'fas fa-file-signature', actualDate: data.spk?.dibuat_pada},
+    {step: 'Unit Preparation', icon: 'fas fa-tools', actualDate: persiapanUnit.tanggal_approve},
+    {step: 'Fabrication', icon: 'fas fa-hammer', actualDate: fabrikasi.tanggal_approve},
     {step: 'Painting', icon: 'fas fa-paint-brush', actualDate: painting.tanggal_approve},
     {step: 'PDI Check', icon: 'fas fa-check-circle', actualDate: pdi.tanggal_approve},
-    {step: 'DI Dibuat', icon: 'fas fa-file-invoice', actualDate: data.di?.dibuat_pada},
-    {step: 'Persiapan Kirim', icon: 'fas fa-calendar-alt', actualDate: data.di?.perencanaan_tanggal_approve},
-    {step: 'Berangkat', icon: 'fas fa-truck', actualDate: data.di?.berangkat_tanggal_approve},
-    {step: 'Sampai', icon: 'fas fa-flag-checkered', actualDate: data.di?.sampai_tanggal_approve}
+    {step: 'DI Created', icon: 'fas fa-file-invoice', actualDate: data.di?.dibuat_pada},
+    {step: 'Preparation for Delivery', icon: 'fas fa-calendar-alt', actualDate: data.di?.perencanaan_tanggal_approve},
+    {step: 'Departure', icon: 'fas fa-truck', actualDate: data.di?.berangkat_tanggal_approve},
+    {step: 'Arrival', icon: 'fas fa-flag-checkered', actualDate: data.di?.sampai_tanggal_approve}
     ];
   }
 
@@ -1145,15 +1145,15 @@ function renderKontrak(data) {
   container.innerHTML = `
     <table class="detail-table">
       <tr>
-        <td>Nomor Kontrak/PO</td>
+        <td>Contract/PO Number</td>
         <td><strong>${data.spk?.po_kontrak_nomor || data.kontrak?.no_kontrak || '-'}</strong></td>
       </tr>
       <tr>
-        <td>Tanggal Kontrak</td>
+        <td>Contract Date</td>
         <td><strong>${formatDateTime(kontrakDate)}</strong></td>
       </tr>
       <tr>
-        <td>Pelanggan</td>
+        <td>Customer</td>
         <td>${data.spk?.pelanggan || data.kontrak?.nama_pelanggan || '-'}</td>
       </tr>
       <tr>
@@ -1161,11 +1161,11 @@ function renderKontrak(data) {
         <td>${data.spk?.pic || '-'}</td>
       </tr>
       <tr>
-        <td>Kontak</td>
+        <td>Contact</td>
         <td>${data.spk?.kontak || '-'}</td>
       </tr>
       <tr>
-        <td>Lokasi</td>
+        <td>Location</td>
         <td>${data.spk?.lokasi || '-'}</td>
       </tr>
     </table>
@@ -1181,28 +1181,28 @@ function renderSPK(data) {
   container.innerHTML = `
     <table class="detail-table">
       <tr>
-        <td>Nomor SPK</td>
+        <td>SPK Number</td>
         <td><strong>${data.spk?.nomor_spk || '-'}</strong></td>
       </tr>
       <tr>
-        <td>Jenis SPK</td>
+        <td>SPK Type</td>
         <td>${data.spk?.jenis_spk || '-'}</td>
       </tr>
       <tr>
-        <td>Tanggal Dibuat</td>
+        <td>Created Date</td>
         <td>${formatDateTime(data.spk?.dibuat_pada || data.spk?.created_at)}</td>
       </tr>
       <tr>
-        <td>Dibuat Oleh</td>
+        <td>Created By</td>
         <td><strong>${createdBy}</strong></td>
       </tr>
       <tr>
-        <td>Nomor PO/Kontrak</td>
+        <td>Contract/PO Number</td>
         <td>${data.spk?.po_kontrak_nomor || '-'}</td>
       </tr>
       <tr>
-        <td>Status SPK</td>
-        <td><span class="status-badge primary">Aktif</span></td>
+        <td>SPK Status</td>
+        <td><span class="status-badge primary">Active</span></td>
       </tr>
     </table>
   `;
@@ -1213,7 +1213,7 @@ function renderUnit(data) {
   const units = data.spk?.prepared_units_detail || [];
   
   if (units.length === 0) {
-    container.innerHTML = '<p class="text-muted">Data unit tidak tersedia</p>';
+    container.innerHTML = '<p class="text-muted">Unit data not available</p>';
       return;
     }
     
@@ -1221,19 +1221,19 @@ function renderUnit(data) {
   container.innerHTML = `
     <table class="detail-table">
       <tr>
-        <td>No Unit</td>
+        <td>Unit Number</td>
         <td><strong>${unit.no_unit ? unit.no_unit.split('(SN:')[0].trim() : '-'}</strong></td>
       </tr>
       <tr>
-        <td>Jenis Unit</td>
+        <td>Unit Type</td>
         <td>${unit.jenis_unit || '-'}</td>
       </tr>
       <tr>
-        <td>Departemen</td>
+        <td>Department</td>
         <td>${unit.departemen_name || '-'}</td>
       </tr>
       <tr>
-        <td>Kapasitas</td>
+        <td>Capacity</td>
         <td>${unit.kapasitas_name || '-'}</td>
       </tr>
       <tr>
@@ -1245,7 +1245,7 @@ function renderUnit(data) {
         <td>${unit.mast_name || '-'}</td>
       </tr>
       <tr>
-        <td>Roda</td>
+        <td>Wheel</td>
         <td>${unit.roda_name || '-'}</td>
       </tr>
     </table>
@@ -1257,27 +1257,27 @@ function renderDelivery(data) {
   container.innerHTML = `
     <table class="detail-table">
       <tr>
-        <td>Nomor DI</td>
+        <td>DI Number</td>
         <td><strong>${data.di?.nomor_di || '-'}</strong></td>
           </tr>
       <tr>
-        <td>Tanggal Kirim</td>
+        <td>Delivery Date</td>
         <td>${formatDateTime(data.di?.tanggal_kirim)}</td>
       </tr>
       <tr>
-        <td>Supir</td>
+        <td>Driver</td>
         <td>${data.di?.nama_supir || '-'}</td>
       </tr>
       <tr>
-        <td>No HP Supir</td>
+        <td>Driver Phone</td>
         <td>${data.di?.no_hp_supir || '-'}</td>
       </tr>
       <tr>
-        <td>Kendaraan</td>
+        <td>Vehicle</td>
         <td>${data.di?.kendaraan || '-'} ${data.di?.no_polisi_kendaraan ? '(' + data.di.no_polisi_kendaraan + ')' : ''}</td>
       </tr>
       <tr>
-        <td>Lokasi Tujuan</td>
+        <td>Destination Location</td>
         <td>${data.di?.lokasi || '-'}</td>
       </tr>
       <tr>

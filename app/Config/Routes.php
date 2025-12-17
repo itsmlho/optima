@@ -501,6 +501,13 @@ $routes->group('operational', static function ($routes) {
     $routes->post('tracking-search', 'Operational::trackingSearch');
     $routes->post('audit-trail', 'Operational::auditTrail');
     
+    // Temporary Units Tracking Report
+    $routes->get('temporary-units-report', 'Operational::temporaryUnitsReport');
+    $routes->post('get-temporary-units', 'Operational::getTemporaryUnits');
+    $routes->get('get-temporary-units-stats', 'Operational::getTemporaryUnitsStats');
+    $routes->get('get-customers-with-temporary-units', 'Operational::getCustomersWithTemporaryUnits');
+    $routes->post('process-temporary-unit-return', 'Operational::processTemporaryUnitReturn');
+    
     // DI Workflow Logic API Routes
     $routes->get('api/jenis-perintah-kerja', 'Operational::getJenisPerintahKerja');
     $routes->get('api/tujuan-perintah-kerja/(:num)', 'Operational::getTujuanPerintahKerja/$1');

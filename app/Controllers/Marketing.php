@@ -3322,16 +3322,29 @@ class Marketing extends BaseDataTableController
                 ->where('delivery_items.di_id', $row['id'])
                 ->findAll();
                 
-            // Format item labels
+            // Format item labels and check for temporary units
             $itemLabels = [];
             $unitCount = 0;
             $attachmentCount = 0;
+            $hasTemporaryUnits = false;
             
             foreach ($items as $item) {
                 if ($item['item_type'] === 'UNIT') {
                     $label = trim(($item['no_unit'] ?: 'Unit') . ' - ' . ($item['merk_unit'] ?: '') . ' ' . ($item['model_unit'] ?: ''));
                     $itemLabels[] = ['unit_label' => $label, 'type' => 'unit'];
                     $unitCount++;
+                    
+                    // Check if this unit is temporary
+                    if ($item['unit_id']) {
+                        $tempCheck = $this->db->table('kontrak_unit')
+                            ->where('unit_id', $item['unit_id'])
+                            ->where('is_temporary', 1)
+                            ->where('temporary_end_date IS NULL')
+                            ->countAllResults();
+                        if ($tempCheck > 0) {
+                            $hasTemporaryUnits = true;
+                        }
+                    }
                 } elseif ($item['item_type'] === 'ATTACHMENT') {
                     $label = trim(($item['att_tipe'] ?: 'Attachment') . ' ' . ($item['att_merk'] ?: '') . ' ' . ($item['att_model'] ?: ''));
                     $itemLabels[] = ['attachment_label' => $label, 'type' => 'attachment'];
@@ -3342,6 +3355,7 @@ class Marketing extends BaseDataTableController
             $row['items'] = $itemLabels;
             $row['total_units'] = $unitCount;
             $row['total_attachments'] = $attachmentCount;
+            $row['has_temporary_units'] = $hasTemporaryUnits;
         }
         
         return $this->response->setJSON(['data'=>$rows,'csrf_hash'=>csrf_hash()]);
