@@ -1,5 +1,10 @@
 <!-- Attachment Form Fragment -->
 <div class="row g-3">
+    <div class="col-12 mb-2">
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="QuickAddModal.open('attachment_type', 'att_tipe');">
+            <i class="fas fa-plus-circle me-1"></i>Tambah Attachment Baru
+        </button>
+    </div>
     <!-- Tipe -->
     <div class="col-md-4">
         <label for="att_tipe" class="form-label">Tipe Attachment <span class="text-danger">*</span></label>

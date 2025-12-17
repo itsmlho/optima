@@ -698,6 +698,11 @@ $routes->group('purchasing', static function ($routes) {
     $routes->get('api/get_model_unit_merk', 'Purchasing::getModelUnitMerk');
     // Added route for tipe & jenis cascading dropdown
     $routes->get('api/get-tipe-units', 'Purchasing::apiGetTipeUnits');
+    
+    // Quick Add Master Data Routes
+    $routes->get('getQuickAddForm', 'Purchasing::getQuickAddForm');
+    $routes->post('quickAddMasterData', 'Purchasing::quickAddMasterData');
+    $routes->post('refreshDropdownData', 'Purchasing::refreshDropdownData');
     // API untuk cascading dropdown attachment
     $routes->get('api/get-attachment-merk', 'Purchasing::getAttachmentMerkAPI');
     $routes->get('api/get-attachment-model', 'Purchasing::getAttachmentModelAPI');

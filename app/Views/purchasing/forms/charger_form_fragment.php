@@ -1,5 +1,10 @@
 <!-- Charger Form Fragment -->
 <div class="row g-3">
+    <div class="col-12 mb-2">
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="QuickAddModal.open('charger', 'charger_merk');">
+            <i class="fas fa-plus-circle me-1"></i>Tambah Charger Baru
+        </button>
+    </div>
     <!-- Merk Charger -->
     <div class="col-md-6">
         <label for="charger_merk" class="form-label">Merk Charger <span class="text-danger">*</span></label>

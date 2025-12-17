@@ -61,21 +61,21 @@ $can_export = $permissions['export'];
         <!-- Sub-filter untuk setiap kategori -->
         <div class="card-body border-top" id="subFilterContainer" style="display: none;">
             <div class="d-flex flex-wrap gap-2 align-items-center">
-                <small class="text-muted me-2">Filter Status:</small>
+                <small class="text-muted me-2">Filter:</small>
                 <div id="stockSubFilters" class="sub-filter-group" style="display: none;">
-                    <button class="btn btn-sm btn-outline-success active" data-sub-status="" type="button">Semua Stock</button>
+                    <button class="btn btn-sm btn-outline-success active" data-sub-status="" type="button">All Stock</button>
                     <button class="btn btn-sm btn-outline-success" data-sub-status="1" type="button">Available Stock</button>
                     <button class="btn btn-sm btn-outline-secondary" data-sub-status="2" type="button">Stock Non Aset</button>
                     <button class="btn btn-sm btn-outline-primary" data-sub-status="3" type="button">Booked</button>
                     <button class="btn btn-sm btn-outline-secondary" data-sub-status="9" type="button">Returned</button>
                 </div>
                 <div id="rentalSubFilters" class="sub-filter-group" style="display: none;">
-                    <button class="btn btn-sm btn-outline-warning active" data-sub-status="" type="button">Semua Rental</button>
+                    <button class="btn btn-sm btn-outline-warning active" data-sub-status="" type="button">All Rental</button>
                     <button class="btn btn-sm btn-outline-warning" data-sub-status="7" type="button">Rental Active</button>
                     <button class="btn btn-sm btn-outline-secondary" data-sub-status="11" type="button">Rental Inactive</button>
                 </div>
                 <div id="progressSubFilters" class="sub-filter-group" style="display: none;">
-                    <button class="btn btn-sm btn-outline-info active" data-sub-status="" type="button">Semua Progress</button>
+                    <button class="btn btn-sm btn-outline-info active" data-sub-status="" type="button">All Progress</button>
                     <button class="btn btn-sm btn-outline-info" data-sub-status="4" type="button">In Preparation</button>
                     <button class="btn btn-sm btn-outline-success" data-sub-status="5" type="button">Ready to Deliver</button>
                     <button class="btn btn-sm btn-outline-info" data-sub-status="6" type="button">In Delivery</button>
@@ -85,9 +85,9 @@ $can_export = $permissions['export'];
         </div>
         
         <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
-            <h6 class="card-title mb-0">Daftar Stok Unit</h6>
+            <h6 class="card-title mb-0">List of Unit Stock</h6>
             <div class="d-flex gap-2 ms-auto">
-                <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false" aria-controls="filterCollapse" title="Tampilkan / Sembunyikan Filter">
+                <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false" aria-controls="filterCollapse" title="Show / Hide Filter">
                     <i class="fas fa-filter me-1"></i>Filter
                 </button>
                 <?php if ($can_export): ?>
@@ -106,9 +106,9 @@ $can_export = $permissions['export'];
             <div class="card-body bg-light-subtle border-top">
                 <form id="filterForm" class="row gx-3 gy-2 align-items-end">
                     <div class="col-md-6 col-sm-12">
-                        <label for="filter_departemen" class="form-label">Departemen</label>
+                        <label for="filter_departemen" class="form-label">Department</label>
                         <select id="filter_departemen" class="form-select">
-                            <option value="" selected>Semua Departemen</option>
+                            <option value="" selected>All Departments</option>
                             <?php if(!empty($departemen_options)): foreach($departemen_options as $d): ?>
                                 <option value="<?= esc($d['id_departemen']) ?>"><?= esc($d['nama_departemen']) ?></option>
                             <?php endforeach; endif; ?>
@@ -117,7 +117,7 @@ $can_export = $permissions['export'];
 
                     <div class="col-md-6 col-sm-12 d-flex gap-2">
                         <button type="submit" class="btn btn-success flex-grow-1">
-                            <i class="fas fa-check me-1"></i> Terapkan
+                            <i class="fas fa-check me-1"></i> Apply
                         </button>
                         <button type="button" id="btnResetFilter" class="btn btn-outline-secondary">
                             <i class="fas fa-undo"></i>
@@ -130,8 +130,8 @@ $can_export = $permissions['export'];
             <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
                 <div class="input-group input-group-sm" style="max-width:340px;">
                     <span class="input-group-text"><i class="fas fa-search text-secondary"></i></span>
-                    <input type="text" id="unitSearch" class="form-control" placeholder="Cari Serial / Lokasi / Merk / Model..." autocomplete="off">
-                    <button class="btn btn-outline-secondary" type="button" id="btnClearSearch" title="Bersihkan pencarian"><i class="fas fa-times"></i></button>
+                    <input type="text" id="unitSearch" class="form-control" placeholder="Search Serial / Location / Brand / Model..." autocomplete="off">
+                    <button class="btn btn-outline-secondary" type="button" id="btnClearSearch" title="Clear search"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="small text-muted" id="activeFilterInfo"></div>
             </div>
@@ -146,15 +146,15 @@ $can_export = $permissions['export'];
                 <table id="inventory-unit-table" class="table table-sm mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
                     <thead>
                         <tr>
-                            <th>No. Unit</th>
-                            <th>Serial Number</th>
-                            <th>Merk</th>
+                        <th>Unit Number</th>
+                        <th>Serial Number</th>
+                        <th>Brand</th>
                         <th>Model</th>
-                        <th>Tipe</th>
-                        <th>Departemen</th>
+                        <th>Type</th>
+                        <th>Department</th>
                         <th>Status</th>
-                        <th>Lokasi</th>
-                        <th>Tanggal Masuk</th>
+                        <th>Location</th>
+                        <th>Entry Date  </th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -168,7 +168,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-light border-bottom">
-                <h5 class="modal-title fw-bold"><i class="fas fa-cube me-2 text-secondary"></i>Detail Unit Lengkap</h5>
+                <h5 class="modal-title fw-bold"><i class="fas fa-cube me-2 text-secondary"></i>Detailed Unit Information</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
@@ -181,12 +181,9 @@ $can_export = $permissions['export'];
                     <button type="button" class="btn btn-warning me-2" onclick="editUnitFromModal()">
                         <i class="fas fa-edit me-1"></i>Edit Unit
                     </button>
-                    <button type="button" class="btn btn-danger" onclick="deleteUnitFromModal()">
-                        <i class="fas fa-trash me-1"></i>Hapus Unit
-                    </button>
                 </div>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Tutup
+                    <i class="fas fa-times me-1"></i>Close
                 </button>
             </div>
         </div>
@@ -198,7 +195,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit Stok Unit</h5>
+                <h5 class="modal-title">Edit Stock Unit</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editUnitForm">
@@ -213,16 +210,16 @@ $can_export = $permissions['export'];
                         <input type="text" class="form-control" id="edit_merk" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_status_unit" class="form-label">Status Unit</label>
+                        <label for="edit_status_unit" class="form-label">Unit Status</label>
                         <select class="form-select" id="edit_status_unit" name="status_unit" required>
-                            <option value="7">STOCK ASET</option>
+                            <option value="7">STOCK ASSET</option>
                             <option value="3">RENTAL</option>
-                            <option value="9">JUAL</option>
-                            <option value="2">WORKSHOP-RUSAK</option>
+                            <option value="9">SOLD</option>
+                            <option value="2">WORKSHOP-DAMAGED</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_lokasi" class="form-label">Lokasi Unit</label>
+                        <label for="edit_lokasi" class="form-label">Unit Location</label>
                         <select class="form-select" id="edit_lokasi" name="lokasi_unit">
                             <option value="POS 1">POS 1</option>
                             <option value="POS 2">POS 2</option>
@@ -233,8 +230,8 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
                 </div>
             </form>
         </div>
@@ -380,11 +377,11 @@ $can_export = $permissions['export'];
                 { data:'tanggal_masuk', render:d=> d||'-' }
             ],
             language:{
-                emptyTable:'Tidak ada data tersedia',
-                processing:'Memproses...',
-                info:'Menampilkan _START_ - _END_ dari _TOTAL_ data',
-                infoEmpty:'Menampilkan 0 data',
-                paginate:{previous:'Sebelumnya', next:'Berikutnya'}
+                emptyTable:'no data available in table',
+                processing:'Processing...',
+                info:'Showing _START_ - _END_ of _TOTAL_ entries',
+                infoEmpty:'Showing 0 entries',
+                paginate:{previous:'Previous', next:'Next'}
             },
             dom: 'rtip',
             drawCallback: function() {
@@ -456,25 +453,25 @@ $can_export = $permissions['export'];
                 data:$(this).serialize()+ '&<?= csrf_token() ?>=<?= csrf_hash() ?>',
                 dataType:'json',
                 success:function(r){
-                    if(r.success){ $('#editUnitModal').modal('hide'); unitTable.ajax.reload(null,false); Swal.fire('Berhasil!', r.message,'success'); }
-                    else { Swal.fire('Gagal!', r.message,'error'); }
+                    if(r.success){ $('#editUnitModal').modal('hide'); unitTable.ajax.reload(null,false); Swal.fire('Success!', r.message,'success'); }
+                    else { Swal.fire('Fail!', r.message,'error'); }
                 },
-                error:function(){ Swal.fire('Error!','Tidak dapat terhubung ke server.','error'); }
+                error:function(){ Swal.fire('Error!','Cannot connect to the server.','error'); }
             });
         });
     });
 
     function updateDynamicTitle(){
-        let parts = ['Daftar Stok Unit'];
+        let parts = ['List of Units'];
         
         if(currentCategoryFilter){
             const categoryMap = { 
-                'stock': 'Stock Unit',
+                'stock': 'Stock Units',
                 'rental': 'Rental',
                 'progress': 'Progress',
-                'sold': 'Terjual'
+                'sold': 'Sold Units'
             };
-            parts.push(categoryMap[currentCategoryFilter] || 'Kategori ' + currentCategoryFilter);
+            parts.push(categoryMap[currentCategoryFilter] || 'Category ' + currentCategoryFilter);
         }
         
         if(currentSubStatusFilter) {
@@ -513,7 +510,7 @@ $can_export = $permissions['export'];
             type: 'GET',
             dataType: 'json',
             beforeSend: function() {
-                $('#unitDetailContent').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br><br>Memuat detail unit...</div>');
+                $('#unitDetailContent').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br><br>Loading unit details...</div>');
                 $('#viewUnitModal').modal('show');
             },
             success: function(response) {
@@ -527,8 +524,8 @@ $can_export = $permissions['export'];
                 } else {
                     const errorHtml = `
                         <div class="alert alert-danger">
-                            <h5><i class="fas fa-exclamation-triangle"></i> Gagal Memuat Detail</h5>
-                            <p>${response.message || 'Terjadi kesalahan tidak diketahui'}</p>
+                            <h5><i class="fas fa-exclamation-triangle"></i> Failed to Load Details</h5>
+                            <p>${response.message || 'An unknown error occurred'}</p>
                         </div>
                     `;
                     $('#unitDetailContent').html(errorHtml);
@@ -538,7 +535,7 @@ $can_export = $permissions['export'];
                 console.log('AJAX Error:', {xhr, status, error});
                 console.log('Response Text:', xhr.responseText);
                 
-                let errorMessage = 'Terjadi kesalahan saat memuat detail unit.';
+                let errorMessage = 'An error occurred while loading unit details.';
                 
                 try {
                     const errorResponse = JSON.parse(xhr.responseText);
@@ -633,11 +630,11 @@ $can_export = $permissions['export'];
                                     <small>${h(att.sn_attachment || att.sn_baterai || att.sn_charger)}</small>
                                 </div>
                                 <div class="col-6 mt-1">
-                                    <small class="text-muted">Kondisi:</small><br>
+                                    <small class="text-muted">Condition:</small><br>
                                     <small class="badge bg-${att.kondisi_fisik === 'Baik' ? 'success' : att.kondisi_fisik === 'Rusak Ringan' ? 'warning' : 'danger'}">${h(att.kondisi_fisik)}</small>
                                 </div>
                                 <div class="col-6 mt-1">
-                                    <small class="text-muted">Kelengkapan:</small><br>
+                                    <small class="text-muted">Completeness:</small><br>
                                     <small class="badge bg-${att.kelengkapan === 'Lengkap' ? 'success' : 'warning'}">${h(att.kelengkapan)}</small>
                                 </div>
                                 <div class="col-12 mt-2">
@@ -655,7 +652,7 @@ $can_export = $permissions['export'];
                 </div>
             `).join('');
         } else {
-            attachmentHtml = '<div class="col-12"><div class="alert alert-info mb-0"><i class="fas fa-info-circle me-2"></i>Tidak ada attachment yang terkait dengan unit ini.</div></div>';
+            attachmentHtml = '<div class="col-12"><div class="alert alert-info mb-0"><i class="fas fa-info-circle me-2"></i>No attachments related to this unit.</div></div>';
         }
         
         return `
@@ -666,7 +663,7 @@ $can_export = $permissions['export'];
                         <h4 class="mb-1">${h(data.merk_unit)} ${h(data.model_unit)}</h4>
                         <p class="mb-0 text-muted">
                             <i class="fas fa-barcode me-2 text-secondary"></i>SN: ${h(data.serial_number)} 
-                            ${data.no_unit ? `| <i class="fas fa-hashtag me-1 text-secondary"></i>No. Unit: ${h(data.no_unit)}` : ''}
+                            ${data.no_unit ? `| <i class="fas fa-hashtag me-1 text-secondary"></i>Unit Number: ${h(data.no_unit)}` : ''}
                         </p>
                     </div>
                     <div class="col-md-4 text-end">
@@ -682,17 +679,17 @@ $can_export = $permissions['export'];
                 <ul class="nav nav-tabs nav-fill mb-3" id="unitDetailTabs" role="tablist">
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
-                            <i class="fas fa-info-circle me-1"></i>Informasi Dasar
+                            <i class="fas fa-info-circle me-1"></i>Basic Information
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="specs-tab" data-bs-toggle="tab" data-bs-target="#specs" type="button" role="tab">
-                            <i class="fas fa-cogs me-1"></i>Spesifikasi
+                            <i class="fas fa-cogs me-1"></i>Specifications
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="customer-tab" data-bs-toggle="tab" data-bs-target="#customer" type="button" role="tab">
-                            <i class="fas fa-user-tie me-1"></i>Pelanggan & Area
+                            <i class="fas fa-user-tie me-1"></i>Customer & Area
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -702,7 +699,7 @@ $can_export = $permissions['export'];
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="contract-tab" data-bs-toggle="tab" data-bs-target="#contract" type="button" role="tab">
-                            <i class="fas fa-handshake me-1"></i>Kontrak
+                            <i class="fas fa-handshake me-1"></i>Contract
                         </button>
                     </li>
                 </ul>
@@ -714,19 +711,19 @@ $can_export = $permissions['export'];
                             <div class="col-md-6">
                                 <div class="card border-primary">
                                     <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-truck me-2 text-secondary"></i>Informasi Unit</h6>
+                                        <h6 class="mb-0"><i class="fas fa-truck me-2 text-secondary"></i>Unit Information</h6>
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="40%"><strong>ID Unit</strong></td><td>: ${h(data.id_inventory_unit)}</td></tr>
+                                            <tr><td width="40%"><strong>Unit Number</strong></td><td>: ${h(data.id_inventory_unit)}</td></tr>
                                             <tr><td><strong>Serial Number</strong></td><td>: <code>${h(data.serial_number)}</code></td></tr>
-                                            <tr><td><strong>No. Unit</strong></td><td>: ${h(data.no_unit) || '<span class="text-muted">Belum ada</span>'}</td></tr>
-                                            <tr><td><strong>Merk</strong></td><td>: ${h(data.merk_unit)}</td></tr>
+                                            <tr><td><strong>Unit Number</strong></td><td>: ${h(data.no_unit) || '<span class="text-muted">Not available</span>'}</td></tr>
+                                            <tr><td><strong>Brand</strong></td><td>: ${h(data.merk_unit)}</td></tr>
                                             <tr><td><strong>Model</strong></td><td>: ${h(data.model_unit)}</td></tr>
-                                            <tr><td><strong>Tipe Unit</strong></td><td>: ${h(data.nama_tipe_unit)}</td></tr>
-                                            <tr><td><strong>Kapasitas</strong></td><td>: ${h(data.kapasitas_unit)}</td></tr>
-                                            <tr><td><strong>Tahun</strong></td><td>: ${h(data.tahun_unit)}</td></tr>
-                                            <tr><td><strong>Departemen</strong></td><td>: ${h(data.nama_departemen)}</td></tr>
+                                            <tr><td><strong>Unit Type</strong></td><td>: ${h(data.nama_tipe_unit)}</td></tr>
+                                            <tr><td><strong>Capacity</strong></td><td>: ${h(data.kapasitas_unit)}</td></tr>
+                                            <tr><td><strong>Year</strong></td><td>: ${h(data.tahun_unit)}</td></tr>
+                                            <tr><td><strong>Department</strong></td><td>: ${h(data.nama_departemen)}</td></tr>
                                         </table>
                                     </div>
                                 </div>
@@ -739,11 +736,11 @@ $can_export = $permissions['export'];
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
                                             <tr><td width="40%"><strong>Status</strong></td><td>: ${getStatusBadge(data.status_unit_name)}</td></tr>
-                                            <tr><td><strong>${h(data.location_label || 'Lokasi')}</strong></td><td>: <i class="fas fa-map-marker-alt text-${data.is_rental_active ? 'success' : 'danger'} me-1"></i>${h(data.display_location || data.lokasi_unit)}</td></tr>
-                                            ${data.is_rental_active && data.lokasi_unit ? `<tr><td><strong>Lokasi Gudang</strong></td><td>: <i class="fas fa-warehouse text-secondary me-1"></i>${h(data.lokasi_unit)}</td></tr>` : ''}
-                                            <tr><td><strong>Tanggal Masuk</strong></td><td>: ${formatDate(data.tanggal_masuk)}</td></tr>
-                                            <tr><td><strong>Tanggal Update</strong></td><td>: ${formatDate(data.tanggal_update)}</td></tr>
-                                            <tr><td><strong>Tanggal Kirim</strong></td><td>: ${formatDate(data.tanggal_kirim)}</td></tr>
+                                            <tr><td><strong>${h(data.location_label || 'Location')}</strong></td><td>: <i class="fas fa-map-marker-alt text-${data.is_rental_active ? 'success' : 'danger'} me-1"></i>${h(data.display_location || data.lokasi_unit)}</td></tr>
+                                            ${data.is_rental_active && data.lokasi_unit ? `<tr><td><strong>Warehouse Location</strong></td><td>: <i class="fas fa-warehouse text-secondary me-1"></i>${h(data.lokasi_unit)}</td></tr>` : ''}
+                                            <tr><td><strong>Entry Date</strong></td><td>: ${formatDate(data.tanggal_masuk)}</td></tr>
+                                            <tr><td><strong>Update Date</strong></td><td>: ${formatDate(data.tanggal_update)}</td></tr>
+                                            <tr><td><strong>Shipping Date</strong></td><td>: ${formatDate(data.tanggal_kirim)}</td></tr>
                                             ${data.workflow_status ? `<tr><td><strong>Workflow</strong></td><td>: <span class="badge bg-info">${h(data.workflow_status)}</span></td></tr>` : ''}
                                         </table>
                                     </div>
@@ -755,7 +752,7 @@ $can_export = $permissions['export'];
                             <div class="col-12">
                                 <div class="card border-info">
                                     <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-sticky-note me-2 text-secondary"></i>Keterangan</h6>
+                                        <h6 class="mb-0"><i class="fas fa-sticky-note me-2 text-secondary"></i>Description</h6>
                                     </div>
                                     <div class="card-body">
                                         <p class="mb-0">${h(data.keterangan)}</p>
@@ -772,16 +769,16 @@ $can_export = $permissions['export'];
                             <div class="col-md-6">
                                 <div class="card border-light">
                                     <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-cogs me-2 text-secondary"></i>Komponen Utama</h6>
+                                        <h6 class="mb-0"><i class="fas fa-cogs me-2 text-secondary"></i>Main Components</h6>
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>Tipe Mast</strong></td><td>: ${h(data.tipe_mast)}</td></tr>
-                                            <tr><td><strong>Tinggi Mast</strong></td><td>: ${h(data.tinggi_mast)}</td></tr>
-                                            <tr><td><strong>SN Mast</strong></td><td>: <code>${h(data.sn_mast)}</code></td></tr>
-                                            <tr><td><strong>Merk Mesin</strong></td><td>: ${h(data.merk_mesin)}</td></tr>
-                                            <tr><td><strong>Model Mesin</strong></td><td>: ${h(data.model_mesin)}</td></tr>
-                                            <tr><td><strong>SN Mesin</strong></td><td>: <code>${h(data.sn_mesin)}</code></td></tr>
+                                            <tr><td width="35%"><strong>Mast Type</strong></td><td>: ${h(data.tipe_mast)}</td></tr>
+                                            <tr><td><strong>Mast Height</strong></td><td>: ${h(data.tinggi_mast)}</td></tr>
+                                            <tr><td><strong>Mast SN</strong></td><td>: <code>${h(data.sn_mast)}</code></td></tr>
+                                            <tr><td><strong>Engine Brand</strong></td><td>: ${h(data.merk_mesin)}</td></tr>
+                                            <tr><td><strong>Engine Model</strong></td><td>: ${h(data.model_mesin)}</td></tr>
+                                            <tr><td><strong>Engine SN</strong></td><td>: <code>${h(data.sn_mesin)}</code></td></tr>
                                         </table>
                                     </div>
                                 </div>
@@ -789,13 +786,13 @@ $can_export = $permissions['export'];
                             <div class="col-md-6">
                                 <div class="card border-light">
                                     <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-circle me-2 text-secondary"></i>Roda & Ban</h6>
+                                        <h6 class="mb-0"><i class="fas fa-circle me-2 text-secondary"></i>Wheels & Tires</h6>
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>Tipe Ban</strong></td><td>: ${h(data.tipe_ban)}</td></tr>
-                                            <tr><td><strong>Tipe Roda</strong></td><td>: ${h(data.tipe_roda)}</td></tr>
-                                            <tr><td><strong>Jumlah Valve</strong></td><td>: ${h(data.jumlah_valve)}</td></tr>
+                                            <tr><td width="35%"><strong>Tire Type</strong></td><td>: ${h(data.tipe_ban)}</td></tr>
+                                            <tr><td><strong>Wheel Type</strong></td><td>: ${h(data.tipe_roda)}</td></tr>
+                                            <tr><td><strong>Valves</strong></td><td>: ${h(data.jumlah_valve)}</td></tr>
                                         </table>
                                     </div>
                                 </div>
@@ -806,7 +803,7 @@ $can_export = $permissions['export'];
                             <div class="col-12">
                                 <div class="card border-info">
                                     <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-plus-circle me-2 text-secondary"></i>Aksesoris</h6>
+                                        <h6 class="mb-0"><i class="fas fa-plus-circle me-2 text-secondary"></i>Accessories</h6>
                                     </div>
                                     <div class="card-body">
                                         <p class="mb-0">${h(data.aksesoris)}</p>
@@ -823,15 +820,15 @@ $can_export = $permissions['export'];
                             <div class="col-md-6">
                                 <div class="card border-primary">
                                     <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-building me-2 text-secondary"></i>Informasi Pelanggan</h6>
+                                        <h6 class="mb-0"><i class="fas fa-building me-2 text-secondary"></i>Customer Information</h6>
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>Nama</strong></td><td>: ${h(data.customer_name)}</td></tr>
-                                            <tr><td><strong>Kode</strong></td><td>: <code>${h(data.customer_code)}</code></td></tr>
-                                            <tr><td><strong>Lokasi</strong></td><td>: ${h(data.customer_location_name)}</td></tr>
-                                            <tr><td><strong>Alamat</strong></td><td>: ${h(data.customer_address)}</td></tr>
-                                            <tr><td><strong>Kota</strong></td><td>: ${h(data.customer_city)}</td></tr>
+                                            <tr><td width="35%"><strong>Name</strong></td><td>: ${h(data.customer_name)}</td></tr>
+                                            <tr><td><strong>Code</strong></td><td>: <code>${h(data.customer_code)}</code></td></tr>
+                                            <tr><td><strong>Location</strong></td><td>: ${h(data.customer_location_name)}</td></tr>
+                                            <tr><td><strong>Address</strong></td><td>: ${h(data.customer_address)}</td></tr>
+                                            <tr><td><strong>City</strong></td><td>: ${h(data.customer_city)}</td></tr>
                                             <tr><td><strong>Contact Person</strong></td><td>: ${h(data.customer_contact)}</td></tr>
                                             <tr><td><strong>Phone</strong></td><td>: ${h(data.customer_phone)}</td></tr>
                                             <tr><td><strong>Email</strong></td><td>: ${h(data.customer_email)}</td></tr>
@@ -842,13 +839,13 @@ $can_export = $permissions['export'];
                             <div class="col-md-6">
                                 <div class="card border-success">
                                     <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-map me-2 text-secondary"></i>Informasi Area</h6>
+                                        <h6 class="mb-0"><i class="fas fa-map me-2 text-secondary"></i>Area Information</h6>
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
                                             <tr><td width="35%"><strong>Area</strong></td><td>: ${h(data.area_name)}</td></tr>
-                                            <tr><td><strong>Kode Area</strong></td><td>: <code>${h(data.area_code)}</code></td></tr>
-                                            <tr><td><strong>Deskripsi</strong></td><td>: ${h(data.area_description)}</td></tr>
+                                            <tr><td><strong>Area Code</strong></td><td>: <code>${h(data.area_code)}</code></td></tr>
+                                            <tr><td><strong>Description</strong></td><td>: ${h(data.area_description)}</td></tr>
                                         </table>
                                     </div>
                                 </div>
@@ -859,9 +856,9 @@ $can_export = $permissions['export'];
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>No. PO</strong></td><td>: <code>${h(data.no_po)}</code></td></tr>
-                                            <tr><td><strong>Tanggal PO</strong></td><td>: ${formatDate(data.tanggal_po)}</td></tr>
-                                            <tr><td><strong>Status PO</strong></td><td>: <span class="badge bg-secondary">${h(data.status_po)}</span></td></tr>
+                                            <tr><td width="35%"><strong>PO Number</strong></td><td>: <code>${h(data.no_po)}</code></td></tr>
+                                            <tr><td><strong>PO Date</strong></td><td>: ${formatDate(data.tanggal_po)}</td></tr>
+                                            <tr><td><strong>PO Status</strong></td><td>: <span class="badge bg-secondary">${h(data.status_po)}</span></td></tr>
                                         </table>
                                     </div>
                                 </div>
@@ -872,7 +869,7 @@ $can_export = $permissions['export'];
                     <!-- Attachments Tab -->
                     <div class="tab-pane fade" id="attachments" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0"><i class="fas fa-paperclip me-2"></i>Attachment & Komponen</h6>
+                            <h6 class="mb-0"><i class="fas fa-paperclip me-2"></i>Attachments & Components</h6>
                             <span class="badge bg-primary rounded-pill">${data.attachments ? data.attachments.length : 0} Items</span>
                         </div>
                         <div class="row">
@@ -886,15 +883,15 @@ $can_export = $permissions['export'];
                             <div class="col-md-8">
                                 <div class="card border-success">
                                     <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-handshake me-2 text-secondary"></i>Informasi Kontrak</h6>
+                                        <h6 class="mb-0"><i class="fas fa-handshake me-2 text-secondary"></i>Contract Information</h6>
                                     </div>
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>No. Kontrak</strong></td><td>: <code>${h(data.no_kontrak)}</code></td></tr>
+                                            <tr><td width="35%"><strong>Contract Number</strong></td><td>: <code>${h(data.no_kontrak)}</code></td></tr>
                                             <tr><td><strong>Status</strong></td><td>: <span class="badge bg-${data.status_kontrak === 'Aktif' ? 'success' : data.status_kontrak === 'Berakhir' ? 'danger' : 'warning'}">${h(data.status_kontrak)}</span></td></tr>
-                                            <tr><td><strong>Jenis Sewa</strong></td><td>: ${h(data.jenis_sewa)}</td></tr>
-                                            <tr><td><strong>Mulai</strong></td><td>: ${formatDate(data.kontrak_mulai)}</td></tr>
-                                            <tr><td><strong>Berakhir</strong></td><td>: ${formatDate(data.kontrak_berakhir)}</td></tr>
+                                            <tr><td><strong>Lease Type</strong></td><td>: ${h(data.jenis_sewa)}</td></tr>
+                                            <tr><td><strong>Start</strong></td><td>: ${formatDate(data.kontrak_mulai)}</td></tr>
+                                            <tr><td><strong>End</strong></td><td>: ${formatDate(data.kontrak_berakhir)}</td></tr>
                                             ${data.contract_disconnect_date ? `<tr><td><strong>Disconnect</strong></td><td>: ${formatDate(data.contract_disconnect_date)}</td></tr>` : ''}
                                             ${data.contract_disconnect_stage ? `<tr><td><strong>Stage</strong></td><td>: <span class="badge bg-warning">${h(data.contract_disconnect_stage)}</span></td></tr>` : ''}
                                         </table>
@@ -909,11 +906,11 @@ $can_export = $permissions['export'];
                                     <div class="card-body">
                                         <table class="table table-sm table-borderless mb-0">
                                             <tr>
-                                                <td width="40%"><strong>No. SPK</strong></td>
+                                                <td width="40%"><strong>SPK Number</strong></td>
                                                 <td>: ${h(data.nomor_spk) || '-'}</td>
                                             </tr>
                                             <tr>
-                                                <td><strong>No. Delivery</strong></td>
+                                                <td><strong>Delivery Number</strong></td>
                                                 <td>: ${h(data.nomor_di) || '-'}</td>
                                             </tr>
                                         </table>
@@ -950,12 +947,12 @@ $can_export = $permissions['export'];
 
     function deleteUnit(id) {
         Swal.fire({
-            title: 'Hapus Unit?',
-            html: 'Tindakan ini <b>tidak dapat dibatalkan</b>.<br>Pastikan unit tidak memiliki transaksi aktif.',
+            title: 'Delete Unit?',
+            html: 'This action <b>cannot be undone</b>.<br>Ensure the unit has no active transactions.',
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonText: 'Ya, Hapus',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, Delete',
+            cancelButtonText: 'Cancel'
         }).then((res) => {
             if (!res.isConfirmed) return;
             $.ajax({
@@ -967,14 +964,14 @@ $can_export = $permissions['export'];
                 dataType: 'json',
                 success: function(r){
                     if(r.success){
-                        Swal.fire('Berhasil', r.message || 'Unit dihapus', 'success');
+                        Swal.fire('Success', r.message || 'Unit deleted', 'success');
                         unitTable.ajax.reload(null,false);
                     } else {
-                        Swal.fire('Gagal', r.message || 'Unit tidak dapat dihapus', 'error');
+                        Swal.fire('Failed', r.message || 'Unit could not be deleted', 'error');
                     }
                 },
                 error: function(xhr){
-                    let msg = 'Server tidak merespon';
+                    let msg = 'Server did not respond';
                     if(xhr.responseJSON && xhr.responseJSON.message){
                         msg = xhr.responseJSON.message;
                     }
@@ -990,7 +987,7 @@ $can_export = $permissions['export'];
     // Edit unit from modal detail
     function editUnitFromModal() {
         if (!currentUnitData) {
-            Swal.fire('Error', 'Data unit tidak tersedia', 'error');
+            Swal.fire('Error', 'Unit data not available', 'error');
             return;
         }
         
@@ -1011,7 +1008,7 @@ $can_export = $permissions['export'];
     // Delete unit from modal detail
     function deleteUnitFromModal() {
         if (!currentUnitData) {
-            Swal.fire('Error', 'Data unit tidak tersedia', 'error');
+            Swal.fire('Error', 'Unit data not available', 'error');
             return;
         }
         

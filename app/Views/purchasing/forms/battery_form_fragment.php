@@ -1,5 +1,10 @@
 <!-- Battery Form Fragment -->
 <div class="row g-3">
+    <div class="col-12 mb-2">
+        <button type="button" class="btn btn-sm btn-outline-primary" onclick="QuickAddModal.open('battery', 'battery_jenis');">
+            <i class="fas fa-plus-circle me-1"></i>Tambah Battery Baru
+        </button>
+    </div>
     <!-- Jenis Battery -->
     <div class="col-md-4">
         <label for="battery_jenis" class="form-label">Jenis Battery <span class="text-danger">*</span></label>
