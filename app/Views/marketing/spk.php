@@ -2779,23 +2779,23 @@ $can_export = $permissions['export'];
                     <div class="modal-body">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Nomor SPK</label>
+                                <label class="form-label">SPK Number</label>
                                 <input type="text" class="form-control" id="editNomorSpk" name="nomor_spk" readonly>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Jenis SPK</label>
+                                <label class="form-label">SPK Type</label>
                                 <select class="form-select" id="editJenisSpk" name="jenis_spk">
                                     <option value="UNIT">UNIT</option>
                                     <option value="ATTACHMENT">ATTACHMENT</option>
-                                    <option value="TUKAR">TUKAR</option>
+                                    <option value="TUKAR">EXCHANGE</option>
                                 </select>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">PO Kontrak</label>
+                                <label class="form-label">PO Contract</label>
                                 <input type="text" class="form-control" id="editPoKontrak" name="po_kontrak_nomor">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Pelanggan</label>
+                                <label class="form-label">Customer</label>
                                 <input type="text" class="form-control" id="editPelanggan" name="pelanggan">
                             </div>
                             <div class="col-md-6">
@@ -2803,11 +2803,11 @@ $can_export = $permissions['export'];
                                 <input type="text" class="form-control" id="editPic" name="pic">
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Kontak</label>
+                                <label class="form-label">Contact</label>
                                 <input type="text" class="form-control" id="editKontak" name="kontak">
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Lokasi</label>
+                                <label class="form-label">Location</label>
                                 <input type="text" class="form-control" id="editLokasi" name="lokasi">
                             </div>
                             <div class="col-md-6">
@@ -2827,14 +2827,14 @@ $can_export = $permissions['export'];
                                 </select>
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Catatan</label>
+                                <label class="form-label">Notes</label>
                                 <textarea class="form-control" id="editCatatan" name="catatan" rows="3"></textarea>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
                     </div>
                 </form>
             </div>

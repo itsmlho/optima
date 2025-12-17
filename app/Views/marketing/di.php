@@ -38,7 +38,7 @@ $can_export = $permissions['export'];
                   </div>
                   <div>
                       <div class="stat-value" id="submittedDI">0</div>
-                      <div class="text-muted">Direncanakan</div>
+                      <div class="text-muted">Planned</div>
                   </div>
               </div>
           </div>
@@ -51,7 +51,7 @@ $can_export = $permissions['export'];
                   </div>
                   <div>
                       <div class="stat-value" id="inprogressDI">0</div>
-                      <div class="text-muted">Dalam Perjalanan</div>
+                      <div class="text-muted">In Progress</div>
                   </div>
               </div>
           </div>
@@ -64,7 +64,7 @@ $can_export = $permissions['export'];
                   </div>
                   <div>
                       <div class="stat-value" id="deliveredDI">0</div>
-                      <div class="text-muted">Selesai</div>
+                      <div class="text-muted">Completed</div>
                   </div>
               </div>
           </div>
@@ -73,10 +73,10 @@ $can_export = $permissions['export'];
 
   <div class="card table-card mb-3">
     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h5 class="h5 mb-0 text-gray-800">Daftar Delivery Instruction (DI)</h5>
+      <h5 class="h5 mb-0 text-gray-800">Delivery Instruction (DI) List</h5>
       <div class="d-flex gap-2 align-items-center">
         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#diCreateModal">
-          <i class="fas fa-plus"></i> Buat DI
+          <i class="fas fa-plus"></i> Create DI
         </button>
       </div>
     </div>
@@ -124,13 +124,13 @@ $can_export = $permissions['export'];
             <tr>
               <th>No. DI</th>
               <th>No. SPK</th>
-              <th>PO/Kontrak</th>
-              <th>Pelanggan</th>
-              <th>Lokasi</th>
-              <th>Total Item</th>
-              <th>Jenis Perintah</th>
-              <th>Tujuan Perintah</th>
-              <th>Req. Tanggal Kirim</th>
+              <th>PO/Contract</th>
+              <th>Customer</th>
+              <th>Location</th>
+              <th>Total Items</th>
+              <th>Command Type</th>
+              <th>Command Purpose</th>
+              <th>Req. Delivery Date</th>
               <th data-no-sort>Status</th>
             </tr>
           </thead>
@@ -153,100 +153,105 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h6 class="modal-title">🚀 Enhanced DI Creation</h6>
+          <h6 class="modal-title">DI Creation</h6>
           <button class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <form id="diCreateForm">
           <div class="modal-body">
             <!-- SPK Selection -->
             <div class="mb-3" id="spkSelectionSection">
-              <label class="form-label">Pilih SPK (READY)</label>
-              <input type="text" class="form-control" id="modalSpkSearch" placeholder="Cari No. SPK / PO / Pelanggan">
+              <label class="form-label">Select SPK (READY)</label>
+              <input type="text" class="form-control" id="modalSpkSearch" placeholder="Search No. SPK / PO / Customer">
               <select class="form-select mt-2" id="spkPick" name="spk_id"></select>
-              <div class="form-text">Hanya SPK dengan status READY yang bisa dibuat DI.</div>
+              <div class="form-text">Only SPK with READY status can be used to create DI.</div>
             </div>
             
             <!-- Standard Item Selection (for non-TUKAR workflows) - Dynamic for Units/Attachments -->
             <div id="diUnitsSection" style="display:none;" class="mb-3">
-              <label class="form-label" id="itemSelectionLabel">Pilih Items yang akan dikirim</label>
+              <label class="form-label" id="itemSelectionLabel">Select Items to be shipped</label>
               <div class="d-flex justify-content-between align-items-center mb-1">
-                <div class="small text-muted">Terpilih: <span id="selCount">0</span> <span id="itemTypeLabel">items</span></div>
+                <div class="small text-muted">Selected: <span id="selCount">0</span> <span id="itemTypeLabel">items</span></div>
                 <div>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnSelectAll">Pilih Semua</button>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearAll">Bersihkan</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnSelectAll">Select All</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearAll">Clear</button>
                 </div>
               </div>
-              <div id="diUnitList" class="unit-list"><div class="text-muted small">Memuat items dari SPK...</div></div>
-              <div class="form-text" id="itemSelectionHelp">Items yang akan dikirim pada DI ini.</div>
+              <div id="diUnitList" class="unit-list"><div class="text-muted small">Loading items from SPK...</div></div>
+              <div class="form-text" id="itemSelectionHelp">Items to be shipped in this DI.</div>
             </div>
             
             <!-- Enhanced Workflow Section - Step 1: Jenis & Tujuan Perintah -->
             <div class="row g-3 mb-3">
               <div class="col-md-6">
-                <label class="form-label">Jenis Perintah Kerja <span class="text-danger">*</span></label>
+                <label class="form-label">Command Type <span class="text-danger">*</span></label>
                 <select class="form-select" name="jenis_perintah_kerja_id" id="jenisPerintahSelect" required>
-                  <option value="">-- Pilih Jenis Perintah --</option>
-                </select>
-                <div class="form-text">Tentukan aksi utama yang akan dilakukan</div>
+                  <option value="">-- Select Command Type --</option>
+                </select> 
+                <div class="form-text">Specify the main action to be performed</div>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Tujuan Perintah <span class="text-danger">*</span></label>
+                <label class="form-label">Command Purpose <span class="text-danger">*</span></label>
                 <select class="form-select" name="tujuan_perintah_kerja_id" id="tujuanPerintahSelect" required disabled>
-                  <option value="">-- Pilih Jenis Perintah dulu --</option>
+                  <option value="">-- Select Command Type first --</option>
                 </select>
-                <div class="form-text">Alasan/konteks dari perintah kerja ini</div>
+                <div class="form-text">
+                  Reason/context for this command<br>
+                  <small>
+                    🔴 Permanent | 🔵 Temporary (returns) | 🟡 Temp Replacement | 🟢 Relocation
+                  </small>
+                </div>
               </div>
             </div>
 
             <!-- Step 2: Kontrak Selection (for TARIK and TUKAR workflows) -->
             <div id="diKontrakSelection" style="display:none;" class="mb-3">
-              <label class="form-label">Pilih Kontrak <span class="text-danger">*</span></label>
+              <label class="form-label">Select Contract <span class="text-danger">*</span></label>
               <select class="form-select" name="kontrak_id" id="kontrakSelect">
-                <option value="">-- Pilih Kontrak --</option>
+                <option value="">-- Select Contract --</option>
               </select>
-              <div class="form-text">Kontrak tempat unit akan ditarik/ditukar</div>
+              <div class="form-text">Contract from which units will be pulled/exchanged</div>
             </div>
 
             <!-- Step 3: TARIK Unit Selection (Simple selection from kontrak) -->
             <div id="diTarikOnlySection" style="display:none;" class="mb-3">
-              <label class="form-label">Pilih Unit yang akan DITARIK dari kontrak</label>
+              <label class="form-label">Select Units to be PULLED from contract</label>
               <div class="d-flex justify-content-between align-items-center mb-1">
-                <div class="small text-muted">Terpilih: <span id="tarikOnlyCount">0</span> unit</div>
+                <div class="small text-muted">Selected: <span id="tarikOnlyCount">0</span> unit</div>
                 <div>
-                  <button class="btn btn-sm btn-outline-warning" type="button" id="btnSelectAllTarikOnly">Pilih Semua</button>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearTarikOnly">Bersihkan</button>
+                  <button class="btn btn-sm btn-outline-warning" type="button" id="btnSelectAllTarikOnly">Select All</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearTarikOnly">Clear</button>
                 </div>
               </div>
               <div id="diTarikOnlyList" class="unit-list">
-                <div class="text-muted small">Pilih kontrak terlebih dahulu...</div>
+                <div class="text-muted small">Select a contract first...</div>
               </div>
-              <div class="form-text">Unit yang dipilih akan dihapus dari kontrak (FK relationship dihapus)</div>
+              <div class="form-text">Selected units will be removed from the contract (FK relationship removed)</div>
             </div>
 
             <!-- Step 3: TUKAR Unit Selection (Complex TARIK from kontrak + KIRIM from SPK) -->
             <div id="diTukarWorkflow" style="display:none;" class="mb-4">
               <div class="alert alert-info">
                 <i class="fas fa-exchange-alt"></i> 
-                <strong>Workflow TUKAR:</strong> Pilih unit dari kontrak yang akan ditarik sebagai pengganti
+                <strong>Workflow EXCHANGE:</strong> Select units from the contract to be pulled as replacements
               </div>
               
-              <!-- Unit TARIK Section for TUKAR -->
+              <!-- Unit PULL Section for EXCHANGE -->
               <div class="card border-warning">
                 <div class="card-header bg-warning text-dark">
-                  <h6 class="mb-0"><i class="fas fa-minus-circle"></i> Unit TARIK (dari kontrak yang dipilih)</h6>
+                  <h6 class="mb-0"><i class="fas fa-minus-circle"></i> Pull Units (from selected contract)</h6>
                 </div>
                 <div class="card-body">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="small text-muted">Terpilih: <span id="tarikCount">0</span> unit</div>
+                    <div class="small text-muted">Selected: <span id="tarikCount">0</span> unit</div>
                     <div>
-                      <button class="btn btn-sm btn-outline-warning" type="button" id="btnSelectAllTarik">Pilih Semua</button>
-                      <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearTarik">Bersihkan</button>
+                      <button class="btn btn-sm btn-outline-warning" type="button" id="btnSelectAllTarik">Select All</button>
+                      <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearTarik">Clear</button>
                     </div>
                   </div>
                   <div id="diTarikUnitList" class="unit-list">
-                    <div class="text-muted small">Pilih kontrak terlebih dahulu...</div>
+                    <div class="text-muted small">Select a contract first...</div>
                   </div>
-                  <div class="form-text">Unit yang dipilih akan dihapus dari kontrak (FK relationship dihapus)</div>
+                  <div class="form-text">Selected units will be removed from the contract (FK relationship removed)</div>
                 </div>
               </div>
             </div>
@@ -257,13 +262,13 @@ $can_export = $permissions['export'];
 
             <!-- Common Fields -->
             <div class="row g-2">
-              <div class="col-6"><label class="form-label">Tanggal Kirim</label><input type="date" class="form-control" name="tanggal_kirim"></div>
-              <div class="col-6"><label class="form-label">Catatan</label><input type="text" class="form-control" name="catatan" placeholder="Opsional"></div>
+              <div class="col-6"><label class="form-label">Delivery Date</label><input type="date" class="form-control" name="tanggal_kirim"></div>
+              <div class="col-6"><label class="form-label">Notes</label><input type="text" class="form-control" name="catatan" placeholder="Optional"></div>
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-            <button class="btn btn-primary" type="submit">Buat DI</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" type="submit">Create DI</button>
           </div>
         </form>
       </div>
@@ -327,7 +332,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const editJenisSelect = document.getElementById('editJenisPerintah');
     
     if (jenisSelect) {
-      jenisSelect.innerHTML = '<option value="">-- Pilih Jenis Perintah Kerja --</option>';
+      jenisSelect.innerHTML = '<option value="">-- Select Work Order Type --</option>';
       jenisPerintahOptions.forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option.id;
@@ -339,7 +344,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
     
     if (editJenisSelect) {
-      editJenisSelect.innerHTML = '<option value="">-- Pilih Jenis Perintah Kerja --</option>';
+      editJenisSelect.innerHTML = '<option value="">-- Select Work Order Type --</option>';
       jenisPerintahOptions.forEach(option => {
         const optionElement = document.createElement('option');
         optionElement.value = option.id;
@@ -365,26 +370,49 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (result.success) {
         const tujuanSelect = document.getElementById(targetSelectId);
         if (tujuanSelect) {
-          tujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
+          tujuanSelect.innerHTML = '<option value="">-- Select Destination --</option>';
           tujuanSelect.disabled = false;
           
           result.data.forEach(option => {
             const optionElement = document.createElement('option');
             optionElement.value = option.id;
-            optionElement.textContent = `${option.kode} - ${option.nama}`;
-            optionElement.title = option.deskripsi;
+            
+            // Add visual indicators for workflow type
+            let displayText = `${option.kode} - ${option.nama}`;
+            let title = option.deskripsi;
+            
+            // Add workflow type indicators
+            if (option.kode === 'TARIK_HABIS_KONTRAK') {
+              displayText += ' 🔴';
+              title += ' | PERMANENT: Unit disconnected from customer';
+            } else if (option.kode === 'TARIK_MAINTENANCE' || option.kode === 'TARIK_RUSAK') {
+              displayText += ' 🔵';
+              title += ' | TEMPORARY: Unit returns to customer after service';
+            } else if (option.kode === 'TARIK_PINDAH_LOKASI') {
+              displayText += ' 🟢';
+              title += ' | RELOCATION: Same customer, different location';
+            } else if (option.kode === 'TUKAR_MAINTENANCE') {
+              displayText += ' 🟡';
+              title += ' | TEMPORARY REPLACEMENT: Original unit returns after maintenance';
+            } else if (option.kode === 'TUKAR_UPGRADE' || option.kode === 'TUKAR_DOWNGRADE' || option.kode === 'TUKAR_RUSAK') {
+              displayText += ' 🔴';
+              title += ' | PERMANENT: Old unit replaced, new unit takes over';
+            }
+            
+            optionElement.textContent = displayText;
+            optionElement.title = title;
             tujuanSelect.appendChild(optionElement);
           });
         }
       } else {
-        console.error('Failed to load tujuan perintah options:', result.message);
+        console.error('Failed to load destination options:', result.message);
       }
     } catch (error) {
-      console.error('Error loading tujuan perintah options:', error);
+      console.error('Error loading destination options:', error);
     }
   }
   
-  // Setup dynamic dropdown untuk form create
+  // Setup dynamic dropdown for form create
   function setupWorkflowDropdowns() {
     const jenisSelect = document.getElementById('jenisPerintahSelect');
     const tujuanSelect = document.getElementById('tujuanPerintahSelect');
@@ -395,7 +423,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const jenisValue = this.value;
       
       // Reset tujuan dropdown
-      tujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
+      tujuanSelect.innerHTML = '<option value="">-- Select Destination --</option>';
       tujuanSelect.disabled = true;
       
       if (jenisValue) {
@@ -489,7 +517,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (result.success) {
         const kontrakSelect = document.getElementById('kontrakSelect');
         
-        const optionsHtml = '<option value="">-- Pilih Kontrak --</option>' + 
+        const optionsHtml = '<option value="">-- Select Contract --</option>' + 
           result.data.map(k => `<option value="${k.id}">${k.no_kontrak} - ${k.pelanggan}</option>`).join('');
         
         kontrakSelect.innerHTML = optionsHtml;
@@ -497,12 +525,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Setup kontrak change handler for TARIK
         setupKontrakChangeForTarik();
         
-        console.log('Loaded', result.data.length, 'kontrak options for TARIK workflow');
+        console.log('Loaded', result.data.length, 'contract options for TARIK workflow');
       } else {
-        console.error('Failed to load kontrak options:', result.message);
+        console.error('Failed to load contract options:', result.message);
       }
     } catch (error) {
-      console.error('Error loading kontrak options:', error);
+      console.error('Error loading contract options:', error);
     }
   }
 
@@ -521,7 +549,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (result.success) {
         const kontrakSelect = document.getElementById('kontrakSelect');
         
-        const optionsHtml = '<option value="">-- Pilih Kontrak --</option>' + 
+        const optionsHtml = '<option value="">-- Select Contract --</option>' + 
           result.data.map(k => `<option value="${k.id}">${k.no_kontrak} - ${k.pelanggan}</option>`).join('');
         
         kontrakSelect.innerHTML = optionsHtml;
@@ -529,12 +557,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Setup kontrak change handler for TUKAR
         setupKontrakChangeHandler();
         
-        console.log('Loaded', result.data.length, 'kontrak options for TUKAR workflow');
+        console.log('Loaded', result.data.length, 'contract options for TUKAR workflow');
       } else {
-        console.error('Failed to load kontrak options:', result.message);
+        console.error('Failed to load contract options:', result.message);
       }
     } catch (error) {
-      console.error('Error loading kontrak options:', error);
+      console.error('Error loading contract options:', error);
     }
   }
 
@@ -565,7 +593,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Reset hidden fields and list
         document.getElementById('po_kontrak_nomor').value = '';
         document.getElementById('pelanggan').value = '';
-        document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Pilih kontrak terlebih dahulu...</div>';
+        document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
         document.getElementById('tarikOnlyCount').textContent = '0';
       }
     });
@@ -589,15 +617,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
             <input type="checkbox" id="tarikOnly_${unit.id}" name="tarik_units[]" value="${unit.id}" onchange="updateTarikOnlyCount()">
             <label for="tarikOnly_${unit.id}" class="flex-grow-1">
               <strong>${unit.no_unit || 'N/A'}</strong> - ${unit.jenis_unit || unit.merk + ' ' + unit.model || 'N/A'}
-              <div class="unit-note">Kapasitas: ${unit.kapasitas || 'N/A'} | Status: ${unit.status || 'N/A'}</div>
+              <div class="unit-note">Capacity: ${unit.kapasitas || 'N/A'} | Status: ${unit.status || 'N/A'}</div>
             </label>
           </div>
         `).join('');
         
         document.getElementById('diTarikOnlyList').innerHTML = unitListHtml;
-        console.log('Loaded', result.data.length, 'units for TARIK from kontrak', kontrakId);
+        console.log('Loaded', result.data.length, 'units for TARIK from contract', kontrakId);
       } else {
-        document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Tidak ada unit di kontrak ini</div>';
+        document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">No units in this contract</div>';
       }
     } catch (error) {
       console.error('Error loading TARIK units:', error);
@@ -632,7 +660,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Reset hidden fields and unit list
         document.getElementById('po_kontrak_nomor').value = '';
         document.getElementById('pelanggan').value = '';
-        document.getElementById('diTarikUnitList').innerHTML = '<div class="text-muted small">Pilih kontrak terlebih dahulu...</div>';
+        document.getElementById('diTarikUnitList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
         document.getElementById('tarikCount').textContent = '0';
       }
     });
@@ -658,7 +686,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         console.log(`Loaded TUKAR units for kontrak ${kontrakId}: ${tarikResult.data?.length || 0} TARIK units`);
       } else {
         console.error('Failed to load TARIK units:', tarikResult);
-        document.getElementById('diTarikUnitList').innerHTML = '<div class="text-danger small">Gagal memuat unit dari kontrak.</div>';
+        document.getElementById('diTarikUnitList').innerHTML = '<div class="text-danger small">Failed to load units from contract.</div>';
         document.getElementById('tarikCount').textContent = '0';
       }
     } catch (error) {
@@ -678,8 +706,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     
     if (!units.length) {
       const message = type === 'tarik' ? 
-        'Tidak ada unit dalam kontrak ini untuk DITARIK.' : 
-        'Tidak ada unit tersedia untuk DIKIRIM ke kontrak ini.';
+        'No units in this contract to be WITHDRAWN.' : 
+        'No units available to be SENT to this contract.';
       list.innerHTML = `<div class="text-warning small">${message}</div>`;
       count.textContent = '0';
       return;
@@ -695,7 +723,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <input class="form-check-input unit-check-${type}" type="checkbox" id="${idSafe}" name="${type}_unit_ids[]" value="${unitId}">
         <label for="${idSafe}" class="form-check-label">
           <div><strong>${unit.no_unit || unit.unit_label || unit.label || ('Unit #' + (idx+1))}</strong> - ${unit.jenis_unit || unit.merk + ' ' + unit.model || 'N/A'}</div>
-          <div class="unit-note">Kapasitas: ${unit.kapasitas || 'N/A'} • Status: ${unit.status || 'Available'}</div>
+          <div class="unit-note">Capacity: ${unit.kapasitas || 'N/A'} • Status: ${unit.status || 'Available'}</div>
         </label>`;
       list.appendChild(wrap);
     });
@@ -773,7 +801,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const jenisValue = this.value;
       
       // Reset tujuan dropdown
-      editTujuanSelect.innerHTML = '<option value="">-- Pilih Tujuan --</option>';
+      editTujuanSelect.innerHTML = '<option value="">-- Select Purpose --</option>';
       editTujuanSelect.disabled = true;
       
       if (jenisValue) {
@@ -809,7 +837,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // Reset tujuan dropdown
       const tujuanSelect = document.getElementById('tujuanPerintahSelect');
       if (tujuanSelect) {
-        tujuanSelect.innerHTML = '<option value="">-- Pilih Jenis Perintah dulu --</option>';
+        tujuanSelect.innerHTML = '<option value="">-- Select Command Type first --</option>';
         tujuanSelect.disabled = true;
       }
       
@@ -820,8 +848,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       document.getElementById('diUnitsSection').style.display = 'none';
       
       // Reset unit lists and counts
-      document.getElementById('diTarikUnitList').innerHTML = '<div class="text-muted small">Pilih kontrak terlebih dahulu...</div>';
-      document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Pilih kontrak terlebih dahulu...</div>';
+      document.getElementById('diTarikUnitList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
+      document.getElementById('diTarikOnlyList').innerHTML = '<div class="text-muted small">Select a contract first...</div>';
       document.getElementById('tarikCount').textContent = '0';
       document.getElementById('tarikOnlyCount').textContent = '0';
       
@@ -967,25 +995,72 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const totalUnits = r.total_units || 0;
         const totalAttachments = r.total_attachments || 0;
         const jenisSpk = r.jenis_spk || 'UNIT'; // Use jenis_spk from delivery_instructions
+        const hasTemporary = r.has_temporary_units || false;
+        
+        let unitsDisplay = '';
         
         if (jenisSpk === 'ATTACHMENT') {
           // For ATTACHMENT SPK, prioritize attachments count
           if (totalAttachments > 0) {
-            return `<span class="badge bg-warning">${totalAttachments} Attachment</span>`;
+            unitsDisplay = `<span class="badge bg-warning">${totalAttachments} Attachment</span>`;
           } else {
-            return '<span class="badge bg-secondary">No attachments</span>';
+            unitsDisplay = '<span class="badge bg-secondary">No attachments</span>';
           }
         } else {
           // For UNIT SPK, prioritize units count
           if (totalUnits > 0) {
-            return `<span class="badge bg-primary">${totalUnits} Unit</span>`;
+            unitsDisplay = `<span class="badge bg-primary">${totalUnits} Unit</span>`;
           } else if (totalAttachments > 0) {
             // Fallback to attachments if no units but has attachments
-            return `<span class="badge bg-warning">${totalAttachments} Attachment</span>`;
+            unitsDisplay = `<span class="badge bg-warning">${totalAttachments} Attachment</span>`;
           } else {
-            return '<span class="badge bg-secondary">0</span>';
+            unitsDisplay = '<span class="badge bg-secondary">0</span>';
           }
         }
+        
+        // Add temporary indicator badge if has temporary units
+        if (hasTemporary) {
+          unitsDisplay += ' <span class="badge bg-warning-subtle text-warning border border-warning" title="Contains temporary units (TUKAR_MAINTENANCE)">🔄 TEMP</span>';
+        }
+        
+        return unitsDisplay;
+      };
+      
+      // Function to add workflow indicators to tujuan
+      const formatTujuanWithIndicator = (tujuan) => {
+        if (!tujuan) return '-';
+        
+        let indicator = '';
+        let tooltip = '';
+        
+        if (tujuan.includes('HABIS_KONTRAK') || tujuan.includes('Habis Kontrak')) {
+          indicator = '🔴';
+          tooltip = 'PERMANENT: Unit disconnected from customer';
+        } else if (tujuan.includes('MAINTENANCE') || tujuan.includes('Maintenance')) {
+          if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
+            indicator = '🟡';
+            tooltip = 'TEMPORARY REPLACEMENT: Original unit returns after maintenance';
+          } else {
+            indicator = '🔵';
+            tooltip = 'TEMPORARY: Unit returns after service';
+          }
+        } else if (tujuan.includes('RUSAK') || tujuan.includes('Rusak')) {
+          if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
+            indicator = '🔴';
+            tooltip = 'PERMANENT: Unit replaced';
+          } else {
+            indicator = '🔵';
+            tooltip = 'TEMPORARY: Unit returns after repair';
+          }
+        } else if (tujuan.includes('PINDAH_LOKASI') || tujuan.includes('Pindah')) {
+          indicator = '🟢';
+          tooltip = 'RELOCATION: Same customer, different location';
+        } else if (tujuan.includes('UPGRADE') || tujuan.includes('DOWNGRADE')) {
+          indicator = '🔴';
+          tooltip = 'PERMANENT: Unit replaced';
+        }
+        
+        return indicator ? `<span title="${tooltip}">${indicator}</span> ${tujuan}` : tujuan;
       };
       
       tr.innerHTML = `
@@ -996,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <td>${r.lokasi||'-'}</td>
         <td><span class="text-muted small">${formatTotalUnits(r)}</span></td>
         <td>${r.jenis_perintah || '-'}</td>
-        <td>${r.tujuan_perintah || '-'}</td>
+        <td>${formatTujuanWithIndicator(r.tujuan_perintah)}</td>
         <td>${r.tanggal_kirim||'-'}</td>
         <td>${getStatusDisplay(r.status_di)}</td>`;
       tb.appendChild(tr);
@@ -1099,9 +1174,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     currentDiId = id; // Store current DI ID
     const modal = new bootstrap.Modal(document.getElementById('diDetailModal'));
     const body = document.getElementById('diDetailBody');
-    body.innerHTML = '<p class="text-muted">Memuat...</p>';
+    body.innerHTML = '<p class="text-muted">Loading...</p>';
     fetch('<?= base_url('marketing/di/detail/') ?>'+id).then(r=>r.json()).then(j=>{
-      if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; modal.show(); return; }
+      if (!j.success) { body.innerHTML = '<div class="text-danger">Failed to load details</div>'; modal.show(); return; }
       const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[]; 
       
       // Parse spesifikasi JSON if exists
@@ -1128,7 +1203,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         
         if (isAttachmentSpk) {
           // For ATTACHMENT SPK, focus on attachments
-          itemsDetailHtml += '<h6 class="text-muted mb-3">Attachment yang Dikirim:</h6>';
+          itemsDetailHtml += '<h6 class="text-muted mb-3">Attachments Sent:</h6>';
           if (attachmentItems.length > 0) {
             itemsDetailHtml += '<div class="list-group list-group-flush">';
             attachmentItems.forEach(item => {
@@ -1170,7 +1245,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         } else {
           // For UNIT SPK, group units with their attachments
           if (unitItems.length > 0) {
-            itemsDetailHtml += '<h6 class="text-muted mb-3">Unit yang Dikirim:</h6>';
+            itemsDetailHtml += '<h6 class="text-muted mb-3">Units Sent:</h6>';
             itemsDetailHtml += '<div class="list-group list-group-flush">';
             
             unitItems.forEach(unit => {
@@ -1220,7 +1295,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           );
           
           if (standaloneAttachments.length > 0) {
-            itemsDetailHtml += '<h6 class="text-muted mb-3 mt-4">Attachment Tambahan:</h6>';
+            itemsDetailHtml += '<h6 class="text-muted mb-3 mt-4">Additional Attachments:</h6>';
             itemsDetailHtml += '<div class="list-group list-group-flush">';
             standaloneAttachments.forEach(item => {
               const attachName = item.att_tipe || 'Attachment';
@@ -1242,7 +1317,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         
         itemsDetailHtml += '</div>';
       } else {
-        itemsDetailHtml = '<div class="alert alert-warning border-warning"><small><i class="bi bi-exclamation-triangle me-2"></i>Belum ada items yang disiapkan untuk pengiriman ini.</small></div>';
+        itemsDetailHtml = '<div class="alert alert-warning border-warning"><small><i class="bi bi-exclamation-triangle me-2"></i>No items prepared for this shipment yet.</small></div>';
       }
       
       // Enhanced detail display with professional design
@@ -1251,38 +1326,38 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <!-- Basic Information -->
           <div class="col-12">
             <h6 class="border-bottom pb-2 mb-3 text-primary">
-              <i class="bi bi-clipboard-data me-2"></i>Informasi Dokumen & Pelanggan
+              <i class="bi bi-clipboard-data me-2"></i>Document & Customer Information
             </h6>
             <div class="row g-2">
-              <div class="col-6"><strong>No. DI:</strong> ${d.nomor_di}</div>
+              <div class="col-6"><strong>DI Number:</strong> ${d.nomor_di}</div>
               <div class="col-6"><strong>Status:</strong> <span class="badge bg-primary">${d.status}</span></div>
-              <div class="col-6"><strong>No. SPK:</strong> ${spk.nomor_spk||'-'}</div>
-              <div class="col-6"><strong>Jenis SPK:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
-              <div class="col-6"><strong>PO/Kontrak:</strong> ${d.po_kontrak_nomor||'-'}</div>
-              <div class="col-6"><strong>Tanggal Kirim:</strong> ${d.tanggal_kirim||'-'}</div>
-              <div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>
+              <div class="col-6"><strong>SPK Number:</strong> ${spk.nomor_spk||'-'}</div>
+              <div class="col-6"><strong>SPK Type:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
+              <div class="col-6"><strong>PO/Contract:</strong> ${d.po_kontrak_nomor||'-'}</div>
+              <div class="col-6"><strong>Shipping Date:</strong> ${d.tanggal_kirim||'-'}</div>
+              <div class="col-6"><strong>Company Name:</strong> ${d.pelanggan||'-'}</div>
               <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>
-              <div class="col-12"><strong>Lokasi Pengiriman:</strong><br><small class="text-muted">${d.lokasi||'-'}</small></div>
+              <div class="col-12"><strong>Shipping Location:</strong><br><small class="text-muted">${d.lokasi||'-'}</small></div>
             </div>
           </div>
           
           <!-- Workflow Information -->
           <div class="col-12">
             <h6 class="border-bottom pb-2 mb-3 text-info">
-              <i class="bi bi-gear me-2"></i>Informasi Workflow
+              <i class="bi bi-gear me-2"></i>Workflow Information
             </h6>
             <div class="row g-2">
-              <div class="col-6"><strong>Jenis Perintah:</strong> ${d.jenis_perintah||'-'}</div>
-              <div class="col-6"><strong>Tujuan Perintah:</strong> ${d.tujuan_perintah||'-'}</div>
-              <div class="col-6"><strong>Kontak:</strong> ${spk.kontak||'-'}</div>
-              <div class="col-6"><strong>Status Eksekusi:</strong> ${d.status_eksekusi||'Pending'}</div>
+              <div class="col-6"><strong>Order Type:</strong> ${d.jenis_perintah||'-'}</div>
+              <div class="col-6"><strong>Order Destination:</strong> ${d.tujuan_perintah||'-'}</div>
+              <div class="col-6"><strong>Contact:</strong> ${spk.kontak||'-'}</div>
+              <div class="col-6"><strong>Execution Status:</strong> ${d.status_eksekusi||'Pending'}</div>
             </div>
           </div>
           
           <!-- Items Detail -->
           <div class="col-12">
             <h6 class="border-bottom pb-2 mb-3 text-success">
-              <i class="bi ${isAttachmentSpk ? 'bi-paperclip' : 'bi-truck'} me-2"></i>Detail Items yang Dikirim
+              <i class="bi ${isAttachmentSpk ? 'bi-paperclip' : 'bi-truck'} me-2"></i>Detail Items Sent
             </h6>
             ${itemsDetailHtml}
           </div>
@@ -1291,13 +1366,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
           ${d.nama_supir || d.kendaraan || d.no_polisi_kendaraan ? `
           <div class="col-12">
             <h6 class="border-bottom pb-2 mb-3 text-warning">
-              <i class="bi bi-truck me-2"></i>Informasi Transportasi
+              <i class="bi bi-truck me-2"></i>Transportation Information
             </h6>
             <div class="row g-2">
-              <div class="col-6"><strong>Nama Supir:</strong> ${d.nama_supir||'[Belum diisi]'}</div>
-              <div class="col-6"><strong>No. HP Supir:</strong> ${d.no_hp_supir||'[Belum diisi]'}</div>
-              <div class="col-6"><strong>Kendaraan:</strong> ${d.kendaraan||'[Belum diisi]'}</div>
-              <div class="col-6"><strong>No. Polisi:</strong> ${d.no_polisi_kendaraan||'[Belum diisi]'}</div>
+              <div class="col-6"><strong>Driver Name:</strong> ${d.nama_supir||'[Not provided]'}</div>
+              <div class="col-6"><strong>Driver Phone:</strong> ${d.no_hp_supir||'[Not provided]'}</div>
+              <div class="col-6"><strong>Vehicle:</strong> ${d.kendaraan||'[Not provided]'}</div>
+              <div class="col-6"><strong>License Plate:</strong> ${d.no_polisi_kendaraan||'[Not provided]'}</div>
             </div>
           </div>
           ` : ''}
@@ -1306,7 +1381,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           ${d.catatan ? `
           <div class="col-12">
             <h6 class="border-bottom pb-2 mb-3 text-secondary">
-              <i class="bi bi-sticky me-2"></i>Catatan Khusus
+              <i class="bi bi-sticky me-2"></i>Special Notes
             </h6>
             <div class="alert alert-light border"><small>${d.catatan}</small></div>
           </div>
@@ -1321,7 +1396,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const url = new URL('<?= base_url('marketing/spk/ready-options') ?>', window.location.origin);
     if (q) url.searchParams.set('q', q);
     fetch(url).then(r=>r.json()).then(j=>{
-      spkPick.innerHTML = '<option value="">- Pilih SPK -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
+      spkPick.innerHTML = '<option value="">- Select SPK -</option>' + (j.data||[]).map(x=>`<option value="${x.id}">${x.label}</option>`).join('');
     });
   }
   loadReadySpk('');
@@ -1334,7 +1409,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const selCount = document.getElementById('selCount');
     if (!id) { section.style.display='none'; list.innerHTML=''; return; }
     section.style.display='block';
-    list.innerHTML = '<div class="text-muted small">Memuat items dari SPK...</div>';
+    list.innerHTML = '<div class="text-muted small">Loading items from SPK...</div>';
     fetch(`<?= base_url('marketing/spk/detail/') ?>${id}`).then(r=>r.json()).then(j=>{
       // ENHANCEMENT: Detect SPK type for proper item display
       const spkType = j && j.jenis_spk ? j.jenis_spk.toUpperCase() : 'UNIT';
@@ -1345,9 +1420,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // Handle different SPK types differently
       if (isAttachmentSpk) {
         // Update UI labels for ATTACHMENT SPK
-        document.getElementById('itemSelectionLabel').textContent = 'Pilih Attachment yang akan dikirim';
+        document.getElementById('itemSelectionLabel').textContent = 'Select Attachments to Send';
         document.getElementById('itemTypeLabel').textContent = 'attachment';
-        document.getElementById('itemSelectionHelp').textContent = 'Attachment yang akan dikirim pada DI ini.';
+        document.getElementById('itemSelectionHelp').textContent = 'Attachments to be sent with this DI.';
         
         // DEBUG: Log the full spesifikasi structure
         console.log('🔍 DEBUG SPK ATTACHMENT spesifikasi:', j.spesifikasi);
@@ -1404,18 +1479,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
           
           console.log('✅ ATTACHMENT SPK items loaded:', attachmentData.label);
         } else {
-          list.innerHTML = '<div class="text-danger small">Belum ada attachment yang disiapkan pada SPK ATTACHMENT ini.</div>';
+          list.innerHTML = '<div class="text-danger small">No attachments prepared for this ATTACHMENT SPK.</div>';
           selCount.textContent = '0';
         }
       } else {
         // Update UI labels for UNIT SPK
-        document.getElementById('itemSelectionLabel').textContent = 'Pilih Unit yang akan dikirim';
+        document.getElementById('itemSelectionLabel').textContent = 'Select Units to Send';
         document.getElementById('itemTypeLabel').textContent = 'unit';
-        document.getElementById('itemSelectionHelp').textContent = 'Jika SPK memiliki 3 unit, Anda dapat memilih berapa unit yang akan dikirim pada DI ini.';
+        document.getElementById('itemSelectionHelp').textContent = 'If the SPK has 3 units, you can select how many units will be sent with this DI.';
         
         // Standard UNIT SPK handling
         const details = (j && j.spesifikasi && Array.isArray(j.spesifikasi.prepared_units_detail)) ? j.spesifikasi.prepared_units_detail : [];
-        if (!details.length){ list.innerHTML = '<div class="text-danger small">Belum ada unit yang disiapkan pada SPK ini.</div>'; selCount.textContent = '0'; return; }
+        if (!details.length){ list.innerHTML = '<div class="text-danger small">No units prepared for this SPK.</div>'; selCount.textContent = '0'; return; }
         list.innerHTML = '';
         details.forEach((it, idx)=>{
           // Skip null/undefined items
@@ -1443,7 +1518,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const activeDI = it.active_di_info || null;
           const disabled = isInActiveDI ? 'disabled' : '';
           const checked = isInActiveDI ? '' : 'checked';
-          const warningBadge = isInActiveDI && activeDI ? ` <span class="badge bg-warning text-dark">Sudah di ${activeDI.nomor_di}</span>` : '';
+          const warningBadge = isInActiveDI && activeDI ? ` <span class="badge bg-warning text-dark">Already in ${activeDI.nomor_di}</span>` : '';
           
           wrap.innerHTML = `
             <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${unitId}" ${checked} ${disabled}>
@@ -1510,7 +1585,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const tarikUnits = Array.from(document.querySelectorAll('input[name="tarik_units[]"]:checked'));
       
       if (!tarikUnits.length) {
-        alert('Pilih minimal satu unit untuk DITARIK dari kontrak.');
+        alert('Select at least one unit to be PULLED from the contract.');
         return;
       }
       
@@ -1524,23 +1599,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const tarikUnits = Array.from(document.querySelectorAll('.unit-check-tarik:checked'));
       
       if (!tarikUnits.length) {
-        alert('Pilih minimal satu unit untuk DITARIK dari kontrak.');
+        alert('Select at least one unit to be PULLED from the contract.');
         return;
       }
       
       const spkId = document.getElementById('spkPick').value;
       if (!spkId) {
-        alert('Pilih SPK untuk workflow TUKAR.');
+        alert('Select SPK for TUKAR workflow.');
         return;
       }
       
       const kontrakId = document.getElementById('kontrakSelect').value;
       if (!kontrakId) {
-        alert('Pilih kontrak untuk workflow TUKAR.');
+        alert('Select contract for TUKAR workflow.');
         return;
       }
       
-      console.log('TUKAR Workflow - Tarik:', tarikUnits.length, 'units dari kontrak', kontrakId, 'menggunakan SPK', spkId);
+      console.log('Pulled Workflow - Pull:', tarikUnits.length, 'units from contract', kontrakId, 'using SPK', spkId);
       
     } else {
       // Standard workflow validation
@@ -1548,7 +1623,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (document.getElementById('diUnitsSection').style.display !== 'none'){
         const selected = list ? Array.from(list.querySelectorAll('.unit-check:checked')) : [];
         if (!selected.length){
-          alert('Pilih minimal satu unit untuk DI ini.');
+          alert('Select at least one unit for this DI.');
           return;
         }
       }
@@ -1573,7 +1648,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         } else {
           // Format full debug error info if available
           const debugInfo = j.debug ? `\nDebug Info:\n${JSON.stringify(j.debug, null, 2)}` : '';
-          const msg = (j.message || 'Gagal membuat DI') + debugInfo;
+          const msg = (j.message || 'Failed to create DI') + debugInfo;
           
           console.error('Enhanced DI Create Error:', j);  // Debug log
           
@@ -1581,8 +1656,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
           alert(msg);
           
           // Also show in UI notification if available
-          if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification(j.message || 'Gagal membuat DI', 'error');
-          else if (typeof showNotification==='function') showNotification(j.message || 'Gagal membuat DI', 'error');
+          if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification(j.message || 'Failed to create DI', 'error');
+          else if (typeof showNotification==='function') showNotification(j.message || 'Failed to create DI', 'error');
         }
       }).catch(error => {
         console.error('Enhanced DI Create Fetch Error:', error);  // Debug log
@@ -1610,10 +1685,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
       if (j && j.success) {
         bootstrap.Modal.getInstance(document.getElementById('diEditModal')).hide();
         loadDI(); // Reload data
-        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI berhasil diperbarui', 'success');
-        else alert('DI berhasil diperbarui');
+        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI successfully updated', 'success');
+        else alert('DI successfully updated');
       } else {
-        alert(j.message || 'Gagal memperbarui DI');
+        alert(j.message || 'Failed to update DI');
       }
     }).catch(error => {
       console.error('DI Edit Error:', error);
@@ -1652,7 +1727,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           // Show modal
           new bootstrap.Modal(document.getElementById('diEditModal')).show();
         } else {
-          alert('Gagal memuat data DI untuk diedit');
+          alert('Failed to load DI data for editing');
         }
       }).catch(error => {
         console.error('Edit DI Load Error:', error);
@@ -1661,7 +1736,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   };
   
   window.deleteDI = function(diId) {
-    if (!confirm('Apakah Anda yakin ingin menghapus DI ini?')) return;
+    if (!confirm('Are you sure you want to delete this DI?')) return;
     
     fetch(`<?= base_url('marketing/di/delete/') ?>${diId}`, {
       method: 'POST',
@@ -1673,10 +1748,10 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }).then(r => r.json()).then(j => {
       if (j && j.success) {
         loadDI(); // Reload data
-        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI berhasil dihapus', 'success');
-        else alert('DI berhasil dihapus');
+        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI successfully deleted', 'success');
+        else alert('DI successfully deleted');
       } else {
-        alert(j.message || 'Gagal menghapus DI');
+        alert(j.message || 'Failed to delete DI');
       }
     }).catch(error => {
       console.error('Delete DI Error:', error);
@@ -1687,7 +1762,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Edit DI from detail modal
   window.editDiFromDetail = function() {
     if (!currentDiId) {
-      alert('DI ID tidak ditemukan');
+      alert('DI ID not found');
       return;
     }
     
@@ -1702,17 +1777,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Delete DI from detail modal with double confirmation
   window.deleteDiFromDetail = function() {
     if (!currentDiId) {
-      alert('DI ID tidak ditemukan');
+      alert('DI ID not found');
       return;
     }
     
     // First confirmation
-    if (!confirm('Apakah Anda yakin ingin menghapus DI ini?')) {
+    if (!confirm('Are you sure you want to delete this DI?')) {
       return;
     }
     
     // Second confirmation
-    if (!confirm('PERINGATAN: Tindakan ini tidak dapat dibatalkan!\n\nApakah Anda benar-benar yakin ingin menghapus DI ini?')) {
+    if (!confirm('WARNING: This action cannot be undone!\n\nAre you absolutely sure you want to delete this DI?')) {
       return;
     }
     
@@ -1727,7 +1802,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // Print DI from detail modal
   window.printDiFromDetail = function() {
     if (!currentDiId) {
-      alert('DI ID tidak ditemukan');
+      alert('DI ID not found');
       return;
     }
     
@@ -1743,7 +1818,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header"><h6 class="modal-title">Detail Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Memuat...</p></div></div>
+      <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Loading...</p></div></div>
       <div class="modal-footer">
         <button class="btn btn-primary" id="btnPrintDi" onclick="printDiFromDetail()">
           <i class="fas fa-print"></i> Print PDF
@@ -1754,7 +1829,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <button class="btn btn-danger" id="btnDeleteDi" onclick="deleteDiFromDetail()">
           <i class="fas fa-trash"></i> Delete
         </button>
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>
@@ -1770,16 +1845,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <div class="modal-body">
           <div class="row g-2 mb-3">
             <div class="col-md-6">
-              <label class="form-label">Jenis Perintah <span class="text-danger">*</span></label>
+              <label class="form-label">Command Type <span class="text-danger">*</span></label>
               <select class="form-select" id="editJenisPerintah" name="jenis_perintah" required>
-                <option value="">- Pilih Jenis Perintah -</option>
+                <option value="">- Select Command -</option>
                 <!-- Options will be loaded from API -->
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Tujuan Perintah <span class="text-danger">*</span></label>
+              <label class="form-label">Command Purpose <span class="text-danger">*</span></label>
               <select class="form-select" id="editTujuanPerintah" name="tujuan_perintah" required disabled>
-                <option value="">- Pilih Jenis Perintah dulu -</option>
+                <option value="">- Select Command first -</option>
                 <!-- Options will be loaded from API based on jenis -->
               </select>
             </div>
@@ -1787,28 +1862,28 @@ document.addEventListener('DOMContentLoaded', ()=>{
           
           <!-- PERBAIKAN: Status Eksekusi sebagai display only, bukan input -->
           <div class="mb-3">
-            <label class="form-label">Status Eksekusi</label>
+            <label class="form-label">Execution Status</label>
             <div class="card bg-light">
               <div class="card-body py-2">
                 <span id="editStatusEksekusiDisplay" class="badge bg-primary">READY</span>
-                <small class="text-muted ms-2">Status diatur oleh sistem berdasarkan workflow</small>
+                <small class="text-muted ms-2">Status managed by system based on workflow</small>
               </div>
             </div>
           </div>
           
           <div class="row g-2">
             <div class="col-6">
-              <label class="form-label">Tanggal Kirim</label>
+              <label class="form-label">Delivery Date</label>
               <input type="date" class="form-control" id="editTanggalKirim" name="tanggal_kirim">
             </div>
             <div class="col-6">
-              <label class="form-label">Catatan</label>
-              <input type="text" class="form-control" id="editCatatan" name="catatan" placeholder="Opsional">
+              <label class="form-label">Notes</label>
+              <input type="text" class="form-control" id="editCatatan" name="catatan" placeholder="Optional">
             </div>
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button class="btn btn-primary" type="submit">Update DI</button>
         </div>
       </form>

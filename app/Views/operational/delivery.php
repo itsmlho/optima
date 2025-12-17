@@ -63,7 +63,7 @@
 
   <div class="card table-card mb-3">
     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h5 class="h5 mb-0 text-gray-800">Daftar Delivery Instruction (DI)</h5>
+      <h5 class="h5 mb-0 text-gray-800">List Delivery Instruction (DI)</h5>
       <div class="d-flex gap-2 align-items-center">
         <!-- No create button for operational - they process existing DIs -->
       </div>
@@ -110,17 +110,17 @@
         <table class="table table-striped table-hover table-manual-sort" id="diTable">
           <thead>
             <tr>
-              <th>No. DI</th>
-              <th>PO/Kontrak</th>
-              <th>Pelanggan</th>
-              <th>Lokasi</th>
+              <th>DI Number</th>
+              <th>PO/Contract</th>
+              <th>Customer</th>
+              <th>Location</th>
               <th>Total Items</th>
-              <th>Jenis Perintah</th>
-              <th>Tujuan Perintah</th>
-              <th>Req. Tanggal Kirim</th>
-              <th>Status Eksekusi</th>
-              <th>Supir/Kendaraan</th>
-              <th data-no-sort>Aksi Operasional</th>
+              <th>Command Type</th>
+              <th>Command Destination</th>
+              <th>Req. Delivery Date</th>
+              <th>Execution Status</th>
+              <th>Driver/Vehicle</th>
+              <th data-no-sort>Operational Actions</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -281,21 +281,21 @@ document.addEventListener('DOMContentLoaded', ()=>{
         
         // Add active button for current stage
         if (!perencanaanDone) {
-          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Perencanaan Pengiriman', ${r.id})">Perencanaan</button>`);
+          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${r.id})">Plan</button>`);
         } else if (!berangkatDone) {
-          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('berangkat', 'Berangkat', ${r.id})">Berangkat</button>`);
+          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('berangkat', 'Depart', ${r.id})">Depart</button>`);
         } else if (!sampaiDone) {
-          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('sampai', 'Sampai', ${r.id})">Sampai</button>`);
+          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('sampai', 'Arrive', ${r.id})">Arrive</button>`);
         } else {
           // All approvals done - should be ARRIVED status already
-          approvalButtons.push('<span class="text-info">Menunggu update status ke ARRIVED</span>');
+          approvalButtons.push('<span class="text-info">Waiting to update status to ARRIVED</span>');
         }
         
         // Add small completed badges
         const completedBadges = [];
-        if (perencanaanDone) completedBadges.push('<small class="badge bg-success me-1">✓ Perencanaan</small>');
-        if (berangkatDone) completedBadges.push('<small class="badge bg-success me-1">✓ Berangkat</small>');
-        if (sampaiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Sampai</small>');
+        if (perencanaanDone) completedBadges.push('<small class="badge bg-success me-1">✓ Plan</small>');
+        if (berangkatDone) completedBadges.push('<small class="badge bg-success me-1">✓ Depart</small>');
+        if (sampaiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Arrive</small>');
         
         aksiBtn = approvalButtons.join(' ') + (completedBadges.length > 0 ? '<br>' + completedBadges.join('') : '');
       } else if (statusDi === 'SAMPAI_LOKASI' || statusDi === 'SELESAI') {
@@ -365,7 +365,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           (r.kendaraan || r.no_polisi_kendaraan || '-');
         
         if (driver === '-' && vehicle === '-') return '-';
-        return `<div class="small"><strong>Supir:</strong> ${driver}<br><strong>Kendaraan:</strong> ${vehicle}</div>`;
+        return `<div class="small"><strong>Driver:</strong> ${driver}<br><strong>Vehicle:</strong> ${vehicle}</div>`;
       };
       
       // Operational status display
@@ -373,17 +373,54 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const status = r.status_di;
         const statusUpper = (status || '').toUpperCase();
         const statusMap = {
-          'DIAJUKAN': { text: 'DIAJUKAN', color: 'secondary' },
-          'DISETUJUI': { text: 'DISETUJUI', color: 'info' },
-          'PERSIAPAN_UNIT': { text: 'PERSIAPAN_UNIT', color: 'warning' },
-          'SIAP_KIRIM': { text: 'SIAP_KIRIM', color: 'primary' },
-          'DALAM_PERJALANAN': { text: 'DALAM_PERJALANAN', color: 'warning' },
-          'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', color: 'success' },
-          'SELESAI': { text: 'SELESAI', color: 'success' },
-          'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' }
+          'DIAJUKAN': { text: 'SUBMITTED', color: 'secondary' },
+          'DISETUJUI': { text: 'APPROVED', color: 'info' },
+          'PERSIAPAN_UNIT': { text: 'UNIT_PREPARATION', color: 'warning' },
+          'SIAP_KIRIM': { text: 'READY_TO_SHIP', color: 'primary' },
+          'DALAM_PERJALANAN': { text: 'IN_TRANSIT', color: 'warning' },
+          'SAMPAI_LOKASI': { text: 'ARRIVED_AT_LOCATION', color: 'success' },
+          'SELESAI': { text: 'COMPLETED', color: 'success' },
+          'DIBATALKAN': { text: 'CANCELLED', color: 'danger' }
         };
-        const mapped = statusMap[statusUpper] || { text: status || 'DIAJUKAN', color: 'secondary' };
+        const mapped = statusMap[statusUpper] || { text: status || 'SUBMITTED', color: 'secondary' };
         return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+      };
+      
+      // Function to add workflow indicators to tujuan
+      const formatTujuanWithIndicator = (tujuan) => {
+        if (!tujuan) return '-';
+        
+        let indicator = '';
+        let tooltip = '';
+        
+        if (tujuan.includes('HABIS_KONTRAK') || tujuan.includes('Habis Kontrak')) {
+          indicator = '🔴';
+          tooltip = 'PERMANENT: Unit disconnected from customer';
+        } else if (tujuan.includes('MAINTENANCE') || tujuan.includes('Maintenance')) {
+          if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
+            indicator = '🟡';
+            tooltip = 'TEMPORARY REPLACEMENT: Original unit returns after maintenance';
+          } else {
+            indicator = '🔵';
+            tooltip = 'TEMPORARY: Unit returns after service';
+          }
+        } else if (tujuan.includes('RUSAK') || tujuan.includes('Rusak')) {
+          if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
+            indicator = '🔴';
+            tooltip = 'PERMANENT: Unit replaced';
+          } else {
+            indicator = '🔵';
+            tooltip = 'TEMPORARY: Unit returns after repair';
+          }
+        } else if (tujuan.includes('PINDAH_LOKASI') || tujuan.includes('Pindah')) {
+          indicator = '🟢';
+          tooltip = 'RELOCATION: Same customer, different location';
+        } else if (tujuan.includes('UPGRADE') || tujuan.includes('DOWNGRADE')) {
+          indicator = '🔴';
+          tooltip = 'PERMANENT: Unit replaced';
+        }
+        
+        return indicator ? `<span title="${tooltip}">${indicator}</span> ${tujuan}` : tujuan;
       };
       
       tr.innerHTML = `
@@ -393,7 +430,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <td class="lokasi-cell">${formatLokasiColumn(r.lokasi)}</td>
         <td class="small">${formatTotalUnits(r)}</td>
         <td>${r.jenis_perintah || '-'}</td>
-        <td>${r.tujuan_perintah || '-'}</td>
+        <td>${formatTujuanWithIndicator(r.tujuan_perintah)}</td>
         <td>${r.tanggal_kirim||'-'}</td>
         <td>${getOperationalStatusDisplay(r)}</td>
         <td class="small">${formatDriverVehicle(r)}</td>
@@ -525,61 +562,61 @@ document.addEventListener('DOMContentLoaded', ()=>{
           container.innerHTML = `
             <hr>
             <div class="alert alert-info">
-              <strong><i class="fas fa-info-circle"></i> Perencanaan Data Pengiriman</strong><br>
-              Lengkapi semua data pengiriman untuk tahap perencanaan.
+              <strong><i class="fas fa-info-circle"></i>Shipping Plan</strong><br>
+              Complete all delivery data for the planning stage.
             </div>
             <div class="row g-3">
               <div class="col-6">
-                <label class="form-label">No. PO/Kontrak</label>
+                <label class="form-label">PO/Contract No.</label>
                 <input type="text" class="form-control-plaintext" readonly value="${di.po_kontrak_nomor || '-'}">
               </div>
               <div class="col-6">
-                <label class="form-label">No. SPK</label>
+                <label class="form-label">SPK No.</label>
                 <input type="text" class="form-control-plaintext" readonly value="${spk.nomor_spk || '-'}">
               </div>
               <div class="col-6">
-                <label class="form-label">Pelanggan</label>
+                <label class="form-label">Customer</label>
                 <input type="text" class="form-control-plaintext" readonly value="${di.pelanggan || '-'}">
               </div>
               <div class="col-6">
-                <label class="form-label">Lokasi Pengiriman</label>
+                <label class="form-label">Shipping Location</label>
                 <textarea class="form-control-plaintext readonly-textarea" readonly rows="3" style="resize: none;">${di.lokasi || '-'}</textarea>
               </div>
               <div class="col-12"><hr></div>
-              <div class="col-12"><h6 class="text-primary">Data Operasional Pengiriman</h6></div>
+              <div class="col-12"><h6 class="text-primary">Operational Delivery Data</h6></div>
               <div class="col-6 mb-3">
-                <label class="form-label">Tanggal Kirim <span class="text-danger">*</span></label>
+                <label class="form-label">Shipping Date <span class="text-danger">*</span></label>
                 <input type="date" class="form-control" name="tanggal_kirim" required>
               </div>
               <div class="col-6 mb-3">
-                <label class="form-label">Estimasi Sampai <span class="text-danger">*</span></label>
+                <label class="form-label">Estimated Arrival <span class="text-danger">*</span></label>
                 <input type="date" class="form-control" name="estimasi_sampai" required>
               </div>
               <div class="col-6 mb-3">
-                <label class="form-label">Nama Supir <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="nama_supir" required placeholder="Nama lengkap supir">
+                <label class="form-label">Driver Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="nama_supir" required placeholder="Full name of the driver">
               </div>
               <div class="col-6 mb-3">
-                <label class="form-label">No HP Supir <span class="text-danger">*</span></label>
+                <label class="form-label">Driver Phone Number <span class="text-danger">*</span></label>
                 <input type="text" class="form-control" name="no_hp_supir" required placeholder="08xxxxxxxxxx">
               </div>
               <div class="col-6 mb-3">
-                <label class="form-label">No SIM <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="no_sim_supir" required placeholder="Nomor SIM supir">
+                <label class="form-label">Driver License Number <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="no_sim_supir" required placeholder="Driver's license number">
               </div>
               <div class="col-6 mb-3">
-                <label class="form-label">Kendaraan <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="kendaraan" required placeholder="Jenis/merk kendaraan">
+                <label class="form-label">Vehicle <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="kendaraan" required placeholder="Type/brand of vehicle">
               </div>
               <div class="col-12 mb-3">
-                <label class="form-label">No Polisi Kendaraan <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" name="no_polisi_kendaraan" required placeholder="Nomor polisi kendaraan">
+                <label class="form-label">Vehicle License Plate Number <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" name="no_polisi_kendaraan" required placeholder="Vehicle license plate number">
               </div>
               <div class="col-12">
-                <label class="form-label">Catatan Perencanaan</label>
+                <label class="form-label">Notes</label>
                 <textarea class="form-control" name="catatan_perencanaan" rows="3" 
-                          placeholder="Masukkan catatan untuk perencanaan pengiriman (opsional)..."></textarea>
-                <div class="form-text">Catatan ini akan membantu tim operasional dalam proses berikutnya.</div>
+                          placeholder="Enter notes for delivery planning (optional)..."></textarea>
+                <div class="form-text">These notes will assist the operational team in the next steps.</div>
               </div>
             </div>
           `;
@@ -591,17 +628,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
       container.innerHTML = `
         <hr>
         <div class="alert alert-warning">
-          <strong><i class="fas fa-truck"></i> Konfirmasi Keberangkatan</strong><br>
-          Konfirmasi bahwa pengiriman telah dimulai dan tambahkan catatan jika diperlukan.
+          <strong><i class="fas fa-truck"></i> Departure Confirmation</strong><br>
+          Confirm that the delivery has started and add notes if necessary.
         </div>
         <div class="alert alert-info">
-          <strong>Info:</strong> Data operasional pengiriman sudah ditetapkan pada tahap perencanaan.
+          <strong>Info:</strong> Delivery operational data has been set in the planning stage.
         </div>
         <div class="mb-3">
-          <label class="form-label">Catatan Keberangkatan</label>
+          <label class="form-label">Departure Notes</label>
           <textarea class="form-control" name="catatan_berangkat" rows="4" 
-                    placeholder="Masukkan catatan keberangkatan, kondisi barang saat berangkat, atau informasi tambahan lainnya..."></textarea>
-          <div class="form-text">Catatan ini akan menjadi dokumentasi saat barang diberangkatkan dari lokasi asal.</div>
+                    placeholder="Enter departure notes, condition of goods at departure, or other additional information..."></textarea>
+          <div class="form-text">These notes will serve as documentation when the goods depart from the origin location.</div>
         </div>
       `;
       
@@ -609,19 +646,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
       container.innerHTML = `
         <hr>
         <div class="alert alert-success">
-          <strong><i class="fas fa-map-marker-alt"></i> Konfirmasi Kedatangan</strong><br>
-          Konfirmasi bahwa barang telah sampai di lokasi tujuan dengan selamat.
+          <strong><i class="fas fa-map-marker-alt"></i> Arrival Confirmation</strong><br>
+          Confirm that the goods have arrived safely at the destination.
         </div>
         <div class="mb-3">
-          <label class="form-label">Catatan Kedatangan <span class="text-danger">*</span></label>
+          <label class="form-label">Arrival Notes <span class="text-danger">*</span></label>
           <textarea class="form-control" name="catatan_sampai" rows="4" required 
-                    placeholder="Contoh: Barang telah sampai dengan selamat. Diserahkan kepada Bapak John (Manager Operasional). Kondisi unit baik, tidak ada kerusakan. BAST sudah ditandatangani pukul 14:30 WIB."></textarea>
+                    placeholder="Example: Goods have arrived safely. Delivered to Mr. John (Operations Manager). Unit condition is good, no damage. BAST was signed at 14:30 WIB."></textarea>
           <div class="form-text">
-            <strong>Pastikan mencantumkan:</strong><br>
-            • Nama penerima dan jabatan<br>
-            • Kondisi barang saat sampai<br>
-            • Waktu penyerahan<br>
-            • Status BAST/dokumen
+            <strong>Make sure to include:</strong><br>
+            • Recipient's name and position<br>
+            • Condition of goods upon arrival<br>
+            • Time of handover<br>
+            • BAST/document status
           </div>
         </div>
       `;
@@ -669,14 +706,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
         bootstrap.Modal.getInstance(document.getElementById('approvalStageModal')).hide();
         // Reload table to update buttons
         load();
-        notify(j.message || 'Approval berhasil disimpan', 'success');
+        notify(j.message || 'Approval saved successfully', 'success');
       } else {
         console.error('Server error:', j); // Debug log
-        notify(j.message || 'Gagal menyimpan approval', 'error');
+        notify(j.message || 'Failed to save approval', 'error');
       }
     }).catch(error=>{
       console.error('Error:', error);
-      notify('Terjadi kesalahan pada sistem: ' + error.message, 'error');
+      notify('System error occurred: ' + error.message, 'error');
     });
   });
   
@@ -691,9 +728,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     currentDiId = id;
     const modal = new bootstrap.Modal(document.getElementById('diDetailModal'));
     const body = document.getElementById('diDetailBody');
-    body.innerHTML = '<p class="text-muted">Memuat...</p>';
+    body.innerHTML = '<p class="text-muted">Loading...</p>';
     fetch('<?= base_url('operational/delivery/detail/') ?>'+id).then(r=>r.json()).then(j=>{
-      if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; modal.show(); return; }
+      if (!j.success) { body.innerHTML = '<div class="text-danger">Failed to load details</div>'; modal.show(); return; }
       const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[]; 
       const spesifikasi = j.spesifikasi||{}; const kontrak = j.kontrak||{};
       
@@ -720,7 +757,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         
         if (isAttachmentSpk) {
           // For ATTACHMENT SPK, focus on attachments
-          itemsHtml += '<h6 class="text-muted mb-3">Attachment yang Dikirim:</h6>';
+          itemsHtml += '<h6 class="text-muted mb-3">Attachments Sent:</h6>';
           if (attachmentItems.length > 0) {
             itemsHtml += '<div class="list-group list-group-flush">';
             attachmentItems.forEach(item => {
@@ -863,7 +900,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       // For ATTACHMENT SPK with no items, show attachment data from spesifikasi/kontrak
       if (isAttachmentSpk && !itemsHtml && (j.attachments && j.attachments.length > 0)) {
-        itemsHtml += '<h6 class="text-muted mb-3">Attachment yang Dikirim:</h6>';
+        itemsHtml += '<h6 class="text-muted mb-3">Shipping Attachments:</h6>';
         itemsHtml += '<div class="list-group list-group-flush">';
         j.attachments.forEach(attachment => {
           const attachName = attachment.tipe || 'Attachment';
@@ -888,7 +925,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       // Display general attachments (not unit-specific) with enhanced details
       if (j.attachments && j.attachments.length > 0 && !isAttachmentSpk) {
-        itemsHtml += '<h6 class="text-muted mb-3 mt-4">Attachment Tambahan:</h6>';
+        itemsHtml += '<h6 class="text-muted mb-3 mt-4">Additional Attachments:</h6>';
         itemsHtml += '<div class="list-group list-group-flush">';
         j.attachments.forEach(attachment => {
           // Use print_di.php fallback logic: attachment data first, then spesifikasi, then kontrak
@@ -913,7 +950,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
       
       if (!itemsHtml) {
-        itemsHtml = '<div class="alert alert-warning border-warning"><small><i class="bi bi-exclamation-triangle me-2"></i>Belum ada items yang disiapkan untuk pengiriman ini.</small></div>';
+        itemsHtml = '<div class="alert alert-warning border-warning"><small><i class="bi bi-exclamation-triangle me-2"></i>No items have been prepared for this delivery yet.</small></div>';
       }
       
       // Update action buttons based on status
@@ -933,8 +970,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // Determine action buttons based on status
       if (status === 'SUBMITTED' || status === 'DIAJUKAN') {
         // Only show Proses DI button for initial statuses
-        actionButtons = '<button class="btn btn-success btn-sm" id="btnProsesDI">Proses DI</button>';
-        console.log('✅ Showing Proses DI button for status:', status);
+        actionButtons = '<button class="btn btn-success btn-sm" id="btnProsesDI">Process DI</button>';
+        console.log('✅ Showing Process DI button for status:', status);
       } else if (status === 'PROCESSED' || status === 'SIAP KIRIM') {
         // Show approval stage buttons for processed statuses
         let approvalButtons = [];
@@ -946,17 +983,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
         
         // Add buttons for incomplete stages
         if (!perencanaanDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'perencanaan\', \'Perencanaan Pengiriman\')">Perencanaan</button>');
+          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'perencanaan\', \'Perencanaan Pengiriman\')">Plan</button>');
         } else if (!berangkatDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'berangkat\', \'Berangkat\')">Berangkat</button>');
+          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'berangkat\', \'Berangkat\')">Depart</button>');
         } else if (!sampaiDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'sampai\', \'Sampai\')">Sampai</button>');
+          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'sampai\', \'Sampai\')">Arrive</button>');
         }
         
         // Show completed stages with checkmarks
-        if (perencanaanDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Perencanaan</span>');
-        if (berangkatDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Berangkat</span>');
-        if (sampaiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Sampai</span>');
+        if (perencanaanDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Plan</span>');
+        if (berangkatDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Depart</span>');
+        if (sampaiDone) approvalButtons.push('<span class="badge bg-success me-1">✓ Arrive</span>');
         
         actionButtons = approvalButtons.join(' ');
         console.log('✅ Showing workflow buttons for status:', status);
@@ -985,19 +1022,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <!-- Basic Information -->
           <div class="col-12">
             <h6 class="border-bottom pb-2 mb-3 text-primary">
-              <i class="bi bi-clipboard-data me-2"></i>Informasi Dokumen & Pelanggan
+              <i class="bi bi-clipboard-data me-2"></i>Document Information
             </h6>
             <div class="row g-2">
-              <div class="col-6"><strong>No. DI:</strong> ${d.nomor_di}</div>
+              <div class="col-6"><strong>DI Number:</strong> ${d.nomor_di}</div>
               <div class="col-6"><strong>Status:</strong> <span class="badge bg-secondary">${status}</span></div>
-              <div class="col-6"><strong>No. SPK:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
-              <div class="col-6"><strong>Jenis SPK:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
-              <div class="col-6"><strong>PO/Kontrak:</strong> ${d.po_kontrak_nomor||'-'}</div>
-              <div class="col-6"><strong>Tanggal Kirim:</strong> ${d.tanggal_kirim||'-'}</div>
-              <div class="col-6"><strong>Nama Perusahaan:</strong> ${d.pelanggan||'-'}</div>
+              <div class="col-6"><strong>SPK Number:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
+              <div class="col-6"><strong>SPK Type:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
+              <div class="col-6"><strong>PO/Contract:</strong> ${d.po_kontrak_nomor||'-'}</div>
+              <div class="col-6"><strong>Delivery Date:</strong> ${d.tanggal_kirim||'-'}</div>
+              <div class="col-6"><strong>Company Name:</strong> ${d.pelanggan||'-'}</div>
               <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>
-              <div class="col-6"><strong>Kontak:</strong> ${spk.kontak||'-'}</div>
-              <div class="col-12"><strong>Lokasi Pengiriman:</strong><br>
+              <div class="col-6"><strong>Contact:</strong> ${spk.kontak||'-'}</div>
+              <div class="col-12"><strong>Delivery Location:</strong><br>
                 <div class="bg-light p-2 rounded border mt-1">${d.lokasi||'-'}</div>
               </div>
             </div>
@@ -1006,20 +1043,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <!-- Workflow Information -->
           <div class="col-12">
             <h6 class="border-bottom pb-2 mb-3 text-info">
-              <i class="bi bi-gear me-2"></i>Informasi Workflow
+              <i class="bi bi-gear me-2"></i>Workflow Information
             </h6>
             <div class="row g-2">
-              <div class="col-6"><strong>Jenis Perintah:</strong> ${d.jenis_perintah||'-'}</div>
-              <div class="col-6"><strong>Tujuan Perintah:</strong> ${d.tujuan_perintah||'-'}</div>
-              <div class="col-6"><strong>Status Eksekusi:</strong> ${d.status_eksekusi||'Pending'}</div>
-              <div class="col-6"><strong>Dibuat Oleh:</strong> ${d.dibuat_oleh_name || d.dibuat_oleh || '-'}</div>
+              <div class="col-6"><strong>Command Type:</strong> ${d.jenis_perintah||'-'}</div>
+              <div class="col-6"><strong>Command Destination:</strong> ${formatTujuanWithIndicator(d.tujuan_perintah)}</div>
+              <div class="col-6"><strong>Execution Status:</strong> ${d.status_eksekusi||'Pending'}</div>
+              <div class="col-6"><strong>Created By:</strong> ${d.dibuat_oleh_name || d.dibuat_oleh || '-'}</div>
             </div>
           </div>
           
           <!-- Items Detail -->
           <div class="col-12">
             <h6 class="border-bottom pb-2 mb-3 text-success">
-              <i class="bi bi-truck me-2"></i>Detail Items yang Dikirim
+              <i class="bi bi-truck me-2"></i>Detail Items Delivered
             </h6>
             ${itemsHtml}
           </div>
@@ -1031,25 +1068,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <div class="col-12">
             <div class="row g-2">
               <div class="col-4">
-                <strong>1. Perencanaan:</strong> 
+                <strong>1. Plan:</strong> 
                 ${d.perencanaan_tanggal_approve ? 
-                  `<span class="badge bg-success">✓ Selesai</span><br>
-                  Tanggal: ${d.perencanaan_tanggal_approve||'-'}</small>` 
-                  : '<span class="badge bg-warning">Menunggu</span>'}
+                  `<span class="badge bg-success">✓ Completed</span><br>
+                  Date: ${d.perencanaan_tanggal_approve||'-'}</small>` 
+                  : '<span class="badge bg-warning">Pending</span>'}
               </div>
               <div class="col-4">
-                <strong>2. Berangkat:</strong> 
+                <strong>2. Departure:</strong> 
                 ${d.berangkat_tanggal_approve ? 
-                  `<span class="badge bg-success">✓ Selesai</span><br>
-                  Tanggal: ${d.berangkat_tanggal_approve||'-'}</small>` 
-                  : '<span class="badge bg-warning">Menunggu</span>'}
+                  `<span class="badge bg-success">✓ Completed</span><br>
+                  Date: ${d.berangkat_tanggal_approve||'-'}</small>` 
+                  : '<span class="badge bg-warning">Pending</span>'}
               </div>
               <div class="col-4">
-                <strong>3. Sampai:</strong> 
+                <strong>3. Arrival:</strong> 
                 ${d.sampai_tanggal_approve ? 
-                  `<span class="badge bg-success">✓ Selesai</span><br>
-                  Tanggal: ${d.sampai_tanggal_approve||'-'}</small>` 
-                  : '<span class="badge bg-warning">Menunggu</span>'}
+                  `<span class="badge bg-success">✓ Completed</span><br>
+                  Date: ${d.sampai_tanggal_approve||'-'}</small>` 
+                  : '<span class="badge bg-warning">Pending</span>'}
               </div>
             </div>
           </div>
@@ -1059,27 +1096,27 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <h6>Detail Delivery Data</h6>
           <ol class="list-group list-group-numbered">
             <li class="list-group-item">
-              <strong>Perencanaan Pengiriman</strong><br>
+              <strong>Delivery Planning</strong><br>
               <div class="row g-2">
-                <div class="col-md-6">Tanggal Kirim: ${d.tanggal_kirim||'-'}</div>
-                <div class="col-md-6">Estimasi Sampai: ${d.estimasi_sampai||'-'}</div>
-                <div class="col-md-6">Nama Supir: ${d.nama_supir||'-'}</div>
-                <div class="col-md-6">No HP Supir: ${d.no_hp_supir||'-'}</div>
-                <div class="col-md-6">No SIM: ${d.no_sim_supir||'-'}</div>
-                <div class="col-md-6">Kendaraan: ${d.kendaraan||'-'}</div>
-                <div class="col-md-6">No Polisi: ${d.no_polisi_kendaraan||'-'}</div>
+                <div class="col-md-6">Send Date: ${d.tanggal_kirim||'-'}</div>
+                <div class="col-md-6">Estimated Arrival: ${d.estimasi_sampai||'-'}</div>
+                <div class="col-md-6">Driver Name: ${d.nama_supir||'-'}</div>
+                <div class="col-md-6">Driver Phone: ${d.no_hp_supir||'-'}</div>
+                <div class="col-md-6">Driver License: ${d.no_sim_supir||'-'}</div>
+                <div class="col-md-6">Vehicle: ${d.kendaraan||'-'}</div>
+                <div class="col-md-6">License Plate: ${d.no_polisi_kendaraan||'-'}</div>
               </div>
               Catatan: ${d.catatan_perencanaan||d.catatan||'-'}
             </li>
             <li class="list-group-item">
-              <strong>Berangkat</strong><br>
-              Tanggal Approval: ${d.berangkat_tanggal_approve||'-'}<br>
-              Catatan: ${d.catatan_berangkat||'-'}
+              <strong>Departure</strong><br>
+              Date Approval: ${d.berangkat_tanggal_approve||'-'}<br>
+              Notes: ${d.catatan_berangkat||'-'}
             </li>
             <li class="list-group-item">
-              <strong>Sampai</strong><br>
-              Tanggal Approval: ${d.sampai_tanggal_approve||'-'}<br>
-              Catatan: ${d.catatan_sampai||'-'}
+              <strong>Arrival</strong><br>
+              Date Approval: ${d.sampai_tanggal_approve||'-'}<br>
+              Notes: ${d.catatan_sampai||'-'}
             </li>
           </ol>
         </div>`;
@@ -1093,7 +1130,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (prosesDIBtn) {
           prosesDIBtn.addEventListener('click', () => {
             // Simple confirmation dialog
-            if (confirm('Apakah Anda yakin ingin memproses DI ini? Status akan berubah menjadi PROCESSED dan DI akan masuk ke tahap workflow operasional.')) {
+            if (confirm('Are you sure you want to process this DI? The status will change to PROCESSED and the DI will enter the operational workflow stage.')) {
               const formData = new FormData();
               formData.append('action', 'assign_driver');
               // Send minimal data - actual driver info will be filled during Perencanaan stage
@@ -1109,14 +1146,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
                 body: formData
               }).then(r=>r.json()).then(result=>{
                 if (result && result.success) {
-                  notify('DI berhasil diproses. Silakan lanjutkan ke tahap Perencanaan Pengiriman untuk mengisi detail operasional.', 'success');
+                  notify('DI has been processed. Please proceed to the Delivery Planning stage to fill in the operational details.', 'success');
                   bootstrap.Modal.getInstance(document.getElementById('diDetailModal')).hide();
                   load(); // Reload table
                 } else {
-                  notify(result.message || 'Gagal memproses DI', 'error');
+                  notify(result.message || 'Failed to process DI', 'error');
                 }
               }).catch(err => {
-                notify('Terjadi kesalahan saat memproses DI', 'error');
+                notify('An error occurred while processing the DI', 'error');
                 console.error(err);
               });
             }
@@ -1141,7 +1178,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title">Konfirmasi Approval - <span id="approvalStageTitle"></span></h6>
+        <h6 class="modal-title">Approval Confirmation - <span id="approvalStageTitle"></span></h6>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="approvalStageForm">
@@ -1150,12 +1187,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <div id="stageSpecificContent"></div>
 
           <div class="form-text mt-2">
-            <small>Data ini akan menjadi dokumentasi proses delivery dan tanda tangan approval.</small>
+            <small>This data will serve as documentation for the delivery process and approval signatures.</small>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Batal</button>
-          <button class="btn btn-success" type="submit">Approve & Simpan</button>
+          <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-success" type="submit">Approve & Save</button>
         </div>
       </form>
     </div>
@@ -1170,12 +1207,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <h6 class="modal-title">Detail Delivery Instruction</h6>
         <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Memuat...</p></div></div>
+      <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Loading...</p></div></div>
       <div class="modal-footer">
         <div id="modalActionButtons">
           <!-- Buttons will be populated based on status -->
         </div>
-        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
       </div>
     </div>
   </div>

@@ -2208,4 +2208,289 @@ class Operational extends BaseController
         
         return $preparedList;
     }
+
+    /**
+     * Get temporary units tracking data
+     */
+    public function getTemporaryUnits()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $draw = $this->request->getPost('draw') ?? 1;
+        $start = $this->request->getPost('start') ?? 0;
+        $length = $this->request->getPost('length') ?? 25;
+        $customerFilter = $this->request->getPost('customer_filter') ?? '';
+        $durationFilter = $this->request->getPost('duration_filter') ?? '';
+
+        try {
+            $builder = $this->db->table('kontrak_unit ku');
+            $builder->select('
+                ku.id as kontrak_unit_id,
+                ku.temporary_start_date,
+                ku.original_unit_id,
+                DATEDIFF(NOW(), ku.temporary_start_date) as days_borrowed,
+                c.customer_name,
+                k.no_kontrak,
+                iu_temp.no_unit as temporary_unit,
+                iu_temp.serial_number as temp_serial,
+                iu_orig.no_unit as original_unit,
+                iu_orig.serial_number as orig_serial,
+                iu_orig.workflow_status as original_workflow_status
+            ')
+            ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+            ->join('customers c', 'c.id = cl.customer_id', 'left')
+            ->join('inventory_unit iu_temp', 'iu_temp.id_inventory_unit = ku.unit_id', 'left')
+            ->join('inventory_unit iu_orig', 'iu_orig.id_inventory_unit = ku.original_unit_id', 'left')
+            ->where('ku.is_temporary', 1)
+            ->where('ku.temporary_end_date IS NULL');
+
+            // Apply filters
+            if ($customerFilter) {
+                $builder->where('c.id', $customerFilter);
+            }
+
+            if ($durationFilter) {
+                switch ($durationFilter) {
+                    case '7':
+                        $builder->having('days_borrowed <', 7);
+                        break;
+                    case '30':
+                        $builder->having('days_borrowed >=', 7)->having('days_borrowed <=', 30);
+                        break;
+                    case '60':
+                        $builder->having('days_borrowed >', 30)->having('days_borrowed <=', 60);
+                        break;
+                    case '90':
+                        $builder->having('days_borrowed >', 60);
+                        break;
+                }
+            }
+
+            $totalRecords = $builder->countAllResults(false);
+            $data = $builder->limit($length, $start)->get()->getResultArray();
+
+            return $this->response->setJSON([
+                'draw' => $draw,
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $totalRecords,
+                'data' => $data,
+                'success' => true
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getTemporaryUnits error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load temporary units: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get temporary units statistics
+     */
+    public function getTemporaryUnitsStats()
+    {
+        try {
+            $customerFilter = $this->request->getGet('customer_filter') ?? '';
+            $durationFilter = $this->request->getGet('duration_filter') ?? '';
+
+            $builder = $this->db->table('kontrak_unit ku');
+            $builder->select('
+                COUNT(*) as total_temporary,
+                SUM(CASE WHEN DATEDIFF(NOW(), ku.temporary_start_date) > 30 THEN 1 ELSE 0 END) as overdue,
+                AVG(DATEDIFF(NOW(), ku.temporary_start_date)) as avg_days,
+                SUM(CASE WHEN iu_orig.workflow_status = "MAINTENANCE_COMPLETED" THEN 1 ELSE 0 END) as ready_to_return
+            ')
+            ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+            ->join('customers c', 'c.id = cl.customer_id', 'left')
+            ->join('inventory_unit iu_orig', 'iu_orig.id_inventory_unit = ku.original_unit_id', 'left')
+            ->where('ku.is_temporary', 1)
+            ->where('ku.temporary_end_date IS NULL');
+
+            if ($customerFilter) {
+                $builder->where('c.id', $customerFilter);
+            }
+
+            $stats = $builder->get()->getRowArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'stats' => [
+                    'total_temporary' => (int)($stats['total_temporary'] ?? 0),
+                    'overdue' => (int)($stats['overdue'] ?? 0),
+                    'avg_days' => (float)($stats['avg_days'] ?? 0),
+                    'ready_to_return' => (int)($stats['ready_to_return'] ?? 0)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getTemporaryUnitsStats error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load stats: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get customers with temporary units
+     */
+    public function getCustomersWithTemporaryUnits()
+    {
+        try {
+            $customers = $this->db->table('customers c')
+                ->select('DISTINCT c.id, c.customer_name')
+                ->join('customer_locations cl', 'cl.customer_id = c.id', 'inner')
+                ->join('kontrak k', 'k.customer_location_id = cl.id', 'inner')
+                ->join('kontrak_unit ku', 'ku.kontrak_id = k.id', 'inner')
+                ->where('ku.is_temporary', 1)
+                ->where('ku.temporary_end_date IS NULL')
+                ->orderBy('c.customer_name', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $customers
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'getCustomersWithTemporaryUnits error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load customers: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Process temporary unit return
+     */
+    public function processTemporaryUnitReturn()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $kontrakUnitId = $this->request->getPost('kontrak_unit_id');
+
+        if (!$kontrakUnitId) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Missing kontrak_unit_id']);
+        }
+
+        $this->db->transStart();
+
+        try {
+            // Get kontrak_unit data
+            $kontrakUnit = $this->db->table('kontrak_unit')
+                ->where('id', $kontrakUnitId)
+                ->where('is_temporary', 1)
+                ->where('temporary_end_date IS NULL')
+                ->get()
+                ->getRowArray();
+
+            if (!$kontrakUnit) {
+                throw new \Exception('Temporary unit assignment not found or already returned');
+            }
+
+            // Check if original unit is ready (MAINTENANCE_COMPLETED)
+            $originalUnit = $this->db->table('inventory_unit')
+                ->where('id_inventory_unit', $kontrakUnit['original_unit_id'])
+                ->get()
+                ->getRowArray();
+
+            if ($originalUnit['workflow_status'] !== 'MAINTENANCE_COMPLETED') {
+                throw new \Exception('Original unit is not ready to return (still in maintenance)');
+            }
+
+            // 1. Disconnect temporary unit
+            $this->db->table('inventory_unit')
+                ->where('id_inventory_unit', $kontrakUnit['unit_id'])
+                ->update([
+                    'kontrak_id' => null,
+                    'customer_id' => null,
+                    'customer_location_id' => null,
+                    'workflow_status' => 'RETURNED_FROM_TEMP_ASSIGNMENT',
+                    'status_unit_id' => 1, // AVAILABLE_STOCK
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+            // 2. Reconnect original unit to contract
+            $this->db->table('inventory_unit')
+                ->where('id_inventory_unit', $kontrakUnit['original_unit_id'])
+                ->update([
+                    'kontrak_id' => $kontrakUnit['kontrak_id'],
+                    'customer_id' => $originalUnit['customer_id'], // Restore from backup
+                    'customer_location_id' => $originalUnit['customer_location_id'],
+                    'workflow_status' => 'RETURNED_TO_CUSTOMER',
+                    'status_unit_id' => 7, // RENTAL_ACTIVE
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+            // 3. Update kontrak_unit - mark temporary assignment as ended
+            $this->db->table('kontrak_unit')
+                ->where('id', $kontrakUnitId)
+                ->update([
+                    'temporary_end_date' => date('Y-m-d H:i:s'),
+                    'returned_by' => session()->get('user_id') ?? null,
+                    'return_notes' => 'Original unit returned from maintenance'
+                ]);
+
+            // 4. Create activity log
+            $this->logActivity(
+                'operational',
+                'return_temporary_unit',
+                'Returned temporary unit ' . $kontrakUnit['unit_id'] . ', reconnected original unit ' . $kontrakUnit['original_unit_id'],
+                ['kontrak_unit_id' => $kontrakUnitId]
+            );
+
+            $this->db->transComplete();
+
+            if ($this->db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Temporary unit returned successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', 'processTemporaryUnitReturn error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to process return: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * View temporary units report page
+     */
+    public function temporaryUnitsReport()
+    {
+        helper('simple_rbac');
+        
+        if (!can_view('operational')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied');
+        }
+
+        $data = [
+            'title' => 'Temporary Units Tracking Report',
+            'breadcrumbs' => [
+                '/' => 'Dashboard',
+                '/operational/delivery' => 'Operational',
+                '/operational/temporary-units-report' => 'Temporary Units Report'
+            ]
+        ];
+
+        return view('operational/temporary_units_report', $data);
+    }
 }
+

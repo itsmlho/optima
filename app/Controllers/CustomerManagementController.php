@@ -150,9 +150,13 @@ class CustomerManagementController extends BaseController
             
             // Get contracts through customer_locations (updated for optimized database structure)
             $kontrakBuilder = $this->db->table('kontrak k');
-            $kontrakBuilder->select('COUNT(*) as contract_count, SUM(k.total_units) as total_units, COUNT(CASE WHEN k.no_po_marketing != "" AND k.no_po_marketing IS NOT NULL THEN 1 END) as po_count')
+            $kontrakBuilder->select('COUNT(DISTINCT k.id) as contract_count, 
+                          COUNT(CASE WHEN k.no_po_marketing != "" AND k.no_po_marketing IS NOT NULL THEN 1 END) as po_count,
+                          COUNT(CASE WHEN ku.is_temporary != 1 THEN 1 END) as total_units')
                           ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                          ->where('cl.customer_id', $customer['id']);
+                          ->join('kontrak_unit ku', 'ku.kontrak_id = k.id', 'left')
+                          ->where('cl.customer_id', $customer['id'])
+                          ->groupBy('cl.customer_id');
             $contractData = $kontrakBuilder->get()->getRowArray();
             
             $customer['contracts_count'] = $contractData['contract_count'] ?? 0;
@@ -264,29 +268,32 @@ class CustomerManagementController extends BaseController
                                            ->orderBy('location_name', 'ASC')
                                            ->findAll();
             
-            // Get customer contracts with units summary
+            // Get customer contracts with units summary (exclude temporary units)
             $contractsBuilder = $this->db->table('kontrak k');
             $contracts = $contractsBuilder->select('k.*, cl.location_name, 
-                                                   COUNT(iu.id_inventory_unit) as active_units,
-                                                   SUM(CASE WHEN iu.workflow_status IS NOT NULL THEN 1 ELSE 0 END) as workflow_units')
+                                                   COUNT(CASE WHEN ku.is_temporary != 1 THEN 1 END) as active_units,
+                                                   SUM(CASE WHEN iu.workflow_status IS NOT NULL AND ku.is_temporary != 1 THEN 1 ELSE 0 END) as workflow_units')
                                         ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
                                         ->join('inventory_unit iu', 'k.id = iu.kontrak_id', 'left')
+                                        ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
                                         ->where('cl.customer_id', $id)
                                         ->groupBy('k.id')
                                         ->orderBy('k.tanggal_mulai', 'DESC')
                                         ->get()->getResultArray();
             
-            // Get customer units with details
+            // Get customer units with details (exclude temporary units)
             $unitsBuilder = $this->db->table('inventory_unit iu');
             $units = $unitsBuilder->select('iu.*, k.no_kontrak, cl.location_name as contract_location,
                                           su.status_unit, tu.tipe as nama_tipe, mu.model_unit as nama_model,
-                                          iu.workflow_status, iu.lokasi_unit')
+                                          iu.workflow_status, iu.lokasi_unit, ku.is_temporary')
                                 ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+                                ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
                                 ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
                                 ->join('status_unit su', 'iu.status_unit_id = su.id_status', 'left')
                                 ->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left')
                                 ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
                                 ->where('cl.customer_id', $id)
+                                ->where('(ku.is_temporary IS NULL OR ku.is_temporary != 1)')
                                 ->orderBy('k.tanggal_mulai', 'DESC')
                                 ->orderBy('iu.no_unit', 'ASC')
                                 ->get()->getResultArray();
