@@ -185,6 +185,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('di/getData', 'Marketing::getDIData');
     $routes->get('di/list', 'Marketing::diList');
     $routes->get('di/detail/(:num)', 'Marketing::diDetail/$1');
+    $routes->get('di/print-withdrawal/(:num)', 'Marketing::printWithdrawalLetter/$1'); // SPPU - Surat Perintah Penarikan Unit
     $routes->get('spk/ready-options', 'Marketing::spkReadyOptions');
     
     // Workflow API endpoints

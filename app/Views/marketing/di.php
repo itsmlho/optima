@@ -1170,14 +1170,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
   
   loadDI();
 
+  let currentDiJenis = ''; // Store jenis_perintah for SPPU
+  
   window.openDiDetail = (id) => {
     currentDiId = id; // Store current DI ID
     const modal = new bootstrap.Modal(document.getElementById('diDetailModal'));
     const body = document.getElementById('diDetailBody');
+    const btnSppu = document.getElementById('btnPrintSppu');
     body.innerHTML = '<p class="text-muted">Loading...</p>';
+    btnSppu.style.display = 'none'; // Hide SPPU button by default
+    
     fetch('<?= base_url('marketing/di/detail/') ?>'+id).then(r=>r.json()).then(j=>{
       if (!j.success) { body.innerHTML = '<div class="text-danger">Failed to load details</div>'; modal.show(); return; }
-      const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[]; 
+      const d = j.data||{}; const spk = j.spk||{}; const items = j.items||[];
+      
+      // Store jenis_perintah and show SPPU button for TARIK/TUKAR
+      currentDiJenis = (d.jenis_perintah || '').toUpperCase();
+      if (currentDiJenis === 'TARIK' || currentDiJenis === 'TUKAR') {
+        btnSppu.style.display = 'inline-block';
+      } 
       
       // Parse spesifikasi JSON if exists
       let spesifikasi = {};
@@ -1810,6 +1821,18 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const printUrl = `<?= base_url('operational/delivery/print/') ?>${currentDiId}`;
     window.open(printUrl, '_blank');
   };
+  
+  // Print Withdrawal Letter (SPPU) from detail modal
+  window.printWithdrawalLetter = function() {
+    if (!currentDiId) {
+      alert('DI ID not found');
+      return;
+    }
+    
+    // Open print SPPU in new tab
+    const sppu = `<?= base_url('marketing/di/print-withdrawal/') ?>${currentDiId}`;
+    window.open(sppu, '_blank');
+  };
 });
 </script>
 
@@ -1820,8 +1843,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <div class="modal-header"><h6 class="modal-title">Detail Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Loading...</p></div></div>
       <div class="modal-footer">
+        <button class="btn btn-success" id="btnPrintSppu" onclick="printWithdrawalLetter()" style="display:none;">
+          <i class="fas fa-file-contract"></i> Print SPPU
+        </button>
         <button class="btn btn-primary" id="btnPrintDi" onclick="printDiFromDetail()">
-          <i class="fas fa-print"></i> Print PDF
+          <i class="fas fa-print"></i> Print DI
         </button>
         <button class="btn btn-warning" id="btnEditDi" onclick="editDiFromDetail()">
           <i class="fas fa-edit"></i> Edit

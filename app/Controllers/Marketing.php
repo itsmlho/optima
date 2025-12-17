@@ -3334,12 +3334,11 @@ class Marketing extends BaseDataTableController
                     $itemLabels[] = ['unit_label' => $label, 'type' => 'unit'];
                     $unitCount++;
                     
-                    // Check if this unit is temporary
+                    // Check if this unit is temporary (active temporary assignment)
                     if ($item['unit_id']) {
                         $tempCheck = $this->db->table('kontrak_unit')
                             ->where('unit_id', $item['unit_id'])
                             ->where('is_temporary', 1)
-                            ->where('temporary_end_date IS NULL')
                             ->countAllResults();
                         if ($tempCheck > 0) {
                             $hasTemporaryUnits = true;
@@ -3399,6 +3398,187 @@ class Marketing extends BaseDataTableController
             'items'=>$items,
             'csrf_hash'=>csrf_hash()
         ]);
+    }
+
+    /**
+     * Print Surat Perintah Penarikan Unit (SPPU)
+     * For withdrawal workflows: TARIK & TUKAR
+     */
+    public function printWithdrawalLetter($id)
+    {
+        $id = (int)$id;
+        
+        // Get DI with jenis_perintah_kerja kode
+        $di = $this->db->table('delivery_instructions di')
+            ->select('di.*, jpk.kode as jenis_perintah_kode, jpk.nama as jenis_perintah_nama')
+            ->join('jenis_perintah_kerja jpk', 'jpk.id = di.jenis_perintah_kerja_id', 'left')
+            ->where('di.id', $id)
+            ->get()
+            ->getRowArray();
+        
+        if (!$di) {
+            return $this->response->setStatusCode(404)->setBody('DI tidak ditemukan');
+        }
+
+        // Check if DI is withdrawal type (TARIK or TUKAR) - use kode instead of nama
+        $jenisKode = strtoupper($di['jenis_perintah_kode'] ?? '');
+        if (!in_array($jenisKode, ['TARIK', 'TUKAR'])) {
+            return $this->response->setStatusCode(400)->setBody('Surat penarikan hanya untuk jenis TARIK atau TUKAR');
+        }
+
+        // Get SPK data
+        $spk = null;
+        if (!empty($di['spk_id'])) {
+            $spk = $this->spkModel->find((int)$di['spk_id']);
+        }
+
+        // Get all items with full details - added departemen, kapasitas, jenis, battery, charger
+        $items = $this->diItemModel
+            ->select('delivery_items.*, 
+                     iu.no_unit, iu.serial_number, iu.tahun_unit,
+                     mu.merk_unit, mu.model_unit,
+                     tu.tipe as unit_tipe, tu.jenis as unit_jenis,
+                     d.nama_departemen as departemen_nama,
+                     k.kapasitas_unit as kapasitas_unit_nama,
+                     ku.is_temporary, ku.original_unit_id,
+                     orig.no_unit as original_no_unit,
+                     a2.tipe as att_tipe, a2.merk as att_merk, a2.model as att_model,
+                     bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai,
+                     ia_bat.sn_baterai,
+                     chr.merk_charger, chr.tipe_charger,
+                     ia_chr.sn_charger')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = delivery_items.unit_id', 'left')
+            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+            ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+            ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+            ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+            ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
+            ->join('inventory_unit orig', 'orig.id_inventory_unit = ku.original_unit_id', 'left')
+            ->join('attachment a2', 'a2.id_attachment = delivery_items.attachment_id', 'left')
+            ->join('inventory_attachment ia_bat', 'ia_bat.id_inventory_unit = iu.id_inventory_unit AND ia_bat.tipe_item = "battery"', 'left')
+            ->join('baterai bat', 'bat.id = ia_bat.baterai_id', 'left')
+            ->join('inventory_attachment ia_chr', 'ia_chr.id_inventory_unit = iu.id_inventory_unit AND ia_chr.tipe_item = "charger"', 'left')
+            ->join('charger chr', 'chr.id_charger = ia_chr.charger_id', 'left')
+            ->where('delivery_items.di_id', $id)
+            ->findAll();
+
+        // Separate units and attachments - organize battery/charger data
+        $units = [];
+        $attachments = [];
+        
+        foreach ($items as $item) {
+            if ($item['item_type'] === 'UNIT') {
+                // Build jenis + tipe display (e.g., "Forklift COUNTER BALANCE")
+                if (!empty($item['unit_jenis'])) {
+                    $item['unit_tipe'] = trim($item['unit_tipe'] . ' ' . $item['unit_jenis']);
+                }
+                
+                // Organize battery data
+                if (!empty($item['merk_baterai'])) {
+                    $item['battery'] = [
+                        'merk_baterai' => $item['merk_baterai'],
+                        'tipe_baterai' => $item['tipe_baterai'] ?? '',
+                        'jenis_baterai' => $item['jenis_baterai'] ?? '',
+                        'sn_baterai' => $item['sn_baterai'] ?? ''
+                    ];
+                }
+                
+                // Organize charger data
+                if (!empty($item['merk_charger'])) {
+                    $item['charger'] = [
+                        'merk_charger' => $item['merk_charger'],
+                        'tipe_charger' => $item['tipe_charger'] ?? '',
+                        'sn_charger' => $item['sn_charger'] ?? ''
+                    ];
+                }
+                
+                $units[] = $item;
+            } elseif ($item['item_type'] === 'ATTACHMENT') {
+                $attachments[] = $item;
+            }
+        }
+
+        // Get customer/contract info from SPK
+        $customerName = $di['pelanggan'] ?? ($spk['pelanggan'] ?? '-');
+        $customerLocation = $di['lokasi'] ?? ($spk['lokasi'] ?? '-');
+        $contractNo = $di['po_kontrak_nomor'] ?? ($spk['po_kontrak_nomor'] ?? '-');
+
+        // Get tujuan_perintah_kerja kode for reason text
+        $tujuanData = $this->db->table('tujuan_perintah_kerja')
+            ->select('kode, nama')
+            ->where('id', $di['tujuan_perintah_kerja_id'])
+            ->get()
+            ->getRowArray();
+        
+        $tujuanKode = strtoupper($tujuanData['kode'] ?? '');
+        $tujuanNama = $tujuanData['nama'] ?? '';
+        
+        // Dynamic withdrawal purpose - use getWithdrawalReason for customizable text
+        // Note: tujuanKode from database already includes jenis prefix (e.g., 'TUKAR_DOWNGRADE')
+        $tujuanDisplay = $this->getWithdrawalReason($tujuanKode);
+        
+        // Context-aware important notes
+        $catatanPenting = $this->getCatatanPenting($tujuanKode);
+
+        return view('marketing/print_withdrawal_letter', [
+            'di' => $di,
+            'spk' => $spk,
+            'units' => $units,
+            'attachments' => $attachments,
+            'customerName' => $customerName,
+            'customerLocation' => $customerLocation,
+            'contractNo' => $contractNo,
+            'tujuanDisplay' => $tujuanDisplay,
+            'catatanPenting' => $catatanPenting,
+            'jenis' => $jenisKode,
+            'tujuan' => $tujuanKode
+        ]);
+    }
+
+    /**
+     * Helper: Get withdrawal reason text based on tujuan code
+     * Note: tujuanKode from database already includes jenis prefix (e.g., 'TUKAR_DOWNGRADE')
+     */
+    private function getWithdrawalReason($tujuanKode)
+    {
+        $reasons = [
+            // TARIK workflows
+            'TARIK_MAINTENANCE' => 'Penarikan unit untuk keperluan maintenance dan perbaikan',
+            'TARIK_RUSAK' => 'Penarikan unit karena kerusakan yang memerlukan perbaikan',
+            'TARIK_HABIS_KONTRAK' => 'Penarikan unit karena masa kontrak telah berakhir',
+            'TARIK_PINDAH_LOKASI' => 'Penarikan unit untuk relokasi ke lokasi baru',
+            
+            // TUKAR workflows
+            'TUKAR_MAINTENANCE' => 'Penarikan unit untuk maintenance dan penggantian dengan unit temporary',
+            'TUKAR_RUSAK' => 'Penarikan unit yang rusak dan penggantian dengan unit pengganti',
+            'TUKAR_UPGRADE' => 'Penarikan unit untuk upgrade ke spesifikasi yang lebih tinggi',
+            'TUKAR_DOWNGRADE' => 'Penarikan unit untuk downgrade ke spesifikasi yang sesuai kebutuhan'
+        ];
+
+        return $reasons[$tujuanKode] ?? 'Penarikan unit sesuai instruksi delivery';
+    }
+    
+    /**
+     * Helper: Get context-aware important notes based on tujuan code
+     * Note: tujuanKode from database already includes jenis prefix (e.g., 'TUKAR_DOWNGRADE')
+     */
+    private function getCatatanPenting($tujuanKode)
+    {
+        $notes = [
+            // TARIK workflows
+            'TARIK_HABIS_KONTRAK' => 'Unit akan dikembalikan ke gudang PT. Sarana Mitra Luas setelah masa kontrak berakhir. Verifikasi kelengkapan dan kondisi unit wajib dilakukan sebelum penarikan.',
+            'TARIK_RUSAK' => 'Unit mengalami kerusakan dan akan ditarik untuk perbaikan. Dokumentasi kondisi kerusakan wajib dilakukan sebelum penarikan.',
+            'TARIK_MAINTENANCE' => 'Unit akan ditarik untuk maintenance terjadwal. Jadwal pengembalian akan diinformasikan setelah pekerjaan selesai.',
+            'TARIK_PINDAH_LOKASI' => 'Unit akan dipindahkan ke lokasi baru sesuai instruksi pelanggan. Koordinasi dengan penerima di lokasi tujuan diperlukan.',
+            
+            // TUKAR workflows
+            'TUKAR_MAINTENANCE' => 'Unit akan ditarik untuk maintenance dan digantikan dengan unit temporary. Pengembalian unit original akan dilakukan setelah maintenance selesai.',
+            'TUKAR_RUSAK' => 'Unit yang rusak akan digantikan dengan unit pengganti. Verifikasi kondisi unit pengganti wajib dilakukan saat pengiriman.',
+            'TUKAR_UPGRADE' => 'Unit akan digantikan dengan unit baru dengan spesifikasi yang lebih tinggi sesuai permintaan. Addendum kontrak akan mengikuti.',
+            'TUKAR_DOWNGRADE' => 'Unit akan digantikan dengan unit yang sesuai kebutuhan operasional pelanggan. Penyesuaian kontrak akan diproses.'
+        ];
+
+        return $notes[$tujuanKode] ?? 'Penarikan unit dilakukan sesuai instruksi operasional. Koordinasi dengan tim operasional diperlukan untuk kelancaran proses.';
     }
 
     // Options: SPK that are READY for DI creation

@@ -333,27 +333,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
         }
       };
 
-      // Function to format location column with smart truncation
+      // Function to format location column with smart truncation and tooltip
       const formatLokasiColumn = (lokasi) => {
         if (!lokasi || lokasi === '-') {
           return '<span class="text-muted">-</span>';
         }
         
         // Limit preview to reasonable length
-        const maxPreviewLength = 50;
+        const maxPreviewLength = 40;
         const isLong = lokasi.length > maxPreviewLength;
         
         if (isLong) {
           const preview = lokasi.substring(0, maxPreviewLength) + '...';
-          return `
-            <div class="lokasi-preview">${preview}</div>
-            <div class="lokasi-tooltip">
-              <strong>Alamat Lengkap:</strong><br>
-              ${lokasi}
-            </div>
-          `;
+          // Use title attribute for native browser tooltip
+          return `<span title="${lokasi.replace(/"/g, '&quot;')}" style="cursor: help; border-bottom: 1px dotted #999;">${preview}</span>`;
         } else {
-          return `<div class="lokasi-preview">${lokasi}</div>`;
+          return lokasi;
         }
       };
       
@@ -387,7 +382,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       };
       
       // Function to add workflow indicators to tujuan
-      const formatTujuanWithIndicator = (tujuan) => {
+      window.formatTujuanWithIndicator = (tujuan) => {
         if (!tujuan) return '-';
         
         let indicator = '';
@@ -1017,6 +1012,14 @@ document.addEventListener('DOMContentLoaded', ()=>{
       const printDIButton = `<a class="btn btn-outline-primary btn-sm" href="<?= base_url('operational/delivery/print/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-print"></i> Print DI</a>`;
       actionButtons = actionButtons ? `${actionButtons} ${printDIButton}` : printDIButton;
       
+      // Add Print SPPU button for TARIK, TUKAR, and RELOKASI command types (use kode, not nama)
+      const jenisPerintahKode = d.jenis_perintah_kode || '';
+      if (jenisPerintahKode === 'TARIK' || jenisPerintahKode === 'TUKAR' || jenisPerintahKode === 'RELOKASI') {
+        const printSPPUButton = `<a class="btn btn-outline-success btn-sm" href="<?= base_url('marketing/di/print-withdrawal/') ?>${id}" target="_blank" rel="noopener"><i class="fas fa-file-contract"></i> Print SPPU</a>`;
+        actionButtons = actionButtons ? `${actionButtons} ${printSPPUButton}` : printSPPUButton;
+        console.log('✅ Added Print SPPU button for command type:', jenisPerintahKode);
+      }
+      
       body.innerHTML = `
         <div class="row g-3">
           <!-- Basic Information -->
@@ -1035,7 +1038,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>
               <div class="col-6"><strong>Contact:</strong> ${spk.kontak||'-'}</div>
               <div class="col-12"><strong>Delivery Location:</strong><br>
-                <div class="bg-light p-2 rounded border mt-1">${d.lokasi||'-'}</div>
+                <div class="bg-light p-2 rounded border mt-1" style="word-wrap: break-word; max-height: 100px; overflow-y: auto;">${d.lokasi||'-'}</div>
               </div>
             </div>
           </div>

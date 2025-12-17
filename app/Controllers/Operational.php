@@ -512,10 +512,17 @@ class Operational extends BaseController
     public function diDetail($id)
     {
         try {
-            // Get DI with user name resolution for dibuat_oleh field
+            // Get DI with user name resolution for dibuat_oleh field and JOIN jenis_perintah_kerja & tujuan_perintah_kerja
             $di = $this->db->table('delivery_instructions di')
-                ->select('di.*, COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, di.dibuat_oleh) as dibuat_oleh_name')
+                ->select('di.*, 
+                    COALESCE(CONCAT(u.first_name, " ", u.last_name), u.username, di.dibuat_oleh) as dibuat_oleh_name,
+                    jpk.nama as jenis_perintah,
+                    jpk.kode as jenis_perintah_kode,
+                    tpk.nama as tujuan_perintah,
+                    tpk.kode as tujuan_perintah_kode')
                 ->join('users u', 'u.id = di.dibuat_oleh', 'left')
+                ->join('jenis_perintah_kerja jpk', 'jpk.id = di.jenis_perintah_kerja_id', 'left')
+                ->join('tujuan_perintah_kerja tpk', 'tpk.id = di.tujuan_perintah_kerja_id', 'left')
                 ->where('di.id', (int)$id)
                 ->get()->getRowArray();
                 
