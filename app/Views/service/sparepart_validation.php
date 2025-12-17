@@ -211,14 +211,13 @@ $(document).ready(function() {
             type: 'GET',
             data: { work_order_id: workOrderId },
             beforeSend: function() {
-                showSparepartAlert('info', 'Memuat data sparepart...');
+               
             },
             success: function(response) {
                 console.log('📦 Sparepart validation data received:', response);
                 if (response.success) {
                     populateSparepartValidationData(response.data);
                     loadSparepartMasterData();
-                    showSparepartAlert('success', 'Data sparepart berhasil dimuat');
                 } else {
                     showSparepartAlert('error', response.message || 'Gagal memuat data sparepart');
                 }

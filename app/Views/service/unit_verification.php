@@ -666,7 +666,6 @@ $(document).ready(function() {
                     // Populate all verification fields
                     populateUnitVerificationFields(data);
                     
-                    showAlert('success', 'Data unit berhasil dimuat');
                 } else {
                     showAlert('error', response.message || 'Gagal memuat data unit');
                 }
