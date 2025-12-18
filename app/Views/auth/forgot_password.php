@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Reset password akun OPTIMA - Sistem Manajemen Penyewaan Forklift PT Sarana Mitra Luas Tbk">
+    <meta name="description" content="<?= lang('Auth.meta_forgot_password_description') ?>">
     <meta name="robots" content="noindex, nofollow">
     
     <!-- Title -->
-    <title>Lupa Password - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title><?= lang('Auth.forgot_password_title') ?> - OPTIMA | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -427,8 +427,8 @@
                 <div class="forgot-logo">
                     <i class="fas fa-key"></i>
                 </div>
-                <h1 class="forgot-title">Lupa Password?</h1>
-                <p class="forgot-subtitle">Jangan khawatir, kami akan membantu Anda</p>
+                <h1 class="forgot-title"><?= lang('Auth.forgot_password_welcome') ?></h1>
+                <p class="forgot-subtitle"><?= lang('Auth.dont_worry_help_you') ?></p>
             </div>
         </div>
         
@@ -436,19 +436,19 @@
         <div class="forgot-body">
             <!-- Description -->
             <div class="forgot-description">
-                <h3>Reset Password Anda</h3>
-                <p>Masukkan alamat email yang terdaftar di akun OPTIMA Anda. Kami akan mengirimkan link untuk mereset password ke email tersebut.</p>
+                <h3><?= lang('Auth.reset_your_password') ?></h3>
+                <p><?= lang('Auth.forgot_password_instruction') ?></p>
             </div>
             
             <!-- Steps -->
             <div class="forgot-steps">
-                <h6>Langkah-langkah reset password:</h6>
+                <h6><?= lang('Auth.reset_password_steps') ?>:</h6>
                 <ol>
-                    <li>Masukkan email yang terdaftar di akun Anda</li>
-                    <li>Klik tombol "Kirim Link Reset"</li>
-                    <li>Cek email Anda dan klik link yang dikirimkan</li>
-                    <li>Buat password baru yang aman</li>
-                    <li>Login dengan password baru Anda</li>
+                    <li><?= lang('Auth.step_enter_email') ?></li>
+                    <li><?= lang('Auth.step_click_send_link') ?></li>
+                    <li><?= lang('Auth.step_check_email') ?></li>
+                    <li><?= lang('Auth.step_create_new_password') ?></li>
+                    <li><?= lang('Auth.step_login_new_password') ?></li>
                 </ol>
             </div>
             
@@ -467,13 +467,12 @@
                         <div class="success-icon">
                             <i class="fas fa-check"></i>
                         </div>
-                        <div class="success-title">Email Terkirim!</div>
+                        <div class="success-title"><?= lang('Auth.email_sent') ?>!</div>
                         <div class="success-text">
-                            Kami telah mengirimkan link reset password ke email Anda. 
-                            Silakan cek inbox dan folder spam Anda.
+                            <?= lang('Auth.reset_link_sent_message') ?>
                         </div>
                         <a href="<?= base_url('auth/login') ?>" class="btn btn-reset">
-                            <i class="fas fa-arrow-left me-2"></i>Kembali ke Login
+                            <i class="fas fa-arrow-left me-2"></i><?= lang('Auth.back_to_login') ?>
                         </a>
                     </div>
                 </div>
@@ -484,19 +483,19 @@
                     
                     <div class="form-floating">
                         <input type="email" class="form-control" id="email" name="email" 
-                               placeholder="name@example.com" value="<?= old('email') ?>" required>
+                               placeholder="<?= lang('Auth.email') ?>" value="<?= old('email') ?>" required>
                         <label for="email">
-                            <i class="fas fa-envelope me-2"></i>Email Terdaftar
+                            <i class="fas fa-envelope me-2"></i><?= lang('Auth.registered_email') ?>
                         </label>
                         <div class="invalid-feedback">
-                            Silakan masukkan email yang valid.
+                            <?= lang('Auth.please_enter_valid_email') ?>
                         </div>
                     </div>
                     
                     <button type="submit" class="btn btn-reset" id="resetBtn">
                         <div class="loading-spinner" id="resetSpinner"></div>
                         <i class="fas fa-paper-plane me-2" id="resetIcon"></i>
-                        <span id="resetText">Kirim Link Reset</span>
+                        <span id="resetText"><?= lang('Auth.send_reset_link') ?></span>
                     </button>
                 </form>
             <?php endif; ?>
@@ -504,15 +503,15 @@
             <!-- Links -->
             <div class="forgot-links">
                 <a href="<?= base_url('auth/login') ?>">
-                    <i class="fas fa-arrow-left me-1"></i>Kembali ke Login
+                    <i class="fas fa-arrow-left me-1"></i><?= lang('Auth.back_to_login') ?>
                 </a>
                 
                 <div class="forgot-divider">
-                    <span>atau</span>
+                    <span><?= lang('App.or') ?></span>
                 </div>
                 
                 <a href="<?= base_url('auth/register') ?>">
-                    <i class="fas fa-user-plus me-1"></i>Buat Akun Baru
+                    <i class="fas fa-user-plus me-1"></i><?= lang('Auth.create_new_account') ?>
                 </a>
             </div>
         </div>

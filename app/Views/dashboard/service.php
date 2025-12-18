@@ -5,14 +5,14 @@
     <!-- Page Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800" id="pageTitle">
-            <i class="fas fa-tools me-2" aria-hidden="true"></i>Dashboard Service
+            <i class="fas fa-tools me-2" aria-hidden="true"></i><?= lang('Dashboard.service_dashboard') ?>
         </h1>
         <div class="d-sm-flex align-items-center">
             <div class="me-3">
-                <small class="text-muted">Terakhir diperbarui: </small>
+                <small class="text-muted"><?= lang('Dashboard.last_updated') ?>: </small>
                 <span class="fw-bold" aria-live="polite"><?= date('d M Y, H:i') ?></span>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="location.reload()" aria-label="Refresh Dashboard"><i class="fas fa-sync-alt me-1" aria-hidden="true"></i>Refresh</button>
+            <button class="btn btn-primary btn-sm" onclick="location.reload()" aria-label="Refresh Dashboard"><i class="fas fa-sync-alt me-1" aria-hidden="true"></i><?= lang('App.refresh') ?></button>
         </div>
     </div>
 
@@ -27,7 +27,7 @@
                     </div>
                     <div>
                         <div class="stat-value" id="stat-total-work-orders" data-count="<?= $service_stats['total_work_orders'] ?>">0</div>
-                        <div class="text-muted">Total Work Orders</div>
+                        <div class="text-muted"><?= lang('Service.total_work_orders') ?></div>
                     </div>
                 </div>
             </div>
@@ -41,7 +41,7 @@
                     </div>
                     <div>
                         <div class="stat-value" id="stat-pending-pmps"><?= $service_stats['pending_pmps'] ?></div>
-                        <div class="text-muted">Pending PMPs</div>
+                        <div class="text-muted"><?= lang('Service.pending_pmps') ?></div>
                     </div>
                 </div>
             </div>

@@ -115,8 +115,10 @@ class App extends BaseConfig
      * is viewing the site from. It affects the language strings and other
      * strings (like currency markers, numbers, etc), that your program
      * should run under for this request.
+     * 
+     * Set to 'id' for Indonesian as default language
      */
-    public string $defaultLocale = 'en';
+    public string $defaultLocale = 'id';
 
     /**
      * --------------------------------------------------------------------------
@@ -127,6 +129,8 @@ class App extends BaseConfig
      * language to use based on the value of the Accept-Language header.
      *
      * If false, no automatic detection will be performed.
+     * 
+     * Set to false - users will manually switch language via UI
      */
     public bool $negotiateLocale = false;
 
@@ -140,10 +144,12 @@ class App extends BaseConfig
      * found, the first locale will be used.
      *
      * IncomingRequest::setLocale() also uses this list.
+     * 
+     * OPTIMA supports Indonesian (id) and English (en)
      *
      * @var list<string>
      */
-    public array $supportedLocales = ['en'];
+    public array $supportedLocales = ['id', 'en'];
 
     /**
      * --------------------------------------------------------------------------

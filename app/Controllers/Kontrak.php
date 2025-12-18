@@ -258,7 +258,7 @@ class Kontrak extends BaseController
 
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Validasi gagal.',
+                'message' => lang('App.error_invalid_data'),
                 'errors' => $errors,
                 'duplicate' => $existingId ? true : false,
                 'existing_id' => $existingId,
@@ -328,7 +328,7 @@ class Kontrak extends BaseController
 
         return $this->response->setJSON([
             'success' => true,
-            'message' => 'Kontrak berhasil ditambahkan',
+            'message' => lang('Marketing.contract_created'),
             'data' => ['id' => $newId],
             'csrf_hash' => csrf_hash()
         ]);
@@ -356,7 +356,7 @@ class Kontrak extends BaseController
             log_message('debug', "Validation failed: " . json_encode($this->validator->getErrors()));
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Validasi gagal.',
+                'message' => lang('App.error_invalid_data'),
                 'errors'  => $this->validator->getErrors(),
                 'csrf_hash' => csrf_hash(),
             ]);
@@ -367,7 +367,7 @@ class Kontrak extends BaseController
         if (empty($contractNumber)) {
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Nomor kontrak harus diisi.',
+                'message' => lang('Marketing.contract_number') . ' ' . lang('App.required'),
                 'csrf_hash' => csrf_hash(),
             ]);
         }
@@ -398,7 +398,7 @@ class Kontrak extends BaseController
             
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => "Nomor kontrak '$contractNumber' sudah digunakan oleh kontrak lain (ID: " . (is_array($existing) ? $existing['id'] : $existing->id) . "). Current edit ID: $contractId",
+                'message' => lang('Marketing.contract_number') . " '$contractNumber' " . lang('Marketing.already_used') . " (ID: " . (is_array($existing) ? $existing['id'] : $existing->id) . "). Current edit ID: $contractId",
                 'debug_info' => [
                     'current_id' => $contractId,
                     'existing_id' => is_array($existing) ? $existing['id'] : $existing->id,
@@ -474,14 +474,14 @@ class Kontrak extends BaseController
             log_message('debug', "Kontrak updated successfully");
             return $this->response->setJSON([
                 'success' => true, 
-                'message' => 'Kontrak berhasil diperbarui.',
+                'message' => lang('Marketing.contract_updated'),
                 'csrf_hash' => csrf_hash(),
             ]);
         } else {
             log_message('debug', "Kontrak update failed: " . json_encode($this->kontrakModel->errors()));
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Gagal memperbarui data: ' . implode(', ', $this->kontrakModel->errors()),
+                'message' => lang('App.error_update') . ': ' . implode(', ', $this->kontrakModel->errors()),
                 'csrf_hash' => csrf_hash(),
             ]);
         }
@@ -504,7 +504,7 @@ class Kontrak extends BaseController
             log_message('debug', '=== Kontrak::delete END (invalid ID) ===');
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'ID kontrak tidak valid.'
+                'message' => lang('Marketing.contract') . ' ID ' . lang('App.error_invalid_data') . '.'
             ]);
         }
 
@@ -514,7 +514,7 @@ class Kontrak extends BaseController
             log_message('error', 'Kontrak::delete - Contract not found with ID: ' . $id);
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Kontrak tidak ditemukan.'
+                'message' => lang('Marketing.contract') . ' ' . lang('App.error_not_found') . '.'
             ]);
         }
 
@@ -577,14 +577,14 @@ class Kontrak extends BaseController
                 log_message('debug', 'Kontrak::delete - Successfully deleted contract ID: ' . $id);
                 return $this->response->setJSON([
                     'success' => true, 
-                    'message' => 'Kontrak berhasil dihapus.'
+                    'message' => lang('Marketing.contract_deleted')
                 ]);
             } else {
                 $db->transRollback();
                 log_message('error', 'Kontrak::delete - Delete returned false for contract ID: ' . $id);
                 return $this->response->setJSON([
                     'success' => false, 
-                    'message' => 'Gagal menghapus kontrak.'
+                    'message' => lang('App.error_delete')
                 ]);
             }
         } catch (\Exception $e) {
@@ -611,7 +611,7 @@ class Kontrak extends BaseController
             log_message('error', 'Invalid contract ID: ' . $id);
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'ID kontrak tidak valid.'
+                'message' => lang('Marketing.contract') . ' ID ' . lang('App.error_invalid_data') . '.'
             ]);
         }
 
@@ -641,7 +641,7 @@ class Kontrak extends BaseController
         } else {
             return $this->response->setJSON([
                 'success' => false, 
-                'message' => 'Kontrak tidak ditemukan.'
+                'message' => lang('Marketing.contract') . ' ' . lang('App.error_not_found') . '.'
             ]);
         }
     }

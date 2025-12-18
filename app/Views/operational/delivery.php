@@ -28,7 +28,7 @@
                   </div>
                   <div>
                       <div class="stat-value" id="submittedDI">0</div>
-                      <div class="text-muted">Pending</div>
+                      <div class="text-muted"><?= lang('App.pending') ?></div>
                   </div>
               </div>
           </div>
@@ -41,7 +41,7 @@
                   </div>
                   <div>
                       <div class="stat-value" id="inprogressDI">0</div>
-                      <div class="text-muted">In Progress</div>
+                      <div class="text-muted"><?= lang('App.in_progress') ?></div>
                   </div>
               </div>
           </div>
@@ -54,7 +54,7 @@
                   </div>
                   <div>
                       <div class="stat-value" id="deliveredDI">0</div>
-                      <div class="text-muted">Completed</div>
+                      <div class="text-muted"><?= lang('App.completed') ?></div>
                   </div>
               </div>
           </div>
@@ -63,7 +63,7 @@
 
   <div class="card table-card mb-3">
     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h5 class="h5 mb-0 text-gray-800">List Delivery Instruction (DI)</h5>
+      <h5 class="h5 mb-0 text-gray-800"><?= lang('App.list_delivery_instruction') ?></h5>
       <div class="d-flex gap-2 align-items-center">
         <!-- No create button for operational - they process existing DIs -->
       </div>
@@ -72,26 +72,26 @@
     <!-- Filter Tabs -->
     <ul class="nav nav-tabs mb-3" id="filterTabs">
       <li class="nav-item">
-        <a class="nav-link active filter-tab" href="#" data-filter="all">All</a>
+        <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('App.all') ?></a>
       </li>
       <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED">Submitted</a>
+        <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('App.submitted') ?></a>
       </li>
       <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS">In Progress</a>
+        <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS"><?= lang('App.in_progress') ?></a>
       </li>
       <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="DELIVERED">Delivered</a>
+        <a class="nav-link filter-tab" href="#" data-filter="DELIVERED"><?= lang('App.delivered') ?></a>
       </li>
       <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="CANCELLED">Cancelled</a>
+        <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('App.cancelled') ?></a>
       </li>
     </ul>
     
     <div class="card-body">
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
-          <span>Show</span>
+          <span><?= lang('App.show') ?></span>
           <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
             <option value="10">10</option>
             <option value="25">25</option>

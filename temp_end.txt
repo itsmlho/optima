@@ -1,9 +1,0 @@
-{
-            log_message('error', 'Customers::getContracts - Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to get customer contracts: ' . $e->getMessage()
-            ]);
-        }
-    }
-}

@@ -19,8 +19,8 @@ $can_export = $permissions['export'];
     <?php if (!$can_view): ?>
     <div class="alert alert-warning">
         <i class="fas fa-lock me-2"></i>
-        <strong>Access Denied:</strong> You do not have permission to view SPK. 
-        Please contact your administrator to request access.
+        <strong><?= lang('Marketing.access_denied') ?>:</strong> <?= lang('Marketing.no_permission_view') ?>. 
+        <?= lang('Marketing.contact_administrator') ?>.
     </div>
     <?php else: ?>
     
@@ -34,7 +34,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div>
                         <div class="stat-value" id="stat-total-spk">0</div>
-                        <div class="text-muted">Total SPK</div>
+                        <div class="text-muted"><?= lang('Marketing.total_spk') ?></div>
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div>
                         <div class="stat-value" id="stat-in-progress">0</div>
-                        <div class="text-muted">In Progress</div>
+                        <div class="text-muted"><?= lang('Marketing.in_progress') ?></div>
                     </div>
                 </div>
             </div>
@@ -60,7 +60,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div>
                         <div class="stat-value" id="stat-ready">0</div>
-                        <div class="text-muted">Ready</div>
+                        <div class="text-muted"><?= lang('Marketing.ready') ?></div>
                     </div>
                 </div>
             </div>
@@ -73,7 +73,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div>
                         <div class="stat-value" id="stat-completed">0</div>
-                        <div class="text-muted">Completed</div>
+                        <div class="text-muted"><?= lang('Marketing.completed') ?></div>
                     </div>
                 </div>
             </div>
@@ -84,14 +84,14 @@ $can_export = $permissions['export'];
     <div class="card">
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">SPK List</h6>
+                <h6 class="mb-0"><?= lang('Marketing.spk_list') ?></h6>
                 <?php if ($can_create): ?>
                 <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#spkModal">
-                    <i class="fas fa-plus me-1"></i>Create SPK
+                    <i class="fas fa-plus me-1"></i><?= lang('Marketing.create_spk') ?>
                 </button>
                 <?php else: ?>
-                <button class="btn btn-primary btn-sm disabled" title="Access Denied">
-                    <i class="fas fa-plus me-1"></i>Create SPK
+                <button class="btn btn-primary btn-sm disabled" title="<?= lang('Marketing.access_denied') ?>">
+                    <i class="fas fa-plus me-1"></i><?= lang('Marketing.create_spk') ?>
                 </button>
                 <?php endif; ?>
             </div>
@@ -100,39 +100,39 @@ $can_export = $permissions['export'];
         <!-- Filter Tabs -->
         <ul class="nav nav-tabs mb-3" id="filterTabs">
             <li class="nav-item">
-                <a class="nav-link active filter-tab" href="#" data-filter="all">All</a>
+                <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('Marketing.all') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED">Submitted</a>
+                <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('Marketing.submitted') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="IN_PROGRESS">In Progress</a>
+                <a class="nav-link filter-tab" href="#" data-filter="IN_PROGRESS"><?= lang('Marketing.in_progress') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="READY">Ready</a>
+                <a class="nav-link filter-tab" href="#" data-filter="READY"><?= lang('Marketing.ready') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="COMPLETED">Completed</a>
+                <a class="nav-link filter-tab" href="#" data-filter="COMPLETED"><?= lang('Marketing.completed') ?></a>
             </li>
             <li class="nav-item">
-                <a class="nav-link filter-tab" href="#" data-filter="CANCELLED">Cancelled</a>
+                <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Marketing.cancelled') ?></a>
             </li>
         </ul>
         
         <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex align-items-center gap-2">
-                    <span>Show</span>
+                    <span><?= lang('Marketing.show') ?></span>
                     <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
                         <option value="10">10</option>
                         <option value="25" selected>25</option>
                         <option value="50">50</option>
                         <option value="100">100</option>
                     </select>
-                    <span>entries</span>
+                    <span><?= lang('Marketing.entries') ?></span>
                 </div>
                 <div class="d-flex align-items-center gap-2">
-                    <span>Search:</span>
+                    <span><?= lang('Marketing.search') ?>:</span>
                     <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="" style="width: 200px;">
                 </div>
             </div>
@@ -141,15 +141,15 @@ $can_export = $permissions['export'];
                 <table class="table table-striped table-hover table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
                     <thead>
                         <tr>
-                            <th>SPK No.</th>
-                            <th>Type</th>
-                            <th>Contract/PO</th>
-                            <th>Company Name</th>
-                            <th>PIC</th>
-                            <th>Contact</th>
-                            <th>Status</th>
-                            <th>Total Units</th>
-                            <th data-no-sort>Actions</th>
+                            <th><?= lang('Marketing.spk_number') ?></th>
+                            <th><?= lang('Marketing.type') ?></th>
+                            <th><?= lang('Marketing.contract_po') ?></th>
+                            <th><?= lang('Marketing.company_name') ?></th>
+                            <th><?= lang('Marketing.pic') ?></th>
+                            <th><?= lang('Marketing.contact') ?></th>
+                            <th><?= lang('App.status') ?></th>
+                            <th><?= lang('Marketing.total_units') ?></th>
+                            <th data-no-sort><?= lang('Marketing.actions') ?></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -161,7 +161,7 @@ $can_export = $permissions['export'];
             <!-- Pagination and Info -->
             <div class="d-flex justify-content-between align-items-center mt-3">
                 <div id="spkTableInfo">
-                    Showing 0 to 0 of 0 entries
+                    <?= lang('Marketing.showing') ?> 0 <?= lang('Marketing.to') ?> 0 <?= lang('Marketing.of') ?> 0 <?= lang('Marketing.entries') ?>
                 </div>
                 <nav>
                     <ul class="pagination pagination-sm mb-0" id="spkPagination">
@@ -175,61 +175,61 @@ $can_export = $permissions['export'];
     <div class="modal fade" id="spkModal" tabindex="-1">
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
-                <div class="modal-header"><h6 class="modal-title">Create SPK</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><h6 class="modal-title"><?= lang('Marketing.create_spk') ?></h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
                 <form id="spkForm">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label">Type</label>
+                            <label class="form-label"><?= lang('Marketing.type') ?></label>
                             <select class="form-select form-select-sm w-auto" name="jenis_spk" id="jenisSpkSelect" required>
-                                <option value="UNIT" selected>SPK Unit</option>
-                                <option value="ATTACHMENT">SPK Attachment</option>
+                                <option value="UNIT" selected><?= lang('Marketing.spk_unit') ?></option>
+                                <option value="ATTACHMENT"><?= lang('Marketing.spk_attachment') ?></option>
                             </select>
                         </div>
                         
                         <!-- Step 1: Select Contract -->
                         <div class="mb-3">
-                            <label class="form-label">Select Contract</label>
+                            <label class="form-label"><?= lang('Marketing.select_contract') ?></label>
                             <select class="form-select" name="kontrak_id" id="kontrakSelect" required>
-                                <option value="">-- Select Contract --</option>
+                                <option value=""><?= lang('Marketing.select_contract') ?></option>
                             </select>
-                            <div class="form-text">Select a contract that already has specifications to create an SPK</div>
+                            <div class="form-text"><?= lang('Marketing.select_contract_help') ?></div>
                         </div>
                         
                         <!-- Step 2: Contract Info -->
                         <div id="kontrakInfoSection" style="display: none;">
                             <div class="card bg-light mb-3">
                                 <div class="card-body">
-                                    <h6 class="card-title">Contract Information</h6>
+                                    <h6 class="card-title"><?= lang('Marketing.contract_information') ?></h6>
                                     <div class="row g-2">
                                         <div class="col-md-6">
-                                            <label class="form-label">Customer</label>
+                                            <label class="form-label"><?= lang('Marketing.customer') ?></label>
                                             <input class="form-control" name="pelanggan" id="inpPelanggan" readonly>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Contract/PO Number</label>
+                                            <label class="form-label"><?= lang('Marketing.contract_po_number') ?></label>
                                             <input class="form-control" name="po_kontrak_nomor" id="inpPoKontrak" readonly>
                                         </div>
                                         <div class="col-md-12">
-                                            <label class="form-label">Select Location <span class="text-danger">*</span></label>
+                                            <label class="form-label"><?= lang('Marketing.select_location') ?> <span class="text-danger">*</span></label>
                                             <select class="form-select" name="customer_location_id" id="customerLocationSelect" required>
-                                                <option value="">-- Select Location --</option>
+                                                <option value="">-- <?= lang('Marketing.select_location') ?> --</option>
                                             </select>
-                                            <div class="form-text">Select customer location (PIC and contact will be auto-filled)</div>
+                                            <div class="form-text"><?= lang('Marketing.select_location_pic_autofill') ?></div>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">PIC (Person In Charge)</label>
+                                            <label class="form-label"><?= lang('Marketing.pic_person_in_charge') ?></label>
                                             <input class="form-control" name="pic" id="inpPic" readonly>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">PIC Contact</label>
+                                            <label class="form-label"><?= lang('Marketing.pic_contact') ?></label>
                                             <input class="form-control" name="kontak" id="inpKontak" readonly>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Location Address</label>
+                                            <label class="form-label"><?= lang('Marketing.location_address') ?></label>
                                             <textarea class="form-control" name="lokasi" id="inpLokasi" rows="2" readonly></textarea>
                                         </div>
                                         <div class="col-md-6">
-                                            <label class="form-label">Delivery Plan <span class="text-danger">*</span></label>
+                                            <label class="form-label"><?= lang('Marketing.delivery_plan') ?> <span class="text-danger">*</span></label>
                                             <input type="date" class="form-control" name="delivery_plan" required>
                                         </div>
                                     </div>
@@ -245,18 +245,18 @@ $can_export = $permissions['export'];
                                 </div>
                                 <div class="card-body">
                                     <div class="mb-3">
-                                        <label class="form-label">Target Unit <span class="text-danger">*</span></label>
+                                        <label class="form-label"><?= lang('Marketing.target_unit') ?> <span class="text-danger">*</span></label>
                                         <select class="form-control" name="target_unit_id" id="targetUnitSelect">
-                                            <option value="">- Select Target Unit -</option>
+                                            <option value="">- <?= lang('Marketing.select_target_unit') ?> -</option>
                                         </select>
-                                        <div class="form-text">Select the unit that will receive the replacement attachment</div>
+                                        <div class="form-text"><?= lang('Marketing.select_unit_receive_replacement') ?></div>
                                     </div>
                                     
                                     <div class="mb-3">
-                                        <label class="form-label">Replacement Reason</label>
+                                        <label class="form-label"><?= lang('Marketing.replacement_reason') ?></label>
                                         <textarea class="form-control" name="replacement_reason" id="replacementReason" rows="2" 
-                                                  placeholder="Example: Fork damaged, old attachment worn, needs upgrade, etc."></textarea>
-                                        <div class="form-text">Explain why the attachment needs to be replaced</div>
+                                                  placeholder="<?= lang('Marketing.replacement_reason_example') ?>"></textarea>
+                                        <div class="form-text"><?= lang('Marketing.explain_attachment_replacement') ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -265,9 +265,9 @@ $can_export = $permissions['export'];
                         <!-- Step 3: Select Specification -->
                         <div id="spesifikasiSection" style="display: none;">
                             <div class="mb-3">
-                                <label class="form-label">Select Unit Specification</label>
+                                <label class="form-label"><?= lang('Marketing.select_unit_specification') ?></label>
                                 <select class="form-select" name="kontrak_spesifikasi_id" id="spesifikasiSelect" required>
-                                    <option value="">-- Select Specification --</option>
+                                    <option value="">-- <?= lang('Marketing.select_specification') ?> --</option>
                                 </select>
                                 <div class="form-text">Select the specification to be processed in this work order</div>
                             </div>
@@ -289,12 +289,12 @@ $can_export = $permissions['export'];
                                         </div>
                                         
                                         <div class="mt-3">
-                                            <label class="form-label" for="jumlahUnitSpk" id="jumlahUnitLabel">Jumlah Unit untuk SPK ini</label>
+                                            <label class="form-label" for="jumlahUnitSpk" id="jumlahUnitLabel"><?= lang('Marketing.unit_quantity_for_spk') ?></label>
                                             <div class="input-group">
-                                                <input type="number" class="form-control" name="jumlah_unit" id="jumlahUnitSpk" min="1" required placeholder="Jumlah unit">
-                                                <span class="input-group-text" id="maxUnitInfo">dari 0 tersedia</span>
+                                                <input type="number" class="form-control" name="jumlah_unit" id="jumlahUnitSpk" min="1" required placeholder="<?= lang('Marketing.unit_quantity') ?>">
+                                                <span class="input-group-text" id="maxUnitInfo"><?= lang('Marketing.from') ?> 0 <?= lang('Marketing.available') ?></span>
                                             </div>
-                                            <div class="form-text" id="jumlahUnitFormText">Masukkan jumlah unit yang akan diproses dalam SPK ini</div>
+                                            <div class="form-text" id="jumlahUnitFormText"><?= lang('Marketing.enter_unit_quantity_for_spk') ?></div>
                                         </div>
                                     </div>
                                 </div>
@@ -302,12 +302,12 @@ $can_export = $permissions['export'];
                         </div>
                         
                         <div class="mt-3">
-                            <label class="form-label">SPK Notes</label>
-                            <textarea class="form-control" name="catatan" rows="3" placeholder="Additional notes for this SPK (optional)"></textarea>
+                            <label class="form-label"><?= lang('Marketing.spk_notes') ?></label>
+                            <textarea class="form-control" name="catatan" rows="3" placeholder="<?= lang('Marketing.additional_notes_spk_optional') ?>"></textarea>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Close</button>
+                        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button"><?= lang('App.close') ?></button>
                         <button class="btn btn-primary" type="submit" id="submitSpkBtn" disabled>Create SPK</button>
                     </div>
                 </form>
@@ -319,7 +319,7 @@ $can_export = $permissions['export'];
     <div class="modal fade" id="diModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header"><h6 class="modal-title">Create Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><h6 class="modal-title"><?= lang('Marketing.create') ?> Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
                 <form id="diForm">
                     <div class="modal-body">
                         <input type="hidden" name="spk_id" id="diSpkId">
@@ -2135,7 +2135,7 @@ $can_export = $permissions['export'];
         <div class="modal-dialog modal-lg modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h6 class="modal-title">Detail SPK <span id="spkNumberHeader" class="text-primary"></span></h6>
+                    <h6 class="modal-title"><?= lang('App.detail') ?> SPK <span id="spkNumberHeader" class="text-primary"></span></h6>
                     <button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -2771,7 +2771,7 @@ $can_export = $permissions['export'];
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h6 class="modal-title">Edit SPK</h6>
+                    <h6 class="modal-title"><?= lang('Marketing.spk_edit') ?></h6>
                     <button class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <form id="spkEditForm">

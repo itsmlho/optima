@@ -6,11 +6,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Login ke OPTIMA - Sistem Manajemen Penyewaan Forklift PT Sarana Mitra Luas Tbk">
+    <meta name="description" content="<?= lang('Auth.meta_login_description') ?>">
     <meta name="robots" content="noindex, nofollow">
 
     <!-- Title -->
-    <title>Login - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title><?= lang('Auth.login') ?> - OPTIMA | PT Sarana Mitra Luas Tbk</title>
 
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -773,8 +773,8 @@
         <div class="col-lg-6">
             <div class="login-form">
                 <div class="login-form-title">
-                    <h2>Selamat Datang</h2>
-                    <p>Silakan masuk ke akun Anda untuk melanjutkan</p>
+                    <h2><?= lang('Auth.welcome') ?></h2>
+                    <p><?= lang('Auth.login_message') ?></p>
                 </div>
                 
                 <!-- Flash Messages -->
@@ -808,11 +808,11 @@
                             <div class="d-flex align-items-start">
                                 <i class="fas fa-lock me-2 mt-1"></i>
                                 <div class="flex-grow-1">
-                                    <strong>Akun Terkunci</strong>
-                                    <p class="mb-1">Terlalu banyak percobaan login yang gagal. Akun Anda terkunci sementara.</p>
+                                    <strong><?= lang('Auth.account_locked') ?></strong>
+                                    <p class="mb-1"><?= lang('Auth.too_many_failed_attempts') ?></p>
                                     <p class="mb-0">
                                         <small>
-                                            Silakan coba lagi dalam: 
+                                            <?= lang('Auth.try_again_in') ?>: 
                                             <strong id="countdownTimer" class="text-danger"></strong>
                                         </small>
                                     </p>
@@ -827,11 +827,10 @@
                         <!-- Remaining Attempts Warning -->
                         <div class="alert alert-warning alert-dismissible fade show" role="alert">
                             <i class="fas fa-exclamation-triangle me-2"></i>
-                            <strong>Peringatan:</strong> 
-                            Anda memiliki <strong><?= $remainingAttempts ?></strong> 
-                            percobaan login tersisa. 
+                            <strong><?= lang('Auth.warning') ?>:</strong> 
+                            <?= lang('Auth.remaining_attempts_message', ['attempts' => $remainingAttempts]) ?>
                             <?php if ($remainingAttempts <= 2): ?>
-                                Akun Anda akan terkunci setelah percobaan gagal berikutnya.
+                                <?= lang('Auth.account_will_be_locked') ?>
                             <?php endif; ?>
                             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                         </div>
@@ -843,54 +842,54 @@
                     <?= csrf_field() ?>
                     
                     <div class="form-floating">
-                        <input type="text" class="form-control" id="username" name="username" placeholder="Username atau Email" 
+                        <input type="text" class="form-control" id="username" name="username" placeholder="<?= lang('Auth.username_or_email') ?>" 
                                value="<?= old('username') ?>" required>
                         <label for="username">
-                            <i class="fas fa-user me-2"></i>Username atau Email
+                            <i class="fas fa-user me-2"></i><?= lang('Auth.username_or_email') ?>
                         </label>
                         <div class="invalid-feedback" style="display: none;">
-                            Silakan masukkan username atau email.
+                            <?= lang('Auth.please_enter_username_email') ?>
                         </div>
                     </div>
                     
                     <div class="form-floating">
-                        <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                        <input type="password" class="form-control" id="password" name="password" placeholder="<?= lang('Auth.password') ?>" required>
                         <label for="password">
-                            <i class="fas fa-lock me-2"></i>Password
+                            <i class="fas fa-lock me-2"></i><?= lang('Auth.password') ?>
                         </label>
                         <div class="invalid-feedback" style="display: none;">
-                            Silakan masukkan password.
+                            <?= lang('Auth.please_enter_password') ?>
                         </div>
                     </div>
                     
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="1" id="remember" name="remember">
                         <label class="form-check-label" for="remember">
-                            Ingat saya
+                            <?= lang('Auth.remember_me') ?>
                         </label>
                     </div>
                     
                     <button type="submit" class="btn btn-login" id="loginBtn">
                         <div class="loading-spinner" id="loginSpinner"></div>
-                        <span id="loginText">Masuk</span>
+                        <span id="loginText"><?= lang('Auth.login') ?></span>
                     </button>
                 </form>
                 
                 <div class="login-links">
-                    <a href="<?= base_url('auth/forgot-password') ?>">Lupa Password?</a>
+                    <a href="<?= base_url('auth/forgot-password') ?>"><?= lang('Auth.forgot_password') ?>?</a>
                     
                     <div class="login-divider">
-                        <span>atau</span>
+                        <span><?= lang('App.or') ?></span>
                     </div>
                     
-                    <p class="mb-0">Belum punya akun? <a href="<?= base_url('auth/register') ?>">Daftar disini</a></p>
+                    <p class="mb-0"><?= lang('Auth.no_account') ?>? <a href="<?= base_url('auth/register') ?>"><?= lang('Auth.register_here') ?></a></p>
                 </div>
             </div>
             
             <div class="footer-links">
-                <a href="#">Bantuan</a>
-                <a href="#">Kebijakan Privasi</a>
-                <a href="#">Syarat & Ketentuan</a>
+                <a href="#"><?= lang('App.help') ?></a>
+                <a href="#"><?= lang('App.privacy_policy') ?></a>
+                <a href="#"><?= lang('App.terms_conditions') ?></a>
             </div>
         </div>
     </div>
@@ -927,7 +926,7 @@
                         
                         loginBtn.disabled = true;
                         loginSpinner.style.display = 'inline-block';
-                        loginText.textContent = 'Memproses...';
+                        loginText.textContent = '<?= lang('App.processing') ?>';
                     }
                     
                     form.classList.add('was-validated');

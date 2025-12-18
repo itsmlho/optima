@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Daftar akun baru di OPTIMA - Sistem Manajemen Penyewaan Forklift PT Sarana Mitra Luas Tbk">
+<meta name="description" content="<?= lang('Auth.meta_register_description') ?>">
     <meta name="robots" content="noindex, nofollow">
-    
+
     <!-- Title -->
-    <title>Daftar Akun - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title><?= lang('Auth.register') ?> - OPTIMA | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -911,8 +911,8 @@
         <div class="col-lg-7">
             <div class="register-form">
                 <div class="register-form-title">
-                    <h2>Buat Akun Baru</h2>
-                    <p>Lengkapi informasi di bawah ini untuk membuat akun</p>
+                    <h2><?= lang('Auth.register_welcome') ?></h2>
+                    <p><?= lang('Auth.register_message') ?></p>
                 </div>
                 
                 <!-- Flash Messages -->
@@ -940,24 +940,24 @@
                         <div class="col-md-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="first_name" name="first_name" 
-                                       placeholder="Nama Depan" value="<?= old('first_name') ?>">
+                                       placeholder="<?= lang('Auth.first_name') ?>" value="<?= old('first_name') ?>">
                                 <label for="first_name">
-                                    <i class="fas fa-user me-2"></i>Nama Depan
+                                    <i class="fas fa-user me-2"></i><?= lang('Auth.first_name') ?>
                                 </label>
                                 <div class="invalid-feedback" style="display: none;">
-                                    Silakan masukkan nama depan.
+                                    <?= lang('Auth.please_enter_first_name') ?>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="last_name" name="last_name" 
-                                       placeholder="Nama Belakang" value="<?= old('last_name') ?>">
+                                       placeholder="<?= lang('Auth.last_name') ?>" value="<?= old('last_name') ?>">
                                 <label for="last_name">
-                                    <i class="fas fa-user me-2"></i>Nama Belakang
+                                    <i class="fas fa-user me-2"></i><?= lang('Auth.last_name') ?>
                                 </label>
                                 <div class="invalid-feedback" style="display: none;">
-                                    Silakan masukkan nama belakang.
+                                    <?= lang('Auth.please_enter_last_name') ?>
                                 </div>
                             </div>
                         </div>
@@ -967,15 +967,15 @@
                         <div class="col-md-6">
                             <div class="form-floating">
                                 <input type="text" class="form-control" id="username" name="username" 
-                                       placeholder="username" value="<?= old('username') ?>">
+                                       placeholder="<?= lang('Auth.username') ?>" value="<?= old('username') ?>">
                                 <label for="username">
-                                    <i class="fas fa-user-circle me-2"></i>Username
+                                    <i class="fas fa-user-circle me-2"></i><?= lang('Auth.username') ?>
                                 </label>
                                 <div class="invalid-feedback" style="display: none;">
-                                    Silakan masukkan username (minimal 3 karakter).
+                                    <?= lang('Auth.please_enter_username_min') ?>
                                 </div>
                                 <div class="form-text" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
-                                    Minimal 3 karakter, hanya huruf, angka, dan underscore
+                                    <?= lang('Auth.username_requirements') ?>
                                 </div>
                             </div>
                         </div>
@@ -984,10 +984,10 @@
                                 <input type="email" class="form-control" id="email" name="email" 
                                        placeholder="name@example.com" value="<?= old('email') ?>">
                                 <label for="email">
-                                    <i class="fas fa-envelope me-2"></i>Email
+                                    <i class="fas fa-envelope me-2"></i><?= lang('Auth.email') ?>
                                 </label>
                                 <div class="invalid-feedback" style="display: none;">
-                                    Silakan masukkan email yang valid.
+                                    <?= lang('Auth.please_enter_valid_email') ?>
                                 </div>
                             </div>
                         </div>
@@ -997,13 +997,13 @@
                         <input type="tel" class="form-control" id="phone" name="phone" 
                                placeholder="+62 812-3456-7890" value="<?= old('phone') ?>">
                         <label for="phone">
-                            <i class="fas fa-phone me-2"></i>Nomor Telepon
+                            <i class="fas fa-phone me-2"></i><?= lang('Auth.phone_number') ?>
                         </label>
                         <div class="invalid-feedback" style="display: none;">
-                            Silakan masukkan nomor telepon yang valid.
+                            <?= lang('Auth.please_enter_valid_phone') ?>
                         </div>
                         <div class="form-text" style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
-                            Contoh: +62 812-3456-7890 (opsional)
+                            <?= lang('Auth.phone_example') ?>
                         </div>
                     </div>
                     
@@ -1011,7 +1011,7 @@
                         <div class="col-md-6">
                             <div class="form-floating">
                                 <select class="form-select" id="division_id" name="division_id">
-                                    <option value="">Pilih Divisi</option>
+                                    <option value=""><?= lang('Auth.select_division') ?></option>
                                     <?php if (!empty($divisions)): ?>
                                         <?php 
                                         $oldDivisionId = old('division_id');
@@ -1024,26 +1024,26 @@
                                     <?php endif; ?>
                                 </select>
                                 <label for="division_id">
-                                    <i class="fas fa-building me-2"></i>Divisi
+                                    <i class="fas fa-building me-2"></i><?= lang('Auth.division') ?>
                                 </label>
                                 <div class="invalid-feedback" style="display: none;">
-                                    Silakan pilih divisi.
+                                    <?= lang('Auth.please_select_division') ?>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-floating">
                                 <select class="form-select" id="position" name="position">
-                                    <option value="">Pilih Posisi</option>
+                                    <option value=""><?= lang('Auth.select_position') ?></option>
                                     <option value="Head of Divisi" <?= old('position') == 'Head of Divisi' ? 'selected' : '' ?>>Head of Divisi</option>
                                     <option value="Staff Admin" <?= old('position') == 'Staff Admin' ? 'selected' : '' ?>>Staff Admin</option>
                                     <option value="Mechanic" <?= old('position') == 'Mechanic' ? 'selected' : '' ?>>Mechanic</option>
                                 </select>
                                 <label for="position">
-                                    <i class="fas fa-briefcase me-2"></i>Posisi
+                                    <i class="fas fa-briefcase me-2"></i><?= lang('Auth.position') ?>
                                 </label>
                                 <div class="invalid-feedback" style="display: none;">
-                                    Silakan pilih posisi.
+                                    <?= lang('Auth.please_select_position') ?>
                                 </div>
                             </div>
                         </div>
@@ -1062,25 +1062,25 @@
                             <div class="password-strength-bar">
                                 <div class="password-strength-fill" id="passwordStrengthFill"></div>
                             </div>
-                            <div class="password-strength-text" id="passwordStrengthText">Kekuatan password: -</div>
+                            <div class="password-strength-text" id="passwordStrengthText"><?= lang('Auth.password_strength') ?>: -</div>
                         </div>
                         <div class="password-requirements">
                             <ul>
                                 <li id="lengthReq" class="invalid">
                                     <i class="fas fa-times"></i>
-                                    <span>Minimal 8 karakter</span>
+                                    <span><?= lang('Auth.min_8_chars') ?></span>
                                 </li>
                                 <li id="upperReq" class="invalid">
                                     <i class="fas fa-times"></i>
-                                    <span>Minimal 1 huruf besar</span>
+                                    <span><?= lang('Auth.min_1_uppercase') ?></span>
                                 </li>
                                 <li id="lowerReq" class="invalid">
                                     <i class="fas fa-times"></i>
-                                    <span>Minimal 1 huruf kecil</span>
+                                    <span><?= lang('Auth.min_1_lowercase') ?></span>
                                 </li>
                                 <li id="numberReq" class="invalid">
                                     <i class="fas fa-times"></i>
-                                    <span>Minimal 1 angka</span>
+                                    <span><?= lang('Auth.min_1_number') ?></span>
                                 </li>
                             </ul>
                         </div>
@@ -1088,45 +1088,45 @@
                     
                     <div class="form-floating">
                         <input type="password" class="form-control" id="confirm_password" name="confirm_password" 
-                               placeholder="Konfirmasi Password">
+                               placeholder="<?= lang('Auth.confirm_password') ?>">
                         <label for="confirm_password">
-                            <i class="fas fa-lock me-2"></i>Konfirmasi Password
+                            <i class="fas fa-lock me-2"></i><?= lang('Auth.confirm_password') ?>
                         </label>
                         <div class="invalid-feedback" style="display: none;">
-                            Password tidak cocok.
+                            <?= lang('Auth.password_not_match') ?>
                         </div>
                     </div>
                     
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="1" id="terms" name="terms">
                         <label class="form-check-label" for="terms">
-                            Saya menyetujui <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Syarat & Ketentuan</a> 
-                            serta <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal">Kebijakan Privasi</a>
+                            <?= lang('Auth.agree_terms_start') ?> <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal"><?= lang('App.terms_conditions') ?></a> 
+                            <?= lang('App.and') ?> <a href="#" data-bs-toggle="modal" data-bs-target="#privacyModal"><?= lang('App.privacy_policy') ?></a>
                         </label>
                         <div class="invalid-feedback" style="display: none;">
-                            Anda harus menyetujui syarat dan ketentuan.
+                            <?= lang('Auth.must_agree_terms') ?>
                         </div>
                     </div>
                     
                     <button type="submit" class="btn btn-register" id="registerBtn">
                         <div class="loading-spinner" id="registerSpinner"></div>
-                        <span id="registerText">Buat Akun</span>
+                        <span id="registerText"><?= lang('Auth.create_account') ?></span>
                     </button>
                 </form>
                 
                 <div class="register-links">
                     <div class="register-divider">
-                        <span>atau</span>
+                        <span><?= lang('App.or') ?></span>
                     </div>
                     
-                    <p class="mb-0">Sudah punya akun? <a href="<?= base_url('auth/login') ?>">Masuk disini</a></p>
+                    <p class="mb-0"><?= lang('Auth.already_have_account') ?>? <a href="<?= base_url('auth/login') ?>"><?= lang('Auth.login_here') ?></a></p>
                 </div>
             </div>
             
             <div class="footer-links">
-                <a href="#">Bantuan</a>
-                <a href="#">Kebijakan Privasi</a>
-                <a href="#">Syarat & Ketentuan</a>
+                <a href="#"><?= lang('App.help') ?></a>
+                <a href="#"><?= lang('App.privacy_policy') ?></a>
+                <a href="#"><?= lang('App.terms_conditions') ?></a>
             </div>
         </div>
     </div>

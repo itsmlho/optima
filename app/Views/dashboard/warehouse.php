@@ -6,18 +6,18 @@
     <!-- Page Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800" id="pageTitle">
-            <i class="fas fa-warehouse me-2" aria-hidden="true"></i>Dashboard Warehouse & Assets
+            <i class="fas fa-warehouse me-2" aria-hidden="true"></i><?= lang('Dashboard.warehouse_assets_dashboard') ?>
         </h1>
         <div class="d-sm-flex align-items-center">
             <div class="me-3">
-                <small class="text-muted">Terakhir diperbarui: </small>
+                <small class="text-muted"><?= lang('Dashboard.last_updated') ?>: </small>
                 <span class="fw-bold" aria-live="polite"><?= date('d M Y, H:i') ?></span>
             </div>
             <div class="btn-group" role="group" aria-label="Aksi Warehouse">
-                <button class="btn btn-outline-primary btn-sm" onclick="exportWarehouseDashboard()" aria-label="Export Dashboard"><i class="fas fa-download me-1" aria-hidden="true"></i>Export</button>
-                <button class="btn btn-outline-success btn-sm" onclick="generateInventoryReport()" aria-label="Generate Report"><i class="fas fa-file-alt me-1" aria-hidden="true"></i>Report</button>
-                <button class="btn btn-outline-warning btn-sm" onclick="stockAuditModal()" aria-label="Audit Stok"><i class="fas fa-clipboard-check me-1" aria-hidden="true"></i>Audit</button>
-                <button class="btn btn-primary btn-sm" onclick="location.reload()" aria-label="Refresh Dashboard"><i class="fas fa-sync-alt me-1" aria-hidden="true"></i>Refresh</button>
+                <button class="btn btn-outline-primary btn-sm" onclick="exportWarehouseDashboard()" aria-label="Export Dashboard"><i class="fas fa-download me-1" aria-hidden="true"></i><?= lang('App.export') ?></button>
+                <button class="btn btn-outline-success btn-sm" onclick="generateInventoryReport()" aria-label="Generate Report"><i class="fas fa-file-alt me-1" aria-hidden="true"></i><?= lang('App.report') ?></button>
+                <button class="btn btn-outline-warning btn-sm" onclick="stockAuditModal()" aria-label="Audit Stok"><i class="fas fa-clipboard-check me-1" aria-hidden="true"></i><?= lang('Warehouse.audit') ?></button>
+                <button class="btn btn-primary btn-sm" onclick="location.reload()" aria-label="Refresh Dashboard"><i class="fas fa-sync-alt me-1" aria-hidden="true"></i><?= lang('App.refresh') ?></button>
             </div>
         </div>
     </div>
@@ -29,8 +29,8 @@
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h2 class="fw-bold mb-1" data-count="<?= $warehouse_stats['total_assets'] ?? 0 ?>">0</h2>
-                        <h6 class="card-title text-uppercase small mb-0">TOTAL ASSETS</h6>
-                        <div class="small mt-1 opacity-75"><i class="fas fa-arrow-up" aria-hidden="true"></i> +3 unit baru</div>
+                        <h6 class="card-title text-uppercase small mb-0"><?= lang('Warehouse.total_assets') ?></h6>
+                        <div class="small mt-1 opacity-75"><i class="fas fa-arrow-up" aria-hidden="true"></i> +3 <?= lang('Warehouse.new_units') ?></div>
                     </div>
                     <div class="ms-3" aria-hidden="true">
                         <i class="fas fa-boxes fa-2x opacity-75"></i>
@@ -44,7 +44,7 @@
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h2 class="fw-bold mb-1"><?= $warehouse_stats['available_units'] ?? 0 ?></h2>
-                        <h6 class="card-title text-uppercase small mb-0">UNIT TERSEDIA</h6>
+                        <h6 class="card-title text-uppercase small mb-0"><?= lang('Dashboard.available_units') ?></h6>
                         <div class="small mt-1 opacity-75">
                             <i class="fas fa-check-circle"></i> <?= round(($warehouse_stats['available_units'] ?? 0) / max(($warehouse_stats['total_assets'] ?? 1), 1) * 100, 1) ?>% availability
                         </div>
@@ -61,9 +61,9 @@
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h2 class="fw-bold mb-1"><?= $warehouse_stats['total_spareparts'] ?? 0 ?></h2>
-                        <h6 class="card-title text-uppercase small mb-0">SPAREPART ITEMS</h6>
+                        <h6 class="card-title text-uppercase small mb-0"><?= lang('Warehouse.sparepart_items') ?></h6>
                         <div class="small mt-1 opacity-75">
-                            <i class="fas fa-exclamation-triangle"></i> <?= $warehouse_stats['low_stock_items'] ?? 0 ?> low stock
+                            <i class="fas fa-exclamation-triangle"></i> <?= $warehouse_stats['low_stock_items'] ?? 0 ?> <?= lang('Warehouse.low_stock') ?>
                         </div>
                     </div>
                     <div class="ms-3">

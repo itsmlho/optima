@@ -3,9 +3,12 @@
 // helper('rbac');
 // helper('simple_rbac');
 // helper('global_permission');
+
+// Get current language for HTML lang attribute
+$currentLang = service('request')->getLocale();
 ?>
 <!DOCTYPE html>
-<html lang="id" data-bs-theme="light" id="html-root">
+<html lang="<?= $currentLang ?>" data-bs-theme="light" id="html-root">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -247,6 +250,39 @@
             
             <!-- Right Section: Controls -->
             <div class="header-right">
+                <!-- Language Switcher -->
+                <div class="dropdown">
+                    <button class="header-control-btn" type="button" data-bs-toggle="dropdown" title="<?= lang('App.select_language') ?>">
+                        <?php 
+                        $currentLang = service('request')->getLocale();
+                        $langCode = strtoupper($currentLang);
+                        ?>
+                        <span class="fw-semibold"><?= $langCode ?></span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item <?= $currentLang === 'id' ? 'active' : '' ?>" 
+                               href="<?= base_url('language/switch/id') ?>">
+                                <span class="me-2">🇮🇩</span>
+                                Bahasa Indonesia
+                                <?php if ($currentLang === 'id'): ?>
+                                    <i class="fas fa-check float-end text-success mt-1"></i>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item <?= $currentLang === 'en' ? 'active' : '' ?>" 
+                               href="<?= base_url('language/switch/en') ?>">
+                                <span class="me-2">🇬🇧</span>
+                                English
+                                <?php if ($currentLang === 'en'): ?>
+                                    <i class="fas fa-check float-end text-success mt-1"></i>
+                                <?php endif; ?>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                
                 <!-- Notifications -->
                 <div class="dropdown">
                     <button class="header-control-btn" type="button" data-bs-toggle="dropdown" title="Notifikasi">
@@ -408,6 +444,15 @@
     </script>
     <!-- Bootstrap Bundle -->
     <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- OPTIMA Language Helper for Multilingual Support -->
+    <script src="<?= base_url('assets/js/language-helper.js') ?>?v=<?= time() ?>"></script>
+    <script>
+    // Initialize current language from session
+    if (typeof LanguageHelper !== 'undefined') {
+        LanguageHelper.setLanguage('<?= service('request')->getLocale() ?>');
+    }
+    </script>
     <!-- Vendor: DataTables (loaded deferred; initiate only where needed) -->
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script>

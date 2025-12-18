@@ -340,7 +340,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
-                    <i class="fas fa-plus me-2"></i>Generate Custom Financial Report
+                    <i class="fas fa-plus me-2"></i><?= lang('Finance.generate_custom_financial_report') ?>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>

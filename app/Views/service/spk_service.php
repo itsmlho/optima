@@ -29,8 +29,8 @@ $can_export = true;
     <?php if (!$can_view): ?>
     <div class="alert alert-warning">
         <i class="fas fa-lock me-2"></i>
-        <strong>Access Denied:</strong> You do not have permission to view SPK Service. 
-        Please contact your administrator to request access.
+        <strong><?= lang('App.access_denied') ?>:</strong> <?= lang('Service.no_permission_view_spk') ?>. 
+        <?= lang('App.contact_administrator') ?>.
     </div>
     <?php else: ?>
     
@@ -44,7 +44,7 @@ $can_export = true;
                     </div>
                     <div>
                         <div class="stat-value" id="stat-total-spk">0</div>
-                        <div class="text-muted">Total SPK</div>
+                        <div class="text-muted"><?= lang('Marketing.total_spk') ?></div>
                     </div>
                 </div>
             </div>
@@ -57,7 +57,7 @@ $can_export = true;
                     </div>
                     <div>
                         <div class="stat-value" id="stat-in-progress">0</div>
-                        <div class="text-muted">In Progress</div>
+                        <div class="text-muted"><?= lang('Service.in_progress') ?></div>
                     </div>
                 </div>
             </div>
@@ -70,7 +70,7 @@ $can_export = true;
                     </div>
                     <div>
                         <div class="stat-value" id="stat-ready">0</div>
-                        <div class="text-muted">Ready</div>
+                        <div class="text-muted"><?= lang('Marketing.ready') ?></div>
                     </div>
                 </div>
             </div>
@@ -83,7 +83,7 @@ $can_export = true;
                     </div>
                     <div>
                         <div class="stat-value" id="stat-completed">0</div>
-                        <div class="text-muted">Completed</div>
+                        <div class="text-muted"><?= lang('Service.completed') ?></div>
                     </div>
                 </div>
             </div>
@@ -93,9 +93,9 @@ $can_export = true;
     <div class="card">
         <div class="card-header">
             <div class="d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">Work Orders (SPK) List</h6>
+                <h6 class="mb-0"><?= lang('App.work_orders_spk') ?> <?= lang('App.show') ?></h6>
                 <div>
-                    <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="Search SPK..." style="width: 250px;">
+                    <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="<?= lang('App.search') ?> SPK..." style="width: 250px;">
                 </div>
             </div>
         </div>

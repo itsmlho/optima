@@ -505,15 +505,15 @@
   <!-- Progress Overview -->
   <div class="progress-overview">
     <div class="d-flex justify-content-between align-items-center mb-2">
-      <strong>Overall Progress</strong>
+      <strong><?= lang('App.overall_progress') ?></strong>
       <span id="progressPercent" class="text-primary fw-bold">0%</span>
     </div>
     <div class="progress-bar-container">
       <div class="progress-bar-fill" id="progressBar" style="width: 0%"></div>
     </div>
     <div class="progress-text">
-      <span id="progressSteps">0 out of 9 steps completed</span>
-      <span id="progressStatus">In Progress</span>
+      <span id="progressSteps">0 <?= lang('App.out_of') ?> 9 <?= lang('App.steps_completed') ?></span>
+      <span id="progressStatus"><?= lang('App.in_progress') ?></span>
     </div>
   </div>
 
@@ -521,12 +521,12 @@
   <ul class="nav nav-tabs-custom" id="trackingTabs" role="tablist">
     <li class="nav-item">
       <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-ringkasan">
-        <i class="fas fa-chart-pie"></i> Summary
+        <i class="fas fa-chart-pie"></i> <?= lang('App.summary') ?>
       </button>
     </li>
     <li class="nav-item">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-kontrak">
-        <i class="fas fa-file-contract"></i> Contract
+        <i class="fas fa-file-contract"></i> <?= lang('App.contract') ?>
       </button>
     </li>
     <li class="nav-item">
@@ -536,12 +536,12 @@
     </li>
     <li class="nav-item">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-unit">
-        <i class="fas fa-box"></i> Unit
+        <i class="fas fa-box"></i> <?= lang('App.unit') ?>
       </button>
     </li>
     <li class="nav-item">
       <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-delivery">
-        <i class="fas fa-truck"></i> Delivery
+        <i class="fas fa-truck"></i> <?= lang('App.delivery') ?>
       </button>
     </li>
   </ul>
@@ -553,7 +553,7 @@
       <div class="tab-content-card">
         <div class="row" id="ringkasanContent">
           <div class="col-md-12 text-center text-muted">
-            <div class="loading-spinner me-2"></div> Loading data...
+            <div class="loading-spinner me-2"></div> <?= lang('App.loading_data') ?>...
           </div>
         </div>
       </div>
@@ -562,9 +562,9 @@
     <!-- Tab: Kontrak -->
     <div class="tab-pane fade" id="tab-kontrak">
       <div class="tab-content-card">
-        <h5 class="mb-4"><i class="fas fa-file-contract me-2 text-primary"></i>Contract Details</h5>
+        <h5 class="mb-4"><i class="fas fa-file-contract me-2 text-primary"></i><?= lang('App.contract_details') ?></h5>
         <div id="kontrakContent">
-          <p class="text-muted">Loading contract data...</p>
+          <p class="text-muted"><?= lang('App.loading') ?> <?= strtolower(lang('App.contract')) ?> <?= strtolower(lang('App.data')) ?>...</p>
         </div>
       </div>
     </div>
@@ -572,9 +572,9 @@
     <!-- Tab: SPK -->
     <div class="tab-pane fade" id="tab-spk">
       <div class="tab-content-card">
-        <h5 class="mb-4"><i class="fas fa-clipboard-list me-2 text-primary"></i>SPK Details</h5>
+        <h5 class="mb-4"><i class="fas fa-clipboard-list me-2 text-primary"></i><?= lang('App.spk_details') ?></h5>
         <div id="spkContent">
-          <p class="text-muted">Loading SPK data...</p>
+          <p class="text-muted"><?= lang('App.loading') ?> SPK <?= strtolower(lang('App.data')) ?>...</p>
         </div>
       </div>
     </div>
@@ -582,9 +582,9 @@
     <!-- Tab: Unit -->
     <div class="tab-pane fade" id="tab-unit">
       <div class="tab-content-card">
-        <h5 class="mb-4"><i class="fas fa-box me-2 text-primary"></i>Unit Details</h5>
+        <h5 class="mb-4"><i class="fas fa-box me-2 text-primary"></i><?= lang('App.unit_details') ?></h5>
         <div id="unitContent">
-          <p class="text-muted">Loading unit data...</p>
+          <p class="text-muted"><?= lang('App.loading') ?> <?= strtolower(lang('App.unit')) ?> <?= strtolower(lang('App.data')) ?>...</p>
         </div>
       </div>
     </div>
@@ -592,9 +592,9 @@
     <!-- Tab: Pengiriman -->
     <div class="tab-pane fade" id="tab-delivery">
       <div class="tab-content-card">
-        <h5 class="mb-4"><i class="fas fa-truck me-2 text-primary"></i>Delivery Details</h5>
+        <h5 class="mb-4"><i class="fas fa-truck me-2 text-primary"></i><?= lang('App.delivery_details') ?></h5>
         <div id="deliveryContent">
-          <p class="text-muted">Loading delivery data...</p>
+          <p class="text-muted"><?= lang('App.loading') ?> <?= strtolower(lang('App.delivery')) ?> <?= strtolower(lang('App.data')) ?>...</p>
         </div>
       </div>
     </div>

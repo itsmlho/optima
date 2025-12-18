@@ -240,7 +240,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold" id="modalTitle">
-                    <i class="fas fa-plus me-2"></i>Add Unit Asset
+                    <i class="fas fa-plus me-2"></i><?= lang('App.add') ?> <?= lang('App.unit') ?> <?= lang('App.assets') ?>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -517,7 +517,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold">
-                    <i class="fas fa-eye me-2"></i>Unit Asset Details
+                    <i class="fas fa-eye me-2"></i><?= lang('App.unit') ?> <?= lang('App.assets') ?> <?= lang('App.detail') ?>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>

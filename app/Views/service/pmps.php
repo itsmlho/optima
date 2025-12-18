@@ -16,38 +16,37 @@
         </div>
         
         <!-- Title -->
-        <h1 class="coming-soon-title">Preventive Maintenance (PMPS)</h1>
+        <h1 class="coming-soon-title"><?= lang('App.preventive_maintenance_pmps') ?></h1>
         
         <div class="coming-soon-divider"></div>
         
         <!-- Subtitle -->
-        <p class="coming-soon-subtitle">Sistem Pemeliharaan Preventif</p>
+        <p class="coming-soon-subtitle"><?= lang('Service.preventive_maintenance_system') ?></p>
         
         <!-- Description -->
         <p class="coming-soon-description">
-            Modul PMPS sedang dalam pengembangan untuk mengelola jadwal pemeliharaan preventif unit forklift. 
-            Fitur ini akan membantu tim service dalam merencanakan dan melacak maintenance rutin.
+            <?= lang('Service.pmps_coming_soon_description') ?>
         </p>
         
         <!-- Features Coming -->
         <div class="coming-soon-features">
             <div class="feature-item">
                 <i class="fas fa-calendar-alt"></i>
-                <span>Jadwal Maintenance</span>
+                <span><?= lang('Service.maintenance_schedule') ?></span>
             </div>
             <div class="feature-item">
                 <i class="fas fa-wrench"></i>
-                <span>Tracking Service</span>
+                <span><?= lang('Service.service_tracking') ?></span>
             </div>
             <div class="feature-item">
                 <i class="fas fa-chart-line"></i>
-                <span>Analisis Performa</span>
+                <span><?= lang('Service.performance_analysis') ?></span>
             </div>
         </div>
         
         <!-- Back Button -->
         <a href="<?= base_url('/') ?>" class="back-btn">
-            <i class="fas fa-arrow-left me-2"></i>Kembali ke Dashboard
+            <i class="fas fa-arrow-left me-2"></i><?= lang('App.back_to_dashboard') ?>
         </a>
     </div>
 </div>
