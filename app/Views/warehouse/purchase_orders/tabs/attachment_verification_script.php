@@ -397,13 +397,13 @@
                         <i class="fas fa-map-marker-alt" style="font-size: 1rem; color: #6b7280;"></i>
                     </div>
                     <div>
-                        <h6 class="mb-0 fw-bold" style="color: #111827; font-size: 1rem;">Lokasi Penyimpanan</h6>
-                        <small class="text-muted" style="font-size: 0.85rem;">Tentukan lokasi penyimpanan item</small>
+                        <h6 class="mb-0 fw-bold" style="color: #111827; font-size: 1rem;">Storage Location</h6>
+                        <small class="text-muted" style="font-size: 0.85rem;">Specify the storage location of the item</small>
                     </div>
                 </div>
                 <div class="row">
                     <div class="col-md-8">
-                        <label for="attachment_lokasi_unit" class="form-label fw-semibold" style="color: #374151; font-size: 0.9rem; margin-bottom: 8px;">Pilih Lokasi Penyimpanan</label>
+                        <label for="attachment_lokasi_unit" class="form-label fw-semibold" style="color: #374151; font-size: 0.9rem; margin-bottom: 8px;">Select Storage Location</label>
                         <select class="form-select" id="attachment_lokasi_unit" name="attachment_lokasi_unit" required style="border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; background-color: #ffffff;">
                             <option value="">-- Pilih Lokasi Penyimpanan --</option>
                             <option value="POS 1">POS 1</option>
@@ -413,7 +413,7 @@
                             <option value="POS 5">POS 5</option>
                         </select>
                         <div class="form-text" style="color: #6b7280; font-size: 0.8rem; margin-top: 4px;">
-                            Lokasi ini akan digunakan untuk inventory item setelah verifikasi selesai
+                            This location will be used for the item inventory after verification is complete
                         </div>
                     </div>
                     <div class="col-md-4">
@@ -440,7 +440,7 @@
                            id="sn_${component.id}" 
                            data-component-id="${component.id}"
                            value="${component.snValue || ''}"
-                           placeholder="Masukkan serial number..."
+                           placeholder="Input serial number..."
                            readonly
                            style="border: 1px solid #d1d5db; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; background-color: #f9fafb;">
                     <button class="btn btn-outline-secondary" type="button" onclick="editAttachmentSN('${component.id}')" 
@@ -479,15 +479,15 @@
                 
                 <div class="note-input-group" style="display: none;">
                     <label class="form-label fw-semibold" style="color: #374151; font-size: 0.9rem; margin-bottom: 6px;">
-                        Catatan Ketidaksesuaian
+                        Note for Discrepancies
                     </label>
                     <textarea class="form-control note-input" 
                               id="note_${component.id}" 
                               rows="3" 
-                              placeholder="Jelaskan ketidaksesuaian yang ditemukan..."
+                              placeholder="Describe the discrepancies found..."
                               style="border: 1px solid #fbbf24; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; resize: vertical; background-color: #fffbeb;"></textarea>
                     <div class="form-text" style="color: #92400e; font-size: 0.8rem; margin-top: 4px;">
-                        Pastikan catatan jelas dan informatif untuk tim perbaikan
+                        Ensure the notes are clear and informative for the repair team
                     </div>
                 </div>
             </div>
@@ -598,7 +598,7 @@
         const lokasiUnit = $('#attachment_lokasi_unit_inline').val();
         
         if (!lokasiUnit) {
-            Swal.fire({icon:'warning', title:'Lokasi Wajib', text:'Pilih lokasi penyimpanan terlebih dahulu.'});
+            Swal.fire({icon:'warning', title:'Storage Location Required', text:'Please select a storage location first.'});
             return;
         }
         
@@ -664,7 +664,7 @@
         }
         
         if (finalStatus === 'Sesuai' && !snData['serial_number']) {
-            Swal.fire({icon:'warning', title:'SN Wajib', text:'Serial number wajib diisi untuk status Sesuai.'});
+            Swal.fire({icon:'warning', title:'SN Required', text:'Serial number is required for status Sesuai.'});
             return;
         }
         
@@ -673,13 +673,13 @@
             if (!alasanReject) {
                 Swal.fire({
                     icon: 'warning', 
-                    title: 'Alasan Reject Wajib', 
-                    text: 'Mohon isi alasan reject/ketidaksesuaian yang ditemukan.'
+                    title: 'Reject Reason Required', 
+                    text: 'Please provide a reason for the reject/discrepancy found.'
                 });
                 $('#attachment_alasan_reject_inline').focus();
                 return;
             }
-            fullNotes.unshift(`Alasan Reject: ${alasanReject}`);
+            fullNotes.unshift(`Reject Reason: ${alasanReject}`);
         }
         
         showAttachmentVerificationConfirmation(idItem, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies);
@@ -687,22 +687,22 @@
     
     function showAttachmentVerificationConfirmation(idItem, poId, finalStatus, snData, fullNotes, lokasiUnit, discrepancies = []) {
         let summaryHTML = '<div style="text-align: left; margin-top: 15px;">';
-        summaryHTML += '<div style="margin-bottom: 10px;"><strong>Status Verifikasi:</strong> ';
+        summaryHTML += '<div style="margin-bottom: 10px;"><strong>Verification Status:</strong> ';
         if (finalStatus === 'Sesuai') {
-            summaryHTML += '<span style="color: #10b981; font-weight: bold;">✓ SESUAI</span>';
+            summaryHTML += '<span style="color: #10b981; font-weight: bold;">✓ Correct</span>';
         } else {
-            summaryHTML += '<span style="color: #ef4444; font-weight: bold;">✗ TIDAK SESUAI</span>';
+            summaryHTML += '<span style="color: #ef4444; font-weight: bold;">✗ Incorrect</span>';
         }
         summaryHTML += '</div>';
         
-        summaryHTML += '<div style="margin-bottom: 10px;"><strong>Lokasi Penyimpanan:</strong> <span style="color: #3b82f6;">' + lokasiUnit + '</span></div>';
+        summaryHTML += '<div style="margin-bottom: 10px;"><strong>Storage Location:</strong> <span style="color: #3b82f6;">' + lokasiUnit + '</span></div>';
         
         if (Object.keys(snData).length > 0) {
             summaryHTML += '<div style="margin-bottom: 10px;"><strong>Serial Number:</strong> <code>' + snData['serial_number'] + '</code></div>';
         }
         
         if (finalStatus === 'Tidak Sesuai' && fullNotes.length > 0) {
-            summaryHTML += '<div style="margin-bottom: 10px;"><strong>Catatan Ketidaksesuaian:</strong><div style="background: #fef2f2; padding: 10px; border-radius: 5px; margin-top: 5px; font-size: 0.9em; color: #991b1b;">';
+            summaryHTML += '<div style="margin-bottom: 10px;"><strong>Discrepancy Notes:</strong><div style="background: #fef2f2; padding: 10px; border-radius: 5px; margin-top: 5px; font-size: 0.9em; color: #991b1b;">';
             fullNotes.forEach(note => {
                 summaryHTML += '<div style="margin-bottom: 5px;">• ' + note + '</div>';
             });
@@ -711,21 +711,21 @@
         
         summaryHTML += '<div style="margin-top: 15px; padding: 10px; background: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">';
         if (finalStatus === 'Sesuai') {
-            summaryHTML += '<strong>⚠️ Perhatian:</strong> Setelah dikonfirmasi, item akan dimasukkan ke inventory dan status PO akan diupdate.';
+            summaryHTML += '<strong>⚠️ Attention:</strong> Once confirmed, the item will be added to the inventory and the PO status will be updated.';
         } else {
-            summaryHTML += '<strong>⚠️ Perhatian:</strong> Item yang tidak sesuai akan dikirim ke tim Purchasing untuk ditindaklanjuti.';
+            summaryHTML += '<strong>⚠️ Attention:</strong> Items that do not match will be sent to the Purchasing team for follow-up.';
         }
         summaryHTML += '</div></div>';
         
         Swal.fire({
-            title: 'Konfirmasi Verifikasi Item',
+            title: 'Verification Summary',
             html: summaryHTML,
             icon: finalStatus === 'Sesuai' ? 'question' : 'warning',
             showCancelButton: true,
             confirmButtonColor: finalStatus === 'Sesuai' ? '#10b981' : '#ef4444',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: finalStatus === 'Sesuai' ? '<i class="fas fa-check-circle me-2"></i>Ya, Verifikasi Sesuai' : '<i class="fas fa-exclamation-triangle me-2"></i>Ya, Konfirmasi Tidak Sesuai',
-            cancelButtonText: '<i class="fas fa-times me-2"></i>Batal',
+            confirmButtonText: finalStatus === 'Sesuai' ? '<i class="fas fa-check-circle me-2"></i>Yes, Confirmed' : '<i class="fas fa-exclamation-triangle me-2"></i>Yes, Not Confirmed',
+            cancelButtonText: '<i class="fas fa-times me-2"></i>Cancel',
             reverseButtons: true,
             width: '600px',
             customClass: {
@@ -745,22 +745,22 @@
         const specDetails = [];
         
         if (data.item_type === 'Attachment') {
-            if (data.tipe_attachment) specDetails.push({label: 'Tipe', value: h(data.tipe_attachment), fieldName: 'tipe', required: false, dropdownType: 'tipe_attachment', cascadingParent: null});
-            if (data.merk_attachment) specDetails.push({label: 'Merk', value: h(data.merk_attachment), fieldName: 'merk', required: false, dropdownType: 'merk_attachment', cascadingParent: 'tipe', parentValue: h(data.tipe_attachment)});
+            if (data.tipe_attachment) specDetails.push({label: 'Type', value: h(data.tipe_attachment), fieldName: 'type', required: false, dropdownType: 'tipe_attachment', cascadingParent: null});
+            if (data.merk_attachment) specDetails.push({label: 'Brand', value: h(data.merk_attachment), fieldName: 'brand', required: false, dropdownType: 'merk_attachment', cascadingParent: 'tipe', parentValue: h(data.tipe_attachment)});
             if (data.model_attachment) specDetails.push({label: 'Model', value: h(data.model_attachment), fieldName: 'model', required: false, dropdownType: 'model_attachment', cascadingParent: 'merk', parentValue: h(data.merk_attachment)});
-            if (data.serial_number) specDetails.push({label: 'Serial Number', value: h(data.serial_number) || 'Belum ada SN', fieldName: 'sn_attachment', required: true});
+            if (data.serial_number) specDetails.push({label: 'Serial Number', value: h(data.serial_number) || 'no serial number yet', fieldName: 'sn_attachment', required: true});
         } else if (data.item_type === 'Battery') {
-            if (data.merk_battery) specDetails.push({label: 'Merk', value: h(data.merk_battery), fieldName: 'merk', required: false, dropdownType: 'merk_battery', cascadingParent: null});
-            if (data.tipe_battery) specDetails.push({label: 'Tipe', value: h(data.tipe_battery), fieldName: 'tipe', required: false, dropdownType: 'tipe_battery', cascadingParent: 'merk', parentValue: h(data.merk_battery)});
-            if (data.jenis_battery) specDetails.push({label: 'Jenis', value: h(data.jenis_battery), fieldName: 'jenis', required: false, dropdownType: 'jenis_battery', cascadingParent: 'tipe', parentValue: h(data.tipe_battery)});
-            if (data.serial_number) specDetails.push({label: 'Serial Number', value: h(data.serial_number) || 'Belum ada SN', fieldName: 'sn_battery', required: true});
+            if (data.merk_battery) specDetails.push({label: 'Brand', value: h(data.merk_battery), fieldName: 'brand', required: false, dropdownType: 'merk_battery', cascadingParent: null});
+            if (data.tipe_battery) specDetails.push({label: 'Model', value: h(data.tipe_battery), fieldName: 'model', required: false, dropdownType: 'tipe_battery', cascadingParent: 'merk', parentValue: h(data.merk_battery)});
+            if (data.jenis_battery) specDetails.push({label: 'Type  ', value: h(data.jenis_battery), fieldName: 'type', required: false, dropdownType: 'jenis_battery', cascadingParent: 'tipe', parentValue: h(data.tipe_battery)});
+            if (data.serial_number) specDetails.push({label: 'Serial Number', value: h(data.serial_number) || 'no serial number yet', fieldName: 'sn_battery', required: true});
         } else if (data.item_type === 'Charger') {
-            if (data.merk_charger) specDetails.push({label: 'Merk', value: h(data.merk_charger), fieldName: 'merk', required: false, dropdownType: 'merk_charger', cascadingParent: null});
-            if (data.tipe_charger) specDetails.push({label: 'Tipe', value: h(data.tipe_charger), fieldName: 'tipe', required: false, dropdownType: 'tipe_charger', cascadingParent: 'merk', parentValue: h(data.merk_charger)});
-            if (data.serial_number) specDetails.push({label: 'Serial Number', value: h(data.serial_number) || 'Belum ada SN', fieldName: 'sn_charger', required: true});
+            if (data.merk_charger) specDetails.push({label: 'Brand', value: h(data.merk_charger), fieldName: 'brand', required: false, dropdownType: 'merk_charger', cascadingParent: null});
+            if (data.tipe_charger) specDetails.push({label: 'Type', value: h(data.tipe_charger), fieldName: 'type', required: false, dropdownType: 'tipe_charger', cascadingParent: 'merk', parentValue: h(data.merk_charger)});
+            if (data.serial_number) specDetails.push({label: 'Serial Number', value: h(data.serial_number) || 'no serial number yet', fieldName: 'sn_charger', required: true});
         }
         
-        if (data.keterangan) specDetails.push({label: 'Keterangan', value: h(data.keterangan), fieldName: 'keterangan', required: false, isTextarea: true});
+        if (data.keterangan) specDetails.push({label: 'Note', value: h(data.keterangan), fieldName: 'note', required: false, isTextarea: true});
         
         // Build table rows with editable fields (same format as unit)
         let tableRows = '';
@@ -784,7 +784,7 @@
                                       id="${fieldId}" 
                                       name="${fieldId}" 
                                       rows="2" 
-                                      placeholder="Masukkan ${spec.label.toLowerCase()} real"
+                                      placeholder="input ${spec.label.toLowerCase()} real"
                                       style="border: 1px solid #333; border-radius: 4px; padding: 4px 8px; resize: vertical;">${realValue}</textarea>
                         </td>
                         <td class="text-center" style="background-color: #fafafa; padding: 8px; vertical-align: middle;">
@@ -824,7 +824,7 @@
                                 ${cascadingAttr}
                                 ${spec.required ? 'required' : ''}
                                 style="border: 1px solid #333; border-radius: 4px; padding: 4px 8px;">
-                            <option value="">Pilih ${spec.label}...</option>
+                            <option value="">Select ${spec.label}...</option>
                             <option value="${realValue}" selected>${realValue || 'Loading...'}</option>
                         </select>
                     `;
@@ -835,7 +835,7 @@
                                id="${fieldId}" 
                                name="${fieldId}" 
                                value="${realValue}" 
-                               placeholder="Masukkan ${spec.label.toLowerCase()} real"
+                               placeholder="Input ${spec.label.toLowerCase()} real"
                                ${spec.required ? 'required' : ''}
                                style="border: 1px solid #333; border-radius: 4px; padding: 4px 8px;">
                     `;
@@ -896,12 +896,12 @@
                     <div class="card-body p-4">
                         <div class="alert alert-info mb-3" style="font-size: 0.85rem;">
                             <i class="fas fa-info-circle me-2"></i>
-                            <strong>Cara kerja:</strong> 
+                            <strong>How it works:</strong> 
                             <ul class="mb-0" style="padding-left: 20px;">
-                                <li>Jika data <strong>sama</strong> dengan database → Centang <strong>"Sesuai"</strong></li>
-                                <li>Jika data <strong>berbeda/kosong</strong> → Centang <strong>"Tidak Sesuai"</strong> dan isi data real di kolom "Real Lapangan"</li>
+                                <li>If data is <strong>same/exists</strong> → Check <strong>"Correct"</strong></li>
+                                <li>If data is <strong>different/empty</strong> → Check <strong>"Incorrect"</strong> and fill in the real data in the "Real Lapangan" column</li>
                             </ul>
-                            <span class="text-danger fw-bold d-block mt-2">⚠️ Semua baris harus memiliki checkbox "Sesuai" atau "Tidak Sesuai" yang dicentang. Field bertanda * wajib diisi jika "Tidak Sesuai".</span>
+                            <span class="text-danger fw-bold d-block mt-2">⚠️ All rows must have either the "Correct" or "Incorrect" checkbox checked. Fields marked with * are required if "Incorrect" is checked.</span>
                         </div>
                         
                         <table class="table table-sm table-bordered mb-3" style="font-size: 0.875rem;">
@@ -915,48 +915,48 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                ${tableRows || '<tr><td colspan="5" class="text-center text-muted">Tidak ada data</td></tr>'}
+                                ${tableRows || '<tr><td colspan="5" class="text-center text-muted">No data available</td></tr>'}
                             </tbody>
                         </table>
                         
                         <div class="row mb-3">
                             <div class="col-md-6">
                                 <label for="attachment_lokasi_unit_inline" class="form-label fw-semibold">
-                                    <i class="fas fa-map-marker-alt me-2"></i>Lokasi Penyimpanan <span class="text-danger">*</span>
+                                    <i class="fas fa-map-marker-alt me-2"></i>Storage Location <span class="text-danger">*</span>
                                 </label>
                                 <select class="form-select" id="attachment_lokasi_unit_inline" name="attachment_lokasi_unit" required>
-                                    <option value="">-- Pilih Lokasi Penyimpanan --</option>
+                                    <option value="">-- Select Storage Location --</option>
                                     <option value="POS 1">POS 1</option>
                                     <option value="POS 2">POS 2</option>
                                     <option value="POS 3">POS 3</option>
                                     <option value="POS 4">POS 4</option>
                                     <option value="POS 5">POS 5</option>
                                 </select>
-                                <div class="form-text">Lokasi ini akan digunakan untuk inventory item setelah verifikasi selesai</div>
+                                <div class="form-text">This location will be used for inventory items after verification is complete</div>
                             </div>
                         </div>
                         
                         <div class="row mb-3" id="attachment-alasan-reject-container" style="display: none;">
                             <div class="col-12">
                                 <label for="attachment_alasan_reject_inline" class="form-label fw-semibold">
-                                    <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Alasan Reject <span class="text-danger">*</span>
+                                    <i class="fas fa-exclamation-triangle me-2 text-warning"></i>Reason for Rejection <span class="text-danger">*</span>
                                 </label>
                                 <textarea class="form-control" 
                                           id="attachment_alasan_reject_inline" 
                                           name="attachment_alasan_reject" 
                                           rows="3" 
-                                          placeholder="Jelaskan alasan reject/ketidaksesuaian yang ditemukan..."
+                                          placeholder="Explain the reason for rejection/non-compliance found..."
                                           style="border: 1px solid #fbbf24; border-radius: 6px; padding: 8px 12px; font-size: 0.9rem; resize: vertical; background-color: #fffbeb;"></textarea>
                                 <div class="form-text text-warning">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    Alasan reject wajib diisi jika ada item yang tidak sesuai. Alasan ini akan dikirim ke tim Purchasing untuk ditindaklanjuti.
+                                    The reason for rejection is required if there are any incorrect items. This reason will be sent to the Purchasing team for follow-up.
                                 </div>
                             </div>
                         </div>
                     </div>
                     <div class="card-footer text-center">
                         <button type="button" class="btn btn-success" id="btn-submit-attachment-verification-inline" disabled>
-                            <i class="fas fa-check-circle me-2"></i>Submit Verifikasi
+                            <i class="fas fa-check-circle me-2"></i>Submit Verification
                         </button>
                     </div>
                 </div>
@@ -988,7 +988,7 @@
                 Swal.close();
                 if (response.success) {
                     $('#modalAttachmentVerification').modal('hide');
-                    Swal.fire('Berhasil!', 'Verifikasi berhasil!', 'success');
+                    Swal.fire('Success!', 'Verification successful!', 'success');
                     
                     let sisaElem = $(`#lbl-remain-attachment-po-${poId}`);
                     let sisaCount = parseInt(sisaElem.text()) - 1;
@@ -1005,18 +1005,18 @@
                         <div class="card table-card">
                             <div class="card-body text-center p-5">
                                 <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                                <h5 class="text-muted">Verifikasi berhasil! Silakan pilih item lain.</h5>
+                                <h5 class="text-muted">Verification successful! Please select another item.</h5>
                             </div>
                         </div>
                     `);
                 } else {
-                    Swal.fire('Error!', response.message || 'Terjadi kesalahan.', 'error');
+                    Swal.fire('Error!', response.message || 'An error occurred.', 'error');
                 }
             },
             error: (xhr) => {
                 window._verifyingAttachment = false;
                 $('#btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', false);
-                Swal.fire("Error", "Terjadi kesalahan tak terduga.", "error");
+                Swal.fire("Error", "An unexpected error occurred.", "error");
                 console.error(xhr.responseText);
             }
         });

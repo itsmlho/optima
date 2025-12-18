@@ -526,6 +526,12 @@ $routes->group('warehouse', static function ($routes) {
     $routes->get('/', 'Warehouse::index');
     // $routes->get('sparepart', 'Warehouse::sparepart');
     
+    // Master data API endpoints (outside inventory group for direct access)
+    $routes->get('master-attachment', 'Warehouse::masterAttachment');
+    $routes->get('master-baterai', 'Warehouse::masterBaterai');
+    $routes->get('master-charger', 'Warehouse::masterCharger');
+    $routes->get('get-units', 'Warehouse::getUnits');
+    
     // Purchase Order Verification Routes for Warehouse
     $routes->group('purchase-orders', static function ($routes) {
         $routes->get('/', 'WarehousePO::index');
@@ -576,7 +582,7 @@ $routes->group('warehouse', static function ($routes) {
         $routes->get('get-attachment-detail/(:num)', 'Warehouse::getAttachmentDetail/$1'); // Untuk mengambil detail attachment
         $routes->post('update-attachment/(:num)', 'Warehouse::updateAttachment/$1'); // Untuk update attachment
         
-        // Master data API endpoints
+        // Master data API endpoints (existing)
         $routes->get('master-merk/(:segment)', 'Warehouse::masterMerk/$1');
         $routes->get('master-tipe/(:segment)', 'Warehouse::masterTipe/$1');
         $routes->get('master-jenis/(:segment)', 'Warehouse::masterJenis/$1');

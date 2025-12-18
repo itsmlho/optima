@@ -5,7 +5,7 @@
             <div class="modal-header bg-light border-bottom">
                 <h5 class="modal-title text-muted" id="quickAddModalLabel">
                     <i class="fas fa-plus-circle me-2"></i>
-                    <span id="quick-add-title">Tambah Data</span>
+                    <span id="quick-add-title">Add Data</span>
                 </h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -19,10 +19,10 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i> Batal
+                    <i class="fas fa-times me-1"></i> Cancel
                 </button>
                 <button type="button" class="btn btn-primary" id="btnSaveQuickAdd">
-                    <i class="fas fa-save me-1"></i> Simpan
+                    <i class="fas fa-save me-1"></i> Save
                 </button>
             </div>
         </div>
@@ -191,23 +191,23 @@ const QuickAddModal = {
                     this.renderForm(response.config, response.additionalData);
                     this.modal.show();
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-save me-1"></i> Simpan';
+                    btn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
                 } else {
                     Swal.fire('Error', response.message, 'error');
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-save me-1"></i> Simpan';
+                    btn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
                 }
             },
             error: (xhr) => {
-                Swal.fire('Error', 'Gagal memuat form', 'error');
+                Swal.fire('Error', 'Failed to load form', 'error');
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save me-1"></i> Simpan';
+                btn.innerHTML = '<i class="fas fa-save me-1"></i> Save';
             }
         });
     },
     
     renderForm(config, additionalData) {
-        document.getElementById('quick-add-title').textContent = 'Tambah ' + config.title;
+        document.getElementById('quick-add-title').textContent = 'Add ' + config.title;
         document.getElementById('quick-add-type').value = this.currentType;
         
         let formHtml = '';
@@ -230,7 +230,7 @@ const QuickAddModal = {
                 
                 if (field.type === 'select') {
                     formHtml += `<select class="form-select" id="field-${field.name}" name="data[${field.name}]" ${required}>`;
-                    formHtml += `<option value="">Pilih ${field.label}...</option>`;
+                    formHtml += `<option value="">Select ${field.label}...</option>`;
                     
                     // Handle both array of strings and array of objects
                     if (field.options && Array.isArray(field.options)) {
@@ -299,7 +299,7 @@ const QuickAddModal = {
                 if (response.success) {
                     Swal.fire({
                         icon: 'success',
-                        title: 'Berhasil!',
+                        title: 'Success!',
                         text: response.message,
                         timer: 1500,
                         showConfirmButton: false
@@ -317,7 +317,7 @@ const QuickAddModal = {
                 btn.classList.remove('loading');
             },
             error: (xhr) => {
-                Swal.fire('Error', 'Terjadi kesalahan saat menyimpan data', 'error');
+                Swal.fire('Error', 'An error occurred while saving data', 'error');
                 btn.disabled = false;
                 btn.classList.remove('loading');
             }
@@ -392,8 +392,8 @@ const QuickAddModal = {
         
         // Re-add standard options based on dropdown type
         if (masterType === 'brand' || elementId === 'unit_merk') {
-            selectElement.add(new Option('Pilih Brand...', ''));
-            const addNew = new Option('➕ Tambah Brand Baru', '__ADD_NEW__');
+            selectElement.add(new Option('Select Brand...', ''));
+            const addNew = new Option('➕ Add New Brand', '__ADD_NEW__');
             addNew.className = 'text-primary fw-bold';
             addNew.style.backgroundColor = '#f0f8ff';
             selectElement.add(addNew);
@@ -406,14 +406,14 @@ const QuickAddModal = {
                 selectElement.add(option);
             });
         } else if (masterType === 'model' || elementId === 'unit_model') {
-            selectElement.add(new Option('Pilih Brand Dulu...', ''));
+            selectElement.add(new Option('Select Brand First...', ''));
             
             // Only add options if data exists (brand is selected)
             if (data && data.length > 0) {
                 // Change first option text
-                selectElement.options[0].text = 'Pilih Model...';
+                selectElement.options[0].text = 'Select Model...';
                 
-                const addNew = new Option('➕ Tambah Model Baru', '__ADD_NEW__');
+                const addNew = new Option('➕ Add New Model', '__ADD_NEW__');
                 addNew.className = 'text-primary fw-bold';
                 addNew.style.backgroundColor = '#f0f8ff';
                 selectElement.add(addNew);
@@ -430,23 +430,9 @@ const QuickAddModal = {
             } else {
                 selectElement.disabled = true;
             }
-        } else if (masterType === 'supplier' || elementId === 'id_supplier_modal') {
-            // Handle supplier dropdown
-            selectElement.add(new Option('Pilih Supplier...', ''));
-            const addNew = new Option('➕ Tambah Supplier Baru', '__ADD_NEW__');
-            addNew.className = 'text-primary fw-bold';
-            addNew.style.backgroundColor = '#f0f8ff';
-            selectElement.add(addNew);
-            selectElement.add(new Option('─────────────', '', true, false)).disabled = true;
-            
-            // Add data options for supplier
-            data.forEach(item => {
-                const option = new Option(item.nama_supplier, item.id_supplier);
-                selectElement.add(option);
-            });
         } else {
             // Generic handling for other dropdowns
-            selectElement.add(new Option('Pilih...', ''));
+            selectElement.add(new Option('Select...', ''));
             
             data.forEach(item => {
                 const displayValue = Object.values(item).find(v => typeof v === 'string') || '';
@@ -489,7 +475,7 @@ function refreshDropdown(selectId) {
     const type = selectElement.getAttribute('data-master-type');
     
     if (!type) {
-        Swal.fire('Error', 'Tipe dropdown tidak ditemukan', 'error');
+        Swal.fire('Error', 'Dropdown type not found', 'error');
         return;
     }
     
@@ -511,8 +497,8 @@ function refreshDropdown(selectId) {
                 QuickAddModal.updateDropdownOptions(selectElement, response.data);
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil!',
-                    text: 'Data berhasil direfresh',
+                    title: 'Success!',
+                    text: 'Data successfully refreshed',
                     timer: 1000,
                     showConfirmButton: false
                 });
@@ -521,7 +507,7 @@ function refreshDropdown(selectId) {
             }
         },
         error: () => {
-            Swal.fire('Error', 'Gagal merefresh data', 'error');
+            Swal.fire('Error', 'Failed to refresh data', 'error');
         }
     });
 }

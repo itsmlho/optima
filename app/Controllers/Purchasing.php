@@ -5629,17 +5629,6 @@ class Purchasing extends BaseController
                     ['name' => 'jenis', 'label' => 'Jenis', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: COUNTER BALANCE, REACH TRUCK, PALLET STACKER']
                 ],
                 'return_field' => 'id_tipe_unit'
-            ],
-            'supplier' => [
-                'title' => 'Supplier',
-                'model' => 'supplierModel',
-                'fields' => [
-                    ['name' => 'kode_supplier', 'label' => 'Kode Supplier', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: SUP-0001, SUP-2025-001'],
-                    ['name' => 'nama_supplier', 'label' => 'Nama Supplier', 'type' => 'text', 'required' => true, 'placeholder' => 'Contoh: PT. Forklift Jaya Abadi'],
-                    ['name' => 'contact_person', 'label' => 'Contact Person', 'type' => 'text', 'required' => false, 'placeholder' => 'Contoh: Bapak Budi (opsional)'],
-                    ['name' => 'phone', 'label' => 'Telepon', 'type' => 'text', 'required' => false, 'placeholder' => 'Contoh: 081234567890 (opsional)']
-                ],
-                'return_field' => 'id_supplier'
             ]
         ];
     }

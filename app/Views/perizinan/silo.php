@@ -14,7 +14,7 @@
                     <div class="stat-value" id="stat-sudah-ada">
                         <?= $stats['sudah_ada'] ?? 0 ?>
                     </div>
-                    <div class="text-muted">Sudah Ada SILO</div>
+                    <div class="text-muted">Already Have SILO</div>
                 </div>
             </div>
         </div>
@@ -29,7 +29,7 @@
                     <div class="stat-value" id="stat-progres">
                         <?= $stats['progres'] ?? 0 ?>
                     </div>
-                    <div class="text-muted">Progres</div>
+                    <div class="text-muted">Progress</div>
                 </div>
             </div>
         </div>
@@ -44,7 +44,7 @@
                     <div class="stat-value" id="stat-belum-ada">
                         <?= $stats['belum_ada'] ?? 0 ?>
                     </div>
-                    <div class="text-muted">Belum Ada SILO</div>
+                    <div class="text-muted">No SILO Yet</div>
                 </div>
             </div>
         </div>
@@ -55,7 +55,7 @@
 <?php if (($stats['expiring_soon'] ?? 0) > 0): ?>
 <div class="alert alert-warning alert-dismissible fade show" role="alert">
     <i class="fas fa-exclamation-triangle me-2"></i>
-    <strong>Peringatan!</strong> Ada <?= $stats['expiring_soon'] ?> SILO yang akan expired dalam 30 hari ke depan.
+    <strong>Warning!</strong> There are <?= $stats['expiring_soon'] ?> SILOs that will expire within the next 30 days.
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 <?php endif; ?>
@@ -70,41 +70,41 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab" aria-controls="all" aria-selected="true">
                             <i class="fas fa-list"></i>
-                            <span>Semua</span>
+                            <span>All</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="sudah-ada-tab" data-bs-toggle="tab" data-bs-target="#sudah-ada" type="button" role="tab" aria-controls="sudah-ada" aria-selected="false">
                             <i class="fas fa-check-circle"></i>
-                            <span>Sudah Ada SILO</span>
+                            <span>Already Have SILO</span>
                             <span class="badge bg-success ms-2" id="badge-sudah-ada"><?= $stats['sudah_ada'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="progres-tab" data-bs-toggle="tab" data-bs-target="#progres" type="button" role="tab" aria-controls="progres" aria-selected="false">
                             <i class="fas fa-clock"></i>
-                            <span>Progres</span>
+                            <span>Progress</span>
                             <span class="badge bg-warning ms-2" id="badge-progres"><?= $stats['progres'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="belum-ada-tab" data-bs-toggle="tab" data-bs-target="#belum-ada" type="button" role="tab" aria-controls="belum-ada" aria-selected="false">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <span>Belum Ada SILO</span>
+                            <span>No SILO Yet</span>
                             <span class="badge bg-danger ms-2" id="badge-belum-ada"><?= $stats['belum_ada'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="akan-expired-tab" data-bs-toggle="tab" data-bs-target="#akan-expired" type="button" role="tab" aria-controls="akan-expired" aria-selected="false">
                             <i class="fas fa-exclamation-circle"></i>
-                            <span>Akan Expired (30d)</span>
+                            <span>Expiring Soon (30d)</span>
                             <span class="badge bg-warning ms-2" id="badge-akan-expired"><?= $stats['expiring_soon'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="sudah-expired-tab" data-bs-toggle="tab" data-bs-target="#sudah-expired" type="button" role="tab" aria-controls="sudah-expired" aria-selected="false">
                             <i class="fas fa-times-circle"></i>
-                            <span>Sudah Expired</span>
+                            <span>Expired</span>
                             <span class="badge bg-danger ms-2" id="badge-sudah-expired"><?= $stats['expired'] ?? 0 ?></span>
                         </button>
                     </li>
@@ -122,19 +122,19 @@
                             <div class="form-group">
                                 <label for="filter-status-all">Status</label>
                                 <select id="filter-status-all" class="form-select form-select-sm">
-                                    <option value="">Semua Status</option>
-                                    <option value="PENGAJUAN_PJK3">Pengajuan ke PJK3</option>
-                                    <option value="SURAT_KETERANGAN_PJK3">Surat Keterangan PJK3</option>
-                                    <option value="PENGAJUAN_UPTD">Pengajuan DISNAKER</option>
-                                    <option value="SILO_TERBIT">SILO Terbit</option>
+                                    <option value="">All Statuses</option>
+                                    <option value="PENGAJUAN_PJK3">Submission to PJK3</option>
+                                    <option value="SURAT_KETERANGAN_PJK3">PJK3 Certificate</option>
+                                    <option value="PENGAJUAN_UPTD">Submission to DISNAKER</option>
+                                    <option value="SILO_TERBIT">SILO Issued</option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group mb-3">
-                                <label for="filter-departemen-all" class="form-label small fw-semibold text-muted">Departemen</label>
+                                <label for="filter-departemen-all" class="form-label small fw-semibold text-muted">Department</label>
                                 <select id="filter-departemen-all" class="form-select form-select-sm">
-                                    <option value="">Semua Departemen</option>
+                                    <option value="">All Departments</option>
                                     <?php if (isset($departments) && is_array($departments)): ?>
                                         <?php foreach ($departments as $dept): ?>
                                             <option value="<?= esc($dept['id_departemen']) ?>"><?= esc($dept['nama_departemen']) ?></option>
@@ -147,12 +147,12 @@
                             <div class="form-group">
                                 <label for="filter-expired-all">Filter Expired</label>
                                 <select id="filter-expired-all" class="form-select form-select-sm">
-                                    <option value="">Semua</option>
-                                    <option value="7">Akan Expired < 7 Hari</option>
-                                    <option value="30">Akan Expired < 1 Bulan</option>
-                                    <option value="90">Akan Expired < 3 Bulan</option>
-                                    <option value="180">Akan Expired < 6 Bulan</option>
-                                    <option value="expired">Sudah Expired</option>
+                                    <option value="">All</option>
+                                    <option value="7">Expiring Soon < 7 Days</option>
+                                    <option value="30">Expiring Soon < 1 Month</option>
+                                    <option value="90">Expiring Soon < 3 Months</option>
+                                    <option value="180">Expiring Soon < 6 Months</option>
+                                    <option value="expired">Expired</option>
                                 </select>
                             </div>
                         </div>
@@ -163,17 +163,17 @@
                         <table id="siloTable" class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th>No Unit</th>
+                                    <th>Unit Number</th>
                                     <th>Serial Number</th>
-                                    <th>Tipe Unit</th>
-                                    <th>Departemen</th>
-                                    <th>Nama Perusahaan</th>
-                                    <th>Alamat</th>
+                                    <th>Unit Type</th>
+                                    <th>Department</th>
+                                    <th>Company Name</th>
+                                    <th>Address</th>
                                     <th>Status</th>
-                                    <th>Nomor SILO</th>
-                                    <th>Tanggal Terbit</th>
-                                    <th>Tanggal Expired</th>
-                                    <th width="10%">Aksi</th>
+                                    <th>SILO Number</th>
+                                    <th>Issue Date</th>
+                                    <th>Expiry Date</th>
+                                    <th width="10%">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -189,9 +189,9 @@
                     <div class="row mb-2">
                         <div class="col-md-3">
                             <div class="form-group mb-3">
-                                <label for="filter-departemen-sudah-ada" class="form-label small fw-semibold text-muted">Departemen</label>
+                                <label for="filter-departemen-sudah-ada" class="form-label small fw-semibold text-muted">Department</label>
                                 <select id="filter-departemen-sudah-ada" class="form-select form-select-sm">
-                                    <option value="">Semua Departemen</option>
+                                    <option value="">All Departments</option>
                                     <?php if (isset($departments) && is_array($departments)): ?>
                                         <?php foreach ($departments as $dept): ?>
                                             <option value="<?= esc($dept['id_departemen']) ?>"><?= esc($dept['nama_departemen']) ?></option>
@@ -204,12 +204,12 @@
                             <div class="form-group">
                                 <label for="filter-expired-sudah-ada">Filter Expired</label>
                                 <select id="filter-expired-sudah-ada" class="form-select form-select-sm">
-                                    <option value="">Semua</option>
-                                    <option value="7">Akan Expired < 7 Hari</option>
-                                    <option value="30">Akan Expired < 1 Bulan</option>
-                                    <option value="90">Akan Expired < 3 Bulan</option>
-                                    <option value="180">Akan Expired < 6 Bulan</option>
-                                    <option value="expired">Sudah Expired</option>
+                                    <option value="">All</option>
+                                    <option value="7">Expiring Soon < 7 Days</option>
+                                    <option value="30">Expiring Soon < 1 Month</option>
+                                    <option value="90">Expiring Soon < 3 Months</option>
+                                    <option value="180">Expiring Soon < 6 Months</option>
+                                    <option value="expired">Expired</option>
                                 </select>
                             </div>
                         </div>
@@ -220,17 +220,17 @@
                         <table id="siloTable2" class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th>No Unit</th>
+                                    <th>Unit Number</th>
                                     <th>Serial Number</th>
-                                    <th>Tipe Unit</th>
-                                    <th>Departemen</th>
-                                    <th>Nama Perusahaan</th>
-                                    <th>Alamat</th>
+                                    <th>Unit Type</th>
+                                    <th>Department</th>
+                                    <th>Company Name</th>
+                                    <th>Address</th>
                                     <th>Status</th>
-                                    <th>Nomor SILO</th>
-                                    <th>Tanggal Terbit</th>
-                                    <th>Tanggal Expired</th>
-                                    <th width="10%">Aksi</th>
+                                    <th>SILO Number</th>
+                                    <th>Issue Date</th>
+                                    <th>Expiry Date</th>
+                                    <th width="10%">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -248,19 +248,19 @@
                             <div class="form-group mb-3">
                                 <label for="filter-status-progres" class="form-label small fw-semibold text-muted">Status</label>
                                 <select id="filter-status-progres" class="form-select form-select-sm">
-                                    <option value="">Semua Status</option>
-                                    <option value="PENGAJUAN_PJK3">Pengajuan ke PJK3</option>
-                                    <option value="SURAT_KETERANGAN_PJK3">Surat Keterangan PJK3</option>
-                                    <option value="PENGAJUAN_UPTD">Pengajuan DISNAKER</option>
-                                    <option value="SILO_TERBIT">SILO Terbit</option>
+                                    <option value="">All Statuses</option>
+                                    <option value="PENGAJUAN_PJK3">Submission to PJK3</option>
+                                    <option value="SURAT_KETERANGAN_PJK3">PJK3 Certificate</option>
+                                    <option value="PENGAJUAN_UPTD">Submission to DISNAKER</option>
+                                    <option value="SILO_TERBIT">SILO Issued</option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group mb-3">
-                                <label for="filter-departemen-progres" class="form-label small fw-semibold text-muted">Departemen</label>
+                                <label for="filter-departemen-progres" class="form-label small fw-semibold text-muted">Department</label>
                                 <select id="filter-departemen-progres" class="form-select form-select-sm">
-                                    <option value="">Semua Departemen</option>
+                                    <option value="">All Departments</option>
                                     <?php if (isset($departments) && is_array($departments)): ?>
                                         <?php foreach ($departments as $dept): ?>
                                             <option value="<?= esc($dept['id_departemen']) ?>"><?= esc($dept['nama_departemen']) ?></option>
@@ -276,17 +276,17 @@
                         <table id="siloTable3" class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th>No Unit</th>
+                                    <th>Unit Number</th>
                                     <th>Serial Number</th>
-                                    <th>Tipe Unit</th>
-                                    <th>Departemen</th>
-                                    <th>Nama Perusahaan</th>
-                                    <th>Alamat</th>
+                                    <th>Unit Type</th>
+                                    <th>Department</th>
+                                    <th>Company Name</th>
+                                    <th>Address</th>
                                     <th>Status</th>
-                                    <th>Nomor SILO</th>
-                                    <th>Tanggal Terbit</th>
-                                    <th>Tanggal Expired</th>
-                                    <th width="10%">Aksi</th>
+                                    <th>SILO Number</th>
+                                    <th>Issue Date</th>
+                                    <th>Expiry Date</th>
+                                    <th width="10%">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -302,9 +302,9 @@
                     <div class="row mb-2">
                         <div class="col-md-3">
                             <div class="form-group mb-3">
-                                <label for="filter-departemen-akan-expired" class="form-label small fw-semibold text-muted">Departemen</label>
+                                <label for="filter-departemen-akan-expired" class="form-label small fw-semibold text-muted">Department</label>
                                 <select id="filter-departemen-akan-expired" class="form-select form-select-sm">
-                                    <option value="">Semua Departemen</option>
+                                    <option value="">All Departments</option>
                                     <?php if (isset($departments) && is_array($departments)): ?>
                                         <?php foreach ($departments as $dept): ?>
                                             <option value="<?= esc($dept['id_departemen']) ?>"><?= esc($dept['nama_departemen']) ?></option>
@@ -320,17 +320,17 @@
                         <table id="siloTable5" class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th>No Unit</th>
+                                    <th>Unit Number</th>
                                     <th>Serial Number</th>
-                                    <th>Tipe Unit</th>
-                                    <th>Departemen</th>
-                                    <th>Nama Perusahaan</th>
-                                    <th>Alamat</th>
+                                    <th>Unit Type</th>
+                                    <th>Department</th>
+                                    <th>Company Name</th>
+                                    <th>Address</th>
                                     <th>Status</th>
-                                    <th>Nomor SILO</th>
-                                    <th>Tanggal Terbit</th>
-                                    <th>Tanggal Expired</th>
-                                    <th width="10%">Aksi</th>
+                                    <th>SILO Number</th>
+                                    <th>Issue Date</th>
+                                    <th>Expiry Date</th>
+                                    <th width="10%">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -346,9 +346,9 @@
                     <div class="row mb-2">
                         <div class="col-md-3">
                             <div class="form-group mb-3">
-                                <label for="filter-departemen-sudah-expired" class="form-label small fw-semibold text-muted">Departemen</label>
+                                <label for="filter-departemen-sudah-expired" class="form-label small fw-semibold text-muted">Department</label>
                                 <select id="filter-departemen-sudah-expired" class="form-select form-select-sm">
-                                    <option value="">Semua Departemen</option>
+                                    <option value="">All Departments</option>
                                     <?php if (isset($departments) && is_array($departments)): ?>
                                         <?php foreach ($departments as $dept): ?>
                                             <option value="<?= esc($dept['id_departemen']) ?>"><?= esc($dept['nama_departemen']) ?></option>
@@ -364,17 +364,17 @@
                         <table id="siloTable6" class="table table-striped table-hover">
                             <thead>
                                 <tr>
-                                    <th>No Unit</th>
+                                    <th>Unit Number</th>
                                     <th>Serial Number</th>
-                                    <th>Tipe Unit</th>
-                                    <th>Departemen</th>
-                                    <th>Nama Perusahaan</th>
-                                    <th>Alamat</th>
+                                    <th>Unit Type</th>
+                                    <th>Department</th>
+                                    <th>Company Name</th>
+                                    <th>Address</th>
                                     <th>Status</th>
-                                    <th>Nomor SILO</th>
-                                    <th>Tanggal Terbit</th>
-                                    <th>Tanggal Expired</th>
-                                    <th width="10%">Aksi</th>
+                                    <th>SILO Number</th>
+                                    <th>Issue Date</th>
+                                    <th>Expiry Date</th>
+                                    <th width="10%">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -390,9 +390,9 @@
                 <div class="row mb-2">
                     <div class="col-md-3">
                         <div class="form-group mb-3">
-                            <label for="filter-departemen-belum-ada" class="form-label small fw-semibold text-muted">Departemen</label>
+                            <label for="filter-departemen-belum-ada" class="form-label small fw-semibold text-muted">Department</label>
                             <select id="filter-departemen-belum-ada" class="form-select form-select-sm">
-                                <option value="">Semua Departemen</option>
+                                <option value="">All Departments</option>
                                 <?php if (isset($departments) && is_array($departments)): ?>
                                     <?php foreach ($departments as $dept): ?>
                                         <option value="<?= esc($dept['id_departemen']) ?>"><?= esc($dept['nama_departemen']) ?></option>
@@ -408,13 +408,13 @@
                     <table id="siloTable4" class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th>No Unit</th>
+                                <th>Unit Number</th>
                                 <th>Serial Number</th>
-                                <th>Tipe Unit</th>
-                                <th>Departemen</th>
-                                <th>Nama Perusahaan</th>
-                                <th>Alamat</th>
-                                <th width="10%">Aksi</th>
+                                <th>Unit Type</th>
+                                <th>Department</th>
+                                <th>Company Name</th>
+                                <th>Address</th>
+                                <th width="10%">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -432,38 +432,38 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="createModalLabel">Buat Pengajuan SILO</h5>
+                <h5 class="modal-title" id="createModalLabel">Create SILO Submission</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="createForm">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label for="unit_ids" class="form-label">Pilih Unit <span class="text-danger">*</span></label>
+                        <label for="unit_ids" class="form-label">Select Unit <span class="text-danger">*</span></label>
                         <div class="border rounded p-2" style="max-height: 300px; overflow-y: auto;">
-                            <input type="text" id="unit_search" class="form-control form-control-sm mb-2" placeholder="Cari unit...">
+                            <input type="text" id="unit_search" class="form-control form-control-sm mb-2" placeholder="Search units...">
                             <div id="unit_checkboxes">
                                 <!-- Units will be loaded here -->
                             </div>
                         </div>
-                        <small class="text-muted">Hanya unit yang belum ada SILO aktif yang ditampilkan. Bisa pilih multiple unit.</small>
+                        <small class="text-muted">Only units without an active SILO are displayed. Multiple units can be selected.</small>
                     </div>
                     <div class="mb-3">
-                        <label for="nama_pt_pjk3" class="form-label">Nama PT PJK3 <span class="text-danger">*</span></label>
-                        <input type="text" class="form-control" id="nama_pt_pjk3" name="nama_pt_pjk3" placeholder="Contoh: PT. GAHARU SAKTI PRATAMA" required>
-                        <small class="text-muted">Nama perusahaan PJK3 yang melakukan pemeriksaan dan testing</small>
+                        <label for="nama_pt_pjk3" class="form-label">Company<span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="nama_pt_pjk3" name="nama_pt_pjk3" placeholder="Example: PT. GAHARU SAKTI PRATAMA" required>
+                        <small class="text-muted">Name of the PJK3 company conducting the inspection and testing</small>
                     </div>
                     <div class="mb-3">
-                        <label for="tanggal_pengajuan_pjk3" class="form-label">Tanggal Pengajuan <span class="text-danger">*</span></label>
+                        <label for="tanggal_pengajuan_pjk3" class="form-label">Submission Date <span class="text-danger">*</span></label>
                         <input type="date" class="form-control" id="tanggal_pengajuan_pjk3" name="tanggal_pengajuan_pjk3" required>
                     </div>
                     <div class="mb-3">
-                        <label for="catatan_pengajuan_pjk3" class="form-label">Catatan</label>
+                        <label for="catatan_pengajuan_pjk3" class="form-label">Notes</label>
                         <textarea class="form-control" id="catatan_pengajuan_pjk3" name="catatan_pengajuan_pjk3" rows="3"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Buat Pengajuan</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Submission</button>
                 </div>
             </form>
         </div>
@@ -485,7 +485,7 @@
                     <!-- Content will be dynamically loaded -->
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">Update Status</button>
                 </div>
             </form>
@@ -505,7 +505,7 @@
                 <!-- Content will be dynamically loaded -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
@@ -578,7 +578,7 @@ function getColumnDefinitions(tableId) {
                 orderable: false,
                 render: function(data, type, row) {
                     return '<div class="btn-group-vertical btn-group-sm" role="group">' +
-                        '<button type="button" class="btn btn-sm btn-success" onclick="createSiloForUnit(' + row.id_silo + ')" title="Buat Pengajuan SILO"><i class="fas fa-plus me-1"></i> Buat Pengajuan</button>' +
+                        '<button type="button" class="btn btn-sm btn-success" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO Submission"><i class="fas fa-plus me-1"></i> Create Submission</button>' +
                         '</div>';
                 }
             }
@@ -629,14 +629,14 @@ function getColumnDefinitions(tableId) {
                 data: 'status',
                 render: function(data) {
                 if (!data || data === null) {
-                    return '<span class="badge bg-danger">Belum Ada SILO</span>';
+                    return '<span class="badge bg-danger">No SILO</span>';
                 }
                 const statusLabels = {
-                    'BELUM_ADA': 'Belum Ada SILO',
-                    'PENGAJUAN_PJK3': 'Pengajuan ke PJK3',
-                    'SURAT_KETERANGAN_PJK3': 'Surat Keterangan PJK3',
-                    'PENGAJUAN_UPTD': 'Pengajuan DISNAKER',
-                    'SILO_TERBIT': 'SILO Terbit',
+                    'BELUM_ADA': 'No SILO',
+                    'PENGAJUAN_PJK3': 'Submission to PJK3',
+                    'SURAT_KETERANGAN_PJK3': 'PJK3 Certificate',
+                    'PENGAJUAN_UPTD': 'Submission to DISNAKER',
+                    'SILO_TERBIT': 'SILO Issued',
                     'SILO_EXPIRED': 'SILO Expired'
                 };
                 const statusColors = {
@@ -684,7 +684,7 @@ function getColumnDefinitions(tableId) {
                     
                     // For units without SILO, show create button
                     if (!row.status || row.status === null) {
-                        buttons.push('<button type="button" class="btn btn-sm btn-success" onclick="createSiloForUnit(' + row.id_silo + ')" title="Buat Pengajuan SILO"><i class="fas fa-plus me-1"></i>Buat Pengajuan</button>');
+                        buttons.push('<button type="button" class="btn btn-sm btn-success" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO"><i class="fas fa-plus me-1"></i>Create Submission</button>');
                     } else {
                         // Always show detail button
                         buttons.push('<button type="button" class="btn btn-sm btn-info" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye me-1"></i>Detail</button>');
@@ -742,19 +742,19 @@ function initDataTable(tableId, searchInputId, status, filterStatusId = null, fi
         deferRender: true,
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rt<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>', // l = length, f = filter/search, r = processing, t = table, i = info, p = pagination
         language: {
-            processing: "Memuat data...",
-            search: "Cari:",
-            lengthMenu: "Tampilkan _MENU_ data per halaman",
-            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-            infoFiltered: "(disaring dari _MAX_ total data)",
-            emptyTable: "Tidak ada data SILO",
-            zeroRecords: "Tidak ada data yang cocok",
+            processing: "Loading...",
+            search: "Search:",
+            lengthMenu: "Show _MENU_ entries per page",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            infoEmpty: "Showing 0 to 0 of 0 entries",
+            infoFiltered: "(filtered from _MAX_ total entries)",
+            emptyTable: "No SILO data available",
+            zeroRecords: "No matching data found",
             paginate: {
-                first: "Pertama",
-                previous: "Sebelumnya",
-                next: "Selanjutnya",
-                last: "Terakhir"
+                first: "First",
+                previous: "Previous",
+                next: "Next",
+                last: "Last"
             }
         },
         ajax: {
@@ -969,7 +969,7 @@ let allAvailableUnits = [];
 
 function loadAvailableUnits() {
     // Show loading
-    $('#unit_checkboxes').html('<div class="text-center py-3"><div class="spinner-border spinner-border-sm" role="status"></div> <span class="ms-2">Memuat unit...</span></div>');
+    $('#unit_checkboxes').html('<div class="text-center py-3"><div class="spinner-border spinner-border-sm" role="status"></div> <span class="ms-2">Loading units...</span></div>');
     
     $.ajax({
         url: '<?= base_url('perizinan/get-available-units') ?>',
@@ -989,12 +989,12 @@ function loadAvailableUnits() {
                     renderUnitCheckboxes(filtered);
                 });
             } else {
-                $('#unit_checkboxes').html('<div class="text-danger text-center py-2">Gagal memuat unit: ' + (response.message || 'Unknown error') + '</div>');
+                $('#unit_checkboxes').html('<div class="text-danger text-center py-2">Failed to load units: ' + (response.message || 'Unknown error') + '</div>');
             }
         },
         error: function(xhr, status, error) {
             console.error('Error loading units:', error, xhr.responseText);
-            $('#unit_checkboxes').html('<div class="text-danger text-center py-2">Error memuat unit. Silakan refresh halaman.</div>');
+            $('#unit_checkboxes').html('<div class="text-danger text-center py-2">Error loading units. Please refresh the page.</div>');
         }
     });
 }
@@ -1011,7 +1011,7 @@ function renderUnitCheckboxes(units) {
     container.empty();
     
     if (units.length === 0) {
-        container.html('<div class="text-muted text-center py-2">Tidak ada unit tersedia</div>');
+        container.html('<div class="text-muted text-center py-2">No units available</div>');
         return;
     }
     
@@ -1075,8 +1075,8 @@ function createSilo() {
     if (selectedUnits.length === 0) {
         Swal.fire({
             icon: 'warning',
-            title: 'Peringatan',
-            text: 'Pilih minimal 1 unit'
+            title: 'Warning',
+            text: 'Select at least 1 unit'
         });
         return;
     }
@@ -1085,8 +1085,8 @@ function createSilo() {
     if (!namaPtPjk3 || namaPtPjk3.trim() === '') {
         Swal.fire({
             icon: 'warning',
-            title: 'Peringatan',
-            text: 'Nama PT PJK3 harus diisi'
+            title: 'Warning',
+            text: 'Nama PT PJK3 must be filled'
         });
         return;
     }
@@ -1133,7 +1133,7 @@ function createSilo() {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: response?.message || 'Terjadi kesalahan saat membuat pengajuan'
+                text: response?.message || 'An error occurred while creating the submission'
             });
         }
     });
@@ -1152,8 +1152,8 @@ function showUpdateModal(siloId) {
                 if (!nextStatus) {
                     Swal.fire({
                         icon: 'warning',
-                        title: 'Tidak Dapat Update',
-                        text: 'Status sudah mencapai tahap akhir'
+                        title: 'Cannot Update',
+                        text: 'Status has reached the final stage and cannot be updated further.'
                     });
                     return;
                 }
@@ -1163,37 +1163,37 @@ function showUpdateModal(siloId) {
                 
                 let html = '<div class="mb-3">';
                 html += '<label class="form-label">Unit: <strong>' + (silo.no_unit || 'N/A') + '</strong></label><br>';
-                html += '<label class="form-label">Status Saat Ini: <span class="badge bg-secondary">' + getStatusLabel(silo.status) + '</span></label><br>';
-                html += '<label class="form-label">Status Berikutnya: <span class="badge bg-primary">' + getStatusLabel(nextStatus) + '</span></label>';
+                html += '<label class="form-label">Current Status: <span class="badge bg-secondary">' + getStatusLabel(silo.status) + '</span></label><br>';
+                html += '<label class="form-label">Next Status: <span class="badge bg-primary">' + getStatusLabel(nextStatus) + '</span></label>';
                 html += '</div>';
 
                 // Add fields based on next status
                 if (nextStatus === 'SURAT_KETERANGAN_PJK3') {
-                    html += '<div class="mb-3"><label class="form-label">Nomor Surat Keterangan <span class="text-danger">*</span></label>';
+                    html += '<div class="mb-3"><label class="form-label">Letter Number <span class="text-danger">*</span></label>';
                     html += '<input type="text" class="form-control" name="nomor_surat_keterangan_pjk3" required></div>';
-                    html += '<div class="mb-3"><label class="form-label">Tanggal Terbit <span class="text-danger">*</span></label>';
+                    html += '<div class="mb-3"><label class="form-label">Issue Date <span class="text-danger">*</span></label>';
                     html += '<input type="date" class="form-control" name="tanggal_surat_keterangan_pjk3" required></div>';
-                    html += '<div class="mb-3"><label class="form-label">Upload File PJK3 (PDF/Image)</label>';
+                    html += '<div class="mb-3"><label class="form-label">Upload PJK3 File (PDF/Image)</label>';
                     html += '<input type="file" class="form-control" name="file" accept=".pdf,.jpg,.jpeg,.png" onchange="previewFile(this, \'pjk3\')"></div>';
                     html += '<div id="pjk3Preview"></div>';
                 } else if (nextStatus === 'PENGAJUAN_UPTD') {
-                    html += '<div class="mb-3"><label class="form-label">Lokasi DISNAKER <span class="text-danger">*</span></label>';
-                    html += '<input type="text" class="form-control" name="lokasi_disnaker" placeholder="Masukan alamat / lokasi DISNAKER." required></div>';
-                    html += '<div class="mb-3"><label class="form-label">Tanggal Pengajuan DISNAKER <span class="text-danger">*</span></label>';
+                    html += '<div class="mb-3"><label class="form-label">DISNAKER Location <span class="text-danger">*</span></label>';
+                    html += '<input type="text" class="form-control" name="lokasi_disnaker" placeholder="Enter DISNAKER address/location." required></div>';
+                    html += '<div class="mb-3"><label class="form-label">DISNAKER Submission Date <span class="text-danger">*</span></label>';
                     html += '<input type="date" class="form-control" name="tanggal_pengajuan_uptd" required></div>';
                 } else if (nextStatus === 'SILO_TERBIT') {
-                    html += '<div class="mb-3"><label class="form-label">Nomor SILO <span class="text-danger">*</span></label>';
+                    html += '<div class="mb-3"><label class="form-label">SILO Number <span class="text-danger">*</span></label>';
                     html += '<input type="text" class="form-control" name="nomor_silo" required></div>';
-                    html += '<div class="mb-3"><label class="form-label">Tanggal Terbit <span class="text-danger">*</span></label>';
+                    html += '<div class="mb-3"><label class="form-label">Issue Date <span class="text-danger">*</span></label>';
                     html += '<input type="date" class="form-control" name="tanggal_terbit_silo" required></div>';
-                    html += '<div class="mb-3"><label class="form-label">Tanggal Expired <span class="text-danger">*</span></label>';
+                    html += '<div class="mb-3"><label class="form-label">Expiration Date <span class="text-danger">*</span></label>';
                     html += '<input type="date" class="form-control" name="tanggal_expired_silo" required></div>';
-                    html += '<div class="mb-3"><label class="form-label">Upload File SILO (PDF/Image)</label>';
+                    html += '<div class="mb-3"><label class="form-label">Upload SILO File (PDF/Image)</label>';
                     html += '<input type="file" class="form-control" name="file" accept=".pdf,.jpg,.jpeg,.png" onchange="previewFile(this, \'silo\')"></div>';
                     html += '<div id="siloPreview"></div>';
                 }
 
-                html += '<div class="mb-3"><label class="form-label">Keterangan</label>';
+                html += '<div class="mb-3"><label class="form-label">Description</label>';
                 html += '<textarea class="form-control" name="keterangan" rows="2"></textarea></div>';
 
                 $('#updateModalBody').html(html);
@@ -1256,7 +1256,7 @@ function updateSiloStatus(siloId) {
             Swal.fire({
                 icon: 'error',
                 title: 'Error',
-                text: response?.message || 'Terjadi kesalahan saat update status'
+                text: response?.message || 'An error occurred while updating the status'
             });
         }
     });
@@ -1268,8 +1268,8 @@ function uploadFile(siloId, file, fileType) {
     if (file.size > maxSize) {
         Swal.fire({
             icon: 'error',
-            title: 'File Terlalu Besar',
-            text: 'Ukuran file maksimal 15MB. File Anda: ' + (file.size / 1024 / 1024).toFixed(2) + 'MB'
+            title: 'File Too Large',
+            text: 'Maximum file size is 15MB. Your file: ' + (file.size / 1024 / 1024).toFixed(2) + 'MB'
         });
         return;
     }
@@ -1281,7 +1281,7 @@ function uploadFile(siloId, file, fileType) {
     // Show loading
     Swal.fire({
         title: 'Uploading...',
-        text: 'Mohon tunggu, file sedang diupload',
+        text: 'Please wait, the file is being uploaded',
         allowOutsideClick: false,
         didOpen: () => {
             Swal.showLoading();
@@ -1300,8 +1300,8 @@ function uploadFile(siloId, file, fileType) {
             if (response.success) {
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil',
-                    text: response.message || 'File berhasil diupload'
+                    title: 'Success',
+                    text: response.message || 'File uploaded successfully'
                 });
                 $('#updateModal').modal('hide');
                 // Reload all tables
@@ -1317,14 +1317,14 @@ function uploadFile(siloId, file, fileType) {
                 Swal.fire({
                     icon: 'error',
                     title: 'Error',
-                    text: response.message || 'Gagal upload file'
+                    text: response.message || 'Failed to upload file'
                 });
             }
         },
         error: function(xhr, status, error) {
             Swal.close();
             console.error('Upload error:', error, xhr.responseText);
-            let errorMessage = 'Gagal upload file';
+            let errorMessage = 'Failed to upload file';
             
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMessage = xhr.responseJSON.message;
@@ -1359,20 +1359,20 @@ function showDetail(siloId) {
                 const history = response.history || [];
                 
                 let html = '<div class="row"><div class="col-md-6">';
-                html += '<h6>Informasi Unit</h6>';
+                html += '<h6>Unit Information</h6>';
                 html += '<table class="table table-sm">';
-                html += '<tr><th>No Unit:</th><td><strong>' + (silo.no_unit || 'N/A') + '</strong></td></tr>';
+                html += '<tr><th>Unit Number:</th><td><strong>' + (silo.no_unit || 'N/A') + '</strong></td></tr>';
                 html += '<tr><th>Serial Number:</th><td>' + (silo.serial_number || '-') + '</td></tr>';
-                html += '<tr><th>Tahun Unit:</th><td>' + (silo.tahun_unit || '-') + '</td></tr>';
-                html += '<tr><th>Tipe Unit:</th><td>' + (silo.tipe_unit || '-') + '</td></tr>';
-                html += '<tr><th>Jenis Unit:</th><td>' + (silo.jenis_unit || '-') + '</td></tr>';
-                html += '<tr><th>Model Unit:</th><td>' + (silo.model_unit || '-') + '</td></tr>';
-                html += '<tr><th>Kapasitas Unit:</th><td>' + (silo.kapasitas_unit || '-') + '</td></tr>';
-                html += '<tr><th>Departemen:</th><td>' + (silo.departemen || '-') + '</td></tr>';
-                html += '<tr><th>Lokasi Unit:</th><td>' + (silo.lokasi_unit || '-') + '</td></tr>';
-                html += '<tr><th>Nama Perusahaan:</th><td>' + (silo.nama_perusahaan || '-') + '</td></tr>';
+                html += '<tr><th>Unit Year:</th><td>' + (silo.tahun_unit || '-') + '</td></tr>';
+                html += '<tr><th>Unit Type:</th><td>' + (silo.tipe_unit || '-') + '</td></tr>';
+                html += '<tr><th>Unit Category:</th><td>' + (silo.jenis_unit || '-') + '</td></tr>';
+                html += '<tr><th>Unit Model:</th><td>' + (silo.model_unit || '-') + '</td></tr>';
+                html += '<tr><th>Unit Capacity:</th><td>' + (silo.kapasitas_unit || '-') + '</td></tr>';
+                html += '<tr><th>Department:</th><td>' + (silo.departemen || '-') + '</td></tr>';
+                html += '<tr><th>Unit Location:</th><td>' + (silo.lokasi_unit || '-') + '</td></tr>';
+                html += '<tr><th>Company Name:</th><td>' + (silo.nama_perusahaan || '-') + '</td></tr>';
                 if (silo.alamat) {
-                    html += '<tr><th>Alamat Customer:</th><td>' + silo.alamat;
+                    html += '<tr><th>Customer Address:</th><td>' + silo.alamat;
                     if (silo.kota) {
                         html += ', ' + silo.kota;
                     }
@@ -1383,31 +1383,31 @@ function showDetail(siloId) {
                 }
                 html += '</table></div>';
                 
-                html += '<div class="col-md-6"><h6>Informasi SILO</h6>';
+                html += '<div class="col-md-6"><h6>SILO Information</h6>';
                 html += '<table class="table table-sm">';
                 html += '<tr><th>Status:</th><td><span class="badge bg-' + getStatusColor(silo.status) + '">' + getStatusLabel(silo.status) + '</span></td></tr>';
                 if (silo.nomor_silo) {
-                    html += '<tr><th>Nomor SILO:</th><td>' + silo.nomor_silo + '</td></tr>';
-                    html += '<tr><th>Tanggal Terbit:</th><td>' + formatDate(silo.tanggal_terbit_silo) + '</td></tr>';
-                    html += '<tr><th>Tanggal Expired:</th><td>' + formatDate(silo.tanggal_expired_silo) + '</td></tr>';
+                    html += '<tr><th>SILO Number:</th><td>' + silo.nomor_silo + '</td></tr>';
+                    html += '<tr><th>Issue Date:</th><td>' + formatDate(silo.tanggal_terbit_silo) + '</td></tr>';
+                    html += '<tr><th>Expiration Date:</th><td>' + formatDate(silo.tanggal_expired_silo) + '</td></tr>';
                 }
                 if (silo.nama_pt_pjk3) {
-                    html += '<tr><th>Nama PT PJK3:</th><td>' + silo.nama_pt_pjk3 + '</td></tr>';
+                    html += '<tr><th>PT PJK3 Name:</th><td>' + silo.nama_pt_pjk3 + '</td></tr>';
                 }
                 if (silo.nomor_surat_keterangan_pjk3) {
-                    html += '<tr><th>Nomor Surat PJK3:</th><td>' + silo.nomor_surat_keterangan_pjk3 + '</td></tr>';
-                    html += '<tr><th>Tanggal Surat PJK3:</th><td>' + formatDate(silo.tanggal_surat_keterangan_pjk3) + '</td></tr>';
+                    html += '<tr><th>PJK3 Letter Number:</th><td>' + silo.nomor_surat_keterangan_pjk3 + '</td></tr>';
+                    html += '<tr><th>PJK3 Letter Date:</th><td>' + formatDate(silo.tanggal_surat_keterangan_pjk3) + '</td></tr>';
                 }
                 if (silo.tanggal_pengajuan_uptd) {
-                    html += '<tr><th>Tanggal Pengajuan DISNAKER:</th><td>' + formatDate(silo.tanggal_pengajuan_uptd) + '</td></tr>';
+                    html += '<tr><th>DISNAKER Submission Date:</th><td>' + formatDate(silo.tanggal_pengajuan_uptd) + '</td></tr>';
                     if (silo.lokasi_disnaker) {
-                        html += '<tr><th>Lokasi DISNAKER:</th><td><strong>' + silo.lokasi_disnaker + '</strong></td></tr>';
+                        html += '<tr><th>DISNAKER Location:</th><td><strong>' + silo.lokasi_disnaker + '</strong></td></tr>';
                     }
                 }
                 html += '</table></div></div>';
                 
-                // Horizontal Timeline dengan Tanggal
-                html += '<hr><h6 class="mb-3">Timeline Proses</h6>';
+                // Horizontal Timeline with Dates
+                html += '<hr><h6 class="mb-3">Process Timeline</h6>';
                 html += '<div class="d-flex justify-content-between align-items-start mb-4" style="position: relative; padding: 1.5rem 0;">';
                 const statuses = ['PENGAJUAN_PJK3', 'SURAT_KETERANGAN_PJK3', 'PENGAJUAN_UPTD', 'SILO_TERBIT'];
                 const currentIndex = getStatusIndex(silo.status);
@@ -1469,13 +1469,13 @@ function showDetail(siloId) {
                 const hasSiloFile = silo.file_silo && silo.file_silo.trim() !== '';
                 
                 if (hasPjk3File || hasSiloFile) {
-                    html += '<hr><h6 class="mb-3">Dokumen</h6>';
+                    html += '<hr><h6 class="mb-3">Documents</h6>';
                     html += '<ul class="nav nav-tabs mb-3" role="tablist">';
                     if (hasPjk3File) {
-                        html += '<li class="nav-item"><button class="nav-link active" id="tab-pjk3-btn" data-bs-toggle="tab" data-bs-target="#tab-pjk3" type="button" role="tab">File PJK3</button></li>';
+                        html += '<li class="nav-item"><button class="nav-link active" id="tab-pjk3-btn" data-bs-toggle="tab" data-bs-target="#tab-pjk3" type="button" role="tab">PJK3 File</button></li>';
                     }
                     if (hasSiloFile) {
-                        html += '<li class="nav-item"><button class="nav-link' + (hasPjk3File ? '' : ' active') + '" id="tab-silo-btn" data-bs-toggle="tab" data-bs-target="#tab-silo" type="button" role="tab">File SILO</button></li>';
+                        html += '<li class="nav-item"><button class="nav-link' + (hasPjk3File ? '' : ' active') + '" id="tab-silo-btn" data-bs-toggle="tab" data-bs-target="#tab-silo" type="button" role="tab">SILO File</button></li>';
                     }
                     html += '</ul>';
                     html += '<div class="tab-content" id="fileTabContent">';
@@ -1489,9 +1489,9 @@ function showDetail(siloId) {
                         html += '<div class="mb-3 text-end"><a href="' + pjk3DownloadUrl + '" target="_blank" class="btn btn-sm btn-primary"><i class="fas fa-download me-1"></i>Download File PJK3</a></div>';
                         // Preview content
                         if (['jpg', 'jpeg', 'png', 'gif'].includes(pjk3FileExt)) {
-                            html += '<div class="text-center"><img src="' + pjk3PreviewUrl + '" class="img-fluid" style="max-height: 600px; width: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;" onerror="this.parentElement.innerHTML=\'<div class=\\\'alert alert-warning\\\'>Gagal memuat gambar. <a href=\\\'' + pjk3DownloadUrl + '\\\' target=\\\'_blank\\\'>Download File</a></div>\'"></div>';
+                            html += '<div class="text-center"><img src="' + pjk3PreviewUrl + '" class="img-fluid" style="max-height: 600px; width: auto; border: 1px solid #dee2e6; border-radius: 0.375rem;" onerror="this.parentElement.innerHTML=\'<div class=\\\'alert alert-warning\\\'>Error Loading Image. <a href=\\\'' + pjk3DownloadUrl + '\\\' target=\\\'_blank\\\'>Download File</a></div>\'"></div>';
                         } else if (pjk3FileExt === 'pdf') {
-                            html += '<iframe src="' + pjk3PreviewUrl + '" style="width: 100%; height: 700px; border: 1px solid #dee2e6; border-radius: 0.375rem;" onerror="this.parentElement.innerHTML=\'<div class=\\\'alert alert-warning\\\'>Gagal memuat PDF. <a href=\\\'' + pjk3DownloadUrl + '\\\' target=\\\'_blank\\\'>Download File</a></div>\'"></iframe>';
+                            html += '<iframe src="' + pjk3PreviewUrl + '" style="width: 100%; height: 700px; border: 1px solid #dee2e6; border-radius: 0.375rem;" onerror="this.parentElement.innerHTML=\'<div class=\\\'alert alert-warning\\\'>Error Loading PDF. <a href=\\\'' + pjk3DownloadUrl + '\\\' target=\\\'_blank\\\'>Download File</a></div>\'"></iframe>';
                         } else {
                             html += '<div class="text-center p-4"><a href="' + pjk3DownloadUrl + '" target="_blank" class="btn btn-primary btn-lg"><i class="fas fa-download me-2"></i>Download File PJK3</a></div>';
                         }

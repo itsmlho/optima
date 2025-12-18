@@ -108,7 +108,7 @@ $can_export = $permissions['export'];
         <div class="tab-pane fade show active" id="unit-rejected" role="tabpanel" aria-labelledby="unit-tab">
             <?php if (empty($rejected_units)): ?>
                 <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>Tidak ada unit yang ditolak.
+                    <i class="fas fa-info-circle me-2"></i>No rejected units found.
                 </div>
             <?php else: ?>
                 <div class="row">
@@ -135,18 +135,18 @@ $can_export = $permissions['export'];
                                         
                                         <?php if (!empty($unit['tanggal_sampai'])): ?>
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Tanggal Sampai:</small>
+                                            <small class="text-muted d-block">Arrival Date:</small>
                                             <strong><?= date('d/m/Y', strtotime($unit['tanggal_sampai'])) ?></strong>
                                         </div>
                                         <?php endif; ?>
                                         
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Tanggal Verifikasi:</small>
+                                            <small class="text-muted d-block">Verification Date:</small>
                                             <strong><?= format_date_jakarta($unit['tanggal_verifikasi'] ?? null) ?></strong>
                                         </div>
                                         
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Diverifikasi oleh:</small>
+                                            <small class="text-muted d-block">Verified By:</small>
                                             <strong>
                                                 <?php 
                                                 $verifierName = trim(($unit['verified_by_name'] ?? '') . ' ' . ($unit['verified_by_lastname'] ?? ''));
@@ -175,20 +175,20 @@ $can_export = $permissions['export'];
                                                 <span class="badge bg-secondary me-1">SN Mast: <?= esc($unit['sn_mast']) ?></span>
                                             <?php endif; ?>
                                             <?php if (!empty($unit['sn_baterai'])): ?>
-                                                <span class="badge bg-secondary me-1">SN Baterai: <?= esc($unit['sn_baterai']) ?></span>
+                                                <span class="badge bg-secondary me-1">SN Battery: <?= esc($unit['sn_baterai']) ?></span>
                                             <?php endif; ?>
                                         </div>
                                     </div>
                                     <?php endif; ?>
                                     
                                     <div class="mb-2">
-                                        <small class="text-muted d-block">Alasan Reject:</small>
-                                        <div class="text-danger small"><?= esc($unit['catatan_verifikasi'] ?? 'Tidak ada catatan') ?></div>
+                                        <small class="text-muted d-block">Reason for Rejection:</small>
+                                        <div class="text-danger small"><?= esc($unit['catatan_verifikasi'] ?? 'No notes available') ?></div>
                                     </div>
                                     
                                     <?php if (isset($discrepancies['unit_' . $unit['id_po_unit']])): ?>
                                         <div class="mb-2">
-                                            <small class="text-muted d-block mb-1">Ketidaksesuaian:</small>
+                                            <small class="text-muted d-block mb-1">Discrepancies:</small>
                                             <?php foreach ($discrepancies['unit_' . $unit['id_po_unit']] as $disc): ?>
                                                 <div class="small mb-1">
                                                     <span class="badge bg-<?= $disc['discrepancy_type'] === 'Major' ? 'danger' : ($disc['discrepancy_type'] === 'Missing' ? 'info' : 'warning') ?> me-1">
@@ -220,7 +220,7 @@ $can_export = $permissions['export'];
         <div class="tab-pane fade" id="attachment-rejected" role="tabpanel" aria-labelledby="attachment-tab">
             <?php if (empty($rejected_attachments)): ?>
                 <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>Tidak ada attachment yang ditolak.
+                    <i class="fas fa-info-circle me-2"></i>No rejected attachments found.
                 </div>
             <?php else: ?>
                 <div class="row">
@@ -247,18 +247,18 @@ $can_export = $permissions['export'];
                                         
                                         <?php if (!empty($att['tanggal_sampai'])): ?>
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Tanggal Sampai:</small>
+                                            <small class="text-muted d-block">Arrival Date:</small>
                                             <strong><?= date('d/m/Y', strtotime($att['tanggal_sampai'])) ?></strong>
                                         </div>
                                         <?php endif; ?>
                                         
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Tanggal Verifikasi:</small>
+                                            <small class="text-muted d-block">Verification Date:</small>
                                             <strong><?= format_date_jakarta($att['tanggal_verifikasi'] ?? null) ?></strong>
                                         </div>
                                         
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Diverifikasi oleh:</small>
+                                            <small class="text-muted d-block">Verified By:</small>
                                             <strong>
                                                 <?php 
                                                 $verifierName = trim(($att['verified_by_name'] ?? '') . ' ' . ($att['verified_by_lastname'] ?? ''));
@@ -281,13 +281,13 @@ $can_export = $permissions['export'];
                                     <?php endif; ?>
                                     
                                     <div class="mb-2">
-                                        <small class="text-muted d-block">Alasan Reject:</small>
-                                        <div class="text-danger small"><?= esc($att['catatan_verifikasi'] ?? 'Tidak ada catatan') ?></div>
+                                        <small class="text-muted d-block">Reason for Rejection:</small>
+                                        <div class="text-danger small"><?= esc($att['catatan_verifikasi'] ?? 'No notes available') ?></div>
                                     </div>
                                     
                                     <?php if (isset($discrepancies['attachment_' . $att['id_po_attachment']])): ?>
                                         <div class="mb-2">
-                                            <small class="text-muted d-block mb-1">Ketidaksesuaian:</small>
+                                            <small class="text-muted d-block mb-1">Discrepancies:</small>
                                             <?php foreach ($discrepancies['attachment_' . $att['id_po_attachment']] as $disc): ?>
                                                 <div class="small mb-1">
                                                     <span class="badge bg-<?= $disc['discrepancy_type'] === 'Major' ? 'danger' : ($disc['discrepancy_type'] === 'Missing' ? 'info' : 'warning') ?> me-1">
@@ -318,7 +318,7 @@ $can_export = $permissions['export'];
         <div class="tab-pane fade" id="sparepart-rejected" role="tabpanel" aria-labelledby="sparepart-tab">
             <?php if (empty($rejected_spareparts)): ?>
                 <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>Tidak ada sparepart yang ditolak.
+                    <i class="fas fa-info-circle me-2"></i>No rejected spareparts found.
                 </div>
             <?php else: ?>
                 <div class="row">
@@ -334,7 +334,7 @@ $can_export = $permissions['export'];
                                         <span class="badge bg-danger">Sparepart</span>
                                     </div>
                                     
-                                    <!-- Informasi Tambahan -->
+                                    <!-- Additional Information -->
                                     <div class="row g-2 mb-2 small">
                                         <?php if (!empty($sp['packing_list_no'])): ?>
                                         <div class="col-6">
@@ -345,18 +345,18 @@ $can_export = $permissions['export'];
                                         
                                         <?php if (!empty($sp['tanggal_sampai'])): ?>
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Tanggal Sampai:</small>
+                                            <small class="text-muted d-block">Arrival Date:</small>
                                             <strong><?= date('d/m/Y', strtotime($sp['tanggal_sampai'])) ?></strong>
                                         </div>
                                         <?php endif; ?>
                                         
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Tanggal Verifikasi:</small>
+                                            <small class="text-muted d-block">Verification Date:</small>
                                             <strong><?= format_date_jakarta($sp['tanggal_verifikasi'] ?? null) ?></strong>
                                         </div>
                                         
                                         <div class="col-6">
-                                            <small class="text-muted d-block">Diverifikasi oleh:</small>
+                                            <small class="text-muted d-block">Verified By:</small>
                                             <strong>
                                                 <?php 
                                                 $verifierName = trim(($sp['verified_by_name'] ?? '') . ' ' . ($sp['verified_by_lastname'] ?? ''));
@@ -376,8 +376,8 @@ $can_export = $permissions['export'];
                                     </div>
                                     
                                     <div class="mb-2">
-                                        <small class="text-muted d-block">Alasan Reject:</small>
-                                        <div class="text-danger small"><?= esc($sp['catatan_verifikasi'] ?? 'Tidak ada catatan') ?></div>
+                                        <small class="text-muted d-block">Reason for Rejection:</small>
+                                        <div class="text-danger small"><?= esc($sp['catatan_verifikasi'] ?? 'No notes available') ?></div>
                                     </div>
                                     
                                     <div class="d-flex justify-content-end mt-2 pt-2 border-top">
@@ -450,14 +450,14 @@ $can_export = $permissions['export'];
     // Re-verification functions
     function reverifyUnit(idUnit, poId) {
         Swal.fire({
-            title: 'Re-verifikasi Unit?',
-            text: 'Apakah barang baru sudah datang dari vendor? Status akan direset ke "Belum Dicek" untuk verifikasi ulang.',
+            title: 'Re-verify Unit?',
+            text: 'Has the new item arrived from the vendor? The status will be reset to "Not Checked" for re-verification.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Reset untuk Re-verify',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, Reset for Re-verify',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -475,8 +475,8 @@ $can_export = $permissions['export'];
                         if (r.statusCode == 200) {
                             Swal.fire({
                                 icon: 'success',
-                                title: 'Berhasil',
-                                text: r.message || 'Status unit telah direset. Silakan lakukan verifikasi ulang.',
+                                title: 'Success',
+                                text: r.message || 'Unit status has been reset. Please re-verify.',
                                 timer: 2000,
                                 showConfirmButton: false
                             }).then(() => {
@@ -486,7 +486,7 @@ $can_export = $permissions['export'];
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: r.message || 'Gagal reset status unit.'
+                                text: r.message || 'Failed to reset unit status.'
                             });
                         }
                     },
@@ -495,7 +495,7 @@ $can_export = $permissions['export'];
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Terjadi kesalahan saat reset status unit.'
+                            text: 'An error occurred while resetting unit status.'
                         });
                     }
                 });
@@ -505,14 +505,14 @@ $can_export = $permissions['export'];
 
     function reverifyAttachment(idAttachment, poId) {
         Swal.fire({
-            title: 'Re-verifikasi Attachment?',
-            text: 'Apakah barang baru sudah datang dari vendor? Status akan direset ke "Belum Dicek" untuk verifikasi ulang.',
+            title: 'Re-verify Attachment?',
+            text: 'Has the new item arrived from the vendor? The status will be reset to "Not Checked" for re-verification.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Reset untuk Re-verify',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, Reset for Re-verify',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -530,8 +530,8 @@ $can_export = $permissions['export'];
                         if (r.statusCode == 200) {
                             Swal.fire({
                                 icon: 'success',
-                                title: 'Berhasil',
-                                text: r.message || 'Status attachment telah direset.',
+                                title: 'Success',
+                                text: r.message || 'Attachment status has been reset.',
                                 timer: 2000,
                                 showConfirmButton: false
                             }).then(() => {
@@ -541,7 +541,7 @@ $can_export = $permissions['export'];
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: r.message || 'Gagal reset status attachment.'
+                                text: r.message || 'Failed to reset attachment status.'
                             });
                         }
                     },
@@ -550,7 +550,7 @@ $can_export = $permissions['export'];
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Terjadi kesalahan saat reset status attachment.'
+                            text: 'An error occurred while resetting attachment status.'
                         });
                     }
                 });
@@ -560,14 +560,14 @@ $can_export = $permissions['export'];
 
     function reverifySparepart(idSparepart, poId) {
         Swal.fire({
-            title: 'Re-verifikasi Sparepart?',
-            text: 'Apakah barang baru sudah datang dari vendor? Status akan direset ke "Belum Dicek" untuk verifikasi ulang.',
+            title: 'Re-verify Sparepart?',
+            text: 'Has the new item arrived from the vendor? The status will be reset to "Not Checked" for re-verification.',
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#3085d6',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Ya, Reset untuk Re-verify',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, Reset for Re-verify',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -585,8 +585,8 @@ $can_export = $permissions['export'];
                         if (r.statusCode == 200) {
                             Swal.fire({
                                 icon: 'success',
-                                title: 'Berhasil',
-                                text: r.message || 'Status sparepart telah direset.',
+                                title: 'Success',
+                                text: r.message || 'SSparepart status has been reset.',
                                 timer: 2000,
                                 showConfirmButton: false
                             }).then(() => {
@@ -596,7 +596,7 @@ $can_export = $permissions['export'];
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
-                                text: r.message || 'Gagal reset status sparepart.'
+                                text: r.message || 'Failed to reset sparepart status.'
                             });
                         }
                     },
@@ -605,7 +605,7 @@ $can_export = $permissions['export'];
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
-                            text: 'Terjadi kesalahan saat reset status sparepart.'
+                            text: 'An error occurred while resetting sparepart status.'
                         });
                     }
                 });
