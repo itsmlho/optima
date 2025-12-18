@@ -31,15 +31,15 @@
     <div class="col-md-8">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>PO Information</h5>
+                <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Information</h5>
             </div>
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <strong>No. PO:</strong> <?= esc($po['no_po']) ?>
+                        <strong>PO Number:</strong> <?= esc($po['no_po']) ?>
                     </div>
                     <div class="col-md-6">
-                        <strong>Tanggal PO:</strong> <?= date('d/m/Y', strtotime($po['tanggal_po'])) ?>
+                        <strong>PO Date:</strong> <?= date('d/m/Y', strtotime($po['tanggal_po'])) ?>
                     </div>
                     <div class="col-md-6">
                         <strong>Supplier:</strong> <?= esc($supplier['nama_supplier'] ?? 'N/A') ?>
@@ -69,7 +69,7 @@
                     <?php endif; ?>
                     <?php if (!empty($po['keterangan'])): ?>
                     <div class="col-12">
-                        <strong>Keterangan:</strong> <?= esc($po['keterangan']) ?>
+                        <strong>Notes:</strong> <?= esc($po['keterangan']) ?>
                     </div>
                     <?php endif; ?>
                 </div>

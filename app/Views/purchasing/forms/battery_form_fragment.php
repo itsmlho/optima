@@ -2,14 +2,14 @@
 <div class="row g-3">
     <div class="col-12 mb-2">
         <button type="button" class="btn btn-sm btn-outline-primary" onclick="QuickAddModal.open('battery', 'battery_jenis');">
-            <i class="fas fa-plus-circle me-1"></i>Tambah Battery Baru
+            <i class="fas fa-plus-circle me-1"></i>Add Battery
         </button>
     </div>
     <!-- Jenis Battery -->
     <div class="col-md-4">
-        <label for="battery_jenis" class="form-label">Jenis Battery <span class="text-danger">*</span></label>
+        <label for="battery_jenis" class="form-label">Battery Type <span class="text-danger">*</span></label>
         <select id="battery_jenis" class="form-select select2-basic" required>
-            <option value="">Pilih Jenis...</option>
+            <option value="">Select Type...</option>
             <?php 
             if (isset($baterais) && is_array($baterais)) {
                 // Get unique jenis_baterai (no duplicates)
@@ -31,17 +31,17 @@
 
     <!-- Merk Battery -->
     <div class="col-md-4">
-        <label for="battery_merk" class="form-label">Merk Battery <span class="text-danger">*</span></label>
+        <label for="battery_merk" class="form-label">Battery Brand <span class="text-danger">*</span></label>
         <select id="battery_merk" class="form-select select2-basic" required disabled>
-            <option value="">Pilih Jenis Dulu...</option>
+            <option value="">Select Type First...</option>
         </select>
     </div>
 
     <!-- Tipe Battery -->
     <div class="col-md-4">
-        <label for="battery_tipe" class="form-label">Tipe Battery <span class="text-danger">*</span></label>
+        <label for="battery_tipe" class="form-label">Battery Model <span class="text-danger">*</span></label>
         <select id="battery_tipe" class="form-select select2-basic" required disabled>
-            <option value="">Pilih Merk Dulu...</option>
+            <option value="">Select Brand First...</option>
         </select>
     </div>
 
@@ -51,10 +51,10 @@
         <input type="number" id="battery_qty" class="form-control" min="1" value="1" required>
     </div>
 
-    <!-- Keterangan -->
+    <!-- Notes -->
     <div class="col-6">
-        <label for="battery_keterangan" class="form-label">Keterangan</label>
-        <textarea id="battery_keterangan" class="form-control" rows="2" placeholder="Catatan tambahan (optional)"></textarea>
+        <label for="battery_keterangan" class="form-label">Notes</label>
+        <textarea id="battery_keterangan" class="form-control" rows="2" placeholder="Additional notes (optional)"></textarea>
     </div>
 </div>
 

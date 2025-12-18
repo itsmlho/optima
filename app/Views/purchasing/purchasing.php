@@ -37,16 +37,16 @@ $can_export = $permissions['export'];
     <div class="card-header bg-light">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
-                <i class="fas fa-truck me-2"></i>PO Unit & Attachment
+                <i class="fas fa-truck me-2"></i>Purchase Orders
             </h5>
             <div class="btn-group" role="group">
                 <?php if ($can_create): ?>
                 <button type="button" class="btn btn-primary" id="btnBuatPO">
-                    <i class="fas fa-plus me-1"></i>Buat PO
+                    <i class="fas fa-plus me-1"></i>Create PO
                 </button>
                 <?php else: ?>
                 <button type="button" class="btn btn-secondary" disabled title="Access denied: You do not have permission to create Purchase Orders">
-                    <i class="fas fa-lock me-1"></i>Buat PO
+                    <i class="fas fa-lock me-1"></i>Create PO
                 </button>
                 <?php endif; ?>
                 <button type="button" class="btn btn-outline-primary" onclick="refreshTable()">
@@ -84,7 +84,7 @@ $can_export = $permissions['export'];
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="progres-tab" data-bs-toggle="tab" data-bs-target="#progres-pane" type="button" role="tab" aria-controls="progres-pane" aria-selected="true">
                         <i class="fas fa-clock"></i>
-                        <span>Progres</span>
+                        <span>Progress</span>
                         <span class="badge" id="progres-count">0</span>
                     </button>
                 </li>
@@ -120,13 +120,13 @@ $can_export = $permissions['export'];
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOTable">
                 <thead>
                     <tr>
-                        <th>No PO</th>
-                        <th>Tanggal</th>
+                        <th>PO Number</th>
+                        <th>Date</th>
                         <th>Supplier</th>
                         <th>Status</th>
                         <th>Total Items</th>
-                        <th>Progress Verifikasi</th>
-                        <th>Status Pengiriman</th>
+                        <th>Verification Progress</th>
+                        <th>Delivery Status</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -185,13 +185,13 @@ $can_export = $permissions['export'];
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOCompletedTable">
                         <thead>
                             <tr>
-                                <th>No PO</th>
-                                <th>Tanggal</th>
+                                <th>PO Number</th>
+                                <th>Date</th>
                                 <th>Supplier</th>
                                 <th>Status</th>
                                 <th>Total Items</th>
-                                <th>Progress Verifikasi</th>
-                                <th>Status Pengiriman</th>
+                                <th>Verification Progress</th>
+                                <th>Delivery Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -212,14 +212,14 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Buat Delivery Schedule</h5>
+                <h5 class="modal-title">Create Delivery Schedule</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="createDeliveryForm">
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle"></i>
-                        Buat jadwal pengiriman untuk PO ini
+                        Create a delivery schedule for this PO
                     </div>
                     
                     <div class="row mb-3">
@@ -229,39 +229,39 @@ $can_export = $permissions['export'];
                         </div>
                         <div class="col-6">
                             <label class="form-label">Packing List No *</label>
-                            <input type="text" class="form-control" name="packing_list_no" required placeholder="Masukkan nomor packing list dari supplier">
+                            <input type="text" class="form-control" name="packing_list_no" required placeholder="Enter packing list number from supplier">
                         </div>
                     </div>
                     
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="form-label">Driver Name</label>
-                            <input type="text" class="form-control" name="driver_name" placeholder="Nama driver (opsional)">
+                            <input type="text" class="form-control" name="driver_name" placeholder="Driver name (optional)">
                         </div>
                         <div class="col-6">
                             <label class="form-label">Driver Phone</label>
-                            <input type="text" class="form-control" name="driver_phone" placeholder="Nomor HP driver (opsional)">
+                            <input type="text" class="form-control" name="driver_phone" placeholder="Driver phone number (optional)">
                         </div>
                     </div>
                     
                     <div class="row mb-3">
                         <div class="col-6">
                             <label class="form-label">Vehicle Info</label>
-                            <input type="text" class="form-control" name="vehicle_info" placeholder="Info kendaraan (opsional)">
+                            <input type="text" class="form-control" name="vehicle_info" placeholder="Vehicle info (optional)">
                         </div>
                         <div class="col-6">
                             <label class="form-label">Vehicle Plate</label>
-                            <input type="text" class="form-control" name="vehicle_plate" placeholder="Nomor plat kendaraan (opsional)">
+                            <input type="text" class="form-control" name="vehicle_plate" placeholder="Vehicle plate number (optional)">
                         </div>
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label">Notes</label>
-                        <textarea class="form-control" name="notes" rows="3" placeholder="Catatan pengiriman..."></textarea>
+                        <textarea class="form-control" name="notes" rows="3" placeholder="Delivery notes..."></textarea>
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">Items to Deliver <small class="text-muted">(Pilih berapa unit yang akan dikirim)</small></label>
+                        <label class="form-label">Items to Deliver <small class="text-muted">(Select how many units will be delivered)</small></label>
                         <div id="deliveryItemsList" class="border rounded p-3">
                             <!-- Items will be loaded dynamically -->
                         </div>
@@ -286,7 +286,7 @@ $can_export = $permissions['export'];
                 </h5>
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-outline-primary btn-sm" onclick="proceedWithoutSN()" id="proceedWithoutSNBtn">
-                        <i class="fas fa-forward me-1"></i>Lanjut Tanpa SN
+                        <i class="fas fa-forward me-1"></i>Proceed Without SN
                     </button>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -354,7 +354,7 @@ $can_export = $permissions['export'];
                     <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <h5 class="mt-3 text-muted">Memuat detail PO...</h5>
+                    <h5 class="mt-3 text-muted">Loading PO...</h5>
                 </div>
                 
                 <!-- PO Content (hidden initially) -->
@@ -368,7 +368,7 @@ $can_export = $permissions['export'];
                                         <div class="mb-2" id="totalItemsOrdered">
                                             <span class="text-muted">No items</span>
                                         </div>
-                                        <small class="text-muted">Total Items Dipesan</small>
+                                        <small class="text-muted">Total Items Ordered</small>
                                     </div>
                                 </div>
                             </div>
@@ -379,7 +379,7 @@ $can_export = $permissions['export'];
                                             <i class="fas fa-truck fa-2x"></i>
                                         </div>
                                         <h4 class="mb-1" id="deliveryProgress">0/0</h4>
-                                        <small class="text-muted">Pengiriman</small>
+                                        <small class="text-muted">Delivery</small>
                                     </div>
                                 </div>
                             </div>
@@ -390,7 +390,7 @@ $can_export = $permissions['export'];
                                             <i class="fas fa-check-circle fa-2x"></i>
                                         </div>
                                         <h4 class="mb-1" id="totalItemsReceived">0</h4>
-                                        <small class="text-muted">Items Diterima</small>
+                                        <small class="text-muted">Received Items</small>
                                     </div>
                                 </div>
                             </div>
@@ -401,7 +401,7 @@ $can_export = $permissions['export'];
                                             <i class="fas fa-clipboard-check fa-2x"></i>
                                         </div>
                                         <h4 class="mb-1" id="verifiedItems">0</h4>
-                                        <small class="text-muted">Items Terverifikasi</small>
+                                        <small class="text-muted">Verified Items</small>
                                     </div>
                                 </div>
                             </div>
@@ -411,18 +411,18 @@ $can_export = $permissions['export'];
                     <!-- PO Information -->
                     <div class="p-4">
                         <h6 class="fw-bold text-primary mb-3">
-                            <i class="fas fa-info-circle me-2"></i>Informasi Purchase Order
+                            <i class="fas fa-info-circle me-2"></i>Purchase Order Information
                         </h6>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center">
-                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">No PO:</span>
+                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">PO Number:</span>
                                     <span class="fw-bold" id="poNumber">-</span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center">
-                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">Tanggal PO:</span>
+                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">PO Date:</span>
                                     <span id="poDate">-</span>
                                 </div>
                             </div>
@@ -434,13 +434,13 @@ $can_export = $permissions['export'];
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center">
-                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">Kontak:</span>
+                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">Contact:</span>
                                     <span id="poContact">-</span>
                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="d-flex align-items-center">
-                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">Status PO:</span>
+                                    <span class="badge bg-light text-dark me-2" style="min-width: 100px;">PO Status:</span>
                                     <span id="poStatus">-</span>
                                 </div>
                             </div>
@@ -458,12 +458,12 @@ $can_export = $permissions['export'];
                         <ul class="nav nav-tabs" id="poDetailTabs" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="items-tab" type="button" role="tab">
-                                    <i class="fas fa-list me-2"></i>Daftar Items <span class="badge bg-primary ms-1" id="itemsCount">0</span>
+                                    <i class="fas fa-list me-2"></i>Items List <span class="badge bg-primary ms-1" id="itemsCount">0</span>
                                 </button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="deliveries-tab" type="button" role="tab">
-                                    <i class="fas fa-truck me-2"></i>Pengiriman <span class="badge bg-info ms-1" id="deliveriesCount">0</span>
+                                    <i class="fas fa-truck me-2"></i>Deliveries <span class="badge bg-info ms-1" id="deliveriesCount">0</span>
                                 </button>
                             </li>
                         </ul>
@@ -515,7 +515,7 @@ $can_export = $permissions['export'];
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title">
-                    <i class="fas fa-plus me-2"></i>Buat Purchase Order - Unit & Attachment
+                    <i class="fas fa-plus me-2"></i>Create Purchase Orders
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -527,24 +527,22 @@ $can_export = $permissions['export'];
                     <!-- Header PO Section -->
                     <div class="form-section mb-4">
                         <h6 class="section-header">
-                            <i class="fas fa-info-circle me-2"></i>Informasi Purchase Order
+                            <i class="fas fa-info-circle me-2"></i>Purchase Order Information
                         </h6>
                         <div class="card-body p-4">
                             <div class="row g-3">
                                 <div class="col-md-4">
-                                    <label for="no_po" class="form-label">Nomor PO <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" name="no_po" id="no_po" required placeholder="Contoh: PO-2025-001">
+                                    <label for="no_po" class="form-label">PO Number <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" name="no_po" id="no_po" required placeholder="Example: PO-2025-001">
                                 </div>
                                 <div class="col-md-4">
-                                    <label for="tanggal_po" class="form-label">Tanggal PO <span class="text-danger">*</span></label>
+                                    <label for="tanggal_po" class="form-label">PO Date <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control" name="tanggal_po" id="tanggal_po" value="<?= date('Y-m-d') ?>" required>
                                 </div>
                                 <div class="col-md-4">
                                     <label for="id_supplier_modal" class="form-label">Supplier <span class="text-danger">*</span></label>
-                                    <select name="id_supplier" id="id_supplier_modal" class="form-select" data-master-type="supplier" required>
-                                        <option value="">Pilih Supplier...</option>
-                                        <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Supplier Baru</option>
-                                        <option disabled>─────────────</option>
+                                    <select name="id_supplier" id="id_supplier_modal" class="form-select" required>
+                                        <option value="">Select Supplier...</option>
                                         <?php if (isset($suppliers) && is_array($suppliers)): ?>
                                             <?php foreach ($suppliers as $item): ?>
                                                 <option value="<?= $item['id_supplier'] ?>"><?= esc($item['nama_supplier']) ?></option>
@@ -565,8 +563,8 @@ $can_export = $permissions['export'];
                                     <input type="date" class="form-control" name="bl_date" id="bl_date">
                                 </div>
                                 <div class="col-12">
-                                    <label for="keterangan_po" class="form-label">Keterangan PO</label>
-                                    <textarea class="form-control" name="keterangan_po" id="keterangan_po" rows="2" placeholder="Catatan tambahan (optional)"></textarea>
+                                    <label for="keterangan_po" class="form-label">Notes</label>
+                                    <textarea class="form-control" name="keterangan_po" id="keterangan_po" rows="2" placeholder="Additional notes (optional)"></textarea>
                                 </div>
                             </div>
                         </div>
@@ -575,36 +573,36 @@ $can_export = $permissions['export'];
                     <!-- Items Section -->
                     <div class="form-section mb-4">
                         <h6 class="section-header">
-                            <i class="fas fa-list me-2"></i>Daftar Item PO
+                            <i class="fas fa-list me-2"></i>PO Item List
                         </h6>
                         <div class="card-body p-4">
                             <!-- Action Buttons -->
                             <div class="mb-3 d-flex gap-2 flex-wrap">
                                 <?php if (can_create('purchasing')): ?>
                                 <button type="button" class="btn btn-primary btn-sm" onclick="openItemModal('unit')">
-                                    <i class="fas fa-truck me-1"></i>Tambah Unit
+                                    <i class="fas fa-truck me-1"></i>Add Unit
                                 </button>
                                 <button type="button" class="btn btn-success btn-sm" onclick="openItemModal('attachment')">
-                                    <i class="fas fa-tools me-1"></i>Tambah Attachment
+                                    <i class="fas fa-tools me-1"></i>Add Attachment
                                 </button>
                                 <button type="button" class="btn btn-info btn-sm" onclick="openItemModal('battery')">
-                                    <i class="fas fa-battery-full me-1"></i>Tambah Battery
+                                    <i class="fas fa-battery-full me-1"></i>Add Battery
                                 </button>
                                 <button type="button" class="btn btn-warning btn-sm" onclick="openItemModal('charger')">
-                                    <i class="fas fa-plug me-1"></i>Tambah Charger
+                                    <i class="fas fa-plug me-1"></i>Add Charger
                                 </button>
                                 <?php else: ?>
                                 <button type="button" class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to add items">
-                                    <i class="fas fa-lock me-1"></i>Tambah Unit
+                                    <i class="fas fa-lock me-1"></i>Add Unit
                                 </button>
                                 <button type="button" class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to add items">
-                                    <i class="fas fa-lock me-1"></i>Tambah Attachment
+                                    <i class="fas fa-lock me-1"></i>Add Attachment
                                 </button>
                                 <button type="button" class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to add items">
-                                    <i class="fas fa-lock me-1"></i>Tambah Battery
+                                    <i class="fas fa-lock me-1"></i>Add Battery
                                 </button>
                                 <button type="button" class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to add items">
-                                    <i class="fas fa-lock me-1"></i>Tambah Charger
+                                    <i class="fas fa-lock me-1"></i>Add Charger
                                 </button>
                                 <?php endif; ?>
                             </div>
@@ -615,15 +613,15 @@ $can_export = $permissions['export'];
                                     <thead>
                                         <tr>
                                             <th style="width: 5%;">No</th>
-                                            <th style="width: 15%;">Tipe Item</th>
-                                            <th style="width: 55%;">Deskripsi</th>
+                                            <th style="width: 15%;">Item Type</th>
+                                            <th style="width: 55%;">Description</th>
                                             <th style="width: 15%;">Qty</th>
-                                            <th style="width: 10%;">Aksi</th>
+                                            <th style="width: 10%;">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody id="itemsTableBody">
                                         <tr>
-                                            <td colspan="5" class="text-center text-muted">Belum ada item. Klik tombol "Tambah" untuk menambahkan item.</td>
+                                            <td colspan="5" class="text-center text-muted">No items yet. Click the "Add" button to add items.</td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -641,7 +639,7 @@ $can_export = $permissions['export'];
                     <i class="fas fa-times me-2"></i>Cancel
                 </button>
                 <button type="submit" form="unifiedPOForm" class="btn btn-primary">
-                    <i class="fas fa-save me-2"></i>Simpan Purchase Order
+                    <i class="fas fa-save me-2"></i>Save Purchase Order
                 </button>
             </div>
         </div>
@@ -653,7 +651,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
-                <h5 class="modal-title" id="itemModalTitle">Tambah Item</h5>
+                <h5 class="modal-title" id="itemModalTitle">Add Item</h5>
                 <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="itemModalBody">
@@ -664,9 +662,9 @@ $can_export = $permissions['export'];
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-primary" id="saveItemBtn">
-                    <i class="fas fa-check me-2"></i>Tambahkan ke PO
+                    <i class="fas fa-check me-2"></i>Add to PO
                 </button>
             </div>
         </div>
@@ -892,7 +890,7 @@ function initUnitAttachmentPOTable() {
                     
                     if (totalUnit === 0 && totalAttachment === 0 && totalBattery === 0 && totalCharger === 0) {
                         return `<span class="text-muted small fst-italic">
-                            <i class="fas fa-box-open me-1"></i>Tidak ada item
+                            <i class="fas fa-box-open me-1"></i>No items
                         </span>`;
                     }
                     
@@ -918,7 +916,7 @@ function initUnitAttachmentPOTable() {
                     if (totalBattery > 0) {
                         itemBadges.push(`
                             <span class="badge bg-warning me-1 mb-1">
-                                <i class="fas fa-battery-half me-1"></i>${totalBattery} Baterai
+                                <i class="fas fa-battery-half me-1"></i>${totalBattery} Battery
                             </span>
                         `);
                     }
@@ -973,7 +971,7 @@ function initUnitAttachmentPOTable() {
                                 ${verified} / ${totalItems}
                             </div>
                         </div>
-                        <small class="text-muted">${percentage}% terverifikasi</small>
+                        <small class="text-muted">${percentage}% verified</small>
                     `;
                 }
             },
@@ -996,7 +994,7 @@ function initUnitAttachmentPOTable() {
                     
                     if (totalDeliveries === 0) {
                         return `<span class="text-muted small">
-                            <i class="fas fa-truck text-muted me-1"></i>Belum ada pengiriman
+                            <i class="fas fa-truck text-muted me-1"></i>No deliveries yet
                         </span>`;
                     }
                     
@@ -1012,12 +1010,12 @@ function initUnitAttachmentPOTable() {
                     if (totalDeliveries === 0) {
                         // No deliveries created yet
                         statusText = `<span class="text-muted">
-                            <i class="fas fa-truck text-muted me-1"></i>Belum ada pengiriman
+                            <i class="fas fa-truck text-muted me-1"></i>No deliveries yet
                         </span>`;
                     } else if (completedDeliveries === totalDeliveries && deliveredItems >= totalItems) {
                         // All deliveries completed and all items received/verified
                         statusText = `<span class="text-success">
-                            <i class="fas fa-check-circle me-1"></i>Semua Item Terkirim & Terverifikasi
+                            <i class="fas fa-check-circle me-1"></i>All Items Delivered & Verified
                         </span>`;
                         progressBar = `<div class="progress mt-1" style="height: 16px;">
                             <div class="progress-bar bg-success" style="width: 100%;">100%</div>
@@ -1026,7 +1024,7 @@ function initUnitAttachmentPOTable() {
                         // Partial delivery - some items delivered and verified
                         const deliveredPercentage = Math.round((deliveredItems/totalItems)*100);
                         statusText = `<span class="text-warning">
-                            <i class="fas fa-clock me-1"></i>Terkirim: ${deliveredItems}/${totalItems} item
+                            <i class="fas fa-clock me-1"></i>Delivered: ${deliveredItems}/${totalItems} items
                         </span>`;
                         progressBar = `<div class="progress mt-1" style="height: 16px;">
                             <div class="progress-bar bg-warning" style="width: ${deliveredPercentage}%;">
@@ -1036,12 +1034,12 @@ function initUnitAttachmentPOTable() {
                     } else if (totalDeliveries > 0 && deliveredItems === 0) {
                         // Deliveries created but no items received/verified yet
                         statusText = `<span class="text-info">
-                            <i class="fas fa-truck me-1"></i>Dalam Pengiriman: ${totalDeliveries} pengiriman
+                            <i class="fas fa-truck me-1"></i>In Transit: ${totalDeliveries} deliveries
                         </span>`;
                     } else if (scheduledDeliveries > 0 && deliveredItems === 0) {
                         // Scheduled but not yet started
                         statusText = `<span class="text-primary">
-                            <i class="fas fa-calendar me-1"></i>Terjadwal: ${scheduledDeliveries} pengiriman
+                            <i class="fas fa-calendar me-1"></i>Scheduled: ${scheduledDeliveries} deliveries
                         </span>`;
                     }
                     
@@ -1050,7 +1048,7 @@ function initUnitAttachmentPOTable() {
                             <div class="mb-1">${statusText}</div>
                             ${progressBar}
                             <div class="text-muted mt-1">
-                                <small>${completedDeliveries}/${totalDeliveries} pengiriman selesai</small>
+                                <small>${completedDeliveries}/${totalDeliveries} deliveries completed</small>
                             </div>
                         </div>
                     `;
@@ -1083,49 +1081,49 @@ function initUnitAttachmentPOTable() {
                         // All items received - can mark as completed
                         if (row.status !== 'completed') {
                             actionButtons = `<button class="btn btn-sm btn-success" onclick="completePO(${data}, event)">
-                                <i class="fas fa-check-circle me-1"></i>Tandai Selesai
+                                <i class="fas fa-check-circle me-1"></i>Mark as Completed
                             </button>`;
                         } else {
                             actionButtons = `<span class="text-success small">
-                                <i class="fas fa-check-circle me-1"></i>Selesai
+                                <i class="fas fa-check-circle me-1"></i>Completed
                             </span>`;
                         }
                     } else if (totalOrdered > 0 && scheduledItems >= totalOrdered) {
                         // All items already scheduled for delivery (but not all received yet)
                         // Show delivery tracking button instead of "Buat Jadwal Pengiriman"
                         actionButtons = `<button class="btn btn-sm btn-warning" onclick="trackDeliveries(${data}, event)">
-                            <i class="fas fa-truck me-1"></i>Lihat Detail Pengiriman
+                            <i class="fas fa-truck me-1"></i>View Delivery Details
                         </button>`;
                     } else if (row.status === 'pending' && totalDeliveries === 0) {
                         // No deliveries yet - allow creating delivery schedule
                         actionButtons = `<button class="btn btn-sm btn-success" onclick="createDeliverySchedule(${data}, event)">
-                            <i class="fas fa-calendar-plus me-1"></i>Buat Jadwal Pengiriman
+                            <i class="fas fa-calendar-plus me-1"></i>Create Delivery Schedule
                         </button>`;
                     } else if (remainingItems > 0) {
                         // Has remaining items that haven't been scheduled - can create more deliveries
                         const nextDeliverySequence = totalDeliveries + 1;
                         actionButtons = `<button class="btn btn-sm btn-success" onclick="createDeliverySchedule(${data}, event)">
-                            <i class="fas fa-calendar-plus me-1"></i>Buat Jadwal Pengiriman (${nextDeliverySequence})
+                            <i class="fas fa-calendar-plus me-1"></i>Create Delivery Schedule (${nextDeliverySequence})
                         </button>`;
                     } else if (totalDeliveries > 0 && completedDeliveries < totalDeliveries) {
                         // Has deliveries but not all completed - show delivery tracking
                         actionButtons = `<button class="btn btn-sm btn-warning" onclick="trackDeliveries(${data}, event)">
-                            <i class="fas fa-truck me-1"></i>Lihat Detail Pengiriman
+                            <i class="fas fa-truck me-1"></i>View Delivery Details
                         </button>`;
                     } else if (row.status === 'Selesai dengan Catatan') {
                         // Special actions for partial rejection
                         actionButtons = `
                             <button class="btn btn-sm btn-warning" onclick="reverifyPO(${data}, event)">
-                                <i class="fas fa-sync-alt me-1"></i>Verifikasi Ulang
+                                <i class="fas fa-sync-alt me-1"></i>Re-verify
                             </button>
                             <button class="btn btn-sm btn-danger" onclick="cancelPO(${data}, event)">
-                                <i class="fas fa-ban me-1"></i>Batalkan
+                                <i class="fas fa-ban me-1"></i>Cancel
                             </button>
                         `;
                     } else {
                         // Default - just show status indicator
                         actionButtons = `<span class="text-success small">
-                            <i class="fas fa-check-circle me-1"></i>Selesai
+                            <i class="fas fa-check-circle me-1"></i>Completed
                         </span>`;
                     }
                     
@@ -1203,7 +1201,7 @@ function initPODeliveryTable() {
                     
                     if (!Array.isArray(selectedItems) || selectedItems.length === 0) {
                         return `<span class="text-muted small fst-italic">
-                            <i class="fas fa-box-open me-1"></i>Tidak ada item
+                            <i class="fas fa-box-open me-1"></i>No items
                         </span>`;
                     }
                     
@@ -1225,7 +1223,7 @@ function initPODeliveryTable() {
                     if (itemCounts.unit > 0) {
                         itemBadges.push(`
                             <span class="badge bg-primary me-1 mb-1">
-                                <i class="fas fa-truck me-1"></i>${itemCounts.unit} Unit
+                                <i class="fas fa-truck me-1"></i>${itemCounts.unit} Units
                             </span>
                         `);
                     }
@@ -1239,7 +1237,7 @@ function initPODeliveryTable() {
                     if (itemCounts.battery > 0) {
                         itemBadges.push(`
                             <span class="badge bg-warning me-1 mb-1">
-                                <i class="fas fa-battery-half me-1"></i>${itemCounts.battery} Baterai
+                                <i class="fas fa-battery-half me-1"></i>${itemCounts.battery} Battery
                             </span>
                         `);
                     }
@@ -1301,7 +1299,7 @@ function initPODeliveryTable() {
                     } else if (row.status === 'Received') {
                         actionButtons = `
                             <span class="text-info small">
-                                <i class="fas fa-clock me-1"></i>Dalam Verifikasi
+                                <i class="fas fa-clock me-1"></i>On Verification
                             </span>
                         `;
                     } else if (row.status === 'Completed') {
@@ -1402,7 +1400,7 @@ function initUnitAttachmentPOCompletedTable() {
                     
                     if (totalUnit === 0 && totalAttachment === 0 && totalBattery === 0 && totalCharger === 0) {
                         return `<span class="text-muted small fst-italic">
-                            <i class="fas fa-box-open me-1"></i>Tidak ada item
+                            <i class="fas fa-box-open me-1"></i>No items
                         </span>`;
                     }
                     
@@ -1412,7 +1410,7 @@ function initUnitAttachmentPOCompletedTable() {
                     if (totalUnit > 0) {
                         itemBadges.push(`
                             <span class="badge bg-primary me-1 mb-1">
-                                <i class="fas fa-truck me-1"></i>${totalUnit} Unit
+                                <i class="fas fa-truck me-1"></i>${totalUnit} Units
                             </span>
                         `);
                     }
@@ -1428,7 +1426,7 @@ function initUnitAttachmentPOCompletedTable() {
                     if (totalBattery > 0) {
                         itemBadges.push(`
                             <span class="badge bg-warning me-1 mb-1">
-                                <i class="fas fa-battery-half me-1"></i>${totalBattery} Baterai
+                                <i class="fas fa-battery-half me-1"></i>${totalBattery} Battery
                             </span>
                         `);
                     }
@@ -1481,7 +1479,7 @@ function initUnitAttachmentPOCompletedTable() {
                                 ${verified} / ${totalItems}
                             </div>
                         </div>
-                        <small class="text-muted">${percentage}% terverifikasi</small>
+                        <small class="text-muted">${percentage}% verified</small>
                     `;
                 }
             },
@@ -1502,13 +1500,13 @@ function initUnitAttachmentPOCompletedTable() {
                     
                     if (totalDeliveries === 0) {
                         return `<span class="text-muted small">
-                            <i class="fas fa-truck text-muted me-1"></i>Belum ada pengiriman
+                            <i class="fas fa-truck text-muted me-1"></i>No deliveries yet
                         </span>`;
                     }
                     
                     // For completed items, show all delivered and verified
                     const statusText = `<span class="text-success">
-                        <i class="fas fa-check-circle me-1"></i>Semua Item Terkirim & Terverifikasi
+                        <i class="fas fa-check-circle me-1"></i>All Items Delivered & Verified
                     </span>`;
                     const progressBar = `<div class="progress mt-1" style="height: 16px;">
                         <div class="progress-bar bg-success" style="width: 100%;">100%</div>
@@ -1519,7 +1517,7 @@ function initUnitAttachmentPOCompletedTable() {
                             <div class="mb-1">${statusText}</div>
                             ${progressBar}
                             <div class="text-muted mt-1">
-                                <small>${completedDeliveries}/${totalDeliveries} pengiriman selesai</small>
+                                <small>${completedDeliveries}/${totalDeliveries} deliveries completed</small>
                             </div>
                         </div>
                     `;
@@ -1680,8 +1678,8 @@ function viewPODetail(poId, event) {
                 $('#poLoadingState').html(`
                     <div class="text-center text-danger p-5">
                         <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
-                        <h5 class="mt-3">Gagal memuat data</h5>
-                        <p class="text-muted">${response.message || 'Terjadi kesalahan saat memuat detail PO'}</p>
+                        <h5 class="mt-3">Error Fetching Data</h5>
+                        <p class="text-muted">${response.message || 'An error occurred while loading PO details'}</p>
                     </div>
                 `);
             }
@@ -1691,8 +1689,8 @@ function viewPODetail(poId, event) {
             $('#poLoadingState').html(`
                 <div class="text-center text-danger p-5">
                     <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
-                    <h5 class="mt-3">Gagal memuat data</h5>
-                    <p class="text-muted">Terjadi kesalahan saat memuat detail PO</p>
+                    <h5 class="mt-3">Error Fetching Data</h5>
+                    <p class="text-muted">An error occurred while loading PO details</p>
                 </div>
             `);
         }
@@ -1767,9 +1765,9 @@ function getVerificationStatusBadge(status) {
     };
     
     const textMap = {
-        'Sesuai': 'Sesuai',
-        'Tidak Sesuai': 'Tidak Sesuai',
-        'Belum Dicek': 'Belum Dicek',
+        'Sesuai': 'Verified',
+        'Tidak Sesuai': 'Not Verified',
+        'Belum Dicek': 'Not Checked',
         'Pending': 'Pending'
     };
     
@@ -1818,14 +1816,14 @@ function renderSerialNumbers(items, specId) {
                 <div class="col-md-6">
                     <div class="d-flex align-items-center">
                         <span class="badge bg-light text-dark me-2" style="min-width: 35px; text-align: center;">${item1.index}</span>
-                        <code class="flex-grow-1 ${item1.sn ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item1.sn || 'Belum ada SN'}</code>
+                        <code class="flex-grow-1 ${item1.sn ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item1.sn || 'No SN yet'}</code>
                     </div>
                 </div>
                 ${item2 ? `
                 <div class="col-md-6">
                     <div class="d-flex align-items-center">
                         <span class="badge bg-light text-dark me-2" style="min-width: 35px; text-align: center;">${item2.index}</span>
-                        <code class="flex-grow-1 ${item2.sn ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item2.sn || 'Belum ada SN'}</code>
+                        <code class="flex-grow-1 ${item2.sn ? 'text-success' : 'text-muted fst-italic'}" style="font-size: 0.9em;">${item2.sn || 'No SN yet'}</code>
                     </div>
                 </div>
                 ` : '<div class="col-md-6"></div>'}
@@ -1874,7 +1872,7 @@ function toggleSNIcon(collapseId) {
 
 function getPackingListInfo(deliveries, itemType) {
     if (!deliveries || deliveries.length === 0) {
-        return '<span class="text-muted">Belum ada packing list</span>';
+        return '<span class="text-muted">No packing list yet</span>';
     }
     
     let packingInfo = '';
@@ -1890,7 +1888,7 @@ function getPackingListInfo(deliveries, itemType) {
                     packingInfo += `
                         <div class="mb-1">
                             <span class="badge bg-light text-dark me-2">${delivery.packing_list_no || 'N/A'}</span>
-                            <small class="text-muted">: ${itemCount} (${itemType} yang dikirim di packing list ini)</small>
+                            <small class="text-muted">: ${itemCount} (${itemType} delivered in this packing list)</small>
                         </div>
                     `;
                 }
@@ -1900,7 +1898,7 @@ function getPackingListInfo(deliveries, itemType) {
         }
     });
     
-    return packingInfo || '<span class="text-muted">Belum ada packing list</span>';
+    return packingInfo || '<span class="text-muted">No packing list yet</span>';
 }
 
 // Render specification details based on item type
@@ -1913,10 +1911,10 @@ function renderSpecificationDetails(item, itemType) {
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-2">
-                        <strong>Departemen:</strong> ${item.nama_departemen || '-'}
+                        <strong>Department:</strong> ${item.nama_departemen || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Jenis Unit:</strong> ${item.jenis_unit || '-'}
+                        <strong>Unit Type:</strong> ${item.jenis_unit || '-'}
                     </div>
                     <div class="mb-2">
                         <strong>Brand:</strong> ${item.merk_unit || '-'}
@@ -1925,10 +1923,10 @@ function renderSpecificationDetails(item, itemType) {
                         <strong>Model:</strong> ${item.model_unit || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Tahun:</strong> ${item.tahun_po || '-'}
+                        <strong>Year:</strong> ${item.tahun_po || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Kapasitas:</strong> ${item.kapasitas_unit || '-'}
+                        <strong>Capacity:</strong> ${item.kapasitas_unit || '-'}
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -1948,7 +1946,7 @@ function renderSpecificationDetails(item, itemType) {
                         <strong>Valve:</strong> ${item.jumlah_valve || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Keterangan:</strong> ${item.keterangan || '-'}
+                        <strong>Notes:</strong> ${item.keterangan || '-'}
                     </div>
                 </div>
             </div>
@@ -1959,10 +1957,10 @@ function renderSpecificationDetails(item, itemType) {
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-2">
-                        <strong>Tipe Attachment:</strong> ${item.tipe_attachment || '-'}
+                        <strong>Attachment Type:</strong> ${item.tipe_attachment || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Merk:</strong> ${item.merk_attachment || '-'}
+                        <strong>Brand:</strong> ${item.merk_attachment || '-'}
                     </div>
                 </div>
                 <div class="col-md-6">
@@ -1970,7 +1968,7 @@ function renderSpecificationDetails(item, itemType) {
                         <strong>Model:</strong> ${item.model_attachment || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Keterangan:</strong> ${item.keterangan || '-'}
+                        <strong>Notes:</strong> ${item.keterangan || '-'}
                     </div>
                 </div>
             </div>
@@ -1981,18 +1979,18 @@ function renderSpecificationDetails(item, itemType) {
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-2">
-                        <strong>Jenis Battery:</strong> ${item.jenis_baterai || '-'}
+                        <strong>Battery Type:</strong> ${item.jenis_baterai || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Merk Battery:</strong> ${item.merk_baterai || '-'}
+                        <strong>Battery Brand:</strong> ${item.merk_baterai || '-'}
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="mb-2">
-                        <strong>Tipe Battery:</strong> ${item.tipe_baterai || '-'}
+                        <strong>Battery Type:</strong> ${item.tipe_baterai || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Keterangan:</strong> ${item.keterangan || '-'}
+                        <strong>Notes:</strong> ${item.keterangan || '-'}
                     </div>
                 </div>
             </div>
@@ -2003,15 +2001,15 @@ function renderSpecificationDetails(item, itemType) {
             <div class="row">
                 <div class="col-md-6">
                     <div class="mb-2">
-                        <strong>Merk Charger:</strong> ${item.merk_charger || '-'}
+                        <strong>Charger Brand:</strong> ${item.merk_charger || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Tipe Charger:</strong> ${item.tipe_charger || '-'}
+                        <strong>Charger Type:</strong> ${item.tipe_charger || '-'}
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="mb-2">
-                        <strong>Keterangan:</strong> ${item.keterangan || '-'}
+                        <strong>Notes:</strong> ${item.keterangan || '-'}
                     </div>
                 </div>
             </div>
@@ -2025,7 +2023,7 @@ function renderSpecificationDetails(item, itemType) {
                         <strong>Item Name:</strong> ${item.item_name || '-'}
                     </div>
                     <div class="mb-2">
-                        <strong>Keterangan:</strong> ${item.keterangan || '-'}
+                        <strong>Notes:</strong> ${item.keterangan || '-'}
                     </div>
                 </div>
             </div>
@@ -2050,7 +2048,7 @@ function renderItemsTable(items, summary = null, deliveries = []) {
     let itemsHtml = '';
     
     if (Object.keys(groupedBySpec).length === 0) {
-        itemsHtml = '<div class="text-center p-4"><i class="fas fa-box-open fa-2x text-muted mb-3"></i><p class="text-muted">Tidak ada item</p></div>';
+        itemsHtml = '<div class="text-center p-4"><i class="fas fa-box-open fa-2x text-muted mb-3"></i><p class="text-muted">No items available</p></div>';
     } else {
         // Create dropdown for each unique specification
         Object.keys(groupedBySpec).forEach((spec, specIndex) => {
@@ -2077,7 +2075,7 @@ function renderItemsTable(items, summary = null, deliveries = []) {
                             </div>
                             <div class="text-end">
                                 <small class="text-muted">
-                                    Sudah Dikirim: ${totalDelivered}
+                                    Delivered: ${totalDelivered}
                                 </small>
                             </div>
                         </div>
@@ -2086,7 +2084,7 @@ function renderItemsTable(items, summary = null, deliveries = []) {
                         <div class="px-3 pb-3">
                             <div class="border-top pt-3">
                                 <div class="p-3" style="background: white; border-radius: 6px; border: 1px solid #e9ecef;">
-                                    <h6 class="mb-3 text-primary">Spesifikasi Detail:</h6>
+                                    <h6 class="mb-3 text-primary">Specification Details:</h6>
                                     ${renderSpecificationDetails(specItems[0], itemType)}
                                     
                                     <!-- Serial Numbers Section -->
@@ -2095,7 +2093,7 @@ function renderItemsTable(items, summary = null, deliveries = []) {
                                     <!-- Packing List Information -->
                                     <div class="mt-3 pt-3 border-top">
                                         <h6 class="mb-2 text-info">
-                                            <i class="fas fa-box me-2"></i>Packing List terkait:
+                                            <i class="fas fa-box me-2"></i>Related Packing List:
                                         </h6>
                                         ${getPackingListInfo(deliveries, itemTypeLower)}
                                     </div>
@@ -2134,15 +2132,15 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
         deliveriesHtml = `
             <div class="text-center p-4">
                 <i class="fas fa-truck fa-2x text-muted mb-3"></i>
-                <h6 class="text-muted">Belum ada pengiriman</h6>
-                <p class="text-muted small">Pengiriman akan muncul setelah dibuat</p>
+                <h6 class="text-muted">No deliveries yet</h6>
+                <p class="text-muted small">Deliveries will appear once created</p>
                 <?php if (can_edit('purchasing')): ?>
                 <button class="btn btn-primary btn-sm" onclick="createDelivery()">
-                    <i class="fas fa-plus me-1"></i>Buat Pengiriman
+                    <i class="fas fa-plus me-1"></i>Create Delivery
                 </button>
                 <?php else: ?>
                 <button class="btn btn-secondary btn-sm" disabled title="Access denied: You do not have permission to create delivery">
-                    <i class="fas fa-lock me-1"></i>Buat Pengiriman
+                    <i class="fas fa-lock me-1"></i>Create Delivery
                 </button>
                 <?php endif; ?>
             </div>
@@ -2164,7 +2162,7 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
                         <div>
                             <h6 class="mb-0">
                                 <i class="fas ${statusIcon} me-2"></i>
-                                Pengiriman #${delivery.delivery_sequence || index + 1}
+                                Delivery #${delivery.delivery_sequence || index + 1}
                                 ${delivery.packing_list_no ? ` - ${delivery.packing_list_no}` : ''}
                             </h6>
                             <small class="text-muted">
@@ -2198,7 +2196,7 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
                         ${delivery.notes ? `<p class="mb-2"><strong>Notes:</strong> ${delivery.notes}</p>` : ''}
                         
                         ${itemsInDelivery.length > 0 ? `
-                            <h6 class="mb-2">Items dalam pengiriman:</h6>
+                            <h6 class="mb-2">Items in Delivery:</h6>
                             <div class="table-responsive">
                                 <table class="table table-sm">
                                     <thead>
@@ -2206,7 +2204,7 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
                                             <th>Type</th>
                                             <th>Item Name</th>
                                             <th>Serial Number</th>
-                                            <th>Verifikasi</th>
+                                            <th>Verification</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -2215,13 +2213,13 @@ function renderDeliveriesContent(deliveries, deliveryItems) {
                                                 <td><span class="badge ${getItemTypeBadgeClass(item.item_type)}">${item.item_type}</span></td>
                                                 <td>${item.item_name || '-'}</td>
                                                 <td><code>${item.serial_number || '-'}</code></td>
-                                                <td>${getVerificationStatusBadge(item.status_verifikasi || 'Belum Dicek')}</td>
+                                                <td>${getVerificationStatusBadge(item.status_verifikasi || 'Not Checked')}</td>
                                             </tr>
                                         `).join('')}
                                     </tbody>
                                 </table>
                             </div>
-                        ` : '<p class="text-muted mb-0">Tidak ada items dalam pengiriman ini</p>'}
+                        ` : '<p class="text-muted mb-0">No items in this delivery</p>'}
                     </div>
                 </div>
             `;
@@ -2406,7 +2404,7 @@ function assignSerialNumbers(deliveryId) {
 }
 
 function proceedWithoutSN() {
-    if (currentDeliveryId && confirm('Apakah Anda yakin ingin melanjutkan tanpa assign SN? Delivery akan langsung ke status In Transit.')) {
+    if (currentDeliveryId && confirm('Are you sure you want to proceed without assigning serial numbers? The delivery will be marked as In Transit.')) {
         $('#assignSNModal').modal('hide');
         updateDeliveryStatus(currentDeliveryId, 'In Transit');
     }
@@ -2451,17 +2449,17 @@ function loadDeliveryDetailsForSN(deliveryId) {
                     if (delivery.po_id) {
                         loadItemsForSNAssignment(delivery.po_id, deliveryId);
                     } else {
-                        showError('PO ID tidak ditemukan dalam data delivery');
+                        showError('PO ID not found in delivery data');
                     }
                 } else {
-                    showError('Delivery tidak ditemukan');
+                    showError('Delivery not found');
                 }
             } else {
-                showError('Gagal memuat data delivery');
+                showError('Failed to load delivery data');
             }
         },
         error: function() {
-            showError('Terjadi kesalahan saat memuat data delivery');
+            showError('An error occurred while loading delivery data');
         }
     });
 }
@@ -2474,11 +2472,11 @@ function loadItemsForSNAssignment(poId, deliveryId) {
             if (response.success) {
                 renderSNAssignmentForm(response.items);
             } else {
-                showError(response.message || 'Gagal memuat items');
+                showError(response.message || 'Failed to load items');
             }
         },
         error: function() {
-            showError('Terjadi kesalahan saat memuat items');
+            showError('An error occurred while loading items');
         }
     });
 }
@@ -2491,7 +2489,7 @@ function renderSNAssignmentForm(items) {
         html = `
             <div class="alert alert-warning">
                 <i class="fas fa-exclamation-triangle me-2"></i>
-                Tidak ada items untuk assign serial numbers.
+                No items available for serial number assignment.
             </div>
         `;
         $('#snAssignmentContent').html(html);
@@ -2520,21 +2518,21 @@ function renderSNAssignmentForm(items) {
                                     <label class="form-label small fw-bold">SN Unit:</label>
                                     <input type="text" class="form-control form-control-sm" 
                                            name="serial_number_po_${index}" 
-                                           placeholder="Masukkan SN Unit"
+                                           placeholder="Enter SN Unit"
                                            value="${unit.serial_number_po || ''}">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold">SN Engine:</label>
                                     <input type="text" class="form-control form-control-sm" 
                                            name="sn_engine_${index}" 
-                                           placeholder="Masukkan SN Mesin"
+                                           placeholder="Enter SN Engine"
                                            value="${unit.sn_mesin_po || ''}">
                                 </div>
                                 <div class="col-md-3">
                                     <label class="form-label small fw-bold">SN Mast:</label>
                                     <input type="text" class="form-control form-control-sm" 
                                            name="sn_mast_${index}" 
-                                           placeholder="Masukkan SN Mast"
+                                           placeholder="Enter SN Mast"
                                            value="${unit.sn_mast_po || ''}">
                                 </div>
 
@@ -2565,7 +2563,7 @@ function renderSNAssignmentForm(items) {
                                     <label class="form-label small fw-bold">Serial Number:</label>
                                     <input type="text" class="form-control form-control-sm" 
                                            name="sn_attachment_${index}" 
-                                           placeholder="Masukkan Serial Number"
+                                           placeholder="Enter Serial Number"
                                            value="${attachment.serial_number || ''}">
                                 </div>
 
@@ -2596,7 +2594,7 @@ function renderSNAssignmentForm(items) {
                                     <label class="form-label small fw-bold">Serial Number:</label>
                                     <input type="text" class="form-control form-control-sm" 
                                            name="sn_battery_${index}" 
-                                           placeholder="Masukkan Serial Number"
+                                           placeholder="Enter Serial Number"
                                            value="${battery.serial_number || ''}">
                                 </div>
 
@@ -2627,7 +2625,7 @@ function renderSNAssignmentForm(items) {
                                     <label class="form-label small fw-bold">Serial Number:</label>
                                     <input type="text" class="form-control form-control-sm" 
                                            name="sn_charger_${index}" 
-                                           placeholder="Masukkan Serial Number"
+                                           placeholder="Enter Serial Number"
                                            value="${charger.serial_number || ''}">
                                 </div>
 
@@ -2654,13 +2652,13 @@ function showError(message) {
 }
 
 function markAsInTransit(deliveryId) {
-    if (confirm('Apakah Anda yakin ingin menandai delivery ini sebagai In Transit?')) {
+    if (confirm('Are you sure you want to mark this delivery as In Transit?')) {
         updateDeliveryStatus(deliveryId, 'In Transit');
     }
 }
 
 function markAsReceived(deliveryId) {
-    if (confirm('Apakah Anda yakin ingin menandai delivery ini sebagai Received?')) {
+    if (confirm('Are you sure you want to mark this delivery as Received?')) {
         updateDeliveryStatus(deliveryId, 'Received');
     }
 }
@@ -2678,23 +2676,23 @@ function updateDeliveryStatus(deliveryId, status) {
             if (response.success) {
                 refreshTable();
                 if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                    OptimaPro.showNotification(response.message || 'Status delivery berhasil diupdate', 'success');
+                    OptimaPro.showNotification(response.message || 'Delivery status updated successfully', 'success');
                 } else {
-                    showNotification(response.message || 'Status delivery berhasil diupdate', 'success');
+                    showNotification(response.message || 'Delivery status updated successfully', 'success');
                 }
             } else {
                 if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                    OptimaPro.showNotification(response.message || 'Gagal mengupdate status delivery', 'error');
+                    OptimaPro.showNotification(response.message || 'Failed to update delivery status', 'error');
                 } else {
-                    showNotification(response.message || 'Gagal mengupdate status delivery', 'error');
+                    showNotification(response.message || 'Failed to update delivery status', 'error');
                 }
             }
         },
         error: function() {
             if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                OptimaPro.showNotification('Terjadi kesalahan saat mengupdate status delivery', 'error');
+                OptimaPro.showNotification('An error occurred while updating delivery status', 'error');
             } else {
-                showNotification('Terjadi kesalahan saat mengupdate status delivery', 'error');
+                showNotification('An error occurred while updating delivery status', 'error');
             }
         }
     });
@@ -2722,7 +2720,7 @@ function getDeliveryStatusBadgeClass2(status) {
 function addNewDelivery(poId) {
     if (typeof Swal === 'undefined') return;
     
-    Swal.fire('Info', 'Fitur tambah pengiriman coming soon!', 'info');
+    Swal.fire('Info', 'Add new delivery feature coming soon!', 'info');
 }
 
 // Duplicate function removed
@@ -2751,14 +2749,14 @@ function deletePO(poId, event) {
     <?php endif; ?>
     
     Swal.fire({
-        title: 'Apakah Anda yakin?',
-        text: 'Data PO ini akan dihapus secara permanen!',
+        title: 'Are you sure?',
+        text: 'This PO data will be permanently deleted!',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, hapus!',
-        cancelButtonText: 'Batal'
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -2767,14 +2765,14 @@ function deletePO(poId, event) {
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Dihapus!', 'PO berhasil dihapus.', 'success');
+                        Swal.fire('Deleted!', 'PO has been deleted successfully.', 'success');
                         if (unifiedPOTable) unifiedPOTable.ajax.reload();
                     } else {
-                        Swal.fire('Gagal!', response.message || 'Terjadi kesalahan.', 'error');
+                        Swal.fire('Failed!', response.message || 'An error occurred.', 'error');
                     }
                 },
                 error: function() {
-                    Swal.fire('Gagal!', 'Tidak dapat terhubung ke server.', 'error');
+                    Swal.fire('Failed!', 'Unable to connect to the server.', 'error');
                 }
             });
         }
@@ -2785,14 +2783,14 @@ function reverifyPO(poId) {
     if (typeof $ === 'undefined' || typeof Swal === 'undefined') return;
     
     Swal.fire({
-        title: 'Verifikasi Ulang PO?',
-        text: 'Status item yang "Tidak Sesuai" akan diubah kembali menjadi "Belum Dicek". PO akan masuk kembali ke antrian verifikasi. Lanjutkan?',
+        title: 'Reverify PO?',
+        text: 'This PO will be returned to the verification queue. Are you sure you want to continue?',
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#3085d6',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Ya, Lanjutkan!',
-        cancelButtonText: 'Batal'
+        confirmButtonText: 'Yes, continue!',
+        cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -2801,14 +2799,14 @@ function reverifyPO(poId) {
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Berhasil!', 'PO telah dikembalikan ke antrian verifikasi.', 'success');
+                        Swal.fire('Success!', 'PO has been returned to the verification queue.', 'success');
                         if (unifiedPOTable) unifiedPOTable.ajax.reload();
                     } else {
-                        Swal.fire('Gagal!', response.message || 'Terjadi kesalahan.', 'error');
+                        Swal.fire('Failed!', response.message || 'An error occurred.', 'error');
                     }
                 },
                 error: function() {
-                    Swal.fire('Gagal!', 'Tidak dapat terhubung ke server.', 'error');
+                    Swal.fire('Failed!', 'Unable to connect to the server.', 'error');
                 }
             });
         }
@@ -2819,14 +2817,14 @@ function cancelPO(poId) {
     if (typeof $ === 'undefined' || typeof Swal === 'undefined') return;
     
     Swal.fire({
-        title: 'Selesaikan dan Batalkan PO?',
-        text: 'Status PO ini akan diubah menjadi "Cancelled". Aksi ini tidak dapat dibatalkan.',
+        title: 'Complete and Cancel PO?',
+        text: 'The status of this PO will be changed to "Cancelled". This action cannot be undone.',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Ya, Batalkan PO!',
-        cancelButtonText: 'Tidak'
+        confirmButtonText: 'Yes, cancel the PO!',
+        cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -2835,14 +2833,14 @@ function cancelPO(poId) {
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Dibatalkan!', 'PO telah berhasil dibatalkan.', 'success');
+                        Swal.fire('Cancelled!', 'PO has been cancelled successfully.', 'success');
                         if (unifiedPOTable) unifiedPOTable.ajax.reload();
                     } else {
-                        Swal.fire('Gagal!', response.message || 'Terjadi kesalahan.', 'error');
+                        Swal.fire('Failed!', response.message || 'An error occurred.', 'error');
                     }
                 },
                 error: function() {
-                    Swal.fire('Gagal!', 'Tidak dapat terhubung ke server.', 'error');
+                    Swal.fire('Failed!', 'Unable to connect to the server.', 'error');
                 }
             });
         }
@@ -2907,7 +2905,7 @@ function loadDeliveryItems(poId) {
                 $('#deliveryItemsList').html(`
                     <div class="alert alert-warning mb-0">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        ${response.message || 'Gagal memuat items'}
+                        ${response.message || 'Failed to load items'}
                     </div>
                 `);
             }
@@ -2916,7 +2914,7 @@ function loadDeliveryItems(poId) {
             $('#deliveryItemsList').html(`
                 <div class="alert alert-danger mb-0">
                     <i class="fas fa-times-circle me-2"></i>
-                    Terjadi kesalahan saat memuat items
+                    An error occurred while loading items
                 </div>
             `);
         }
@@ -2945,8 +2943,8 @@ function renderDeliveryItems(po, items) {
     // SPK-style Checklist Section with SEPARATED categories
     html += `
                 <div class="mb-3">
-            <strong>Pilih Item yang akan dikirim</strong>
-            <div class="form-text mb-3">Centang item yang ingin dimasukkan ke delivery ini.</div>
+            <strong>Select Items to be Delivered</strong>
+            <div class="form-text mb-3">Check the items you want to include in this delivery.</div>
                 </div>
     `;
     
@@ -2958,11 +2956,11 @@ function renderDeliveryItems(po, items) {
                     <h6 class="mb-0"><i class="fas fa-truck me-2 text-primary"></i>Unit (${items.units.length} items)</h6>
                     <div class="btn-group btn-group-sm">
                         <?php if (can_create('purchasing')): ?>
-                        <button type="button" class="btn btn-outline-secondary" onclick="selectAllUnits()">Pilih Semua</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllUnits()">Bersihkan</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="selectAllUnits()">Select All</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllUnits()">Clear</button>
                         <?php else: ?>
-                        <button type="button" class="btn btn-outline-secondary" disabled title="Access denied">Pilih Semua</button>
-                        <button type="button" class="btn btn-outline-secondary" disabled title="Access denied">Bersihkan</button>
+                        <button type="button" class="btn btn-outline-secondary" disabled title="Access denied">Select All</button>
+                        <button type="button" class="btn btn-outline-secondary" disabled title="Access denied">Clear</button>
                         <?php endif; ?>
             </div>
                 </div>
@@ -2973,7 +2971,7 @@ function renderDeliveryItems(po, items) {
             const isDisabled = unit.is_delivered;
             const disabledClass = isDisabled ? 'text-muted' : '';
             const disabledAttr = isDisabled ? 'disabled' : '';
-            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Sudah Terkirim</span>' : '';
+            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Already Delivered</span>' : '';
             
             // Debug logging
             console.log('Unit ' + unit.id_po_unit + ' is_delivered: ' + isDisabled);
@@ -3002,8 +3000,8 @@ function renderDeliveryItems(po, items) {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0"><i class="fas fa-paperclip me-2 text-success"></i>Attachment (${items.attachments.length} items)</h6>
                     <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-secondary" onclick="selectAllAttachments()">Pilih Semua</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllAttachments()">Bersihkan</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="selectAllAttachments()">Select All</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllAttachments()">Clear</button>
                     </div>
                 </div>
                 <div class="border rounded p-2" style="max-height:200px; overflow:auto">
@@ -3013,7 +3011,7 @@ function renderDeliveryItems(po, items) {
             const isDisabled = attachment.is_delivered;
             const disabledClass = isDisabled ? 'text-muted' : '';
             const disabledAttr = isDisabled ? 'disabled' : '';
-            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Sudah Terkirim</span>' : '';
+            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Already Delivered</span>' : '';
             
             // Debug logging
             console.log('Attachment ' + attachment.id_po_attachment + ' is_delivered: ' + isDisabled);
@@ -3042,8 +3040,8 @@ function renderDeliveryItems(po, items) {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0"><i class="fas fa-battery-half me-2 text-warning"></i>Battery (${items.batteries.length} items)</h6>
                     <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-secondary" onclick="selectAllBatteries()">Pilih Semua</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllBatteries()">Bersihkan</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="selectAllBatteries()">Select All</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllBatteries()">Clear</button>
                     </div>
                 </div>
                 <div class="border rounded p-2" style="max-height:200px; overflow:auto">
@@ -3053,7 +3051,7 @@ function renderDeliveryItems(po, items) {
             const isDisabled = battery.is_delivered;
             const disabledClass = isDisabled ? 'text-muted' : '';
             const disabledAttr = isDisabled ? 'disabled' : '';
-            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Sudah Terkirim</span>' : '';
+            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Already Delivered</span>' : '';
             
             html += `<div class="mb-2 p-2 border rounded ${disabledClass}">
                 <div class="form-check">
@@ -3079,8 +3077,8 @@ function renderDeliveryItems(po, items) {
                 <div class="d-flex justify-content-between align-items-center mb-2">
                     <h6 class="mb-0"><i class="fas fa-plug me-2 text-info"></i>Charger (${items.chargers.length} items)</h6>
                     <div class="btn-group btn-group-sm">
-                        <button type="button" class="btn btn-outline-secondary" onclick="selectAllChargers()">Pilih Semua</button>
-                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllChargers()">Bersihkan</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="selectAllChargers()">Select All</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="clearAllChargers()">Clear</button>
                     </div>
                 </div>
                 <div class="border rounded p-2" style="max-height:200px; overflow:auto">
@@ -3090,7 +3088,7 @@ function renderDeliveryItems(po, items) {
             const isDisabled = charger.is_delivered;
             const disabledClass = isDisabled ? 'text-muted' : '';
             const disabledAttr = isDisabled ? 'disabled' : '';
-            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Sudah Terkirim</span>' : '';
+            const deliveredBadge = isDisabled ? '<span class="badge bg-success ms-2">Already Delivered</span>' : '';
             
             html += `<div class="mb-2 p-2 border rounded ${disabledClass}">
                 <div class="form-check">
@@ -3120,7 +3118,7 @@ function renderDeliveryItems(po, items) {
                     <span id="deliveryTotalSelected" class="badge bg-primary ms-2">0</span>
                 </div>
                 <div class="col-6 text-end">
-                    <small class="text-muted">Centang minimal satu item untuk dikirim</small>
+                    <small class="text-muted">Check at least one item to deliver</small>
                 </div>
             </div>
         </div>
@@ -3161,7 +3159,7 @@ function showNotification(message, type = 'info') {
         OptimaPro.showNotification(message, type);
     } else if (typeof Swal !== 'undefined') {
         Swal.fire({
-            title: type === 'success' ? 'Berhasil!' : type === 'error' ? 'Error!' : 'Info',
+            title: type === 'success' ? 'Success' : type === 'error' ? 'Error!' : 'Info',
             text: message,
             icon: type,
             timer: 3000,
@@ -3183,12 +3181,12 @@ function completePO(poId, event) {
     if (typeof $ === 'undefined' || typeof Swal === 'undefined') return;
     
     Swal.fire({
-        title: 'Tandai PO Selesai?',
-        text: 'Semua items sudah diterima. Tandai PO ini sebagai completed?',
+        title: 'Complete PO?',
+        text: 'All items have been received. Mark this PO as completed?',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'Ya, Selesai!',
-        cancelButtonText: 'Batal'
+        confirmButtonText: 'Yes, Complete!',
+        cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -3197,15 +3195,15 @@ function completePO(poId, event) {
                 dataType: 'json',
                 success: function(response) {
                     if (response.success) {
-                        Swal.fire('Berhasil!', 'PO berhasil ditandai sebagai completed.', 'success');
+                        Swal.fire('Success!', 'PO has been marked as completed.', 'success');
                         if (unifiedPOTable) unifiedPOTable.ajax.reload();
                         $('#viewPOModal').modal('hide');
                     } else {
-                        Swal.fire('Gagal!', response.message || 'Terjadi kesalahan.', 'error');
+                        Swal.fire('Failed!', response.message || 'An error occurred.', 'error');
                     }
                 },
                 error: function() {
-                    Swal.fire('Gagal!', 'Tidak dapat terhubung ke server.', 'error');
+                    Swal.fire('Failed!', 'Unable to connect to the server.', 'error');
                 }
             });
         }
@@ -3262,9 +3260,9 @@ function initCreatePOModal() {
         
         if (!itemData) {
             if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                OptimaPro.showNotification('Harap lengkapi semua field yang wajib diisi!', 'warning');
+                OptimaPro.showNotification('Please complete all required fields!', 'warning');
             } else {
-                alert('Harap lengkapi semua field yang wajib diisi!');
+                alert('Please complete all required fields!');
             }
             return;
         }
@@ -3282,7 +3280,7 @@ function initCreatePOModal() {
         $('#itemDetailModal').modal('hide');
         
         if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-            OptimaPro.showNotification('Item berhasil ditambahkan!', 'success');
+            OptimaPro.showNotification('Item successfully added!', 'success');
         }
     });
     
@@ -3292,9 +3290,9 @@ function initCreatePOModal() {
         
         if (poItems.length === 0) {
             if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                OptimaPro.showNotification('Harap tambahkan minimal satu item ke PO!', 'warning');
+                OptimaPro.showNotification('Please add at least one item to the PO!', 'warning');
             } else {
-                alert('Harap tambahkan minimal satu item ke PO!');
+                alert('Please add at least one item to the PO!');
             }
             return false;
         }
@@ -3305,7 +3303,7 @@ function initCreatePOModal() {
         // Show loading state
         const submitBtn = $(this).find('button[type="submit"]');
         const originalText = submitBtn.html();
-        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Menyimpan...');
+        submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
         
         // Submit via AJAX
         $.ajax({
@@ -3349,7 +3347,7 @@ function initCreatePOModal() {
             },
             error: function(xhr, status, error) {
                 console.error('AJAX Error:', error);
-                let errorMessage = 'Terjadi kesalahan saat menyimpan PO';
+                let errorMessage = 'An error occurred while saving the PO';
                 
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMessage = xhr.responseJSON.message;
@@ -3397,12 +3395,12 @@ function openItemModal(itemType, index = -1) {
     
     // Set title
     const titles = {
-        'unit': 'Tambah Unit Forklift',
-        'attachment': 'Tambah Attachment',
-        'battery': 'Tambah Battery',
-        'charger': 'Tambah Charger'
+        'unit': 'Add Forklift Unit',
+        'attachment': 'Add Attachment',
+        'battery': 'Add Battery',
+        'charger': 'Add Charger'
     };
-    modalTitle.textContent = editIndex >= 0 ? titles[itemType].replace('Tambah', 'Edit') : titles[itemType];
+    modalTitle.textContent = editIndex >= 0 ? titles[itemType].replace('Add', 'Edit') : titles[itemType];
     
     // Load form
     modalBody.innerHTML = '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-3x text-primary"></i><p class="mt-3">Loading form...</p></div>';
@@ -3573,7 +3571,7 @@ function updateItemsTable() {
     const tbody = document.getElementById('itemsTableBody');
     
     if (poItems.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Belum ada item. Klik tombol "Tambah" untuk menambahkan item.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No items yet. Click the "Add" button to add items.</td></tr>';
         return;
     }
     
@@ -3618,7 +3616,7 @@ function updateItemsTable() {
                 <td>${description}</td>
                 <td class="text-center">${item.qty}</td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem(${index})" title="Hapus">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem(${index})" title="Delete">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -3633,17 +3631,17 @@ function updateItemsTable() {
 function deleteItem(index) {
     if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showConfirmDialog === 'function') {
         OptimaPro.showConfirmDialog({
-            title: 'Hapus Item',
-            message: 'Apakah Anda yakin ingin menghapus item ini dari PO?'
+            title: 'Delete Item',
+            message: 'Are you sure you want to delete this item from the PO?'
         }).then(result => {
             if (result.isConfirmed) {
                 poItems.splice(index, 1);
                 updateItemsTable();
                 document.getElementById('items_json').value = JSON.stringify(poItems);
-                OptimaPro.showNotification('Item berhasil dihapus', 'success');
+                OptimaPro.showNotification('Item successfully deleted', 'success');
             }
         });
-    } else if (confirm('Apakah Anda yakin ingin menghapus item ini dari PO?')) {
+    } else if (confirm('Are you sure you want to delete this item from the PO?')) {
         poItems.splice(index, 1);
         updateItemsTable();
         document.getElementById('items_json').value = JSON.stringify(poItems);
@@ -3673,7 +3671,7 @@ function initializeUnitDropdowns() {
         }
         
         if (!deptId) {
-            $jenis.html('<option value="">Pilih Departemen Dulu...</option>').prop('disabled', true);
+            $jenis.html('<option value="">Please select a Department first...</option>').prop('disabled', true);
             if ($jenisActions.length) {
                 $jenisActions.prop('disabled', true);
             }
@@ -3700,8 +3698,8 @@ function initializeUnitDropdowns() {
                         }
                     });
                     
-                    $jenis.html('<option value="">Pilih Jenis Unit...</option>');
-                    $jenis.append('<option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Jenis Unit Baru</option>');
+                    $jenis.html('<option value="">Select Unit Type...</option>');
+                    $jenis.append('<option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Unit Type</option>');
                     $jenis.append('<option disabled>─────────────</option>');
                     Object.keys(jenisMap).sort().forEach(jenisName => {
                         $jenis.append(`<option value="${jenisMap[jenisName]}">${jenisName}</option>`);
@@ -3725,7 +3723,7 @@ function initializeUnitDropdowns() {
                     }
                 } else {
                     console.warn('No jenis data found');
-                    $jenis.html('<option value="">Tidak ada data</option>');
+                    $jenis.html('<option value="">No data available</option>');
                     if ($jenisActions.length) {
                         $jenisActions.prop('disabled', true);
                     }
@@ -3751,7 +3749,7 @@ function initializeUnitDropdowns() {
         }
         
         if (!merk) {
-            $model.html('<option value="">Pilih Brand Dulu...</option>').prop('disabled', true);
+            $model.html('<option value="">Please select a Brand first...</option>').prop('disabled', true);
             if ($modelActions.length) {
                 $modelActions.prop('disabled', true);
             }
@@ -3767,8 +3765,8 @@ function initializeUnitDropdowns() {
             success: function(response) {
                 console.log('✅ Models loaded:', response);
                 if (response.success && response.data && response.data.length > 0) {
-                    $model.html('<option value="">Pilih Model...</option>');
-                    $model.append('<option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Model Baru</option>');
+                    $model.html('<option value="">Select Model...</option>');
+                    $model.append('<option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Model</option>');
                     $model.append('<option disabled>─────────────</option>');
                     response.data.forEach(item => {
                         $model.append(`<option value="${item.id_model_unit}">${item.model_unit}</option>`);
@@ -3792,7 +3790,7 @@ function initializeUnitDropdowns() {
                     }
                 } else {
                     console.warn('No model data found');
-                    $model.html('<option value="">Tidak ada model</option>');
+                    $model.html('<option value="">No models available</option>');
                     if ($modelActions.length) {
                         $modelActions.prop('disabled', true);
                     }
@@ -3823,10 +3821,10 @@ function initializeAttachmentDropdowns() {
         console.log(' Attachment Tipe changed:', selectedTipe);
         
         $merk.html('<option value="">Loading...</option>').prop('disabled', true);
-        $model.html('<option value="">Pilih Merk Dulu...</option>').prop('disabled', true);
+        $model.html('<option value="">Please select a Brand first...</option>').prop('disabled', true);
         
         if (!selectedTipe) {
-            $merk.html('<option value="">Pilih Tipe Dulu...</option>').prop('disabled', true);
+            $merk.html('<option value="">Please select a Type first...</option>').prop('disabled', true);
             return;
         }
         
@@ -3839,7 +3837,7 @@ function initializeAttachmentDropdowns() {
             success: function(response) {
                 console.log('✅ Attachment Merk loaded:', response);
                 if (response.success && response.data && response.data.length > 0) {
-                    $merk.html('<option value="">Pilih Merk...</option>');
+                    $merk.html('<option value="">Select Brand...</option>');
                     response.data.forEach(item => {
                         const merkName = item.merk_attachment || item.merk || 'Unknown';
                         $merk.append(`<option value="${merkName}">${merkName}</option>`);
@@ -3857,7 +3855,7 @@ function initializeAttachmentDropdowns() {
                         });
                     }
                 } else {
-                    $merk.html('<option value="">Tidak ada data merk</option>');
+                    $merk.html('<option value="">No brands available</option>');
                 }
             },
             error: function(xhr, status, error) {
@@ -3878,7 +3876,7 @@ function initializeAttachmentDropdowns() {
         $model.html('<option value="">Loading...</option>').prop('disabled', true);
         
         if (!selectedTipe || !selectedMerk) {
-            $model.html('<option value="">Pilih Merk Dulu...</option>').prop('disabled', true);
+            $model.html('<option value="">Please select a Brand first...</option>').prop('disabled', true);
             return;
         }
         
@@ -3910,7 +3908,7 @@ function initializeAttachmentDropdowns() {
                         });
                     }
                 } else {
-                    $model.html('<option value="">Tidak ada data model</option>');
+                    $model.html('<option value="">No models available</option>');
                 }
             },
             error: function(xhr, status, error) {
@@ -3938,10 +3936,10 @@ function initializeBatteryDropdowns() {
         console.log(' Battery Jenis changed:', selectedJenis);
         
         $merk.html('<option value="">Loading...</option>').prop('disabled', true);
-        $tipe.html('<option value="">Pilih Merk Dulu...</option>').prop('disabled', true);
+        $tipe.html('<option value="">Please select a Brand first...</option>').prop('disabled', true);
         
         if (!selectedJenis) {
-            $merk.html('<option value="">Pilih Jenis Dulu...</option>').prop('disabled', true);
+            $merk.html('<option value="">Please select a Type first...</option>').prop('disabled', true);
             return;
         }
         
@@ -3954,7 +3952,7 @@ function initializeBatteryDropdowns() {
             success: function(response) {
                 console.log('✅ Battery Merk loaded:', response);
                 if (response.success && response.data && response.data.length > 0) {
-                    $merk.html('<option value="">Pilih Merk...</option>');
+                    $merk.html('<option value="">Select Brand...</option>');
                     response.data.forEach(item => {
                         const merkName = item.merk_baterai || 'Unknown';
                         $merk.append(`<option value="${merkName}">${merkName}</option>`);
@@ -3972,7 +3970,7 @@ function initializeBatteryDropdowns() {
                         });
                     }
                 } else {
-                    $merk.html('<option value="">Tidak ada data merk</option>');
+                    $merk.html('<option value="">No brands available</option>');
                 }
             },
             error: function(xhr, status, error) {
@@ -3993,7 +3991,7 @@ function initializeBatteryDropdowns() {
         $tipe.html('<option value="">Loading...</option>').prop('disabled', true);
         
         if (!selectedJenis || !selectedMerk) {
-            $tipe.html('<option value="">Pilih Merk Dulu...</option>').prop('disabled', true);
+            $tipe.html('<option value="">Please select a Brand first...</option>').prop('disabled', true);
             return;
         }
         
@@ -4006,7 +4004,7 @@ function initializeBatteryDropdowns() {
             success: function(response) {
                 console.log('✅ Battery Tipe loaded:', response);
                 if (response.success && response.data && response.data.length > 0) {
-                    $tipe.html('<option value="">Pilih Tipe...</option>');
+                    $tipe.html('<option value="">Select Type...</option>');
                     response.data.forEach(item => {
                         const tipeLabel = item.tipe_baterai || 'Unknown';
                         const batteryId = item.id || item.id_baterai;
@@ -4025,7 +4023,7 @@ function initializeBatteryDropdowns() {
                         });
                     }
                 } else {
-                    $tipe.html('<option value="">Tidak ada data tipe</option>');
+                    $tipe.html('<option value="">No types available</option>');
                 }
             },
             error: function(xhr, status, error) {
@@ -4053,7 +4051,7 @@ function initializeChargerDropdowns() {
         $model.html('<option value="">Loading...</option>').prop('disabled', true);
         
         if (!selectedMerk) {
-            $model.html('<option value="">Pilih Merk Dulu...</option>').prop('disabled', true);
+            $model.html('<option value="">Please select a Brand first...</option>').prop('disabled', true);
             return;
         }
         
@@ -4085,7 +4083,7 @@ function initializeChargerDropdowns() {
                         });
                     }
                 } else {
-                    $model.html('<option value="">Tidak ada data model</option>');
+                    $model.html('<option value="">No models available</option>');
                 }
             },
             error: function(xhr, status, error) {
@@ -4101,7 +4099,7 @@ function initializeChargerDropdowns() {
             e.preventDefault();
             
             if (!currentPOId) {
-                showNotification('PO ID tidak ditemukan', 'error');
+                showNotification('PO ID not found', 'error');
                 return;
             }
             
@@ -4117,7 +4115,7 @@ function initializeChargerDropdowns() {
             });
             
             if (selectedItems.length === 0) {
-                showNotification('Pilih minimal satu item untuk dikirim', 'warning');
+                showNotification('Please select at least one item to deliver', 'warning');
                 return;
             }
             
@@ -4146,26 +4144,26 @@ function initializeChargerDropdowns() {
                     console.log('Response:', response);
                     if (response.success) {
                         if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                            OptimaPro.showNotification(response.message || 'Delivery schedule berhasil dibuat', 'success');
+                            OptimaPro.showNotification(response.message || 'Delivery schedule successfully created', 'success');
                         } else {
-                            showNotification(response.message || 'Delivery schedule berhasil dibuat', 'success');
+                            showNotification(response.message || 'Delivery schedule successfully created', 'success');
                         }
                         $('#createDeliveryModal').modal('hide');
                         refreshTable();
                     } else {
                         if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                            OptimaPro.showNotification(response.message || 'Gagal membuat delivery schedule', 'error');
+                            OptimaPro.showNotification(response.message || 'Failed to create delivery schedule', 'error');
                         } else {
-                            showNotification(response.message || 'Gagal membuat delivery schedule', 'error');
+                            showNotification(response.message || 'Failed to create delivery schedule', 'error');
                         }
                     }
                 },
                 error: function(xhr, status, error) {
                     console.log('AJAX Error:', xhr.responseText);
                     if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                        OptimaPro.showNotification('Terjadi kesalahan saat membuat delivery schedule: ' + error, 'error');
+                        OptimaPro.showNotification('An error occurred while creating the delivery schedule: ' + error, 'error');
                     } else {
-                        showNotification('Terjadi kesalahan saat membuat delivery schedule: ' + error, 'error');
+                        showNotification('An error occurred while creating the delivery schedule: ' + error, 'error');
                     }
                 }
             });
@@ -4176,7 +4174,7 @@ function initializeChargerDropdowns() {
             e.preventDefault();
             
             if (!currentDeliveryId) {
-                showNotification('Delivery ID tidak ditemukan', 'error');
+                showNotification('Delivery ID not found', 'error');
                 return;
             }
             
@@ -4254,25 +4252,25 @@ function initializeChargerDropdowns() {
                 success: function(response) {
                     if (response.success) {
                         if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                            OptimaPro.showNotification(response.message || 'Serial numbers berhasil disimpan', 'success');
+                            OptimaPro.showNotification(response.message || 'Serial numbers successfully saved', 'success');
                         } else {
-                            showNotification(response.message || 'Serial numbers berhasil disimpan', 'success');
+                            showNotification(response.message || 'Serial numbers successfully saved', 'success');
                         }
                         $('#assignSNModal').modal('hide');
                         refreshTable();
                     } else {
                         if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                            OptimaPro.showNotification(response.message || 'Gagal menyimpan serial numbers', 'error');
+                            OptimaPro.showNotification(response.message || 'Failed to save serial numbers', 'error');
                         } else {
-                            showNotification(response.message || 'Gagal menyimpan serial numbers', 'error');
+                            showNotification(response.message || 'Failed to save serial numbers', 'error');
                         }
                     }
                 },
                 error: function() {
                     if (typeof OptimaPro !== 'undefined' && typeof OptimaPro.showNotification === 'function') {
-                        OptimaPro.showNotification('Terjadi kesalahan saat menyimpan serial numbers', 'error');
+                        OptimaPro.showNotification('An error occurred while saving serial numbers', 'error');
                     } else {
-                        showNotification('Terjadi kesalahan saat menyimpan serial numbers', 'error');
+                        showNotification('An error occurred while saving serial numbers', 'error');
                     }
                 }
             });

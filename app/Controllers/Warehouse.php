@@ -2123,4 +2123,109 @@ class Warehouse extends BaseController
         }
     }
 
+    /**
+     * Get master attachment data for dropdown
+     */
+    public function masterAttachment()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $attachments = $db->table('attachment')
+                ->select('id_attachment as id, CONCAT(tipe, " - ", merk, " ", model) as text')
+                ->orderBy('tipe', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $attachments
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '[Warehouse::masterAttachment] Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memuat data attachment: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get master baterai data for dropdown
+     */
+    public function masterBaterai()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $batteries = $db->table('baterai')
+                ->select('id, CONCAT(merk_baterai, " - ", tipe_baterai, " (", jenis_baterai, ")") as text')
+                ->orderBy('merk_baterai', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $batteries
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '[Warehouse::masterBaterai] Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memuat data baterai: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get master charger data for dropdown
+     */
+    public function masterCharger()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $chargers = $db->table('charger')
+                ->select('id_charger as id, CONCAT(merk_charger, " - ", tipe_charger) as text')
+                ->orderBy('merk_charger', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $chargers
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '[Warehouse::masterCharger] Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memuat data charger: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get units data for dropdown
+     */
+    public function getUnits()
+    {
+        try {
+            $db = \Config\Database::connect();
+            $units = $db->table('inventory_unit iu')
+                ->select('iu.id_inventory_unit as id, iu.no_unit as nomor_unit, mu.merk_unit as merk, mu.model_unit as model')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->orderBy('iu.no_unit', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $units
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', '[Warehouse::getUnits] Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal memuat data units: ' . $e->getMessage()
+            ]);
+        }
+    }
+
 }

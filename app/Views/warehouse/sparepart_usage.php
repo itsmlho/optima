@@ -17,7 +17,7 @@
                         <div class="stat-value" id="stat-usage-total">
                             <?= $stats['usage_total'] ?? 0 ?>
                         </div>
-                        <div class="text-muted">Total Pemakaian</div>
+                        <div class="text-muted">Total Usage</div>
                     </div>
                 </div>
             </div>
@@ -63,7 +63,7 @@
                 <div class="col">
                     <h5 class="card-title fw-bold m-0">
                         <i class="fas fa-tools text-primary me-2"></i>
-                        Pemakaian & Pengembalian Sparepart
+                        Sparepart Usage & Returns
                     </h5>
                 </div>
             </div>
@@ -73,13 +73,13 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage" type="button" role="tab" aria-controls="usage" aria-selected="true">
                         <i class="fas fa-list-check me-1"></i>
-                        <strong>Pemakaian</strong>
+                        <strong>Usage</strong>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="returns-tab" data-bs-toggle="tab" data-bs-target="#returns" type="button" role="tab" aria-controls="returns" aria-selected="false">
                         <i class="fas fa-undo me-1"></i>
-                        <strong>Pengembalian</strong>
+                        <strong>Returns</strong>
                     </button>
                 </li>
             </ul>
@@ -93,24 +93,24 @@
                     <?php if (isset($usage_table_exists) && !$usage_table_exists): ?>
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Tabel <code>work_order_sparepart_usage</code> belum tersedia.
+                        Table <code>work_order_sparepart_usage</code> is not available yet.
                     </div>
                     <?php else: ?>
                     <div class="table-responsive">
                         <table class="table table-striped table-hover" id="usageTable">
                             <thead>
                                 <tr>
-                                    <th>Tanggal</th>
+                                    <th>Date</th>
                                     <th>Work Order</th>
                                     <th>Sparepart</th>
                                     <th>Customer</th>
                                     <th>Unit</th>
-                                    <th>Mekanik</th>
-                                    <th>Dibawa</th>
-                                    <th>Digunakan</th>
-                                    <th>Dikembalikan</th>
-                                    <th>Catatan</th>
-                                    <th>Aksi</th>
+                                    <th>Mechanic</th>
+                                    <th>Brought</th>
+                                    <th>Used</th>
+                                    <th>Returned</th>
+                                    <th>Notes</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -126,8 +126,8 @@
                     <?php if (isset($return_table_exists) && !$return_table_exists): ?>
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        Tabel <code>work_order_sparepart_returns</code> belum tersedia. 
-                        <a href="<?= base_url('warehouse/sparepart-returns') ?>" class="alert-link">Lihat instruksi setup</a>
+                        Table <code>work_order_sparepart_returns</code> is not available yet. 
+                        <a href="<?= base_url('warehouse/sparepart-returns') ?>" class="alert-link">See setup instructions</a>
                     </div>
                     <?php else: ?>
                     <!-- Filter Section -->
@@ -152,15 +152,15 @@
                         <table class="table table-striped table-hover" id="returnsTable">
                             <thead>
                                 <tr>
-                                    <th>Tanggal</th>
+                                    <th>Date</th>
                                     <th>Work Order</th>
                                     <th>Sparepart</th>
                                     <th>Customer</th>
                                     <th>Unit</th>
-                                    <th>Mekanik</th>
-                                    <th>Dibawa</th>
-                                    <th>Digunakan</th>
-                                    <th>Dikembalikan</th>
+                                    <th>Mechanic</th>
+                                    <th>Brought</th>
+                                    <th>Used</th>
+                                    <th>Returned</th>
                                     <th>Status</th>
                                     <th>Aksi</th>
                                 </tr>
@@ -183,7 +183,7 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-info-circle me-2"></i>Detail Pemakaian Sparepart
+                    <i class="fas fa-info-circle me-2"></i>Detail Usage Sparepart
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -204,7 +204,7 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-info-circle me-2"></i>Detail Pengembalian Sparepart
+                    <i class="fas fa-info-circle me-2"></i>Detail Return Sparepart
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -346,17 +346,17 @@ $(document).ready(function() {
         order: [[0, 'desc']],
         pageLength: 25,
         language: {
-            processing: "Memproses...",
-            search: "Cari:",
-            lengthMenu: "Tampilkan _MENU_ data",
-            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-            infoFiltered: "(disaring dari _MAX_ total data)",
+            processing: "Processing...",
+            search: "Search:",
+            lengthMenu: "Show _MENU_ entries",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            infoEmpty: "Showing 0 to 0 of 0 entries",
+            infoFiltered: "(filtered from _MAX_ total entries)",
             paginate: {
-                first: "Pertama",
-                last: "Terakhir",
-                next: "Selanjutnya",
-                previous: "Sebelumnya"
+                first: "First",
+                last: "Last",
+                next: "Next",
+                previous: "Previous"
             }
         }
     });
@@ -460,17 +460,17 @@ $(document).ready(function() {
         order: [[0, 'desc']],
         pageLength: 25,
         language: {
-            processing: "Memproses...",
-            search: "Cari:",
-            lengthMenu: "Tampilkan _MENU_ data",
-            info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-            infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-            infoFiltered: "(disaring dari _MAX_ total data)",
+            processing: "Processing...",
+            search: "Search:",
+            lengthMenu: "Show _MENU_ entries",
+            info: "Showing _START_ to _END_ of _TOTAL_ entries",
+            infoEmpty: "Showing 0 to 0 of 0 entries",
+            infoFiltered: "(filtered from _MAX_ total entries)",
             paginate: {
-                first: "Pertama",
-                last: "Terakhir",
-                next: "Selanjutnya",
-                previous: "Sebelumnya"
+                first: "First",
+                last: "Last",
+                next: "Next",
+                previous: "Previous"
             }
         }
     });
@@ -498,7 +498,7 @@ $(document).ready(function() {
                                 <span class="badge bg-primary">${data.work_order_number || '-'}</span>
                             </div>
                             <div class="col-md-6">
-                                <strong>Tanggal WO:</strong><br>
+                                <strong>WO Date:</strong><br>
                                 ${data.report_date_formatted || '-'}
                             </div>
                         </div>
@@ -542,32 +542,32 @@ $(document).ready(function() {
                         <hr>
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <strong>Mekanik:</strong><br>
+                                <strong>Mechanic:</strong><br>
                                 ${data.mechanic_name || '-'}
                             </div>
                             <div class="col-md-6">
-                                <strong>Tanggal Digunakan:</strong><br>
+                                <strong>Used Date:</strong><br>
                                 ${data.used_at_formatted || '-'}
                             </div>
                         </div>
                         <hr>
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <strong>Tanggal Dikembalikan:</strong><br>
-                                ${data.returned_at_formatted || 'Belum dikembalikan'}
+                                <strong>Return Date:</strong><br>
+                                ${data.returned_at_formatted || 'Not returned yet'}
                             </div>
                         </div>
-                        ${data.usage_notes ? `<hr><div class="mb-3"><strong>Catatan Pemakaian:</strong><br>${data.usage_notes}</div>` : ''}
-                        ${data.return_notes ? `<div class="mb-3"><strong>Catatan Pengembalian:</strong><br>${data.return_notes}</div>` : ''}
+                        ${data.usage_notes ? `<hr><div class="mb-3"><strong>Usage Notes:</strong><br>${data.usage_notes}</div>` : ''}
+                        ${data.return_notes ? `<div class="mb-3"><strong>Return Notes:</strong><br>${data.return_notes}</div>` : ''}
                     `;
                     $('#usageDetailBody').html(html);
                     $('#usageDetailModal').modal('show');
                 } else {
-                    alert('Error: ' + (response.message || 'Gagal memuat data'));
+                    alert('Error: ' + (response.message || 'Failed to load data'));
                 }
             },
             error: function() {
-                alert('Terjadi kesalahan saat memuat data');
+                alert('An error occurred while loading data');
             }
         });
     };
@@ -590,7 +590,7 @@ $(document).ready(function() {
                                 <span class="badge bg-primary">${data.work_order_number || '-'}</span>
                             </div>
                             <div class="col-md-6">
-                                <strong>Tanggal WO:</strong><br>
+                                <strong>WO Date:</strong><br>
                                 ${data.report_date_formatted || '-'}
                             </div>
                         </div>
@@ -634,7 +634,7 @@ $(document).ready(function() {
                         <hr>
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <strong>Mekanik:</strong><br>
+                                <strong>Mechanic:</strong><br>
                                 ${data.mechanic_name || '-'}
                             </div>
                             <div class="col-md-6">
@@ -643,20 +643,20 @@ $(document).ready(function() {
                             </div>
                         </div>
                         <hr>
-                        ${data.return_notes ? `<div class="mb-3"><strong>Catatan:</strong><br>${data.return_notes}</div>` : ''}
-                        ${data.confirmed_at ? `<div class="mb-3"><strong>Dikonfirmasi:</strong><br>${data.confirmed_at_formatted} oleh ${data.confirmed_by_name || '-'}</div>` : ''}
+                        ${data.return_notes ? `<div class="mb-3"><strong>Return Notes:</strong><br>${data.return_notes}</div>` : ''}
+                        ${data.confirmed_at ? `<div class="mb-3"><strong>Confirmed At:</strong><br>${data.confirmed_at_formatted} by ${data.confirmed_by_name || '-'}</div>` : ''}
                     `;
                     
                     if (data.status === 'PENDING') {
                         html += `
                             <hr>
                             <div class="mb-3">
-                                <label class="form-label">Catatan Konfirmasi (Optional)</label>
-                                <textarea class="form-control" id="confirm-notes" rows="3" placeholder="Tambahkan catatan jika diperlukan..."></textarea>
+                                <label class="form-label">Confirmation Notes (Optional)</label>
+                                <textarea class="form-control" id="confirm-notes" rows="3" placeholder="Add notes if necessary..."></textarea>
                             </div>
                             <div class="d-grid">
                                 <button class="btn btn-success" onclick="confirmReturn(${data.id})">
-                                    <i class="fas fa-check me-2"></i>Konfirmasi Pengembalian
+                                    <i class="fas fa-check me-2"></i>Confirm Return
                                 </button>
                             </div>
                         `;
@@ -665,11 +665,11 @@ $(document).ready(function() {
                     $('#returnDetailBody').html(html);
                     $('#returnDetailModal').modal('show');
                 } else {
-                    alert('Error: ' + (response.message || 'Gagal memuat data'));
+                    alert('Error: ' + (response.message || 'Failed to load data'));
                 }
             },
             error: function() {
-                alert('Terjadi kesalahan saat memuat data');
+                alert('An error occurred while loading data');
             }
         });
     };
@@ -683,7 +683,7 @@ $(document).ready(function() {
 
     // Confirm return
     window.confirmReturn = function(id) {
-        if (!confirm('Apakah Anda yakin ingin mengonfirmasi pengembalian sparepart ini?')) {
+        if (!confirm('Are you sure you want to confirm this sparepart return?')) {
             return;
         }
 
@@ -695,17 +695,17 @@ $(document).ready(function() {
             data: { notes: notes },
             success: function(response) {
                 if (response.success) {
-                    alert('Pengembalian sparepart berhasil dikonfirmasi');
+                    alert('Sparepart return has been successfully confirmed');
                     $('#returnDetailModal').modal('hide');
                     if (returnsTable && returnsTableInitialized) {
                         returnsTable.ajax.reload();
                     }
                 } else {
-                    alert('Error: ' + (response.message || 'Gagal mengonfirmasi'));
+                    alert('Error: ' + (response.message || 'Failed to confirm'));
                 }
             },
             error: function() {
-                alert('Terjadi kesalahan saat mengonfirmasi');
+                alert('An error occurred while confirming');
             }
         });
     };

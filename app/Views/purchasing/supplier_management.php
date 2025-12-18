@@ -68,7 +68,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <h4 class="mb-0"> </h4>
             <button type="button" class="btn btn-primary btn-lg" onclick="openAddSupplierModal()">
-                <i class="fas fa-plus me-2"></i>Tambah Supplier
+                <i class="fas fa-plus me-2"></i>Add Supplier
             </button>
         </div>
     </div>
@@ -79,7 +79,7 @@
     <div class="card-header bg-light">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
-                <i class="fas fa-building me-2"></i>Daftar Supplier
+                <i class="fas fa-building me-2"></i>Supplier List
             </h5>
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-sm btn-warning" onclick="refreshTableData()">
@@ -98,10 +98,10 @@
                 <thead>
                     <tr>
                         <th>No</th>
-                        <th>Kode Supplier</th>
-                        <th>Nama Supplier</th>
+                        <th>Code</th>
+                        <th>Supplier Name</th>
                         <th>Business Type</th>
-                        <th>Kontak</th>
+                        <th>Contact</th>
                         <th>Status</th>
                     </tr>
                 </thead>
@@ -145,7 +145,7 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title" id="supplierDetailModalLabel">
-                    <i class="fas fa-building me-2"></i>Detail Supplier
+                    <i class="fas fa-building me-2"></i>Supplier Details
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -153,15 +153,15 @@
                 <!-- Content will be loaded here -->
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
                 <button type="button" class="btn btn-info" onclick="changeSupplierStatus()">
-                    <i class="fas fa-exchange-alt me-2"></i>Ubah Status
+                    <i class="fas fa-exchange-alt me-2"></i>Change Status
                 </button>
                 <button type="button" class="btn btn-warning" onclick="editSupplierFromModal()">
                     <i class="fas fa-edit me-2"></i>Edit
                 </button>
                 <button type="button" class="btn btn-danger" onclick="deleteSupplierFromModal()">
-                    <i class="fas fa-trash me-2"></i>Hapus
+                    <i class="fas fa-trash me-2"></i>Delete
                 </button>
             </div>
         </div>
@@ -174,7 +174,7 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title" id="supplierFormModalLabel">
-                    <i class="fas fa-building me-2"></i>Tambah Supplier
+                    <i class="fas fa-building me-2"></i>Add Supplier
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
@@ -184,12 +184,12 @@
                     
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label for="kode_supplier" class="form-label">Kode Supplier</label>
+                            <label for="kode_supplier" class="form-label">Supplier Code</label>
                             <input type="text" class="form-control" id="kode_supplier" name="kode_supplier" readonly style="background-color: #f8f9fa;">
-                            <div class="form-text">Kode supplier akan dibuat otomatis</div>
+                            <div class="form-text">Supplier code will be generated automatically</div>
                         </div>
                         <div class="col-md-6">
-                            <label for="nama_supplier" class="form-label">Nama Supplier <span class="text-danger">*</span></label>
+                            <label for="nama_supplier" class="form-label">Supplier Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control" id="nama_supplier" name="nama_supplier" required>
                         </div>
                     </div>
@@ -198,7 +198,7 @@
                         <div class="col-md-6">
                             <label for="business_type" class="form-label">Business Type <span class="text-danger">*</span></label>
                             <select class="form-select" id="business_type" name="business_type" required>
-                                <option value="">Pilih Business Type...</option>
+                                <option value="">Select Business Type...</option>
                                 <option value="Distributor">Distributor</option>
                                 <option value="Manufacturer">Manufacturer</option>
                                 <option value="Wholesaler">Wholesaler</option>
@@ -246,9 +246,9 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Simpan
+                        <i class="fas fa-save me-2"></i>Save
                     </button>
                 </div>
             </form>
@@ -262,13 +262,13 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title" id="changeStatusModalLabel">
-                    <i class="fas fa-exchange-alt me-2"></i>Ubah Status Supplier
+                    <i class="fas fa-exchange-alt me-2"></i>Change Supplier Status
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label for="new_status" class="form-label">Status Baru</label>
+                    <label for="new_status" class="form-label">New Status</label>
                     <select class="form-select" id="new_status" name="new_status">
                         <option value="Active">Active</option>
                         <option value="Inactive">Inactive</option>
@@ -276,14 +276,14 @@
                     </select>
                 </div>
                 <div class="mb-3">
-                    <label for="status_reason" class="form-label">Alasan Perubahan</label>
-                    <textarea class="form-control" id="status_reason" name="status_reason" rows="3" placeholder="Masukkan alasan perubahan status..."></textarea>
+                    <label for="status_reason" class="form-label">Reason for Change</label>
+                    <textarea class="form-control" id="status_reason" name="status_reason" rows="3" placeholder="Enter reason for status change..."></textarea>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn btn-info" onclick="saveStatusChange()">
-                    <i class="fas fa-save me-2"></i>Simpan Perubahan
+                    <i class="fas fa-save me-2"></i>Save Changes
                 </button>
             </div>
         </div>
@@ -320,11 +320,11 @@ function viewSupplierDetail(id) {
                 renderSupplierDetail(supplier);
                 $('#supplierDetailModal').modal('show');
             } else {
-                Swal.fire('Error!', response.message || 'Gagal mengambil data supplier', 'error');
+                Swal.fire('Error!', response.message || 'Failed to fetch supplier data', 'error');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'Terjadi kesalahan saat mengambil data supplier', 'error');
+            Swal.fire('Error!', 'An error occurred while fetching supplier data', 'error');
         }
     });
 }
@@ -338,17 +338,17 @@ function renderSupplierDetail(supplier) {
     const html = `
         <div class="row">
             <div class="col-md-6">
-                <h6 class="text-primary mb-3">Informasi Dasar</h6>
+                <h6 class="text-primary mb-3">Basic Information</h6>
                 <table class="table table-borderless">
-                    <tr><td><strong>Kode Supplier:</strong></td><td>${supplier.kode_supplier || '-'}</td></tr>
-                    <tr><td><strong>Nama Supplier:</strong></td><td>${supplier.nama_supplier || '-'}</td></tr>
+                    <tr><td><strong>Supplier Code:</strong></td><td>${supplier.kode_supplier || '-'}</td></tr>
+                    <tr><td><strong>Supplier Name:</strong></td><td>${supplier.nama_supplier || '-'}</td></tr>
                     <tr><td><strong>Alias:</strong></td><td>${supplier.alias || '-'}</td></tr>
                     <tr><td><strong>Business Type:</strong></td><td>${supplier.business_type || '-'}</td></tr>
                     <tr><td><strong>Status:</strong></td><td>${statusBadge}</td></tr>
                 </table>
             </div>
             <div class="col-md-6">
-                <h6 class="text-primary mb-3">Kontak</h6>
+                <h6 class="text-primary mb-3">Contact</h6>
                 <table class="table table-borderless">
                     <tr><td><strong>Contact Person:</strong></td><td>${supplier.contact_person || '-'}</td></tr>
                     <tr><td><strong>Phone:</strong></td><td>${supplier.phone || '-'}</td></tr>
@@ -360,7 +360,7 @@ function renderSupplierDetail(supplier) {
         
         <div class="row mt-3">
             <div class="col-12">
-                <h6 class="text-primary mb-3">Alamat</h6>
+                <h6 class="text-primary mb-3">Address</h6>
                 <p class="mb-3">${supplier.address || '-'}</p>
                 
                 <h6 class="text-primary mb-3">Notes</h6>
@@ -402,11 +402,11 @@ function renderSupplierDetail(supplier) {
 // Open add supplier modal
 function openAddSupplierModal() {
     currentSupplierId = null;
-    $('#supplierFormModalLabel').html('<i class="fas fa-building me-2"></i>Tambah Supplier');
+    $('#supplierFormModalLabel').html('<i class="fas fa-building me-2"></i>Add Supplier');
     $('#supplierForm')[0].reset();
     $('#supplier_id').val('');
     
-    // Generate kode supplier menggunakan API untuk sequential numbering
+    // Generate supplier code using API for sequential numbering
     generateSupplierCode();
     
     // Show modal
@@ -468,11 +468,11 @@ function editSupplierFromModal() {
                 $('#supplierDetailModal').modal('hide');
                 $('#supplierFormModal').modal('show');
             } else {
-                Swal.fire('Error!', response.message || 'Gagal mengambil data supplier', 'error');
+                Swal.fire('Error!', response.message || 'Failed to fetch supplier data', 'error');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'Terjadi kesalahan saat mengambil data supplier', 'error');
+            Swal.fire('Error!', 'An error occurred while fetching supplier data', 'error');
         }
     });
 }
@@ -493,11 +493,11 @@ function changeSupplierStatus() {
                 $('#status_reason').val('');
                 $('#changeStatusModal').modal('show');
             } else {
-                Swal.fire('Error!', response.message || 'Gagal mengambil data supplier', 'error');
+                Swal.fire('Error!', response.message || 'Failed to fetch supplier data', 'error');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'Terjadi kesalahan saat mengambil data supplier', 'error');
+            Swal.fire('Error!', 'An error occurred while fetching supplier data', 'error');
         }
     });
 }
@@ -508,7 +508,7 @@ function saveStatusChange() {
     const reason = $('#status_reason').val();
     
     if (!newStatus) {
-        Swal.fire('Error!', 'Pilih status baru', 'error');
+        Swal.fire('Error!', 'Select new status', 'error');
         return;
     }
     
@@ -523,19 +523,19 @@ function saveStatusChange() {
         dataType: 'json',
         success: function(response) {
                           if (response.success) {
-                              Swal.fire('Berhasil!', response.message || 'Status supplier berhasil diubah', 'success');
+                              Swal.fire('Success!', response.message || 'Supplier status successfully updated', 'success');
                               $('#changeStatusModal').modal('hide');
                               $('#supplierDetailModal').modal('hide');
-                              // Refresh data dengan reload halaman untuk memastikan data terbaru
+                              // Refresh data with page reload to ensure latest data
                               setTimeout(function() {
                                   location.reload();
                               }, 1500);
                           } else {
-                Swal.fire('Error!', response.message || 'Gagal mengubah status supplier', 'error');
+                Swal.fire('Error!', response.message || 'Failed to update supplier status', 'error');
             }
         },
         error: function() {
-            Swal.fire('Error!', 'Terjadi kesalahan saat mengubah status supplier', 'error');
+            Swal.fire('Error!', 'An error occurred while updating supplier status', 'error');
         }
     });
 }
@@ -545,14 +545,14 @@ function deleteSupplierFromModal() {
     if (!currentSupplierId) return;
     
     Swal.fire({
-        title: 'Konfirmasi Hapus',
-        text: 'Apakah Anda yakin ingin menghapus supplier ini?',
+        title: 'Delete Confirmation',
+        text: 'Are you sure you want to delete this supplier?',
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#d33',
         cancelButtonColor: '#3085d6',
-        confirmButtonText: 'Ya, Hapus!',
-        cancelButtonText: 'Batal'
+        confirmButtonText: 'Yes, Delete!',
+        cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
             $.ajax({
@@ -564,18 +564,18 @@ function deleteSupplierFromModal() {
                 dataType: 'json',
                       success: function(response) {
                           if (response.success) {
-                              Swal.fire('Berhasil!', response.message || 'Supplier berhasil dihapus', 'success');
+                              Swal.fire('Success!', response.message || 'Supplier successfully deleted', 'success');
                               $('#supplierDetailModal').modal('hide');
-                              // Refresh data dengan reload halaman untuk memastikan data terbaru
+                              // Refresh data with page reload to ensure latest data
                               setTimeout(function() {
                                   location.reload();
                               }, 1500);
                           } else {
-                        Swal.fire('Error!', response.message || 'Gagal menghapus supplier', 'error');
+                        Swal.fire('Error!', response.message || 'Failed to delete supplier', 'error');
                     }
                 },
                 error: function() {
-                    Swal.fire('Error!', 'Terjadi kesalahan saat menghapus supplier', 'error');
+                    Swal.fire('Error!', 'An error occurred while deleting supplier', 'error');
                 }
             });
         }
@@ -586,13 +586,13 @@ function deleteSupplierFromModal() {
 function saveSupplier() {
     // Ensure kode supplier is not empty
     const kodeSupplier = $('#kode_supplier').val();
-    console.log('Kode supplier before submit:', kodeSupplier);
+    console.log('Supplier code before submit:', kodeSupplier);
     
     if (!kodeSupplier || kodeSupplier.trim() === '') {
-        console.log('Kode supplier kosong, regenerating...');
+        console.log('Supplier code empty, regenerating...');
         Swal.fire({
-            title: 'Kode Supplier Kosong',
-            text: 'Kode supplier tidak boleh kosong. Sedang generate ulang...',
+            title: 'Supplier Code Empty',
+            text: 'Supplier code cannot be empty. Regenerating...',
             icon: 'warning',
             timer: 2000,
             showConfirmButton: false
@@ -613,10 +613,10 @@ function saveSupplier() {
     
     // Double check kode supplier sebelum submit
     const finalKodeSupplier = $('#kode_supplier').val();
-    console.log('Final kode supplier before submit:', finalKodeSupplier);
+    console.log('Final supplier code before submit:', finalKodeSupplier);
     
         if (!finalKodeSupplier || finalKodeSupplier.trim() === '') {
-            console.error('Kode supplier masih kosong! Generating again...');
+            console.error('Supplier code still empty! Generating again...');
             // Generate sequential fallback
             const year = new Date().getFullYear();
             const code = 'SUP-' + year + '-001';
@@ -638,16 +638,16 @@ function saveSupplier() {
         dataType: 'json',
         success: function(response) {
             if (response.success) {
-                Swal.fire('Berhasil!', response.message || 'Supplier berhasil disimpan', 'success');
+                Swal.fire('Success!', response.message || 'Supplier successfully saved', 'success');
                 $('#supplierFormModal').modal('hide');
                 // Refresh data tanpa reload halaman
                 loadSuppliers();
             } else {
-                Swal.fire('Error!', response.message || 'Gagal menyimpan supplier', 'error');
+                Swal.fire('Error!', response.message || 'Failed to save supplier', 'error');
             }
         },
         error: function(xhr) {
-            let errorMessage = 'Terjadi kesalahan saat menyimpan supplier';
+            let errorMessage = 'An error occurred while saving supplier';
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMessage = xhr.responseJSON.message;
             }
@@ -696,12 +696,12 @@ function loadSuppliers(startDate = null, endDate = null) {
                 
             } else {
                 console.error('Failed to load suppliers:', data.message);
-                Swal.fire('Error!', 'Gagal memuat data supplier', 'error');
+                Swal.fire('Error!', 'Failed to load supplier data', 'error');
             }
         })
         .catch(error => {
             console.error('Error loading suppliers:', error);
-            Swal.fire('Error!', 'Terjadi kesalahan saat memuat data', 'error');
+            Swal.fire('Error!', 'An error occurred while loading supplier data', 'error');
         })
         .finally(() => {
             // Restore button

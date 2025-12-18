@@ -2,10 +2,10 @@
 <div class="row g-3">
     <!-- Departemen -->
     <div class="col-md-6">
-        <label for="unit_departemen" class="form-label">Departemen <span class="text-danger">*</span></label>
+        <label for="unit_departemen" class="form-label">Departmen <span class="text-danger">*</span></label>
         <select id="unit_departemen" class="form-select select2-basic" data-master-type="departemen" required>
-            <option value="">Pilih Departemen...</option>
-            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Departemen Baru</option>
+            <option value="">Select Departmen...</option>
+            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Departmen</option>
             <option disabled>─────────────</option>
             <?php if (isset($departemens) && is_array($departemens)): ?>
                 <?php foreach ($departemens as $dept): ?>
@@ -17,9 +17,9 @@
 
     <!-- Jenis Unit -->
     <div class="col-md-6">
-        <label for="unit_jenis" class="form-label">Jenis Unit <span class="text-danger">*</span></label>
+        <label for="unit_jenis" class="form-label">Unit Type <span class="text-danger">*</span></label>
         <select id="unit_jenis" class="form-select select2-basic" data-master-type="jenis_unit" required disabled>
-            <option value="">Pilih Departemen Dulu...</option>
+            <option value="">Select Departmen First...</option>
         </select>
     </div>
 
@@ -27,8 +27,8 @@
     <div class="col-md-4">
         <label for="unit_merk" class="form-label">Brand <span class="text-danger">*</span></label>
         <select id="unit_merk" class="form-select select2-basic" data-master-type="brand" required>
-            <option value="">Pilih Brand...</option>
-            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Brand Baru</option>
+            <option value="">Select Brand...</option>
+            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Brand</option>
             <option disabled>─────────────</option>
             <?php if (isset($merks) && is_array($merks)): ?>
                 <?php foreach ($merks as $merk): ?>
@@ -44,22 +44,22 @@
     <div class="col-md-4">
         <label for="unit_model" class="form-label">Model <span class="text-danger">*</span></label>
         <select id="unit_model" class="form-select select2-basic" data-master-type="model" required disabled>
-            <option value="">Pilih Brand Dulu...</option>
+            <option value="">Select Brand First...</option>
         </select>
     </div>
 
     <!-- Tahun -->
     <div class="col-md-4">
-        <label for="unit_tahun" class="form-label">Tahun <span class="text-danger">*</span></label>
+        <label for="unit_tahun" class="form-label">Year <span class="text-danger">*</span></label>
         <input type="number" id="unit_tahun" class="form-control" min="1990" max="<?= date('Y') + 2 ?>" value="<?= date('Y') ?>" required>
     </div>
 
     <!-- Kapasitas -->
     <div class="col-md-4">
-        <label for="unit_kapasitas" class="form-label">Kapasitas <span class="text-danger">*</span></label>
+        <label for="unit_kapasitas" class="form-label">Capacity <span class="text-danger">*</span></label>
         <select id="unit_kapasitas" class="form-select select2-basic" data-master-type="kapasitas" required>
-            <option value="">Pilih Kapasitas...</option>
-            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Kapasitas Baru</option>
+            <option value="">Select Capacity...</option>
+            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Capacity</option>
             <option disabled>─────────────</option>
             <?php if (isset($kapasitas) && is_array($kapasitas)): ?>
                 <?php foreach ($kapasitas as $kap): ?>
@@ -71,11 +71,11 @@
 
     <!-- Kondisi -->
     <div class="col-md-4">
-        <label for="unit_kondisi" class="form-label">Kondisi <span class="text-danger">*</span></label>
+        <label for="unit_kondisi" class="form-label">Condition <span class="text-danger">*</span></label>
         <select id="unit_kondisi" class="form-select select2-basic" required>
-            <option value="Baru">Baru</option>
-            <option value="Bekas">Bekas</option>
-            <option value="Rekondisi">Rekondisi</option>
+            <option value="Baru">New</option>
+            <option value="Bekas">Used</option>
+            <option value="Rekondisi">Reconditioned</option>
         </select>
     </div>
 
@@ -86,14 +86,14 @@
     </div>
 
     <div class="col-12"><hr class="my-3"></div>
-    <div class="col-12"><h6 class="text-muted"><i class="fas fa-cogs me-2"></i>Komponen (Optional)</h6></div>
+    <div class="col-12"><h6 class="text-muted"><i class="fas fa-cogs me-2"></i>Components (Optional)</h6></div>
 
     <!-- Mast -->
     <div class="col-md-4">
         <label for="unit_mast" class="form-label">Mast Type</label>
         <select id="unit_mast" class="form-select select2-basic" data-master-type="mast">
-            <option value="">Pilih Mast...</option>
-            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Mast Baru</option>
+            <option value="">Select Mast...</option>
+            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Mast</option>
             <option disabled>─────────────</option>
             <?php if (isset($masts) && is_array($masts)): ?>
                 <?php foreach ($masts as $mast): ?>
@@ -113,8 +113,8 @@
     <div class="col-md-4">
         <label for="unit_mesin" class="form-label">Engine Type</label>
         <select id="unit_mesin" class="form-select select2-basic" data-master-type="engine">
-            <option value="">Pilih Engine...</option>
-            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Engine Baru</option>
+            <option value="">Select Engine...</option>
+            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Engine</option>
             <option disabled>─────────────</option>
             <?php if (isset($mesins) && is_array($mesins)): ?>
                 <?php foreach ($mesins as $mesin): ?>
@@ -130,8 +130,8 @@
     <div class="col-md-4">
         <label for="unit_ban" class="form-label">Tire Type</label>
         <select id="unit_ban" class="form-select select2-basic" data-master-type="tire">
-            <option value="">Pilih Ban...</option>
-            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Tire Baru</option>
+            <option value="">Select Tire...</option>
+            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Tire</option>
             <option disabled>─────────────</option>
             <?php if (isset($bans) && is_array($bans)): ?>
                 <?php foreach ($bans as $ban): ?>
@@ -145,8 +145,8 @@
     <div class="col-md-4">
         <label for="unit_roda" class="form-label">Wheel Type</label>
         <select id="unit_roda" class="form-select select2-basic" data-master-type="wheel">
-            <option value="">Pilih Roda...</option>
-            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Wheel Baru</option>
+            <option value="">Select Wheel...</option>
+            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Wheel</option>
             <option disabled>─────────────</option>
             <?php if (isset($rodas) && is_array($rodas)): ?>
                 <?php foreach ($rodas as $roda): ?>
@@ -160,8 +160,8 @@
     <div class="col-md-4">
         <label for="unit_valve" class="form-label">Valve</label>
         <select id="unit_valve" class="form-select select2-basic" data-master-type="valve">
-            <option value="">Pilih Valve...</option>
-            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Tambah Valve Baru</option>
+            <option value="">Select Valve...</option>
+            <option value="__ADD_NEW__" class="text-primary fw-bold" style="background-color: #f0f8ff;">➕ Add New Valve</option>
             <option disabled>─────────────</option>
             <?php if (isset($valves) && is_array($valves)): ?>
                 <?php foreach ($valves as $valve): ?>
@@ -173,8 +173,8 @@
 
     <!-- Keterangan -->
     <div class="col-12">
-        <label for="unit_keterangan" class="form-label">Keterangan</label>
-        <textarea id="unit_keterangan" class="form-control" rows="2" placeholder="Catatan tambahan (optional)"></textarea>
+        <label for="unit_keterangan" class="form-label">Notes</label>
+        <textarea id="unit_keterangan" class="form-control" rows="2" placeholder="Additional notes (optional)"></textarea>
     </div>
 </div>
 
@@ -185,7 +185,7 @@ function addModelForBrand() {
     const selectedOption = brandSelect.options[brandSelect.selectedIndex];
     
     if (!brandSelect.value || !selectedOption) {
-        Swal.fire('Perhatian', 'Silakan pilih Brand terlebih dahulu', 'warning');
+        Swal.fire('Attention', 'Please select a Brand first', 'warning');
         return;
     }
     
@@ -198,7 +198,7 @@ function refreshModelDropdown() {
     const selectedOption = brandSelect.options[brandSelect.selectedIndex];
     
     if (!brandSelect.value || !selectedOption) {
-        Swal.fire('Perhatian', 'Silakan pilih Brand terlebih dahulu', 'warning');
+        Swal.fire('Attention', 'Please select a Brand first', 'warning');
         return;
     }
     
@@ -226,8 +226,8 @@ function refreshModelDropdown() {
                 QuickAddModal.updateDropdownOptions(modelSelect, response.data);
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil!',
-                    text: 'Data berhasil direfresh',
+                    title: 'Success!',
+                    text: 'Data successfully refreshed',
                     timer: 1000,
                     showConfirmButton: false
                 });
@@ -236,7 +236,7 @@ function refreshModelDropdown() {
             }
         },
         error: () => {
-            Swal.fire('Error', 'Gagal merefresh data', 'error');
+            Swal.fire('Error', 'Failed to refresh data', 'error');
         }
     });
 }
@@ -245,7 +245,7 @@ function addJenisUnitForDepartemen() {
     const deptSelect = document.getElementById('unit_departemen');
     
     if (!deptSelect.value) {
-        Swal.fire('Perhatian', 'Silakan pilih Departemen terlebih dahulu', 'warning');
+        Swal.fire('Attention', 'Please select a Department first', 'warning');
         return;
     }
     
@@ -256,7 +256,7 @@ function refreshJenisUnitDropdown() {
     const deptSelect = document.getElementById('unit_departemen');
     
     if (!deptSelect.value) {
-        Swal.fire('Perhatian', 'Silakan pilih Departemen terlebih dahulu', 'warning');
+        Swal.fire('Attention', 'Please select a Department first', 'warning');
         return;
     }
     
@@ -281,7 +281,7 @@ function refreshJenisUnitDropdown() {
                 const jenisSelect = document.getElementById('unit_jenis');
                 
                 // Clear and rebuild options
-                $(jenisSelect).empty().append('<option value="">Pilih Jenis Unit...</option>');
+                $(jenisSelect).empty().append('<option value="">Select Unit Type...</option>');
                 
                 if (response.data && response.data.length > 0) {
                     response.data.forEach(item => {
@@ -300,18 +300,18 @@ function refreshJenisUnitDropdown() {
                 
                 Swal.fire({
                     icon: 'success',
-                    title: 'Berhasil!',
-                    text: 'Data berhasil direfresh',
+                    title: 'Success!',
+                    text: 'Data successfully refreshed',
                     timer: 1000,
                     showConfirmButton: false
                 });
             } else {
-                Swal.fire('Error', response.message || 'Gagal merefresh data', 'error');
+                Swal.fire('Error', response.message || 'Failed to refresh data', 'error');
             }
         },
         error: (xhr) => {
             console.error('Refresh error:', xhr);
-            Swal.fire('Error', 'Gagal merefresh data', 'error');
+            Swal.fire('Error', 'Failed to refresh data', 'error');
         }
     });
 }

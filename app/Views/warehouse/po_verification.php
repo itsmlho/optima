@@ -82,7 +82,7 @@ $can_export = $permissions['export'];
                 <div class="card-body d-flex justify-content-between align-items-center">
                     <div>
                         <h2 class="fw-bold mb-1" id="stat-catatan">0</h2>
-                        <h6 class="card-title text-uppercase small opacity-75 fw-semibold">Sebagian Reject</h6>
+                        <h6 class="card-title text-uppercase small opacity-75 fw-semibold">Rejected</h6>
                     </div>
                     <i class="fas fa-exclamation-circle fa-3x opacity-50"></i>
                 </div>
@@ -208,19 +208,19 @@ $can_export = $permissions['export'];
                         <!-- Left Panel: Item List -->
                         <div class="col-md-4 border-end">
                             <div class="card-header text-center bg-light">
-                                <h6 class="fw-bold m-0">Item untuk Diverifikasi</h6>
+                                <h6 class="fw-bold m-0">Need Verifications</h6>
                             </div>
                             <div class="list-group list-group-flush" id="attachment-item-list" style="max-height: 600px; overflow-y: auto;">
                                 <!-- Items will be loaded here -->
                                 <?php if (empty($detailGroup)): ?>
-                                    <div class="list-group-item">Tidak ada item yang perlu diverifikasi.</div>
+                                    <div class="list-group-item">No items to verify.</div>
                                 <?php else: ?>
                                     <?php foreach ($detailGroup as $key => $value): ?>
                                         <div class="list-group-item po-group-header" onclick="toggleAttachmentDropdown(this)" data-po-id="<?= $key ?>">
                                             <div class="d-flex w-100 justify-content-between align-items-center">
                                                 <div>
                                                     <h6 class="mb-0 fw-bold"><?= htmlspecialchars($value["no_po"]) ?></h6>
-                                                    <p class="mb-0 text-muted small">Sisa: <span id="lbl-remain-po-<?= $key ?>"><?= count($value["data"]) ?> Item</span></p>
+                                                    <p class="mb-0 text-muted small">Remaining: <span id="lbl-remain-po-<?= $key ?>"><?= count($value["data"]) ?> Items</span></p>
                                                 </div>
                                                 <i class="fas fa-chevron-down arrow-icon"></i>
                                             </div>
@@ -244,7 +244,7 @@ $can_export = $permissions['export'];
                                                                 : (($item['merk_baterai'] ?? '') . ' ' . ($item['tipe_baterai'] ?? ''));
                                                         ?>
                                                         <h6 class="mb-1 fw-bold text-truncate" title="<?= esc($itemName) ?>"><?= esc($itemName) ?></h6>
-                                                        <p class="mb-0 text-muted small">Tipe: <strong><?= esc($item['item_type'] ?? 'N/A') ?></strong></p>
+                                                        <p class="mb-0 text-muted small">Type: <strong><?= esc($item['item_type'] ?? 'N/A') ?></strong></p>
                                                     </div>
                                                 </div>
                                             </a>
@@ -259,7 +259,7 @@ $can_export = $permissions['export'];
                             <div id="attachment-detail-view-container" class="p-4">
                                 <div class="text-center p-5">
                                     <i class="fas fa-hand-pointer fa-3x text-muted mb-3"></i>
-                                    <h5 class="text-muted">Pilih item dari daftar di sebelah kiri untuk verifikasi.</h5>
+                                    <h5 class="text-muted">Select an item from the list on the left to verify.</h5>
                                 </div>
                             </div>
                         </div>
@@ -285,20 +285,20 @@ $can_export = $permissions['export'];
                             <h6 class="mb-3"><i class="fas fa-filter me-2"></i>Filters</h6>
                             <div class="row g-3">
                                 <div class="col-md-3">
-                                    <label for="filterStatusSparepart" class="form-label">Filter Status</label>
+                                    <label for="filterStatusSparepart" class="form-label">Filter</label>
                                     <select id="filterStatusSparepart" class="form-select">
-                                        <option value="">Semua Status</option>
+                                        <option value="">All Statuses</option>
                                         <option value="pending">Pending</option>
                                         <option value="approved">Approved</option>
                                         <option value="completed">Completed</option>
-                                        <option value="Selesai dengan Catatan">Selesai dengan Catatan</option>
+                                        <option value="Completed with Notes">Completed with Notes</option>
                                         <option value="cancelled">Cancelled</option>
                                     </select>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="filterSupplierSparepart" class="form-label">Filter Supplier</label>
                                     <select id="filterSupplierSparepart" class="form-select">
-                                        <option value="">Semua Supplier</option>
+                                        <option value="">All Suppliers</option>
                                         <?php if (isset($suppliers) && is_array($suppliers)): ?>
                                             <?php foreach ($suppliers as $supplier): ?>
                                                 <option value="<?= esc($supplier['nama_supplier']) ?>"><?= esc($supplier['nama_supplier']) ?></option>
@@ -307,11 +307,11 @@ $can_export = $permissions['export'];
                                     </select>
                                 </div>
                                 <div class="col-md-3">
-                                    <label for="filterDateFromSparepart" class="form-label">Dari Tanggal</label>
+                                    <label for="filterDateFromSparepart" class="form-label">Date From</label>
                                     <input type="date" id="filterDateFromSparepart" class="form-control">
                                 </div>
                                 <div class="col-md-3">
-                                    <label for="filterDateToSparepart" class="form-label">Sampai Tanggal</label>
+                                    <label for="filterDateToSparepart" class="form-label">Date To</label>
                                     <input type="date" id="filterDateToSparepart" class="form-control">
                                 </div>
                             </div>
@@ -322,11 +322,11 @@ $can_export = $permissions['export'];
                     <table id="poSparepartTable" class="table table-striped table-hover">
                         <thead>
                             <tr>
-                                <th>No. PO</th>
-                                <th>Tanggal</th>
+                                <th>PO Number</th>
+                                <th>Date</th>
                                 <th>Supplier</th>
                                 <th>Status</th>
-                                <th>Progres Verifikasi</th>
+                                <th>Verification Progress</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -345,7 +345,7 @@ $can_export = $permissions['export'];
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalAttachmentVerificationLabel">
-                    <i class="fas fa-clipboard-check me-2"></i>Formulir Inspeksi Item
+                    <i class="fas fa-clipboard-check me-2"></i>Item Inspection Form
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -353,13 +353,13 @@ $can_export = $permissions['export'];
                 <form id="formAttachmentVerification">
                     <input type="hidden" id="attachment_item_id">
                     <input type="hidden" id="attachment_po_id">
-                    <p class="text-muted mb-4">Periksa setiap komponen di bawah ini dan isi informasi yang diperlukan.</p>
+                    <p class="text-muted mb-4">Inspect each component below and fill in the required information.</p>
                     <div id="attachment-verification-components"></div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                <button type="button" class="btn btn-primary" id="btn-submit-attachment-verification" disabled>Submit Verifikasi</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn-submit-attachment-verification" disabled>Submit Verification</button>
             </div>
         </div>
     </div>
@@ -370,7 +370,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>PO Unit Details</h5>
+                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Details </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="poUnitDetailsContent"></div>
@@ -386,7 +386,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Purchase Order Sparepart</h5>
+                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Details</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="poSparepartDetailsContent"></div>
@@ -490,12 +490,11 @@ $can_export = $permissions['export'];
                         const rejected = parseInt(row.rejected_items, 10);
                         
                         if (isNaN(total) || total === 0) {
-                            return `<span class="text-muted small fst-italic">Tidak Ada Item</span>`;
+                            return `<span class="text-muted small fst-italic">No Items</span>`;
                         }
 
                         const percentage = total > 0 ? Math.round((processed / total) * 100) : 0;
-                        let warningIcon = rejected > 0 ? `<i class="fas fa-exclamation-triangle text-danger ms-2" title="${rejected} item tidak sesuai"></i>` : '';
-
+                        let warningIcon = rejected > 0 ? `<i class="fas fa-exclamation-triangle text-danger ms-2" title="${rejected} items not compliant"></i>` : '';
                         return `
                             <div class="d-flex align-items-center">
                                 <div class="progress flex-grow-1" title="${processed} dari ${total} item diproses">
@@ -516,8 +515,8 @@ $can_export = $permissions['export'];
                         if (row.status === 'Selesai dengan Catatan') {
                             specialActionButtons = `
                                 <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item text-primary" href="#" onclick="reverifyUnitPO(${data})"><i class="fas fa-sync-alt me-2"></i>Verifikasi Ulang</a></li>
-                                <li><a class="dropdown-item text-danger" href="#" onclick="cancelUnitPO(${data})"><i class="fas fa-ban me-2"></i>Selesaikan (Batal)</a></li>
+                                <li><a class="dropdown-item text-primary" href="#" onclick="reverifyUnitPO(${data})"><i class="fas fa-sync-alt me-2"></i>Reverify</a></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="cancelUnitPO(${data})"><i class="fas fa-ban me-2"></i>Complete (Cancel)</a></li>
                             `;
                         }
 
@@ -527,9 +526,9 @@ $can_export = $permissions['export'];
                                     <i class="fas fa-ellipsis-h"></i>
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#" onclick="viewUnitPO(${data})"><i class="fas fa-eye me-2"></i>Lihat Detail</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="viewUnitPO(${data})"><i class="fas fa-eye me-2"></i>View Details</a></li>
                                     <li><a class="dropdown-item" href="<?= base_url('purchasing/edit-po-unit/') ?>${data}"><i class="fas fa-edit me-2"></i>Edit PO</a></li>
-                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteUnitPO(${data})"><i class="fas fa-trash me-2"></i>Hapus PO</a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteUnitPO(${data})"><i class="fas fa-trash me-2"></i>Delete PO</a></li>
                                     ${specialActionButtons}
                                 </ul>
                             </div>
@@ -562,13 +561,13 @@ $can_export = $permissions['export'];
 
     function deleteUnitPO(id) {
         Swal.fire({
-            title: 'Apakah Anda yakin?',
-            text: "Data PO ini akan dihapus secara permanen!",
+            title: 'Are you sure?',
+            text: "This PO data will be permanently deleted!",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            confirmButtonText: 'Ya, hapus!',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, delete!',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -576,10 +575,10 @@ $can_export = $permissions['export'];
                     url: '<?= base_url('/purchasing/delete-po-unit/') ?>' + id,
                     success: function(data) {
                         if (data.success) {
-                            Swal.fire('Dihapus!', 'PO berhasil dihapus.', 'success');
+                            Swal.fire('Deleted!', 'PO has been successfully deleted.', 'success');
                             poUnitTable.ajax.reload();
                         } else {
-                            Swal.fire('Gagal!', 'Terjadi kesalahan saat menghapus PO.', 'error');
+                            Swal.fire('Failed!', 'An error occurred while deleting the PO.', 'error');
                         }
                     }
                 });
@@ -632,14 +631,14 @@ $can_export = $permissions['export'];
                     </div>
                     <div class="card-body p-4">
                         <table class="table table-sm table-borderless">
-                            <tr><td width="30%"><strong>Tipe Item</strong></td><td>: <span class="badge bg-secondary">${h(data.item_type)}</span></td></tr>
+                            <tr><td width="30%"><strong>Item Type</strong></td><td>: <span class="badge bg-secondary">${h(data.item_type)}</span></td></tr>
                             <tr><td><strong>PO Number</strong></td><td>: ${h(data.no_po)}</td></tr>
-                            <tr><td class="align-top"><strong>Keterangan</strong></td><td class="align-top">: ${h(data.keterangan)}</td></tr>
+                            <tr><td class="align-top"><strong>Description</strong></td><td class="align-top">: ${h(data.keterangan)}</td></tr>
                         </table>
                     </div>
                     <div class="card-footer text-center">
                         <button onclick="prepareAttachmentVerificationModal(this)" class="btn btn-success" data-item='${JSON.stringify(data)}'>
-                            <i class="fas fa-check-circle"></i> Verifikasi Item
+                            <i class="fas fa-check-circle"></i> Verify Item
                         </button>
                     </div>
                 </div>
@@ -678,10 +677,10 @@ $can_export = $permissions['export'];
                     <h6 class="mb-0 fw-bold">${component.label}</h6>
                     <div class="btn-group btn-group-sm">
                         <button type="button" class="btn btn-outline-success btn-verify-action" onclick="setAttachmentComponentStatus('${component.id}', 'sesuai', this)">
-                            <i class="fas fa-check"></i> Sesuai
+                            <i class="fas fa-check"></i> Correct
                         </button>
                         <button type="button" class="btn btn-outline-danger btn-verify-action" onclick="setAttachmentComponentStatus('${component.id}', 'tidak-sesuai', this)">
-                            <i class="fas fa-times"></i> Tidak Sesuai
+                            <i class="fas fa-times"></i> Not Correct
                         </button>
                     </div>
                 </div>
@@ -689,7 +688,7 @@ $can_export = $permissions['export'];
                     <p class="spec-details mb-0">${component.desc}</p>
                     ${snInputHTML}
                     <div class="note-input-group">
-                        <label for="note_${component.id}" class="form-label small fw-bold text-danger">Catatan Ketidaksesuaian</label>
+                        <label for="note_${component.id}" class="form-label small fw-bold text-danger">Note for Non-Conformity</label>
                         <textarea class="form-control note-input" id="note_${component.id}" rows="2"></textarea>
                     </div>
                 </div>
@@ -751,8 +750,8 @@ $can_export = $permissions['export'];
             }
         });
         
-        if (finalStatus === 'Sesuai' && !snData['serial_number']) {
-            Swal.fire({icon:'warning', title:'SN Wajib', text:'Serial number wajib diisi untuk status Sesuai.'});
+        if (finalStatus === 'Correct' && !snData['serial_number']) {
+            Swal.fire({icon:'warning', title:'SN Required', text:'Serial number is required for Correct status.'});
             return;
         }
         
@@ -785,7 +784,7 @@ $can_export = $permissions['export'];
                 
                 if (response.success) {
                     $('#modalAttachmentVerification').modal('hide');
-                    Swal.fire('Berhasil!', 'Verifikasi berhasil!', 'success');
+                    Swal.fire('Success!', 'Verification successful!', 'success');
                     
                     let sisaElem = $(`#lbl-remain-po-${poId}`);
                     let sisaCount = parseInt(sisaElem.text()) - 1;
@@ -801,17 +800,17 @@ $can_export = $permissions['export'];
                     $('#attachment-detail-view-container').html(`
                         <div class="text-center p-5">
                             <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
-                            <h5 class="text-muted">Verifikasi berhasil! Silakan pilih item lain.</h5>
+                            <h5 class="text-muted">Verification successful! Please select another item.</h5>
                         </div>
                     `);
                 } else {
-                    Swal.fire('Error!', response.message || 'Terjadi kesalahan.', 'error');
+                    Swal.fire('Error!', response.message || 'An error occurred.', 'error');
                 }
             },
             error: (xhr) => {
                 window._verifyingAttachment = false;
                 $('#btn-submit-attachment-verification').prop('disabled', false);
-                Swal.fire("Error", "Terjadi kesalahan tak terduga.", "error");
+                Swal.fire("Error", "An unexpected error occurred.", "error");
                 console.error(xhr.responseText);
             }
         });
@@ -867,15 +866,14 @@ $can_export = $permissions['export'];
                         const rejected = parseInt(row.rejected_items, 10);
                         
                         if (isNaN(total) || total === 0) {
-                            return `<span class="text-muted small fst-italic">Tidak Ada Item</span>`;
+                            return `<span class="text-muted small fst-italic">No Items</span>`;
                         }
 
                         const percentage = Math.round((sesuai / total) * 100);
-                        let warningIcon = rejected > 0 ? `<i class="fas fa-exclamation-triangle text-danger ms-2" title="${rejected} item tidak sesuai"></i>` : '';
-
+                        let warningIcon = rejected > 0 ? `<i class="fas fa-exclamation-triangle text-danger ms-2" title="${rejected} items not correct"></i>` : '';
                         return `
                             <div class="d-flex align-items-center">
-                                <div class="progress flex-grow-1" title="${sesuai} dari ${total} item sesuai">
+                                <div class="progress flex-grow-1" title="${sesuai} of ${total} items correct">
                                     <div class="progress-bar progress-bar-striped" role="progressbar" style="width: ${percentage}%;">
                                         ${processed} / ${total}
                                     </div>
@@ -890,8 +888,8 @@ $can_export = $permissions['export'];
                     orderable: false, 
                     render: function(data, type, row) {
                         let resolveButton = '';
-                        if (row.status === 'Selesai dengan Catatan') {
-                            resolveButton = `<li><a class="dropdown-item text-success" href="#" onclick="resolveSparepartPO(${data})"><i class="fas fa-check-double me-2"></i>Tandai Selesai</a></li>`;
+                        if (row.status === 'Completed with Notes') {
+                            resolveButton = `<li><a class="dropdown-item text-success" href="#" onclick="resolveSparepartPO(${data})"><i class="fas fa-check-double me-2"></i>Mark as Completed</a></li>`;
                         }
 
                         return `
@@ -900,11 +898,11 @@ $can_export = $permissions['export'];
                                     <i class="fas fa-ellipsis-h"></i>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="#" onclick="viewSparepartPO(${data})"><i class="fas fa-eye me-2"></i>Lihat Detail</a></li>
+                                    <li><a class="dropdown-item" href="#" onclick="viewSparepartPO(${data})"><i class="fas fa-eye me-2"></i>View Details</a></li>
                                     <li><a class="dropdown-item" href="<?= base_url('purchasing/edit-po-sparepart/') ?>${data}"><i class="fas fa-edit me-2"></i>Edit PO</a></li>
                                     ${resolveButton}
                                     <li><hr class="dropdown-divider"></li>
-                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteSparepartPO(${data})"><i class="fas fa-trash me-2"></i>Hapus PO</a></li>
+                                    <li><a class="dropdown-item text-danger" href="#" onclick="deleteSparepartPO(${data})"><i class="fas fa-trash me-2"></i>Delete PO</a></li>
                                 </ul>
                             </div>
                         `;
@@ -928,13 +926,13 @@ $can_export = $permissions['export'];
 
     function deleteSparepartPO(id) {
         Swal.fire({
-            title: 'Apakah Anda yakin?',
-            text: "Data PO ini akan dihapus secara permanen!",
+            title: 'Are you sure?',
+            text: "This PO data will be permanently deleted!",
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
-            confirmButtonText: 'Ya, hapus!',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, delete it!',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -942,10 +940,10 @@ $can_export = $permissions['export'];
                     type: 'POST',
                     success: function(response) {
                         if (response.success) {
-                            Swal.fire('Berhasil!', 'Data PO telah dihapus.', 'success');
+                            Swal.fire('Success!', 'PO data has been deleted.', 'success');
                             poSparepartTable.ajax.reload();
                         } else {
-                            Swal.fire('Gagal!', response.message || 'Gagal menghapus data.', 'error');
+                            Swal.fire('Failed!', response.message || 'Failed to delete data.', 'error');
                         }
                     }
                 });
@@ -955,13 +953,13 @@ $can_export = $permissions['export'];
 
     function resolveSparepartPO(id) {
         Swal.fire({
-            title: 'Selesaikan PO ini?',
-            text: "Pastikan semua masalah dengan supplier sudah selesai. Status akan diubah menjadi 'Completed'.",
+            title: 'Complete this PO?',
+            text: "Make sure all issues with the supplier have been resolved. The status will be changed to 'Completed'.",
             icon: 'question',
             showCancelButton: true,
             confirmButtonColor: '#28a745',
-            confirmButtonText: 'Ya, Selesaikan!',
-            cancelButtonText: 'Batal'
+            confirmButtonText: 'Yes, Complete it!',
+            cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
@@ -969,10 +967,10 @@ $can_export = $permissions['export'];
                     type: 'POST',
                     success: function(response) {
                         if (response.success) {
-                            Swal.fire('Berhasil!', 'Status PO telah diubah menjadi Completed.', 'success');
+                            Swal.fire('Success!', 'PO status has been changed to Completed.', 'success');
                             poSparepartTable.ajax.reload();
                         } else {
-                            Swal.fire('Gagal!', response.message || 'Gagal mengubah status.', 'error');
+                            Swal.fire('Failed!', response.message || 'Failed to change status.', 'error');
                         }
                     }
                 });
