@@ -5,18 +5,18 @@
 <!-- Page Header -->
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
     <h1 class="h3 mb-0 text-gray-800">
-        <i class="fas fa-chart-pie me-2"></i>Dashboard Finance & KPI
+        <i class="fas fa-chart-pie me-2"></i><?= lang('Dashboard.finance_kpi_dashboard') ?>
     </h1>
     <div class="d-sm-flex align-items-center">
         <div class="me-3">
-            <small class="text-muted">Monitor financial performance, KPI metrics, dan overall business health</small>
+            <small class="text-muted"><?= lang('Dashboard.monitor_financial_performance') ?></small>
         </div>
         <div class="btn-group">
             <button class="btn btn-outline-success btn-sm">
-                <i class="fas fa-file-excel me-1"></i>Financial Report
+                <i class="fas fa-file-excel me-1"></i><?= lang('Finance.financial_report') ?>
             </button>
             <button class="btn btn-primary btn-sm">
-                <i class="fas fa-chart-pie me-1"></i>KPI Report
+                <i class="fas fa-chart-pie me-1"></i><?= lang('Finance.kpi_report') ?>
             </button>
         </div>
     </div>
@@ -33,7 +33,7 @@
                     </div>
                     <div>
                         <div class="stat-value" id="stat-total-revenue">Rp 8.4M</div>
-                        <div class="text-muted">Total Revenue</div>
+                        <div class="text-muted"><?= lang('Finance.total_revenue') ?></div>
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@
                     </div>
                     <div>
                         <div class="stat-value" id="stat-net-profit">Rp 1.8M</div>
-                        <div class="text-muted">Net Profit</div>
+                        <div class="text-muted"><?= lang('Finance.net_profit') ?></div>
                     </div>
                 </div>
             </div>
@@ -61,7 +61,7 @@
                     </div>
                     <div>
                         <div class="stat-value" id="stat-operating-costs">Rp 6.2M</div>
-                        <div class="text-muted">Operating Costs</div>
+                        <div class="text-muted"><?= lang('Finance.operating_costs') ?></div>
                     </div>
                 </div>
             </div>

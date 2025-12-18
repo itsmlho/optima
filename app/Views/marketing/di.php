@@ -25,7 +25,7 @@ $can_export = $permissions['export'];
                   </div>
                   <div>
                       <div class="stat-value" id="totalDI">0</div>
-                      <div class="text-muted">Total DI</div>
+                      <div class="text-muted"><?= lang('Marketing.total') ?> DI</div>
                   </div>
               </div>
           </div>
@@ -38,7 +38,7 @@ $can_export = $permissions['export'];
                   </div>
                   <div>
                       <div class="stat-value" id="submittedDI">0</div>
-                      <div class="text-muted">Planned</div>
+                      <div class="text-muted"><?= lang('Marketing.planned') ?></div>
                   </div>
               </div>
           </div>
@@ -51,7 +51,7 @@ $can_export = $permissions['export'];
                   </div>
                   <div>
                       <div class="stat-value" id="inprogressDI">0</div>
-                      <div class="text-muted">In Progress</div>
+                      <div class="text-muted"><?= lang('Marketing.in_progress') ?></div>
                   </div>
               </div>
           </div>
@@ -64,7 +64,7 @@ $can_export = $permissions['export'];
                   </div>
                   <div>
                       <div class="stat-value" id="deliveredDI">0</div>
-                      <div class="text-muted">Completed</div>
+                      <div class="text-muted"><?= lang('Marketing.completed') ?></div>
                   </div>
               </div>
           </div>
@@ -73,10 +73,10 @@ $can_export = $permissions['export'];
 
   <div class="card table-card mb-3">
     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
-      <h5 class="h5 mb-0 text-gray-800">Delivery Instruction (DI) List</h5>
+      <h5 class="h5 mb-0 text-gray-800"><?= lang('App.delivery_instructions_di') ?> <?= lang('App.show') ?></h5>
       <div class="d-flex gap-2 align-items-center">
         <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#diCreateModal">
-          <i class="fas fa-plus"></i> Create DI
+          <i class="fas fa-plus"></i> <?= lang('Marketing.create') ?> DI
         </button>
       </div>
     </div>
@@ -84,19 +84,19 @@ $can_export = $permissions['export'];
     <!-- Filter Tabs -->
     <ul class="nav nav-tabs mb-3" id="filterTabs">
       <li class="nav-item">
-        <a class="nav-link active filter-tab" href="#" data-filter="all">All</a>
+        <a class="nav-link active filter-tab" href="#" data-filter="all"><?= lang('Marketing.all') ?></a>
       </li>
       <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED">Submitted</a>
+        <a class="nav-link filter-tab" href="#" data-filter="SUBMITTED"><?= lang('Marketing.submitted') ?></a>
       </li>
       <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS">In Progress</a>
+        <a class="nav-link filter-tab" href="#" data-filter="INPROGRESS"><?= lang('Marketing.in_progress') ?></a>
       </li>
       <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="DELIVERED">Delivered</a>
+        <a class="nav-link filter-tab" href="#" data-filter="DELIVERED"><?= lang('Marketing.delivered') ?></a>
       </li>
       <li class="nav-item">
-        <a class="nav-link filter-tab" href="#" data-filter="CANCELLED">Cancelled</a>
+        <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Marketing.cancelled') ?></a>
       </li>
     </ul>
     
@@ -153,51 +153,51 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
-          <h6 class="modal-title">DI Creation</h6>
+          <h6 class="modal-title"><?= lang('Marketing.create') ?> DI</h6>
           <button class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <form id="diCreateForm">
           <div class="modal-body">
             <!-- SPK Selection -->
             <div class="mb-3" id="spkSelectionSection">
-              <label class="form-label">Select SPK (READY)</label>
-              <input type="text" class="form-control" id="modalSpkSearch" placeholder="Search No. SPK / PO / Customer">
+              <label class="form-label"><?= lang('Marketing.select_spk_ready') ?></label>
+              <input type="text" class="form-control" id="modalSpkSearch" placeholder="<?= lang('Marketing.search_spk_po_customer') ?>">
               <select class="form-select mt-2" id="spkPick" name="spk_id"></select>
-              <div class="form-text">Only SPK with READY status can be used to create DI.</div>
+              <div class="form-text"><?= lang('Marketing.only_ready_spk_for_di') ?></div>
             </div>
             
             <!-- Standard Item Selection (for non-TUKAR workflows) - Dynamic for Units/Attachments -->
             <div id="diUnitsSection" style="display:none;" class="mb-3">
-              <label class="form-label" id="itemSelectionLabel">Select Items to be shipped</label>
+              <label class="form-label" id="itemSelectionLabel"><?= lang('Marketing.select_items_to_ship') ?></label>
               <div class="d-flex justify-content-between align-items-center mb-1">
-                <div class="small text-muted">Selected: <span id="selCount">0</span> <span id="itemTypeLabel">items</span></div>
+                <div class="small text-muted"><?= lang('App.selected') ?>: <span id="selCount">0</span> <span id="itemTypeLabel"><?= lang('App.items') ?></span></div>
                 <div>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnSelectAll">Select All</button>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearAll">Clear</button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnSelectAll"><?= lang('App.select_all') ?></button>
+                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearAll"><?= lang('App.clear') ?></button>
                 </div>
               </div>
-              <div id="diUnitList" class="unit-list"><div class="text-muted small">Loading items from SPK...</div></div>
-              <div class="form-text" id="itemSelectionHelp">Items to be shipped in this DI.</div>
+              <div id="diUnitList" class="unit-list"><div class="text-muted small"><?= lang('Marketing.loading_items_from_spk') ?></div></div>
+              <div class="form-text" id="itemSelectionHelp"><?= lang('Marketing.items_to_ship_in_di') ?></div>
             </div>
             
             <!-- Enhanced Workflow Section - Step 1: Jenis & Tujuan Perintah -->
             <div class="row g-3 mb-3">
               <div class="col-md-6">
-                <label class="form-label">Command Type <span class="text-danger">*</span></label>
+                <label class="form-label"><?= lang('Marketing.command_type') ?> <span class="text-danger">*</span></label>
                 <select class="form-select" name="jenis_perintah_kerja_id" id="jenisPerintahSelect" required>
-                  <option value="">-- Select Command Type --</option>
+                  <option value="">-- <?= lang('Marketing.select_command_type') ?> --</option>
                 </select> 
-                <div class="form-text">Specify the main action to be performed</div>
+                <div class="form-text"><?= lang('Marketing.specify_main_action') ?></div>
               </div>
               <div class="col-md-6">
-                <label class="form-label">Command Purpose <span class="text-danger">*</span></label>
+                <label class="form-label"><?= lang('Marketing.command_purpose') ?> <span class="text-danger">*</span></label>
                 <select class="form-select" name="tujuan_perintah_kerja_id" id="tujuanPerintahSelect" required disabled>
-                  <option value="">-- Select Command Type first --</option>
+                  <option value="">-- <?= lang('Marketing.select_command_type_first') ?> --</option>
                 </select>
                 <div class="form-text">
-                  Reason/context for this command<br>
+                  <?= lang('Marketing.reason_context_command') ?><br>
                   <small>
-                    🔴 Permanent | 🔵 Temporary (returns) | 🟡 Temp Replacement | 🟢 Relocation
+                    🔴 <?= lang('Marketing.permanent') ?> | 🔵 <?= lang('Marketing.temporary_returns') ?> | 🟡 <?= lang('Marketing.temp_replacement') ?> | 🟢 <?= lang('Marketing.relocation') ?>
                   </small>
                 </div>
               </div>
@@ -205,18 +205,18 @@ $can_export = $permissions['export'];
 
             <!-- Step 2: Kontrak Selection (for TARIK and TUKAR workflows) -->
             <div id="diKontrakSelection" style="display:none;" class="mb-3">
-              <label class="form-label">Select Contract <span class="text-danger">*</span></label>
+              <label class="form-label"><?= lang('Marketing.select_contract') ?> <span class="text-danger">*</span></label>
               <select class="form-select" name="kontrak_id" id="kontrakSelect">
-                <option value="">-- Select Contract --</option>
+                <option value="">-- <?= lang('Marketing.select_contract') ?> --</option>
               </select>
-              <div class="form-text">Contract from which units will be pulled/exchanged</div>
+              <div class="form-text"><?= lang('Marketing.contract_for_pull_exchange') ?></div>
             </div>
 
             <!-- Step 3: TARIK Unit Selection (Simple selection from kontrak) -->
             <div id="diTarikOnlySection" style="display:none;" class="mb-3">
-              <label class="form-label">Select Units to be PULLED from contract</label>
+              <label class="form-label"><?= lang('Marketing.select_units_to_pull') ?></label>
               <div class="d-flex justify-content-between align-items-center mb-1">
-                <div class="small text-muted">Selected: <span id="tarikOnlyCount">0</span> unit</div>
+                <div class="small text-muted"><?= lang('App.selected') ?>: <span id="tarikOnlyCount">0</span> <?= lang('App.unit') ?></div>
                 <div>
                   <button class="btn btn-sm btn-outline-warning" type="button" id="btnSelectAllTarikOnly">Select All</button>
                   <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearTarikOnly">Clear</button>
@@ -262,12 +262,12 @@ $can_export = $permissions['export'];
 
             <!-- Common Fields -->
             <div class="row g-2">
-              <div class="col-6"><label class="form-label">Delivery Date</label><input type="date" class="form-control" name="tanggal_kirim"></div>
-              <div class="col-6"><label class="form-label">Notes</label><input type="text" class="form-control" name="catatan" placeholder="Optional"></div>
+              <div class="col-6"><label class="form-label"><?= lang('Marketing.delivery_date') ?></label><input type="date" class="form-control" name="tanggal_kirim"></div>
+              <div class="col-6"><label class="form-label"><?= lang('Marketing.notes') ?></label><input type="text" class="form-control" name="catatan" placeholder="<?= lang('App.optional') ?>"></div>
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('App.cancel') ?></button>
             <button class="btn btn-primary" type="submit">Create DI</button>
           </div>
         </form>
@@ -1840,7 +1840,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 <div class="modal fade" id="diDetailModal" tabindex="-1">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header"><h6 class="modal-title">Detail Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h6 class="modal-title"><?= lang('App.detail') ?> Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Loading...</p></div></div>
       <div class="modal-footer">
         <button class="btn btn-success" id="btnPrintSppu" onclick="printWithdrawalLetter()" style="display:none;">
@@ -1865,22 +1865,22 @@ document.addEventListener('DOMContentLoaded', ()=>{
 <div class="modal fade" id="diEditModal" tabindex="-1">
   <div class="modal-dialog">
     <div class="modal-content">
-      <div class="modal-header"><h6 class="modal-title">Edit Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
+      <div class="modal-header"><h6 class="modal-title"><?= lang('App.edit') ?> Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
       <form id="diEditForm">
         <input type="hidden" id="editDiId" name="id">
         <div class="modal-body">
           <div class="row g-2 mb-3">
             <div class="col-md-6">
-              <label class="form-label">Command Type <span class="text-danger">*</span></label>
+              <label class="form-label"><?= lang('Marketing.command_type') ?> <span class="text-danger">*</span></label>
               <select class="form-select" id="editJenisPerintah" name="jenis_perintah" required>
-                <option value="">- Select Command -</option>
+                <option value="">- <?= lang('Marketing.select_command') ?> -</option>
                 <!-- Options will be loaded from API -->
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Command Purpose <span class="text-danger">*</span></label>
+              <label class="form-label"><?= lang('Marketing.command_purpose') ?> <span class="text-danger">*</span></label>
               <select class="form-select" id="editTujuanPerintah" name="tujuan_perintah" required disabled>
-                <option value="">- Select Command first -</option>
+                <option value="">- <?= lang('Marketing.select_command_first') ?> -</option>
                 <!-- Options will be loaded from API based on jenis -->
               </select>
             </div>
@@ -1888,23 +1888,23 @@ document.addEventListener('DOMContentLoaded', ()=>{
           
           <!-- PERBAIKAN: Status Eksekusi sebagai display only, bukan input -->
           <div class="mb-3">
-            <label class="form-label">Execution Status</label>
+            <label class="form-label"><?= lang('Marketing.execution_status') ?></label>
             <div class="card bg-light">
               <div class="card-body py-2">
                 <span id="editStatusEksekusiDisplay" class="badge bg-primary">READY</span>
-                <small class="text-muted ms-2">Status managed by system based on workflow</small>
+                <small class="text-muted ms-2"><?= lang('Marketing.status_managed_by_system') ?></small>
               </div>
             </div>
           </div>
           
           <div class="row g-2">
             <div class="col-6">
-              <label class="form-label">Delivery Date</label>
+              <label class="form-label"><?= lang('Marketing.delivery_date') ?></label>
               <input type="date" class="form-control" id="editTanggalKirim" name="tanggal_kirim">
             </div>
             <div class="col-6">
-              <label class="form-label">Notes</label>
-              <input type="text" class="form-control" id="editCatatan" name="catatan" placeholder="Optional">
+              <label class="form-label"><?= lang('Marketing.notes') ?></label>
+              <input type="text" class="form-control" id="editCatatan" name="catatan" placeholder="<?= lang('App.optional') ?>">
             </div>
           </div>
         </div>

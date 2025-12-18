@@ -217,7 +217,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="addSparepartModalLabel">Add New Sparepart</h5>
+                <h5 class="modal-title" id="addSparepartModalLabel"><?= lang('Warehouse.add_sparepart') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
@@ -225,13 +225,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="partNumber" class="form-label">Part Number</label>
+                                <label for="partNumber" class="form-label"><?= lang('Warehouse.part_number') ?></label>
                                 <input type="text" class="form-control" id="partNumber" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="partName" class="form-label">Part Name</label>
+                                <label for="partName" class="form-label"><?= lang('Warehouse.part_name') ?></label>
                                 <input type="text" class="form-control" id="partName" required>
                             </div>
                         </div>
@@ -239,9 +239,9 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="category" class="form-label">Category</label>
+                                <label for="category" class="form-label"><?= lang('Warehouse.category') ?></label>
                                 <select class="form-select" id="category" required>
-                                    <option value="">Select Category</option>
+                                    <option value=""><?= lang('App.select') ?> <?= lang('Warehouse.category') ?></option>
                                     <option value="Engine Parts">Engine Parts</option>
                                     <option value="Brake Parts">Brake Parts</option>
                                     <option value="Hydraulic Parts">Hydraulic Parts</option>
@@ -251,7 +251,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="brand" class="form-label">Brand</label>
+                                <label for="brand" class="form-label"><?= lang('Warehouse.brand') ?></label>
                                 <input type="text" class="form-control" id="brand" required>
                             </div>
                         </div>
@@ -259,19 +259,19 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="stock" class="form-label">Initial Stock</label>
+                                <label for="stock" class="form-label"><?= lang('Warehouse.initial_stock') ?></label>
                                 <input type="number" class="form-control" id="stock" min="0" required>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="minStock" class="form-label">Min Stock</label>
+                                <label for="minStock" class="form-label"><?= lang('Warehouse.min_stock') ?></label>
                                 <input type="number" class="form-control" id="minStock" min="0" required>
                             </div>
                         </div>
                         <div class="col-md-4">
                             <div class="mb-3">
-                                <label for="unitPrice" class="form-label">Unit Price</label>
+                                <label for="unitPrice" class="form-label"><?= lang('Warehouse.unit_price') ?></label>
                                 <input type="number" class="form-control" id="unitPrice" min="0" required>
                             </div>
                         </div>
@@ -279,13 +279,13 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="location" class="form-label">Location</label>
+                                <label for="location" class="form-label"><?= lang('Warehouse.location') ?></label>
                                 <input type="text" class="form-control" id="location" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="supplier" class="form-label">Supplier</label>
+                                <label for="supplier" class="form-label"><?= lang('Warehouse.supplier') ?></label>
                                 <input type="text" class="form-control" id="supplier" required>
                             </div>
                         </div>
@@ -293,8 +293,8 @@
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="saveSparepart()">Save Sparepart</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('App.cancel') ?></button>
+                <button type="button" class="btn btn-primary" onclick="saveSparepart()"><?= lang('App.save') ?> <?= lang('Warehouse.sparepart') ?></button>
             </div>
         </div>
     </div>
@@ -305,33 +305,33 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="stockAdjustmentModalLabel">Adjust Stock</h5>
+                <h5 class="modal-title" id="stockAdjustmentModalLabel"><?= lang('Warehouse.adjust_stock') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="stockAdjustmentForm">
                     <div class="mb-3">
-                        <label for="adjustmentType" class="form-label">Adjustment Type</label>
+                        <label for="adjustmentType" class="form-label"><?= lang('Warehouse.adjustment_type') ?></label>
                         <select class="form-select" id="adjustmentType" required>
-                            <option value="">Select Type</option>
-                            <option value="in">Stock In</option>
-                            <option value="out">Stock Out</option>
-                            <option value="adjustment">Adjustment</option>
+                            <option value=""><?= lang('App.select') ?> <?= lang('App.type') ?></option>
+                            <option value="in"><?= lang('Warehouse.stock_in') ?></option>
+                            <option value="out"><?= lang('Warehouse.stock_out') ?></option>
+                            <option value="adjustment"><?= lang('Warehouse.adjustment') ?></option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="quantity" class="form-label">Quantity</label>
+                        <label for="quantity" class="form-label"><?= lang('Warehouse.quantity') ?></label>
                         <input type="number" class="form-control" id="quantity" min="1" required>
                     </div>
                     <div class="mb-3">
-                        <label for="reason" class="form-label">Reason</label>
+                        <label for="reason" class="form-label"><?= lang('Warehouse.reason') ?></label>
                         <textarea class="form-control" id="reason" rows="3" required></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" onclick="confirmStockAdjustment()">Confirm Adjustment</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('App.cancel') ?></button>
+                <button type="button" class="btn btn-primary" onclick="confirmStockAdjustment()"><?= lang('App.confirm') ?> <?= lang('Warehouse.adjustment') ?></button>
             </div>
         </div>
     </div>

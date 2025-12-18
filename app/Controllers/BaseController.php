@@ -54,6 +54,43 @@ abstract class BaseController extends Controller
         // Preload any models, libraries, etc, here.
 
         // E.g.: $this->session = service('session');
+        
+        // ===== MULTI-LANGUAGE SUPPORT =====
+        // Auto-detect and set user's language preference
+        $this->setupLanguage();
+    }
+    
+    /**
+     * Setup Language
+     * 
+     * Automatically detects and sets the user's language preference
+     * Priority: Session > Default (Indonesian)
+     * 
+     * @return void
+     */
+    protected function setupLanguage(): void
+    {
+        // Get language from session or use default
+        $userLanguage = session()->get('user_language');
+        
+        // If no language in session, use default from config
+        if (!$userLanguage) {
+            $userLanguage = config('App')->defaultLocale ?? 'id';
+            session()->set('user_language', $userLanguage);
+        }
+        
+        // Validate language is supported
+        $supportedLocales = config('App')->supportedLocales ?? ['id', 'en'];
+        if (!in_array($userLanguage, $supportedLocales)) {
+            $userLanguage = 'id'; // Fallback to Indonesian
+            session()->set('user_language', $userLanguage);
+        }
+        
+        // Set locale for current request - use proper CI4 method
+        $this->request->setLocale($userLanguage);
+        
+        // Also set the global locale for lang() helper
+        service('language')->setLocale($userLanguage);
     }
 
     /**

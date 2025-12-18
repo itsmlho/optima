@@ -35,7 +35,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div>
                         <div class="stat-value" id="stat-total-customers">0</div>
-                        <div class="text-muted">Total Customers</div>
+                        <div class="text-muted"><?= lang('Marketing.total_customers') ?></div>
                     </div>
                 </div>
             </div>
@@ -48,7 +48,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div>
                         <div class="stat-value" id="stat-active-customers">0</div>
-                        <div class="text-muted">Active Customers</div>
+                        <div class="text-muted"><?= lang('Marketing.active_customers') ?></div>
                     </div>
                 </div>
             </div>
@@ -61,7 +61,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div>
                         <div class="stat-value" id="stat-total-contracts">0</div>
-                        <div class="text-muted">Total Contracts</div>
+                        <div class="text-muted"><?= lang('Marketing.total_contracts') ?></div>
                     </div>
                 </div>
             </div>
@@ -74,7 +74,7 @@ $can_export = $permissions['export'];
                     </div>
                     <div>
                         <div class="stat-value" id="stat-total-units">0</div>
-                        <div class="text-muted">Total Units</div>
+                        <div class="text-muted"><?= lang('Dashboard.total_units') ?></div>
                     </div>
                 </div>
             </div>
@@ -85,17 +85,17 @@ $can_export = $permissions['export'];
 <!-- Customer Table Card -->
 <div class="card table-card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Customer Management</h5>
+        <h5 class="mb-0"><?= lang('Marketing.customer_management') ?></h5>
         <div class="d-flex gap-2">
             <button class="btn btn-sm btn-primary" onclick="openAddCustomerModal()">
-                <i class="fas fa-plus"></i> Add Customer
+                <i class="fas fa-plus"></i> <?= lang('Marketing.add_customer') ?>
             </button>
             <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()">
-                <i class="fas fa-sync-alt"></i> Refresh
+                <i class="fas fa-sync-alt"></i> <?= lang('App.refresh') ?>
             </button>
             <?php if ($can_export): ?>
             <a href="<?= base_url('marketing/export_customer') ?>" class="btn btn-sm btn-outline-success">
-                <i class="fas fa-file-excel"></i> Export
+                <i class="fas fa-file-excel"></i> <?= lang('App.export') ?>
             </a>
             <?php endif; ?>
         </div>
@@ -310,7 +310,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add New Customer</h5>
+                <h5 class="modal-title"><?= lang('Marketing.add_customer') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addCustomerForm">
@@ -453,7 +453,7 @@ $can_export = $permissions['export'];
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title">Tambah Kontrak Baru</h5>
+                    <h5 class="modal-title"><?= lang('Marketing.add_contract') ?></h5>
                     <small class="text-muted">Langkah 1: Informasi Dasar Kontrak</small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -477,39 +477,39 @@ $can_export = $permissions['export'];
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">No. Kontrak*</label>
+                            <label class="form-label"><?= lang('Marketing.contract_number') ?>*</label>
                             <div class="input-group">
                                 <input type="text" class="form-control" name="contract_number" required>
-                                <button class="btn btn-outline-secondary" type="button" id="generateContractNumber" title="Generate Nomor Kontrak">
+                                <button class="btn btn-outline-secondary" type="button" id="generateContractNumber" title="<?= lang('Marketing.generate_contract_number') ?>">
                                     <i class="fas fa-magic"></i>
                                 </button>
                             </div>
                         </div>
-                        <div class="col-md-6 mb-3"><label class="form-label">No. PO Klien</label><input type="text" class="form-control" name="po_number"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.client_po_number') ?></label><input type="text" class="form-control" name="po_number"></div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Customer*</label>
+                            <label class="form-label"><?= lang('Marketing.customer') ?>*</label>
                             <select class="form-select" id="customerSelect" required>
                                 <option value="">-- Pilih Customer --</option>
                             </select>
                             <small class="form-text text-muted">Pilih customer terlebih dahulu</small>
                         </div>
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Lokasi*</label>
+                            <label class="form-label"><?= lang('Marketing.location') ?>*</label>
                             <select class="form-select" name="customer_location_id" id="locationSelect" required disabled>
-                                <option value="">-- Pilih Customer Dulu --</option>
+                                <option value="">-- <?= lang('Marketing.select_customer_first') ?> --</option>
                             </select>
-                            <small class="form-text text-muted">Lokasi akan muncul setelah pilih customer</small>
+                            <small class="form-text text-muted"><?= lang('Marketing.location_after_customer') ?></small>
                         </div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Tanggal Mulai*</label><input type="date" class="form-control" name="start_date" required></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Tanggal Berakhir*</label><input type="date" class="form-control" name="end_date" required></div>
-                        <div class="col-md-6 mb-3"><label class="form-label">Jenis Sewa</label>
+                        <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.start_date') ?>*</label><input type="date" class="form-control" name="start_date" required></div>
+                        <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.end_date') ?>*</label><input type="date" class="form-control" name="end_date" required></div>
+                        <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.rental_type') ?></label>
                             <select class="form-select" name="jenis_sewa">
-                                <option value="BULANAN" selected>Bulanan</option>
-                                <option value="HARIAN">Harian</option>
+                                <option value="BULANAN" selected><?= lang('Marketing.monthly') ?></option>
+                                <option value="HARIAN"><?= lang('Marketing.daily') ?></option>
                             </select>
                         </div>
                         <div class="col-md-6"></div> <!-- Empty space for alignment -->
-                        <div class="col-12 mb-3"><label class="form-label">Catatan</label><textarea class="form-control" name="catatan" rows="3" placeholder="Catatan tambahan (opsional)"></textarea></div>
+                        <div class="col-12 mb-3"><label class="form-label"><?= lang('Marketing.notes') ?></label><textarea class="form-control" name="catatan" rows="3" placeholder="<?= lang('Marketing.additional_notes_optional') ?>"></textarea></div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -530,7 +530,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Add New Location</h5>
+                <h5 class="modal-title"><?= lang('Marketing.add_location') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="addLocationForm">
@@ -643,7 +643,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h6 class="modal-title">Buat SPK</h6>
+                <h6 class="modal-title"><?= lang('Marketing.create_spk') ?></h6>
                 <button class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="spkFromKontrakForm">
@@ -651,58 +651,58 @@ $can_export = $permissions['export'];
                     <input type="hidden" name="kontrak_id" id="spkKontrakId">
                     <input type="hidden" name="qoutation_specifications_id" id="spkSpesifikasiId">
                     <div class="mb-3">
-                        <label class="form-label">Jenis SPK</label>
+                        <label class="form-label"><?= lang('Marketing.spk_type') ?></label>
                         <select class="form-select" name="jenis_spk" id="spkJenisSpk" required>
-                            <option value="UNIT" selected>SPK Unit</option>
-                            <option value="ATTACHMENT">SPK Attachment</option>
+                            <option value="UNIT" selected><?= lang('Marketing.spk_unit') ?></option>
+                            <option value="ATTACHMENT"><?= lang('Marketing.spk_attachment') ?></option>
                         </select>
                     </div>
                     
                     <!-- Target Unit Section (hanya untuk ATTACHMENT) -->
                     <div id="attachmentTargetSection" style="display: none;">
                         <div class="mb-3">
-                            <label class="form-label">Unit Tujuan <span class="text-danger">*</span></label>
+                            <label class="form-label"><?= lang('Marketing.target_unit') ?> <span class="text-danger">*</span></label>
                             <select class="form-control" name="target_unit_id" id="spkTargetUnitId">
-                                <option value="">- Pilih Unit Tujuan -</option>
+                                <option value="">- <?= lang('Marketing.select_target_unit') ?> -</option>
                             </select>
-                            <div class="form-text">Pilih unit yang akan menerima attachment pengganti</div>
+                            <div class="form-text"><?= lang('Marketing.select_unit_for_attachment') ?></div>
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Alasan Penggantian</label>
+                            <label class="form-label"><?= lang('Marketing.replacement_reason') ?></label>
                             <textarea class="form-control" name="replacement_reason" id="spkReplacementReason" rows="2" 
-                                      placeholder="Contoh: Fork rusak, attachment lama aus, perlu upgrade, dll"></textarea>
-                            <div class="form-text">Jelaskan mengapa attachment perlu diganti</div>
+                                      placeholder="<?= lang('Marketing.replacement_reason_placeholder') ?>"></textarea>
+                            <div class="form-text"><?= lang('Marketing.explain_replacement') ?></div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label class="form-label">Pelanggan</label>
+                        <label class="form-label"><?= lang('Marketing.customer') ?></label>
                         <input type="text" class="form-control" name="pelanggan" id="spkPelanggan" readonly required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">PIC</label>
+                        <label class="form-label"><?= lang('Marketing.pic') ?></label>
                         <input type="text" class="form-control" name="pic" id="spkPic" readonly>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Kontak</label>
+                        <label class="form-label"><?= lang('Marketing.contact') ?></label>
                         <input type="text" class="form-control" name="kontak" id="spkKontak" readonly>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Lokasi</label>
+                        <label class="form-label"><?= lang('Marketing.location') ?></label>
                         <input type="text" class="form-control" name="lokasi" id="spkLokasi" readonly>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Delivery Plan</label>
+                        <label class="form-label"><?= lang('Marketing.delivery_plan') ?></label>
                         <input type="date" class="form-control" name="delivery_plan" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Jumlah Unit <small class="text-muted" id="jumlahUnitHint"></small></label>
+                        <label class="form-label"><?= lang('Marketing.unit_quantity') ?> <small class="text-muted" id="jumlahUnitHint"></small></label>
                         <input type="number" class="form-control" name="jumlah_unit" id="spkJumlahUnit" min="1" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Catatan</label>
-                        <textarea class="form-control" name="catatan" rows="3" placeholder="Keterangan tambahan untuk SPK ini (opsional)"></textarea>
+                        <label class="form-label"><?= lang('Marketing.notes') ?></label>
+                        <textarea class="form-control" name="catatan" rows="3" placeholder="<?= lang('Marketing.additional_notes_for_spk') ?>"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">

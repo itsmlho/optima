@@ -5,17 +5,17 @@
     <!-- Page Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
         <h1 class="h3 mb-0 text-gray-800" id="pageTitle">
-            <i class="fas fa-chart-line me-2" aria-hidden="true"></i>Dashboard Marketing
+            <i class="fas fa-chart-line me-2" aria-hidden="true"></i><?= lang('Dashboard.marketing_dashboard') ?>
         </h1>
         <div class="d-sm-flex align-items-center">
             <div class="me-3">
-                <small class="text-muted">Terakhir diperbarui: </small>
+                <small class="text-muted"><?= lang('Dashboard.last_updated') ?>: </small>
                 <span class="fw-bold" aria-live="polite"><?= date('d M Y, H:i') ?></span>
             </div>
             <div class="btn-group" role="group" aria-label="Aksi Marketing">
-                <button class="btn btn-outline-primary btn-sm" onclick="exportMarketingDashboard()" aria-label="Export Dashboard"><i class="fas fa-download me-1" aria-hidden="true"></i>Export</button>
-                <button class="btn btn-outline-success btn-sm" onclick="generateMarketingReport()" aria-label="Generate Report"><i class="fas fa-file-alt me-1" aria-hidden="true"></i>Report</button>
-                <button class="btn btn-primary btn-sm" onclick="location.reload()" aria-label="Refresh Dashboard"><i class="fas fa-sync-alt me-1" aria-hidden="true"></i>Refresh</button>
+                <button class="btn btn-outline-primary btn-sm" onclick="exportMarketingDashboard()" aria-label="Export Dashboard"><i class="fas fa-download me-1" aria-hidden="true"></i><?= lang('App.export') ?></button>
+                <button class="btn btn-outline-success btn-sm" onclick="generateMarketingReport()" aria-label="Generate Report"><i class="fas fa-file-alt me-1" aria-hidden="true"></i><?= lang('App.report') ?></button>
+                <button class="btn btn-primary btn-sm" onclick="location.reload()" aria-label="Refresh Dashboard"><i class="fas fa-sync-alt me-1" aria-hidden="true"></i><?= lang('App.refresh') ?></button>
             </div>
         </div>
     </div>
@@ -27,9 +27,9 @@
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h2 class="fw-bold mb-1" data-currency="<?= $marketing_stats['monthly_revenue'] ?? 0 ?>">Rp 0</h2>
-                        <h6 class="card-title text-uppercase small mb-0">REVENUE BULAN INI</h6>
+                        <h6 class="card-title text-uppercase small mb-0"><?= lang('Dashboard.revenue_this_month') ?></h6>
                         <div class="small mt-1 opacity-75">
-                            <i class="fas fa-arrow-up me-1"></i>+15.3% dari bulan lalu
+                            <i class="fas fa-arrow-up me-1"></i>+15.3% <?= lang('Dashboard.from_last_month') ?>
                         </div>
                     </div>
                     <div class="ms-3">
@@ -44,9 +44,9 @@
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h2 class="fw-bold mb-1"><?= $marketing_stats['active_contracts'] ?? 0 ?></h2>
-                        <h6 class="card-title text-uppercase small mb-0">KONTRAK AKTIF</h6>
+                        <h6 class="card-title text-uppercase small mb-0"><?= lang('Dashboard.active_contracts') ?></h6>
                         <div class="small mt-1 opacity-75">
-                            <i class="fas fa-handshake me-1"></i><?= round(($marketing_stats['active_contracts'] ?? 0) / max(($marketing_stats['total_contracts'] ?? 1), 1) * 100, 1) ?>% dari total
+                            <i class="fas fa-handshake me-1"></i><?= round(($marketing_stats['active_contracts'] ?? 0) / max(($marketing_stats['total_contracts'] ?? 1), 1) * 100, 1) ?>% <?= lang('Dashboard.from_total') ?>
                         </div>
                     </div>
                     <div class="ms-3">
@@ -61,9 +61,9 @@
                 <div class="card-body d-flex align-items-center">
                     <div class="flex-grow-1">
                         <h2 class="fw-bold mb-1"><?= $marketing_stats['pending_quotations'] ?? 0 ?></h2>
-                        <h6 class="card-title text-uppercase small mb-0">PENAWARAN PENDING</h6>
+                        <h6 class="card-title text-uppercase small mb-0"><?= lang('Dashboard.pending_quotations') ?></h6>
                         <div class="small mt-1 opacity-75">
-                            <i class="fas fa-clock me-1"></i>Butuh follow-up
+                            <i class="fas fa-clock me-1"></i><?= lang('Dashboard.need_followup') ?>
                         </div>
                     </div>
                     <div class="ms-3">

@@ -17,7 +17,7 @@
                         <div class="stat-value" id="stat-usage-total">
                             <?= $stats['usage_total'] ?? 0 ?>
                         </div>
-                        <div class="text-muted">Total Usage</div>
+                        <div class="text-muted"><?= lang('Warehouse.total_usage') ?></div>
                     </div>
                 </div>
             </div>
@@ -33,7 +33,7 @@
                         <div class="stat-value" id="stat-return-pending">
                             <?= $stats['return_pending'] ?? 0 ?>
                         </div>
-                        <div class="text-muted">Pending Returns</div>
+                        <div class="text-muted"><?= lang('Warehouse.pending_returns') ?></div>
                     </div>
                 </div>
             </div>
@@ -49,7 +49,7 @@
                         <div class="stat-value" id="stat-return-confirmed">
                             <?= $stats['return_confirmed'] ?? 0 ?>
                         </div>
-                        <div class="text-muted">Confirmed Returns</div>
+                        <div class="text-muted"><?= lang('Warehouse.confirmed_returns') ?></div>
                     </div>
                 </div>
             </div>
@@ -63,7 +63,7 @@
                 <div class="col">
                     <h5 class="card-title fw-bold m-0">
                         <i class="fas fa-tools text-primary me-2"></i>
-                        Sparepart Usage & Returns
+                        <?= lang('App.sparepart_usage_returns') ?>
                     </h5>
                 </div>
             </div>
@@ -73,13 +73,13 @@
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage" type="button" role="tab" aria-controls="usage" aria-selected="true">
                         <i class="fas fa-list-check me-1"></i>
-                        <strong>Usage</strong>
+                        <strong><?= lang('Warehouse.usage') ?></strong>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="returns-tab" data-bs-toggle="tab" data-bs-target="#returns" type="button" role="tab" aria-controls="returns" aria-selected="false">
                         <i class="fas fa-undo me-1"></i>
-                        <strong>Returns</strong>
+                        <strong><?= lang('Warehouse.returns') ?></strong>
                     </button>
                 </li>
             </ul>
@@ -183,7 +183,7 @@
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-info-circle me-2"></i>Detail Usage Sparepart
+                    <i class="fas fa-info-circle me-2"></i><?= lang('App.detail') ?> <?= lang('Warehouse.usage') ?> <?= lang('Warehouse.sparepart') ?>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -204,7 +204,7 @@
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-info-circle me-2"></i>Detail Return Sparepart
+                    <i class="fas fa-info-circle me-2"></i><?= lang('App.detail') ?> <?= lang('Warehouse.returns') ?> <?= lang('Warehouse.sparepart') ?>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>

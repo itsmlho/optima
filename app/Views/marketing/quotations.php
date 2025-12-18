@@ -23,7 +23,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-total-quotations">0</div>
-                    <div class="text-muted">Total Quotations</div>
+                    <div class="text-muted"><?= lang('Marketing.total_quotations') ?></div>
                 </div>
             </div>
         </div>
@@ -36,7 +36,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-pending">0</div>
-                    <div class="text-muted">Pending</div>
+                    <div class="text-muted"><?= lang('Marketing.pending') ?></div>
                 </div>
             </div>
         </div>
@@ -49,7 +49,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-approved">0</div>
-                    <div class="text-muted">Approved</div>
+                    <div class="text-muted"><?= lang('App.approved') ?></div>
                 </div>
             </div>
         </div>
@@ -62,7 +62,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-rejected">0</div>
-                    <div class="text-muted">Rejected</div>
+                    <div class="text-muted"><?= lang('App.rejected') ?></div>
                 </div>
             </div>
         </div>
@@ -75,12 +75,12 @@
         <div>
             <h5 class="card-title mb-0">
                 <i class="bi bi-file-text me-2 text-primary"></i>
-                Prospect & Quotations Management
+                <?= lang('Marketing.prospect_quotations') ?>
             </h5>
-            <p class="text-muted small mb-0">Kelola prospect dan penawaran harga untuk pelanggan</p>
+            <p class="text-muted small mb-0"><?= lang('Marketing.manage_prospects') ?></p>
         </div>
         <button type="button" class="btn btn-primary" onclick="openCreateProspectModal()">
-            <i class="bi bi-plus-circle me-2"></i>Add Prospect
+            <i class="bi bi-plus-circle me-2"></i><?= lang('Marketing.add_prospect') ?>
         </button>
     </div>
     <div class="card-body">
@@ -88,14 +88,14 @@
             <table id="quotationsTable" class="table table-striped table-hover">
                 <thead class="table-dark">
                     <tr>
-                        <th>No</th>
-                        <th>Quotation Number</th>
-                        <th>Prospect Name</th>
-                        <th>Quotation Title</th>
-                        <th>Amount</th>
-                        <th>Stage</th>
-                        <th>Date</th>
-                        <th>Actions</th>
+                        <th><?= lang('Marketing.no') ?></th>
+                        <th><?= lang('Marketing.quotation_number') ?></th>
+                        <th><?= lang('Marketing.prospect_name') ?></th>
+                        <th><?= lang('Marketing.quotation_title') ?></th>
+                        <th><?= lang('Marketing.amount') ?></th>
+                        <th><?= lang('Marketing.stage') ?></th>
+                        <th><?= lang('Marketing.date') ?></th>
+                        <th><?= lang('Marketing.actions') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -139,12 +139,12 @@
                     <!-- Customer Search Section -->
                     <div id="customerSearchSection" style="display: none;">
                         <div class="alert alert-info">
-                            <i class="fas fa-search me-2"></i>Search and link to existing customer to avoid data duplication.
+                            <i class="fas fa-search me-2"></i><?= lang('Marketing.search_link_existing_customer') ?>
                         </div>
                         <div class="mb-3">
-                            <label for="customerSearchInput" class="form-label">Search Customer</label>
+                            <label for="customerSearchInput" class="form-label"><?= lang('Marketing.search_customer') ?></label>
                             <div class="input-group">
-                                <input type="text" class="form-control" id="customerSearchInput" placeholder="Type customer name...">
+                                <input type="text" class="form-control" id="customerSearchInput" placeholder="<?= lang('Marketing.type_customer_name') ?>">
                                 <button type="button" class="btn btn-outline-secondary" id="searchCustomerBtn">
                                     <i class="fas fa-search"></i>
                                 </button>
@@ -159,14 +159,14 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
-                                    <label for="prospectCompanyName" class="form-label">Company Name <span class="text-danger">*</span></label>
+                                    <label for="prospectCompanyName" class="form-label"><?= lang('Marketing.company_name') ?> <span class="text-danger">*</span></label>
                                     <input type="text" class="form-control" id="prospectCompanyName" name="prospect_name" required>
-                                    <small class="form-text text-muted">Will be used to create new customer if prospect converts</small>
+                                    <small class="form-text text-muted"><?= lang('Marketing.company_name_for_new_customer') ?></small>
                                 </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="prospectContactPerson" class="form-label">Contact Person <span class="text-danger">*</span></label>
+                                <label for="prospectContactPerson" class="form-label"><?= lang('Marketing.contact_person') ?> <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="prospectContactPerson" name="prospect_contact_person" required>
                             </div>
                         </div>
@@ -175,33 +175,33 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="prospectEmail" class="form-label">Email</label>
+                                <label for="prospectEmail" class="form-label"><?= lang('App.email') ?></label>
                                 <input type="email" class="form-control" id="prospectEmail" name="prospect_email">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="prospectPhone" class="form-label">Phone</label>
+                                <label for="prospectPhone" class="form-label"><?= lang('App.phone') ?></label>
                                 <input type="tel" class="form-control" id="prospectPhone" name="prospect_phone">
                             </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="prospectAddress" class="form-label">Address</label>
+                        <label for="prospectAddress" class="form-label"><?= lang('App.address') ?></label>
                         <textarea class="form-control" id="prospectAddress" name="prospect_address" rows="3"></textarea>
                     </div>
                     
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="prospectCity" class="form-label">City</label>
+                                <label for="prospectCity" class="form-label"><?= lang('App.city') ?></label>
                                 <input type="text" class="form-control" id="prospectCity" name="prospect_city">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="prospectProvince" class="form-label">Province</label>
+                                <label for="prospectProvince" class="form-label"><?= lang('App.province') ?></label>
                                 <input type="text" class="form-control" id="prospectProvince" name="prospect_province">
                             </div>
                         </div>
@@ -210,25 +210,25 @@
                     
                     <!-- Quotation Details Section (Always visible) -->
                     <hr>
-                    <h6 class="mb-3"><i class="fas fa-file-contract me-2"></i>Quotation Details</h6>
+                    <h6 class="mb-3"><i class="fas fa-file-contract me-2"></i><?= lang('Marketing.quotation_details') ?></h6>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="quotationTitle" class="form-label">Quotation Title <span class="text-danger">*</span></label>
+                                <label for="quotationTitle" class="form-label"><?= lang('Marketing.quotation_title') ?> <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="quotationTitle" name="quotation_title" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="validUntil" class="form-label">Valid Until <span class="text-danger">*</span></label>
+                                <label for="validUntil" class="form-label"><?= lang('Marketing.valid_until') ?> <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" id="validUntil" name="valid_until" required>
                             </div>
                         </div>
                     </div>
                     
                     <div class="mb-3">
-                        <label for="quotationDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="quotationDescription" name="quotation_description" rows="2" placeholder="Brief description of the quotation..."></textarea>
+                        <label for="quotationDescription" class="form-label"><?= lang('App.description') ?></label>
+                        <textarea class="form-control" id="quotationDescription" name="quotation_description" rows="2" placeholder="<?= lang('Marketing.brief_description_quotation') ?>"></textarea>
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top-0">
@@ -289,10 +289,10 @@
                                 </div>
                                 <div class="col-md-6 text-md-end">
                                     <button class="btn btn-primary btn-sm me-2" onclick="openAddSpecificationModal()" type="button">
-                                        <i class="fas fa-plus me-1"></i>Unit
+                                        <i class="fas fa-plus me-1"></i><?= lang('App.unit') ?>
                                     </button>
                                     <button class="btn btn-success btn-sm" onclick="openAddAttachmentModal()" type="button">
-                                        <i class="fas fa-plus me-1"></i>Attachment Only
+                                        <i class="fas fa-plus me-1"></i><?= lang('Marketing.attachment_only') ?>
                                     </button>
                                 </div>
                             </div>
@@ -324,7 +324,7 @@
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success text-muted" id="specModalHeader">
                 <h6 class="modal-title fw-600" id="specModalTitle">
-                    <i class="fas fa-cogs me-2"></i>Add Unit Specification
+                    <i class="fas fa-cogs me-2"></i><?= lang('Marketing.add_unit_specification') ?>
                 </h6>
                 <button class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
@@ -336,95 +336,95 @@
                     
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Quantity Required</label>
+                            <label class="form-label"><?= lang('Marketing.quantity_required') ?></label>
                             <input type="number" class="form-control" name="quantity" min="1" value="1" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Specification Name</label>
-                            <input type="text" class="form-control" name="specification_name" placeholder="Optional">
-                            <small class="text-muted">Enter description, e.g. "Specification 1", "Spare Unit", "Additional Unit", etc.</small>
+                            <label class="form-label"><?= lang('Marketing.specification_name') ?></label>
+                            <input type="text" class="form-control" name="specification_name" placeholder="<?= lang('App.optional') ?>">
+                            <small class="text-muted"><?= lang('Marketing.enter_description_spec1') ?></small>
                         </div>
                         
                         <div class="col-md-6">
-                            <label class="form-label">Monthly Rental Price <span class="text-danger" id="monthlyPriceRequired">*</span></label>
-                            <input type="number" class="form-control" name="unit_price" id="monthlyPrice" step="0.01" placeholder="Rp per unit per month">
-                            <small class="text-muted">Fill in at least one: Monthly or Daily price</small>
+                            <label class="form-label"><?= lang('Marketing.monthly_rental_price') ?> <span class="text-danger" id="monthlyPriceRequired">*</span></label>
+                            <input type="number" class="form-control" name="unit_price" id="monthlyPrice" step="0.01" placeholder="<?= lang('Marketing.rp_per_unit_per_month') ?>">
+                            <small class="text-muted"><?= lang('Marketing.fill_one_monthly_or_daily') ?></small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Daily Rental Price <span class="text-danger" id="dailyPriceRequired">*</span></label>
-                            <input type="number" class="form-control" name="harga_per_unit_harian" id="dailyPrice" step="0.01" placeholder="Rp per unit per day">
-                            <small class="text-muted">Fill in at least one: Monthly or Daily price</small>
+                            <label class="form-label"><?= lang('Marketing.daily_rental_price') ?> <span class="text-danger" id="dailyPriceRequired">*</span></label>
+                            <input type="number" class="form-control" name="harga_per_unit_harian" id="dailyPrice" step="0.01" placeholder="<?= lang('Marketing.rp_per_unit_per_day') ?>">
+                            <small class="text-muted"><?= lang('Marketing.fill_one_monthly_or_daily') ?></small>
                         </div>
                         
-                        <div class="col-12"><hr><h6>Technical Specifications</h6></div>
+                        <div class="col-12"><hr><h6><?= lang('Marketing.technical_specifications') ?></h6></div>
                         
                         <div class="col-md-4">
-                            <label class="form-label">Department <span class="text-danger">*</span></label>
+                            <label class="form-label"><?= lang('App.department') ?> <span class="text-danger">*</span></label>
                             <select class="form-select" name="departemen_id" id="specDepartemen" required></select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Unit Type <span class="text-danger">*</span></label>
+                            <label class="form-label"><?= lang('Marketing.unit_type') ?> <span class="text-danger">*</span></label>
                             <select class="form-select" name="tipe_unit_id" id="specTipeUnit" required>
-                                <option value="">-- Select Unit Type --</option>
+                                <option value=""><?= lang('Marketing.select_unit_type') ?></option>
                             </select>
                         </div>
                         
                         <div class="col-md-4">
-                            <label class="form-label">Capacity</label>
+                            <label class="form-label"><?= lang('Marketing.capacity') ?></label>
                             <select class="form-select" name="kapasitas_id" id="specKapasitas">
-                                <option value="">-- Select Capacity --</option>
+                                <option value=""><?= lang('Marketing.select_capacity') ?></option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Unit Brand</label>
+                            <label class="form-label"><?= lang('Marketing.unit_brand') ?></label>
                             <select class="form-select" name="brand_id" id="specMerkUnit">
-                                <option value="">-- Select Brand --</option>
+                                <option value=""><?= lang('Marketing.select_brand') ?></option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Battery Type</label>
+                            <label class="form-label"><?= lang('Marketing.battery_type') ?></label>
                             <select class="form-select" name="battery_id" id="specJenisBaterai">
-                                <option value="">-- Select Battery --</option>
+                                <option value=""><?= lang('Marketing.select_battery') ?></option>
                             </select>
-                            <small class="text-muted">Available for Electric units only</small>
+                            <small class="text-muted"><?= lang('Marketing.available_electric_only') ?></small>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Charger</label>
+                            <label class="form-label"><?= lang('Marketing.charger') ?></label>
                             <select class="form-select" name="charger_id" id="specCharger"></select>
-                            <small class="text-muted">Available for Electric units only</small>
+                            <small class="text-muted"><?= lang('Marketing.available_electric_only') ?></small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Attachment Type</label>
+                            <label class="form-label"><?= lang('Marketing.attachment_type') ?></label>
                             <select class="form-select" name="attachment_id" id="specAttachmentTipe"></select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Valve</label>
+                            <label class="form-label"><?= lang('Marketing.valve') ?></label>
                             <select class="form-select" name="valve_id" id="specValve"></select>
                         </div>
                         
                         <div class="col-md-4">
-                            <label class="form-label">Mast</label>
+                            <label class="form-label"><?= lang('Marketing.mast') ?></label>
                             <select class="form-select" name="mast_id" id="specMast"></select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Tire</label>
+                            <label class="form-label"><?= lang('Marketing.tire') ?></label>
                             <select class="form-select" name="ban_id" id="specBan"></select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Wheel</label>
+                            <label class="form-label"><?= lang('Marketing.wheel') ?></label>
                             <select class="form-select" name="roda_id" id="specRoda"></select>
                         </div>
                         
                         <!-- Accessories Section -->
-                        <div class="col-12"><hr><h6>Unit Accessories</h6></div>
+                        <div class="col-12"><hr><h6><?= lang('Marketing.unit_accessories') ?></h6></div>
                         <div class="col-12">
                             <div class="row g-2">
                                 <!-- Row 1 -->
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="LAMPU UTAMA" id="acc_lampu_utama">
-                                        <label class="form-check-label" for="acc_lampu_utama">Main Light</label>
-                                        <small class="text-muted">(Main, Reverse, Signal, Stop)</small>
+                                        <label class="form-check-label" for="acc_lampu_utama"><?= lang('Marketing.main_light') ?></label>
+                                        <small class="text-muted"><?= lang('Marketing.main_reverse_signal_stop') ?></small>
                                     </div>
                                 </div>
                                 
@@ -432,25 +432,25 @@
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BLUE SPOT" id="acc_blue_spot">
-                                        <label class="form-check-label" for="acc_blue_spot">Blue Spot</label>
+                                        <label class="form-check-label" for="acc_blue_spot"><?= lang('Marketing.blue_spot') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="RED LINE" id="acc_red_line">
-                                        <label class="form-check-label" for="acc_red_line">Red Line</label>
+                                        <label class="form-check-label" for="acc_red_line"><?= lang('Marketing.red_line') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="WORK LIGHT" id="acc_work_light">
-                                        <label class="form-check-label" for="acc_work_light">Work Light</label>
+                                        <label class="form-check-label" for="acc_work_light"><?= lang('Marketing.work_light') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="ROTARY LAMP" id="acc_rotary_lamp">
-                                        <label class="form-check-label" for="acc_rotary_lamp">Rotary Lamp</label>
+                                        <label class="form-check-label" for="acc_rotary_lamp"><?= lang('Marketing.rotary_lamp') ?></label>
                                     </div>
                                 </div>
                                 
@@ -458,25 +458,25 @@
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BACK BUZZER" id="acc_back_buzzer">
-                                        <label class="form-check-label" for="acc_back_buzzer">Back Buzzer</label>
+                                        <label class="form-check-label" for="acc_back_buzzer"><?= lang('Marketing.back_buzzer') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="CAMERA AI" id="acc_camera_ai">
-                                        <label class="form-check-label" for="acc_camera_ai">Camera AI</label>
+                                        <label class="form-check-label" for="acc_camera_ai"><?= lang('Marketing.camera_ai') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="CAMERA" id="acc_camera">
-                                        <label class="form-check-label" for="acc_camera">Camera</label>
+                                        <label class="form-check-label" for="acc_camera"><?= lang('Marketing.camera') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SENSOR PARKING" id="acc_sensor_parking">
-                                        <label class="form-check-label" for="acc_sensor_parking">Sensor Parking</label>
+                                        <label class="form-check-label" for="acc_sensor_parking"><?= lang('Marketing.sensor_parking') ?></label>
                                     </div>
                                 </div>
                                 
@@ -484,25 +484,25 @@
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SPEED LIMITER" id="acc_speed_limiter">
-                                        <label class="form-check-label" for="acc_speed_limiter">Speed Limiter</label>
+                                        <label class="form-check-label" for="acc_speed_limiter"><?= lang('Marketing.speed_limiter') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="LASER FORK" id="acc_laser_fork">
-                                        <label class="form-check-label" for="acc_laser_fork">Laser Fork</label>
+                                        <label class="form-check-label" for="acc_laser_fork"><?= lang('Marketing.laser_fork') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="VOICE ANNOUNCER" id="acc_voice_announcer">
-                                        <label class="form-check-label" for="acc_voice_announcer">Voice Announcer</label>
+                                        <label class="form-check-label" for="acc_voice_announcer"><?= lang('Marketing.voice_announcer') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="HORN SPEAKER" id="acc_horn_speaker">
-                                        <label class="form-check-label" for="acc_horn_speaker">Horn Speaker</label>
+                                        <label class="form-check-label" for="acc_horn_speaker"><?= lang('Marketing.horn_speaker') ?></label>
                                     </div>
                                 </div>
                                 
@@ -510,25 +510,25 @@
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="HORN KLASON" id="acc_horn_klason">
-                                        <label class="form-check-label" for="acc_horn_klason">Horn Klason</label>
+                                        <label class="form-check-label" for="acc_horn_klason"><?= lang('Marketing.horn_klason') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BIO METRIC" id="acc_bio_metric">
-                                        <label class="form-check-label" for="acc_bio_metric">Bio Metric</label>
+                                        <label class="form-check-label" for="acc_bio_metric"><?= lang('Marketing.bio_metric') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="ACRYLIC" id="acc_acrylic">
-                                        <label class="form-check-label" for="acc_acrylic">Acrylic</label>
+                                        <label class="form-check-label" for="acc_acrylic"><?= lang('Marketing.acrylic') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="P3K" id="acc_p3k">
-                                        <label class="form-check-label" for="acc_p3k">First Aid Kit</label>
+                                        <label class="form-check-label" for="acc_p3k"><?= lang('Marketing.first_aid_kit') ?></label>
                                     </div>
                                 </div>
                                 
@@ -536,13 +536,13 @@
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SAFETY BELT INTERLOC" id="acc_safety_belt">
-                                        <label class="form-check-label" for="acc_safety_belt">Safety Belt Interlock</label>
+                                        <label class="form-check-label" for="acc_safety_belt"><?= lang('Marketing.safety_belt_interlock') ?></label>
                                     </div>
                                 </div>
                                 <div class="col-md-3">
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SPARS ARRESTOR" id="acc_spars_arrestor">
-                                        <label class="form-check-label" for="acc_spars_arrestor">Spark Arrestor</label>
+                                        <label class="form-check-label" for="acc_spars_arrestor"><?= lang('Marketing.spark_arrestor') ?></label>
                                     </div>
                                 </div>
                             </div>
@@ -580,40 +580,40 @@
                     
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label">Quantity Required <span class="text-danger">*</span></label>
+                            <label class="form-label"><?= lang('Marketing.quantity_required') ?> <span class="text-danger">*</span></label>
                             <input type="number" class="form-control" name="quantity" min="1" value="1" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Specification Name</label>
-                            <input type="text" class="form-control" name="specification_name" placeholder="Optional">
-                            <small class="text-muted">e.g., "Fork Attachment", "Side Shifter", etc.</small>
+                            <label class="form-label"><?= lang('Marketing.specification_name') ?></label>
+                            <input type="text" class="form-control" name="specification_name" placeholder="<?= lang('App.optional') ?>">
+                            <small class="text-muted"><?= lang('Marketing.eg_fork_attachment') ?></small>
                         </div>
                         
                         <div class="col-md-6">
-                            <label class="form-label">Monthly Rental Price <span class="text-muted">(Optional)</span></label>
-                            <input type="number" class="form-control" name="unit_price" id="attachmentMonthlyPrice" step="0.01" placeholder="Rp per unit per month">
-                            <small class="text-muted">Fill in at least one: Monthly or Daily</small>
+                            <label class="form-label"><?= lang('Marketing.monthly_rental_price') ?> <span class="text-muted">(<?= lang('App.optional') ?>)</span></label>
+                            <input type="number" class="form-control" name="unit_price" id="attachmentMonthlyPrice" step="0.01" placeholder="<?= lang('Marketing.rp_per_unit_per_month') ?>">
+                            <small class="text-muted"><?= lang('Marketing.fill_one_monthly_or_daily') ?></small>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Daily Rental Price <span class="text-muted">(Optional)</span></label>
-                            <input type="number" class="form-control" name="harga_per_unit_harian" id="attachmentDailyPrice" step="0.01" placeholder="Rp per unit per day">
-                            <small class="text-muted">Fill in at least one: Monthly or Daily</small>
+                            <label class="form-label"><?= lang('Marketing.daily_rental_price') ?> <span class="text-muted">(<?= lang('App.optional') ?>)</span></label>
+                            <input type="number" class="form-control" name="harga_per_unit_harian" id="attachmentDailyPrice" step="0.01" placeholder="<?= lang('Marketing.rp_per_unit_per_day') ?>">
+                            <small class="text-muted"><?= lang('Marketing.fill_one_monthly_or_daily') ?></small>
                         </div>
                         
-                        <div class="col-12"><hr><h6>Attachment Details</h6></div>
+                        <div class="col-12"><hr><h6><?= lang('Marketing.attachment_details') ?></h6></div>
                         
                         <div class="col-md-6">
-                            <label class="form-label">Attachment Type <span class="text-danger">*</span></label>
+                            <label class="form-label"><?= lang('Marketing.attachment_type') ?> <span class="text-danger">*</span></label>
                             <select class="form-select" name="attachment_tipe" id="attachmentTipe" required></select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Attachment Brand</label>
-                            <input type="text" class="form-control" name="attachment_merk" placeholder="e.g., OEM, Cascade, etc.">
+                            <label class="form-label"><?= lang('Marketing.attachment_brand') ?></label>
+                            <input type="text" class="form-control" name="attachment_merk" placeholder="<?= lang('Marketing.eg_oem_cascade') ?>">
                         </div>
                         
                         <div class="col-12">
-                            <label class="form-label">Description / Notes</label>
-                            <textarea class="form-control" name="specification_description" rows="3" placeholder="Additional details about the attachment"></textarea>
+                            <label class="form-label"><?= lang('Marketing.description_notes') ?></label>
+                            <textarea class="form-control" name="specification_description" rows="3" placeholder="<?= lang('Marketing.additional_details_attachment') ?>"></textarea>
                         </div>
                     </div>
                 </div>
@@ -643,59 +643,59 @@
             </div>
             <div class="modal-body">
                 <div class="alert alert-info" id="locationModalAlert">
-                    <i class="fas fa-map-marker-alt"></i> Please select a location or add new one.
+                    <i class="fas fa-map-marker-alt"></i> <?= lang('Marketing.please_select_location_or_add_new') ?>
                 </div>
                 
                 <!-- Toggle Buttons -->
                 <div class="btn-group w-100 mb-4" role="group" aria-label="Location mode">
                     <button type="button" class="btn btn-outline-primary active" id="btnSelectExisting">
-                        <i class="fas fa-list"></i> Select Existing
+                        <i class="fas fa-list"></i> <?= lang('Marketing.select_existing') ?>
                     </button>
                     <button type="button" class="btn btn-outline-success" id="btnAddNew">
-                        <i class="fas fa-plus"></i> Add New Location
+                        <i class="fas fa-plus"></i> <?= lang('Marketing.add_new_location') ?>
                     </button>
                 </div>
                 
                 <!-- Select Existing Location Section -->
                 <div id="existingLocationSection">
                     <div class="mb-3">
-                        <label for="modalLocationSelect" class="form-label fw-bold">Existing Locations:</label>
+                        <label for="modalLocationSelect" class="form-label fw-bold"><?= lang('Marketing.existing_locations') ?>:</label>
                         <select class="form-control form-control-lg" id="modalLocationSelect">
-                            <option value="">-- Select a location --</option>
+                            <option value=""><?= lang('Marketing.select_a_location') ?></option>
                         </select>
                     </div>
                     
                     <!-- Location Details Preview -->
                     <div id="locationPreview" class="card d-none mt-3">
                         <div class="card-body">
-                            <h6 class="card-title"><i class="fas fa-map-marker-alt text-primary"></i> Location Details</h6>
+                            <h6 class="card-title"><i class="fas fa-map-marker-alt text-primary"></i> <?= lang('Marketing.location_details') ?></h6>
                             <div class="row">
                                 <div class="col-md-6">
-                                    <p class="mb-1"><strong>Location Name:</strong></p>
+                                    <p class="mb-1"><strong><?= lang('Marketing.location_name') ?>:</strong></p>
                                     <p class="text-muted" id="preview_location_name">-</p>
                                 </div>
                                 <div class="col-md-6">
-                                    <p class="mb-1"><strong>Contact Person:</strong></p>
+                                    <p class="mb-1"><strong><?= lang('Marketing.contact_person') ?>:</strong></p>
                                     <p class="text-muted" id="preview_contact_person">-</p>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-12">
-                                    <p class="mb-1"><strong>Address:</strong></p>
+                                    <p class="mb-1"><strong><?= lang('App.address') ?>:</strong></p>
                                     <p class="text-muted" id="preview_address">-</p>
                                 </div>
                             </div>
                             <div class="row">
                                 <div class="col-md-4">
-                                    <p class="mb-1"><strong>City:</strong></p>
+                                    <p class="mb-1"><strong><?= lang('App.city') ?>:</strong></p>
                                     <p class="text-muted" id="preview_city">-</p>
                                 </div>
                                 <div class="col-md-4">
-                                    <p class="mb-1"><strong>Province:</strong></p>
+                                    <p class="mb-1"><strong><?= lang('App.province') ?>:</strong></p>
                                     <p class="text-muted" id="preview_province">-</p>
                                 </div>
                                 <div class="col-md-4">
-                                    <p class="mb-1"><strong>Contact Phone:</strong></p>
+                                    <p class="mb-1"><strong><?= lang('Marketing.contact_phone') ?>:</strong></p>
                                     <p class="text-muted" id="preview_contact_phone">-</p>
                                 </div>
                             </div>
@@ -710,69 +710,69 @@
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="unified_location_name" class="form-label">Location Name <span class="text-danger">*</span></label>
+                                <label for="unified_location_name" class="form-label"><?= lang('Marketing.location_name') ?> <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="unified_location_name" name="location_name" required maxlength="255">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="unified_location_code" class="form-label">Location Code</label>
+                                <label for="unified_location_code" class="form-label"><?= lang('Marketing.location_code') ?></label>
                                 <input type="text" class="form-control" id="unified_location_code" name="location_code" maxlength="50">
-                                <small class="form-text text-muted">Optional - auto-generated if empty</small>
+                                <small class="form-text text-muted"><?= lang('Marketing.optional_auto_generated') ?></small>
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="unified_area_id" class="form-label">Area <span class="text-danger">*</span></label>
+                                <label for="unified_area_id" class="form-label"><?= lang('App.area') ?> <span class="text-danger">*</span></label>
                                 <select class="form-control" id="unified_area_id" name="area_id" required>
-                                    <option value="">Select Area</option>
+                                    <option value=""><?= lang('Marketing.select_area') ?></option>
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="unified_contact_person" class="form-label">Contact Person</label>
+                                <label for="unified_contact_person" class="form-label"><?= lang('Marketing.contact_person') ?></label>
                                 <input type="text" class="form-control" id="unified_contact_person" name="contact_person" maxlength="255">
                             </div>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <label for="unified_phone" class="form-label">Phone</label>
+                                <label for="unified_phone" class="form-label"><?= lang('App.phone') ?></label>
                                 <input type="text" class="form-control" id="unified_phone" name="phone" maxlength="20">
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="unified_email" class="form-label">Email</label>
+                                <label for="unified_email" class="form-label"><?= lang('App.email') ?></label>
                                 <input type="email" class="form-control" id="unified_email" name="email" maxlength="128">
                             </div>
                         </div>
                         
                         <div class="mb-3">
-                            <label for="unified_address" class="form-label">Address <span class="text-danger">*</span></label>
+                            <label for="unified_address" class="form-label"><?= lang('App.address') ?> <span class="text-danger">*</span></label>
                             <textarea class="form-control" id="unified_address" name="address" rows="3" required maxlength="500"></textarea>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-4 mb-3">
-                                <label for="unified_city" class="form-label">City <span class="text-danger">*</span></label>
+                                <label for="unified_city" class="form-label"><?= lang('App.city') ?> <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="unified_city" name="city" required maxlength="100">
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label for="unified_province" class="form-label">Province <span class="text-danger">*</span></label>
+                                <label for="unified_province" class="form-label"><?= lang('App.province') ?> <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control" id="unified_province" name="province" required maxlength="100">
                             </div>
                             <div class="col-md-4 mb-3">
-                                <label for="unified_postal_code" class="form-label">Postal Code</label>
+                                <label for="unified_postal_code" class="form-label"><?= lang('Marketing.postal_code') ?></label>
                                 <input type="text" class="form-control" id="unified_postal_code" name="postal_code" maxlength="10">
                             </div>
                         </div>
                         
                         <div class="mb-3">
-                            <label for="unified_notes" class="form-label">Notes</label>
+                            <label for="unified_notes" class="form-label"><?= lang('App.notes') ?></label>
                             <textarea class="form-control" id="unified_notes" name="notes" rows="2" maxlength="255"></textarea>
                         </div>
                         
                         <div class="form-check mb-3">
                             <input type="checkbox" class="form-check-input" id="unified_is_primary" name="is_primary" value="1" checked>
                             <label class="form-check-label" for="unified_is_primary">
-                                Set as Primary Location
+                                <?= lang('Marketing.set_as_primary_location') ?>
                             </label>
                         </div>
                     </form>
@@ -1006,12 +1006,12 @@ $(document).ready(function() {
         order: [[7, 'desc']],
         responsive: true,
         language: {
-            processing: "Loading...",
-            lengthMenu: "Show _MENU_ entries",
-            zeroRecords: "No quotations found",
-            info: "Showing _START_ to _END_ of _TOTAL_ entries",
-            infoEmpty: "No entries available",
-            infoFiltered: "(filtered from _MAX_ total entries)"
+            processing: "<?= lang('App.loading') ?>...",
+            lengthMenu: "<?= lang('App.show') ?> _MENU_ <?= lang('App.entries') ?>",
+            zeroRecords: "<?= lang('Marketing.no_quotations_found') ?>",
+            info: "<?= lang('App.showing') ?> _START_ <?= lang('App.to') ?> _END_ <?= lang('App.of') ?> _TOTAL_ <?= lang('App.entries') ?>",
+            infoEmpty: "<?= lang('App.no_entries_available') ?>",
+            infoFiltered: "(<?= lang('App.filtered_from') ?> _MAX_ <?= lang('App.total_entries') ?>)"
         },
         rowCallback: function(row, data) {
             // Add pointer cursor and click functionality

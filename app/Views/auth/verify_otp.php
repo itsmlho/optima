@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="Verifikasi OTP - OPTIMA">
+    <meta name="description" content="<?= lang('Auth.otp_title') ?> - OPTIMA">
     <meta name="robots" content="noindex, nofollow">
     
     <!-- Title -->
-    <title>Verifikasi OTP - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title><?= lang('Auth.otp_title') ?> - OPTIMA | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -287,8 +287,8 @@
                 <div class="otp-icon">
                     <i class="fas fa-shield-alt"></i>
                 </div>
-                <h1 class="otp-title">Verifikasi OTP</h1>
-                <p class="otp-subtitle">Masukkan kode OTP yang telah dikirim ke email Anda</p>
+                <h1 class="otp-title"><?= lang('Auth.verify_otp') ?></h1>
+                <p class="otp-subtitle"><?= lang('Auth.otp_subtitle_email') ?></p>
             </div>
         </div>
         
@@ -314,8 +314,8 @@
             <!-- OTP Info -->
             <div class="otp-info">
                 <i class="fas fa-envelope me-2"></i>
-                <strong>Email:</strong> <?= esc($email ?? 'N/A') ?><br>
-                <small class="text-muted">Kode OTP telah dikirim ke email di atas. Kode berlaku selama 5 menit.</small>
+                <strong><?= lang('Auth.email') ?>:</strong> <?= esc($email ?? 'N/A') ?><br>
+                <small class="text-muted"><?= lang('Auth.otp_sent_validity') ?></small>
             </div>
             
             <!-- OTP Form -->
@@ -331,16 +331,16 @@
                 
                 <button type="submit" class="btn btn-verify" id="verifyBtn">
                     <div class="spinner-border spinner-border-sm me-2 d-none" id="verifySpinner" role="status"></div>
-                    <span id="verifyText">Verifikasi</span>
+                    <span id="verifyText"><?= lang('Auth.verify') ?></span>
                 </button>
             </form>
             
             <!-- Resend Section -->
             <div class="resend-section">
-                <p class="text-muted mb-2">Tidak menerima kode OTP?</p>
+                <p class="text-muted mb-2"><?= lang('Auth.didnt_receive_otp') ?>?</p>
                 <button type="button" class="btn-resend" id="resendBtn" disabled>
                     <i class="fas fa-redo me-1"></i>
-                    <span id="resendText">Kirim Ulang OTP</span>
+                    <span id="resendText"><?= lang('Auth.resend_otp') ?></span>
                 </button>
                 <div id="resendCountdown" class="mt-2"></div>
             </div>

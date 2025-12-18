@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>Menunggu Persetujuan - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title><?= lang('Auth.waiting_approval') ?> - OPTIMA | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -185,10 +185,10 @@
             <i class="fas fa-clock"></i>
         </div>
         
-        <h1 class="waiting-title">Menunggu Persetujuan</h1>
+        <h1 class="waiting-title"><?= lang('Auth.waiting_approval') ?></h1>
         
         <p class="waiting-message">
-            Akun Anda telah berhasil dibuat, namun masih dalam status <strong>Non-Aktif</strong> dan menunggu persetujuan dari administrator.
+            <?= lang('Auth.account_pending_approval_message') ?>
         </p>
         
         <!-- Flash Messages -->
@@ -209,28 +209,28 @@
         <?php endif; ?>
         
         <div class="info-box">
-            <h5><i class="fas fa-info-circle me-2"></i>Informasi Penting</h5>
+            <h5><i class="fas fa-info-circle me-2"></i><?= lang('Auth.important_information') ?></h5>
             <ul>
-                <li>Akun Anda akan diaktifkan setelah mendapat persetujuan dari administrator</li>
-                <li>Proses aktivasi biasanya memakan waktu 1-2 hari kerja</li>
-                <li>Setelah akun diaktifkan, Anda akan dapat mengakses sistem OPTIMA</li>
+                <li><?= lang('Auth.account_activated_after_approval') ?></li>
+                <li><?= lang('Auth.activation_time_estimate') ?></li>
+                <li><?= lang('Auth.after_activation_access') ?></li>
             </ul>
         </div>
         
         <div class="contact-box">
-            <h5><i class="fas fa-headset me-2"></i>Butuh Bantuan?</h5>
-            <p>Jika Anda membutuhkan bantuan atau ingin mempercepat proses aktivasi, silakan hubungi:</p>
+            <h5><i class="fas fa-headset me-2"></i><?= lang('Auth.need_help') ?>?</h5>
+            <p><?= lang('Auth.contact_support_message') ?>:</p>
             <p style="margin-top: 1rem;">
                 <i class="fas fa-envelope me-2"></i>
                 <a href="mailto:<?= esc($support_email) ?>"><?= esc($support_email) ?></a>
             </p>
             <p style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
-                Atau konfirmasi ke atasan Anda untuk mempercepat proses aktivasi akun.
+                <?= lang('Auth.contact_supervisor_message') ?>
             </p>
         </div>
         
         <a href="<?= base_url('auth/login') ?>" class="btn-back">
-            <i class="fas fa-arrow-left me-2"></i>Kembali ke Halaman Login
+            <i class="fas fa-arrow-left me-2"></i><?= lang('Auth.back_to_login_page') ?>
         </a>
     </div>
     

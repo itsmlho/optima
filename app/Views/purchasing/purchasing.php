@@ -37,41 +37,41 @@ $can_export = $permissions['export'];
     <div class="card-header bg-light">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
-                <i class="fas fa-truck me-2"></i>Purchase Orders
+                <i class="fas fa-truck me-2"></i><?= lang('App.purchase_orders') ?>
             </h5>
             <div class="btn-group" role="group">
                 <?php if ($can_create): ?>
                 <button type="button" class="btn btn-primary" id="btnBuatPO">
-                    <i class="fas fa-plus me-1"></i>Create PO
+                    <i class="fas fa-plus me-1"></i><?= lang('App.create') ?> PO
                 </button>
                 <?php else: ?>
-                <button type="button" class="btn btn-secondary" disabled title="Access denied: You do not have permission to create Purchase Orders">
-                    <i class="fas fa-lock me-1"></i>Create PO
+                <button type="button" class="btn btn-secondary" disabled title="<?= lang('App.access_denied') ?>: <?= lang('App.no_permission_create') ?>">
+                    <i class="fas fa-lock me-1"></i><?= lang('App.create') ?> PO
                 </button>
                 <?php endif; ?>
                 <button type="button" class="btn btn-outline-primary" onclick="refreshTable()">
-                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                    <i class="fas fa-sync-alt me-1"></i><?= lang('App.refresh') ?>
                 </button>
                 <?php if ($can_export): ?>
                 <div class="dropdown">
                     <button class="btn btn-outline-success dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-file-excel me-1"></i>Export
+                        <i class="fas fa-file-excel me-1"></i><?= lang('App.export') ?>
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="exportDropdown">
                         <li><a class="dropdown-item" href="<?= base_url('purchasing/export_po_progres') ?>">
-                            <i class="fas fa-clock me-2 text-success"></i>Export Progres
+                            <i class="fas fa-clock me-2 text-success"></i><?= lang('App.export') ?> <?= lang('App.progress') ?>
                         </a></li>
                         <li><a class="dropdown-item" href="<?= base_url('purchasing/export_po_delivery') ?>">
-                            <i class="fas fa-truck me-2 text-warning"></i>Export Delivery
+                            <i class="fas fa-truck me-2 text-warning"></i><?= lang('App.export') ?> <?= lang('App.delivery') ?>
                         </a></li>
                         <li><a class="dropdown-item" href="<?= base_url('purchasing/export_po_completed') ?>">
-                            <i class="fas fa-check-circle me-2 text-info"></i>Export Completed
+                            <i class="fas fa-check-circle me-2 text-info"></i><?= lang('App.export') ?> <?= lang('App.completed') ?>
                         </a></li>
                     </ul>
                 </div>
                 <?php else: ?>
-                <button type="button" class="btn btn-outline-secondary" disabled title="Access denied: You do not have permission to export data">
-                    <i class="fas fa-lock me-1"></i>Export
+                <button type="button" class="btn btn-outline-secondary" disabled title="<?= lang('App.access_denied') ?>: <?= lang('App.no_permission_export') ?>">
+                    <i class="fas fa-lock me-1"></i><?= lang('App.export') ?>
                 </button>
                 <?php endif; ?>
             </div>
@@ -84,14 +84,14 @@ $can_export = $permissions['export'];
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="progres-tab" data-bs-toggle="tab" data-bs-target="#progres-pane" type="button" role="tab" aria-controls="progres-pane" aria-selected="true">
                         <i class="fas fa-clock"></i>
-                        <span>Progress</span>
+                        <span><?= lang('App.progress') ?></span>
                         <span class="badge" id="progres-count">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="delivery-tab" data-bs-toggle="tab" data-bs-target="#delivery-pane" type="button" role="tab" aria-controls="delivery-pane" aria-selected="false">
                         <i class="fas fa-truck"></i>
-                        <span>Delivery</span>
+                        <span><?= lang('App.delivery') ?></span>
                         <span class="badge" id="delivery-count">0</span>
                     </button>
                 </li>

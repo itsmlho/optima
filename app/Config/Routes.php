@@ -19,6 +19,19 @@ $routes->get('welcome', 'Welcome::index');
 
 $routes->get('/comingsoon', '::index');
 
+// ===== LANGUAGE SWITCHING ROUTES =====
+// Language switching - supports Indonesian (id) and English (en)
+$routes->group('language', static function ($routes) {
+    $routes->get('switch/(:segment)', 'LanguageController::switch/$1', ['as' => 'language.switch']);
+    $routes->get('current', 'LanguageController::getCurrent', ['as' => 'language.current']);
+    $routes->get('available', 'LanguageController::getAvailable', ['as' => 'language.available']);
+    $routes->get('test', 'LanguageTest::index', ['as' => 'language.test']); // Test page
+});
+
+// Language Debug Routes (Development)
+$routes->get('language-debug', 'LanguageDebug::index');
+$routes->get('language-debug/set-manual/(:segment)', 'LanguageDebug::setManual/$1');
+
 // Health Check & Monitoring Routes
 $routes->group('health', static function ($routes) {
     $routes->get('/', 'HealthController::check');

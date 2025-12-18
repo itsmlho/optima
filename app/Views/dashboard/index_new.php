@@ -87,7 +87,7 @@
 <!-- Alert Example -->
 <div class="alert alert-info alert-dismissible fade show" role="alert">
     <i class="fas fa-info-circle me-2"></i>
-    <strong>Selamat datang!</strong> Anda sedang melihat layout baru OPTIMA v2.0 dengan komponen CSS yang telah diperbarui.
+    <strong><?= lang('App.welcome') ?>!</strong> <?= lang('Dashboard.viewing_new_layout') ?>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
 </div>
 
@@ -100,11 +100,11 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                            Total Units
+                            <?= lang('Dashboard.total_units') ?>
                         </div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">245</div>
                         <div class="text-xs text-success mt-1">
-                            <i class="fas fa-arrow-up me-1"></i>12% dari bulan lalu
+                            <i class="fas fa-arrow-up me-1"></i>12% <?= lang('Dashboard.from_last_month') ?>
                         </div>
                     </div>
                     <div class="col-auto">
@@ -122,11 +122,11 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                            Kontrak Aktif
+                            <?= lang('Dashboard.active_contracts') ?>
                         </div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">189</div>
                         <div class="text-xs text-success mt-1">
-                            <i class="fas fa-arrow-up me-1"></i>5% dari bulan lalu
+                            <i class="fas fa-arrow-up me-1"></i>5% <?= lang('Dashboard.from_last_month') ?>
                         </div>
                     </div>
                     <div class="col-auto">
@@ -144,7 +144,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                            Pendapatan (Bulan Ini)
+                            <?= lang('Dashboard.revenue_this_month') ?>
                         </div>
                         <div class="h5 mb-0 font-weight-bold text-gray-800">Rp 1.2M</div>
                         <div class="text-xs text-warning mt-1">

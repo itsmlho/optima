@@ -67,18 +67,18 @@
             <div class="tab-content" id="settingsTabContent">
                 <!-- General Settings -->
                 <div class="tab-pane fade show active" id="general" role="tabpanel">
-                    <h5 class="mb-4">General Settings</h5>
+                    <h5 class="mb-4"><?= lang('App.general_settings') ?></h5>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="app_name" class="form-label">Application Name</label>
+                                <label for="app_name" class="form-label"><?= lang('App.application_name') ?></label>
                                 <input type="text" class="form-control" id="app_name" name="app_name" 
                                        value="<?= esc($settings['app_name']) ?>" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="items_per_page" class="form-label">Items Per Page</label>
+                                <label for="items_per_page" class="form-label"><?= lang('App.items_per_page') ?></label>
                                 <select class="form-select" id="items_per_page" name="items_per_page">
                                     <option value="10" <?= $settings['items_per_page'] == '10' ? 'selected' : '' ?>>10</option>
                                     <option value="25" <?= $settings['items_per_page'] == '25' ? 'selected' : '' ?>>25</option>
@@ -89,32 +89,32 @@
                         </div>
                         <div class="col-12">
                             <div class="mb-3">
-                                <label for="app_description" class="form-label">Application Description</label>
+                                <label for="app_description" class="form-label"><?= lang('App.application_description') ?></label>
                                 <textarea class="form-control" id="app_description" name="app_description" rows="3"><?= esc($settings['app_description']) ?></textarea>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="session_timeout" class="form-label">Session Timeout (minutes)</label>
+                                <label for="session_timeout" class="form-label"><?= lang('App.session_timeout_minutes') ?></label>
                                 <input type="number" class="form-control" id="session_timeout" name="session_timeout" 
                                        value="<?= esc($settings['session_timeout']) ?>" min="15" max="480">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">System Modes</label>
+                                <label class="form-label"><?= lang('App.system_modes') ?></label>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="maintenance_mode" name="maintenance_mode" 
                                            <?= $settings['maintenance_mode'] ? 'checked' : '' ?>>
                                     <label class="form-check-label" for="maintenance_mode">
-                                        Maintenance Mode
+                                        <?= lang('App.maintenance_mode') ?>
                                     </label>
                                 </div>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="debug_mode" name="debug_mode" 
                                            <?= $settings['debug_mode'] ? 'checked' : '' ?>>
                                     <label class="form-check-label" for="debug_mode">
-                                        Debug Mode
+                                        <?= lang('App.debug_mode') ?>
                                     </label>
                                 </div>
                             </div>
@@ -124,32 +124,32 @@
 
                 <!-- Company Settings -->
                 <div class="tab-pane fade" id="company" role="tabpanel">
-                    <h5 class="mb-4">Company Information</h5>
+                    <h5 class="mb-4"><?= lang('App.company_information') ?></h5>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="company_name" class="form-label">Company Name</label>
+                                <label for="company_name" class="form-label"><?= lang('App.company_name') ?></label>
                                 <input type="text" class="form-control" id="company_name" name="company_name" 
                                        value="<?= esc($settings['company_name']) ?>" required>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="company_email" class="form-label">Company Email</label>
+                                <label for="company_email" class="form-label"><?= lang('App.company_email') ?></label>
                                 <input type="email" class="form-control" id="company_email" name="company_email" 
                                        value="<?= esc($settings['company_email']) ?>">
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="company_phone" class="form-label">Company Phone</label>
+                                <label for="company_phone" class="form-label"><?= lang('App.company_phone') ?></label>
                                 <input type="tel" class="form-control" id="company_phone" name="company_phone" 
                                        value="<?= esc($settings['company_phone']) ?>">
                             </div>
                         </div>
                         <div class="col-12">
                             <div class="mb-3">
-                                <label for="company_address" class="form-label">Company Address</label>
+                                <label for="company_address" class="form-label"><?= lang('App.company_address') ?></label>
                                 <textarea class="form-control" id="company_address" name="company_address" rows="3"><?= esc($settings['company_address']) ?></textarea>
                             </div>
                         </div>
@@ -158,11 +158,11 @@
 
                 <!-- Localization Settings -->
                 <div class="tab-pane fade" id="localization" role="tabpanel">
-                    <h5 class="mb-4">Localization Settings</h5>
+                    <h5 class="mb-4"><?= lang('App.localization_settings') ?></h5>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="timezone" class="form-label">Timezone</label>
+                                <label for="timezone" class="form-label"><?= lang('App.timezone') ?></label>
                                 <select class="form-select" id="timezone" name="timezone">
                                     <option value="Asia/Jakarta" <?= $settings['timezone'] == 'Asia/Jakarta' ? 'selected' : '' ?>>Asia/Jakarta (WIB)</option>
                                     <option value="Asia/Makassar" <?= $settings['timezone'] == 'Asia/Makassar' ? 'selected' : '' ?>>Asia/Makassar (WITA)</option>
@@ -173,7 +173,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="date_format" class="form-label">Date Format</label>
+                                <label for="date_format" class="form-label"><?= lang('App.date_format') ?></label>
                                 <select class="form-select" id="date_format" name="date_format">
                                     <option value="d/m/Y" <?= $settings['date_format'] == 'd/m/Y' ? 'selected' : '' ?>>DD/MM/YYYY</option>
                                     <option value="m/d/Y" <?= $settings['date_format'] == 'm/d/Y' ? 'selected' : '' ?>>MM/DD/YYYY</option>
@@ -184,7 +184,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="currency" class="form-label">Currency</label>
+                                <label for="currency" class="form-label"><?= lang('App.currency') ?></label>
                                 <select class="form-select" id="currency" name="currency">
                                     <option value="IDR" <?= $settings['currency'] == 'IDR' ? 'selected' : '' ?>>Indonesian Rupiah (IDR)</option>
                                     <option value="USD" <?= $settings['currency'] == 'USD' ? 'selected' : '' ?>>US Dollar (USD)</option>
@@ -195,7 +195,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="language" class="form-label">Language</label>
+                                <label for="language" class="form-label"><?= lang('App.language') ?></label>
                                 <select class="form-select" id="language" name="language">
                                     <option value="id" <?= $settings['language'] == 'id' ? 'selected' : '' ?>>Bahasa Indonesia</option>
                                     <option value="en" <?= $settings['language'] == 'en' ? 'selected' : '' ?>>English</option>
@@ -207,22 +207,22 @@
 
                 <!-- Security Settings -->
                 <div class="tab-pane fade" id="security" role="tabpanel">
-                    <h5 class="mb-4">Security Settings</h5>
+                    <h5 class="mb-4"><?= lang('App.security_settings') ?></h5>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="max_login_attempts" class="form-label">Max Login Attempts</label>
+                                <label for="max_login_attempts" class="form-label"><?= lang('App.max_login_attempts') ?></label>
                                 <input type="number" class="form-control" id="max_login_attempts" name="max_login_attempts" 
                                        value="<?= esc($settings['max_login_attempts']) ?>" min="3" max="10">
-                                <div class="form-text">Number of failed login attempts before account lockout</div>
+                                <div class="form-text"><?= lang('App.failed_login_before_lockout') ?></div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label for="password_expiry_days" class="form-label">Password Expiry (days)</label>
+                                <label for="password_expiry_days" class="form-label"><?= lang('App.password_expiry_days') ?></label>
                                 <input type="number" class="form-control" id="password_expiry_days" name="password_expiry_days" 
                                        value="<?= esc($settings['password_expiry_days']) ?>" min="30" max="365">
-                                <div class="form-text">Days before password expires</div>
+                                <div class="form-text"><?= lang('App.days_before_password_expires') ?></div>
                             </div>
                         </div>
                     </div>
@@ -230,28 +230,28 @@
 
                 <!-- Notification Settings -->
                 <div class="tab-pane fade" id="notifications" role="tabpanel">
-                    <h5 class="mb-4">Notification Settings</h5>
+                    <h5 class="mb-4"><?= lang('App.notification_settings') ?></h5>
                     <div class="row">
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">Email Notifications</label>
+                                <label class="form-label"><?= lang('App.email_notifications') ?></label>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="email_notifications" name="email_notifications" 
                                            <?= $settings['email_notifications'] ? 'checked' : '' ?>>
                                     <label class="form-check-label" for="email_notifications">
-                                        Enable Email Notifications
+                                        <?= lang('App.enable_email_notifications') ?>
                                     </label>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="mb-3">
-                                <label class="form-label">SMS Notifications</label>
+                                <label class="form-label"><?= lang('App.sms_notifications') ?></label>
                                 <div class="form-check">
                                     <input class="form-check-input" type="checkbox" id="sms_notifications" name="sms_notifications" 
                                            <?= $settings['sms_notifications'] ? 'checked' : '' ?>>
                                     <label class="form-check-label" for="sms_notifications">
-                                        Enable SMS Notifications
+                                        <?= lang('App.enable_sms_notifications') ?>
                                     </label>
                                 </div>
                             </div>
@@ -323,7 +323,7 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="systemInfoModalLabel">System Information</h5>
+                <h5 class="modal-title" id="systemInfoModalLabel"><?= lang('App.system_information') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body" id="systemInfoBody">

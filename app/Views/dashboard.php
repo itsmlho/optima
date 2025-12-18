@@ -11,9 +11,9 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <div class="stats-value h2 mb-2 fw-bold" data-count="<?= $director_metrics['total_units'] ?>">0</div>
-                        <div class="stats-label text-uppercase">Total Unit</div>
+                        <div class="stats-label text-uppercase"><?= lang('Dashboard.total_units') ?></div>
                         <div class="small mt-1 opacity-75">
-                            <i class="fas fa-arrow-up me-1" aria-hidden="true"></i>12% dari bulan lalu
+                            <i class="fas fa-arrow-up me-1" aria-hidden="true"></i>12% <?= lang('Dashboard.from_last_month') ?>
                         </div>
                     </div>
                     <div class="text-end">
@@ -31,9 +31,9 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <div class="h2 mb-2 fw-bold text-white" data-count="<?= $director_metrics['active_contracts'] ?>">0</div>
-                        <div class="text-uppercase text-white">Kontrak Aktif</div>
+                        <div class="text-uppercase text-white"><?= lang('Dashboard.active_contracts') ?></div>
                         <div class="small mt-1 text-white opacity-75">
-                            <i class="fas fa-arrow-up me-1"></i>8% dari bulan lalu
+                            <i class="fas fa-arrow-up me-1"></i>8% <?= lang('Dashboard.from_last_month') ?>
                         </div>
                     </div>
                     <div class="text-end">
@@ -51,9 +51,9 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <div class="stats-value h2 mb-2 fw-bold" data-count="<?= $director_metrics['total_customers'] ?>">0</div>
-                        <div class="stats-label text-uppercase">Total Customer</div>
+                        <div class="stats-label text-uppercase"><?= lang('Dashboard.total_customers') ?></div>
                         <div class="small mt-1 opacity-75">
-                            <i class="fas fa-arrow-up me-1"></i>15% dari bulan lalu
+                            <i class="fas fa-arrow-up me-1"></i>15% <?= lang('Dashboard.from_last_month') ?>
                         </div>
                     </div>
                     <div class="stats-icon">
@@ -71,9 +71,9 @@
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
                         <div class="stats-value h2 mb-2 fw-bold"><?= $director_metrics['utilization_rate'] ?>%</div>
-                        <div class="stats-label text-uppercase">Utilisasi</div>
+                        <div class="stats-label text-uppercase"><?= lang('Dashboard.utilization') ?></div>
                         <div class="small mt-1 opacity-75">
-                            <i class="fas fa-chart-line me-1"></i>Target: 80%
+                            <i class="fas fa-chart-line me-1"></i><?= lang('Dashboard.target') ?>: 80%
                         </div>
                     </div>
                     <div class="stats-icon">
@@ -93,14 +93,14 @@
             <div class="card-header d-flex align-items-center justify-content-between">
                 <h5 class="card-title mb-0">
                     <i class="fas fa-tachometer-alt me-2" style="color: var(--optima-primary);"></i>
-                    Overview Operasional
+                    <?= lang('Dashboard.operational_overview') ?>
                 </h5>
                 <div class="btn-group" role="group">
                     <input type="radio" class="btn-check" name="operationalChart" id="operationalUnits" autocomplete="off" checked>
-                    <label class="btn btn-outline-primary btn-sm" for="operationalUnits">Unit Status</label>
+                    <label class="btn btn-outline-primary btn-sm" for="operationalUnits"><?= lang('Dashboard.unit_status') ?></label>
                     
                     <input type="radio" class="btn-check" name="operationalChart" id="operationalComplaints" autocomplete="off">
-                    <label class="btn btn-outline-primary btn-sm" for="operationalComplaints">Service Complaints</label>
+                    <label class="btn btn-outline-primary btn-sm" for="operationalComplaints"><?= lang('Dashboard.service_complaints') ?></label>
                 </div>
             </div>
             <div class="card-body">
@@ -116,8 +116,8 @@
                                     </div>
                                     <div class="flex-grow-1 ms-3">
                                         <div class="metric-value text-white"><?= $operational_overview['unit_status'][0]['count'] ?? 87 ?></div>
-                                        <div class="metric-label text-white-50">Unit Disewakan</div>
-                                        <div class="small text-white-50">Aktif dalam kontrak</div>
+                                        <div class="metric-label text-white-50"><?= lang('Dashboard.unit_rented') ?></div>
+                                        <div class="small text-white-50"><?= lang('Dashboard.active_in_contract') ?></div>
                                     </div>
                                 </div>
                             </div>

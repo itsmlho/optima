@@ -13,7 +13,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-total-supplier"><?= $supplierStats['total'] ?? 0 ?></div>
-                    <div class="text-muted">Total Supplier</div>
+                    <div class="text-muted"><?= lang('App.total') ?> <?= lang('App.supplier') ?></div>
                 </div>
             </div>
         </div>
@@ -27,7 +27,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-active-supplier"><?= $supplierStats['active'] ?? 0 ?></div>
-                    <div class="text-muted">Active</div>
+                    <div class="text-muted"><?= lang('App.active') ?></div>
                 </div>
             </div>
         </div>
@@ -41,7 +41,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-verified-supplier"><?= $supplierStats['verified'] ?? 0 ?></div>
-                    <div class="text-muted">Verified</div>
+                    <div class="text-muted"><?= lang('App.verified') ?></div>
                 </div>
             </div>
         </div>
@@ -68,7 +68,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <h4 class="mb-0"> </h4>
             <button type="button" class="btn btn-primary btn-lg" onclick="openAddSupplierModal()">
-                <i class="fas fa-plus me-2"></i>Add Supplier
+                <i class="fas fa-plus me-2"></i><?= lang('App.add') ?> <?= lang('App.supplier') ?>
             </button>
         </div>
     </div>
@@ -79,14 +79,14 @@
     <div class="card-header bg-light">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
-                <i class="fas fa-building me-2"></i>Supplier List
+                <i class="fas fa-building me-2"></i><?= lang('App.supplier_list') ?>
             </h5>
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-sm btn-warning" onclick="refreshTableData()">
-                    <i class="fas fa-sync-alt me-1"></i>Refresh
+                    <i class="fas fa-sync-alt me-1"></i><?= lang('App.refresh') ?>
                 </button>
                 <a href="<?= base_url('purchasing/export_supplier') ?>" class="btn btn-sm btn-outline-success">
-                    <i class="fas fa-file-excel me-1"></i>Export Excel
+                    <i class="fas fa-file-excel me-1"></i><?= lang('App.export') ?> Excel
                 </a>
             </div>
         </div>

@@ -345,7 +345,7 @@ $can_export = $permissions['export'];
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalAttachmentVerificationLabel">
-                    <i class="fas fa-clipboard-check me-2"></i>Item Inspection Form
+                    <i class="fas fa-clipboard-check me-2"></i><?= lang('Warehouse.item_inspection_form') ?>
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
@@ -370,7 +370,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Details </h5>
+                <h5 class="modal-title"><i class="fas fa-eye me-2"></i><?= lang('App.detail') ?></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="poUnitDetailsContent"></div>
@@ -386,7 +386,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Details</h5>
+                <h5 class="modal-title"><i class="fas fa-eye me-2"></i><?= lang('App.detail') ?></h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="poSparepartDetailsContent"></div>

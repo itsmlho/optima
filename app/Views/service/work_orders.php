@@ -32,7 +32,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <div>
                     <div class="stat-value" id="stat-total-work-orders">0</div>
-                    <div class="text-muted">Work Orders Total</div>
+                    <div class="text-muted"><?= lang('Service.work_orders') ?> <?= lang('App.total') ?></div>
                 </div>
             </div>
         </div>
@@ -46,7 +46,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <div>
                     <div class="stat-value" id="stat-open">0</div>
-                    <div class="text-muted">Open</div>
+                    <div class="text-muted"><?= lang('Service.open') ?></div>
                 </div>
             </div>
         </div>
@@ -60,7 +60,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <div>
                     <div class="stat-value" id="stat-in-progress">0</div>
-                    <div class="text-muted">In Progress</div>
+                    <div class="text-muted"><?= lang('Service.in_progress') ?></div>
                 </div>
             </div>
         </div>
@@ -74,7 +74,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 </div>
                 <div>
                     <div class="stat-value" id="stat-completed">0</div>
-                    <div class="text-muted">Completed</div>
+                    <div class="text-muted"><?= lang('Service.completed') ?></div>
                 </div>
             </div>
         </div>
@@ -86,15 +86,15 @@ $assetService = new \App\Services\AssetMinificationService();
 <div class="card table-card mb-4">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i> List Work Orders</h5>
+            <h5 class="mb-0"><i class="fas fa-clipboard-list me-2"></i> <?= lang('Service.service_list') ?></h5>
             <div class="d-flex gap-2">
                 <?php if ($can_export): ?>
                 <a href="<?= base_url('service/export_workorder') ?>" class="btn btn-outline-success btn-sm">
-                    <i class="fas fa-file-excel"></i> Export Excel
+                    <i class="fas fa-file-excel"></i> <?= lang('App.export') ?> Excel
                 </a>
                 <?php else: ?>
-                <a href="#" class="btn btn-outline-success btn-sm disabled" onclick="return false;" title="Access Denied">
-                    <i class="fas fa-file-excel"></i> Export Excel
+                <a href="#" class="btn btn-outline-success btn-sm disabled" onclick="return false;" title="<?= lang('App.access_denied') ?>">
+                    <i class="fas fa-file-excel"></i> <?= lang('App.export') ?> Excel
                 </a>
                 <?php endif; ?>
                 <?php if ($can_create): ?>
@@ -297,67 +297,67 @@ $assetService = new \App\Services\AssetMinificationService();
                     
                     <div class="card shadow-sm mb-4">
                         <div class="card-header">
-                            <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i>Main Information of Work Order</h6>
+                            <h6 class="mb-0"><i class="fas fa-file-invoice me-2"></i><?= lang('Service.main_info_work_order') ?></h6>
                         </div>
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
-                                    <label for="work_order_number" class="form-label">WO Number</label>
+                                    <label for="work_order_number" class="form-label"><?= lang('Service.wo_number') ?></label>
                                     <input type="text" class="form-control" id="work_order_number" name="work_order_number" readonly>
-                                    <small class="form-text text-muted">WO Number will be filled automatically (+1 from the last WO)</small>
+                                    <small class="form-text text-muted"><?= lang('Service.wo_number_auto') ?></small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="order_type" class="form-label">Order Type <span class="text-danger">*</span></label>
+                                    <label for="order_type" class="form-label"><?= lang('Service.order_type') ?> <span class="text-danger">*</span></label>
                                     <select class="form-select" id="order_type" name="order_type" required>
-                                        <option value="" selected disabled>-- Select Order Type --</option>
-                                        <option value="COMPLAINT">Complaint</option>
-                                        <option value="PMPS">PMPS</option>
-                                        <option value="FABRIKASI">Fabrication</option>
-                                        <option value="PERSIAPAN">Preparation</option>
+                                        <option value="" selected disabled>-- <?= lang('Service.select_order_type') ?> --</option>
+                                        <option value="COMPLAINT"><?= lang('Service.complaint') ?></option>
+                                        <option value="PMPS"><?= lang('Service.pmps') ?></option>
+                                        <option value="FABRIKASI"><?= lang('Service.fabrication') ?></option>
+                                        <option value="PERSIAPAN"><?= lang('Service.preparation') ?></option>
                                     </select>
                                 </div>
                                 <div class="col-md-12 mb-3">
-                                    <label for="unit_id" class="form-label">Unit <span class="text-danger">*</span></label>
+                                    <label for="unit_id" class="form-label"><?= lang('App.unit') ?> <span class="text-danger">*</span></label>
                                     <select class="form-select" id="unit_id" name="unit_id" required>
-                                        <option value="" selected disabled>-- Select Unit --</option>
+                                        <option value="" selected disabled>-- <?= lang('App.select') ?> <?= lang('App.unit') ?> --</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="category_id" class="form-label">Category <span class="text-danger">*</span></label>
+                                    <label for="category_id" class="form-label"><?= lang('Service.category') ?> <span class="text-danger">*</span></label>
                                     <select class="form-select" id="category_id" name="category_id" required>
-                                        <option value="" selected disabled>-- Select Category --</option>
+                                        <option value="" selected disabled>-- <?= lang('App.select') ?> <?= lang('Service.category') ?> --</option>
                                         <?php foreach ($categories as $category): ?>
                                         <option value="<?= $category['id'] ?>" data-priority="<?= $category['default_priority_id'] ?? '' ?>"><?= $category['category_name'] ?></option>
                                         <?php endforeach; ?>
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="subcategory_id" class="form-label">Sub Category</label>
+                                    <label for="subcategory_id" class="form-label"><?= lang('Service.sub_category') ?></label>
                                     <select class="form-select" id="subcategory_id" name="subcategory_id">
-                                        <option value="">-- Select Sub Category (if any) --</option>
+                                        <option value="">-- <?= lang('Service.select_sub_category') ?> --</option>
                                     </select>
-                                    <small class="form-text text-muted">Sub category will appear after selecting a category</small>
+                                    <small class="form-text text-muted"><?= lang('Service.sub_category_after_category') ?></small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="priority_display" class="form-label">Priority</label>
-                                    <input type="text" class="form-control" id="priority_display" readonly placeholder="Priority will be set automatically based on category & sub category">
+                                    <label for="priority_display" class="form-label"><?= lang('Service.priority') ?></label>
+                                    <input type="text" class="form-control" id="priority_display" readonly placeholder="<?= lang('Service.priority_auto') ?>">
                                     <input type="hidden" id="priority_id" name="priority_id">
-                                    <small class="form-text text-muted">Priority will be set automatically based on category & sub category</small>
+                                    <small class="form-text text-muted"><?= lang('Service.priority_based_category') ?></small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="area" class="form-label">Area <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="area" name="area" readonly placeholder="Area will be set automatically based on unit">
+                                    <label for="area" class="form-label"><?= lang('App.area') ?> <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="area" name="area" readonly placeholder="<?= lang('Service.area_auto') ?>">
                                     <input type="hidden" id="area_id" name="area_id">
-                                    <small class="form-text text-muted">Area will be set automatically based on selected unit</small>
+                                    <small class="form-text text-muted"><?= lang('Service.area_based_unit') ?></small>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <label for="pic_name" class="form-label">PIC <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="pic_name" name="pic_name" placeholder="Enter PIC name" required>
-                                    <small class="form-text text-muted">example: Adit (082136033596)</small>
+                                    <label for="pic_name" class="form-label"><?= lang('App.pic') ?> <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="pic_name" name="pic_name" placeholder="<?= lang('Service.enter_pic_name') ?>" required>
+                                    <small class="form-text text-muted"><?= lang('Service.pic_example') ?></small>
                                 </div>
                                 <div class="col-6 mb-3">
-                                    <label for="complaint_description" class="form-label">Complaint Description <span class="text-danger">*</span></label>
-                                    <textarea class="form-control" id="complaint_description" name="complaint_description" rows="3" placeholder="Explain the complaint or work request in detail..." required></textarea>
+                                    <label for="complaint_description" class="form-label"><?= lang('Service.complaint_description') ?> <span class="text-danger">*</span></label>
+                                    <textarea class="form-control" id="complaint_description" name="complaint_description" rows="3" placeholder="<?= lang('Service.explain_complaint_detail') ?>" required></textarea>
                                 </div>
                             </div>
                         </div>

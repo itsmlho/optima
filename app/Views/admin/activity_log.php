@@ -110,24 +110,24 @@ $(document).ready(function() {
                     return data ? new Date(data).toLocaleString('id-ID') : '-';
                 }
             },
-            { data: 'username', title: 'User' },
-            { data: 'module_name', title: 'Module' },
-            { data: 'action_type', title: 'Action' },
-            { data: 'table_name', title: 'Tabel' },
-            { data: 'action_description', title: 'Deskripsi' },
-            { data: 'business_impact', title: 'Impact' },
-            { data: 'is_critical', title: 'Critical' }
+            { data: 'username', title: '<?= lang("App.user") ?>' },
+            { data: 'module_name', title: '<?= lang("App.module") ?>' },
+            { data: 'action_type', title: '<?= lang("App.action") ?>' },
+            { data: 'table_name', title: '<?= lang("App.table") ?>' },
+            { data: 'action_description', title: '<?= lang("App.description") ?>' },
+            { data: 'business_impact', title: '<?= lang("App.impact") ?>' },
+            { data: 'is_critical', title: '<?= lang("App.critical") ?>' }
         ],
         dom: 'lfrtip', // Minimal DOM for maximum speed
         order: [[0, 'desc']],
         pageLength: 10, // REDUCED for faster rendering
         lengthMenu: [[5, 10, 15, 25], [5, 10, 15, 25]], // Optimized options
         language: {
-            processing: '<div class="d-flex align-items-center justify-content-center p-2"><div class="spinner-border spinner-border-sm me-2"></div>Loading...</div>',
-            search: "Search:",
-            lengthMenu: "Show _MENU_",
-            info: "_START_ to _END_ of _TOTAL_",
-            emptyTable: "No activity logs",
+            processing: '<div class="d-flex align-items-center justify-content-center p-2"><div class="spinner-border spinner-border-sm me-2"></div><?= lang("App.loading") ?>...</div>',
+            search: "<?= lang('App.search') ?>:",
+            lengthMenu: "<?= lang('App.show') ?> _MENU_",
+            info: "_START_ <?= lang('App.to') ?> _END_ <?= lang('App.of') ?> _TOTAL_",
+            emptyTable: "<?= lang('App.no_activity_logs') ?>",
             zeroRecords: "No matching records"
         },
         rowCallback: function(row, data) {
