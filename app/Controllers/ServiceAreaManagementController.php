@@ -1425,6 +1425,29 @@ class ServiceAreaManagementController extends BaseController
             $assignmentId = $this->assignmentModel->insert($data);
             
             if ($assignmentId) {
+                // Get details for notification
+                $db = \Config\Database::connect();
+                $assignment = $db->table('service_area_assignments saa')
+                    ->select('saa.*, a.area_name, e.name as employee_name')
+                    ->join('areas a', 'a.id = saa.area_id', 'left')
+                    ->join('employees e', 'e.id = saa.employee_id', 'left')
+                    ->where('saa.id', $assignmentId)
+                    ->get()
+                    ->getRowArray();
+                
+                // Send notification - service assignment created
+                if (function_exists('notify_service_assignment_created') && $assignment) {
+                    notify_service_assignment_created([
+                        'id' => $assignmentId,
+                        'employee_name' => $assignment['employee_name'] ?? '',
+                        'area_name' => $assignment['area_name'] ?? '',
+                        'role' => $assignment['assignment_type'] ?? '',
+                        'start_date' => $assignment['start_date'] ?? '',
+                        'created_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/service/area-management')
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Assignment created successfully',
@@ -1497,6 +1520,29 @@ class ServiceAreaManagementController extends BaseController
             $updated = $this->assignmentModel->update($id, $data);
             
             if ($updated) {
+                // Get details for notification
+                $assignment = $this->assignmentModel->find($id);
+                $db = \Config\Database::connect();
+                $details = $db->table('service_area_assignments saa')
+                    ->select('a.area_name, e.name as employee_name')
+                    ->join('areas a', 'a.id = saa.area_id', 'left')
+                    ->join('employees e', 'e.id = saa.employee_id', 'left')
+                    ->where('saa.id', $id)
+                    ->get()
+                    ->getRowArray();
+                
+                // Send notification - service assignment updated
+                if (function_exists('notify_service_assignment_updated') && $details) {
+                    notify_service_assignment_updated([
+                        'id' => $id,
+                        'employee_name' => $details['employee_name'] ?? '',
+                        'area_name' => $details['area_name'] ?? '',
+                        'changes' => 'Assignment details updated',
+                        'updated_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/service/area-management')
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Assignment updated successfully'
@@ -1543,11 +1589,33 @@ class ServiceAreaManagementController extends BaseController
         log_message('info', 'Assignment found, proceeding with deletion: ' . json_encode($assignment));
         
         try {
+            // Get details before deletion for notification
+            $db = \Config\Database::connect();
+            $details = $db->table('service_area_assignments saa')
+                ->select('a.area_name, e.name as employee_name')
+                ->join('areas a', 'a.id = saa.area_id', 'left')
+                ->join('employees e', 'e.id = saa.employee_id', 'left')
+                ->where('saa.id', $id)
+                ->get()
+                ->getRowArray();
+            
             // Hard delete - actually remove the record
             $deleted = $this->assignmentModel->delete($id);
             
             if ($deleted) {
                 log_message('info', 'Assignment deleted successfully by user: ' . session()->get('user_id'));
+                
+                // Send notification - service assignment deleted
+                if (function_exists('notify_service_assignment_deleted') && $details) {
+                    notify_service_assignment_deleted([
+                        'id' => $id,
+                        'employee_name' => $details['employee_name'] ?? '',
+                        'area_name' => $details['area_name'] ?? '',
+                        'deleted_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/service/area-management')
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Assignment removed successfully'

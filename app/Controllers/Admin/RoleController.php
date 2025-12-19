@@ -192,6 +192,21 @@ class RoleController extends BaseController
                 throw new \Exception('Database transaction failed');
             }
 
+            // Send notification - role saved
+            if (function_exists('notify_role_saved')) {
+                $action = !empty($input['role_id']) ? 'updated' : 'created';
+                $permissionsCount = !empty($input['permissions']) ? count($input['permissions']) : 0;
+                
+                notify_role_saved([
+                    'id' => $roleId,
+                    'role_name' => $roleData['name'],
+                    'action' => $action,
+                    'permissions_count' => $permissionsCount,
+                    'saved_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/admin/roles')
+                ]);
+            }
+            
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Role saved successfully'

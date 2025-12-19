@@ -38,6 +38,7 @@ class Marketing extends BaseDataTableController
     protected $diItemModel;
     protected $notifModel;
     protected $performanceService;
+    protected $customerModel;
 
     public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
     {
@@ -718,6 +719,19 @@ class Marketing extends BaseDataTableController
             
             if ($db->transStatus() === false) {
                 throw new \Exception('Transaction failed');
+            }
+            
+            // Send notification - quotation created
+            if (function_exists('notify_quotation_created')) {
+                notify_quotation_created([
+                    'id' => $quotationId,
+                    'quotation_number' => $quotationNumber,
+                    'customer_name' => $quotationData['prospect_name'],
+                    'total_value' => 0, // Will be calculated from specifications
+                    'stage' => 'DRAFT',
+                    'created_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/marketing/quotations/view/' . $quotationId)
+                ]);
             }
             
             // Log activity
@@ -1411,6 +1425,22 @@ class Marketing extends BaseDataTableController
             ->update(['customer_contract_complete' => 1]);
 
         if ($result !== false) {
+            // Get quotation details for notification
+            $quotation = $this->quotationModel->find($quotationId);
+            
+            // Send notification - contract completed
+            if (function_exists('notify_contract_completed') && $quotation) {
+                notify_contract_completed([
+                    'id' => $quotationId,
+                    'contract_number' => $quotation['quotation_number'] ?? '',
+                    'customer_name' => $quotation['prospect_name'] ?? '',
+                    'total_value' => $quotation['total_amount'] ?? 0,
+                    'completion_date' => date('Y-m-d'),
+                    'completed_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/marketing/quotations/view/' . $quotationId)
+                ]);
+            }
+            
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Contract stage completed'
@@ -1637,6 +1667,23 @@ class Marketing extends BaseDataTableController
         }
 
         $this->quotationModel->update($quotationId, $updateData);
+
+        // Get quotation details for notification
+        $quotation = $this->quotationModel->find($quotationId);
+        $oldStage = $quotation['stage'] ?? 'UNKNOWN';
+        
+        // Send notification - quotation stage changed
+        if (function_exists('notify_quotation_stage_changed')) {
+            notify_quotation_stage_changed([
+                'id' => $quotationId,
+                'quotation_number' => $quotation['quotation_number'] ?? '',
+                'customer_name' => $quotation['prospect_name'] ?? '',
+                'old_stage' => $oldStage,
+                'new_stage' => $updateData['stage'],
+                'updated_by' => session('username') ?? session('user_id'),
+                'url' => base_url('/marketing/quotations/view/' . $quotationId)
+            ]);
+        }
 
         // Log stage history if table exists
         $db = \Config\Database::connect();
@@ -5512,6 +5559,27 @@ class Marketing extends BaseDataTableController
                 'unit_ids' => $unitIds
             ]);
             
+            // Send notification: DI Created
+            helper('notification');
+            
+            // Get jenis perintah name
+            $jenisPerintahName = '';
+            if ($jenisPerintahKerjaId > 0) {
+                $jenisPerintah = $this->db->table('jenis_perintah_kerja')
+                    ->where('id', $jenisPerintahKerjaId)
+                    ->get()
+                    ->getRowArray();
+                $jenisPerintahName = $jenisPerintah['nama'] ?? '';
+            }
+            
+            notify_di_created([
+                'id' => $diId,
+                'nomor_di' => $payload['nomor_di'],
+                'unit_code' => '',
+                'customer' => $pelanggan,
+                'jenis_perintah' => $jenisPerintahName
+            ]);
+            
             return $this->response->setJSON([
                 'success'=>true,
                 'message'=>'DI dibuat',
@@ -6781,6 +6849,21 @@ class Marketing extends BaseDataTableController
                 // Log activity
                 $this->logActivity('send_quotation', 'quotations', $quotationId, 'Quotation ' . $quotation['quotation_number'] . ' sent to customer');
 
+                // Send notification: Quotation Sent to Customer
+                helper('notification');
+                if (function_exists('notify_quotation_sent_to_customer')) {
+                    notify_quotation_sent_to_customer([
+                        'id' => $quotationId,
+                        'quote_number' => $quotation['quotation_number'],
+                        'customer_name' => $quotation['customer_name'] ?? '',
+                        'customer_email' => $quotation['customer_email'] ?? '',
+                        'sent_method' => 'email',
+                        'sent_by' => session()->get('user_name') ?? 'System',
+                        'sent_at' => date('Y-m-d H:i:s'),
+                        'url' => base_url('/marketing/quotations/view/' . $quotationId)
+                    ]);
+                }
+
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Quotation sent successfully'
@@ -6854,6 +6937,16 @@ class Marketing extends BaseDataTableController
                     $this->logActivity('create_customer_from_deal', 'customers', $updatedQuotation['created_customer_id'], 
                         'Customer created from deal quotation: ' . $quotation['quotation_number']);
 
+                    // Send notification: Customer Created
+                    helper('notification');
+                    notify_customer_created([
+                        'id' => $updatedQuotation['created_customer_id'],
+                        'customer_name' => $quotation['prospect_name'] ?? '',
+                        'customer_code' => '',
+                        'contact_person' => $quotation['prospect_contact_person'] ?? '',
+                        'phone' => $quotation['prospect_phone'] ?? ''
+                    ]);
+
                     return $this->response->setJSON([
                         'success' => true,
                         'message' => 'Customer created successfully from deal. You can now create contracts and purchase orders.',
@@ -6891,6 +6984,16 @@ class Marketing extends BaseDataTableController
                     // Log activity
                     $this->logActivity('create_customer_from_deal', 'customers', $customerId, 
                         'Customer created from deal quotation: ' . $quotation['quotation_number']);
+
+                    // Send notification: Customer Created
+                    helper('notification');
+                    notify_customer_created([
+                        'id' => $customerId,
+                        'customer_name' => $customerData['customer_name'],
+                        'customer_code' => '',
+                        'contact_person' => $customerData['contact_person'],
+                        'phone' => $customerData['phone']
+                    ]);
 
                     return $this->response->setJSON([
                         'success' => true,
@@ -7306,6 +7409,23 @@ class Marketing extends BaseDataTableController
                 $this->logActivity('create_contract', 'kontrak', $contractId, 
                     'Contract created from quotation: ' . $quotation['quotation_number']);
 
+                // Send notification: Contract Created
+                helper('notification');
+                if (!isset($this->customerModel)) {
+                    $this->customerModel = new \App\Models\CustomerModel();
+                }
+                $customer = $this->customerModel->find($quotation['created_customer_id']);
+                if ($customer) {
+                    notify_customer_contract_created([
+                        'id' => $contractId,
+                        'contract_number' => $contractNumber,
+                        'customer_name' => $customer['customer_name'],
+                        'nilai_total' => $contractData['nilai_total'],
+                        'tanggal_mulai' => $contractData['tanggal_mulai'],
+                        'tanggal_selesai' => $contractData['tanggal_berakhir']
+                    ]);
+                }
+
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Contract created successfully: ' . $contractNumber,
@@ -7357,6 +7477,19 @@ class Marketing extends BaseDataTableController
 
             // For now, just return success with a message to manually create PO
             // This can be enhanced later with actual PO creation logic
+            
+            // Send notification - PO created from quotation (placeholder notification)
+            if (function_exists('notify_po_created_from_quotation')) {
+                notify_po_created_from_quotation([
+                    'id' => null, // PO not actually created yet
+                    'po_number' => 'PENDING',
+                    'quotation_number' => $quotation['quotation_number'] ?? '',
+                    'customer_name' => $quotation['prospect_name'] ?? '',
+                    'created_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/purchasing/po')
+                ]);
+            }
+            
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Please create Purchase Order manually in the Purchase Order module for customer: ' . $quotation['prospect_name'],

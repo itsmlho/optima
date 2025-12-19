@@ -116,22 +116,91 @@ class Finance extends BaseController
             ])->setStatusCode(403);
         }
         
-        // Mock successful response
-        return $this->response->setJSON([
-            'success' => true,
-            'message' => 'Invoice created successfully',
-            'token' => csrf_hash()
-        ]);
+        try {
+            // Get POST data
+            $invoiceData = $this->request->getPost();
+            
+            // TODO: Actual invoice creation logic here
+            // For now, mock the invoice ID and number
+            $invoiceId = rand(1000, 9999); // In production, this would be the actual DB insert ID
+            $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($invoiceId, 5, '0', STR_PAD_LEFT);
+            
+            // Send notification
+            helper('notification');
+            notify_invoice_created([
+                'id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'customer_name' => $invoiceData['customer_name'] ?? 'N/A',
+                'amount' => $invoiceData['total_amount'] ?? 0,
+                'due_date' => $invoiceData['due_date'] ?? date('Y-m-d', strtotime('+30 days')),
+                'created_by' => session()->get('user_name') ?? 'System',
+                'url' => base_url('/finance/invoices/' . $invoiceId)
+            ]);
+            
+            log_message('info', "Invoice created: {$invoiceNumber} - Notification sent");
+            
+            // Mock successful response
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Invoice created successfully',
+                'invoice_id' => $invoiceId,
+                'invoice_number' => $invoiceNumber,
+                'token' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error creating invoice: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create invoice: ' . $e->getMessage(),
+                'token' => csrf_hash()
+            ])->setStatusCode(500);
+        }
     }
 
     public function updatePaymentStatus($id)
     {
-        // Mock successful response
-        return $this->response->setJSON([
-            'success' => true,
-            'message' => 'Payment status updated successfully',
-            'token' => csrf_hash()
-        ]);
+        try {
+            // Get POST data
+            $statusData = $this->request->getPost();
+            
+            // TODO: Get existing invoice data and update status
+            // For now, mock the data
+            $oldStatus = 'Pending';
+            $newStatus = $statusData['status'] ?? 'Paid';
+            $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($id, 5, '0', STR_PAD_LEFT);
+            
+            // Send notification
+            helper('notification');
+            notify_payment_status_updated([
+                'id' => $id,
+                'invoice_number' => $invoiceNumber,
+                'customer_name' => $statusData['customer_name'] ?? 'N/A',
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'amount' => $statusData['paid_amount'] ?? 0,
+                'payment_date' => $statusData['payment_date'] ?? date('Y-m-d'),
+                'updated_by' => session()->get('user_name') ?? 'System',
+                'url' => base_url('/finance/invoices/' . $id)
+            ]);
+            
+            log_message('info', "Payment status updated for {$invoiceNumber}: {$oldStatus} → {$newStatus} - Notification sent");
+            
+            // Mock successful response
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Payment status updated successfully',
+                'invoice_number' => $invoiceNumber,
+                'new_status' => $newStatus,
+                'token' => csrf_hash()
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Error updating payment status: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to update payment status: ' . $e->getMessage(),
+                'token' => csrf_hash()
+            ])->setStatusCode(500);
+        }
     }
 
     private function getFinancialSummary()

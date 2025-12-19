@@ -1789,7 +1789,44 @@ class WarehousePO extends BaseController
 
             // Kirim notifikasi ke warehouse jika status diverifikasi
             if ($result && in_array($status, ['Sesuai', 'Tidak Sesuai'])) {
+                // Legacy notification
                 $this->sendWarehouseNotification($poType, $poId, $status, $verifiedBy);
+                
+                // New notification system
+                try {
+                    helper('notification');
+                    
+                    // Get PO number based on type
+                    $noPO = 'Unknown PO';
+                    switch ($poType) {
+                        case 'unit':
+                            $po = $this->pounitsmodel->find($poId);
+                            $noPO = $po['no_po'] ?? $poId;
+                            break;
+                        case 'attachment':
+                            $po = $this->poAttachmentModel->find($poId);
+                            $noPO = $po['no_po'] ?? $poId;
+                            break;
+                        case 'sparepart':
+                            $po = $this->poSparepartItemModel->find($poId);
+                            $noPO = $po['no_po'] ?? $poId;
+                            break;
+                    }
+                    
+                    notify_po_verification_updated([
+                        'id' => $poId,
+                        'po_number' => $noPO,
+                        'verification_status' => $status,
+                        'verified_by' => session()->get('user_name') ?? 'System',
+                        'verification_date' => date('Y-m-d H:i:s'),
+                        'notes' => $comments ?? 'N/A',
+                        'url' => base_url('/warehouse/po-verification/' . $poId)
+                    ]);
+                    
+                    log_message('info', "PO Verification updated: {$noPO} ({$poType}) - Status: {$status} - Notification sent");
+                } catch (\Exception $notifError) {
+                    log_message('error', 'Failed to send PO verification notification: ' . $notifError->getMessage());
+                }
             }
 
             if ($result) {

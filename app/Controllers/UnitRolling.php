@@ -200,6 +200,26 @@ class UnitRolling extends BaseController
         ];
         
         if ($db->table('unit_rolling')->where('id', $id)->update($data)) {
+            // Get unit details for notification
+            $unitRolling = $db->table('unit_rolling ur')
+                ->select('ur.*, iu.no_unit')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = ur.inventory_unit_id', 'left')
+                ->where('ur.id', $id)
+                ->get()
+                ->getRowArray();
+            
+            // Send notification - unit location updated
+            if (function_exists('notify_unit_location_updated') && $unitRolling) {
+                notify_unit_location_updated([
+                    'id' => $id,
+                    'unit_code' => $unitRolling['no_unit'] ?? '',
+                    'old_location' => $unitRolling['previous_location'] ?? 'Unknown',
+                    'new_location' => $data['current_location'],
+                    'updated_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/operational/unit-rolling')
+                ]);
+            }
+            
             return $this->response->setJSON(['success' => true, 'message' => 'Unit location updated successfully!']);
         }
         return $this->response->setJSON(['success' => false, 'message' => 'Failed to update unit location.']);
