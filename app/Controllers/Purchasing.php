@@ -1535,6 +1535,34 @@ class Purchasing extends BaseController
             $db->transComplete();
             
             if ($db->transStatus()) {
+                // Send notification
+                try {
+                    helper('notification');
+                    
+                    // Get supplier name
+                    $supplierQuery = $db->query('SELECT nama_supplier FROM suppliers WHERE id_supplier = ?', [$poData['supplier_id']]);
+                    $supplier = $supplierQuery->getRow();
+                    $supplierName = $supplier ? $supplier->nama_supplier : 'Unknown Supplier';
+                    
+                    // Calculate total amount (rough estimate from items)
+                    $totalAmount = 0; // TODO: Calculate from actual items if needed
+                    
+                    notify_po_created([
+                        'id' => $poId,
+                        'po_number' => $poData['no_po'],
+                        'supplier_name' => $supplierName,
+                        'po_type' => $poData['tipe_po'],
+                        'total_amount' => $totalAmount,
+                        'delivery_date' => $poData['tanggal_po'],
+                        'created_by' => session()->get('user_name') ?? 'System',
+                        'url' => base_url('/purchasing/po-detail/' . $poId)
+                    ]);
+                    
+                    log_message('info', "PO created: {$poData['no_po']} - Notification sent");
+                } catch (\Exception $notifError) {
+                    log_message('error', 'Failed to send PO notification: ' . $notifError->getMessage());
+                }
+                
                 // Return JSON response instead of redirect
                 return $this->response->setJSON([
                     'success' => true,
@@ -4349,6 +4377,35 @@ class Purchasing extends BaseController
                 ]);
             }
             
+            // Send notification
+            try {
+                helper('notification');
+                
+                // Get PO and supplier info
+                $poQuery = $db->query('
+                    SELECT po.no_po, s.nama_supplier
+                    FROM purchase_orders po
+                    LEFT JOIN suppliers s ON po.supplier_id = s.id_supplier
+                    WHERE po.id_po = ?
+                ', [$poId]);
+                $poInfo = $poQuery->getRow();
+                
+                notify_delivery_created([
+                    'id' => $deliveryId,
+                    'delivery_number' => $packingListNo,
+                    'po_number' => $poInfo ? $poInfo->no_po : 'Unknown PO',
+                    'supplier_name' => $poInfo ? $poInfo->nama_supplier : 'Unknown Supplier',
+                    'delivery_date' => $deliveryDate,
+                    'items_count' => $totalItems,
+                    'created_by' => session()->get('user_name') ?? 'System',
+                    'url' => base_url('/purchasing/delivery-detail/' . $deliveryId)
+                ]);
+                
+                log_message('info', "Delivery created: {$packingListNo} - Notification sent");
+            } catch (\Exception $notifError) {
+                log_message('error', 'Failed to send delivery notification: ' . $notifError->getMessage());
+            }
+            
             return $this->respond([
                 'success' => true,
                 'message' => 'Delivery schedule berhasil dibuat',
@@ -4915,6 +4972,36 @@ class Purchasing extends BaseController
                     'success' => false,
                     'message' => 'Gagal mengupdate status delivery'
                 ]);
+            }
+            
+            // Send notification
+            try {
+                helper('notification');
+                
+                // Get delivery and PO info BEFORE update
+                $deliveryQuery = $db->query('
+                    SELECT d.packing_list_no, d.status as old_status, po.no_po, s.nama_supplier
+                    FROM po_deliveries d
+                    LEFT JOIN purchase_orders po ON d.po_id = po.id_po
+                    LEFT JOIN suppliers s ON po.supplier_id = s.id_supplier
+                    WHERE d.id_delivery = ?
+                ', [$deliveryId]);
+                $deliveryInfo = $deliveryQuery->getRow();
+                
+                notify_delivery_status_changed([
+                    'id' => $deliveryId,
+                    'delivery_number' => $deliveryInfo ? $deliveryInfo->packing_list_no : 'Unknown',
+                    'po_number' => $deliveryInfo ? $deliveryInfo->no_po : 'Unknown PO',
+                    'old_status' => $deliveryInfo ? $deliveryInfo->old_status : 'Unknown',
+                    'new_status' => $status,
+                    'supplier_name' => $deliveryInfo ? $deliveryInfo->nama_supplier : 'Unknown Supplier',
+                    'updated_by' => session()->get('user_name') ?? 'System',
+                    'url' => base_url('/purchasing/delivery-detail/' . $deliveryId)
+                ]);
+                
+                log_message('info', "Delivery status updated: {$deliveryId} → {$status} - Notification sent");
+            } catch (\Exception $notifError) {
+                log_message('error', 'Failed to send delivery status notification: ' . $notifError->getMessage());
             }
             
             return $this->respond([

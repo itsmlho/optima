@@ -1146,6 +1146,21 @@ class AdvancedUserManagement extends BaseController
                 ->delete();
 
             if ($removed) {
+                // Get user and division details for notification
+                $user = $this->userModel->find($userId);
+                $division = $this->db->table('divisions')->where('id', $divisionId)->get()->getRowArray();
+                
+                // Send notification - user removed from division
+                if (function_exists('notify_user_removed_from_division') && $user && $division) {
+                    notify_user_removed_from_division([
+                        'id' => $userId,
+                        'user_name' => $user['username'] ?? '',
+                        'division_name' => $division['name'] ?? '',
+                        'removed_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/admin/user-management')
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'User removed from division successfully'
@@ -2196,13 +2211,16 @@ class AdvancedUserManagement extends BaseController
     public function getEnhancedPermissions()
     {
         try {
-            $enhancedPermissionModel = new \App\Models\EnhancedPermissionModel();
+            // Use existing PermissionModel instead of non-existent EnhancedPermissionModel
+            $permissionModel = new \App\Models\PermissionModel();
             
-            // Get permission tree
-            $permissionTree = $enhancedPermissionModel->getPermissionTree();
+            // Get permission tree (or flat list if getPermissionTree doesn't exist)
+            $permissionTree = method_exists($permissionModel, 'getPermissionTree') 
+                ? $permissionModel->getPermissionTree() 
+                : $permissionModel->findAll();
             
             // Get flat permissions array for compatibility
-            $flatPermissions = $enhancedPermissionModel->where('is_active', 1)->findAll();
+            $flatPermissions = $permissionModel->where('is_active', 1)->findAll();
             
             // Get unique modules
             $modules = array_unique(array_column($flatPermissions, 'module'));
@@ -2348,6 +2366,17 @@ class AdvancedUserManagement extends BaseController
                     'permissions_count' => count($validIds)
                 ]);
 
+                // Send notification - user permissions updated
+                if (function_exists('notify_user_permissions_updated')) {
+                    notify_user_permissions_updated([
+                        'id' => $userId,
+                        'user_name' => $user['username'] ?? '',
+                        'permissions_changed' => count($validIds) . ' custom permissions updated',
+                        'updated_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/admin/user-management/edit/' . $userId)
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => count($validIds) . ' custom permission(s) saved successfully'

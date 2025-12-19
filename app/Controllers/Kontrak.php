@@ -326,6 +326,24 @@ class Kontrak extends BaseController
             log_message('info', "Updated quotation {$quotationId} contract_complete flag after contract creation");
         }
 
+        // Get contract details for notification
+        $contract = $this->kontrakModel->find($newId);
+        
+        // Send notification - contract created
+        if (function_exists('notify_contract_created') && $contract) {
+            notify_contract_created([
+                'id' => $newId,
+                'contract_number' => $contract['no_kontrak'] ?? '',
+                'customer_name' => $customerInfo,
+                'contract_type' => $contract['jenis_sewa'] ?? '',
+                'start_date' => $contract['tanggal_mulai'] ?? '',
+                'end_date' => $contract['tanggal_berakhir'] ?? '',
+                'total_value' => $contract['nilai_total'] ?? 0,
+                'created_by' => session('username') ?? session('user_id'),
+                'url' => base_url('/marketing/contracts/view/' . $newId)
+            ]);
+        }
+        
         return $this->response->setJSON([
             'success' => true,
             'message' => lang('Marketing.contract_created'),
@@ -472,6 +490,27 @@ class Kontrak extends BaseController
             ]);
             
             log_message('debug', "Kontrak updated successfully");
+            
+            // Send notification - contract updated
+            if (function_exists('notify_contract_updated')) {
+                $changes = [];
+                if ($oldData['status'] !== $data['status']) {
+                    $changes[] = "Status: {$oldData['status']} → {$data['status']}";
+                }
+                if ($oldData['nilai_total'] != $data['nilai_total']) {
+                    $changes[] = "Nilai: {$oldData['nilai_total']} → {$data['nilai_total']}";
+                }
+                
+                notify_contract_updated([
+                    'id' => $contractId,
+                    'contract_number' => $data['no_kontrak'],
+                    'customer_name' => $customerInfo,
+                    'changes' => !empty($changes) ? implode(', ', $changes) : 'Contract details updated',
+                    'updated_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/marketing/contracts/view/' . $contractId)
+                ]);
+            }
+            
             return $this->response->setJSON([
                 'success' => true, 
                 'message' => lang('Marketing.contract_updated'),
@@ -575,6 +614,19 @@ class Kontrak extends BaseController
                     ]);
                 }
                 log_message('debug', 'Kontrak::delete - Successfully deleted contract ID: ' . $id);
+                
+                // Send notification - contract deleted
+                if (function_exists('notify_contract_deleted')) {
+                    notify_contract_deleted([
+                        'id' => $id,
+                        'contract_number' => $contract['no_kontrak'] ?? '',
+                        'customer_name' => $customerInfo,
+                        'deleted_by' => session('username') ?? session('user_id'),
+                        'deletion_reason' => 'Contract deletion requested',
+                        'url' => base_url('/marketing/contracts')
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true, 
                     'message' => lang('Marketing.contract_deleted')

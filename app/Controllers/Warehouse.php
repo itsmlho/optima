@@ -788,6 +788,20 @@ class Warehouse extends BaseController
             return $this->response->setJSON(['success' => false, 'message' => $this->validator->getErrors()]);
         }
         if ($inventoryUnitModel->update($id, $data)) {
+            // Get unit details for notification
+            $unit = $inventoryUnitModel->find($id);
+            
+            // Send notification - warehouse unit updated
+            if (function_exists('notify_warehouse_unit_updated') && $unit) {
+                notify_warehouse_unit_updated([
+                    'id' => $id,
+                    'unit_code' => $unit['no_unit'] ?? '',
+                    'changes' => 'Status and location updated',
+                    'updated_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/warehouse/units')
+                ]);
+            }
+            
             return $this->response->setJSON(['success' => true, 'message' => 'Data unit berhasil diperbarui.']);
         }
         return $this->response->setJSON(['success' => false, 'message' => 'Gagal memperbarui data.']);
@@ -1196,7 +1210,7 @@ class Warehouse extends BaseController
 
     private function getLowStockAlerts()
     {
-        return [
+        $alerts = [
             [
                 'item_code' => 'SP-FL-002',
                 'item_name' => 'Brake Pad Set',
@@ -1222,6 +1236,26 @@ class Warehouse extends BaseController
                 'urgency' => 'Low'
             ]
         ];
+        
+        // Send notification for critical low stock items
+        helper('notification');
+        if (function_exists('notify_warehouse_stock_alert')) {
+            foreach ($alerts as $alert) {
+                if ($alert['urgency'] === 'High' || $alert['urgency'] === 'Medium') {
+                    notify_warehouse_stock_alert([
+                        'item_id' => null,
+                        'item_name' => $alert['item_name'],
+                        'current_stock' => $alert['current_stock'],
+                        'minimum_stock' => $alert['min_stock'],
+                        'warehouse_name' => 'Main Warehouse',
+                        'unit' => 'pcs',
+                        'url' => base_url('/warehouse/inventory')
+                    ]);
+                }
+            }
+        }
+        
+        return $alerts;
     }
 
     // Master data API endpoints for dynamic dropdowns

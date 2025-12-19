@@ -1741,6 +1741,24 @@ class Service extends BaseController
                 $this->handleFabrikasiAttachment($stageData, $approvalData);
             }
             
+            // Send notification: Attachment Uploaded on Stage
+            if (!empty($approvalData['attachment_id']) && in_array($approvalData['stage'], ['fabrikasi', 'painting', 'persiapan_unit', 'pdi'])) {
+                helper('notification');
+                
+                // Get SPK data
+                $spk = $this->db->table('spk')->where('id', $stageData['spk_id'])->get()->getRowArray();
+                
+                notify_attachment_uploaded([
+                    'id' => $approvalData['attachment_id'],
+                    'stage_name' => $approvalData['stage'],
+                    'spk_number' => $spk['nomor_spk'] ?? '',
+                    'unit_code' => '',
+                    'file_name' => 'Attachment for ' . $approvalData['stage'],
+                    'uploaded_by' => session()->get('username') ?? 'System',
+                    'url' => base_url('/service/spk_service')
+                ]);
+            }
+            
         } catch (\Exception $e) {
             $this->db->transRollback();
             throw $e;

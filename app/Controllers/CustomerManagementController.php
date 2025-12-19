@@ -493,6 +493,31 @@ class CustomerManagementController extends BaseController
                         'business_impact' => 'LOW'
                     ]);
                     
+                    // Send notification: Customer Created
+                    helper('notification');
+                    if (function_exists('notify_customer_created')) {
+                        notify_customer_created([
+                            'id' => $customerId,
+                            'customer_name' => $customerData['customer_name'],
+                            'customer_code' => $customerData['customer_code'],
+                            'customer_type' => $customerData['customer_type'] ?? 'Regular',
+                            'phone' => $locationData['phone'] ?? '',
+                            'email' => $locationData['email'] ?? '',
+                            'created_by' => session()->get('user_name') ?? 'System',
+                            'url' => base_url('/customers/view/' . $customerId)
+                        ]);
+                    }
+                    
+                    // Send notification: Customer Location Added
+                    if (function_exists('notify_customer_location_added')) {
+                        notify_customer_location_added([
+                            'id' => $locationId,
+                            'customer_name' => $customerData['customer_name'],
+                            'location_name' => $locationData['location_name'],
+                            'address' => $locationData['address']
+                        ]);
+                    }
+                    
                     return $this->response->setJSON([
                         'success' => true,
                         'message' => 'Customer and primary location created successfully',
@@ -599,6 +624,43 @@ class CustomerManagementController extends BaseController
                     'business_impact' => 'MEDIUM'
                 ]);
 
+                // Detect changes for notification
+                $changes = [];
+                foreach ($data as $key => $value) {
+                    if (isset($customer[$key]) && $customer[$key] != $value) {
+                        $changes[] = ucfirst(str_replace('_', ' ', $key)) . ": {$customer[$key]} → {$value}";
+                    }
+                }
+                
+                // Send notification: Customer Updated
+                helper('notification');
+                if (function_exists('notify_customer_updated')) {
+                    notify_customer_updated([
+                        'id' => $id,
+                        'customer_name' => $data['customer_name'],
+                        'customer_code' => $data['customer_code'],
+                        'changes' => implode(', ', $changes),
+                        'updated_by' => session()->get('user_name') ?? 'System',
+                        'url' => base_url('/customers/view/' . $id)
+                    ]);
+                }
+                
+                // Check for status change notification
+                if (isset($data['is_active']) && isset($customer['is_active']) && $data['is_active'] != $customer['is_active']) {
+                    if (function_exists('notify_customer_status_changed')) {
+                        notify_customer_status_changed([
+                            'id' => $id,
+                            'customer_code' => $data['customer_code'],
+                            'customer_name' => $data['customer_name'],
+                            'old_status' => $customer['is_active'] == 1 ? 'Active' : 'Inactive',
+                            'new_status' => $data['is_active'] == 1 ? 'Active' : 'Inactive',
+                            'reason' => 'Status updated from Customer Management',
+                            'changed_by' => session()->get('user_name') ?? 'System',
+                            'url' => base_url('/customers/view/' . $id)
+                        ]);
+                    }
+                }
+
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Customer updated successfully'
@@ -655,6 +717,9 @@ class CustomerManagementController extends BaseController
             $deleted = $this->customerModel->delete($id);
             
             if ($deleted) {
+                // Get customer data before delete for notification
+                $customer = $this->customerModel->find($id);
+                
                 // Activity Log: DELETE customer (with snapshot)
                 $this->logDelete('customers', (int)$id, $this->request->getVar() ? $this->request->getVar() : ['id' => (int)$id], [
                     'description' => 'Customer deleted from Customer Management',
@@ -664,6 +729,16 @@ class CustomerManagementController extends BaseController
                     'business_impact' => 'HIGH',
                     'is_critical' => 1
                 ]);
+
+                // Send notification: Customer Deleted
+                helper('notification');
+                if ($customer) {
+                    notify_customer_deleted([
+                        'id' => $id,
+                        'customer_name' => $customer['customer_name'] ?? '',
+                        'customer_code' => $customer['customer_code'] ?? ''
+                    ]);
+                }
 
                 return $this->response->setJSON([
                     'success' => true,
@@ -1499,6 +1574,19 @@ class CustomerManagementController extends BaseController
             if (!$id) {
                 return $this->response->setJSON(['success'=>false,'message'=>'Failed to create location']);
             }
+            
+            // Send notification: Customer Location Added
+            helper('notification');
+            $customer = $this->customerModel->find($data['customer_id']);
+            if ($customer) {
+                notify_customer_location_added([
+                    'id' => $id,
+                    'customer_name' => $customer['customer_name'],
+                    'location_name' => $data['location_name'],
+                    'address' => $data['address']
+                ]);
+            }
+            
             return $this->response->setJSON(['success'=>true,'message'=>'Location created','data'=>['id'=>$id]]);
         } catch (\Exception $e) {
             log_message('error', 'storeCustomerLocation error: '.$e->getMessage());
@@ -1581,6 +1669,9 @@ class CustomerManagementController extends BaseController
         ];
 
         try {
+            // Get location data before update
+            $location = $this->locationModel->find($id);
+            
             // Use direct database update for reliable location_code updates
             $builder = $this->db->table('customer_locations');
             $builder->where('id', (int)$id);
@@ -1589,6 +1680,19 @@ class CustomerManagementController extends BaseController
             if (!$ok) {
                 return $this->response->setJSON(['success'=>false,'message'=>'Failed to update location']);
             }
+            
+            // Send notification if location was changed
+            helper('notification');
+            if ($location) {
+                $customer = $this->customerModel->find($location['customer_id']);
+                notify_customer_location_added([
+                    'id' => $id,
+                    'customer_name' => $customer['customer_name'] ?? '',
+                    'location_name' => $data['location_name'],
+                    'address' => $data['address']
+                ]);
+            }
+            
             return $this->response->setJSON(['success'=>true,'message'=>'Location updated']);
         } catch (\Exception $e) {
             log_message('error', 'updateCustomerLocation error: '.$e->getMessage());

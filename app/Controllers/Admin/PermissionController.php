@@ -120,6 +120,18 @@ class PermissionController extends BaseController
                 'created_by' => session()->get('user_id') ?? 1
             ]);
 
+            // Send notification - permission created
+            if (function_exists('notify_permission_created')) {
+                notify_permission_created([
+                    'id' => $permissionId,
+                    'permission_name' => $permissionData['display_name'],
+                    'permission_code' => $permissionData['key_name'],
+                    'module_name' => $permissionData['module'],
+                    'created_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/admin/permissions')
+                ]);
+            }
+            
             return $this->response->setJSON([
                 'success' => true,
                 'message' => 'Permission created successfully',

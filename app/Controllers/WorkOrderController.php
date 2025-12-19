@@ -697,6 +697,36 @@ class WorkOrderController extends Controller
                     log_message('error', 'Failed to add status history for work order ' . $id);
                 }
                 
+                // Send notification
+                try {
+                    helper('notification');
+                    
+                    // Get WO details
+                    $db = \Config\Database::connect();
+                    $woQuery = $db->query('
+                        SELECT wo.wo_number, iu.no_unit, wos.status_name as old_status
+                        FROM work_orders wo
+                        LEFT JOIN inventory_unit iu ON wo.unit_id = iu.id_unit
+                        LEFT JOIN work_order_statuses wos ON wos.id = ?
+                        WHERE wo.id = ?
+                    ', [$fromStatusId, $id]);
+                    $woInfo = $woQuery->getRow();
+                    
+                    notify_workorder_status_changed([
+                        'id' => $id,
+                        'wo_number' => $woInfo ? $woInfo->wo_number : 'Unknown WO',
+                        'unit_code' => $woInfo ? $woInfo->no_unit : 'Unknown Unit',
+                        'old_status' => $woInfo ? $woInfo->old_status : 'Unknown',
+                        'new_status' => $statusData['status_name'],
+                        'updated_by' => session()->get('user_name') ?? 'System',
+                        'url' => base_url('/service/work-order-detail/' . $id)
+                    ]);
+                    
+                    log_message('info', "WorkOrder status updated: {$id} → {$status} - Notification sent");
+                } catch (\Exception $notifError) {
+                    log_message('error', 'Failed to send workorder status notification: ' . $notifError->getMessage());
+                }
+                
                 return $this->response->setJSON([
                     'success' => true, 
                     'message' => 'Status work order berhasil diubah'
@@ -1029,6 +1059,39 @@ class WorkOrderController extends Controller
                 
                 if ($db->transStatus() === false) {
                     throw new \Exception('Transaksi database gagal');
+                }
+                
+                // Send notification
+                try {
+                    helper('notification');
+                    
+                    // Get created WO details
+                    $woQuery = $db->query('
+                        SELECT wo.wo_number, iu.no_unit, wo.order_type, 
+                               p.priority_name, c.category_name, wo.complaint_description
+                        FROM work_orders wo
+                        LEFT JOIN inventory_unit iu ON wo.unit_id = iu.id_unit
+                        LEFT JOIN work_order_priorities p ON wo.priority_id = p.id
+                        LEFT JOIN work_order_categories c ON wo.category_id = c.id
+                        WHERE wo.id = ?
+                    ', [$result]);
+                    $woInfo = $woQuery->getRow();
+                    
+                    notify_workorder_created([
+                        'id' => $result,
+                        'wo_number' => $woNumber,
+                        'unit_code' => $woInfo ? $woInfo->no_unit : 'Unknown Unit',
+                        'order_type' => $woInfo ? $woInfo->order_type : 'Unknown',
+                        'priority' => $woInfo ? $woInfo->priority_name : 'Unknown',
+                        'category' => $woInfo ? $woInfo->category_name : 'Unknown',
+                        'complaint' => $woInfo ? $woInfo->complaint_description : 'N/A',
+                        'created_by' => session()->get('user_name') ?? 'System',
+                        'url' => base_url('/service/work-order-detail/' . $result)
+                    ]);
+                    
+                    log_message('info', "WorkOrder created: {$woNumber} - Notification sent");
+                } catch (\Exception $notifError) {
+                    log_message('error', 'Failed to send workorder creation notification: ' . $notifError->getMessage());
                 }
                 
                 return $this->response->setJSON([
@@ -1680,6 +1743,33 @@ class WorkOrderController extends Controller
             log_message('error', 'Error updating work order with TTR: ' . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Public wrapper for updateWithTTR with notification support
+     */
+    public function updateWorkOrderWithTTR($workOrderId, $data = [])
+    {
+        $result = $this->updateWithTTR($workOrderId, $data);
+        
+        if ($result) {
+            // Get work order details for notification
+            $workOrder = $this->workOrderModel->find($workOrderId);
+            
+            // Send notification - TTR updated
+            if (function_exists('notify_workorder_ttr_updated') && $workOrder) {
+                notify_workorder_ttr_updated([
+                    'id' => $workOrderId,
+                    'wo_number' => $workOrder['work_order_number'] ?? '',
+                    'unit_code' => $workOrder['unit_code'] ?? '',
+                    'ttr_hours' => $data['time_to_repair'] ?? $workOrder['time_to_repair'] ?? 0,
+                    'updated_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/service/work-orders/view/' . $workOrderId)
+                ]);
+            }
+        }
+        
+        return $result;
     }
 
     // Get Units for Dropdown
@@ -2803,6 +2893,25 @@ class WorkOrderController extends Controller
                 $errorMsg = $this->getMySQLError($db);
                 throw new \Exception('Transaksi gagal: ' . $errorMsg);
             }
+            
+            // Get work order details for notification
+            $workOrder = $db->table('work_orders')
+                ->where('id', $workOrderId)
+                ->get()
+                ->getRowArray();
+            
+            // Send notification - unit verification saved
+            if (function_exists('notify_unit_verification_saved') && $workOrder) {
+                notify_unit_verification_saved([
+                    'id' => $workOrderId,
+                    'wo_number' => $workOrder['work_order_number'] ?? '',
+                    'unit_code' => $workOrder['unit_code'] ?? '',
+                    'verification_status' => 'COMPLETED',
+                    'verified_by' => session('username') ?? session('user_id'),
+                    'verification_date' => date('Y-m-d H:i:s'),
+                    'url' => base_url('/service/work-orders/view/' . $workOrderId)
+                ]);
+            }
 
             return $this->response->setJSON([
                 'success' => true,
@@ -3055,6 +3164,24 @@ class WorkOrderController extends Controller
             if ($db->transStatus() === false) {
                 throw new \Exception('Transaction failed');
             }
+            
+            // Count spareparts used for notification
+            $sparepartCount = count($usedSpareparts) + count($additionalSpareparts);
+            
+            // Get work order details for notification
+            $workOrder = $this->workOrderModel->find($workOrderId);
+            
+            // Send notification - sparepart validation saved
+            if (function_exists('notify_sparepart_validation_saved') && $workOrder) {
+                notify_sparepart_validation_saved([
+                    'id' => $workOrderId,
+                    'wo_number' => $workOrder['work_order_number'] ?? '',
+                    'sparepart_count' => $sparepartCount,
+                    'validated_by' => session('username') ?? session('user_id'),
+                    'validation_date' => date('Y-m-d H:i:s'),
+                    'url' => base_url('/service/work-orders/view/' . $workOrderId)
+                ]);
+            }
 
             return $this->response->setJSON([
                 'success' => true,
@@ -3223,6 +3350,48 @@ class WorkOrderController extends Controller
 
             if ($db->transStatus() === false) {
                 throw new \Exception('Transaction failed');
+            }
+            
+            // Count total spareparts used for notification
+            $totalSparepartsUsed = 0;
+            $sparepartNames = [];
+            
+            if ($broughtSpareparts && is_array($broughtSpareparts)) {
+                foreach ($broughtSpareparts as $item) {
+                    if (isset($item['quantity_used']) && $item['quantity_used'] > 0) {
+                        $totalSparepartsUsed += intval($item['quantity_used']);
+                        if (!empty($item['sparepart_name'])) {
+                            $sparepartNames[] = $item['sparepart_name'];
+                        }
+                    }
+                }
+            }
+            
+            if ($additionalSpareparts && is_array($additionalSpareparts)) {
+                foreach ($additionalSpareparts as $item) {
+                    if (!empty($item['sparepart_id']) && $item['quantity_used'] > 0) {
+                        $totalSparepartsUsed += intval($item['quantity_used']);
+                        if (!empty($item['sparepart_name'])) {
+                            $sparepartNames[] = $item['sparepart_name'];
+                        }
+                    }
+                }
+            }
+            
+            // Get work order details for notification
+            $workOrder = $this->workOrderModel->find($workOrderId);
+            
+            // Send notification - sparepart used
+            if (function_exists('notify_sparepart_used') && $workOrder && !empty($sparepartNames)) {
+                notify_sparepart_used([
+                    'id' => $workOrderId,
+                    'wo_number' => $workOrder['work_order_number'] ?? '',
+                    'sparepart_name' => implode(', ', array_slice($sparepartNames, 0, 3)), // Max 3 names
+                    'quantity' => $totalSparepartsUsed,
+                    'unit_code' => $workOrder['unit_code'] ?? '',
+                    'used_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/service/work-orders/view/' . $workOrderId)
+                ]);
             }
 
             return $this->response->setJSON([
