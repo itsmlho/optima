@@ -122,8 +122,8 @@ $currentLang = service('request')->getLocale();
     <?= $this->renderSection('css') ?>
 </head>
 <body class="bg-light">
-    <!-- Toast Global (pojok kanan atas) -->
-    <div id="optima-toast-container" aria-live="polite" aria-atomic="true"></div>
+    <!-- Toast Container Bootstrap 5 (pojok kanan atas) -->
+    <div class="toast-container position-fixed top-0 end-0 p-3" id="optima-toast-container" style="z-index: 1090;"></div>
     <script>
         // Global function for mark all as read
         window.markAllAsRead = function() {
@@ -159,28 +159,80 @@ $currentLang = service('request')->getLocale();
             }
         };
         
-        // Global toast creator (Bootstrap toast style like notifications/index.php)
-        window.createOptimaToast = function({type='info', title='Info', message='', duration=5000} = {}) {
+        // Helper function untuk format waktu relatif (16 jam lalu, dll)
+        window.formatRelativeTime = function(timestamp) {
+            if (!timestamp) return 'Baru saja';
+            
+            try {
+                const now = new Date();
+                const notifTime = new Date(timestamp);
+                const diffMs = now - notifTime;
+                const diffSec = Math.floor(diffMs / 1000);
+                const diffMin = Math.floor(diffSec / 60);
+                const diffHour = Math.floor(diffMin / 60);
+                const diffDay = Math.floor(diffHour / 24);
+                
+                if (diffSec < 60) return 'Baru saja';
+                if (diffMin < 60) return `${diffMin} menit lalu`;
+                if (diffHour < 24) return `${diffHour} jam lalu`;
+                if (diffDay < 7) return `${diffDay} hari lalu`;
+                
+                // Lebih dari 7 hari, tampilkan tanggal
+                const day = String(notifTime.getDate()).padStart(2, '0');
+                const month = String(notifTime.getMonth() + 1).padStart(2, '0');
+                const year = notifTime.getFullYear();
+                const hours = String(notifTime.getHours()).padStart(2, '0');
+                const minutes = String(notifTime.getMinutes()).padStart(2, '0');
+                
+                return `${day}/${month}/${year} ${hours}:${minutes}`;
+            } catch (e) {
+                return 'Baru saja';
+            }
+        };
+        
+        // Global toast creator (Bootstrap 5 Toast with optional action button)
+        window.createOptimaToast = function({type='info', title='Info', message='', duration=5000, url=null, actionText='Lihat Detail', timestamp=null} = {}) {
             const color = (type==='success') ? 'success' : (type==='warning') ? 'warning' : (type==='error' || type==='danger') ? 'danger' : 'info';
             const icon = (type==='success') ? 'fas fa-check-circle' : (type==='warning') ? 'fas fa-exclamation-triangle' : (type==='error' || type==='danger') ? 'fas fa-times-circle' : 'fas fa-info-circle';
-            // Stack toasts: compute offset
-            const existing = document.querySelectorAll('.optima-bs-toast').length;
-            const topOffset = 20 + (existing * 84); // 84px per toast approx
+            const iconBg = (type==='success') ? 'text-success' : (type==='warning') ? 'text-warning' : (type==='error' || type==='danger') ? 'text-danger' : 'text-info';
+            
+            // Format waktu relatif
+            const timeText = window.formatRelativeTime(timestamp);
+            
             const el = document.createElement('div');
-            el.className = `toast optima-bs-toast align-items-center text-white bg-${color} border-0`;
+            el.className = `toast`;
             el.setAttribute('role','alert');
-            el.style.cssText = `position: fixed; top: ${topOffset}px; right: 20px; z-index: 1060;`;
+            el.setAttribute('aria-live','assertive');
+            el.setAttribute('aria-atomic','true');
+            
+            // Build toast body with optional action button
+            let bodyContent = `<div class="toast-body">${escapeHtml(message)}`;
+            if (url && url !== '#' && url !== '') {
+                bodyContent += `
+                    <div class="mt-2 pt-2 border-top">
+                        <button type="button" class="btn btn-primary btn-sm me-2" onclick="window.location.href='${escapeHtml(url)}'">
+                            <i class="fas fa-external-link-alt me-1"></i>${escapeHtml(actionText)}
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="toast">Tutup</button>
+                    </div>`;
+            }
+            bodyContent += `</div>`;
+            
             el.innerHTML = `
-                <div class="d-flex">
-                    <div class="toast-body">
-                        <i class="${icon} me-2"></i>
-                        <strong>${escapeHtml(title)}</strong><br>
-                        ${escapeHtml(message)}
-                    </div>
-                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                <div class="toast-header">
+                    <i class="${icon} ${iconBg} me-2"></i>
+                    <strong class="me-auto">${escapeHtml(title)}</strong>
+                    <small class="text-muted">${escapeHtml(timeText)}</small>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
                 </div>
+                ${bodyContent}
             `;
-            document.body.appendChild(el);
+            const container = document.getElementById('optima-toast-container');
+            if (container) {
+                container.appendChild(el);
+            } else {
+                document.body.appendChild(el);
+            }
             try {
                 if (window.bootstrap && bootstrap.Toast) {
                     const t = new bootstrap.Toast(el, { delay: duration });
@@ -198,7 +250,9 @@ $currentLang = service('request')->getLocale();
             }
         };
         function escapeHtml(str){ return String(str??'').replace(/[&<>"']/g,s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
-        // Backward compatibility
+        
+        // Backward compatibility & Helper functions
+        window.showToast = window.createOptimaToast; // Alias untuk kompatibilitas
         window.OptimaPro = window.OptimaPro || {};
         window.OptimaPro.showNotification = (msg,type='info') => createOptimaToast({type:type==='error'?'error':type, title:type.toUpperCase(), message:msg});
     </script>

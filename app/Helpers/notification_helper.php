@@ -563,6 +563,120 @@ if (!function_exists('notify_delivery_status_changed')) {
     }
 }
 
+if (!function_exists('notify_delivery_assigned')) {
+    /**
+     * Send notification when Delivery is assigned to driver
+     * 
+     * @param array $deliveryData Delivery data
+     * @return bool|array
+     */
+    function notify_delivery_assigned($deliveryData)
+    {
+        return send_notification('delivery_assigned', [
+            'module' => 'operational',
+            'id' => $deliveryData['id'] ?? null,
+            'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
+            'driver_name' => $deliveryData['driver_name'] ?? '',
+            'vehicle' => $deliveryData['vehicle'] ?? $deliveryData['no_unit'] ?? '',
+            'customer_name' => $deliveryData['customer_name'] ?? '',
+            'destination' => $deliveryData['destination'] ?? '',
+            'assigned_by' => $deliveryData['assigned_by'] ?? '',
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+if (!function_exists('notify_delivery_in_transit')) {
+    /**
+     * Send notification when Delivery is in transit
+     * 
+     * @param array $deliveryData Delivery data
+     * @return bool|array
+     */
+    function notify_delivery_in_transit($deliveryData)
+    {
+        return send_notification('delivery_in_transit', [
+            'module' => 'operational',
+            'id' => $deliveryData['id'] ?? null,
+            'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
+            'driver_name' => $deliveryData['driver_name'] ?? '',
+            'current_location' => $deliveryData['current_location'] ?? '',
+            'destination' => $deliveryData['destination'] ?? '',
+            'eta' => $deliveryData['eta'] ?? '',
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+if (!function_exists('notify_delivery_arrived')) {
+    /**
+     * Send notification when Delivery arrives at destination
+     * 
+     * @param array $deliveryData Delivery data
+     * @return bool|array
+     */
+    function notify_delivery_arrived($deliveryData)
+    {
+        return send_notification('delivery_arrived', [
+            'module' => 'operational',
+            'id' => $deliveryData['id'] ?? null,
+            'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
+            'customer_name' => $deliveryData['customer_name'] ?? '',
+            'arrival_time' => $deliveryData['arrival_time'] ?? date('Y-m-d H:i:s'),
+            'driver_name' => $deliveryData['driver_name'] ?? '',
+            'location' => $deliveryData['location'] ?? '',
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+if (!function_exists('notify_delivery_completed')) {
+    /**
+     * Send notification when Delivery is completed
+     * 
+     * @param array $deliveryData Delivery data
+     * @return bool|array
+     */
+    function notify_delivery_completed($deliveryData)
+    {
+        return send_notification('delivery_completed', [
+            'module' => 'operational',
+            'id' => $deliveryData['id'] ?? null,
+            'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
+            'customer_name' => $deliveryData['customer_name'] ?? '',
+            'completed_time' => $deliveryData['completed_time'] ?? date('Y-m-d H:i:s'),
+            'signature' => $deliveryData['signature'] ?? 'Yes',
+            'notes' => $deliveryData['notes'] ?? '',
+            'completed_by' => $deliveryData['completed_by'] ?? '',
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+if (!function_exists('notify_delivery_delayed')) {
+    /**
+     * Send notification when Delivery is delayed (CRITICAL ALERT)
+     * 
+     * @param array $deliveryData Delivery data
+     * @return bool|array
+     */
+    function notify_delivery_delayed($deliveryData)
+    {
+        return send_notification('delivery_delayed', [
+            'module' => 'operational',
+            'id' => $deliveryData['id'] ?? null,
+            'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
+            'customer_name' => $deliveryData['customer_name'] ?? '',
+            'scheduled_time' => $deliveryData['scheduled_time'] ?? '',
+            'current_time' => date('Y-m-d H:i:s'),
+            'delay_reason' => $deliveryData['delay_reason'] ?? 'Unknown',
+            'estimated_arrival' => $deliveryData['estimated_arrival'] ?? '',
+            'driver_name' => $deliveryData['driver_name'] ?? '',
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
 if (!function_exists('notify_workorder_created')) {
     /**
      * Send notification when Work Order is created
@@ -627,6 +741,1292 @@ if (!function_exists('notify_po_verification_updated')) {
             'verification_date' => $verificationData['verification_date'] ?? date('Y-m-d H:i:s'),
             'notes' => $verificationData['notes'] ?? $verificationData['catatan'] ?? '',
             'url' => $verificationData['url'] ?? base_url('/purchasing/po-verification')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 1 CRITICAL PRIORITY - MISSING IMPLEMENTATIONS
+// ============================================================================
+
+if (!function_exists('notify_invoice_overdue')) {
+    /**
+     * Send notification when Invoice is OVERDUE (CRITICAL ALERT)
+     * 
+     * @param array $invoiceData Invoice data
+     * @return bool|array
+     */
+    function notify_invoice_overdue($invoiceData)
+    {
+        return send_notification('invoice_overdue', [
+            'module' => 'finance',
+            'id' => $invoiceData['id'] ?? null,
+            'invoice_number' => $invoiceData['invoice_number'] ?? $invoiceData['nomor_invoice'] ?? '',
+            'customer_name' => $invoiceData['customer_name'] ?? '',
+            'amount' => $invoiceData['amount'] ?? $invoiceData['total_amount'] ?? 0,
+            'due_date' => $invoiceData['due_date'] ?? $invoiceData['tanggal_jatuh_tempo'] ?? '',
+            'days_overdue' => $invoiceData['days_overdue'] ?? 0,
+            'url' => $invoiceData['url'] ?? base_url('/finance/invoices')
+        ]);
+    }
+}
+
+if (!function_exists('notify_invoice_paid')) {
+    /**
+     * Send notification when Invoice is paid
+     * 
+     * @param array $invoiceData Invoice data
+     * @return bool|array
+     */
+    function notify_invoice_paid($invoiceData)
+    {
+        return send_notification('invoice_paid', [
+            'module' => 'finance',
+            'id' => $invoiceData['id'] ?? null,
+            'invoice_number' => $invoiceData['invoice_number'] ?? $invoiceData['nomor_invoice'] ?? '',
+            'customer_name' => $invoiceData['customer_name'] ?? '',
+            'amount' => $invoiceData['amount'] ?? $invoiceData['total_amount'] ?? 0,
+            'payment_date' => $invoiceData['payment_date'] ?? $invoiceData['tanggal_bayar'] ?? '',
+            'payment_method' => $invoiceData['payment_method'] ?? '',
+            'url' => $invoiceData['url'] ?? base_url('/finance/invoices')
+        ]);
+    }
+}
+
+if (!function_exists('notify_invoice_sent')) {
+    /**
+     * Send notification when Invoice is sent to customer
+     * 
+     * @param array $invoiceData Invoice data
+     * @return bool|array
+     */
+    function notify_invoice_sent($invoiceData)
+    {
+        return send_notification('invoice_sent', [
+            'module' => 'finance',
+            'id' => $invoiceData['id'] ?? null,
+            'invoice_number' => $invoiceData['invoice_number'] ?? $invoiceData['nomor_invoice'] ?? '',
+            'customer_name' => $invoiceData['customer_name'] ?? '',
+            'amount' => $invoiceData['amount'] ?? $invoiceData['total_amount'] ?? 0,
+            'sent_date' => $invoiceData['sent_date'] ?? date('Y-m-d H:i:s'),
+            'sent_by' => $invoiceData['sent_by'] ?? '',
+            'url' => $invoiceData['url'] ?? base_url('/finance/invoices')
+        ]);
+    }
+}
+
+if (!function_exists('notify_sparepart_low_stock')) {
+    /**
+     * Send notification when Sparepart stock is LOW (CRITICAL ALERT)
+     * 
+     * @param array $sparepartData Sparepart data
+     * @return bool|array
+     */
+    function notify_sparepart_low_stock($sparepartData)
+    {
+        return send_notification('sparepart_low_stock', [
+            'module' => 'inventory',
+            'id' => $sparepartData['id'] ?? null,
+            'nama_sparepart' => $sparepartData['nama_sparepart'] ?? $sparepartData['name'] ?? '',
+            'kode_sparepart' => $sparepartData['kode_sparepart'] ?? $sparepartData['code'] ?? '',
+            'qty' => $sparepartData['qty'] ?? $sparepartData['stock'] ?? 0,
+            'minimum_stock' => $sparepartData['minimum_stock'] ?? $sparepartData['min_stock'] ?? 0,
+            'unit' => $sparepartData['unit'] ?? $sparepartData['satuan'] ?? '',
+            'location' => $sparepartData['location'] ?? $sparepartData['lokasi'] ?? '',
+            'url' => $sparepartData['url'] ?? base_url('/warehouse/inventory/invent_sparepart')
+        ]);
+    }
+}
+
+if (!function_exists('notify_sparepart_out_of_stock')) {
+    /**
+     * Send notification when Sparepart is OUT OF STOCK (CRITICAL ALERT)
+     * 
+     * @param array $sparepartData Sparepart data
+     * @return bool|array
+     */
+    function notify_sparepart_out_of_stock($sparepartData)
+    {
+        return send_notification('sparepart_out_of_stock', [
+            'module' => 'inventory',
+            'id' => $sparepartData['id'] ?? null,
+            'nama_sparepart' => $sparepartData['nama_sparepart'] ?? $sparepartData['name'] ?? '',
+            'kode_sparepart' => $sparepartData['kode_sparepart'] ?? $sparepartData['code'] ?? '',
+            'last_used_date' => $sparepartData['last_used_date'] ?? '',
+            'location' => $sparepartData['location'] ?? $sparepartData['lokasi'] ?? '',
+            'url' => $sparepartData['url'] ?? base_url('/warehouse/inventory/invent_sparepart')
+        ]);
+    }
+}
+
+if (!function_exists('notify_sparepart_added')) {
+    /**
+     * Send notification when Sparepart is added
+     * 
+     * @param array $sparepartData Sparepart data
+     * @return bool|array
+     */
+    function notify_sparepart_added($sparepartData)
+    {
+        return send_notification('sparepart_added', [
+            'module' => 'inventory',
+            'id' => $sparepartData['id'] ?? null,
+            'nama_sparepart' => $sparepartData['nama_sparepart'] ?? $sparepartData['name'] ?? '',
+            'kode_sparepart' => $sparepartData['kode_sparepart'] ?? $sparepartData['code'] ?? '',
+            'qty' => $sparepartData['qty'] ?? $sparepartData['stock'] ?? 0,
+            'unit' => $sparepartData['unit'] ?? $sparepartData['satuan'] ?? '',
+            'supplier' => $sparepartData['supplier'] ?? '',
+            'added_by' => $sparepartData['added_by'] ?? '',
+            'url' => $sparepartData['url'] ?? base_url('/warehouse/inventory/invent_sparepart')
+        ]);
+    }
+}
+
+if (!function_exists('notify_pmps_due_soon')) {
+    /**
+     * Send notification when PMPS is due soon (CRITICAL ALERT)
+     * 
+     * @param array $pmpsData PMPS data
+     * @return bool|array
+     */
+    function notify_pmps_due_soon($pmpsData)
+    {
+        return send_notification('pmps_due_soon', [
+            'module' => 'maintenance',
+            'id' => $pmpsData['id'] ?? null,
+            'unit_no' => $pmpsData['unit_no'] ?? $pmpsData['no_unit'] ?? '',
+            'unit_model' => $pmpsData['unit_model'] ?? $pmpsData['model'] ?? '',
+            'due_date' => $pmpsData['due_date'] ?? $pmpsData['tanggal_jatuh_tempo'] ?? '',
+            'days' => $pmpsData['days'] ?? $pmpsData['days_until_due'] ?? 0,
+            'current_hours' => $pmpsData['current_hours'] ?? $pmpsData['jam_operasional'] ?? 0,
+            'service_type' => $pmpsData['service_type'] ?? $pmpsData['tipe_service'] ?? '',
+            'url' => $pmpsData['url'] ?? base_url('/service/pmps')
+        ]);
+    }
+}
+
+if (!function_exists('notify_pmps_overdue')) {
+    /**
+     * Send notification when PMPS is OVERDUE (CRITICAL ALERT)
+     * 
+     * @param array $pmpsData PMPS data
+     * @return bool|array
+     */
+    function notify_pmps_overdue($pmpsData)
+    {
+        return send_notification('pmps_overdue', [
+            'module' => 'maintenance',
+            'id' => $pmpsData['id'] ?? null,
+            'unit_no' => $pmpsData['unit_no'] ?? $pmpsData['no_unit'] ?? '',
+            'unit_model' => $pmpsData['unit_model'] ?? $pmpsData['model'] ?? '',
+            'due_date' => $pmpsData['due_date'] ?? $pmpsData['tanggal_jatuh_tempo'] ?? '',
+            'days' => $pmpsData['days'] ?? $pmpsData['days_overdue'] ?? 0,
+            'current_hours' => $pmpsData['current_hours'] ?? $pmpsData['jam_operasional'] ?? 0,
+            'service_type' => $pmpsData['service_type'] ?? $pmpsData['tipe_service'] ?? '',
+            'url' => $pmpsData['url'] ?? base_url('/service/pmps')
+        ]);
+    }
+}
+
+if (!function_exists('notify_pmps_completed')) {
+    /**
+     * Send notification when PMPS is completed
+     * 
+     * @param array $pmpsData PMPS data
+     * @return bool|array
+     */
+    function notify_pmps_completed($pmpsData)
+    {
+        return send_notification('pmps_completed', [
+            'module' => 'maintenance',
+            'id' => $pmpsData['id'] ?? null,
+            'unit_no' => $pmpsData['unit_no'] ?? $pmpsData['no_unit'] ?? '',
+            'unit_model' => $pmpsData['unit_model'] ?? $pmpsData['model'] ?? '',
+            'completion_date' => $pmpsData['completion_date'] ?? date('Y-m-d H:i:s'),
+            'service_type' => $pmpsData['service_type'] ?? $pmpsData['tipe_service'] ?? '',
+            'mechanic' => $pmpsData['mechanic'] ?? $pmpsData['mekanik'] ?? '',
+            'next_service_date' => $pmpsData['next_service_date'] ?? '',
+            'url' => $pmpsData['url'] ?? base_url('/service/pmps')
+        ]);
+    }
+}
+
+if (!function_exists('notify_customer_contract_expired')) {
+    /**
+     * Send notification when Customer Contract is expired/expiring (WARNING)
+     * 
+     * @param array $contractData Contract data
+     * @return bool|array
+     */
+    function notify_customer_contract_expired($contractData)
+    {
+        return send_notification('customer_contract_expired', [
+            'module' => 'contract',
+            'id' => $contractData['id'] ?? null,
+            'contract_number' => $contractData['contract_number'] ?? $contractData['no_kontrak'] ?? '',
+            'customer_name' => $contractData['customer_name'] ?? '',
+            'end_date' => $contractData['end_date'] ?? $contractData['tanggal_selesai'] ?? '',
+            'days' => $contractData['days'] ?? $contractData['days_until_expired'] ?? 0,
+            'contract_value' => $contractData['contract_value'] ?? $contractData['nilai_total'] ?? 0,
+            'url' => $contractData['url'] ?? base_url('/marketing/customer-management')
+        ]);
+    }
+}
+
+if (!function_exists('notify_inventory_unit_low_stock')) {
+    /**
+     * Send notification when Inventory Unit stock is low (CRITICAL ALERT)
+     * 
+     * @param array $unitData Unit data
+     * @return bool|array
+     */
+    function notify_inventory_unit_low_stock($unitData)
+    {
+        return send_notification('inventory_unit_low_stock', [
+            'module' => 'inventory',
+            'id' => $unitData['id'] ?? null,
+            'tipe' => $unitData['tipe'] ?? $unitData['type'] ?? $unitData['model'] ?? '',
+            'count' => $unitData['count'] ?? $unitData['available_count'] ?? 0,
+            'minimum_stock' => $unitData['minimum_stock'] ?? $unitData['min_stock'] ?? 0,
+            'status' => $unitData['status'] ?? 'Available',
+            'category' => $unitData['category'] ?? $unitData['kategori'] ?? '',
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_attachment_broken')) {
+    /**
+     * Send notification when Attachment/Battery/Charger is BROKEN (CRITICAL ALERT)
+     * 
+     * @param array $attachmentData Attachment data
+     * @return bool|array
+     */
+    function notify_attachment_broken($attachmentData)
+    {
+        return send_notification('attachment_broken', [
+            'module' => 'inventory',
+            'id' => $attachmentData['id'] ?? null,
+            'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
+            'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
+            'no_unit' => $attachmentData['no_unit'] ?? $attachmentData['unit_code'] ?? '',
+            'damage_description' => $attachmentData['damage_description'] ?? $attachmentData['keterangan'] ?? '',
+            'reported_by' => $attachmentData['reported_by'] ?? '',
+            'report_date' => $attachmentData['report_date'] ?? date('Y-m-d H:i:s'),
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 2 HIGH PRIORITY - PURCHASE ORDER WORKFLOW (8 events)
+// ============================================================================
+
+if (!function_exists('notify_po_approved')) {
+    /**
+     * Send notification when Purchase Order is approved
+     * 
+     * @param array $poData PO data
+     * @return bool|array
+     */
+    function notify_po_approved($poData)
+    {
+        return send_notification('po_approved', [
+            'module' => 'purchasing',
+            'id' => $poData['id'] ?? null,
+            'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
+            'supplier_name' => $poData['supplier_name'] ?? '',
+            'total_amount' => $poData['total_amount'] ?? $poData['nilai_total'] ?? 0,
+            'approved_by' => $poData['approved_by'] ?? '',
+            'approval_date' => $poData['approval_date'] ?? date('Y-m-d H:i:s'),
+            'url' => $poData['url'] ?? base_url('/purchasing/po-unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_po_rejected')) {
+    /**
+     * Send notification when Purchase Order is rejected
+     * 
+     * @param array $poData PO data
+     * @return bool|array
+     */
+    function notify_po_rejected($poData)
+    {
+        return send_notification('po_rejected', [
+            'module' => 'purchasing',
+            'id' => $poData['id'] ?? null,
+            'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
+            'supplier_name' => $poData['supplier_name'] ?? '',
+            'alasan' => $poData['alasan'] ?? $poData['rejection_reason'] ?? '',
+            'rejected_by' => $poData['rejected_by'] ?? '',
+            'rejection_date' => $poData['rejection_date'] ?? date('Y-m-d H:i:s'),
+            'url' => $poData['url'] ?? base_url('/purchasing/po-unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_po_received')) {
+    /**
+     * Send notification when Purchase Order goods are received
+     * 
+     * @param array $poData PO data
+     * @return bool|array
+     */
+    function notify_po_received($poData)
+    {
+        return send_notification('po_received', [
+            'module' => 'purchasing',
+            'id' => $poData['id'] ?? null,
+            'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
+            'supplier_name' => $poData['supplier_name'] ?? '',
+            'received_date' => $poData['received_date'] ?? date('Y-m-d H:i:s'),
+            'received_by' => $poData['received_by'] ?? '',
+            'items_received' => $poData['items_received'] ?? 0,
+            'url' => $poData['url'] ?? base_url('/warehouse/purchase-orders')
+        ]);
+    }
+}
+
+if (!function_exists('notify_po_verified')) {
+    /**
+     * Send notification when Purchase Order is verified
+     * 
+     * @param array $poData PO data
+     * @return bool|array
+     */
+    function notify_po_verified($poData)
+    {
+        return send_notification('po_verified', [
+            'module' => 'purchasing',
+            'id' => $poData['id'] ?? null,
+            'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
+            'supplier_name' => $poData['supplier_name'] ?? '',
+            'verified_by' => $poData['verified_by'] ?? '',
+            'verification_date' => $poData['verification_date'] ?? date('Y-m-d H:i:s'),
+            'url' => $poData['url'] ?? base_url('/purchasing/po-unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_po_unit_created')) {
+    /**
+     * Send notification when PO Unit is created
+     * 
+     * @param array $poData PO data
+     * @return bool|array
+     */
+    function notify_po_unit_created($poData)
+    {
+        return send_notification('po_unit_created', [
+            'module' => 'purchasing',
+            'id' => $poData['id'] ?? null,
+            'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
+            'supplier_name' => $poData['supplier_name'] ?? '',
+            'unit_type' => $poData['unit_type'] ?? $poData['tipe_unit'] ?? '',
+            'quantity' => $poData['quantity'] ?? $poData['qty'] ?? 0,
+            'total_amount' => $poData['total_amount'] ?? $poData['nilai_total'] ?? 0,
+            'created_by' => $poData['created_by'] ?? '',
+            'url' => $poData['url'] ?? base_url('/purchasing/po-unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_po_attachment_created')) {
+    /**
+     * Send notification when PO Attachment is created
+     * 
+     * @param array $poData PO data
+     * @return bool|array
+     */
+    function notify_po_attachment_created($poData)
+    {
+        return send_notification('po_attachment_created', [
+            'module' => 'purchasing',
+            'id' => $poData['id'] ?? null,
+            'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
+            'supplier_name' => $poData['supplier_name'] ?? '',
+            'attachment_type' => $poData['attachment_type'] ?? $poData['tipe_attachment'] ?? '',
+            'quantity' => $poData['quantity'] ?? $poData['qty'] ?? 0,
+            'total_amount' => $poData['total_amount'] ?? $poData['nilai_total'] ?? 0,
+            'created_by' => $poData['created_by'] ?? '',
+            'url' => $poData['url'] ?? base_url('/purchasing/po-attachment')
+        ]);
+    }
+}
+
+if (!function_exists('notify_po_sparepart_created')) {
+    /**
+     * Send notification when PO Sparepart is created
+     * 
+     * @param array $poData PO data
+     * @return bool|array
+     */
+    function notify_po_sparepart_created($poData)
+    {
+        return send_notification('po_sparepart_created', [
+            'module' => 'purchasing',
+            'id' => $poData['id'] ?? null,
+            'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
+            'supplier_name' => $poData['supplier_name'] ?? '',
+            'items_count' => $poData['items_count'] ?? 0,
+            'total_amount' => $poData['total_amount'] ?? $poData['nilai_total'] ?? 0,
+            'created_by' => $poData['created_by'] ?? '',
+            'url' => $poData['url'] ?? base_url('/purchasing/po-sparepart')
+        ]);
+    }
+}
+
+if (!function_exists('notify_purchase_order_created')) {
+    /**
+     * Send notification when generic Purchase Order is created
+     * 
+     * @param array $poData PO data
+     * @return bool|array
+     */
+    function notify_purchase_order_created($poData)
+    {
+        return send_notification('purchase_order_created', [
+            'module' => 'purchasing',
+            'id' => $poData['id'] ?? null,
+            'po_number' => $poData['po_number'] ?? $poData['nomor_po'] ?? '',
+            'vendor' => $poData['vendor'] ?? $poData['supplier_name'] ?? '',
+            'amount' => $poData['amount'] ?? $poData['total_amount'] ?? 0,
+            'created_by' => $poData['created_by'] ?? '',
+            'url' => $poData['url'] ?? base_url('/purchasing/po')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 2 HIGH PRIORITY - DI WORKFLOW (5 events)
+// ============================================================================
+
+if (!function_exists('notify_di_submitted')) {
+    /**
+     * Send notification when DI is submitted
+     * 
+     * @param array $diData DI data
+     * @return bool|array
+     */
+    function notify_di_submitted($diData)
+    {
+        return send_notification('di_submitted', [
+            'module' => 'operational',
+            'id' => $diData['id'] ?? null,
+            'nomor_di' => $diData['nomor_di'] ?? '',
+            'pelanggan' => $diData['pelanggan'] ?? $diData['customer'] ?? '',
+            'lokasi' => $diData['lokasi'] ?? $diData['location'] ?? '',
+            'jenis_perintah' => $diData['jenis_perintah'] ?? '',
+            'submitted_by' => $diData['submitted_by'] ?? '',
+            'url' => $diData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+if (!function_exists('notify_di_approved')) {
+    /**
+     * Send notification when DI is approved
+     * 
+     * @param array $diData DI data
+     * @return bool|array
+     */
+    function notify_di_approved($diData)
+    {
+        return send_notification('di_approved', [
+            'module' => 'operational',
+            'id' => $diData['id'] ?? null,
+            'nomor_di' => $diData['nomor_di'] ?? '',
+            'customer' => $diData['customer'] ?? '',
+            'approved_by' => $diData['approved_by'] ?? '',
+            'approval_date' => $diData['approval_date'] ?? date('Y-m-d H:i:s'),
+            'url' => $diData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+if (!function_exists('notify_di_in_progress')) {
+    /**
+     * Send notification when DI is in progress
+     * 
+     * @param array $diData DI data
+     * @return bool|array
+     */
+    function notify_di_in_progress($diData)
+    {
+        return send_notification('di_in_progress', [
+            'module' => 'operational',
+            'id' => $diData['id'] ?? null,
+            'nomor_di' => $diData['nomor_di'] ?? '',
+            'customer' => $diData['customer'] ?? '',
+            'driver_name' => $diData['driver_name'] ?? '',
+            'current_status' => $diData['current_status'] ?? 'In Progress',
+            'url' => $diData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+if (!function_exists('notify_di_delivered')) {
+    /**
+     * Send notification when DI is delivered/completed
+     * 
+     * @param array $diData DI data
+     * @return bool|array
+     */
+    function notify_di_delivered($diData)
+    {
+        return send_notification('di_delivered', [
+            'module' => 'operational',
+            'id' => $diData['id'] ?? null,
+            'nomor_di' => $diData['nomor_di'] ?? '',
+            'customer' => $diData['customer'] ?? '',
+            'delivery_date' => $diData['delivery_date'] ?? date('Y-m-d H:i:s'),
+            'driver_name' => $diData['driver_name'] ?? '',
+            'url' => $diData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+if (!function_exists('notify_di_cancelled')) {
+    /**
+     * Send notification when DI is cancelled
+     * 
+     * @param array $diData DI data
+     * @return bool|array
+     */
+    function notify_di_cancelled($diData)
+    {
+        return send_notification('di_cancelled', [
+            'module' => 'operational',
+            'id' => $diData['id'] ?? null,
+            'nomor_di' => $diData['nomor_di'] ?? '',
+            'customer' => $diData['customer'] ?? '',
+            'alasan' => $diData['alasan'] ?? $diData['cancellation_reason'] ?? '',
+            'cancelled_by' => $diData['cancelled_by'] ?? '',
+            'url' => $diData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 2 HIGH PRIORITY - WORK ORDER EXTENDED (4 events)
+// ============================================================================
+
+if (!function_exists('notify_work_order_assigned')) {
+    /**
+     * Send notification when Work Order is assigned to mechanic
+     * 
+     * @param array $woData Work Order data
+     * @return bool|array
+     */
+    function notify_work_order_assigned($woData)
+    {
+        return send_notification('work_order_assigned', [
+            'module' => 'work_order',
+            'id' => $woData['id'] ?? null,
+            'nomor_wo' => $woData['nomor_wo'] ?? $woData['wo_number'] ?? '',
+            'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'mechanic_name' => $woData['mechanic_name'] ?? $woData['mekanik'] ?? '',
+            'priority' => $woData['priority'] ?? '',
+            'assigned_by' => $woData['assigned_by'] ?? '',
+            'url' => $woData['url'] ?? base_url('/service/work-orders')
+        ]);
+    }
+}
+
+if (!function_exists('notify_work_order_in_progress')) {
+    /**
+     * Send notification when Work Order is in progress
+     * 
+     * @param array $woData Work Order data
+     * @return bool|array
+     */
+    function notify_work_order_in_progress($woData)
+    {
+        return send_notification('work_order_in_progress', [
+            'module' => 'work_order',
+            'id' => $woData['id'] ?? null,
+            'nomor_wo' => $woData['nomor_wo'] ?? $woData['wo_number'] ?? '',
+            'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'mechanic' => $woData['mechanic'] ?? $woData['mekanik'] ?? '',
+            'progress' => $woData['progress'] ?? 0,
+            'url' => $woData['url'] ?? base_url('/service/work-orders')
+        ]);
+    }
+}
+
+if (!function_exists('notify_work_order_completed')) {
+    /**
+     * Send notification when Work Order is completed
+     * 
+     * @param array $woData Work Order data
+     * @return bool|array
+     */
+    function notify_work_order_completed($woData)
+    {
+        return send_notification('work_order_completed', [
+            'module' => 'work_order',
+            'id' => $woData['id'] ?? null,
+            'nomor_wo' => $woData['nomor_wo'] ?? $woData['wo_number'] ?? '',
+            'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'completion_date' => $woData['completion_date'] ?? date('Y-m-d H:i:s'),
+            'mechanic' => $woData['mechanic'] ?? $woData['mekanik'] ?? '',
+            'url' => $woData['url'] ?? base_url('/service/work-orders')
+        ]);
+    }
+}
+
+if (!function_exists('notify_work_order_cancelled')) {
+    /**
+     * Send notification when Work Order is cancelled
+     * 
+     * @param array $woData Work Order data
+     * @return bool|array
+     */
+    function notify_work_order_cancelled($woData)
+    {
+        return send_notification('work_order_cancelled', [
+            'module' => 'work_order',
+            'id' => $woData['id'] ?? null,
+            'nomor_wo' => $woData['nomor_wo'] ?? $woData['wo_number'] ?? '',
+            'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'cancellation_reason' => $woData['cancellation_reason'] ?? $woData['alasan'] ?? '',
+            'cancelled_by' => $woData['cancelled_by'] ?? '',
+            'url' => $woData['url'] ?? base_url('/service/work-orders')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 3 MEDIUM PRIORITY - INVENTORY UNIT (6 events)
+// ============================================================================
+
+if (!function_exists('notify_inventory_unit_added')) {
+    /**
+     * Send notification when Inventory Unit is added
+     * 
+     * @param array $unitData Unit data
+     * @return bool|array
+     */
+    function notify_inventory_unit_added($unitData)
+    {
+        return send_notification('inventory_unit_added', [
+            'module' => 'inventory',
+            'id' => $unitData['id'] ?? null,
+            'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
+            'model' => $unitData['model'] ?? $unitData['tipe'] ?? '',
+            'serial_number' => $unitData['serial_number'] ?? '',
+            'status' => $unitData['status'] ?? 'Available',
+            'added_by' => $unitData['added_by'] ?? '',
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_inventory_unit_status_changed')) {
+    /**
+     * Send notification when Inventory Unit status changes
+     * 
+     * @param array $unitData Unit data
+     * @return bool|array
+     */
+    function notify_inventory_unit_status_changed($unitData)
+    {
+        return send_notification('inventory_unit_status_changed', [
+            'module' => 'inventory',
+            'id' => $unitData['id'] ?? null,
+            'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
+            'old_status' => $unitData['old_status'] ?? '',
+            'new_status' => $unitData['new_status'] ?? $unitData['status'] ?? '',
+            'changed_by' => $unitData['changed_by'] ?? '',
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_inventory_unit_rental_active')) {
+    /**
+     * Send notification when Inventory Unit rental becomes active
+     * 
+     * @param array $unitData Unit data
+     * @return bool|array
+     */
+    function notify_inventory_unit_rental_active($unitData)
+    {
+        return send_notification('inventory_unit_rental_active', [
+            'module' => 'inventory',
+            'id' => $unitData['id'] ?? null,
+            'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
+            'customer' => $unitData['customer'] ?? $unitData['customer_name'] ?? '',
+            'rental_start_date' => $unitData['rental_start_date'] ?? date('Y-m-d'),
+            'rental_duration' => $unitData['rental_duration'] ?? '',
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_inventory_unit_returned')) {
+    /**
+     * Send notification when Inventory Unit is returned from rental
+     * 
+     * @param array $unitData Unit data
+     * @return bool|array
+     */
+    function notify_inventory_unit_returned($unitData)
+    {
+        return send_notification('inventory_unit_returned', [
+            'module' => 'inventory',
+            'id' => $unitData['id'] ?? null,
+            'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
+            'customer' => $unitData['customer'] ?? $unitData['customer_name'] ?? '',
+            'return_date' => $unitData['return_date'] ?? date('Y-m-d H:i:s'),
+            'condition' => $unitData['condition'] ?? 'Good',
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+        ]);
+    }
+}
+
+if (!function_exists('notify_inventory_unit_maintenance')) {
+    /**
+     * Send notification when Inventory Unit enters maintenance
+     * 
+     * @param array $unitData Unit data
+     * @return bool|array
+     */
+    function notify_inventory_unit_maintenance($unitData)
+    {
+        return send_notification('inventory_unit_maintenance', [
+            'module' => 'inventory',
+            'id' => $unitData['id'] ?? null,
+            'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
+            'alasan' => $unitData['alasan'] ?? $unitData['maintenance_reason'] ?? '',
+            'scheduled_date' => $unitData['scheduled_date'] ?? date('Y-m-d'),
+            'estimated_completion' => $unitData['estimated_completion'] ?? '',
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 3 MEDIUM PRIORITY - ATTACHMENT MANAGEMENT (5 events)
+// ============================================================================
+
+if (!function_exists('notify_attachment_added')) {
+    /**
+     * Send notification when Attachment/Battery/Charger is added
+     * 
+     * @param array $attachmentData Attachment data
+     * @return bool|array
+     */
+    function notify_attachment_added($attachmentData)
+    {
+        return send_notification('attachment_added', [
+            'module' => 'inventory',
+            'id' => $attachmentData['id'] ?? null,
+            'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
+            'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
+            'brand' => $attachmentData['brand'] ?? $attachmentData['merk'] ?? '',
+            'status' => $attachmentData['status'] ?? 'Available',
+            'added_by' => $attachmentData['added_by'] ?? '',
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
+        ]);
+    }
+}
+
+if (!function_exists('notify_attachment_attached')) {
+    /**
+     * Send notification when Attachment is attached to unit
+     * 
+     * @param array $attachmentData Attachment data
+     * @return bool|array
+     */
+    function notify_attachment_attached($attachmentData)
+    {
+        return send_notification('attachment_attached', [
+            'module' => 'inventory',
+            'id' => $attachmentData['id'] ?? null,
+            'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
+            'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
+            'no_unit' => $attachmentData['no_unit'] ?? $attachmentData['unit_code'] ?? '',
+            'attached_by' => $attachmentData['attached_by'] ?? '',
+            'attachment_date' => $attachmentData['attachment_date'] ?? date('Y-m-d H:i:s'),
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
+        ]);
+    }
+}
+
+if (!function_exists('notify_attachment_detached')) {
+    /**
+     * Send notification when Attachment is detached from unit
+     * 
+     * @param array $attachmentData Attachment data
+     * @return bool|array
+     */
+    function notify_attachment_detached($attachmentData)
+    {
+        return send_notification('attachment_detached', [
+            'module' => 'inventory',
+            'id' => $attachmentData['id'] ?? null,
+            'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
+            'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
+            'no_unit' => $attachmentData['no_unit'] ?? $attachmentData['unit_code'] ?? '',
+            'detached_by' => $attachmentData['detached_by'] ?? '',
+            'reason' => $attachmentData['reason'] ?? '',
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
+        ]);
+    }
+}
+
+if (!function_exists('notify_attachment_swapped')) {
+    /**
+     * Send notification when Attachment is swapped between units
+     * 
+     * @param array $attachmentData Attachment data
+     * @return bool|array
+     */
+    function notify_attachment_swapped($attachmentData)
+    {
+        return send_notification('attachment_swapped', [
+            'module' => 'inventory',
+            'id' => $attachmentData['id'] ?? null,
+            'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
+            'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
+            'old_unit' => $attachmentData['old_unit'] ?? $attachmentData['from_unit'] ?? '',
+            'new_unit' => $attachmentData['new_unit'] ?? $attachmentData['to_unit'] ?? '',
+            'swapped_by' => $attachmentData['swapped_by'] ?? '',
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
+        ]);
+    }
+}
+
+if (!function_exists('notify_attachment_maintenance')) {
+    /**
+     * Send notification when Attachment enters maintenance
+     * 
+     * @param array $attachmentData Attachment data
+     * @return bool|array
+     */
+    function notify_attachment_maintenance($attachmentData)
+    {
+        return send_notification('attachment_maintenance', [
+            'module' => 'inventory',
+            'id' => $attachmentData['id'] ?? null,
+            'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
+            'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
+            'maintenance_reason' => $attachmentData['maintenance_reason'] ?? $attachmentData['alasan'] ?? '',
+            'scheduled_date' => $attachmentData['scheduled_date'] ?? date('Y-m-d'),
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 3 MEDIUM PRIORITY - USER MANAGEMENT (9 events)
+// ============================================================================
+
+if (!function_exists('notify_user_created')) {
+    /**
+     * Send notification when User is created
+     * 
+     * @param array $userData User data
+     * @return bool|array
+     */
+    function notify_user_created($userData)
+    {
+        return send_notification('user_created', [
+            'module' => 'user',
+            'id' => $userData['id'] ?? null,
+            'username' => $userData['username'] ?? '',
+            'email' => $userData['email'] ?? '',
+            'role' => $userData['role'] ?? $userData['role_name'] ?? '',
+            'division' => $userData['division'] ?? $userData['division_name'] ?? '',
+            'created_by' => $userData['created_by'] ?? '',
+            'url' => $userData['url'] ?? base_url('/admin/advanced-users')
+        ]);
+    }
+}
+
+if (!function_exists('notify_user_updated')) {
+    /**
+     * Send notification when User is updated
+     * 
+     * @param array $userData User data
+     * @return bool|array
+     */
+    function notify_user_updated($userData)
+    {
+        return send_notification('user_updated', [
+            'module' => 'user',
+            'id' => $userData['id'] ?? null,
+            'username' => $userData['username'] ?? '',
+            'email' => $userData['email'] ?? '',
+            'updated_by' => $userData['updated_by'] ?? '',
+            'url' => $userData['url'] ?? base_url('/admin/advanced-users')
+        ]);
+    }
+}
+
+if (!function_exists('notify_user_deleted')) {
+    /**
+     * Send notification when User is deleted
+     * 
+     * @param array $userData User data
+     * @return bool|array
+     */
+    function notify_user_deleted($userData)
+    {
+        return send_notification('user_deleted', [
+            'module' => 'user',
+            'id' => $userData['id'] ?? null,
+            'username' => $userData['username'] ?? '',
+            'email' => $userData['email'] ?? '',
+            'deleted_by' => $userData['deleted_by'] ?? '',
+            'url' => $userData['url'] ?? base_url('/admin/advanced-users')
+        ]);
+    }
+}
+
+if (!function_exists('notify_user_activated')) {
+    /**
+     * Send notification when User is activated
+     * 
+     * @param array $userData User data
+     * @return bool|array
+     */
+    function notify_user_activated($userData)
+    {
+        return send_notification('user_activated', [
+            'module' => 'user',
+            'id' => $userData['id'] ?? null,
+            'username' => $userData['username'] ?? '',
+            'email' => $userData['email'] ?? '',
+            'activated_by' => $userData['activated_by'] ?? '',
+            'url' => $userData['url'] ?? base_url('/dashboard')
+        ]);
+    }
+}
+
+if (!function_exists('notify_user_deactivated')) {
+    /**
+     * Send notification when User is deactivated
+     * 
+     * @param array $userData User data
+     * @return bool|array
+     */
+    function notify_user_deactivated($userData)
+    {
+        return send_notification('user_deactivated', [
+            'module' => 'user',
+            'id' => $userData['id'] ?? null,
+            'username' => $userData['username'] ?? '',
+            'email' => $userData['email'] ?? '',
+            'reason' => $userData['reason'] ?? '',
+            'deactivated_by' => $userData['deactivated_by'] ?? '',
+            'url' => $userData['url'] ?? base_url('/admin/advanced-users')
+        ]);
+    }
+}
+
+if (!function_exists('notify_password_reset')) {
+    /**
+     * Send notification when Password is reset
+     * 
+     * @param array $userData User data
+     * @return bool|array
+     */
+    function notify_password_reset($userData)
+    {
+        return send_notification('password_reset', [
+            'module' => 'user',
+            'id' => $userData['id'] ?? null,
+            'username' => $userData['username'] ?? '',
+            'email' => $userData['email'] ?? '',
+            'reset_by' => $userData['reset_by'] ?? 'System',
+            'url' => $userData['url'] ?? base_url('/login')
+        ]);
+    }
+}
+
+if (!function_exists('notify_role_created')) {
+    /**
+     * Send notification when Role is created
+     * 
+     * @param array $roleData Role data
+     * @return bool|array
+     */
+    function notify_role_created($roleData)
+    {
+        return send_notification('role_created', [
+            'module' => 'role',
+            'id' => $roleData['id'] ?? null,
+            'role_name' => $roleData['role_name'] ?? $roleData['name'] ?? '',
+            'permissions_count' => $roleData['permissions_count'] ?? 0,
+            'created_by' => $roleData['created_by'] ?? '',
+            'url' => $roleData['url'] ?? base_url('/admin/advanced-users')
+        ]);
+    }
+}
+
+if (!function_exists('notify_role_updated')) {
+    /**
+     * Send notification when Role is updated
+     * 
+     * @param array $roleData Role data
+     * @return bool|array
+     */
+    function notify_role_updated($roleData)
+    {
+        return send_notification('role_updated', [
+            'module' => 'role',
+            'id' => $roleData['id'] ?? null,
+            'role_name' => $roleData['role_name'] ?? $roleData['name'] ?? '',
+            'updated_by' => $roleData['updated_by'] ?? '',
+            'changes' => $roleData['changes'] ?? '',
+            'url' => $roleData['url'] ?? base_url('/admin/advanced-users')
+        ]);
+    }
+}
+
+if (!function_exists('notify_permission_changed')) {
+    /**
+     * Send notification when User permission is changed
+     * 
+     * @param array $userData User data
+     * @return bool|array
+     */
+    function notify_permission_changed($userData)
+    {
+        return send_notification('permission_changed', [
+            'module' => 'permission',
+            'id' => $userData['id'] ?? null,
+            'username' => $userData['username'] ?? '',
+            'changed_permissions' => $userData['changed_permissions'] ?? '',
+            'changed_by' => $userData['changed_by'] ?? '',
+            'url' => $userData['url'] ?? base_url('/dashboard')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 4 LOW PRIORITY - SUPPLIER MANAGEMENT (3 events)
+// ============================================================================
+
+if (!function_exists('notify_supplier_created')) {
+    /**
+     * Send notification when Supplier is created
+     * 
+     * @param array $supplierData Supplier data
+     * @return bool|array
+     */
+    function notify_supplier_created($supplierData)
+    {
+        return send_notification('supplier_created', [
+            'module' => 'supplier',
+            'id' => $supplierData['id'] ?? null,
+            'supplier_name' => $supplierData['supplier_name'] ?? $supplierData['name'] ?? '',
+            'supplier_code' => $supplierData['supplier_code'] ?? $supplierData['code'] ?? '',
+            'contact_person' => $supplierData['contact_person'] ?? '',
+            'phone' => $supplierData['phone'] ?? '',
+            'created_by' => $supplierData['created_by'] ?? '',
+            'url' => $supplierData['url'] ?? base_url('/purchasing/supplier-management')
+        ]);
+    }
+}
+
+if (!function_exists('notify_supplier_updated')) {
+    /**
+     * Send notification when Supplier is updated
+     * 
+     * @param array $supplierData Supplier data
+     * @return bool|array
+     */
+    function notify_supplier_updated($supplierData)
+    {
+        return send_notification('supplier_updated', [
+            'module' => 'supplier',
+            'id' => $supplierData['id'] ?? null,
+            'supplier_name' => $supplierData['supplier_name'] ?? $supplierData['name'] ?? '',
+            'updated_by' => $supplierData['updated_by'] ?? '',
+            'url' => $supplierData['url'] ?? base_url('/purchasing/supplier-management')
+        ]);
+    }
+}
+
+if (!function_exists('notify_supplier_deleted')) {
+    /**
+     * Send notification when Supplier is deleted
+     * 
+     * @param array $supplierData Supplier data
+     * @return bool|array
+     */
+    function notify_supplier_deleted($supplierData)
+    {
+        return send_notification('supplier_deleted', [
+            'module' => 'supplier',
+            'id' => $supplierData['id'] ?? null,
+            'supplier_name' => $supplierData['supplier_name'] ?? $supplierData['name'] ?? '',
+            'deleted_by' => $supplierData['deleted_by'] ?? '',
+            'url' => $supplierData['url'] ?? base_url('/purchasing/supplier-management')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 4 LOW PRIORITY - EMPLOYEE MANAGEMENT (2 events)
+// ============================================================================
+
+if (!function_exists('notify_employee_assigned')) {
+    /**
+     * Send notification when Employee is assigned to area
+     * 
+     * @param array $employeeData Employee data
+     * @return bool|array
+     */
+    function notify_employee_assigned($employeeData)
+    {
+        return send_notification('employee_assigned', [
+            'module' => 'employee',
+            'id' => $employeeData['id'] ?? null,
+            'employee_name' => $employeeData['employee_name'] ?? $employeeData['name'] ?? '',
+            'area_name' => $employeeData['area_name'] ?? '',
+            'position' => $employeeData['position'] ?? $employeeData['jabatan'] ?? '',
+            'assigned_by' => $employeeData['assigned_by'] ?? '',
+            'url' => $employeeData['url'] ?? base_url('/service/area-management')
+        ]);
+    }
+}
+
+if (!function_exists('notify_employee_unassigned')) {
+    /**
+     * Send notification when Employee is unassigned from area
+     * 
+     * @param array $employeeData Employee data
+     * @return bool|array
+     */
+    function notify_employee_unassigned($employeeData)
+    {
+        return send_notification('employee_unassigned', [
+            'module' => 'employee',
+            'id' => $employeeData['id'] ?? null,
+            'employee_name' => $employeeData['employee_name'] ?? $employeeData['name'] ?? '',
+            'area_name' => $employeeData['area_name'] ?? '',
+            'reason' => $employeeData['reason'] ?? '',
+            'unassigned_by' => $employeeData['unassigned_by'] ?? '',
+            'url' => $employeeData['url'] ?? base_url('/service/area-management')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 4 LOW PRIORITY - SPK & UNIT PREPARATION (4 events)
+// ============================================================================
+
+if (!function_exists('notify_spk_assigned')) {
+    /**
+     * Send notification when SPK is assigned to mechanic
+     * 
+     * @param array $spkData SPK data
+     * @return bool|array
+     */
+    function notify_spk_assigned($spkData)
+    {
+        return send_notification('spk_assigned', [
+            'module' => 'spk',
+            'id' => $spkData['id'] ?? null,
+            'nomor_spk' => $spkData['nomor_spk'] ?? '',
+            'no_unit' => $spkData['no_unit'] ?? $spkData['unit_code'] ?? '',
+            'mechanic_name' => $spkData['mechanic_name'] ?? $spkData['mekanik'] ?? '',
+            'assigned_by' => $spkData['assigned_by'] ?? '',
+            'url' => $spkData['url'] ?? base_url('/service/spk_service')
+        ]);
+    }
+}
+
+if (!function_exists('notify_spk_cancelled')) {
+    /**
+     * Send notification when SPK is cancelled
+     * 
+     * @param array $spkData SPK data
+     * @return bool|array
+     */
+    function notify_spk_cancelled($spkData)
+    {
+        return send_notification('spk_cancelled', [
+            'module' => 'spk',
+            'id' => $spkData['id'] ?? null,
+            'nomor_spk' => $spkData['nomor_spk'] ?? '',
+            'pelanggan' => $spkData['pelanggan'] ?? $spkData['customer'] ?? '',
+            'alasan' => $spkData['alasan'] ?? $spkData['cancellation_reason'] ?? '',
+            'cancelled_by' => $spkData['cancelled_by'] ?? '',
+            'url' => $spkData['url'] ?? base_url('/marketing/spk')
+        ]);
+    }
+}
+
+if (!function_exists('notify_unit_prep_started')) {
+    /**
+     * Send notification when Unit Preparation is started
+     * 
+     * @param array $unitData Unit data
+     * @return bool|array
+     */
+    function notify_unit_prep_started($unitData)
+    {
+        return send_notification('unit_prep_started', [
+            'module' => 'spk',
+            'id' => $unitData['id'] ?? null,
+            'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
+            'nomor_spk' => $unitData['nomor_spk'] ?? '',
+            'mechanic' => $unitData['mechanic'] ?? $unitData['mekanik'] ?? '',
+            'start_date' => $unitData['start_date'] ?? date('Y-m-d H:i:s'),
+            'url' => $unitData['url'] ?? base_url('/service/spk_service')
+        ]);
+    }
+}
+
+if (!function_exists('notify_unit_prep_completed')) {
+    /**
+     * Send notification when Unit Preparation is completed
+     * 
+     * @param array $unitData Unit data
+     * @return bool|array
+     */
+    function notify_unit_prep_completed($unitData)
+    {
+        return send_notification('unit_prep_completed', [
+            'module' => 'spk',
+            'id' => $unitData['id'] ?? null,
+            'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
+            'nomor_spk' => $unitData['nomor_spk'] ?? '',
+            'mechanic' => $unitData['mechanic'] ?? $unitData['mekanik'] ?? '',
+            'completion_date' => $unitData['completion_date'] ?? date('Y-m-d H:i:s'),
+            'url' => $unitData['url'] ?? base_url('/operational/delivery')
+        ]);
+    }
+}
+
+// ============================================================================
+// PHASE 4 LOW PRIORITY - PAYMENT (1 event)
+// ============================================================================
+
+if (!function_exists('notify_payment_received')) {
+    /**
+     * Send notification when Payment is received
+     * 
+     * @param array $paymentData Payment data
+     * @return bool|array
+     */
+    function notify_payment_received($paymentData)
+    {
+        return send_notification('payment_received', [
+            'module' => 'payment',
+            'id' => $paymentData['id'] ?? null,
+            'amount' => $paymentData['amount'] ?? $paymentData['jumlah'] ?? 0,
+            'customer_name' => $paymentData['customer_name'] ?? '',
+            'payment_method' => $paymentData['payment_method'] ?? $paymentData['metode_pembayaran'] ?? '',
+            'invoice_number' => $paymentData['invoice_number'] ?? $paymentData['nomor_invoice'] ?? '',
+            'received_by' => $paymentData['received_by'] ?? '',
+            'url' => $paymentData['url'] ?? base_url('/accounting/payment-validation')
         ]);
     }
 }
@@ -1475,5 +2875,334 @@ if (!function_exists('notify_quotation_follow_up_required')) {
             'follow_up_priority' => $quotationData['follow_up_priority'] ?? 'normal',
             'url' => $quotationData['url'] ?? base_url('/marketing/quotations/view/' . ($quotationData['id'] ?? ''))
         ]);
+    }
+}
+
+// ============================================================================
+// SPK STAGE NOTIFICATIONS - Cross-Division Workflow
+// ============================================================================
+
+if (!function_exists('notify_spk_unit_prep_completed')) {
+    /**
+     * Send notification when SPK Unit Preparation stage is completed
+     * Targets: Marketing (success notice), Warehouse (items report)
+     * 
+     * @param array $spkData SPK stage completion data
+     * @return bool|array
+     */
+    function notify_spk_unit_prep_completed($spkData)
+    {
+        return send_notification('spk_unit_prep_completed', [
+            'module' => 'service',
+            'spk_id' => $spkData['spk_id'] ?? null,
+            'spk_number' => $spkData['spk_number'] ?? '',
+            'stage' => 'persiapan_unit',
+            'pelanggan' => $spkData['pelanggan'] ?? '',
+            'lokasi' => $spkData['lokasi'] ?? '',
+            'approved_by' => $spkData['approved_by'] ?? '',
+            'approved_at' => $spkData['approved_at'] ?? date('Y-m-d H:i:s'),
+            'unit_info' => $spkData['unit_info'] ?? '',
+            'items_prepared' => $spkData['items_prepared'] ?? '',
+            'url' => $spkData['url'] ?? base_url('/service/spk/view/' . ($spkData['spk_id'] ?? ''))
+        ]);
+    }
+}
+
+if (!function_exists('notify_spk_fabrication_completed')) {
+    /**
+     * Send notification when SPK Fabrication stage is completed
+     * Targets: Marketing (success notice), Warehouse (attachment report)
+     * 
+     * @param array $spkData SPK stage completion data
+     * @return bool|array
+     */
+    function notify_spk_fabrication_completed($spkData)
+    {
+        return send_notification('spk_fabrication_completed', [
+            'module' => 'service',
+            'spk_id' => $spkData['spk_id'] ?? null,
+            'spk_number' => $spkData['spk_number'] ?? '',
+            'stage' => 'fabrikasi',
+            'pelanggan' => $spkData['pelanggan'] ?? '',
+            'lokasi' => $spkData['lokasi'] ?? '',
+            'approved_by' => $spkData['approved_by'] ?? '',
+            'approved_at' => $spkData['approved_at'] ?? date('Y-m-d H:i:s'),
+            'attachment_info' => $spkData['attachment_info'] ?? '',
+            'fabrication_notes' => $spkData['fabrication_notes'] ?? '',
+            'url' => $spkData['url'] ?? base_url('/service/spk/view/' . ($spkData['spk_id'] ?? ''))
+        ]);
+    }
+}
+
+if (!function_exists('notify_spk_pdi_completed')) {
+    /**
+     * Send notification when SPK PDI stage is completed - Unit becomes READY
+     * Targets: Marketing (SPK ready notice), Operational (ready for DI creation)
+     * 
+     * @param array $spkData SPK stage completion data
+     * @return bool|array
+     */
+    function notify_spk_pdi_completed($spkData)
+    {
+        return send_notification('spk_pdi_completed', [
+            'module' => 'service',
+            'spk_id' => $spkData['spk_id'] ?? null,
+            'spk_number' => $spkData['spk_number'] ?? '',
+            'stage' => 'pdi',
+            'pelanggan' => $spkData['pelanggan'] ?? '',
+            'lokasi' => $spkData['lokasi'] ?? '',
+            'approved_by' => $spkData['approved_by'] ?? '',
+            'approved_at' => $spkData['approved_at'] ?? date('Y-m-d H:i:s'),
+            'spk_status' => 'READY',
+            'ready_for_delivery' => true,
+            'pdi_results' => $spkData['pdi_results'] ?? '',
+            'url' => $spkData['url'] ?? base_url('/service/spk/view/' . ($spkData['spk_id'] ?? ''))
+        ]);
+    }
+}
+
+// ============================================================================
+// ATTACHMENT NOTIFICATIONS - Warehouse-Service Cross-Division
+// ============================================================================
+
+if (!function_exists('notify_attachment_added')) {
+    /**
+     * Send notification when new attachment is added to inventory
+     * Targets: Warehouse (new inventory item)
+     * 
+     * @param array $attachmentData Attachment data
+     * @return bool|array
+     */
+    function notify_attachment_added($attachmentData)
+    {
+        return send_notification('attachment_added', [
+            'module' => 'inventory',
+            'attachment_id' => $attachmentData['attachment_id'] ?? null,
+            'tipe_item' => $attachmentData['tipe_item'] ?? '',
+            'merk' => $attachmentData['merk'] ?? '',
+            'model' => $attachmentData['model'] ?? '',
+            'serial_number' => $attachmentData['serial_number'] ?? '',
+            'kondisi' => $attachmentData['kondisi'] ?? 'Baik',
+            'lokasi' => $attachmentData['lokasi'] ?? 'Workshop',
+            'added_by' => $attachmentData['added_by'] ?? '',
+            'added_at' => $attachmentData['added_at'] ?? date('Y-m-d H:i:s'),
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/attachment/view/' . ($attachmentData['attachment_id'] ?? ''))
+        ]);
+    }
+}
+
+if (!function_exists('notify_attachment_attached')) {
+    /**
+     * Send notification when attachment is attached to a unit
+     * Targets: Service (unit configuration changed)
+     * 
+     * @param array $attachmentData Attachment operation data
+     * @return bool|array
+     */
+    function notify_attachment_attached($attachmentData)
+    {
+        return send_notification('attachment_attached', [
+            'module' => 'inventory',
+            'attachment_id' => $attachmentData['attachment_id'] ?? null,
+            'unit_id' => $attachmentData['unit_id'] ?? null,
+            'unit_number' => $attachmentData['unit_number'] ?? '',
+            'tipe_item' => $attachmentData['tipe_item'] ?? '',
+            'attachment_info' => $attachmentData['attachment_info'] ?? '',
+            'performed_by' => $attachmentData['performed_by'] ?? '',
+            'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
+            'notes' => $attachmentData['notes'] ?? '',
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/unit/view/' . ($attachmentData['unit_id'] ?? ''))
+        ]);
+    }
+}
+
+if (!function_exists('notify_attachment_detached')) {
+    /**
+     * Send notification when attachment is detached from a unit
+     * Targets: Service (unit configuration changed)
+     * 
+     * @param array $attachmentData Attachment operation data
+     * @return bool|array
+     */
+    function notify_attachment_detached($attachmentData)
+    {
+        return send_notification('attachment_detached', [
+            'module' => 'inventory',
+            'attachment_id' => $attachmentData['attachment_id'] ?? null,
+            'unit_id' => $attachmentData['unit_id'] ?? null,
+            'unit_number' => $attachmentData['unit_number'] ?? '',
+            'tipe_item' => $attachmentData['tipe_item'] ?? '',
+            'attachment_info' => $attachmentData['attachment_info'] ?? '',
+            'reason' => $attachmentData['reason'] ?? '',
+            'new_location' => $attachmentData['new_location'] ?? 'Workshop',
+            'performed_by' => $attachmentData['performed_by'] ?? '',
+            'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/attachment/view/' . ($attachmentData['attachment_id'] ?? ''))
+        ]);
+    }
+}
+
+if (!function_exists('notify_attachment_swapped')) {
+    /**
+     * Send notification when attachment is swapped between units
+     * Targets: Service (unit configurations changed)
+     * 
+     * @param array $attachmentData Attachment operation data
+     * @return bool|array
+     */
+    function notify_attachment_swapped($attachmentData)
+    {
+        return send_notification('attachment_swapped', [
+            'module' => 'inventory',
+            'attachment_id' => $attachmentData['attachment_id'] ?? null,
+            'from_unit_id' => $attachmentData['from_unit_id'] ?? null,
+            'from_unit_number' => $attachmentData['from_unit_number'] ?? '',
+            'to_unit_id' => $attachmentData['to_unit_id'] ?? null,
+            'to_unit_number' => $attachmentData['to_unit_number'] ?? '',
+            'tipe_item' => $attachmentData['tipe_item'] ?? '',
+            'attachment_info' => $attachmentData['attachment_info'] ?? '',
+            'reason' => $attachmentData['reason'] ?? '',
+            'performed_by' => $attachmentData['performed_by'] ?? '',
+            'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/attachment/view/' . ($attachmentData['attachment_id'] ?? ''))
+        ]);
+    }
+}
+
+// ============================================================================
+// SPAREPART & PO DELIVERY NOTIFICATIONS
+// ============================================================================
+
+if (!function_exists('notify_sparepart_returned')) {
+    /**
+     * Send notification when sparepart return is confirmed by warehouse
+     * Targets: Service (sparepart availability updated)
+     * 
+     * @param array $returnData Sparepart return data
+     * @return bool|array
+     */
+    function notify_sparepart_returned($returnData)
+    {
+        return send_notification('sparepart_returned', [
+            'module' => 'warehouse',
+            'return_id' => $returnData['return_id'] ?? null,
+            'sparepart_id' => $returnData['sparepart_id'] ?? null,
+            'sparepart_name' => $returnData['sparepart_name'] ?? '',
+            'quantity' => $returnData['quantity'] ?? 0,
+            'condition' => $returnData['condition'] ?? 'Baik',
+            'returned_by' => $returnData['returned_by'] ?? '',
+            'returned_from' => $returnData['returned_from'] ?? '',
+            'confirmed_by' => $returnData['confirmed_by'] ?? '',
+            'confirmed_at' => $returnData['confirmed_at'] ?? date('Y-m-d H:i:s'),
+            'notes' => $returnData['notes'] ?? '',
+            'url' => $returnData['url'] ?? base_url('/warehouse/sparepart-usage/return-detail/' . ($returnData['return_id'] ?? ''))
+        ]);
+    }
+}
+
+if (!function_exists('notify_po_delivery_created')) {
+    /**
+     * Send notification when PO delivery schedule is created
+     * Targets: Warehouse (prepare for receiving), Purchasing (tracking)
+     * 
+     * @param array $deliveryData PO delivery data
+     * @return bool|array
+     */
+    function notify_po_delivery_created($deliveryData)
+    {
+        return send_notification('po_delivery_created', [
+            'module' => 'purchasing',
+            'delivery_id' => $deliveryData['delivery_id'] ?? null,
+            'po_id' => $deliveryData['po_id'] ?? null,
+            'po_number' => $deliveryData['po_number'] ?? '',
+            'supplier_name' => $deliveryData['supplier_name'] ?? '',
+            'delivery_date' => $deliveryData['delivery_date'] ?? '',
+            'delivery_type' => $deliveryData['delivery_type'] ?? '',
+            'item_count' => $deliveryData['item_count'] ?? 0,
+            'total_quantity' => $deliveryData['total_quantity'] ?? 0,
+            'created_by' => $deliveryData['created_by'] ?? '',
+            'created_at' => $deliveryData['created_at'] ?? date('Y-m-d H:i:s'),
+            'notes' => $deliveryData['notes'] ?? '',
+            'url' => $deliveryData['url'] ?? base_url('/purchasing/delivery/view/' . ($deliveryData['delivery_id'] ?? ''))
+        ]);
+    }
+}
+
+// ============================================================================
+// SCHEDULED NOTIFICATION CHECKS (Background Tasks)
+// ============================================================================
+
+if (!function_exists('check_contract_expiry_scheduled')) {
+    /**
+     * Check for contracts expiring soon (30 days warning)
+     * Runs every 24 hours via pseudo-CRON
+     * 
+     * @return array Result with counts
+     */
+    function check_contract_expiry_scheduled()
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            // Check last run time from cache
+            $cache = \Config\Services::cache();
+            $lastRun = $cache->get('contract_expiry_last_check');
+            
+            // Only run once per 24 hours
+            if ($lastRun && (time() - $lastRun) < 86400) {
+                log_message('info', '[Scheduler] Contract expiry check skipped - last run: ' . date('Y-m-d H:i:s', $lastRun));
+                return ['status' => 'skipped', 'reason' => 'checked_recently'];
+            }
+            
+            // Find contracts expiring in next 30 days
+            $expiringContracts = $db->table('kontrak k')
+                ->select('k.*, c.customer_name, cl.location_name')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->where('k.status', 'Aktif')
+                ->where('k.tanggal_berakhir >=', date('Y-m-d'))
+                ->where('k.tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
+                ->get()
+                ->getResultArray();
+            
+            $notificationsSent = 0;
+            
+            foreach ($expiringContracts as $contract) {
+                // Calculate days until expiry
+                $expiryDate = new \DateTime($contract['tanggal_berakhir']);
+                $today = new \DateTime();
+                $daysUntilExpiry = $today->diff($expiryDate)->days;
+                
+                // Send notification
+                notify_customer_contract_expired([
+                    'id' => $contract['id'],
+                    'contract_number' => $contract['no_kontrak'],
+                    'customer_name' => $contract['customer_name'] ?? 'Unknown',
+                    'location_name' => $contract['location_name'] ?? '',
+                    'expiry_date' => $contract['tanggal_berakhir'],
+                    'days_until_expiry' => $daysUntilExpiry,
+                    'contract_value' => $contract['nilai_total'] ?? 0,
+                    'url' => base_url('/marketing/contracts/view/' . $contract['id'])
+                ]);
+                
+                $notificationsSent++;
+            }
+            
+            // Update last run time
+            $cache->save('contract_expiry_last_check', time(), 86400);
+            
+            log_message('info', '[Scheduler] Contract expiry check completed - ' . $notificationsSent . ' notifications sent for ' . count($expiringContracts) . ' expiring contracts');
+            
+            return [
+                'status' => 'success',
+                'contracts_checked' => count($expiringContracts),
+                'notifications_sent' => $notificationsSent,
+                'next_run' => date('Y-m-d H:i:s', time() + 86400)
+            ];
+            
+        } catch (\Exception $e) {
+            log_message('error', '[Scheduler] Contract expiry check failed: ' . $e->getMessage());
+            return ['status' => 'error', 'message' => $e->getMessage()];
+        }
     }
 }

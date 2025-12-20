@@ -586,6 +586,12 @@ class NotificationController extends BaseController
 
         $rules = $this->ruleModel->findAll();
         
+        // Get all divisions for tabs
+        $divisions = $this->divisionModel
+            ->where('is_active', 1)
+            ->orderBy('name', 'ASC')
+            ->findAll();
+        
         // Get stats for admin panel
         $stats = [
             'total_rules' => count($rules),
@@ -597,7 +603,8 @@ class NotificationController extends BaseController
         
         return view('notifications/admin_panel', [
             'rules' => $rules,
-            'stats' => $stats
+            'stats' => $stats,
+            'divisions' => $divisions
         ]);
     }
 
@@ -698,18 +705,6 @@ class NotificationController extends BaseController
         //     return $this->response->setJSON(['success' => false, 'message' => 'Access denied']);
         // }
 
-        $data = [
-            'name' => $this->request->getPost('name'),
-            'trigger_event' => $this->request->getPost('trigger_event'),
-            'target_divisions' => implode(',', $this->request->getPost('target_divisions') ?? []),
-            'target_roles' => implode(',', $this->request->getPost('target_roles') ?? []),
-            'target_users' => implode(',', $this->request->getPost('target_users') ?? []),
-            'title_template' => $this->request->getPost('title_template'),
-            'message_template' => $this->request->getPost('message_template'),
-            'type' => $this->request->getPost('type') ?? 'info',
-            'is_active' => $this->request->getPost('is_active') ? 1 : 0
-        ];
-
         $oldRule = $this->ruleModel->find($ruleId);
         
         if (!$oldRule) {
@@ -719,24 +714,63 @@ class NotificationController extends BaseController
             ]);
         }
         
+        // Get form data - handle both array and string formats
+        $name = $this->request->getPost('name');
+        $eventType = $this->request->getPost('event_type');
+        $titleTemplate = $this->request->getPost('title_template');
+        $messageTemplate = $this->request->getPost('message_template');
+        $type = $this->request->getPost('type') ?? 'info';
+        $isActive = $this->request->getPost('is_active');
+        
+        // Handle checkbox arrays properly - they come as target_divisions[], target_roles[], etc.
+        $targetDivisions = $this->request->getPost('target_divisions');
+        $targetRoles = $this->request->getPost('target_roles');
+        $targetUsers = $this->request->getPost('target_users');
+        
+        // Convert arrays to comma-separated strings
+        $divisionsStr = is_array($targetDivisions) ? implode(',', $targetDivisions) : '';
+        $rolesStr = is_array($targetRoles) ? implode(',', $targetRoles) : '';
+        $usersStr = is_array($targetUsers) ? implode(',', $targetUsers) : '';
+        
+        $data = [
+            'name' => $name,
+            'trigger_event' => $eventType,
+            'target_divisions' => $divisionsStr,
+            'target_roles' => $rolesStr,
+            'target_users' => $usersStr,
+            'title_template' => $titleTemplate,
+            'message_template' => $messageTemplate,
+            'type' => $type,
+            'is_active' => $isActive ? 1 : 0
+        ];
+        
+        log_message('info', 'Updating notification rule ' . $ruleId . ' with data: ' . json_encode($data));
+        
         try {
             $result = $this->ruleModel->update($ruleId, $data);
             
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Notification rule updated successfully'
-            ]);
+            if ($result) {
+                // Get updated rule
+                $updatedRule = $this->ruleModel->find($ruleId);
+                
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Notification rule updated successfully',
+                    'rule' => $updatedRule
+                ]);
+            } else {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'No changes were made to the rule'
+                ]);
+            }
         } catch (\Exception $e) {
+            log_message('error', 'Error updating rule: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error updating rule: ' . $e->getMessage()
             ]);
         }
-
-        return $this->response->setJSON([
-            'success' => false,
-            'message' => 'Failed to update notification rule'
-        ]);
     }
 
     /**

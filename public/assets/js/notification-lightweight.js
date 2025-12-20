@@ -9,7 +9,28 @@
 
 class OptimaNotificationLightweight {
     constructor() {
-        this.baseUrl = window.location.origin + '/optima/public';
+        // Get base URL properly - extract everything before the route
+        const path = window.location.pathname;
+        
+        // Check if URL has index.php
+        if (path.includes('/index.php/')) {
+            // Split by /index.php/ and take the first part + /index.php
+            const indexPhpPosition = path.indexOf('/index.php/');
+            const basePath = path.substring(0, indexPhpPosition);
+            this.baseUrl = window.location.origin + basePath + '/index.php';
+        } else if (path.includes('/public/')) {
+            // If no index.php but has /public/, use up to /public
+            const publicPosition = path.indexOf('/public/');
+            const basePath = path.substring(0, publicPosition);
+            this.baseUrl = window.location.origin + basePath + '/public/index.php';
+        } else {
+            // Fallback: use origin
+            this.baseUrl = window.location.origin + '/index.php';
+        }
+        
+        console.log('🔗 Notification System BaseURL:', this.baseUrl);
+        console.log('📍 Current pathname:', path);
+        
         this.pollingInterval = 60000; // 60 seconds (reduced frequency for performance)
         this.pollingTimer = null;
         this.isPolling = false;
@@ -54,6 +75,9 @@ class OptimaNotificationLightweight {
         this.badge = document.getElementById('notificationBadge');
         this.dropdownMenu = document.getElementById('notificationDropdownMenu');
         
+        console.log('🔧 Init - Badge element:', this.badge);
+        console.log('🔧 Init - Dropdown menu:', this.dropdownMenu);
+        
         // Update count immediately
         this.updateCount();
         
@@ -65,13 +89,29 @@ class OptimaNotificationLightweight {
         // Start regular polling
         this.startPolling();
         
-        // Update when dropdown is opened (optimized)
-        const notificationDropdown = document.querySelector('[data-bs-toggle="dropdown"]');
-        if (notificationDropdown) {
-            notificationDropdown.addEventListener('click', () => {
-                this.updateCount();
-                this.fetchRecent();
-            });
+        // Update when notification dropdown is opened (more specific selector)
+        // Find the parent div of the notification dropdown
+        const notificationDropdownParent = this.dropdownMenu?.closest('.dropdown');
+        if (notificationDropdownParent) {
+            const notificationButton = notificationDropdownParent.querySelector('[data-bs-toggle="dropdown"]');
+            if (notificationButton) {
+                console.log('✅ Notification dropdown button found, attaching event listener');
+                notificationButton.addEventListener('click', () => {
+                    console.log('🔔 Notification dropdown clicked!');
+                    this.updateCount();
+                    this.fetchRecent();
+                });
+                
+                // Also listen to Bootstrap's show event
+                this.dropdownMenu.addEventListener('show.bs.dropdown', () => {
+                    console.log('🔔 Dropdown showing (Bootstrap event)');
+                    this.fetchRecent();
+                });
+            } else {
+                console.warn('⚠️ Notification dropdown button not found');
+            }
+        } else {
+            console.warn('⚠️ Notification dropdown parent not found');
         }
     }
     
@@ -157,88 +197,83 @@ class OptimaNotificationLightweight {
     }
     
     /**
-     * Show notification popup with SweetAlert (Facebook style)
+     * Show notification popup with Bootstrap 5 Toast (with action button)
      */
     showNotificationPopup(notification) {
         return new Promise((resolve) => {
-            // Determine icon based on notification type
-            let icon = 'info';
-            let iconColor = '#3b82f6';
+            // Determine type and icon
+            let type = 'info';
             
             switch(notification.type) {
                 case 'success':
-                    icon = 'success';
-                    iconColor = '#10b981';
+                    type = 'success';
                     break;
                 case 'warning':
-                    icon = 'warning';
-                    iconColor = '#f59e0b';
+                    type = 'warning';
                     break;
                 case 'error':
                 case 'critical':
-                    icon = 'error';
-                    iconColor = '#ef4444';
+                    type = 'danger';
                     break;
                 default:
-                    icon = 'info';
-                    iconColor = '#3b82f6';
+                    type = 'info';
             }
             
-            // Show Toast Notification (simple, top-right corner)
-            const toast = Swal.mixin({
-                toast: true,
-                position: 'top-end',
-                showConfirmButton: false,
-                timer: 5000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer);
-                    toast.addEventListener('mouseleave', Swal.resumeTimer);
-                    
-                    // Make toast clickable if has URL
-                    if (notification.url) {
-                        toast.style.cursor = 'pointer';
-                        toast.addEventListener('click', () => {
-                            window.location.href = notification.url;
-                        });
-                    }
-                },
-                willClose: () => {
-                    resolve();
-                }
-            });
-            
-            // Clean up title - extract text only, remove HTML tags
+            // Clean up title and message - remove HTML tags
             const titleText = (notification.title || 'Notification')
-                .replace(/<[^>]*>/g, '') // Remove HTML tags
-                .replace(/\s+/g, ' ')     // Normalize whitespace
+                .replace(/<[^>]*>/g, '')
+                .replace(/\s+/g, ' ')
                 .trim();
             
-            // Clean up message - extract text only
             const messageText = (notification.message || '')
-                .replace(/<[^>]*>/g, '') // Remove HTML tags
-                .replace(/\s+/g, ' ')     // Normalize whitespace
+                .replace(/<[^>]*>/g, '')
+                .replace(/\s+/g, ' ')
                 .trim();
             
-            toast.fire({
-                icon: icon,
-                iconColor: iconColor,
-                title: titleText,
-                text: messageText, // Use 'text' instead of 'html' for plain text
-                showClass: {
-                    popup: 'animate__animated animate__fadeInRight animate__faster'
-                },
-                hideClass: {
-                    popup: 'animate__animated animate__fadeOutRight animate__faster'
-                },
-                customClass: {
-                    popup: 'notification-toast-simple',
-                    title: 'notification-toast-title',
-                    htmlContainer: 'notification-toast-message'
-                }
-            }).then(() => {
-                resolve();
-            });
+            // Use Bootstrap 5 Toast with action button if URL exists
+            if (window.createOptimaToast) {
+                window.createOptimaToast({
+                    type: type,
+                    title: titleText,
+                    message: messageText,
+                    duration: 8000, // 8 seconds for notifications with action
+                    url: notification.url || null,
+                    actionText: 'Lihat Detail',
+                    timestamp: notification.created_at || notification.timestamp || null
+                });
+                
+                // Resolve after a short delay
+                setTimeout(() => resolve(), 500);
+            } else {
+                // Fallback to SweetAlert2 if Bootstrap toast not available
+                const toast = Swal.mixin({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer);
+                        toast.addEventListener('mouseleave', Swal.resumeTimer);
+                        
+                        if (notification.url) {
+                            toast.style.cursor = 'pointer';
+                            toast.addEventListener('click', () => {
+                                window.location.href = notification.url;
+                            });
+                        }
+                    },
+                    willClose: () => {
+                        resolve();
+                    }
+                });
+                
+                toast.fire({
+                    icon: type === 'danger' ? 'error' : type,
+                    title: titleText,
+                    text: messageText
+                });
+            }
         });
     }
     
@@ -358,26 +393,58 @@ class OptimaNotificationLightweight {
     
     async fetchRecent() {
         try {
+            console.log('📥 Fetching recent notifications from:', `${this.baseUrl}/notifications/get`);
+            
             const response = await fetch(`${this.baseUrl}/notifications/get?limit=5`, {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
                 }
             });
             
+            console.log('📡 Response status:', response.status);
+            
             if (!response.ok) {
-                console.warn('⚠️ Fetch recent failed:', response.status);
+                console.warn('⚠️ Fetch recent failed:', response.status, response.statusText);
+                this.showErrorInDropdown('Gagal memuat notifikasi');
                 return;
             }
             
             const data = await response.json();
+            console.log('📦 Received data:', data);
             
             if (data.success && data.notifications) {
+                console.log('✅ Updating dropdown with', data.notifications.length, 'notifications');
                 // Update dropdown content
                 this.updateDropdownContent(data.notifications); 
+            } else {
+                console.warn('⚠️ Invalid response format:', data);
+                this.showErrorInDropdown('Format response tidak valid');
             }
             
         } catch (error) {
-            console.warn('⚠️ Fetch recent error:', error.message);
+            console.error('❌ Fetch recent error:', error);
+            this.showErrorInDropdown('Terjadi kesalahan: ' + error.message);
+        }
+    }
+    
+    showErrorInDropdown(message) {
+        if (!this.dropdownMenu) return;
+        
+        const existingItems = this.dropdownMenu.querySelectorAll('.notification-item');
+        existingItems.forEach(item => item.remove());
+        
+        const errorHtml = `
+            <li class="notification-item">
+                <div class="text-center py-3">
+                    <i class="fas fa-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                    <p class="text-muted mb-0 small mt-2">${message}</p>
+                </div>
+            </li>
+        `;
+        
+        const divider = this.dropdownMenu.querySelector('hr.dropdown-divider:last-of-type');
+        if (divider) {
+            divider.insertAdjacentHTML('beforebegin', errorHtml);
         }
     }
     

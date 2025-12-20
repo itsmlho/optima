@@ -1,0 +1,26 @@
+Field	Type	Null	Key	Default	Extra
+id	int	NO	PRI	NULL	auto_increment
+name	varchar(255)	NO		NULL	
+description	text	YES		NULL	
+trigger_event	varchar(100)	NO	MUL	NULL	
+is_active	tinyint(1)	YES	MUL	1	
+conditions	longtext	YES		NULL	
+target_roles	varchar(500)	YES		NULL	
+target_divisions	varchar(500)	YES		NULL	
+target_departments	varchar(500)	YES		NULL	
+target_users	varchar(500)	YES		NULL	
+exclude_creator	tinyint(1)	YES		0	
+title_template	varchar(500)	NO		NULL	
+message_template	text	NO		NULL	
+category	varchar(100)	YES		NULL	
+type	enum('info','success','warning','error','critical')	YES		info	
+priority	tinyint	YES		1	
+url_template	varchar(500)	YES		NULL	
+delay_minutes	int	YES		0	
+expire_days	int	YES		30	
+created_by	int	YES		NULL	
+created_at	timestamp	NO		CURRENT_TIMESTAMP	DEFAULT_GENERATED
+updated_at	timestamp	NO		CURRENT_TIMESTAMP	DEFAULT_GENERATED on update CURRENT_TIMESTAMP
+auto_include_superadmin	tinyint(1)	YES		1	
+target_mixed	longtext	YES		NULL	
+rule_description	text	YES		NULL	

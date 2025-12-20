@@ -89,91 +89,67 @@
         </div>
     </div>
 
-    <style>
-        .checkbox-group-title {
-            letter-spacing: 0.08em;
-        }
-    </style>
-
     <!-- Notification Rules Table -->
     <div class="card border-0 shadow-sm">
-        <div class="card-header py-3">
-            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Notification Rules</h5>
+        <div class="card-header bg-white">
+            <div class="row align-items-center">
+                <div class="col">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-list me-2 text-primary"></i>Notification Rules
+                    </h5>
+                </div>
+                <div class="col-auto">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" id="searchRules" class="form-control border-0 bg-light" 
+                               placeholder="Search rules...">
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="card-body">
+        <div class="card-body p-0">
+            <!-- Division Tabs -->
+            <div class="border-bottom">
+                <ul class="nav nav-tabs nav-tabs-clean" id="divisionTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" 
+                                type="button" role="tab" data-division="all">
+                            <i class="fas fa-globe me-2"></i>All Divisions
+                        </button>
+                    </li>
+                    <?php if (!empty($divisions)): ?>
+                        <?php foreach ($divisions as $division): ?>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="div-<?= $division['id'] ?>-tab" 
+                                        data-bs-toggle="tab" data-bs-target="#div-<?= $division['id'] ?>" 
+                                        type="button" role="tab" data-division="<?= esc($division['name']) ?>">
+                                    <i class="fas fa-building me-2"></i><?= esc($division['name']) ?>
+                                </button>
+                            </li>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                </ul>
+            </div>
+            
+            <!-- Table -->
             <div class="table-responsive">
-                <table id="rulesTable" class="table table-hover">
-                    <thead>
+                <table id="rulesTable" class="table table-hover table-sm mb-0">
+                    <thead class="table-light">
                         <tr>
-                            <th>ID</th>
+                            <th class="text-center">ID</th>
                             <th>Rule Name</th>
                             <th>Event Type</th>
                             <th>Target</th>
-                            <th>Type</th>
-                            <th>Status</th>
+                            <th class="text-center">Type</th>
+                            <th class="text-center">Status</th>
                             <th>Created</th>
                             <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($rules as $rule): ?>
-                        <tr>
-                            <td><?= $rule['id'] ?? 'N/A' ?></td>
-                            <td>
-                                <i class="fas fa-bell me-2 text-primary"></i>
-                                <strong><?= esc($rule['name'] ?? 'N/A') ?></strong>
-                            </td>
-                            <td>
-                                <span class="badge bg-secondary"><?= esc($rule['trigger_event'] ?? 'N/A') ?></span>
-                            </td>
-                            <td>
-                                <?php if (!empty($rule['target_divisions'] ?? null)): ?>
-                                    <span class="badge bg-info"><?= esc($rule['target_divisions']) ?></span>
-                                <?php endif; ?>
-                                <?php if (!empty($rule['target_department'] ?? null)): ?>
-                                    <span class="badge bg-warning"><?= esc($rule['target_department']) ?></span>
-                                <?php endif; ?>
-                                <?php if (!empty($rule['target_role'] ?? null)): ?>
-                                    <span class="badge bg-primary"><?= esc($rule['target_role']) ?></span>
-                                <?php endif; ?>
-                                <?php if (empty($rule['target_divisions'] ?? null) && empty($rule['target_department'] ?? null) && empty($rule['target_role'] ?? null)): ?>
-                                    <span class="text-muted">All Users</span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
-                                <?php 
-                                $typeColors = [
-                                    'info' => 'primary',
-                                    'success' => 'success',
-                                    'warning' => 'warning',
-                                    'error' => 'danger'
-                                ];
-                                $color = $typeColors[$rule['type'] ?? 'info'] ?? 'secondary';
-                                ?>
-                                <span class="badge bg-<?= $color ?>"><?= esc($rule['type'] ?? 'N/A') ?></span>
-                            </td>
-                            <td>
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" 
-                                           id="status_<?= $rule['id'] ?? 0 ?>"
-                                           <?= ($rule['is_active'] ?? false) ? 'checked' : '' ?>
-                                           onchange="toggleRuleStatus(<?= $rule['id'] ?? 0 ?>)">
-                                </div>
-                            </td>
-                            <td><?= date('d M Y', strtotime($rule['created_at'] ?? 'now')) ?></td>
-                            <td class="text-center">
-                                <button class="btn btn-sm btn-info" onclick="viewRuleDetail(<?= $rule['id'] ?? 0 ?>)" title="View Details">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-sm btn-warning" onclick="editRule(<?= $rule['id'] ?? 0 ?>)" title="Edit">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn btn-sm btn-danger" onclick="deleteRule(<?= $rule['id'] ?? 0 ?>)" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
+                        <!-- Data will be populated by DataTables -->
                     </tbody>
                 </table>
             </div>
@@ -219,12 +195,15 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="checkbox-group mt-2" id="target_divisions_container" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px;">
+                            <div class="checkbox-group mt-2 border rounded p-2" id="target_divisions_container">
                                 <div class="text-muted text-center py-3">
                                     <i class="fas fa-spinner fa-spin me-2"></i>Loading divisions...
                                 </div>
                             </div>
-                            <small class="text-muted">Select one or more divisions. Leave empty to target all divisions.</small>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Select divisions to auto-filter users. Leave empty to target all divisions.
+                            </small>
                         </div>
                         
                         <div class="col-md-6">
@@ -239,12 +218,15 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="checkbox-group mt-2" id="target_roles_container" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px;">
+                            <div class="checkbox-group mt-2 border rounded p-2" id="target_roles_container">
                                 <div class="text-muted text-center py-3">
                                     <i class="fas fa-spinner fa-spin me-2"></i>Loading roles...
                                 </div>
                             </div>
-                            <small class="text-muted">Select one or more roles. Leave empty to target all roles.</small>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Select roles to further filter users. Leave empty to target all roles.
+                            </small>
                         </div>
                         
                         <div class="col-12">
@@ -259,12 +241,16 @@
                                     </button>
                                 </div>
                             </div>
-                            <div class="checkbox-group mt-2" id="target_users_container" style="max-height: 200px; overflow-y: auto; border: 1px solid #dee2e6; border-radius: 4px; padding: 10px;">
+                            <div class="checkbox-group mt-2 border rounded p-2" id="target_users_container">
                                 <div class="text-muted text-center py-3">
                                     <i class="fas fa-users"></i> Loading users...
                                 </div>
                             </div>
-                            <small class="text-muted">Leave empty to target all users in selected divisions/roles</small>
+                            <small class="text-muted">
+                                <i class="fas fa-magic me-1 text-primary"></i>
+                                <strong>Auto-filtered:</strong> Users list will update based on selected divisions/roles. 
+                                Leave empty to target all users in selected divisions/roles.
+                            </small>
                         </div>
                         
                         <div class="col-12">
@@ -533,9 +519,7 @@ function renderTargetCheckboxGroup(containerId, groupData, cacheKey) {
             label.htmlFor = checkboxId;
 
             const displayLabel = item.label ?? formatEventTypeLabel(rawValue);
-            label.textContent = source === 'legacy'
-                ? `${displayLabel} (Legacy)`
-                : displayLabel;
+            label.textContent = displayLabel;
 
             if (item.count) {
                 const badge = document.createElement('span');
@@ -551,7 +535,6 @@ function renderTargetCheckboxGroup(containerId, groupData, cacheKey) {
     };
 
     renderSection('Organization', groupData.official ?? [], 'official');
-    renderSection('Legacy Targets', groupData.legacy ?? [], 'legacy');
 
     applySelectionToCheckboxes(
         container.querySelectorAll('input[type="checkbox"]'),
@@ -782,6 +765,24 @@ document.getElementById('ruleForm').addEventListener('submit', async function(e)
     
     const formData = new FormData(this);
     
+    // Debug: Log form data
+    console.log('📤 Submitting notification rule...');
+    console.log('Rule ID:', ruleId ? ruleId : 'NEW');
+    console.log('URL:', url);
+    console.log('Form data entries:');
+    for (let pair of formData.entries()) {
+        console.log(pair[0], '=', pair[1]);
+    }
+    
+    // Auto-cascade logic: If only divisions selected, auto-add all roles in those divisions
+    const selectedDivisions = formData.getAll('target_divisions[]');
+    const selectedRoles = formData.getAll('target_roles[]');
+    const selectedUsers = formData.getAll('target_users[]');
+    
+    console.log('Selected Divisions:', selectedDivisions);
+    console.log('Selected Roles:', selectedRoles);
+    console.log('Selected Users:', selectedUsers);
+    
     try {
         const response = await fetch(url, {
             method: 'POST',
@@ -793,22 +794,52 @@ document.getElementById('ruleForm').addEventListener('submit', async function(e)
         });
         
         const result = await response.json();
+        console.log('Response:', result);
         
         if (result.success) {
+            // Close modal
+            const modalElement = document.getElementById('ruleModal');
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+                modal.hide();
+            }
+            
+            // Show success message
             Swal.fire({
                 icon: 'success',
                 title: 'Success',
                 text: result.message,
                 showConfirmButton: false,
                 timer: 1500
-            }).then(() => {
-                location.reload();
             });
+            
+            // Reload DataTable instead of full page
+            if (ruleId && result.rule) {
+                // Update: refresh DataTable row
+                const table = $('#rulesTable').DataTable();
+                
+                // Find and update the row
+                table.rows().every(function(rowIdx, tableLoop, rowLoop) {
+                    const data = this.data();
+                    if (data.id == ruleId) {
+                        // Update row data with new data
+                        this.data(result.rule).draw(false);
+                        console.log('✅ Updated row in DataTable');
+                        return false; // Break loop
+                    }
+                });
+            } else {
+                // Create: reload full page to get new data
+                setTimeout(() => {
+                    location.reload();
+                }, 1500);
+            }
         } else {
-            Swal.fire('Error', result.message, 'error');
+            Swal.fire('Error', result.message || 'Failed to save rule', 'error');
         }
     } catch (error) {
-        Swal.fire('Error', 'Failed to save rule', 'error');
+        console.error('Submit error:', error);
+        Swal.fire('Error', 'Failed to save rule: ' + error.message, 'error');
     }
 });
 
@@ -1045,6 +1076,184 @@ function deleteRule(ruleId) {
         }
     });
 }
+
+// ========================================================================
+// SEARCH AND FILTER FUNCTIONALITY
+// ========================================================================
+
+let allRules = <?= json_encode($rules) ?>;
+let rulesTable;
+let currentDivisionFilter = 'all';
+
+// Debug: Log data untuk melihat strukturnya
+console.log('📊 All Rules Data:', allRules);
+console.log('📊 Total Rules:', allRules.length);
+
+// Initialize DataTable
+document.addEventListener('DOMContentLoaded', function() {
+    rulesTable = $('#rulesTable').DataTable({
+        data: allRules,
+        columns: [
+            { 
+                data: 'id',
+                className: 'text-center',
+                width: '50px'
+            },
+            { 
+                data: 'name',
+                render: function(data, type, row) {
+                    return `<i class="fas fa-bell me-2 text-primary"></i><strong class="text-dark">${data || 'N/A'}</strong>`;
+                }
+            },
+            { 
+                data: 'trigger_event',
+                render: function(data) {
+                    return `<span class="badge bg-secondary">${data || 'N/A'}</span>`;
+                }
+            },
+            {
+                data: null,
+                render: function(data, type, row) {
+                    let badges = [];
+                    
+                    // Parse divisions
+                    if (row.target_divisions) {
+                        const divs = row.target_divisions.split(',').map(d => d.trim());
+                        divs.forEach(div => {
+                            badges.push(`<span class="badge bg-info me-1">${div}</span>`);
+                        });
+                    }
+                    
+                    // Department
+                    if (row.target_department) {
+                        badges.push(`<span class="badge bg-warning me-1">${row.target_department}</span>`);
+                    }
+                    
+                    // Role
+                    if (row.target_role) {
+                        badges.push(`<span class="badge bg-primary me-1">${row.target_role}</span>`);
+                    }
+                    
+                    if (badges.length === 0) {
+                        return '<span class="text-muted small">All Users</span>';
+                    }
+                    
+                    return badges.join('');
+                }
+            },
+            {
+                data: 'type',
+                className: 'text-center',
+                width: '100px',
+                render: function(data) {
+                    const typeColors = {
+                        'info': 'primary',
+                        'success': 'success',
+                        'warning': 'warning',
+                        'error': 'danger'
+                    };
+                    const color = typeColors[data] || 'secondary';
+                    return `<span class="badge bg-${color}">${data || 'info'}</span>`;
+                }
+            },
+            {
+                data: 'is_active',
+                className: 'text-center',
+                width: '80px',
+                render: function(data, type, row) {
+                    const checked = data == 1 ? 'checked' : '';
+                    return `<div class="form-check form-switch d-inline-block">
+                        <input class="form-check-input" type="checkbox" role="switch"
+                               id="status_${row.id}"
+                               ${checked}
+                               onchange="toggleRuleStatus(${row.id})">
+                    </div>`;
+                }
+            },
+            {
+                data: 'created_at',
+                width: '100px',
+                render: function(data) {
+                    if (!data) return '-';
+                    const date = new Date(data);
+                    return date.toLocaleDateString('id-ID', {
+                        day: 'numeric', 
+                        month: 'short', 
+                        year: 'numeric'
+                    });
+                }
+            },
+            {
+                data: 'id',
+                className: 'text-center',
+                width: '120px',
+                orderable: false,
+                render: function(data) {
+                    return `
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-info" onclick="viewRuleDetail(${data})" 
+                                    title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-warning" onclick="editRule(${data})" 
+                                    title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="deleteRule(${data})" 
+                                    title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        ],
+        pageLength: 15,
+        order: [[0, 'desc']],
+        dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
+        language: {
+            lengthMenu: "Show _MENU_",
+            search: "",
+            searchPlaceholder: "Search...",
+            info: "Showing _START_ to _END_ of _TOTAL_ rules",
+            infoEmpty: "No rules found",
+            infoFiltered: "(filtered from _MAX_ total)",
+            zeroRecords: "No matching rules found",
+            paginate: {
+                first: '<i class="fas fa-angle-double-left"></i>',
+                previous: '<i class="fas fa-angle-left"></i>',
+                next: '<i class="fas fa-angle-right"></i>',
+                last: '<i class="fas fa-angle-double-right"></i>'
+            }
+        },
+    });
+    
+    // Custom search box
+    $('#searchRules').on('keyup', function() {
+        rulesTable.search(this.value).draw();
+    });
+    
+    // Division tab filter
+    $('[data-bs-toggle="tab"]').on('shown.bs.tab', function(e) {
+        const division = $(e.target).data('division');
+        currentDivisionFilter = division;
+        filterByDivision(division);
+    });
+});
+
+// Filter by division
+function filterByDivision(division) {
+    if (division === 'all') {
+        // Show all
+        rulesTable.column(3).search('').draw();
+    } else {
+        // Filter by specific division - search in target column
+        rulesTable.column(3).search(division, false, false).draw();
+    }
+}
+
+
+
 </script>
 
 <?php $this->endSection(); ?>

@@ -2666,6 +2666,22 @@ class Purchasing extends BaseController
             $result = $this->purchaseModel->update($poId, ['status' => 'Cancelled']);
             
             if ($result) {
+                // Send notification: PO Rejected/Cancelled
+                helper('notification');
+                $po = $this->purchaseModel->find($poId);
+                if ($po) {
+                    $db = \Config\Database::connect();
+                    $supplier = $db->table('suppliers')->where('id_supplier', $po['supplier_id'])->get()->getRowArray();
+                    notify_po_rejected([
+                        'id' => $poId,
+                        'nomor_po' => $po['no_po'],
+                        'supplier_name' => $supplier['nama_supplier'] ?? '',
+                        'alasan' => 'PO Cancelled',
+                        'rejected_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/purchasing/po-list')
+                    ]);
+                }
+                
                 return $this->respond(['success' => true, 'message' => 'PO berhasil dibatalkan']);
             } else {
                 return $this->respond(['success' => false, 'message' => 'Gagal membatalkan PO'], 500);
@@ -2862,7 +2878,21 @@ class Purchasing extends BaseController
                     'qty_duplicates' => $qty_duplicates
                 ]);
                 
-                // Tambah notifikasi ke warehouse
+                // Send notification: PO Unit Created
+                helper('notification');
+                $db = \Config\Database::connect();
+                $supplier = $db->table('suppliers')->where('id_supplier', $this->request->getPost('id_supplier'))->get()->getRowArray();
+                notify_po_unit_created([
+                    'id' => $newPoId,
+                    'nomor_po' => $poNumber,
+                    'supplier_name' => $supplier['nama_supplier'] ?? '',
+                    'unit_type' => $this->request->getPost('jenis_unit'),
+                    'quantity' => $qty_duplicates,
+                    'created_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/warehouse/purchase-orders')
+                ]);
+                
+                // Tambah notifikasi ke warehouse (legacy)
                 $notifModel = new \App\Models\NotificationModel();
                 $notifModel->insert([
                     'role' => 'warehouse',
@@ -3140,6 +3170,20 @@ class Purchasing extends BaseController
                     'supplier_id' => $this->request->getPost('id_supplier')
                 ]);
                 
+                // Send notification: PO Attachment Created
+                helper('notification');
+                $db = \Config\Database::connect();
+                $supplier = $db->table('suppliers')->where('id_supplier', $this->request->getPost('id_supplier'))->get()->getRowArray();
+                notify_po_attachment_created([
+                    'id' => $newPoId,
+                    'nomor_po' => $this->request->getPost('no_po'),
+                    'supplier_name' => $supplier['nama_supplier'] ?? '',
+                    'item_type' => $item_type,
+                    'quantity' => $quantity,
+                    'created_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/warehouse/purchase-orders')
+                ]);
+                
                 return redirect()->to('/purchasing/po-attachment')->with('success', 'PO ' . $item_type . ' berhasil ditambahkan sebanyak ' . $quantity . ' unit.');
             } else {
                 $this->purchaseModel->delete($newPoId);
@@ -3404,7 +3448,19 @@ class Purchasing extends BaseController
             if (!empty($itemsToInsert)) {
                 // PERIKSA HASIL INSERT BATCH
                 if ($this->poSparepartItemModel->insertBatch($itemsToInsert)) {
-                    // JIKA BERHASIL, tampilkan pesan sukses
+                    // JIKA BERHASIL, send notification and tampilkan pesan sukses
+                    helper('notification');
+                    $db = \Config\Database::connect();
+                    $supplier = $db->table('suppliers')->where('id_supplier', $this->request->getPost('id_supplier'))->get()->getRowArray();
+                    notify_po_sparepart_created([
+                        'id' => $newPoId,
+                        'nomor_po' => $this->request->getPost('no_po'),
+                        'supplier_name' => $supplier['nama_supplier'] ?? '',
+                        'total_items' => count($itemsToInsert),
+                        'created_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/warehouse/purchase-orders')
+                    ]);
+                    
                     return redirect()->to('/purchasing/po-sparepart')->with('success', 'PO Sparepart berhasil ditambahkan.');
                 } else {
                     // JIKA GAGAL, hapus PO utama (rollback) dan tampilkan error
@@ -4390,6 +4446,7 @@ class Purchasing extends BaseController
                 ', [$poId]);
                 $poInfo = $poQuery->getRow();
                 
+                // Send general delivery notification (for DI workflow)
                 notify_delivery_created([
                     'id' => $deliveryId,
                     'delivery_number' => $packingListNo,
@@ -4400,6 +4457,24 @@ class Purchasing extends BaseController
                     'created_by' => session()->get('user_name') ?? 'System',
                     'url' => base_url('/purchasing/delivery-detail/' . $deliveryId)
                 ]);
+                
+                // Send PO-specific delivery notification (for Warehouse & Purchasing cross-division)
+                if (function_exists('notify_po_delivery_created')) {
+                    notify_po_delivery_created([
+                        'delivery_id' => $deliveryId,
+                        'po_id' => $poId,
+                        'po_number' => $poInfo ? $poInfo->no_po : 'Unknown PO',
+                        'supplier_name' => $poInfo ? $poInfo->nama_supplier : 'Unknown Supplier',
+                        'delivery_date' => $deliveryDate,
+                        'delivery_type' => 'Purchase Order Delivery',
+                        'item_count' => $totalItems,
+                        'total_quantity' => $totalItems,
+                        'created_by' => session()->get('user_name') ?? 'System',
+                        'created_at' => date('Y-m-d H:i:s'),
+                        'notes' => $notes ?? '',
+                        'url' => base_url('/purchasing/delivery-detail/' . $deliveryId)
+                    ]);
+                }
                 
                 log_message('info', "Delivery created: {$packingListNo} - Notification sent");
             } catch (\Exception $notifError) {
@@ -5221,6 +5296,19 @@ class Purchasing extends BaseController
             log_message('info', 'Kode supplier in data: ' . $data['kode_supplier']);
 
             if ($this->supplierModel->insert($data)) {
+                $supplierId = $this->supplierModel->getInsertID();
+                
+                // Send notification: Supplier Created
+                helper('notification');
+                notify_supplier_created([
+                    'id' => $supplierId,
+                    'kode_supplier' => $kodeSupplier,
+                    'nama_supplier' => $data['nama_supplier'],
+                    'business_type' => $data['business_type'],
+                    'created_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/purchasing/supplier-management')
+                ]);
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Supplier berhasil ditambahkan dengan kode: ' . $kodeSupplier
@@ -5444,6 +5532,17 @@ class Purchasing extends BaseController
             ];
 
             if ($this->supplierModel->update($id, $data)) {
+                // Send notification: Supplier Updated
+                helper('notification');
+                notify_supplier_updated([
+                    'id' => $id,
+                    'kode_supplier' => $data['kode_supplier'],
+                    'nama_supplier' => $data['nama_supplier'],
+                    'business_type' => $data['business_type'],
+                    'updated_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/purchasing/supplier-management')
+                ]);
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Supplier berhasil diperbarui'
@@ -5516,7 +5615,22 @@ class Purchasing extends BaseController
     public function deleteSupplier($id)
     {
         try {
+            // Get supplier data before delete for notification
+            $supplier = $this->supplierModel->find($id);
+            
             if ($this->supplierModel->delete($id)) {
+                // Send notification: Supplier Deleted
+                if ($supplier) {
+                    helper('notification');
+                    notify_supplier_deleted([
+                        'id' => $id,
+                        'kode_supplier' => $supplier['kode_supplier'] ?? '',
+                        'nama_supplier' => $supplier['nama_supplier'] ?? '',
+                        'deleted_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/purchasing/supplier-management')
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Supplier berhasil dihapus'

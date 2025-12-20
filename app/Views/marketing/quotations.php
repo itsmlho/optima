@@ -2367,7 +2367,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     
     // Determine endpoint based on mode
     const endpoint = isEditMode 
-        ? '<?= base_url('marketing/quotations/update-specification') ?>' 
+        ? '<?= base_url('marketing/quotations/update-specification') ?>/' + specId
         : '<?= base_url('marketing/quotations/add-specification') ?>';
     
     const actionText = isEditMode ? 'Updating...' : 'Saving...';

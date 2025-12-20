@@ -1089,6 +1089,46 @@ class Service extends BaseController
             // Save the approval
             $this->saveStageApproval($stageData, $approvalData);
             
+            // Send cross-division notifications for stage completion
+            helper('notification');
+            if (in_array($approvalData['stage'], ['persiapan_unit', 'fabrikasi', 'pdi'])) {
+                $spk = $this->spkModel->find($id);
+                if ($spk) {
+                    $notifData = [
+                        'spk_id' => $id,
+                        'spk_number' => $spk['nomor_spk'] ?? 'N/A',
+                        'stage' => $approvalData['stage'],
+                        'pelanggan' => $spk['pelanggan'] ?? '',
+                        'lokasi' => $spk['lokasi'] ?? '',
+                        'approved_by' => session('username') ?? 'System',
+                        'approved_at' => date('Y-m-d H:i:s'),
+                        'url' => base_url('/service/spk/view/' . $id)
+                    ];
+                    
+                    // Add stage-specific information
+                    if ($approvalData['stage'] === 'persiapan_unit') {
+                        $notifData['unit_info'] = isset($spk['spesifikasi']) ? 'Unit prepared from specifications' : '';
+                        $notifData['items_prepared'] = 'Battery, Charger, and other components';
+                        if (function_exists('notify_spk_unit_prep_completed')) {
+                            notify_spk_unit_prep_completed($notifData);
+                        }
+                    } elseif ($approvalData['stage'] === 'fabrikasi') {
+                        $notifData['attachment_info'] = isset($approvalData['attachment_inventory_attachment_id']) ? 'Attachment configured' : '';
+                        $notifData['fabrication_notes'] = $approvalData['catatan_fabrikasi'] ?? '';
+                        if (function_exists('notify_spk_fabrication_completed')) {
+                            notify_spk_fabrication_completed($notifData);
+                        }
+                    } elseif ($approvalData['stage'] === 'pdi') {
+                        $notifData['spk_status'] = 'READY';
+                        $notifData['ready_for_delivery'] = true;
+                        $notifData['pdi_results'] = $approvalData['catatan_pdi'] ?? 'PDI completed successfully';
+                        if (function_exists('notify_spk_pdi_completed')) {
+                            notify_spk_pdi_completed($notifData);
+                        }
+                    }
+                }
+            }
+            
             // Check if all stages are completed and update SPK status if needed
             $this->checkAndUpdateSpkStatus($id);
             
@@ -1191,6 +1231,20 @@ class Service extends BaseController
             }
             
             $this->db->table('spk')->where('id', $spkId)->update($updateData);
+
+            // Send notification: SPK Assigned
+            helper('notification');
+            $spk = $this->db->table('spk')->where('id', $spkId)->get()->getRowArray();
+            if ($spk) {
+                notify_spk_assigned([
+                    'id' => $spkId,
+                    'nomor_spk' => $spk['nomor_spk'] ?? '',
+                    'unit_id' => $unitId,
+                    'attachment_id' => $attachmentId,
+                    'assigned_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/service/spk/detail/' . $spkId)
+                ]);
+            }
 
             return $this->response->setJSON([
                 'success' => true,
@@ -2741,6 +2795,23 @@ EOF;
                 // Get the newly created record for dropdown
                 $newRecord = $this->attModel->find($insertId);
                 
+                // Send cross-division notification to Warehouse
+                helper('notification');
+                if (function_exists('notify_attachment_added') && $insertId > 0) {
+                    notify_attachment_added([
+                        'attachment_id' => $insertId,
+                        'tipe_item' => $type,
+                        'merk' => $data['merk'] ?? '',
+                        'model' => $data['model'] ?? '',
+                        'serial_number' => $serialNumber,
+                        'kondisi' => $data['kondisi_fisik'] ?? 'Baik',
+                        'lokasi' => $data['lokasi_penyimpanan'] ?? 'Workshop',
+                        'added_by' => session('username') ?? 'System',
+                        'added_at' => date('Y-m-d H:i:s'),
+                        'url' => base_url('/warehouse/attachment/view/' . $insertId)
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Attachment added successfully',
@@ -3023,6 +3094,20 @@ EOF;
 
             if ($db->transStatus() === false) {
                 throw new \Exception('Gagal menyimpan data verifikasi');
+            }
+
+            // Send notification: Unit Prep Completed
+            helper('notification');
+            $unit = $db->table('inventory_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
+            if ($unit) {
+                notify_unit_prep_completed([
+                    'id' => $workOrderId,
+                    'no_unit' => $unit['no_unit'] ?? '',
+                    'nomor_spk' => $unit['nomor_spk'] ?? '',
+                    'verified_by' => $verificationData['verified_by'],
+                    'verification_date' => $verificationData['verification_date'],
+                    'url' => base_url('/service/work-order/detail/' . $workOrderId)
+                ]);
             }
 
             return $this->response->setJSON([
