@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "C:\laragon\www\optima\check_trigger_implementations.py", line 13, in <module>
+    print(f"\U0001f4ca Total trigger_events in database: {len(db_triggers)}")
+    ~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Python313\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\U0001f4ca' in position 0: character maps to <undefined>

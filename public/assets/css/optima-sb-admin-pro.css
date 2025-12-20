@@ -917,34 +917,60 @@ table.dataTable.no-footer {
 }
 
 /* ========================================================================
-   TOAST NOTIFICATIONS (SB ADMIN PRO STYLE)
+   TOAST NOTIFICATIONS (BOOTSTRAP 5 STYLE)
    ======================================================================== */
 .toast-container {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 1055;
+    z-index: 1090;
 }
 
 .toast {
-    border: 0;
-    border-radius: 0.35rem;
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
-    font-size: 0.875rem;
+    min-width: 350px;
     max-width: 350px;
-    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 0.375rem;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
 }
 
 .toast-header {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
     background-color: rgba(255, 255, 255, 0.95);
     border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    color: var(--bs-gray-600);
+    border-top-left-radius: calc(0.375rem - 1px);
+    border-top-right-radius: calc(0.375rem - 1px);
+}
+
+.toast-header strong {
     font-weight: 600;
+    color: #212529;
+}
+
+.toast-header small {
+    color: #6c757d;
+    font-size: 0.75rem;
+}
+
+.toast-header .btn-close {
+    margin-left: auto;
 }
 
 .toast-body {
     padding: 0.75rem;
     word-wrap: break-word;
+    color: #212529;
+}
+
+/* Action buttons in toast */
+.toast-body .btn {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.toast-body .border-top {
+    border-color: rgba(0, 0, 0, 0.1) !important;
 }
 
 /* ========================================================================
@@ -991,6 +1017,20 @@ table.dataTable.no-footer {
 
 .bg-gradient-danger {
     background: linear-gradient(180deg, var(--bs-danger) 10%, #e74a3b 100%);
+}
+
+/* Checkbox Group Styling */
+.checkbox-group {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.checkbox-group .form-check {
+    padding: 0.375rem 0;
+}
+
+.checkbox-group .form-check:hover {
+    background-color: var(--bs-light);
 }
 
 .rotate-n-15 {

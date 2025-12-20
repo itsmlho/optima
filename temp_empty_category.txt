@@ -1,0 +1,21 @@
+id	name	category	description
+105	Payment Status Updated Notification	NULL	NULL
+106	Purchase Order Created Notification	NULL	NULL
+108	Delivery Status Changed Notification	NULL	NULL
+110	Work Order Status Changed Notification	NULL	NULL
+111	PO Verification Updated Notification	NULL	NULL
+113	Quotation Updated Notification	NULL	NULL
+114	Quotation Approved Notification	NULL	NULL
+115	Quotation Rejected Notification	NULL	NULL
+116	Work Order Assigned Notification	NULL	NULL
+117	Work Order Completed Notification	NULL	NULL
+118	Work Order Delayed Notification	NULL	NULL
+119	Work Order Sparepart Added Notification	NULL	NULL
+120	Service Area Assignment Created Notification	NULL	NULL
+121	Service Area Assignment Updated Notification	NULL	NULL
+122	Service Area Assignment Completed Notification	NULL	NULL
+123	Unit Location Updated Notification	NULL	NULL
+124	Warehouse Unit Updated Notification	NULL	NULL
+125	Contract Created Notification	NULL	NULL
+126	Customer Created Notification	NULL	NULL
+128	Customer Status Changed Notification	NULL	NULL

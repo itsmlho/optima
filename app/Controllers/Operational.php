@@ -432,6 +432,33 @@ class Operational extends BaseController
                     return $this->response->setJSON(['success'=>false,'message'=>'Aksi tidak valid']);
             }
             
+            // Send notifications based on action
+            helper('notification');
+            $deliveryData = [
+                'id' => $id,
+                'nomor_delivery' => $di['nomor_di'] ?? '',
+                'driver_name' => $updateData['nama_supir'] ?? $di['nama_supir'] ?? '',
+                'customer_name' => $di['nama_customer'] ?? '',
+                'destination' => $di['alamat_tujuan'] ?? '',
+                'vehicle' => $updateData['kendaraan'] ?? $di['kendaraan'] ?? '',
+                'url' => base_url('/operational/delivery/' . $id)
+            ];
+            
+            switch($action) {
+                case 'assign_driver':
+                    notify_delivery_assigned($deliveryData);
+                    break;
+                case 'approve_departure':
+                    notify_delivery_in_transit($deliveryData);
+                    break;
+                case 'confirm_arrival':
+                    notify_delivery_arrived($deliveryData);
+                    break;
+                case 'complete_delivery':
+                    notify_delivery_completed($deliveryData);
+                    break;
+            }
+            
             // Update will trigger the sync_di_status_temp_on_update trigger
             $oldDi = $this->diModel->find((int)$id);
             if ($oldDi && !is_array($oldDi)) { $oldDi = (array)$oldDi; }
@@ -2453,7 +2480,7 @@ class Operational extends BaseController
                 'operational',
                 'return_temporary_unit',
                 'Returned temporary unit ' . $kontrakUnit['unit_id'] . ', reconnected original unit ' . $kontrakUnit['original_unit_id'],
-                ['kontrak_unit_id' => $kontrakUnitId]
+                (string)$kontrakUnitId
             );
 
             $this->db->transComplete();

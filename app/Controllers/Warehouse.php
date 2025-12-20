@@ -96,12 +96,70 @@ class Warehouse extends BaseController
     public function updateInventorySparepart($id)
     {
         $inventoryModel = new InventorySparepartModel();
+        
+        // Get old data for comparison
+        $oldData = $inventoryModel->find($id);
+        
         $data = [
             'stok' => $this->request->getPost('stok'),
             'lokasi_rak' => $this->request->getPost('lokasi_rak')
         ];
 
         if ($inventoryModel->update($id, $data)) {
+            // Get sparepart details for notification (with minimum_stock)
+            $sparepart = $inventoryModel
+                ->select('inventory_spareparts.*, s.desc_sparepart, s.kode, s.minimum_stock')
+                ->join('sparepart s', 's.id_sparepart = inventory_spareparts.sparepart_id', 'left')
+                ->find($id);
+            
+            // Send notification: Sparepart Used/Updated
+            helper('notification');
+            if ($sparepart) {
+                notify_sparepart_used([
+                    'id' => $id,
+                    'nama_sparepart' => $sparepart['desc_sparepart'] ?? '',
+                    'kode' => $sparepart['kode'] ?? '',
+                    'qty' => $data['stok'],
+                    'lokasi' => $data['lokasi_rak'],
+                    'updated_by' => session('username') ?? session('user_id'),
+                    'url' => base_url('/warehouse/spareparts')
+                ]);
+                
+                // ⭐ REAL-TIME TRIGGER: Check stock level and send alerts
+                $newStock = (int)$data['stok'];
+                $minStock = (int)($sparepart['minimum_stock'] ?? 0);
+                
+                // Only send alert if minimum stock is configured
+                if ($minStock > 0) {
+                    if ($newStock == 0) {
+                        // OUT OF STOCK - CRITICAL ALERT!
+                        notify_sparepart_out_of_stock([
+                            'id' => $id,
+                            'nama_sparepart' => $sparepart['desc_sparepart'],
+                            'kode' => $sparepart['kode'],
+                            'lokasi' => $data['lokasi_rak'],
+                            'url' => base_url('/warehouse/spareparts/' . $id)
+                        ]);
+                        
+                        log_message('critical', "[Warehouse] STOCK OUT: {$sparepart['kode']} - {$sparepart['desc_sparepart']}");
+                        
+                    } elseif ($newStock <= $minStock) {
+                        // LOW STOCK - WARNING ALERT
+                        notify_sparepart_low_stock([
+                            'id' => $id,
+                            'nama_sparepart' => $sparepart['desc_sparepart'],
+                            'kode' => $sparepart['kode'],
+                            'stok_saat_ini' => $newStock,
+                            'minimum_stock' => $minStock,
+                            'lokasi' => $data['lokasi_rak'],
+                            'url' => base_url('/warehouse/spareparts/' . $id)
+                        ]);
+                        
+                        log_message('warning', "[Warehouse] LOW STOCK: {$sparepart['kode']} - Stock: {$newStock} (Min: {$minStock})");
+                    }
+                }
+            }
+            
             return $this->response->setJSON(['success' => true, 'message' => 'Stok berhasil diperbarui.']);
         } else {
             return $this->response->setJSON(['success' => false, 'message' => 'Gagal memperbarui stok.', 'errors' => $inventoryModel->errors()]);
@@ -790,13 +848,24 @@ class Warehouse extends BaseController
         if ($inventoryUnitModel->update($id, $data)) {
             // Get unit details for notification
             $unit = $inventoryUnitModel->find($id);
+            $oldUnit = $inventoryUnitModel->find($id); // Get before data if needed
             
-            // Send notification - warehouse unit updated
-            if (function_exists('notify_warehouse_unit_updated') && $unit) {
-                notify_warehouse_unit_updated([
+            // Send notification: Inventory Unit Status Changed
+            helper('notification');
+            if ($unit) {
+                $statusNames = [
+                    2 => 'STOCK NON-ASET',
+                    3 => 'RENTAL',
+                    7 => 'STOCK FISIK',
+                    9 => 'SOLD'
+                ];
+                
+                notify_inventory_unit_status_changed([
                     'id' => $id,
-                    'unit_code' => $unit['no_unit'] ?? '',
-                    'changes' => 'Status and location updated',
+                    'no_unit' => $unit['no_unit'] ?? '',
+                    'old_status' => $statusNames[$unit['status_unit_id'] ?? 2] ?? 'Unknown',
+                    'new_status' => $statusNames[$data['status_unit_id']] ?? 'Unknown',
+                    'lokasi' => $data['lokasi_unit'],
                     'updated_by' => session('username') ?? session('user_id'),
                     'url' => base_url('/warehouse/units')
                 ]);
@@ -1005,6 +1074,23 @@ class Warehouse extends BaseController
             });
 
             if ($attachmentModel->update($id, $updateData)) {
+                // Get attachment details for notification
+                $updatedAttachment = $attachmentModel->find($id);
+                
+                // Send notification: Attachment Detached/Updated
+                helper('notification');
+                if ($updatedAttachment) {
+                    notify_attachment_detached([
+                        'id' => $id,
+                        'attachment_type' => $attachment['tipe'] ?? 'Attachment',
+                        'serial_number' => $attachment['sn_attachment'] ?? '',
+                        'new_status' => $updateData['status_unit'] ?? '',
+                        'new_location' => $updateData['lokasi_unit'] ?? '',
+                        'updated_by' => session('username') ?? session('user_id'),
+                        'url' => base_url('/warehouse/attachments')
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Data attachment berhasil diperbarui'
@@ -1979,6 +2065,22 @@ class Warehouse extends BaseController
                     'had_existing' => !empty($existingAttachment)
                 ]);
                 
+                // Send cross-division notification to Service
+                helper('notification');
+                if (function_exists('notify_attachment_attached')) {
+                    notify_attachment_attached([
+                        'attachment_id' => $attachmentId,
+                        'unit_id' => $unitId,
+                        'unit_number' => $unit['no_unit'],
+                        'tipe_item' => $newAttachment['tipe_item'] ?? '',
+                        'attachment_info' => ($newAttachment['merk'] ?? '') . ' ' . ($newAttachment['model'] ?? ''),
+                        'performed_by' => session('username') ?? 'System',
+                        'performed_at' => date('Y-m-d H:i:s'),
+                        'notes' => $notes ?? '',
+                        'url' => base_url('/warehouse/unit/view/' . $unitId)
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => $message
@@ -2070,6 +2172,24 @@ class Warehouse extends BaseController
                     'reason' => $reason
                 ]);
                 
+                // Send cross-division notification to Service
+                helper('notification');
+                if (function_exists('notify_attachment_swapped')) {
+                    notify_attachment_swapped([
+                        'attachment_id' => $attachmentId,
+                        'from_unit_id' => $fromUnitId,
+                        'from_unit_number' => $fromUnit['no_unit'],
+                        'to_unit_id' => $toUnitId,
+                        'to_unit_number' => $toUnit['no_unit'],
+                        'tipe_item' => $movingAttachment['tipe_item'] ?? '',
+                        'attachment_info' => ($movingAttachment['merk'] ?? '') . ' ' . ($movingAttachment['model'] ?? ''),
+                        'reason' => $reason,
+                        'performed_by' => session('username') ?? 'System',
+                        'performed_at' => date('Y-m-d H:i:s'),
+                        'url' => base_url('/warehouse/attachment/view/' . $attachmentId)
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => "Berhasil memindahkan attachment dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}"
@@ -2137,6 +2257,24 @@ class Warehouse extends BaseController
                     'reason' => $reason,
                     'new_location' => $newLocation
                 ]);
+                
+                // Send cross-division notification to Service
+                helper('notification');
+                if (function_exists('notify_attachment_detached')) {
+                    $attachmentDetails = $attachmentModel->find($attachmentId);
+                    notify_attachment_detached([
+                        'attachment_id' => $attachmentId,
+                        'unit_id' => $attachment['id_inventory_unit'] ?? null,
+                        'unit_number' => $unitInfo,
+                        'tipe_item' => $attachmentDetails['tipe_item'] ?? '',
+                        'attachment_info' => ($attachmentDetails['merk'] ?? '') . ' ' . ($attachmentDetails['model'] ?? ''),
+                        'reason' => $reason,
+                        'new_location' => $newLocation ?? 'Workshop',
+                        'performed_by' => session('username') ?? 'System',
+                        'performed_at' => date('Y-m-d H:i:s'),
+                        'url' => base_url('/warehouse/attachment/view/' . $attachmentId)
+                    ]);
+                }
                 
                 return $this->response->setJSON([
                     'success' => true,

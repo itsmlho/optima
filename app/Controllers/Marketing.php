@@ -4315,6 +4315,9 @@ class Marketing extends BaseDataTableController
                         $createdSPKs[] = $spkId;
                         $spkNumbers[] = $nomorSPK;
                         
+                        // Send notification for each created SPK
+                        $this->sendSpkNotification($spkId);
+                        
                         // Log SPK creation
                         $this->logCreate('spk', $spkId, [
                             'spk_id' => $spkId,

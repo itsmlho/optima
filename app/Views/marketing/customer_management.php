@@ -406,13 +406,6 @@ $can_export = $permissions['export'];
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="address">Primary Address <span class="text-danger">*</span></label>
-                        <textarea class="form-control" id="address" name="address" rows="3" maxlength="500" required></textarea>
-                        <small class="form-text text-muted">This will be created as the primary location</small>
-                    </div>
-                    
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
@@ -420,12 +413,11 @@ $can_export = $permissions['export'];
                                 <input type="text" class="form-control" id="province" name="province" maxlength="100" required>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <div class="form-group">
-                                <label for="postal_code">Postal Code</label>
-                                <input type="text" class="form-control" id="postal_code" name="postal_code" maxlength="10">
-                            </div>
-                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Primary Address <span class="text-danger">*</span></label>
+                        <textarea class="form-control" id="address" name="address" rows="3" maxlength="500" required></textarea>
+                        <small class="form-text text-muted">This will be created as the primary location</small>
                     </div>
                     
                     <div class="form-group">

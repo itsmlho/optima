@@ -680,6 +680,27 @@ class SparepartUsageController extends BaseController
             $confirmed = $this->returnModel->confirmReturn($id, $userId, $notes);
 
             if ($confirmed) {
+                // Send cross-division notification to Service
+                helper('notification');
+                if (function_exists('notify_sparepart_returned')) {
+                    $returnDetails = $this->returnModel->find($id);
+                    $sparepart = $this->db->table('sparepart')->where('id', $returnDetails['sparepart_id'] ?? 0)->get()->getRowArray();
+                    
+                    notify_sparepart_returned([
+                        'return_id' => $id,
+                        'sparepart_id' => $returnDetails['sparepart_id'] ?? null,
+                        'sparepart_name' => $sparepart['name'] ?? 'Unknown',
+                        'quantity' => $returnDetails['quantity'] ?? 0,
+                        'condition' => $returnDetails['condition'] ?? 'Baik',
+                        'returned_by' => $returnDetails['returned_by_name'] ?? '',
+                        'returned_from' => $returnDetails['work_order_number'] ?? '',
+                        'confirmed_by' => session('username') ?? 'System',
+                        'confirmed_at' => date('Y-m-d H:i:s'),
+                        'notes' => $notes ?? '',
+                        'url' => base_url('/warehouse/sparepart-usage/return-detail/' . $id)
+                    ]);
+                }
+                
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Pengembalian sparepart berhasil dikonfirmasi'

@@ -1168,6 +1168,22 @@ class WarehousePO extends BaseController
                     }
                     
                     $db->transCommit();
+                    
+                    // Send notification: PO Verified
+                    helper('notification');
+                    $po = $this->purchasemodel->find($po_id);
+                    if ($po) {
+                        $supplier = $db->table('suppliers')->where('id_supplier', $po['supplier_id'])->get()->getRowArray();
+                        notify_po_verified([
+                            'id' => $po_id,
+                            'nomor_po' => $po['no_po'],
+                            'supplier_name' => $supplier['nama_supplier'] ?? '',
+                            'verified_by' => session('username') ?? session('user_id'),
+                            'status' => $status,
+                            'url' => base_url('/warehouse/purchase-orders')
+                        ]);
+                    }
+                    
                     return $this->response->setJSON(['statusCode' => 200, 'message' => 'Verifikasi berhasil.']);
                 } else {
                     // Re-enable validation
@@ -1428,6 +1444,23 @@ class WarehousePO extends BaseController
                 }
 
                 $db->transCommit();
+                
+                // Send notification: PO Verified
+                helper('notification');
+                $po = $this->purchasemodel->find($po_id);
+                if ($po) {
+                    $supplier = $db->table('suppliers')->where('id_supplier', $po['supplier_id'])->get()->getRowArray();
+                    notify_po_verified([
+                        'id' => $po_id,
+                        'nomor_po' => $po['no_po'],
+                        'supplier_name' => $supplier['nama_supplier'] ?? '',
+                        'verified_by' => session('username') ?? session('user_id'),
+                        'status' => $status,
+                        'item_type' => $itemType,
+                        'url' => base_url('/warehouse/purchase-orders')
+                    ]);
+                }
+                
                 return $this->response->setJSON(['success'=>true,'message'=>'Verifikasi berhasil, stok dibuat.']);
 
             } catch (\Throwable $e) {
@@ -2063,7 +2096,25 @@ class WarehousePO extends BaseController
                 } else {
                     log_message('warning', '[WarehousePO] Cannot log sparepart audit: user_id is empty');
                 }
+                
                 $db->transCommit();
+                
+                // Send notification: PO Verified
+                helper('notification');
+                $po = $this->purchasemodel->find($po_id);
+                if ($po) {
+                    $supplier = $db->table('suppliers')->where('id_supplier', $po['supplier_id'])->get()->getRowArray();
+                    notify_po_verified([
+                        'id' => $po_id,
+                        'nomor_po' => $po['no_po'],
+                        'supplier_name' => $supplier['nama_supplier'] ?? '',
+                        'verified_by' => session('username') ?? session('user_id'),
+                        'status' => $status,
+                        'po_type' => 'sparepart',
+                        'url' => base_url('/warehouse/purchase-orders')
+                    ]);
+                }
+                
                 return $this->response->setJSON(['success' => true]);
             }
         }

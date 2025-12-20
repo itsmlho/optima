@@ -58,6 +58,43 @@ abstract class BaseController extends Controller
         // ===== MULTI-LANGUAGE SUPPORT =====
         // Auto-detect and set user's language preference
         $this->setupLanguage();
+        
+        // ===== BACKGROUND SCHEDULER (Pseudo-CRON) =====
+        // Run scheduled tasks without needing server CRON
+        // Only for web requests (not CLI)
+        if (!$request instanceof CLIRequest) {
+            $this->runBackgroundScheduler();
+        }
+    }
+    
+    /**
+     * Run background scheduler for automated checks
+     * 
+     * Pseudo-CRON implementation for shared hosting
+     * Runs with 10% probability to reduce overhead
+     * 
+     * Tasks:
+     * - Contract Expiry Check (every 24 hours)
+     * 
+     * @return void
+     */
+    protected function runBackgroundScheduler(): void
+    {
+        try {
+            // Random 10% chance - only 1 out of 10 requests
+            // Reduces overhead while ensuring regular execution
+            if (rand(1, 10) === 1) {
+                helper('notification');
+                
+                // Check contract expiry (runs max once per 24 hours)
+                check_contract_expiry_scheduled();
+                
+                log_message('debug', '[Scheduler] Background tasks executed');
+            }
+        } catch (\Exception $e) {
+            // Silent fail - don't disrupt user experience
+            log_message('error', '[BaseController] Background scheduler error: ' . $e->getMessage());
+        }
     }
     
     /**
