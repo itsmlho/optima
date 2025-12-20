@@ -352,10 +352,10 @@ $assetService = new \App\Services\AssetMinificationService();
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="pic_name" class="form-label"><?= lang('App.pic') ?> <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control" id="pic_name" name="pic_name" placeholder="<?= lang('Service.enter_pic_name') ?>" required>
-                                    <small class="form-text text-muted"><?= lang('Service.pic_example') ?></small>
+                                    <input type="text" class="form-control" id="pic_name" name="pic_name" readonly placeholder="<?= lang('Service.pic_example') ?>">
+                                    <small class="form-text text-muted">Automatically based on area</small>
                                 </div>
-                                <div class="col-6 mb-3">
+                                <div class="col-md-6 mb-3">
                                     <label for="complaint_description" class="form-label"><?= lang('Service.complaint_description') ?> <span class="text-danger">*</span></label>
                                     <textarea class="form-control" id="complaint_description" name="complaint_description" rows="3" placeholder="<?= lang('Service.explain_complaint_detail') ?>" required></textarea>
                                 </div>
@@ -368,19 +368,21 @@ $assetService = new \App\Services\AssetMinificationService();
                             <h6 class="mb-0"><i class="fas fa-users-cog me-2"></i>Staff Assignment</h6>
                         </div>
                         <div class="card-body">
-                            <!-- Admin & Foreman - Auto Fill -->
+                            <!-- Admin & Foreman - Dropdown -->
                             <div class="row mb-3">
                                 <div class="col-md-6 mb-3">
                                     <label for="admin_id" class="form-label">Admin</label>
-                                    <input type="text" class="form-control" id="admin_display" readonly>
-                                    <input type="hidden" id="admin_id" name="admin_id">
-                                    <small class="form-text text-muted">Automatically based on area</small>
-                                        </div>
+                                    <select class="form-select" id="admin_id" name="admin_id">
+                                        <option value="" selected>-- Select Admin --</option>
+                                    </select>
+                                    <small class="form-text text-muted">Select admin based on area</small>
+                                </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="foreman_id" class="form-label">Foreman</label>
-                                    <input type="text" class="form-control" id="foreman_display" readonly>
-                                    <input type="hidden" id="foreman_id" name="foreman_id">
-                                    <small class="form-text text-muted">Automatically based on area</small>
+                                    <select class="form-select" id="foreman_id" name="foreman_id">
+                                        <option value="" selected>-- Select Foreman --</option>
+                                    </select>
+                                    <small class="form-text text-muted">Select foreman based on area</small>
                                 </div>
                             </div>
                             
@@ -487,114 +489,168 @@ $assetService = new \App\Services\AssetMinificationService();
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body bg-body-tertiary p-4">
-                <div class="row g-4">
+                <div class="row g-3">
+                    <!-- Left Column: Unit Details -->
                     <div class="col-lg-7">
                         <div class="card h-100">
                             <div class="card-body">
-                                <div class="mb-4">
-                                    <h6 class="mb-3 text-dark">Work Information</h6>
-                                    <dl class="row mb-0">
-                                        <dt class="col-sm-4 text-muted">Report Date</dt>
-                                        <dd class="col-sm-8" id="viewWoReportDate">-</dd>
-                                        <dt class="col-sm-4 text-muted">Order Type</dt>
-                                        <dd class="col-sm-8" id="viewWoType">-</dd>
-                                        <dt class="col-sm-4 text-muted">Category</dt>
-                                        <dd class="col-sm-8" id="viewWoCategory">-</dd>
-                                        <dt class="col-sm-4 text-muted">Department</dt>
-                                        <dd class="col-sm-8" id="viewWoDepartemen">-</dd>
-                                    </dl>
-                                </div>
-                                <hr>
-                                <div>
-                                    <h6 class="mb-3 text-dark">Unit & Component Details</h6>
-                                     <dl class="row mb-0">
-                                        <dt class="col-sm-4 text-muted">Unit Number</dt>
-                                        <dd class="col-sm-8 fw-bold text-primary" id="viewUnitNumber">-</dd>
-                                        <dt class="col-sm-4 text-muted">Brand & Model</dt>
-                                        <dd class="col-sm-8" id="viewUnitModel">-</dd>
-                                        <dt class="col-sm-4 text-muted">Unit Type</dt>
-                                        <dd class="col-sm-8" id="viewUnitType">-</dd>
-                                        <dt class="col-sm-4 text-muted">Serial Number</dt>
-                                        <dd class="col-sm-8 font-monospace" id="viewUnitSerial">-</dd>
-                                        <dt class="col-sm-4 text-muted">Department</dt>
-                                        <dd class="col-sm-8"><span class="badge bg-info-subtle text-info-emphasis border border-info-subtle" id="viewUnitDepartemen">-</span></dd>
-                                        <dt class="col-sm-4 text-muted">Unit Status</dt>
-                                        <dd class="col-sm-8"><span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" id="viewUnitStatus">-</span></dd>
-                                        <dt class="col-sm-4 text-muted">Capacity</dt>
-                                        <dd class="col-sm-8" id="viewUnitCapacity">-</dd>
-                                        <dt class="col-sm-4 text-muted">Unit Year</dt>
-                                        <dd class="col-sm-8" id="viewUnitYear">-</dd>
-                                        <dt class="col-sm-4 text-muted">Engine Model</dt>
-                                        <dd class="col-sm-8" id="viewUnitEngine">-</dd>
-                                        <dt class="col-sm-4 text-muted">Engine SN</dt>
-                                        <dd class="col-sm-8 font-monospace" id="viewUnitEngineSN">-</dd>
-                                        <dt class="col-sm-4 text-muted">Mast Model</dt>
-                                        <dd class="col-sm-8" id="viewUnitMast">-</dd>
-                                        <dt class="col-sm-4 text-muted">Mast SN</dt>
-                                        <dd class="col-sm-8 font-monospace" id="viewUnitMastSN">-</dd>
-                                        <dt class="col-sm-4 text-muted">Mast Height</dt>
-                                        <dd class="col-sm-8" id="viewUnitMastHeight">-</dd>
+                                <h6 class="mb-3 text-dark border-bottom pb-2">
+                                    <i class="fas fa-forklift me-2 text-primary"></i>Unit & Component Details
+                                </h6>
+                                <dl class="row mb-0 small">
+                                    <dt class="col-sm-4 text-muted">Unit Number</dt>
+                                    <dd class="col-sm-8 fw-bold text-primary" id="viewUnitNumber">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Brand & Model</dt>
+                                    <dd class="col-sm-8" id="viewUnitModel">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Unit Type</dt>
+                                    <dd class="col-sm-8" id="viewUnitType">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Serial Number</dt>
+                                    <dd class="col-sm-8 font-monospace" id="viewUnitSerial">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Unit Status</dt>
+                                    <dd class="col-sm-8"><span class="badge bg-success-subtle text-success-emphasis border border-success-subtle" id="viewUnitStatus">-</span></dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Capacity</dt>
+                                    <dd class="col-sm-8" id="viewUnitCapacity">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Unit Year</dt>
+                                    <dd class="col-sm-8" id="viewUnitYear">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Hour Meter (HM)</dt>
+                                    <dd class="col-sm-8 fw-bold text-success" id="viewUnitHourMeter">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted pt-2 border-top">Engine Model</dt>
+                                    <dd class="col-sm-8 pt-2 border-top" id="viewUnitEngine">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Engine SN</dt>
+                                    <dd class="col-sm-8 font-monospace" id="viewUnitEngineSN">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Mast Model</dt>
+                                    <dd class="col-sm-8" id="viewUnitMast">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Mast SN</dt>
+                                    <dd class="col-sm-8 font-monospace" id="viewUnitMastSN">-</dd>
+                                    
+                                    <dt class="col-sm-4 text-muted">Mast Height</dt>
+                                    <dd class="col-sm-8" id="viewUnitMastHeight">-</dd>
 
-                                        <div id="unitComponentsSection" class="contents" style="display: none;">
-                                            <dt class="col-sm-4 text-muted pt-2">Attachment</dt>
-                                            <dd class="col-sm-8 pt-2" id="viewUnitAttachmentList">-</dd>
+                                    <div id="unitComponentsSection" class="contents" style="display: none;">
+                                        <dt class="col-sm-4 text-muted pt-2 border-top">Attachment</dt>
+                                        <dd class="col-sm-8 pt-2 border-top" id="viewUnitAttachmentList">-</dd>
 
-                                            <dt id="batteryLabel" class="col-sm-4 text-muted" style="display: none;">Battery</dt>
-                                            <dd id="batteryValue" class="col-sm-8" style="display: none;">
-                                                <span id="viewUnitBatteryList">-</span>
-                                            </dd>
-                                            
-                                            <dt id="chargerLabel" class="col-sm-4 text-muted" style="display: none;">Charger</dt>
-                                            <dd id="chargerValue" class="col-sm-8" style="display: none;">
-                                                <span id="viewUnitChargerList">-</span>
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                </div>
+                                        <dt id="batteryLabel" class="col-sm-4 text-muted" style="display: none;">Battery</dt>
+                                        <dd id="batteryValue" class="col-sm-8" style="display: none;">
+                                            <span id="viewUnitBatteryList">-</span>
+                                        </dd>
+                                        
+                                        <dt id="chargerLabel" class="col-sm-4 text-muted" style="display: none;">Charger</dt>
+                                        <dd id="chargerValue" class="col-sm-8" style="display: none;">
+                                            <span id="viewUnitChargerList">-</span>
+                                        </dd>
+                                    </div>
+                                </dl>
                             </div>
                         </div>
                     </div>
                     
+                    <!-- Right Column: Work Order Info -->
                     <div class="col-lg-5">
-                        <div class="card h-100">
-                            <div class="card-body d-flex flex-column">
-                                <div class="text-center p-3 rounded bg-body-secondary mb-4">
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="mb-3 text-dark border-bottom pb-2">
+                                    <i class="fas fa-info-circle me-2 text-primary"></i>Work Information
+                                </h6>
+                                <dl class="row mb-3 small">
+                                    <dt class="col-sm-5 text-muted">Report Date</dt>
+                                    <dd class="col-sm-7" id="viewWoReportDate">-</dd>
+                                    
+                                    <dt class="col-sm-5 text-muted">Order Type</dt>
+                                    <dd class="col-sm-7" id="viewWoType">-</dd>
+                                    
+                                    <dt class="col-sm-5 text-muted">Category</dt>
+                                    <dd class="col-sm-7" id="viewWoCategory">-</dd>
+                                    
+                                    <dt class="col-sm-5 text-muted">Department</dt>
+                                    <dd class="col-sm-7" id="viewWoDepartemen">-</dd>
+                                </dl>
+                                
+                                <div class="text-center p-3 rounded bg-body-secondary">
                                     <div class="row">
                                         <div class="col-6 border-end">
-                                            <label class="small text-muted mb-1">Status</label>
-                                            <div><span class="badge fs-6" id="viewWoStatus">-</span></div>
+                                            <label class="small text-muted mb-1 d-block">Status</label>
+                                            <span class="badge" id="viewWoStatus">-</span>
                                         </div>
                                         <div class="col-6">
-                                            <label class="small text-muted mb-1">Priority</label>
-                                            <div><span class="badge fs-6" id="viewWoPriority">-</span></div>
+                                            <label class="small text-muted mb-1 d-block">Priority</label>
+                                            <span class="badge" id="viewWoPriority">-</span>
                                         </div>
                                     </div>
                                 </div>
-                                
-                                <h6 class="mb-3 text-dark">Customer & Location</h6>
-                                <dl class="row mb-4">
-                                    <dt class="col-sm-4 text-muted">Customer</dt>
-                                    <dd class="col-sm-8 fw-bold" id="viewUnitCustomer">-</dd>
-                                    <dt class="col-sm-4 text-muted">Location</dt>
-                                    <dd class="col-sm-8" id="viewUnitLocation">-</dd>
-                                    <dt class="col-sm-4 text-muted">Area</dt>
-                                    <dd class="col-sm-8" id="viewWoArea">-</dd>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="mb-3 text-dark border-bottom pb-2">
+                                    <i class="fas fa-map-marker-alt me-2 text-primary"></i>Customer & Location
+                                </h6>
+                                <dl class="row mb-0 small">
+                                    <dt class="col-sm-5 text-muted">Customer</dt>
+                                    <dd class="col-sm-7 fw-bold" id="viewUnitCustomer">-</dd>
+                                    
+                                    <dt class="col-sm-5 text-muted">Location</dt>
+                                    <dd class="col-sm-7" id="viewUnitLocation">-</dd>
+                                    
+                                    <dt class="col-sm-5 text-muted">Area</dt>
+                                    <dd class="col-sm-7" id="viewWoArea">-</dd>
                                 </dl>
-                                
-                                <h6 class="mb-3 text-dark">Staff Assignment</h6>
-                                <ul class="list-unstyled mb-4">
-                                    <li class="d-flex align-items-center mb-2"><i class="fas fa-user-shield fa-fw me-2 text-muted"></i> <strong>Admin:</strong> <span class="ms-auto" id="viewWoAdmin">-</span></li>
-                                    <li class="d-flex align-items-center mb-2"><i class="fas fa-user-tie fa-fw me-2 text-muted"></i> <strong>Foreman:</strong> <span class="ms-auto" id="viewWoForeman">-</span></li>
-                                    <li class="d-flex align-items-center mb-2"><i class="fas fa-user-cog fa-fw me-2 text-muted"></i> <strong>Mechanic:</strong> <span class="ms-auto" id="viewWoMechanic">-</span></li>
-                                    <li class="d-flex align-items-center"><i class="fas fa-user-friends fa-fw me-2 text-muted"></i> <strong>Helper:</strong> <span class="ms-auto" id="viewWoHelper">-</span></li>
+                            </div>
+                        </div>
+                        
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <h6 class="mb-3 text-dark border-bottom pb-2">
+                                    <i class="fas fa-users me-2 text-primary"></i>Staff Assignment
+                                </h6>
+                                <ul class="list-unstyled mb-0 small">
+                                    <li class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-user-shield fa-fw me-2 text-muted"></i>
+                                        <strong class="me-2">Admin:</strong>
+                                        <span class="ms-auto text-end" id="viewWoAdmin">-</span>
+                                    </li>
+                                    <li class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-user-tie fa-fw me-2 text-muted"></i>
+                                        <strong class="me-2">Foreman:</strong>
+                                        <span class="ms-auto text-end" id="viewWoForeman">-</span>
+                                    </li>
+                                    <li class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-user-cog fa-fw me-2 text-muted"></i>
+                                        <strong class="me-2">Mechanic:</strong>
+                                        <span class="ms-auto text-end" id="viewWoMechanic">-</span>
+                                    </li>
+                                    <li class="d-flex align-items-center">
+                                        <i class="fas fa-user-friends fa-fw me-2 text-muted"></i>
+                                        <strong class="me-2">Helper:</strong>
+                                        <span class="ms-auto text-end" id="viewWoHelper">-</span>
+                                    </li>
                                 </ul>
+                            </div>
+                        </div>
 
-                                <h6 class="mb-3 text-dark">Time & Date</h6>
-                                <dl class="row mb-0">
-                                    <dt class="col-sm-4 text-muted">TTR</dt>
-                                    <dd class="col-sm-8 fw-bold text-primary" id="viewWoTTR">-</dd>
-                                    <dt class="col-sm-4 text-muted">Completion Date</dt>
-                                    <dd class="col-sm-8" id="viewWoCompletionDate">Not completed</dd>
+                        <div class="card">
+                            <div class="card-body">
+                                <h6 class="mb-3 text-dark border-bottom pb-2">
+                                    <i class="fas fa-clock me-2 text-primary"></i>Time & Date
+                                </h6>
+                                <dl class="row mb-0 small">
+                                    <dt class="col-sm-5 text-muted">TTR</dt>
+                                    <dd class="col-sm-7 fw-bold text-primary" id="viewWoTTR">-</dd>
+                                    
+                                    <dt class="col-sm-5 text-muted">Completion Date</dt>
+                                    <dd class="col-sm-7" id="viewWoCompletionDate">Not completed</dd>
                                 </dl>
                             </div>
                         </div>
@@ -617,19 +673,21 @@ $assetService = new \App\Services\AssetMinificationService();
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-sm table-striped">
-                                <thead>
+                            <table class="table table-sm table-bordered table-hover">
+                                <thead class="table-light">
                                     <tr>
                                         <th style="width: 5%;">No</th>
-                                        <th style="width: 40%;">Spare Part Name</th>
-                                        <th style="width: 15%;">Code</th>
-                                        <th style="width: 10%;">Qty</th>
-                                        <th style="width: 30%;">Description</th>
+                                        <th style="width: 35%;">Spare Part Name</th>
+                                        <th style="width: 12%;">Code</th>
+                                        <th style="width: 10%;">Qty Brought</th>
+                                        <th style="width: 10%;">Qty Used</th>
+                                        <th style="width: 13%;">Status</th>
+                                        <th style="width: 15%;">Notes</th>
                                     </tr>
                                 </thead>
                                 <tbody id="viewSparepartBroughtList">
                                     <tr>
-                                        <td colspan="5" class="text-center text-muted">No spare parts brought</td>
+                                        <td colspan="7" class="text-center text-muted">No spare parts brought</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -651,11 +709,7 @@ $assetService = new \App\Services\AssetMinificationService();
                                 <label class="form-label text-muted">Analysis & Repair</label>
                                 <div class="p-3 rounded bg-light" style="min-height: 120px;" id="viewWoRepair"></div>
                             </div>
-                            <div class="col-md-6 mb-3 mb-md-0">
-                                <label class="form-label text-muted">Spare Parts Used</label>
-                                <div class="p-3 rounded bg-light" style="min-height: 80px;" id="viewWoSparepart"></div>
-                            </div>
-                            <div class="col-md-6">
+                            <div class="col-md-12">
                                 <label class="form-label text-muted">Additional Notes</label>
                                 <div class="p-3 rounded bg-light" style="min-height: 80px;" id="viewWoNotes"></div>
                             </div>
@@ -1083,6 +1137,20 @@ $(document).ready(function() {
     $('#workOrderForm').on('submit', function(e) {
         e.preventDefault();
         
+        // Frontend validation - Complaint Description
+        const complaintDesc = $('#complaint_description').val();
+        if (!complaintDesc || complaintDesc.trim().length < 3) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Validation Error',
+                text: 'Complaint Description wajib diisi minimal 3 karakter',
+                confirmButtonText: 'OK'
+            });
+            $('#complaint_description').addClass('is-invalid').focus();
+            return false;
+        }
+        $('#complaint_description').removeClass('is-invalid');
+        
         let formData = new FormData(this);
         let url = $(this).attr('action');
         
@@ -1141,21 +1209,13 @@ $(document).ready(function() {
             beforeSend: function() {
             },
             success: function(response) {
+                console.log('📦 Work Order Detail Data:', response.data);
+                console.log('🔧 Spareparts Data:', response.data.spareparts);
+                
                 if (response.success) {
                     hideAlert();
                     populateViewModal(response.data);
-                    
-                    // Debug modal show
-                    console.log('🔍 Showing viewWorkOrderModal...');
                     $('#viewWorkOrderModal').modal('show');
-                    
-                    // Force show modal if needed
-                    setTimeout(function() {
-                        if (!$('#viewWorkOrderModal').hasClass('show')) {
-                            $('#viewWorkOrderModal').addClass('show').css('display', 'block');
-                            $('body').addClass('modal-open');
-                        }
-                    }, 100);
                 } else {
                     showAlert('error', response.message || 'Failed to load data');
                 }
@@ -1241,7 +1301,7 @@ $(document).ready(function() {
         updateWorkOrderStatus(id, 'IN_PROGRESS', 'Work order resumed');
     });
     
-    // Complete Work - Open Unit Verification Modal
+    // Complete Work - Open Complete Modal First
     $(document).on('click', '.btn-complete', function() {
         let id = $(this).data('id');
         let woNumber = $(this).data('wo-number');
@@ -1253,11 +1313,20 @@ $(document).ready(function() {
             console.log('🔄 Fallback WO number from row:', woNumber);
         }
         
-        // Open Unit Verification Modal
-        $('#unitVerificationModal').modal('show');
+        console.log('🟢 Complete button clicked - Opening Complete Modal first');
         
-        // Load unit verification data
-        loadUnitVerificationData(id, woNumber);
+        // Open Complete Work Order Modal (NOT Unit Verification directly)
+        if (typeof window.openCompleteModal === 'function') {
+            window.openCompleteModal(id, woNumber);
+        } else {
+            console.error('❌ openCompleteModal function not found');
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: 'Failed to open Complete modal. Please refresh the page.',
+                confirmButtonColor: '#d33'
+            });
+        }
     });
     
     // Close Work Order
@@ -1546,10 +1615,10 @@ $(document).ready(function() {
             if (result.isConfirmed) {
                 console.log('🗑️ Confirmed deletion, sending request...');
                 $.ajax({
-                    url: '<?= base_url('work-orders/delete') ?>/' + id,
+                    url: '<?= base_url('service/work-orders/delete') ?>/' + id,
                     type: 'DELETE',
                     beforeSend: function() {
-                        console.log('🗑️ Sending delete request to:', '<?= base_url('work-orders/delete') ?>/' + id);
+                        console.log('🗑️ Sending delete request to:', '<?= base_url('service/work-orders/delete') ?>/' + id);
                     },
                     success: function(response) {
                         console.log('✅ Delete response:', response);
@@ -1594,7 +1663,7 @@ $(document).ready(function() {
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: '<?= base_url('work-orders/delete') ?>/' + id,
+                    url: '<?= base_url('service/work-orders/delete') ?>/' + id,
                     type: 'DELETE',
                     beforeSend: function() {
                     },
@@ -1679,6 +1748,11 @@ $(document).ready(function() {
             if (workOrder.category_id) $('#category_id').val(workOrder.category_id).trigger('change');
             if (workOrder.area) $('#area').val(workOrder.area);
             if (workOrder.complaint_description) $('#complaint_description').val(workOrder.complaint_description);
+            
+            // Work details fields
+            if (workOrder.repair_description) $('#repair_description').val(workOrder.repair_description);
+            if (workOrder.sparepart_used) $('#sparepart_used').val(workOrder.sparepart_used);
+            if (workOrder.notes) $('#notes').val(workOrder.notes);
             
             console.log('✅ Basic fields populated');
             
@@ -1818,6 +1892,22 @@ $(document).ready(function() {
                 $('#priority_id').val(workOrder.priority_id);
             }
             
+            // Handle Admin and Foreman
+            if (workOrder.admin_id) {
+                console.log('👔 Setting admin ID:', workOrder.admin_id);
+                // Wait for dropdown to be loaded first
+                setTimeout(function() {
+                    $('#admin_id').val(workOrder.admin_id).trigger('change');
+                }, 1500);
+            }
+            
+            if (workOrder.foreman_id) {
+                console.log('👷 Setting foreman ID:', workOrder.foreman_id);
+                setTimeout(function() {
+                    $('#foreman_id').val(workOrder.foreman_id).trigger('change');
+                }, 1500);
+            }
+            
             // Handle PIC
             if (workOrder.pic) {
                 console.log('👤 Setting PIC:', workOrder.pic);
@@ -1873,7 +1963,15 @@ $(document).ready(function() {
         $('#viewWoNumber').text(data.work_order_number || '-');
         $('#viewWoReportDate').text(data.report_date || '-');
         $('#viewWoType').text(data.order_type || '-');
-        $('#viewWoPriority').html(data.priority_badge || '<span class="badge bg-secondary">-</span>');
+        
+        // Fix Priority Badge - ensure it displays properly with correct class
+        let priorityBadge = data.priority_badge || '<span class="badge bg-secondary">-</span>';
+        // Make sure badge has proper size
+        if (!priorityBadge.includes('badge')) {
+            priorityBadge = `<span class="badge bg-secondary">${priorityBadge}</span>`;
+        }
+        $('#viewWoPriority').html(priorityBadge);
+        
         $('#viewWoCategory').text(data.category_name || '-');
         $('#viewWoDepartemen').html(data.unit_departemen ? `<span class="badge bg-info">${data.unit_departemen}</span>` : '<span class="badge bg-secondary">-</span>');
         $('#viewWoStatus').html(data.status_badge || '<span class="badge bg-secondary">-</span>');
@@ -1894,6 +1992,14 @@ $(document).ready(function() {
         // Additional Unit Details
         $('#viewUnitCapacity').text(data.unit_capacity || '-');
         $('#viewUnitYear').text(data.unit_year || '-');
+        
+        // Hour Meter with formatting
+        if (data.hour_meter) {
+            $('#viewUnitHourMeter').text(parseFloat(data.hour_meter).toLocaleString() + ' hours');
+        } else {
+            $('#viewUnitHourMeter').text('-');
+        }
+        
         $('#viewUnitEngine').text(data.unit_engine || '-');
         $('#viewUnitEngineSN').text(data.unit_engine_sn || '-');
         $('#viewUnitMast').text(data.unit_mast || '-');
@@ -2111,26 +2217,49 @@ $(document).ready(function() {
         const container = $('#viewSparepartBroughtList');
         const section = $('#sparepartBroughtSection');
         
-        console.log('Raw spareparts data:', spareparts, typeof spareparts);
+        console.log('🔧 Raw spareparts data:', spareparts, typeof spareparts);
         
         if (spareparts && spareparts.length > 0) {
             let html = '';
             spareparts.forEach(function(sparepart, index) {
-                const qtyWithUnit = (sparepart.qty || '') + ' ' + (sparepart.satuan || 'pcs');
+                console.log(`  📦 Sparepart ${index + 1}:`, {
+                    name: sparepart.name,
+                    is_used: sparepart.is_used,
+                    used_quantity: sparepart.used_quantity,
+                    usage_notes: sparepart.usage_notes
+                });
+                
+                const qtyBrought = (sparepart.qty || sparepart.quantity_brought || 0) + ' ' + (sparepart.satuan || 'pcs');
+                const qtyUsed = sparepart.used_quantity || '-';
+                
+                // Determine status badge
+                let statusBadge = '<span class="badge bg-secondary">Pending</span>';
+                if (sparepart.is_used !== undefined && sparepart.is_used !== null) {
+                    if (sparepart.is_used == 1 || sparepart.is_used === true) {
+                        statusBadge = '<span class="badge bg-success"><i class="fas fa-check me-1"></i>Used</span>';
+                    } else if (sparepart.is_used == 0 || sparepart.is_used === false) {
+                        statusBadge = '<span class="badge bg-warning"><i class="fas fa-undo me-1"></i>Returned</span>';
+                    }
+                }
+                
+                console.log(`    ➡️ Status badge: ${statusBadge}`);
+                
                 html += `
                     <tr>
                         <td class="text-center">${index + 1}</td>
-                        <td>${sparepart.name || sparepart.desc_sparepart || '-'}</td>
-                        <td class="font-monospace">${sparepart.code || sparepart.kode || '-'}</td>
-                        <td class="text-center">${qtyWithUnit}</td>
-                        <td>${sparepart.notes || '-'}</td>
+                        <td>${sparepart.name || sparepart.desc_sparepart || sparepart.sparepart_name || '-'}</td>
+                        <td class="font-monospace">${sparepart.code || sparepart.kode || sparepart.sparepart_code || '-'}</td>
+                        <td class="text-center">${qtyBrought}</td>
+                        <td class="text-center">${qtyUsed}</td>
+                        <td class="text-center">${statusBadge}</td>
+                        <td>${sparepart.usage_notes || sparepart.notes || '-'}</td>
                     </tr>
                 `;
             });
             container.html(html);
             section.show();
         } else {
-            container.html('<tr><td colspan="5" class="text-center text-muted">Not available</td></tr>');
+            container.html('<tr><td colspan="7" class="text-center text-muted">Not available</td></tr>');
             section.hide();
         }
     }
@@ -2764,6 +2893,40 @@ $(document).ready(function() {
             $('#helper_1, #helper_2').val('').trigger('change');
         }
     });
+    
+    // Prevent duplicate mechanic selection
+    $(document).on('change', '#mechanic_1, #mechanic_2', function() {
+        const mechanic1 = $('#mechanic_1').val();
+        const mechanic2 = $('#mechanic_2').val();
+        
+        if (mechanic1 && mechanic2 && mechanic1 === mechanic2) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Duplikasi Mekanik',
+                text: 'Tidak dapat memilih mekanik yang sama untuk Mechanic 1 dan Mechanic 2!',
+                confirmButtonText: 'OK'
+            });
+            // Clear the dropdown that was just changed
+            $(this).val('').trigger('change');
+        }
+    });
+    
+    // Prevent duplicate helper selection
+    $(document).on('change', '#helper_1, #helper_2', function() {
+        const helper1 = $('#helper_1').val();
+        const helper2 = $('#helper_2').val();
+        
+        if (helper1 && helper2 && helper1 === helper2) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Duplikasi Helper',
+                text: 'Tidak dapat memilih helper yang sama untuk Helper 1 dan Helper 2!',
+                confirmButtonText: 'OK'
+            });
+            // Clear the dropdown that was just changed
+            $(this).val('').trigger('change');
+        }
+    });
 
     // Global variables to store data - make them globally accessible
     window.allUnits = [];
@@ -2878,6 +3041,53 @@ $(document).ready(function() {
     }
 
     // Staff Dropdown Management
+    function loadStaffDropdownByArea(staffRole, targetId, areaId) {
+        console.log(`🔄 Loading ${staffRole} for ${targetId}, area: ${areaId}`);
+        
+        $.ajax({
+            url: '<?= base_url('service/work-orders/staff-dropdown') ?>',
+            type: 'POST',
+            data: { 
+                staff_role: staffRole,
+                area_id: areaId // Filter by area
+            },
+            success: function(response) {
+                console.log(`📦 ${staffRole} response for ${targetId}:`, response);
+                
+                if (response.success && response.data) {
+                    const staffSelect = $('#' + targetId);
+                    
+                    // Clear existing options and add placeholder
+                    let placeholderText = staffRole === 'MECHANIC' ? 
+                        (targetId === 'mechanic_1' ? '-- Select Mechanic 1 --' : '-- Select Mechanic 2 (Optional) --') :
+                        (targetId === 'helper_1' ? '-- Select Helper 1 --' : '-- Select Helper 2 (Optional) --');
+                    
+                    staffSelect.empty().append(`<option value="" selected ${targetId.endsWith('_2') ? '' : 'disabled'}>${placeholderText}</option>`);
+                    
+                    // Add staff options
+                    response.data.forEach(function(staff) {
+                        let staffName = staff.staff_name || staff.name || 'Unknown Staff';
+                        let staffCode = staff.staff_code || staff.employee_code || '';
+                        let optionText = staffCode ? `${staffName} (${staffCode})` : staffName;
+                        
+                        staffSelect.append(`<option value="${staff.id}">${optionText}</option>`);
+                    });
+                    
+                    console.log(`✅ ${staffRole} loaded: ${response.data.length} items for ${targetId}`);
+                } else {
+                    console.error(`❌ No ${staffRole} staff found for area ${areaId}`);
+                    const staffSelect = $('#' + targetId);
+                    let placeholderText = `No ${staffRole.toLowerCase()} assigned to this area`;
+                    staffSelect.empty().append(`<option value="" selected disabled>${placeholderText}</option>`);
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error(`❌ AJAX Error loading ${staffRole}:`, error);
+                console.error('❌ Response:', xhr.responseText);
+            }
+        });
+    }
+    
     function loadStaffDropdown(staffRole, targetId) {
         
         $.ajax({
@@ -2991,13 +3201,16 @@ $(document).ready(function() {
         loadStaffDropdown('HELPER', 'helper_2');
     }
 
-    // Auto-fill admin and foreman based on area
+    // Load admin and foreman dropdowns based on area
     function loadAreaStaff(areaId) {
+        console.log('🔄 Loading area staff for area ID:', areaId);
+        
+        // Clear dropdowns
+        $('#admin_id').html('<option value="">-- Select Admin --</option>');
+        $('#foreman_id').html('<option value="">-- Select Foreman --</option>');
+        $('#pic_name').val('');
+        
         if (!areaId) {
-            $('#admin_display').val('');
-            $('#admin_id').val('');
-            $('#foreman_display').val('');
-            $('#foreman_id').val('');
             return;
         }
         
@@ -3005,27 +3218,67 @@ $(document).ready(function() {
             url: '<?= base_url('service/work-orders/get-area-staff') ?>',
             type: 'POST',
             data: { area_id: areaId },
-                success: function(response) {
-                    if (response.success) {
-                    // Set admin
-                    if (response.data.admin) {
-                        $('#admin_display').val(response.data.admin.staff_name);
-                        $('#admin_id').val(response.data.admin.id);
+            success: function(response) {
+                console.log('📦 Area staff response:', response);
+                
+                if (response.success) {
+                    // Populate admin dropdown
+                    if (response.data.admins && response.data.admins.length > 0) {
+                        response.data.admins.forEach(function(admin, index) {
+                            $('#admin_id').append(`<option value="${admin.id}">${admin.staff_name}</option>`);
+                            
+                            // Auto-select first admin and set as PIC
+                            if (index === 0) {
+                                $('#admin_id').val(admin.id);
+                                $('#pic_name').val(admin.staff_name);
+                            }
+                        });
+                    } else {
+                        $('#admin_id').html('<option value="">No admin assigned to this area</option>');
                     }
                     
-                    // Set foreman
-                    if (response.data.foreman) {
-                        $('#foreman_display').val(response.data.foreman.staff_name);
-                        $('#foreman_id').val(response.data.foreman.id);
+                    // Populate foreman dropdown
+                    if (response.data.foremans && response.data.foremans.length > 0) {
+                        response.data.foremans.forEach(function(foreman, index) {
+                            $('#foreman_id').append(`<option value="${foreman.id}">${foreman.staff_name}</option>`);
+                            
+                            // Auto-select first foreman
+                            if (index === 0) {
+                                $('#foreman_id').val(foreman.id);
+                            }
+                        });
+                    } else {
+                        $('#foreman_id').html('<option value="">No foreman assigned to this area</option>');
                     }
+                    
+                    // Load mechanic and helper dropdowns for this area
+                    loadStaffDropdownByArea('MECHANIC', 'mechanic_1', areaId);
+                    loadStaffDropdownByArea('MECHANIC', 'mechanic_2', areaId);
+                    loadStaffDropdownByArea('HELPER', 'helper_1', areaId);
+                    loadStaffDropdownByArea('HELPER', 'helper_2', areaId);
                     
                     console.log('✅ Area staff loaded successfully');
-                                } else {
+                } else {
                     console.error('❌ Error loading area staff:', response.message);
+                    $('#admin_id').html('<option value="">Error loading staff</option>');
+                    $('#foreman_id').html('<option value="">Error loading staff</option>');
                 }
             },
-            error: function() {
-                console.error('❌ Error loading area staff');
+            error: function(xhr, status, error) {
+                console.error('❌ Error loading area staff:', error);
+                console.error('❌ Response:', xhr.responseText);
+                $('#admin_id').html('<option value="">Error loading staff</option>');
+                $('#foreman_id').html('<option value="">Error loading staff</option>');
+            }
+        });
+        
+        // Update PIC when admin changes
+        $('#admin_id').off('change').on('change', function() {
+            const selectedText = $(this).find('option:selected').text();
+            if ($(this).val()) {
+                $('#pic_name').val(selectedText);
+            } else {
+                $('#pic_name').val('');
             }
         });
     }
@@ -3253,6 +3506,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <?php include 'sparepart_validation.php'; ?>
 <?php include 'unit_verification.php'; ?>
+<?php include 'complete_work_order_modal.php'; ?>
 
 <?= $this->endSection() ?>
 

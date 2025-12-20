@@ -686,22 +686,34 @@ $(document).ready(function() {
             type: 'POST',
             data: formData,
             beforeSend: function() {
-                showSparepartAlert('info', 'Menyimpan validasi sparepart...');
             },
             success: function(response) {
                 console.log('✅ Sparepart validation response:', response);
                 if (response.success) {
-                    showSparepartAlert('success', 'Validasi sparepart berhasil disimpan dan Work Order ditutup');
+                    // Get work order number from hidden field
+                    let woNumber = $('#sparepart-wo-number').text() || $('#sparepart-work-order-id').val();
+                    
+                    // Close modal immediately
                     $('#sparepartValidationModal').modal('hide');
                     
-                    // Refresh work orders table
-                    setTimeout(function() {
-                        if (typeof window.workOrdersTable !== 'undefined' && window.workOrdersTable && typeof window.workOrdersTable.ajax === 'object') {
-                            window.workOrdersTable.ajax.reload();
-                        } else {
-                            window.location.reload();
+                    // Show success SweetAlert with auto-close
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Work Order Ditutup',
+                        text: `Work Order ${woNumber} berhasil di-Close`,
+                        timer: 2000,
+                        timerProgressBar: true,
+                        showConfirmButton: false,
+                        allowOutsideClick: false,
+                        willClose: () => {
+                            // Refresh work orders table after alert closes
+                            if (typeof window.workOrdersTable !== 'undefined' && window.workOrdersTable && typeof window.workOrdersTable.ajax === 'object') {
+                                window.workOrdersTable.ajax.reload();
+                            } else {
+                                window.location.reload();
+                            }
                         }
-                    }, 1000);
+                    });
                 } else {
                     showSparepartAlert('error', response.message || 'Gagal menyimpan validasi sparepart');
                 }

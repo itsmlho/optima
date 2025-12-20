@@ -16,7 +16,7 @@
             font-family: Arial, sans-serif;
             font-size: 8pt;
             line-height: 1.2;
-                                  <div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; font-size: 6pt;"> color: #333;
+            color: #333;
         }
         
         .print-container { width: 100%; }
@@ -477,6 +477,12 @@
                                 <td><span class="real-field"></span></td>
                                 <td class="text-center"><span class="checkbox-symbol">☐</span></td>
                             </tr>
+                            <tr>
+                                <td>Hour Meter (HM)</td>
+                                <td id="db-hour-meter">-</td>
+                                <td><span class="real-field"></span></td>
+                                <td class="text-center"><span class="checkbox-symbol">☐</span></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -769,7 +775,8 @@
                 { id: 'db-tipe-unit', value: unitData.tipe_unit_name },
                 { id: 'db-model-unit', value: unitData.model_unit_name },
                 { id: 'db-kapasitas-unit', value: unitData.kapasitas_name },
-                { id: 'db-keterangan', value: unitData.keterangan }
+                { id: 'db-keterangan', value: unitData.keterangan },
+                { id: 'db-hour-meter', value: unitData.hour_meter }
             ];
             
             dbElements.forEach(item => {

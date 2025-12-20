@@ -248,7 +248,7 @@
                     </tr>
                     <tr>
                         <td>Tanggal</td>
-                        <td><?= date('d M Y', strtotime($workOrder['report_date'] ?? 'now')) ?></td>
+                        <td><?= date('d M Y', strtotime($workOrder['report_date_raw'] ?? $workOrder['report_date'] ?? 'now')) ?></td>
                     </tr>
                 </table>
             </div>
@@ -267,39 +267,45 @@
                                     <td class="label">Perusahaan</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['unit_customer'] ?? '') ?></td>
                                 </tr>
                                 <tr>
-                                    <td class="label">PIC</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['pic'] ?? '') ?></td>
+                                    <td class="label">Alamat</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['customer_address'] ?? '-') ?></td>
                                 </tr>
                                 <tr>
-                                    <td class="label">Unit No.</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['unit_number'] ?? '') . ', ' . htmlspecialchars($workOrder['unit_type'] ?? '') . ', ' . htmlspecialchars($workOrder['unit_capacity'] ?? '') ?></td>
+                                    <td class="label">Area</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['unit_area_name'] ?? '-') ?></td>
                                 </tr>
-                                 <tr>
-                                    <td class="label">Hour Meter</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['hm'] ?? '') ?></td>
+                                <tr>
+                                    <td class="label">PIC</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['area_pic'] ?? $workOrder['pic'] ?? '-') ?></td>
                                 </tr>
                             </table>
+                            <div style="border: 1px solid #ddd; padding: 10px; background-color: #f9f9f9; border-radius: 4px; margin-top: 10px;">
+                                <strong style="font-size: 9.5pt; display: block; margin-bottom: 5px;">Keluhan Pelanggan:</strong>
+                                <div style="font-size: 9pt; line-height: 1.4;"><?= nl2br(htmlspecialchars($workOrder['complaint_description'] ?? 'Tidak ada keluhan')) ?></div>
+                            </div>
                         </div>
                         <div class="info-divider"></div>
                         <div>
                              <table class="info-table">
                                 <tr>
-                                    <td class="label">Hari/Tanggal</td><td class="separator">:</td><td class="value"><?= date('l, d/m/Y', strtotime($workOrder['report_date'] ?? 'now')) ?></td>
+                                    <td class="label">Unit No.</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['unit_number'] ?? '') . ', ' . htmlspecialchars($workOrder['unit_type'] ?? '') . ', ' . htmlspecialchars($workOrder['unit_capacity'] ?? '') ?></td>
+                                </tr>
+                                 <tr>
+                                    <td class="label">Hour Meter</td><td class="separator">:</td><td class="value"><?= !empty($workOrder['hm']) ? htmlspecialchars($workOrder['hm']) : (!empty($workOrder['unit_hour_meter']) ? htmlspecialchars($workOrder['unit_hour_meter']) : '-') ?></td>
+                                </tr>
+                                <tr>
+                                    <td class="label">Hari/Tanggal</td><td class="separator">:</td><td class="value"><?= date('l, d/m/Y', strtotime($workOrder['report_date_raw'] ?? $workOrder['report_date'] ?? 'now')) ?></td>
                                 </tr>
                                 <tr>
                                     <td class="label">Mekanik</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['mechanic_staff_name'] ?? '') ?></td>
                                 </tr>
-                                 <tr>
+                                <tr>
                                     <td class="label">Helper</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['helper_staff_name'] ?? '') ?></td>
                                 </tr>
-                                    <tr>
-                                        <td class="label">Kategori</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['category_name'] ?? 'Tidak dikategorikan') ?> - <?= htmlspecialchars($workOrder['subcategory_name'] ?? 'Tidak ada sub kategori') ?></td>
-                                    </tr>
+                                <tr>
+                                    <td class="label">Kategori</td><td class="separator">:</td><td class="value"><?= htmlspecialchars($workOrder['category_name'] ?? 'Tidak dikategorikan') ?> - <?= htmlspecialchars($workOrder['subcategory_name'] ?? 'Tidak ada sub kategori') ?></td>
+                                </tr>
                             </table>
                         </div>
                     </div>
                     <hr class="section-separator">
-                    <div>
-                        <strong style="font-size: 9pt;">Keluhan Pelanggan:</strong>
-                        <div style="font-size: 9pt;"><?= nl2br(htmlspecialchars($workOrder['complaint_description'] ?? '')) ?></div>
-                    </div>
                 </div>
             </div>
 
@@ -345,10 +351,10 @@
             <!-- Professional Signature Layout: Tanggal → Jabatan → TTD → Garis → Nama -->
             <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 25px; margin-top: 15px; font-size: 9pt;">
                 <div style="text-align: center;">
-                    <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: ___/___/_____</div>
-                    <div style="font-weight: bold; margin-bottom: 8px;">Pemberi Order</div>
+                    <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: <?= isset($workOrder['report_date_raw']) ? date('d/m/Y', strtotime($workOrder['report_date_raw'])) : (isset($workOrder['report_date']) ? date('d/m/Y', strtotime($workOrder['report_date'])) : '___/___/_____') ?></div>
+                    <div style="font-weight: bold; margin-bottom: 8px;">Admin</div>
                     <div style="border-bottom: 1px solid #000; width: 140px; margin: 0 auto 5px; height: 50px;"></div>
-                    <div style="font-size: 8pt; margin-top: 3px;">Nama: ________________</div>
+                    <div style="font-size: 8pt; margin-top: 3px;">Nama: <?= htmlspecialchars($workOrder['admin_staff_name'] ?? '________________') ?></div>
                 </div>
                 <div style="text-align: center;">
                     <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: ___/___/_____</div>
@@ -357,8 +363,8 @@
                     <div style="font-size: 8pt; margin-top: 3px;">Nama: ________________</div>
                 </div>
                 <div style="text-align: center;">
-                    <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: <?= isset($workOrder['report_date']) ? date('d/m/Y', strtotime($workOrder['report_date'])) : '___/___/_____' ?></div>
-                    <div style="font-weight: bold; margin-bottom: 8px;">Teknisi</div>
+                    <div style="font-size: 8pt; margin-bottom: 5px;">Tgl: <?= isset($workOrder['report_date_raw']) ? date('d/m/Y', strtotime($workOrder['report_date_raw'])) : (isset($workOrder['report_date']) ? date('d/m/Y', strtotime($workOrder['report_date'])) : '___/___/_____') ?></div>
+                    <div style="font-weight: bold; margin-bottom: 8px;">Mekanik</div>
                     <div style="border-bottom: 1px solid #000; width: 140px; margin: 0 auto 5px; height: 50px;"></div>
                     <div style="font-size: 8pt; margin-top: 3px;">Nama: <?= htmlspecialchars($workOrder['mechanic_staff_name'] ?? '________________') ?></div>
                 </div>
@@ -512,10 +518,12 @@
             let unitData = data.unit || {};
             let workOrderData = data.work_order || {};
             let attachmentData = data.attachment || {};
+            let accessories = data.accessories || [];
             
             console.log('Unit data:', unitData);
             console.log('Work order data:', workOrderData);
             console.log('Attachment data:', attachmentData);
+            console.log('Accessories data:', accessories);
             
             // Populate header values
             const woNumber = workOrderData.work_order_number || workOrderData.wo_number || '-';
@@ -539,6 +547,7 @@
                     { id: 'db-model-unit', value: unitData.model_unit_name },
                     { id: 'db-kapasitas-unit', value: unitData.kapasitas_name },
                     { id: 'db-keterangan', value: unitData.keterangan },
+                    { id: 'db-hour-meter', value: unitData.hour_meter },
                     
                     // Machine data
                     { id: 'db-model-mesin', value: unitData.model_mesin_name },
@@ -570,6 +579,51 @@
                         notFoundCount++;
                     }
                 });
+                
+                // Populate Accessories - call the function from verification page
+                console.log('🔧 Populating accessories from combined print:', accessories);
+                if (typeof populateAccessories === 'function') {
+                    populateAccessories(accessories);
+                    console.log('✅ Called populateAccessories() function');
+                } else {
+                    // If function not available, manually populate
+                    console.log('⚠️ populateAccessories() not available, populating manually');
+                    let checkedCount = 0;
+                    
+                    // Clear all checkboxes first
+                    document.querySelectorAll('.accessory-checkbox').forEach(checkbox => {
+                        checkbox.textContent = '☐';
+                        checkbox.classList.remove('checked');
+                    });
+                    
+                    // Check accessories that exist in database
+                    if (accessories && accessories.length > 0) {
+                        accessories.forEach(function(accessory) {
+                            let accessoryValue = accessory.name || accessory.accessory_name || accessory;
+                            console.log('🔍 Looking for accessory:', accessoryValue);
+                            
+                            // Find checkbox with matching data-accessory value
+                            let checkbox = document.querySelector(`[data-accessory="${accessoryValue}"]`);
+                            if (checkbox) {
+                                checkbox.textContent = '✓';
+                                checkbox.classList.add('checked');
+                                checkedCount++;
+                                console.log('✅ Found match for:', accessoryValue);
+                            } else {
+                                console.log('❌ No match found for:', accessoryValue);
+                            }
+                        });
+                    }
+                    
+                    // Update summary
+                    const summaryElement = document.getElementById('accessories-summary');
+                    if (summaryElement) {
+                        summaryElement.textContent = `${checkedCount} aksesoris`;
+                        console.log(`📊 Updated summary: ${checkedCount} aksesoris`);
+                    }
+                    
+                    console.log(`📊 Auto-checked ${checkedCount} accessories out of ${accessories.length}`);
+                }
                 
                 console.log(`Verification data population completed: ${updatedCount} updated, ${notFoundCount} not found`);
                 
@@ -669,7 +723,7 @@
         // Auto print on load
         window.addEventListener('load', () => {
             const woNumber = '<?= str_replace('/', '-', htmlspecialchars($workOrder['work_order_number'] ?? 'Unknown')) ?>';
-            document.title = 'WO-' + woNumber + ' - Combined Document';
+            document.title = 'WO-' + woNumber + ' - Complaint Form & Verification';
             const footer = document.getElementById('printFooter');
             if (footer) footer.style.display = 'block';
         });
