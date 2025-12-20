@@ -398,6 +398,9 @@ $routes->group('service', static function ($routes) {
     // Work Order area and sparepart endpoints
     $routes->post('work-orders/get-unit-area', 'WorkOrderController::getUnitArea');
     $routes->get('work-orders/spareparts-dropdown', 'WorkOrderController::sparepartsDropdown');
+    // Complete Work Order endpoints (before verification)
+    $routes->post('work-orders/get-complete-data', 'WorkOrderController::getCompleteData');
+    $routes->post('work-orders/save-complete', 'WorkOrderController::saveCompleteWorkOrder');
     // Unit Verification and Sparepart Usage endpoints
     $routes->get('work-orders/test-routing', 'WorkOrderController::testRouting');
     $routes->post('work-orders/get-unit-verification-data', 'WorkOrderController::getUnitVerificationData');

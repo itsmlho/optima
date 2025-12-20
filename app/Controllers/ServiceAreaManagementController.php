@@ -1269,7 +1269,12 @@ class ServiceAreaManagementController extends BaseController
         $builder->where('employees.is_active', 1);
         
         if ($role) {
-            $builder->where('employees.staff_role', $role);
+            // Support role subtypes (MECHANIC_*, HELPER_*)
+            if ($role === 'MECHANIC' || $role === 'HELPER') {
+                $builder->like('employees.staff_role', $role, 'both');
+            } else {
+                $builder->where('employees.staff_role', $role);
+            }
         }
         
         if ($areaId) {
@@ -1427,8 +1432,8 @@ class ServiceAreaManagementController extends BaseController
             if ($assignmentId) {
                 // Get details for notification
                 $db = \Config\Database::connect();
-                $assignment = $db->table('service_area_assignments saa')
-                    ->select('saa.*, a.area_name, e.name as employee_name')
+                $assignment = $db->table('area_employee_assignments saa')
+                    ->select('saa.*, a.area_name, e.staff_name as employee_name')
                     ->join('areas a', 'a.id = saa.area_id', 'left')
                     ->join('employees e', 'e.id = saa.employee_id', 'left')
                     ->where('saa.id', $assignmentId)
@@ -1523,8 +1528,8 @@ class ServiceAreaManagementController extends BaseController
                 // Get details for notification
                 $assignment = $this->assignmentModel->find($id);
                 $db = \Config\Database::connect();
-                $details = $db->table('service_area_assignments saa')
-                    ->select('a.area_name, e.name as employee_name')
+                $details = $db->table('area_employee_assignments saa')
+                    ->select('a.area_name, e.staff_name as employee_name')
                     ->join('areas a', 'a.id = saa.area_id', 'left')
                     ->join('employees e', 'e.id = saa.employee_id', 'left')
                     ->where('saa.id', $id)
@@ -1591,8 +1596,8 @@ class ServiceAreaManagementController extends BaseController
         try {
             // Get details before deletion for notification
             $db = \Config\Database::connect();
-            $details = $db->table('service_area_assignments saa')
-                ->select('a.area_name, e.name as employee_name')
+            $details = $db->table('area_employee_assignments saa')
+                ->select('a.area_name, e.staff_name as employee_name')
                 ->join('areas a', 'a.id = saa.area_id', 'left')
                 ->join('employees e', 'e.id = saa.employee_id', 'left')
                 ->where('saa.id', $id)

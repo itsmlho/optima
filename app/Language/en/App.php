@@ -314,6 +314,8 @@ return [
     'work_orders_complaint' => 'Work Orders (Complaint/Service)',
     'preventive_maintenance_pmps' => 'Preventive Maintenance (PMPS)',
     'work_orders' => 'Work Orders',
+    'area' => 'Area',
+    'pic' => 'Person In Charge (PIC)',
     'area_management' => 'Area Management',
     'area_employee_management' => 'Area & Employee Management',
     'marketing' => 'Marketing',

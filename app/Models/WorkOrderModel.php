@@ -528,57 +528,81 @@ class WorkOrderModel extends Model
      */
     public function getDetailWorkOrder($id)
     {
-        $builder = $this->db->table('work_orders wo');
+        // Use raw query for better control over derived table joins
+        $query = "
+            SELECT wo.*, 
+                  iu.no_unit as unit_number, 
+                  iu.tahun_unit as unit_year, 
+                  iu.serial_number as unit_serial, 
+                  iu.lokasi_unit as unit_location,
+                  iu.aksesoris as unit_accessories,
+                  iu.sn_mesin as unit_engine_sn,
+                  iu.sn_mast as unit_mast_sn,
+                  iu.tinggi_mast as unit_mast_height,
+                  iu.hour_meter as unit_hour_meter,
+                  mu.merk_unit as unit_brand, 
+                  mu.model_unit,
+                  COALESCE(CONCAT(tu.tipe, ' ', tu.jenis), 'Unknown') as unit_type,
+                  kap.kapasitas_unit as unit_capacity,
+                  c.customer_name as unit_customer, 
+                  cl.location_name as lokasi,
+                  cl.address as customer_address,
+                  cl.city as customer_city,
+                  cl.province as customer_province,
+                  a.area_name as unit_area_name,
+                  area_admin.staff_name as area_admin_name,
+                  area_admin.phone as area_admin_phone,
+                  CONCAT_WS(' - ', area_admin.staff_name, area_admin.phone) as area_pic,
+                  sus.status_unit as unit_status,
+                  d.nama_departemen as unit_departemen,
+                  m.model_mesin as unit_engine,
+                  tm.tipe_mast as unit_mast,
+                  wop.priority_name, wop.priority_color,
+                  woc.category_name, wosc.subcategory_name,
+                  wos.status_name, wos.status_color, wos.status_code,
+                  admin_emp.staff_name as admin_staff_name,
+                  foreman_emp.staff_name as foreman_staff_name,  
+                  mechanic_emp.staff_name as mechanic_staff_name,
+                  helper_emp.staff_name as helper_staff_name,
+                  wo.pic, wo.hm
+            FROM work_orders wo
+            LEFT JOIN inventory_unit iu ON wo.unit_id = iu.id_inventory_unit
+            LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
+            LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
+            LEFT JOIN kapasitas kap ON iu.kapasitas_unit_id = kap.id_kapasitas
+            LEFT JOIN mesin m ON iu.model_mesin_id = m.id
+            LEFT JOIN tipe_mast tm ON iu.model_mast_id = tm.id_mast
+            LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+            LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
+            LEFT JOIN customers c ON c.id = cl.customer_id
+            LEFT JOIN areas a ON iu.area_id = a.id
+            LEFT JOIN (
+                SELECT aea.area_id, e.id, e.staff_name, e.phone,
+                       ROW_NUMBER() OVER (PARTITION BY aea.area_id ORDER BY 
+                           CASE aea.assignment_type WHEN 'PRIMARY' THEN 0 ELSE 1 END,
+                           aea.start_date ASC,
+                           e.id ASC
+                       ) as rn
+                FROM area_employee_assignments aea
+                JOIN employees e ON aea.employee_id = e.id
+                WHERE aea.is_active = 1 
+                  AND e.staff_role LIKE '%ADMIN%'
+                  AND e.is_active = 1
+            ) area_admin ON area_admin.area_id = iu.area_id AND area_admin.rn = 1
+            LEFT JOIN status_unit sus ON iu.status_unit_id = sus.id_status
+            LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
+            LEFT JOIN work_order_priorities wop ON wo.priority_id = wop.id
+            LEFT JOIN work_order_categories woc ON wo.category_id = woc.id
+            LEFT JOIN work_order_subcategories wosc ON wo.subcategory_id = wosc.id
+            LEFT JOIN work_order_statuses wos ON wo.status_id = wos.id
+            LEFT JOIN employees admin_emp ON wo.admin_id = admin_emp.id
+            LEFT JOIN employees foreman_emp ON wo.foreman_id = foreman_emp.id
+            LEFT JOIN employees mechanic_emp ON wo.mechanic_id = mechanic_emp.id
+            LEFT JOIN employees helper_emp ON wo.helper_id = helper_emp.id
+            WHERE wo.id = ?
+        ";
         
-        $result = $builder
-            ->select('wo.*, 
-                      iu.no_unit as unit_number, 
-                      iu.tahun_unit as unit_year, 
-                      iu.serial_number as unit_serial, 
-                      iu.lokasi_unit as unit_location,
-                      iu.aksesoris as unit_accessories,
-                      iu.sn_mesin as unit_engine_sn,
-                      iu.sn_mast as unit_mast_sn,
-                      iu.tinggi_mast as unit_mast_height,
-                      mu.merk_unit as unit_brand, 
-                      mu.model_unit,
-                      COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as unit_type,
-                      kap.kapasitas_unit as unit_capacity,
-                      c.customer_name as unit_customer, 
-                      cl.location_name as lokasi,
-                      sus.status_unit as unit_status,
-                      d.nama_departemen as unit_departemen,
-                      m.model_mesin as unit_engine,
-                      tm.tipe_mast as unit_mast,
-                      wop.priority_name, wop.priority_color,
-                      woc.category_name, wosc.subcategory_name,
-                      wos.status_name, wos.status_color, wos.status_code,
-                      as.staff_name as admin_staff_name,
-                      fs.staff_name as foreman_staff_name,  
-                      ms.staff_name as mechanic_staff_name,
-                      hs.staff_name as helper_staff_name')
-            ->join('inventory_unit iu', 'wo.unit_id = iu.id_inventory_unit', 'left')
-            ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
-            ->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left')
-            ->join('kapasitas kap', 'iu.kapasitas_unit_id = kap.id_kapasitas', 'left')
-            ->join('mesin m', 'iu.model_mesin_id = m.id', 'left')
-            ->join('tipe_mast tm', 'iu.model_mast_id = tm.id_mast', 'left')
-            ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
-            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-            ->join('customers c', 'c.id = cl.customer_id', 'left')
-            ->join('status_unit sus', 'iu.status_unit_id = sus.id_status', 'left')
-            ->join('departemen d', 'iu.departemen_id = d.id_departemen', 'left')
-            ->join('work_order_priorities wop', 'wo.priority_id = wop.id', 'left')
-            ->join('work_order_categories woc', 'wo.category_id = woc.id', 'left')
-            ->join('work_order_subcategories wosc', 'wo.subcategory_id = wosc.id', 'left')
-            ->join('work_order_statuses wos', 'wo.status_id = wos.id', 'left')
-            ->join('employees as', 'wo.admin_id = as.id', 'left')
-            ->join('employees fs', 'wo.foreman_id = fs.id', 'left')
-            ->join('employees ms', 'wo.mechanic_id = ms.id', 'left')
-            ->join('employees hs', 'wo.helper_id = hs.id', 'left')
-            ->where('wo.id', $id)
-            ->get()
-            ->getRowArray();
+        $result = $this->db->query($query, [$id])->getRowArray();
             
         if ($result) {
             // Format unit info for legacy compatibility
@@ -586,6 +610,12 @@ class WorkOrderModel extends Model
             
             // Format status badge
             $result['status_badge'] = '<span class="badge bg-'.$result['status_color'].'">'.$result['status_name'].'</span>';
+            
+            // Format priority badge
+            $result['priority_badge'] = '<span class="badge bg-'.$result['priority_color'].'">'.$result['priority_name'].'</span>';
+            
+            // Store hour_meter for frontend use
+            $result['hour_meter'] = $result['unit_hour_meter'] ?? $result['hm'] ?? null;
             
             // Ensure unit fields have fallback values
             $result['unit_number'] = $result['unit_number'] ?? '-';
@@ -613,7 +643,11 @@ class WorkOrderModel extends Model
             // Get work order spareparts
             $result['spareparts'] = $this->getWorkOrderSpareparts($id);
             
-            // Format dates
+            // Store original dates before formatting for print documents
+            $result['report_date_raw'] = $result['report_date'];
+            $result['completion_date_raw'] = $result['completion_date'];
+            
+            // Format dates for display
             if ($result['report_date']) {
                 $result['report_date'] = date('d/m/Y H:i', strtotime($result['report_date']));
             }
@@ -739,13 +773,14 @@ class WorkOrderModel extends Model
         
         return $db->table('work_order_spareparts wos')
             ->select('
-                wos.*,
+                wos.id,
                 wos.sparepart_code as code,
                 wos.sparepart_name as name,
                 wos.quantity_brought as qty,
+                wos.quantity_used,
                 wos.satuan,
                 wos.notes
-            ')
+            ', false)
             ->where('wos.work_order_id', $workOrderId)
             ->orderBy('wos.id', 'ASC')
             ->get()

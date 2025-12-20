@@ -256,19 +256,37 @@ class WorkOrderController extends Controller
             $db = \Config\Database::connect();
             
             if ($areaId) {
-                // Use area_employee_assignments table for area-based filtering
-                $builder = $db->table('work_order_staff_backup_final s');
-                $builder->select('s.id, s.staff_name, s.staff_role');
-                $builder->join('area_employee_assignments aea', 's.id = aea.employee_id');
-                $builder->where('s.staff_role', $staffRole);
-                $builder->where('s.is_active', 1);
+                // Use area_employee_assignments table with employees for area-based filtering
+                $builder = $db->table('employees e');
+                $builder->select('e.id, e.staff_name, e.staff_role');
+                $builder->join('area_employee_assignments aea', 'e.id = aea.employee_id');
+                
+                // Handle MECHANIC and HELPER role matching (support subtypes)
+                if ($staffRole === 'MECHANIC') {
+                    $builder->like('e.staff_role', 'MECHANIC', 'both');
+                } elseif ($staffRole === 'HELPER') {
+                    $builder->like('e.staff_role', 'HELPER', 'both');
+                } else {
+                    $builder->where('e.staff_role', $staffRole);
+                }
+                
+                $builder->where('e.is_active', 1);
                 $builder->where('aea.area_id', $areaId);
                 $builder->where('aea.is_active', 1);
             } else {
-                // Use work_order_staff_backup_final table for general staff
-                $builder = $db->table('work_order_staff_backup_final');
+                // Use employees table for general staff (fallback - not area-specific)
+                $builder = $db->table('employees');
                 $builder->select('id, staff_name, staff_role');
-                $builder->where('staff_role', $staffRole);
+                
+                // Handle MECHANIC and HELPER role matching (support subtypes)
+                if ($staffRole === 'MECHANIC') {
+                    $builder->like('staff_role', 'MECHANIC', 'both');
+                } elseif ($staffRole === 'HELPER') {
+                    $builder->like('staff_role', 'HELPER', 'both');
+                } else {
+                    $builder->where('staff_role', $staffRole);
+                }
+                
                 $builder->where('is_active', 1);
             }
             
@@ -306,31 +324,37 @@ class WorkOrderController extends Controller
         try {
             $db = \Config\Database::connect();
             
-            // Get admin for this area
-            $admin = $db->query("
-                SELECT s.id, s.staff_name
+            // Get ALL admins for this area with priority sorting
+            $admins = $db->query("
+                SELECT e.id, e.staff_name, aea.assignment_type, aea.start_date
                 FROM area_employee_assignments aea
-                JOIN work_order_staff_backup_final s ON aea.employee_id = s.id
+                JOIN employees e ON aea.employee_id = e.id
                 WHERE aea.area_id = ? AND aea.is_active = 1 
-                AND s.staff_role = 'ADMIN' AND s.is_active = 1
-                LIMIT 1
-            ", [$areaId])->getRowArray();
+                AND e.staff_role LIKE '%ADMIN%' AND e.is_active = 1
+                ORDER BY 
+                    CASE aea.assignment_type WHEN 'PRIMARY' THEN 0 ELSE 1 END,
+                    aea.start_date ASC,
+                    e.id ASC
+            ", [$areaId])->getResultArray();
             
-            // Get foreman for this area
-            $foreman = $db->query("
-                SELECT s.id, s.staff_name
+            // Get ALL foremans for this area with priority sorting
+            $foremans = $db->query("
+                SELECT e.id, e.staff_name, aea.assignment_type, aea.start_date
                 FROM area_employee_assignments aea
-                JOIN work_order_staff_backup_final s ON aea.employee_id = s.id
+                JOIN employees e ON aea.employee_id = e.id
                 WHERE aea.area_id = ? AND aea.is_active = 1 
-                AND s.staff_role = 'FOREMAN' AND s.is_active = 1
-                LIMIT 1
-            ", [$areaId])->getRowArray();
+                AND e.staff_role = 'FOREMAN' AND e.is_active = 1
+                ORDER BY 
+                    CASE aea.assignment_type WHEN 'PRIMARY' THEN 0 ELSE 1 END,
+                    aea.start_date ASC,
+                    e.id ASC
+            ", [$areaId])->getResultArray();
             
             return $this->response->setJSON([
                 'success' => true,
                 'data' => [
-                    'admin' => $admin,
-                    'foreman' => $foreman
+                    'admins' => $admins,
+                    'foremans' => $foremans
                 ]
             ]);
             
@@ -880,6 +904,32 @@ class WorkOrderController extends Controller
                 ]);
             }
             
+            // Check if unit already has open work order (not CLOSED)
+            $db = \Config\Database::connect();
+            $existingWO = $db->table('work_orders wo')
+                ->select('wo.work_order_number, wo.id, s.status_name')
+                ->join('work_order_statuses s', 'wo.status_id = s.id', 'left')
+                ->where('wo.unit_id', $input['unit_id'])
+                ->where('wo.deleted_at', null)
+                ->whereNotIn('s.status_code', ['CLOSED', 'COMPLETED']) // Exclude completed statuses
+                ->orderBy('wo.id', 'DESC')
+                ->limit(1)
+                ->get()
+                ->getRow();
+            
+            if ($existingWO) {
+                log_message('debug', 'Unit already has open WO: ' . print_r($existingWO, true));
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit ini sudah memiliki Work Order yang masih aktif (' . $existingWO->work_order_number . ' - Status: ' . $existingWO->status_name . '). Harap selesaikan Work Order tersebut hingga CLOSED sebelum membuat Work Order baru.',
+                    'existing_wo' => [
+                        'id' => $existingWO->id,
+                        'number' => $existingWO->work_order_number,
+                        'status' => $existingWO->status_name
+                    ]
+                ]);
+            }
+            
             // Get default status (try multiple options)
             $db = \Config\Database::connect();
             $defaultStatus = $db->table('work_order_statuses')
@@ -914,24 +964,81 @@ class WorkOrderController extends Controller
             $unitAreaInfo = $this->getUnitAreaInfo($input['unit_id']);
             log_message('debug', 'Unit Area Info: ' . print_r($unitAreaInfo, true));
             
-            // Only get admin and foreman for initial info display (simplified approach)
-            $areaStaffInfo = $this->getAreaStaffInfo($input['unit_id']);
-            log_message('debug', 'Area Staff Info: ' . print_r($areaStaffInfo, true));
+            // Use admin_id and foreman_id from user selection (from dropdown)
+            // Fallback to auto-assignment only if not provided
+            // Ensure empty strings are converted to NULL for foreign key constraints
+            $adminId = !empty($input['admin_id']) ? $input['admin_id'] : null;
+            $foremanId = !empty($input['foreman_id']) ? $input['foreman_id'] : null;
             
-            // Extract admin and foreman from staff list
-            $adminId = null;
-            $foremanId = null;
+            // Get mechanic and helper IDs
+            $mechanicIds = $input['mechanic_id'] ?? [];
+            $helperIds = $input['helper_id'] ?? [];
             
-            if ($areaStaffInfo && is_array($areaStaffInfo)) {
-                foreach ($areaStaffInfo as $staff) {
-                    if ($staff['staff_role'] === 'ADMIN' && $adminId === null) {
-                        $adminId = $staff['id'];
-                    }
-                    if ($staff['staff_role'] === 'FOREMAN' && $foremanId === null) {
-                        $foremanId = $staff['id'];
+            // Filter out empty values
+            $mechanicIds = array_filter($mechanicIds, function($id) { return !empty($id); });
+            $helperIds = array_filter($helperIds, function($id) { return !empty($id); });
+            
+            // Validation: Check for duplicate mechanics
+            if (count($mechanicIds) !== count(array_unique($mechanicIds))) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Tidak dapat memilih mekanik yang sama lebih dari sekali dalam satu Work Order.'
+                ]);
+            }
+            
+            // Validation: Check for duplicate helpers
+            if (count($helperIds) !== count(array_unique($helperIds))) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Tidak dapat memilih helper yang sama lebih dari sekali dalam satu Work Order.'
+                ]);
+            }
+            
+            // If not provided, try auto-assignment from area
+            if (!$adminId || !$foremanId || empty($mechanicIds) || empty($helperIds)) {
+                $areaStaffInfo = $this->getAreaStaffInfo($input['unit_id']);
+                log_message('debug', 'Area Staff Info for auto-assignment: ' . print_r($areaStaffInfo, true));
+                
+                $missingRoles = [];
+                
+                if ($areaStaffInfo && is_array($areaStaffInfo)) {
+                    foreach ($areaStaffInfo as $staff) {
+                        if (!$adminId && $staff['staff_role'] === 'ADMIN') {
+                            $adminId = $staff['id'];
+                        }
+                        if (!$foremanId && $staff['staff_role'] === 'FOREMAN') {
+                            $foremanId = $staff['id'];
+                        }
                     }
                 }
+                
+                // Check what's still missing and build error message
+                if (!$adminId) {
+                    $missingRoles[] = 'Admin';
+                }
+                if (!$foremanId) {
+                    $missingRoles[] = 'Foreman';
+                }
+                if (empty($mechanicIds)) {
+                    $missingRoles[] = 'Mechanic (minimal 1)';
+                }
+                if (empty($helperIds)) {
+                    $missingRoles[] = 'Helper (minimal 1)';
+                }
+                
+                if (!empty($missingRoles)) {
+                    $areaName = $unitAreaInfo['area_name'] ?? 'Unknown';
+                    return $this->response->setJSON([
+                        'success' => false,
+                        'message' => 'Staff tidak lengkap untuk Area "' . $areaName . '". Staff yang belum di-assign: ' . implode(', ', $missingRoles) . '. Silakan assign staff terlebih dahulu di Area Management.',
+                        'missing_roles' => $missingRoles,
+                        'area_name' => $areaName,
+                        'redirect_hint' => 'Area Management'
+                    ]);
+                }
             }
+            
+            log_message('debug', 'Final admin_id: ' . ($adminId ?? 'NULL') . ', foreman_id: ' . ($foremanId ?? 'NULL'));
             
             $data = [
                 'work_order_number' => $woNumber,
@@ -944,7 +1051,7 @@ class WorkOrderController extends Controller
                 'subcategory_id' => $input['subcategory_id'] ?? null,
                 'complaint_description' => $input['complaint_description'] ?? null,
                 'status_id' => $defaultStatus->id, // Set default status (OPEN)
-                // Only set admin and foreman initially - mechanic/helper will be assigned later
+                // Use admin and foreman from user selection or auto-assignment
                 'admin_id' => $adminId,
                 'foreman_id' => $foremanId,
                 'mechanic_id' => null, // Will be assigned during assignment process
@@ -1100,10 +1207,11 @@ class WorkOrderController extends Controller
                     'data' => [
                         'id' => $result,
                         'work_order_number' => $woNumber,
-                        'area_staff_info' => $areaStaffInfo,
                         'unit_area' => $unitAreaInfo['area_name'] ?? 'Unknown',
                         'spareparts_count' => count($input['sparepart_name'] ?? []),
                         'assigned_staff' => [
+                            'admin_id' => $adminId ?? null,
+                            'foreman_id' => $foremanId ?? null,
                             'mechanic_id' => $firstMechanic ?? null,
                             'helper_id' => $firstHelper ?? null
                         ]
@@ -1218,8 +1326,12 @@ class WorkOrderController extends Controller
                 ]);
             }
             
-            // Check if work order can be deleted (not completed or in critical status)
-            if (in_array($workOrder['status_id'], [3, 4])) { // Assuming 3=Completed, 4=Closed
+            // Get status information
+            $statusModel = new \App\Models\WorkOrderStatusModel();
+            $status = $statusModel->find($workOrder['status_id']);
+            
+            // Check if work order can be deleted (not completed or closed)
+            if ($status && in_array($status['status_code'], ['COMPLETED', 'CLOSED'])) {
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Work Order yang sudah selesai atau ditutup tidak dapat dihapus'
@@ -1310,6 +1422,48 @@ class WorkOrderController extends Controller
                 'message' => 'Work Order tidak ditemukan'
             ]);
         }
+        
+        log_message('debug', "=== SPAREPART USAGE MAPPING DEBUG ===");
+        log_message('debug', "Work Order ID: {$id}");
+        
+        // Add usage status to spareparts if they exist
+        if (!empty($workOrder['spareparts'])) {
+            log_message('debug', "Spareparts count: " . count($workOrder['spareparts']));
+            
+            // Add usage info to each sparepart based on quantity_used field
+            foreach ($workOrder['spareparts'] as &$sparepart) {
+                log_message('debug', "Checking sparepart ID: {$sparepart['id']} Name: {$sparepart['name']}");
+                
+                $qtyBrought = (int)($sparepart['qty'] ?? 0);
+                $qtyUsed = (int)($sparepart['quantity_used'] ?? 0);
+                
+                log_message('debug', "  Qty Brought: $qtyBrought, Qty Used: $qtyUsed");
+                
+                // Determine status based on quantity_used
+                if ($qtyUsed > 0) {
+                    $sparepart['is_used'] = 1; // Used
+                    $sparepart['used_quantity'] = $qtyUsed;
+                    
+                    // Check if there's a return (used < brought)
+                    if ($qtyUsed < $qtyBrought) {
+                        $qtyReturned = $qtyBrought - $qtyUsed;
+                        $sparepart['is_used'] = 0; // Has return
+                        $sparepart['returned_quantity'] = $qtyReturned;
+                        log_message('debug', "  ✓ Status: RETURNED (used: {$qtyUsed}, returned: {$qtyReturned})");
+                    } else {
+                        log_message('debug', "  ✓ Status: USED (all used: {$qtyUsed})");
+                    }
+                } else {
+                    log_message('debug', "  ✗ Status: PENDING (not validated)");
+                    // Leave is_used undefined for pending status
+                }
+            }
+            unset($sparepart); // Break reference
+            
+            log_message('debug', "Final spareparts data: " . json_encode($workOrder['spareparts']));
+        }
+        
+        log_message('debug', "=== END DEBUG ===");
         
         return $this->response->setJSON([
             'success' => true,
@@ -1778,7 +1932,7 @@ class WorkOrderController extends Controller
         try {
             $db = \Config\Database::connect();
             
-            // Use area_id from customer_locations (cl.area_id) like other working queries
+            // Use area_id from inventory_unit (iu.area_id) - the actual unit area
             $sql = "SELECT 
                         iu.id_inventory_unit as id, 
                         iu.no_unit,
@@ -1795,7 +1949,7 @@ class WorkOrderController extends Controller
                     LEFT JOIN kontrak k ON iu.kontrak_id = k.id
                     LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
                     LEFT JOIN customers c ON c.id = cl.customer_id
-                    LEFT JOIN areas a ON a.id = cl.area_id
+                    LEFT JOIN areas a ON a.id = iu.area_id
                     LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
                     LEFT JOIN kapasitas kp ON iu.kapasitas_unit_id = kp.id_kapasitas
                     LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
@@ -2126,9 +2280,147 @@ class WorkOrderController extends Controller
                 'getUnitVerificationData',
                 'saveUnitVerification', 
                 'getSparepartUsageData',
-                'saveSparepartUsage'
+                'saveSparepartUsage',
+                'getCompleteData',
+                'saveCompleteWorkOrder'
             ]
         ]);
+    }
+
+    /**
+     * Get complete work order data (repair_description, notes)
+     */
+    public function getCompleteData()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $workOrderId = $this->request->getPost('work_order_id');
+        
+        if (!$workOrderId) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Work Order ID required'
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get work order data
+            $workOrder = $db->table('work_orders')
+                ->select('id, work_order_number, repair_description, notes, status_id')
+                ->where('id', $workOrderId)
+                ->get()
+                ->getRowArray();
+            
+            if (!$workOrder) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order not found'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'work_order_id' => $workOrder['id'],
+                    'work_order_number' => $workOrder['work_order_number'],
+                    'repair_description' => $workOrder['repair_description'],
+                    'notes' => $workOrder['notes'],
+                    'status_id' => $workOrder['status_id']
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting complete data: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Save complete work order data (repair_description, notes)
+     * Status remains IN_PROGRESS - will be changed to COMPLETED after verification
+     */
+    public function saveCompleteWorkOrder()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        $workOrderId = $this->request->getPost('work_order_id');
+        $repairDescription = $this->request->getPost('repair_description');
+        $notes = $this->request->getPost('notes');
+        
+        if (!$workOrderId) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Work Order ID required'
+            ]);
+        }
+
+        if (empty($repairDescription)) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Analysis & Repair is required'
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Check if work order exists
+            $workOrder = $db->table('work_orders')
+                ->where('id', $workOrderId)
+                ->get()
+                ->getRowArray();
+            
+            if (!$workOrder) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Work Order not found'
+                ]);
+            }
+
+            // Update work order with repair data
+            // Status REMAINS IN_PROGRESS - will be changed to COMPLETED after unit verification
+            $updateData = [
+                'repair_description' => $repairDescription,
+                'notes' => $notes,
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            $updated = $db->table('work_orders')
+                ->where('id', $workOrderId)
+                ->update($updateData);
+
+            if (!$updated) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to update work order'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Complete data saved successfully. Please continue with unit verification.',
+                'data' => [
+                    'work_order_id' => $workOrderId,
+                    'status' => 'IN_PROGRESS' // Status tetap IN_PROGRESS
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error saving complete data: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage()
+            ]);
+        }
     }
 
     /**
@@ -2180,6 +2472,7 @@ class WorkOrderController extends Controller
                     iu.ban_id,
                     iu.valve_id,
                     iu.aksesoris,
+                    iu.hour_meter,
                     tu.tipe as tipe_unit_name,
                     mu.model_unit as model_unit_name,
                     mu.merk_unit,
@@ -2493,6 +2786,20 @@ class WorkOrderController extends Controller
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Work order tidak ditemukan'
+                ]);
+            }
+            
+            // VALIDASI: Pastikan repair_description sudah diisi
+            $workOrder = $db->table('work_orders')
+                ->select('repair_description, notes')
+                ->where('id', $workOrderId)
+                ->get()
+                ->getRowArray();
+            
+            if (empty($workOrder['repair_description'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Analysis & Repair harus diisi terlebih dahulu. Silakan klik tombol Complete untuk melengkapi data.'
                 ]);
             }
             
@@ -2812,17 +3119,28 @@ class WorkOrderController extends Controller
                 throw new \Exception('Transaksi gagal sebelum update accessories: ' . $errorMsg);
             }
 
-            // Handle unit accessories
+            // Handle unit accessories and hour meter update
             $accessories = $this->request->getPost('accessories');
+            $hourMeter = $this->request->getPost('hm');
+            
+            $inventoryUpdateData = [];
+            
             if (!empty($accessories) && is_array($accessories)) {
-                $accessoriesJson = json_encode($accessories);
-                $db->table('inventory_unit')
-                    ->where('id_inventory_unit', $unitId)
-                    ->update(['aksesoris' => $accessoriesJson]);
+                $inventoryUpdateData['aksesoris'] = json_encode($accessories);
             } else {
+                $inventoryUpdateData['aksesoris'] = null;
+            }
+            
+            // Update hour meter on unit if provided (support decimal)
+            if (!empty($hourMeter) && is_numeric($hourMeter)) {
+                $inventoryUpdateData['hour_meter'] = (float)$hourMeter;
+            }
+            
+            // Apply updates to inventory_unit
+            if (!empty($inventoryUpdateData)) {
                 $db->table('inventory_unit')
                     ->where('id_inventory_unit', $unitId)
-                    ->update(['aksesoris' => null]);
+                    ->update($inventoryUpdateData);
             }
             
             // Check transaction status after accessories update
@@ -2857,6 +3175,7 @@ class WorkOrderController extends Controller
                 'unit_verified' => 1,
                 'unit_verified_at' => date('Y-m-d H:i:s'),
                 'notes' => $this->request->getPost('catatan_fisik'),
+                'hm' => $this->request->getPost('hm') ?: null,
                 'updated_at' => date('Y-m-d H:i:s')
             ];
 

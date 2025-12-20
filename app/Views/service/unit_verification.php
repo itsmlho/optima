@@ -139,6 +139,12 @@
                                         <td><textarea class="form-control form-control-sm" id="verify-keterangan" name="keterangan" rows="2" placeholder="Keterangan real"></textarea></td>
                                         <td class="text-center"><input type="checkbox" class="form-check-input" id="check-keterangan"></td>
                                     </tr>
+                                    <tr>
+                                        <td>Hour Meter (HM)</td>
+                                        <td><input type="text" class="form-control form-control-sm" id="db-hour-meter" readonly></td>
+                                        <td><input type="number" class="form-control form-control-sm" id="verify-hm" name="hm" placeholder="Hour meter saat ini (contoh: 1250.5)" min="0" step="0.1"></td>
+                                        <td class="text-center"><input type="checkbox" class="form-check-input" id="check-hm"></td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
@@ -705,6 +711,7 @@ $(document).ready(function() {
         $('#db-serial-number').val(unitData.serial_number || '');
         $('#db-tahun-unit').val(unitData.tahun_unit || '');
         $('#db-keterangan').val(unitData.keterangan || '');
+        $('#db-hour-meter').val(unitData.hour_meter || '-');
         
         // Mesin Information
         $('#db-model-mesin').val(unitData.model_mesin_name || '');
@@ -729,6 +736,7 @@ $(document).ready(function() {
         $('#verify-serial-number').val(unitData.serial_number || '');
         $('#verify-tahun-unit').val(unitData.tahun_unit || '');
         $('#verify-keterangan').val(unitData.keterangan || '');
+        $('#verify-hm').val(unitData.hour_meter || '');
         
         // SN fields - auto-fill with database values
         $('#verify-sn-mesin').val(unitData.sn_mesin || '');
@@ -1436,7 +1444,6 @@ $(document).ready(function() {
             type: 'POST',
             data: formData,
             beforeSend: function() {
-                showAlert('info', 'Menyimpan verifikasi...');
             },
             success: function(response) {
                 console.log('✅ Server response:', response);
