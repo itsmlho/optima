@@ -3232,3 +3232,26 @@ if (!function_exists('check_contract_expiry_scheduled')) {
         }
     }
 }
+
+if (!function_exists('notify_work_order_unit_verified')) {
+    /**
+     * Send notification when Work Order Unit Verification has data changes
+     * 
+     * @param array $data Verification data
+     * @return bool|array
+     */
+    function notify_work_order_unit_verified($data)
+    {
+        return send_notification('work_order_unit_verified', [
+            'module' => 'work_order',
+            'id' => $data['work_order_id'] ?? null,
+            'wo_number' => $data['wo_number'] ?? '',
+            'unit_code' => $data['unit_code'] ?? '',
+            'changes_count' => $data['changes_count'] ?? 0,
+            'changes_list' => $data['changes_list'] ?? '',
+            'created_by' => $data['created_by'] ?? 'System',
+            'verified_at' => $data['verified_at'] ?? date('Y-m-d H:i:s'),
+            'url' => $data['url'] ?? base_url('/service/work-orders/view/' . ($data['work_order_id'] ?? ''))
+        ]);
+    }
+}
