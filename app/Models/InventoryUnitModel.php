@@ -16,6 +16,7 @@ class InventoryUnitModel extends Model
     protected $allowedFields    = [
         'serial_number',
         'no_unit', // nomor aset manual (nullable & unik) diisi saat konversi jadi aset
+        'no_unit_na', // nomor non-asset (NA-001 to NA-500) dengan gap-filling strategy
         'id_po',
         'tahun_unit',
         'status_unit_id',
@@ -131,8 +132,9 @@ class InventoryUnitModel extends Model
         try {
             $builder = $this->db->table($this->table . ' as iu');
             $builder->select('iu.id_inventory_unit,
-                              iu.no_unit as no_unit,
+                              COALESCE(iu.no_unit, iu.no_unit_na) as no_unit,
                               iu.no_unit as nomor_aset,
+                              iu.no_unit_na,
                               iu.serial_number as serial_number_po,
                               iu.status_unit_id as status_unit,
                               iu.status_unit_id as status_unit_id,
@@ -321,7 +323,7 @@ class InventoryUnitModel extends Model
     {
         $builder = $this->db->table($this->table . ' as iu');
         $builder->select('iu.id_inventory_unit, 
-                          iu.no_unit, 
+                          COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, 
                           iu.serial_number,
                           iu.lokasi_unit,
                           COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
@@ -369,5 +371,120 @@ class InventoryUnitModel extends Model
                 ->where('iu.id_inventory_unit', $unitId);
         
         return $builder->get()->getRowArray();
+    }
+
+    /**
+     * Generate Non-Asset Number with Gap-Filling Strategy
+     * Format: NA-001 to NA-500 (max 500 nameplates)
+     * Strategy: Fill gaps first (reuse vacated numbers), then sequential
+     * 
+     * @return string Non-asset number (e.g., "NA-001")
+     * @throws \Exception if capacity is full (all 500 slots occupied)
+     */
+    public function generateNonAssetNumber(): string
+    {
+        $maxCapacity = 500; // Max nameplate capacity: NA-001 to NA-500
+        
+        // Get all existing non-asset numbers
+        $existingNumbers = $this->db->table('inventory_unit')
+            ->select('no_unit_na')
+            ->where('no_unit_na IS NOT NULL')
+            ->where('no_unit_na LIKE "NA-%"')
+            ->get()
+            ->getResultArray();
+        
+        // Extract numeric parts from existing numbers
+        $usedNumbers = [];
+        foreach ($existingNumbers as $row) {
+            if (preg_match('/NA-(\d+)/', $row['no_unit_na'], $matches)) {
+                $usedNumbers[] = (int) $matches[1];
+            }
+        }
+        
+        // Find first available number (fill gaps first)
+        for ($i = 1; $i <= $maxCapacity; $i++) {
+            if (!in_array($i, $usedNumbers)) {
+                return "NA-" . str_pad($i, 3, '0', STR_PAD_LEFT);
+            }
+        }
+        
+        // All slots full (NA-001 to NA-500)
+        throw new \Exception("Kapasitas nomor Non-Asset penuh (maksimal {$maxCapacity} unit). Silakan konversi unit ke Asset atau hapus unit tidak terpakai.");
+    }
+
+    /**
+     * Get display number for any unit (Asset or Non-Asset)
+     * 
+     * @param int $unitId
+     * @return string|null Display number (e.g., "FL-001" or "NA-001" or "TEMP-123")
+     */
+    public function getDisplayNumber(int $unitId): ?string
+    {
+        $unit = $this->find($unitId);
+        
+        if (!$unit) {
+            return null;
+        }
+        
+        // Asset with no_unit (no prefix)
+        if ($unit['no_unit']) {
+            return (string) $unit['no_unit'];
+        }
+        
+        // Non-Asset with no_unit_na
+        if ($unit['no_unit_na']) {
+            return $unit['no_unit_na'];
+        }
+        
+        // No number assigned yet
+        return "TEMP-" . $unit['id_inventory_unit'];
+    }
+
+    /**
+     * Convert Non-Asset to Asset
+     * Clears no_unit_na (makes it available for reuse), assigns no_unit, changes status
+     * 
+     * @param int $unitId
+     * @param int|null $newAssetNumber If null, will auto-generate
+     * @return array Conversion result with old and new numbers
+     * @throws \Exception if unit is not Non-Asset
+     */
+    public function convertToAsset(int $unitId, ?int $newAssetNumber = null): array
+    {
+        $unit = $this->find($unitId);
+        
+        if (!$unit || $unit['status_unit_id'] != 8) {
+            throw new \Exception('Unit bukan Non-Asset (status_unit_id harus 8)');
+        }
+        
+        // Auto-generate asset number if not provided
+        if (!$newAssetNumber) {
+            // Get next asset number
+            $lastAsset = $this->db->table('inventory_unit')
+                ->selectMax('no_unit')
+                ->where('no_unit IS NOT NULL')
+                ->get()
+                ->getRowArray();
+            
+            $newAssetNumber = isset($lastAsset['no_unit']) ? ((int)$lastAsset['no_unit']) + 1 : 1;
+        }
+        
+        $oldNonAssetNumber = $unit['no_unit_na'];
+        
+        // Update: Clear no_unit_na (makes it available), set no_unit, change status
+        $this->update($unitId, [
+            'status_unit_id' => 7,        // STOCK ASET
+            'no_unit' => $newAssetNumber,  // Asset number
+            'no_unit_na' => null           // Clear (now available for reuse)
+        ]);
+        
+        log_message('info', "[InventoryUnitModel::convertToAsset] Unit {$unitId}: {$oldNonAssetNumber} → {$newAssetNumber} (converted to Asset)");
+        
+        return [
+            'success' => true,
+            'old_number' => $oldNonAssetNumber,
+            'new_number' => (string) $newAssetNumber,
+            'freed_number' => $oldNonAssetNumber ? "{$oldNonAssetNumber} is now available for reuse" : null
+        ];
     }
 }
