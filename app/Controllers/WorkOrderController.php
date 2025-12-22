@@ -2813,6 +2813,24 @@ class WorkOrderController extends Controller
             
             $db->transStart();
 
+            // Get existing unit data for comparison (before update)
+            $oldUnitData = $db->table('inventory_unit iu')
+                ->select('iu.*, d.nama_departemen, tu.tipe as tipe_unit_name, mu.model as model_unit_name, 
+                         k.kapasitas as kapasitas_name, mm.model as mast_model_name, mes.model as mesin_model_name,
+                         r.tipe as roda_name, b.ukuran as ban_name, v.jenis as valve_name')
+                ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+                ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                ->join('model_mast mm', 'mm.id_model_mast = iu.model_mast_id', 'left')
+                ->join('model_mesin mes', 'mes.id_model_mesin = iu.model_mesin_id', 'left')
+                ->join('roda r', 'r.id_roda = iu.roda_id', 'left')
+                ->join('ban b', 'b.id_ban = iu.ban_id', 'left')
+                ->join('valve v', 'v.id_valve = iu.valve_id', 'left')
+                ->where('iu.id_inventory_unit', $unitId)
+                ->get()
+                ->getRowArray();
+
             // Update inventory_unit table with unit verification data
             $unitUpdateData = [
                 'no_unit' => $this->request->getPost('no_unit'),
@@ -2901,7 +2919,7 @@ class WorkOrderController extends Controller
                 throw new \Exception('Gagal update data unit - tidak ada baris yang terupdate');
             }
 
-            // Handle inventory_attachment table - UPDATE existing records to preserve po_id and catatan_inventory
+            // Handle inventory_attachment table with SWAP logic
             $attachmentId = $this->request->getPost('attachment_id');
             $chargerId = $this->request->getPost('charger_id');
             $bateraiId = $this->request->getPost('baterai_id');
@@ -2934,180 +2952,456 @@ class WorkOrderController extends Controller
                 throw new \Exception('Transaksi gagal setelah delete attachment: ' . $errorMsg);
             }
             
-            // Insert/Update attachment record if selected
+            // Load InventoryAttachmentModel for swap functionality
+            $attachmentModel = new \App\Models\InventoryAttachmentModel();
+            
+            // Track ALL changes for comprehensive notification
+            $allChanges = [];
+            
+            // Compare unit data changes
+            if ($oldUnitData['no_unit'] != $unitUpdateData['no_unit']) {
+                $allChanges[] = "No Unit: {$oldUnitData['no_unit']} → {$unitUpdateData['no_unit']}";
+            }
+            if ($oldUnitData['serial_number'] != $unitUpdateData['serial_number']) {
+                $allChanges[] = "Serial Number: " . ($oldUnitData['serial_number'] ?: '-') . " → " . ($unitUpdateData['serial_number'] ?: '-');
+            }
+            if ($oldUnitData['tahun_unit'] != $unitUpdateData['tahun_unit']) {
+                $allChanges[] = "Tahun: " . ($oldUnitData['tahun_unit'] ?: '-') . " → " . ($unitUpdateData['tahun_unit'] ?: '-');
+            }
+            
+            // Compare departemen
+            if ($oldUnitData['departemen_id'] != $unitUpdateData['departemen_id']) {
+                $newDeptName = '';
+                if (!empty($unitUpdateData['departemen_id'])) {
+                    $dept = $db->table('departemen')->select('nama_departemen')->where('id_departemen', $unitUpdateData['departemen_id'])->get()->getRowArray();
+                    $newDeptName = $dept['nama_departemen'] ?? '';
+                }
+                $allChanges[] = "Departemen: " . ($oldUnitData['nama_departemen'] ?: '-') . " → " . ($newDeptName ?: '-');
+            }
+            
+            // Compare tipe unit
+            if ($oldUnitData['tipe_unit_id'] != $unitUpdateData['tipe_unit_id']) {
+                $newTipeName = '';
+                if (!empty($unitUpdateData['tipe_unit_id'])) {
+                    $tipe = $db->table('tipe_unit')->select('tipe')->where('id_tipe_unit', $unitUpdateData['tipe_unit_id'])->get()->getRowArray();
+                    $newTipeName = $tipe['tipe'] ?? '';
+                }
+                $allChanges[] = "Tipe Unit: " . ($oldUnitData['tipe_unit_name'] ?: '-') . " → " . ($newTipeName ?: '-');
+            }
+            
+            // Compare model unit
+            if ($oldUnitData['model_unit_id'] != $unitUpdateData['model_unit_id']) {
+                $newModelName = '';
+                if (!empty($unitUpdateData['model_unit_id'])) {
+                    $model = $db->table('model_unit')->select('model')->where('id_model_unit', $unitUpdateData['model_unit_id'])->get()->getRowArray();
+                    $newModelName = $model['model'] ?? '';
+                }
+                $allChanges[] = "Model Unit: " . ($oldUnitData['model_unit_name'] ?: '-') . " → " . ($newModelName ?: '-');
+            }
+            
+            // Compare SN Mast
+            if ($oldUnitData['sn_mast'] != $unitUpdateData['sn_mast']) {
+                $allChanges[] = "SN Mast: " . ($oldUnitData['sn_mast'] ?: '-') . " → " . ($unitUpdateData['sn_mast'] ?: '-');
+            }
+            
+            // Compare SN Mesin
+            if ($oldUnitData['sn_mesin'] != $unitUpdateData['sn_mesin']) {
+                $allChanges[] = "SN Mesin: " . ($oldUnitData['sn_mesin'] ?: '-') . " → " . ($unitUpdateData['sn_mesin'] ?: '-');
+            }
+            
+            // Check attachment changes
+            $oldAttachmentId = $existingMap['attachment']['attachment_id'] ?? null;
+            if ($oldAttachmentId != $attachmentId) {
+                $oldAttInfo = '';
+                $newAttInfo = '';
+                if ($oldAttachmentId) {
+                    $att = $db->table('attachment')->select('kode, desc')->where('id_attachment', $oldAttachmentId)->get()->getRowArray();
+                    $oldAttInfo = ($att['kode'] ?? '') . ' - ' . ($att['desc'] ?? '');
+                }
+                if ($attachmentId) {
+                    $att = $db->table('attachment')->select('kode, desc')->where('id_attachment', $attachmentId)->get()->getRowArray();
+                    $newAttInfo = ($att['kode'] ?? '') . ' - ' . ($att['desc'] ?? '');
+                }
+                $allChanges[] = "Attachment: " . ($oldAttInfo ?: '-') . " → " . ($newAttInfo ?: '-');
+            }
+            
+            // Check charger changes
+            $oldChargerId = $existingMap['charger']['charger_id'] ?? null;
+            if ($oldChargerId != $chargerId) {
+                $oldChrInfo = '';
+                $newChrInfo = '';
+                if ($oldChargerId) {
+                    $chr = $db->table('charger')->select('merk, model')->where('id_charger', $oldChargerId)->get()->getRowArray();
+                    $oldChrInfo = ($chr['merk'] ?? '') . ' ' . ($chr['model'] ?? '');
+                }
+                if ($chargerId) {
+                    $chr = $db->table('charger')->select('merk, model')->where('id_charger', $chargerId)->get()->getRowArray();
+                    $newChrInfo = ($chr['merk'] ?? '') . ' ' . ($chr['model'] ?? '');
+                }
+                $allChanges[] = "Charger: " . ($oldChrInfo ?: '-') . " → " . ($newChrInfo ?: '-');
+            }
+            
+            // Check baterai changes
+            $oldBateraiId = $existingMap['baterai']['baterai_id'] ?? null;
+            if ($oldBateraiId != $bateraiId) {
+                $oldBatInfo = '';
+                $newBatInfo = '';
+                if ($oldBateraiId) {
+                    $bat = $db->table('baterai')->select('merk, model')->where('id', $oldBateraiId)->get()->getRowArray();
+                    $oldBatInfo = ($bat['merk'] ?? '') . ' ' . ($bat['model'] ?? '');
+                }
+                if ($bateraiId) {
+                    $bat = $db->table('baterai')->select('merk, model')->where('id', $bateraiId)->get()->getRowArray();
+                    $newBatInfo = ($bat['merk'] ?? '') . ' ' . ($bat['model'] ?? '');
+                }
+                $allChanges[] = "Baterai: " . ($oldBatInfo ?: '-') . " → " . ($newBatInfo ?: '-');
+            }
+            
+            // Handle attachment record if selected
             if (!empty($attachmentId)) {
-                // Validate attachment_id exists in attachment table
-                $attachmentExists = $db->table('attachment')
-                    ->where('id_attachment', $attachmentId)
-                    ->countAllResults() > 0;
+                // Check if this attachment is currently attached to another unit (SWAP scenario)
+                $existingAttachmentUnit = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, id_inventory_unit, tipe_item, attachment_status')
+                    ->where('attachment_id', $attachmentId)
+                    ->where('tipe_item', 'attachment')
+                    ->where('id_inventory_unit !=', $unitId)
+                    ->where('attachment_status', 'IN_USE')
+                    ->get()
+                    ->getRowArray();
                 
-                if (!$attachmentExists) {
-                    // Skip if attachment doesn't exist
+                if ($existingAttachmentUnit) {
+                    // SWAP: Attachment is currently attached to another unit
+                    $fromUnitId = $existingAttachmentUnit['id_inventory_unit'];
+                    $recordId = $existingAttachmentUnit['id_inventory_attachment'];
+                    
+                    log_message('info', "[WorkOrder] Swapping attachment {$attachmentId} from unit {$fromUnitId} to unit {$unitId}");
+                    
+                    // Use the swap method from InventoryAttachmentModel
+                    $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
+                    
+                    if (!$swapSuccess) {
+                        throw new \Exception('Gagal melakukan swap attachment dari unit lain');
+                    }
+                    
+                    // Update SN if provided
+                    $snAttachment = $this->request->getPost('sn_attachment');
+                    if (!empty($snAttachment)) {
+                        $db->table('inventory_attachment')
+                            ->where('id_inventory_attachment', $recordId)
+                            ->update(['sn_attachment' => $snAttachment]);
+                    }
+                    
+                    // Send swap notification if function exists
+                    if (function_exists('notify_attachment_swapped')) {
+                        $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
+                        $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
+                        $attachmentInfo = $db->table('attachment')->select('kode, desc')->where('id_attachment', $attachmentId)->get()->getRowArray();
+                        
+                        notify_attachment_swapped([
+                            'module' => 'work_order_verification',
+                            'attachment_id' => $recordId,
+                            'tipe_item' => 'Attachment',
+                            'attachment_info' => ($attachmentInfo['kode'] ?? '') . ' - ' . ($attachmentInfo['desc'] ?? ''),
+                            'from_unit_id' => $fromUnitId,
+                            'from_unit_number' => $fromUnit['no_unit'] ?? "ID {$fromUnitId}",
+                            'to_unit_id' => $unitId,
+                            'to_unit_number' => $toUnit['no_unit'] ?? "ID {$unitId}",
+                            'reason' => 'Work Order Verification',
+                            'performed_by' => session('username') ?? session('user_id'),
+                            'performed_at' => date('Y-m-d H:i:s')
+                        ]);
+                    }
                 } else {
-                    $attachmentData = [
-                        'id_inventory_unit' => $unitId,
-                        'tipe_item' => 'attachment',
-                        'attachment_id' => $attachmentId,
-                        'sn_attachment' => $this->request->getPost('sn_attachment'),
-                        'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
-                        'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
-                        'catatan_fisik' => $this->request->getPost('catatan_fisik'),
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                
-                // Preserve po_id and catatan_inventory if they existed
-                if (isset($existingMap['attachment'])) {
-                    if (!empty($existingMap['attachment']['po_id'])) {
-                        $attachmentData['po_id'] = $existingMap['attachment']['po_id'];
-                    }
-                    if (!empty($existingMap['attachment']['catatan_inventory'])) {
-                        $attachmentData['catatan_inventory'] = $existingMap['attachment']['catatan_inventory'];
-                    }
-                    // Preserve created_at if updating existing record
-                    if (!empty($existingMap['attachment']['created_at'])) {
-                        $attachmentData['created_at'] = $existingMap['attachment']['created_at'];
-                        $attachmentData['updated_at'] = date('Y-m-d H:i:s');
-                    }
-                }
-                
-                    // Check transaction status before insert
-                    if ($db->transStatus() === false) {
-                        $errorMsg = $this->getMySQLError($db);
-                        log_message('error', 'Transaction failed before inserting attachment. Error: ' . $errorMsg);
-                        throw new \Exception('Transaksi gagal sebelum insert attachment: ' . $errorMsg);
-                    }
+                    // NOT SWAP: Attachment is available or this is new attachment
+                    // Validate attachment_id exists in attachment table
+                    $attachmentExists = $db->table('attachment')
+                        ->where('id_attachment', $attachmentId)
+                        ->countAllResults() > 0;
+                    
+                    if (!$attachmentExists) {
+                        // Skip if attachment doesn't exist
+                    } else {
+                        $attachmentData = [
+                            'id_inventory_unit' => $unitId,
+                            'tipe_item' => 'attachment',
+                            'attachment_id' => $attachmentId,
+                            'sn_attachment' => $this->request->getPost('sn_attachment'),
+                            'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
+                            'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
+                            'catatan_fisik' => $this->request->getPost('catatan_fisik'),
+                            'attachment_status' => 'IN_USE',
+                            'lokasi_penyimpanan' => 'Terpasang di Unit',
+                            'created_at' => date('Y-m-d H:i:s')
+                        ];
+                    
+                        // Preserve po_id and catatan_inventory if they existed
+                        if (isset($existingMap['attachment'])) {
+                            if (!empty($existingMap['attachment']['po_id'])) {
+                                $attachmentData['po_id'] = $existingMap['attachment']['po_id'];
+                            }
+                            if (!empty($existingMap['attachment']['catatan_inventory'])) {
+                                $attachmentData['catatan_inventory'] = $existingMap['attachment']['catatan_inventory'];
+                            }
+                            // Preserve created_at if updating existing record
+                            if (!empty($existingMap['attachment']['created_at'])) {
+                                $attachmentData['created_at'] = $existingMap['attachment']['created_at'];
+                                $attachmentData['updated_at'] = date('Y-m-d H:i:s');
+                            }
+                        }
+                        
+                        // Check transaction status before insert
+                        if ($db->transStatus() === false) {
+                            $errorMsg = $this->getMySQLError($db);
+                            log_message('error', 'Transaction failed before inserting attachment. Error: ' . $errorMsg);
+                            throw new \Exception('Transaksi gagal sebelum insert attachment: ' . $errorMsg);
+                        }
 
-                    $insertResult = $db->table('inventory_attachment')->insert($attachmentData);
-                    
-                    // Check transaction status immediately after insert
-                    if ($db->transStatus() === false) {
+                        $insertResult = $db->table('inventory_attachment')->insert($attachmentData);
+                        
+                        // Check transaction status immediately after insert
+                        if ($db->transStatus() === false) {
+                            $errorMsg = $this->getMySQLError($db);
+                            log_message('error', 'Transaction failed after inserting attachment. Data: ' . json_encode($attachmentData) . ', Error: ' . $errorMsg);
+                            throw new \Exception('Error menyimpan attachment: ' . $errorMsg);
+                        }
+                        
                         $errorMsg = $this->getMySQLError($db);
-                        log_message('error', 'Transaction failed after inserting attachment. Data: ' . json_encode($attachmentData) . ', Error: ' . $errorMsg);
-                        throw new \Exception('Error menyimpan attachment: ' . $errorMsg);
-                    }
-                    
-                    $errorMsg = $this->getMySQLError($db);
-                    if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
-                        log_message('error', 'Failed to insert attachment. Result: ' . ($insertResult ? 'true' : 'false') . ', Error: ' . $errorMsg);
-                        throw new \Exception('Error menyimpan attachment: ' . $errorMsg);
+                        if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
+                            log_message('error', 'Failed to insert attachment. Result: ' . ($insertResult ? 'true' : 'false') . ', Error: ' . $errorMsg);
+                            throw new \Exception('Error menyimpan attachment: ' . $errorMsg);
+                        }
                     }
                 }
             }
             
-            // Insert/Update charger record if selected
+            // Handle charger record if selected with SWAP logic
             if (!empty($chargerId)) {
-                // Validate charger_id exists in charger table
-                $chargerExists = $db->table('charger')
-                    ->where('id_charger', $chargerId)
-                    ->countAllResults() > 0;
+                // Check if this charger is currently attached to another unit (SWAP scenario)
+                $existingChargerUnit = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, id_inventory_unit, tipe_item, attachment_status')
+                    ->where('charger_id', $chargerId)
+                    ->where('tipe_item', 'charger')
+                    ->where('id_inventory_unit !=', $unitId)
+                    ->where('attachment_status', 'IN_USE')
+                    ->get()
+                    ->getRowArray();
                 
-                if (!$chargerExists) {
-                    // Skip if charger doesn't exist
+                if ($existingChargerUnit) {
+                    // SWAP: Charger is currently attached to another unit
+                    $fromUnitId = $existingChargerUnit['id_inventory_unit'];
+                    $recordId = $existingChargerUnit['id_inventory_attachment'];
+                    
+                    log_message('info', "[WorkOrder] Swapping charger {$chargerId} from unit {$fromUnitId} to unit {$unitId}");
+                    
+                    // Use the swap method from InventoryAttachmentModel
+                    $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
+                    
+                    if (!$swapSuccess) {
+                        throw new \Exception('Gagal melakukan swap charger dari unit lain');
+                    }
+                    
+                    // Update SN if provided
+                    $snCharger = $this->request->getPost('sn_charger');
+                    if (!empty($snCharger)) {
+                        $db->table('inventory_attachment')
+                            ->where('id_inventory_attachment', $recordId)
+                            ->update(['sn_charger' => $snCharger]);
+                    }
+                    
+                    // Send swap notification if function exists
+                    if (function_exists('notify_attachment_swapped')) {
+                        $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
+                        $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
+                        $chargerInfo = $db->table('charger')->select('merk, model')->where('id_charger', $chargerId)->get()->getRowArray();
+                        
+                        notify_attachment_swapped([
+                            'module' => 'work_order_verification',
+                            'attachment_id' => $recordId,
+                            'tipe_item' => 'Charger',
+                            'attachment_info' => ($chargerInfo['merk'] ?? '') . ' - ' . ($chargerInfo['model'] ?? ''),
+                            'from_unit_id' => $fromUnitId,
+                            'from_unit_number' => $fromUnit['no_unit'] ?? "ID {$fromUnitId}",
+                            'to_unit_id' => $unitId,
+                            'to_unit_number' => $toUnit['no_unit'] ?? "ID {$unitId}",
+                            'reason' => 'Work Order Verification',
+                            'performed_by' => session('username') ?? session('user_id'),
+                            'performed_at' => date('Y-m-d H:i:s')
+                        ]);
+                    }
                 } else {
-                    $chargerData = [
-                        'id_inventory_unit' => $unitId,
-                        'tipe_item' => 'charger',
-                        'charger_id' => $chargerId,
-                        'sn_charger' => $this->request->getPost('sn_charger'),
-                        'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
-                        'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
-                        'catatan_fisik' => $this->request->getPost('catatan_fisik'),
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                
-                // Preserve po_id and catatan_inventory if they existed
-                if (isset($existingMap['charger'])) {
-                    if (!empty($existingMap['charger']['po_id'])) {
-                        $chargerData['po_id'] = $existingMap['charger']['po_id'];
-                    }
-                    if (!empty($existingMap['charger']['catatan_inventory'])) {
-                        $chargerData['catatan_inventory'] = $existingMap['charger']['catatan_inventory'];
-                    }
-                    // Preserve created_at if updating existing record
-                    if (!empty($existingMap['charger']['created_at'])) {
-                        $chargerData['created_at'] = $existingMap['charger']['created_at'];
-                        $chargerData['updated_at'] = date('Y-m-d H:i:s');
-                    }
-                }
-                
-                    // Check transaction status before insert
-                    if ($db->transStatus() === false) {
-                        $errorMsg = $this->getMySQLError($db);
-                        log_message('error', 'Transaction failed before inserting charger. Error: ' . $errorMsg);
-                        throw new \Exception('Transaksi gagal sebelum insert charger: ' . $errorMsg);
-                    }
+                    // NOT SWAP: Charger is available or this is new charger
+                    // Validate charger_id exists in charger table
+                    $chargerExists = $db->table('charger')
+                        ->where('id_charger', $chargerId)
+                        ->countAllResults() > 0;
+                    
+                    if (!$chargerExists) {
+                        // Skip if charger doesn't exist
+                    } else {
+                        $chargerData = [
+                            'id_inventory_unit' => $unitId,
+                            'tipe_item' => 'charger',
+                            'charger_id' => $chargerId,
+                            'sn_charger' => $this->request->getPost('sn_charger'),
+                            'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
+                            'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
+                            'catatan_fisik' => $this->request->getPost('catatan_fisik'),
+                            'attachment_status' => 'IN_USE',
+                            'lokasi_penyimpanan' => 'Terpasang di Unit',
+                            'created_at' => date('Y-m-d H:i:s')
+                        ];
+                    
+                        // Preserve po_id and catatan_inventory if they existed
+                        if (isset($existingMap['charger'])) {
+                            if (!empty($existingMap['charger']['po_id'])) {
+                                $chargerData['po_id'] = $existingMap['charger']['po_id'];
+                            }
+                            if (!empty($existingMap['charger']['catatan_inventory'])) {
+                                $chargerData['catatan_inventory'] = $existingMap['charger']['catatan_inventory'];
+                            }
+                            // Preserve created_at if updating existing record
+                            if (!empty($existingMap['charger']['created_at'])) {
+                                $chargerData['created_at'] = $existingMap['charger']['created_at'];
+                                $chargerData['updated_at'] = date('Y-m-d H:i:s');
+                            }
+                        }
+                        
+                        // Check transaction status before insert
+                        if ($db->transStatus() === false) {
+                            $errorMsg = $this->getMySQLError($db);
+                            log_message('error', 'Transaction failed before inserting charger. Error: ' . $errorMsg);
+                            throw new \Exception('Transaksi gagal sebelum insert charger: ' . $errorMsg);
+                        }
 
-                    $insertResult = $db->table('inventory_attachment')->insert($chargerData);
-                    
-                    // Check transaction status after insert
-                    if ($db->transStatus() === false) {
+                        $insertResult = $db->table('inventory_attachment')->insert($chargerData);
+                        
+                        // Check transaction status after insert
+                        if ($db->transStatus() === false) {
+                            $errorMsg = $this->getMySQLError($db);
+                            log_message('error', 'Transaction failed after inserting charger. Error: ' . $errorMsg);
+                            throw new \Exception('Error menyimpan charger: ' . $errorMsg);
+                        }
+                        
                         $errorMsg = $this->getMySQLError($db);
-                        log_message('error', 'Transaction failed after inserting charger. Error: ' . $errorMsg);
-                        throw new \Exception('Error menyimpan charger: ' . $errorMsg);
-                    }
-                    
-                    $errorMsg = $this->getMySQLError($db);
-                    if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
-                        throw new \Exception('Error menyimpan charger: ' . $errorMsg);
+                        if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
+                            throw new \Exception('Error menyimpan charger: ' . $errorMsg);
+                        }
                     }
                 }
             }
             
-            // Insert/Update baterai record if selected
+            // Handle baterai record if selected with SWAP logic
             if (!empty($bateraiId)) {
-                // Validate baterai_id exists in baterai table (primary key is 'id', not 'id_baterai')
-                $bateraiExists = $db->table('baterai')
-                    ->where('id', $bateraiId)
-                    ->countAllResults() > 0;
+                // Check if this baterai is currently attached to another unit (SWAP scenario)
+                $existingBateraiUnit = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, id_inventory_unit, tipe_item, attachment_status')
+                    ->where('baterai_id', $bateraiId)
+                    ->where('tipe_item', 'baterai')
+                    ->where('id_inventory_unit !=', $unitId)
+                    ->where('attachment_status', 'IN_USE')
+                    ->get()
+                    ->getRowArray();
                 
-                if (!$bateraiExists) {
-                    // Skip if baterai doesn't exist
+                if ($existingBateraiUnit) {
+                    // SWAP: Baterai is currently attached to another unit
+                    $fromUnitId = $existingBateraiUnit['id_inventory_unit'];
+                    $recordId = $existingBateraiUnit['id_inventory_attachment'];
+                    
+                    log_message('info', "[WorkOrder] Swapping baterai {$bateraiId} from unit {$fromUnitId} to unit {$unitId}");
+                    
+                    // Use the swap method from InventoryAttachmentModel
+                    $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
+                    
+                    if (!$swapSuccess) {
+                        throw new \Exception('Gagal melakukan swap baterai dari unit lain');
+                    }
+                    
+                    // Update SN if provided
+                    $snBaterai = $this->request->getPost('sn_baterai');
+                    if (!empty($snBaterai)) {
+                        $db->table('inventory_attachment')
+                            ->where('id_inventory_attachment', $recordId)
+                            ->update(['sn_baterai' => $snBaterai]);
+                    }
+                    
+                    // Send swap notification if function exists
+                    if (function_exists('notify_attachment_swapped')) {
+                        $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
+                        $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
+                        $bateraiInfo = $db->table('baterai')->select('merk, model')->where('id', $bateraiId)->get()->getRowArray();
+                        
+                        notify_attachment_swapped([
+                            'module' => 'work_order_verification',
+                            'attachment_id' => $recordId,
+                            'tipe_item' => 'Baterai',
+                            'attachment_info' => ($bateraiInfo['merk'] ?? '') . ' - ' . ($bateraiInfo['model'] ?? ''),
+                            'from_unit_id' => $fromUnitId,
+                            'from_unit_number' => $fromUnit['no_unit'] ?? "ID {$fromUnitId}",
+                            'to_unit_id' => $unitId,
+                            'to_unit_number' => $toUnit['no_unit'] ?? "ID {$unitId}",
+                            'reason' => 'Work Order Verification',
+                            'performed_by' => session('username') ?? session('user_id'),
+                            'performed_at' => date('Y-m-d H:i:s')
+                        ]);
+                    }
                 } else {
-                    $bateraiData = [
-                        'id_inventory_unit' => $unitId,
-                        'tipe_item' => 'baterai',
-                        'baterai_id' => $bateraiId,
-                        'sn_baterai' => $this->request->getPost('sn_baterai'),
-                        'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
-                        'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
-                        'catatan_fisik' => $this->request->getPost('catatan_fisik'),
-                        'created_at' => date('Y-m-d H:i:s')
-                    ];
-                
-                // Preserve po_id and catatan_inventory if they existed
-                if (isset($existingMap['baterai'])) {
-                    if (!empty($existingMap['baterai']['po_id'])) {
-                        $bateraiData['po_id'] = $existingMap['baterai']['po_id'];
-                    }
-                    if (!empty($existingMap['baterai']['catatan_inventory'])) {
-                        $bateraiData['catatan_inventory'] = $existingMap['baterai']['catatan_inventory'];
-                    }
-                    // Preserve created_at if updating existing record
-                    if (!empty($existingMap['baterai']['created_at'])) {
-                        $bateraiData['created_at'] = $existingMap['baterai']['created_at'];
-                        $bateraiData['updated_at'] = date('Y-m-d H:i:s');
-                    }
-                }
-                
-                    // Check transaction status before insert
-                    if ($db->transStatus() === false) {
-                        $errorMsg = $this->getMySQLError($db);
-                        log_message('error', 'Transaction failed before inserting baterai. Error: ' . $errorMsg);
-                        throw new \Exception('Transaksi gagal sebelum insert baterai: ' . $errorMsg);
-                    }
+                    // NOT SWAP: Baterai is available or this is new baterai
+                    // Validate baterai_id exists in baterai table (primary key is 'id', not 'id_baterai')
+                    $bateraiExists = $db->table('baterai')
+                        ->where('id', $bateraiId)
+                        ->countAllResults() > 0;
+                    
+                    if (!$bateraiExists) {
+                        // Skip if baterai doesn't exist
+                    } else {
+                        $bateraiData = [
+                            'id_inventory_unit' => $unitId,
+                            'tipe_item' => 'baterai',
+                            'baterai_id' => $bateraiId,
+                            'sn_baterai' => $this->request->getPost('sn_baterai'),
+                            'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
+                            'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
+                            'catatan_fisik' => $this->request->getPost('catatan_fisik'),
+                            'attachment_status' => 'IN_USE',
+                            'lokasi_penyimpanan' => 'Terpasang di Unit',
+                            'created_at' => date('Y-m-d H:i:s')
+                        ];
+                    
+                        // Preserve po_id and catatan_inventory if they existed
+                        if (isset($existingMap['baterai'])) {
+                            if (!empty($existingMap['baterai']['po_id'])) {
+                                $bateraiData['po_id'] = $existingMap['baterai']['po_id'];
+                            }
+                            if (!empty($existingMap['baterai']['catatan_inventory'])) {
+                                $bateraiData['catatan_inventory'] = $existingMap['baterai']['catatan_inventory'];
+                            }
+                            // Preserve created_at if updating existing record
+                            if (!empty($existingMap['baterai']['created_at'])) {
+                                $bateraiData['created_at'] = $existingMap['baterai']['created_at'];
+                                $bateraiData['updated_at'] = date('Y-m-d H:i:s');
+                            }
+                        }
+                        
+                        // Check transaction status before insert
+                        if ($db->transStatus() === false) {
+                            $errorMsg = $this->getMySQLError($db);
+                            log_message('error', 'Transaction failed before inserting baterai. Error: ' . $errorMsg);
+                            throw new \Exception('Transaksi gagal sebelum insert baterai: ' . $errorMsg);
+                        }
 
-                    $insertResult = $db->table('inventory_attachment')->insert($bateraiData);
-                    
-                    // Check transaction status after insert
-                    if ($db->transStatus() === false) {
+                        $insertResult = $db->table('inventory_attachment')->insert($bateraiData);
+                        
+                        // Check transaction status after insert
+                        if ($db->transStatus() === false) {
+                            $errorMsg = $this->getMySQLError($db);
+                            log_message('error', 'Transaction failed after inserting baterai. Error: ' . $errorMsg);
+                            throw new \Exception('Error menyimpan baterai: ' . $errorMsg);
+                        }
+                        
                         $errorMsg = $this->getMySQLError($db);
-                        log_message('error', 'Transaction failed after inserting baterai. Error: ' . $errorMsg);
-                        throw new \Exception('Error menyimpan baterai: ' . $errorMsg);
-                    }
-                    
-                    $errorMsg = $this->getMySQLError($db);
-                    if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
-                        throw new \Exception('Error menyimpan baterai: ' . $errorMsg);
+                        if ((!empty($errorMsg) && strpos($errorMsg, 'Unknown database error') === false) || !$insertResult) {
+                            throw new \Exception('Error menyimpan baterai: ' . $errorMsg);
+                        }
                     }
                 }
             }
@@ -3230,6 +3524,31 @@ class WorkOrderController extends Controller
                     'verification_date' => date('Y-m-d H:i:s'),
                     'url' => base_url('/service/work-orders/view/' . $workOrderId)
                 ]);
+            }
+            
+            // Send notification if there are ANY changes during verification
+            if (!empty($allChanges)) {
+                $unitNo = $oldUnitData['no_unit'] ?? "ID {$unitId}";
+                
+                // Build detailed change list
+                $changesList = implode("\n- ", $allChanges);
+                
+                // Log changes
+                log_message('info', "[WorkOrder Verification] Unit {$unitNo} (WO: {$workOrder['work_order_number']}): " . count($allChanges) . " perubahan data");
+                
+                // Send notification for work order unit verification changes
+                if (function_exists('notify_work_order_unit_verified')) {
+                    notify_work_order_unit_verified([
+                        'work_order_id' => $workOrderId,
+                        'wo_number' => $workOrder['work_order_number'] ?? '',
+                        'unit_code' => $unitNo,
+                        'changes_count' => count($allChanges),
+                        'changes_list' => $changesList,
+                        'created_by' => session('username') ?? session('user_id'),
+                        'verified_at' => date('Y-m-d H:i:s'),
+                        'url' => base_url('/service/work-orders/view/' . $workOrderId)
+                    ]);
+                }
             }
 
             return $this->response->setJSON([
