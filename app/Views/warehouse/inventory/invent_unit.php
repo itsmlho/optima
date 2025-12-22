@@ -320,7 +320,32 @@ $can_export = $permissions['export'];
                 }
             },
             columns:[
-                { data:'no_unit', render:function(data){ return data || '-'; } },
+                { 
+                    data: null,
+                    title: 'No. Unit',
+                    render: function(data, type, row) {
+                        let display = '';
+                        
+                        if (row.no_unit) {
+                            // Asset number (no prefix)
+                            display = '<span class="badge bg-success">' + row.no_unit + '</span>';
+                        } else if (row.no_unit_na) {
+                            // Non-Asset number
+                            display = '<span class="badge bg-warning text-dark">' + row.no_unit_na + '</span>';
+                        } else if (row.status_unit_id == 8 || row.status_unit_id == 2) {
+                            // Non-Asset without number - show assign button
+                            display = '<span class="badge bg-secondary">TEMP-' + row.id_inventory_unit + '</span> ' +
+                                      '<button class="btn btn-xs btn-primary mt-1" onclick="assignNonAssetNumber(' + 
+                                      row.id_inventory_unit + ')" title="Assign Nomor Non-Asset">' +
+                                      '<i class="fas fa-hashtag"></i></button>';
+                        } else {
+                            // Asset without number (waiting for conversion)
+                            display = '<span class="badge bg-secondary">TEMP-' + row.id_inventory_unit + '</span>';
+                        }
+                        
+                        return display;
+                    }
+                },
                 { data:'serial_number_po', render:d=> d||'-' },
                 { data:'merk_unit', render:d=> d||'-' },
                 { data:'model_unit', render:d=> d||'-' },
@@ -946,6 +971,52 @@ $can_export = $permissions['export'];
                     Swal.fire('Error', msg, 'error');
                 }
             });
+        });
+    }
+
+    // Assign Non-Asset Number with Gap-Filling Strategy
+    function assignNonAssetNumber(unitId) {
+        Swal.fire({
+            title: 'Assign Nomor Non-Asset?',
+            text: 'Nomor akan di-generate otomatis dengan format NA-001 sampai NA-500 (gap-filling)',
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Ya, Assign',
+            cancelButtonText: 'Batal',
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.ajax({
+                    url: '<?= base_url('warehouse/assignNonAssetNumber') ?>',
+                    type: 'POST',
+                    data: {
+                        id: unitId,
+                        '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil!',
+                                html: 'Nomor Non-Asset: <strong>' + response.no_unit_na + '</strong>',
+                                confirmButtonText: 'OK'
+                            });
+                            unitTable.ajax.reload(null, false);
+                        } else {
+                            Swal.fire('Gagal', response.message, 'error');
+                        }
+                    },
+                    error: function(xhr) {
+                        let msg = 'Terjadi kesalahan sistem';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire('Error', msg, 'error');
+                    }
+                });
+            }
         });
     }
 

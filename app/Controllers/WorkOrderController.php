@@ -3077,10 +3077,16 @@ class WorkOrderController extends Controller
                     log_message('info', "[WorkOrder] Swapping attachment {$attachmentId} from unit {$fromUnitId} to unit {$unitId}");
                     
                     // Use the swap method from InventoryAttachmentModel
-                    $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
-                    
-                    if (!$swapSuccess) {
-                        throw new \Exception('Gagal melakukan swap attachment dari unit lain');
+                    // Note: This method throws exception if validation fails (e.g., battery/charger on non-electric unit)
+                    try {
+                        $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
+                        
+                        if (!$swapSuccess) {
+                            throw new \Exception('Gagal melakukan swap attachment dari unit lain');
+                        }
+                    } catch (\Exception $swapEx) {
+                        // Re-throw with user-friendly message
+                        throw new \Exception('Gagal melakukan swap attachment: ' . $swapEx->getMessage());
                     }
                     
                     // Update SN if provided
@@ -3093,8 +3099,8 @@ class WorkOrderController extends Controller
                     
                     // Send swap notification if function exists
                     if (function_exists('notify_attachment_swapped')) {
-                        $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
-                        $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
+                        $fromUnit = $db->table('inventory_unit')->select('COALESCE(no_unit, no_unit_na) as no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
+                        $toUnit = $db->table('inventory_unit')->select('COALESCE(no_unit, no_unit_na) as no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
                         $attachmentInfo = $db->table('attachment')->select('kode, desc')->where('id_attachment', $attachmentId)->get()->getRowArray();
                         
                         notify_attachment_swapped([
@@ -3194,10 +3200,16 @@ class WorkOrderController extends Controller
                     log_message('info', "[WorkOrder] Swapping charger {$chargerId} from unit {$fromUnitId} to unit {$unitId}");
                     
                     // Use the swap method from InventoryAttachmentModel
-                    $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
-                    
-                    if (!$swapSuccess) {
-                        throw new \Exception('Gagal melakukan swap charger dari unit lain');
+                    // Note: This method throws exception if validation fails (e.g., charger on non-electric unit)
+                    try {
+                        $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
+                        
+                        if (!$swapSuccess) {
+                            throw new \Exception('Gagal melakukan swap charger dari unit lain');
+                        }
+                    } catch (\Exception $swapEx) {
+                        // Re-throw with user-friendly message
+                        throw new \Exception('Gagal melakukan swap charger: ' . $swapEx->getMessage());
                     }
                     
                     // Update SN if provided
@@ -3210,8 +3222,8 @@ class WorkOrderController extends Controller
                     
                     // Send swap notification if function exists
                     if (function_exists('notify_attachment_swapped')) {
-                        $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
-                        $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
+                        $fromUnit = $db->table('inventory_unit')->select('COALESCE(no_unit, no_unit_na) as no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
+                        $toUnit = $db->table('inventory_unit')->select('COALESCE(no_unit, no_unit_na) as no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
                         $chargerInfo = $db->table('charger')->select('merk, model')->where('id_charger', $chargerId)->get()->getRowArray();
                         
                         notify_attachment_swapped([
@@ -3310,10 +3322,16 @@ class WorkOrderController extends Controller
                     log_message('info', "[WorkOrder] Swapping baterai {$bateraiId} from unit {$fromUnitId} to unit {$unitId}");
                     
                     // Use the swap method from InventoryAttachmentModel
-                    $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
-                    
-                    if (!$swapSuccess) {
-                        throw new \Exception('Gagal melakukan swap baterai dari unit lain');
+                    // Note: This method throws exception if validation fails (e.g., baterai on non-electric unit)
+                    try {
+                        $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
+                        
+                        if (!$swapSuccess) {
+                            throw new \Exception('Gagal melakukan swap baterai dari unit lain');
+                        }
+                    } catch (\Exception $swapEx) {
+                        // Re-throw with user-friendly message
+                        throw new \Exception('Gagal melakukan swap baterai: ' . $swapEx->getMessage());
                     }
                     
                     // Update SN if provided
@@ -3326,8 +3344,8 @@ class WorkOrderController extends Controller
                     
                     // Send swap notification if function exists
                     if (function_exists('notify_attachment_swapped')) {
-                        $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
-                        $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
+                        $fromUnit = $db->table('inventory_unit')->select('COALESCE(no_unit, no_unit_na) as no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
+                        $toUnit = $db->table('inventory_unit')->select('COALESCE(no_unit, no_unit_na) as no_unit')->where('id_inventory_unit', $unitId)->get()->getRowArray();
                         $bateraiInfo = $db->table('baterai')->select('merk, model')->where('id', $bateraiId)->get()->getRowArray();
                         
                         notify_attachment_swapped([

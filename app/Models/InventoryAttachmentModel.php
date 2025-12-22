@@ -298,7 +298,7 @@ class InventoryAttachmentModel extends Model
         }
 
         // Add unit number if linked to a unit
-        $builder->select('iu.no_unit');
+        $builder->select('COALESCE(iu.no_unit, iu.no_unit_na) as no_unit');
         $builder->join('inventory_unit iu', 'ia.id_inventory_unit = iu.id_inventory_unit', 'left');
 
         // Join with attachment, charger, and baterai tables
@@ -542,7 +542,7 @@ class InventoryAttachmentModel extends Model
 
     public function getAvailableForAttachment(int $attachmentId): array
     {
-        return $this->select('inventory_attachment.*, a.tipe, a.merk, a.model, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
+        return $this->select('inventory_attachment.*, a.tipe, a.merk, a.model, COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
             ->join('attachment a', 'a.id_attachment = inventory_attachment.attachment_id', 'left')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = inventory_attachment.id_inventory_unit', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
@@ -666,6 +666,39 @@ class InventoryAttachmentModel extends Model
      */
     public function attachToUnit($attachmentId, $unitId, $unitNumber = null): bool
     {
+        $db = \Config\Database::connect();
+        
+        // Get attachment record to check tipe_item
+        $attachmentRecord = $this->find($attachmentId);
+        
+        if (!$attachmentRecord) {
+            log_message('error', 'Attachment record not found: ' . $attachmentId);
+            return false;
+        }
+        
+        // VALIDATION: Battery and charger can only be installed on ELECTRIC units
+        if (in_array($attachmentRecord['tipe_item'], ['baterai', 'charger'])) {
+            $unitInfo = $db->table('inventory_unit iu')
+                ->select('COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, iu.departemen_id, d.nama_departemen')
+                ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+                ->where('iu.id_inventory_unit', $unitId)
+                ->get()->getRowArray();
+            
+            if ($unitInfo) {
+                $deptName = strtoupper($unitInfo['nama_departemen'] ?? '');
+                
+                // Check if unit is NOT electric (DIESEL or GASOLINE)
+                if ($deptName === 'DIESEL' || $deptName === 'GASOLINE') {
+                    $itemType = $attachmentRecord['tipe_item'] === 'baterai' ? 'Baterai' : 'Charger';
+                    log_message('warning', "{$itemType} cannot be installed on non-electric unit. Unit: {$unitInfo['no_unit']}, Department: {$deptName}");
+                    throw new \Exception("{$itemType} hanya dapat dipasang pada unit ELECTRIC. Unit {$unitInfo['no_unit']} adalah {$deptName}.");
+                }
+            } else {
+                log_message('error', 'Target unit not found: ' . $unitId);
+                return false;
+            }
+        }
+        
         // Note: attachment_status dan lokasi_penyimpanan akan otomatis di-set oleh trigger tr_inventory_attachment_status_sync
         return $this->update($attachmentId, [
             'id_inventory_unit' => $unitId,
@@ -688,14 +721,47 @@ class InventoryAttachmentModel extends Model
         $db = \Config\Database::connect();
         
         try {
-            // Get unit numbers FIRST
+            // Get attachment record first to check tipe_item
+            $attachmentRecord = $db->table('inventory_attachment')
+                ->where('id_inventory_attachment', $attachmentId)
+                ->get()->getRowArray();
+            
+            if (!$attachmentRecord) {
+                log_message('error', 'Attachment record not found: ' . $attachmentId);
+                return false;
+            }
+            
+            // VALIDATION: Battery and charger can only be installed on ELECTRIC units
+            if (in_array($attachmentRecord['tipe_item'], ['baterai', 'charger'])) {
+                $toUnitInfo = $db->table('inventory_unit iu')
+                    ->select('iu.no_unit, iu.departemen_id, d.nama_departemen')
+                    ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
+                    ->where('iu.id_inventory_unit', $toUnitId)
+                    ->get()->getRowArray();
+                
+                if ($toUnitInfo) {
+                    $deptName = strtoupper($toUnitInfo['nama_departemen'] ?? '');
+                    
+                    // Check if unit is NOT electric (DIESEL or GASOLINE)
+                    if ($deptName === 'DIESEL' || $deptName === 'GASOLINE') {
+                        $itemType = $attachmentRecord['tipe_item'] === 'baterai' ? 'Baterai' : 'Charger';
+                        log_message('warning', "{$itemType} cannot be installed on non-electric unit. Unit: {$toUnitInfo['no_unit']}, Department: {$deptName}");
+                        throw new \Exception("{$itemType} hanya dapat dipasang pada unit ELECTRIC. Unit {$toUnitInfo['no_unit']} adalah {$deptName}.");
+                    }
+                } else {
+                    log_message('error', 'Target unit not found: ' . $toUnitId);
+                    return false;
+                }
+            }
+            
+            // Get unit numbers for logging
             $fromUnit = $db->table('inventory_unit')
-                ->select('no_unit')
+                ->select('COALESCE(no_unit, no_unit_na) as no_unit')
                 ->where('id_inventory_unit', $fromUnitId)
                 ->get()->getRowArray();
-                
-            $toUnit = $db->table('inventory_unit')
-                ->select('no_unit')
+            
+            $toUnitInfo = $db->table('inventory_unit')
+                ->select('COALESCE(no_unit, no_unit_na) as no_unit')
                 ->where('id_inventory_unit', $toUnitId)
                 ->get()->getRowArray();
             
@@ -739,7 +805,8 @@ class InventoryAttachmentModel extends Model
         } catch (\Exception $e) {
             log_message('error', 'Swap attachment error: ' . $e->getMessage());
             log_message('error', 'Stack trace: ' . $e->getTraceAsString());
-            return false;
+            // Re-throw exception so it can be caught by controller
+            throw $e;
         }
     }
 }

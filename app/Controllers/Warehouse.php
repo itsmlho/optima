@@ -453,6 +453,70 @@ class Warehouse extends BaseController
     }
 
     /**
+     * Assign Non-Asset Number with Gap-Filling Strategy
+     * Format: NA-001 to NA-500
+     */
+    public function assignNonAssetNumber()
+    {
+        try {
+            $id = $this->request->getPost('id');
+            $model = new \App\Models\InventoryUnitModel();
+            
+            $unit = $model->find($id);
+            
+            if (!$unit) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit tidak ditemukan'
+                ]);
+            }
+            
+            // Check if it's non-asset
+            if ($unit['status_unit_id'] != 8) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit bukan Non-Asset (status_unit_id harus 8). Hanya unit Non-Asset yang bisa diberi nomor NA-xxx.'
+                ]);
+            }
+            
+            // Check if already has number
+            if ($unit['no_unit_na']) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit sudah memiliki nomor: ' . $unit['no_unit_na']
+                ]);
+            }
+            
+            // Generate new number (with gap-filling logic)
+            $newNumber = $model->generateNonAssetNumber();
+            
+            // Update unit
+            if ($model->update($id, ['no_unit_na' => $newNumber])) {
+                log_message('info', '[Warehouse::assignNonAssetNumber] Unit ' . $id . ' assigned number: ' . $newNumber);
+                
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Nomor Non-Asset berhasil di-assign',
+                    'no_unit_na' => $newNumber,
+                    'display' => $newNumber
+                ]);
+            }
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Gagal mengupdate nomor Non-Asset'
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', '[Warehouse::assignNonAssetNumber] Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Mengambil detail satu unit untuk modal edit.
      */
     public function getUnitDetail($id)

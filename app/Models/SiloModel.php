@@ -71,7 +71,7 @@ class SiloModel extends Model
 
             $builder = $this->db->table($this->table . ' s');
                 $builder->select('s.*,
-                    iu.no_unit,
+                    COALESCE(iu.no_unit, iu.no_unit_na) as no_unit,
                     iu.serial_number,
                     CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit,
                     CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
@@ -162,7 +162,7 @@ class SiloModel extends Model
             
             // First, get all units
             $builder = $this->db->table('inventory_unit iu');
-            $builder->select('iu.id_inventory_unit as id_silo, iu.no_unit, iu.serial_number, 
+            $builder->select('iu.id_inventory_unit as id_silo, COALESCE(iu.no_unit, iu.no_unit_na) as no_unit, iu.serial_number, 
                 NULL as status, NULL as nomor_silo, NULL as tanggal_terbit_silo, NULL as tanggal_expired_silo,
                 CONCAT(tu.tipe, " - ", tu.jenis) as tipe_unit, 
                 CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit,
