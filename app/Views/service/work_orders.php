@@ -551,6 +551,11 @@ $assetService = new \App\Services\AssetMinificationService();
                                             <span id="viewUnitChargerList">-</span>
                                         </dd>
                                     </div>
+                                    
+                                    <div id="unitAccessoriesInline" class="contents" style="display: none;">
+                                        <dt class="col-sm-4 text-muted pt-2 border-top">Accessories</dt>
+                                        <dd class="col-sm-8 pt-2 border-top" id="viewUnitAccessoriesList"></dd>
+                                    </div>
                                 </dl>
                             </div>
                         </div>
@@ -657,15 +662,7 @@ $assetService = new \App\Services\AssetMinificationService();
                     </div>
                 </div>
 
-                <div id="unitAccessoriesSection" class="card mt-4" style="display: none;">
-                    <div class="card-header">
-                         <h6 class="mb-0"><i class="fas fa-puzzle-piece me-2"></i>Unit Accessories</h6>
-                    </div>
-                    <div class="card-body">
-                        <div id="viewUnitAccessoriesList" class="component-list">
-                            </div>
-                    </div>
-                </div>
+
 
                 <div id="sparepartBroughtSection" class="card mt-4" style="display: none;">
                     <div class="card-header">
@@ -2173,8 +2170,8 @@ $(document).ready(function() {
             accessoriesArray = accessories;
         } else {
             console.log('Accessories data is neither array nor string:', accessories);
-            container.html('<div class="text-muted fst-italic">Not available</div>');
-            $('#unitAccessoriesSection').hide();
+            container.text('-');
+            $('#unitAccessoriesInline').hide();
             return;
         }
         
@@ -2199,17 +2196,17 @@ $(document).ready(function() {
                 }
             });
             
-            // Display as simple text like complaint format
+            // Display as simple text
             if (accessoryNames.length > 0) {
-                container.html(`<div class="text-dark">${accessoryNames.join(', ')}</div>`);
-                $('#unitAccessoriesSection').show();
+                container.text(accessoryNames.join(', '));
+                $('#unitAccessoriesInline').show();
             } else {
-                container.html('<div class="text-muted fst-italic">Not available</div>');
-                $('#unitAccessoriesSection').hide();
+                container.text('-');
+                $('#unitAccessoriesInline').hide();
             }
         } else {
-            container.html('<div class="text-muted fst-italic">Not available</div>');
-            $('#unitAccessoriesSection').hide();
+            container.text('-');
+            $('#unitAccessoriesInline').hide();
         }
     }
 

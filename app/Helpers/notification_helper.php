@@ -1577,28 +1577,6 @@ if (!function_exists('notify_attachment_detached')) {
     }
 }
 
-if (!function_exists('notify_attachment_swapped')) {
-    /**
-     * Send notification when Attachment is swapped between units
-     * 
-     * @param array $attachmentData Attachment data
-     * @return bool|array
-     */
-    function notify_attachment_swapped($attachmentData)
-    {
-        return send_notification('attachment_swapped', [
-            'module' => 'inventory',
-            'id' => $attachmentData['id'] ?? null,
-            'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
-            'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
-            'old_unit' => $attachmentData['old_unit'] ?? $attachmentData['from_unit'] ?? '',
-            'new_unit' => $attachmentData['new_unit'] ?? $attachmentData['to_unit'] ?? '',
-            'swapped_by' => $attachmentData['swapped_by'] ?? '',
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
-        ]);
-    }
-}
-
 if (!function_exists('notify_attachment_maintenance')) {
     /**
      * Send notification when Attachment enters maintenance
@@ -3005,7 +2983,7 @@ if (!function_exists('notify_attachment_attached')) {
             'module' => 'inventory',
             'attachment_id' => $attachmentData['attachment_id'] ?? null,
             'unit_id' => $attachmentData['unit_id'] ?? null,
-            'unit_number' => $attachmentData['unit_number'] ?? '',
+            'no_unit' => $attachmentData['unit_number'] ?? $attachmentData['no_unit'] ?? '',
             'tipe_item' => $attachmentData['tipe_item'] ?? '',
             'attachment_info' => $attachmentData['attachment_info'] ?? '',
             'performed_by' => $attachmentData['performed_by'] ?? '',
@@ -3030,7 +3008,7 @@ if (!function_exists('notify_attachment_detached')) {
             'module' => 'inventory',
             'attachment_id' => $attachmentData['attachment_id'] ?? null,
             'unit_id' => $attachmentData['unit_id'] ?? null,
-            'unit_number' => $attachmentData['unit_number'] ?? '',
+            'no_unit' => $attachmentData['unit_number'] ?? $attachmentData['no_unit'] ?? '',
             'tipe_item' => $attachmentData['tipe_item'] ?? '',
             'attachment_info' => $attachmentData['attachment_info'] ?? '',
             'reason' => $attachmentData['reason'] ?? '',

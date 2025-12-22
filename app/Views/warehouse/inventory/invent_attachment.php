@@ -87,9 +87,9 @@
 <div class="modal fade" id="viewAttachmentModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-info text-muted">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Attachment</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div id="attachmentDetailContent">
@@ -188,9 +188,9 @@
 <div class="modal fade" id="attachToUnitModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header bg-success text-muted">
                 <h5 class="modal-title"><i class="fas fa-link me-2"></i>Attach to Unit</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <form id="attachToUnitForm">
                 <div class="modal-body">
@@ -236,9 +236,9 @@
 <div class="modal fade" id="swapUnitModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-info text-muted">
                 <h5 class="modal-title"><i class="fas fa-exchange-alt me-2"></i>Swap Unit</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <form id="swapUnitForm">
                 <div class="modal-body">

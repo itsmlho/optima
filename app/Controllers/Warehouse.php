@@ -693,7 +693,18 @@ class Warehouse extends BaseController
                     COALESCE(di.nomor_di, "-") as nomor_di,
                     iu.workflow_status,
                     iu.contract_disconnect_date,
-                    iu.contract_disconnect_stage
+                    iu.contract_disconnect_stage,
+                    
+                    -- SILO Info
+                    silo.id_silo,
+                    silo.status as silo_status,
+                    silo.nomor_silo as silo_number,
+                    silo.tanggal_terbit_silo as silo_issue_date,
+                    silo.tanggal_expired_silo as silo_expiry_date,
+                    silo.file_silo as silo_file_path,
+                    silo.nama_pt_pjk3 as silo_pjk3_name,
+                    silo.nomor_surat_keterangan_pjk3 as silo_pjk3_letter,
+                    silo.lokasi_disnaker as silo_disnaker_location
                 FROM inventory_unit iu
                 LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
                 LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
@@ -713,6 +724,7 @@ class Warehouse extends BaseController
                 LEFT JOIN suppliers s ON s.id_supplier = po.supplier_id
                 LEFT JOIN spk ON spk.id = iu.spk_id
                 LEFT JOIN delivery_instructions di ON di.id = iu.delivery_instruction_id
+                LEFT JOIN silo ON silo.unit_id = iu.id_inventory_unit
                 WHERE iu.id_inventory_unit = ?
             ', [$id]);
             
@@ -747,7 +759,10 @@ class Warehouse extends BaseController
                     COALESCE(CONCAT(att.tipe, " - ", att.merk, " ", att.model), "-") as attachment_name,
                     COALESCE(att.tipe, "-") as attachment_type,
                     COALESCE(bat.tipe_baterai, "-") as baterai_type,
+                    COALESCE(bat.merk_baterai, "-") as merk_baterai,
+                    COALESCE(bat.jenis_baterai, "-") as jenis_baterai,
                     COALESCE(ch.tipe_charger, "-") as charger_type,
+                    COALESCE(ch.merk_charger, "-") as merk_charger,
                     COALESCE(sa.nama_status, ia.attachment_status) as status_attachment_name
                 FROM inventory_attachment ia
                 LEFT JOIN attachment att ON att.id_attachment = ia.attachment_id
@@ -2118,7 +2133,7 @@ class Warehouse extends BaseController
             $toUnitId = $this->request->getPost('to_unit_id');
             $reason = $this->request->getPost('reason');
             
-            if (!$attachmentId || !$fromUnitId || !$toUnitId || !$reason) {
+            if (!$attachmentId || !$toUnitId || !$reason) {
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Data tidak lengkap'
@@ -2128,19 +2143,53 @@ class Warehouse extends BaseController
             $db = \Config\Database::connect();
             $db->transStart();
             
-            // Get attachment type
+            // Get attachment with actual unit data
             $movingAttachment = $attachmentModel->find($attachmentId);
+            if (!$movingAttachment) {
+                log_message('error', '[Warehouse::swapUnit] Attachment not found: ' . $attachmentId);
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Attachment tidak ditemukan'
+                ]);
+            }
+            
+            // Use ACTUAL from_unit_id from database, not from form
+            $actualFromUnitId = $movingAttachment['id_inventory_unit'];
+            if (!$actualFromUnitId) {
+                log_message('error', '[Warehouse::swapUnit] Attachment not attached to any unit');
+                $db->transRollback();
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Attachment tidak terpasang di unit manapun'
+                ]);
+            }
+            
             $attachmentType = $movingAttachment['tipe_item'];
+            
+            log_message('info', '[Warehouse::swapUnit] Request data: ' . json_encode([
+                'attachment_id' => $attachmentId,
+                'from_unit_id_form' => $fromUnitId,
+                'from_unit_id_actual' => $actualFromUnitId,
+                'to_unit_id' => $toUnitId,
+                'attachment_type' => $attachmentType,
+                'reason' => $reason
+            ]));
             
             // Check if target unit already has attachment of same type
             $existingAttachment = $db->table('inventory_attachment')
                 ->where('id_inventory_unit', $toUnitId)
                 ->where('tipe_item', $attachmentType)
+                ->where('id_inventory_attachment !=', $attachmentId)
                 ->get()->getRowArray();
             
             if ($existingAttachment) {
+                log_message('info', '[Warehouse::swapUnit] Found existing attachment, auto-detaching: ' . $existingAttachment['id_inventory_attachment']);
                 // Auto-detach existing attachment from target unit
-                $attachmentModel->detachFromUnit($existingAttachment['id_inventory_attachment'], 'Auto-detach karena ada replacement (swap)');
+                $detachResult = $attachmentModel->detachFromUnit($existingAttachment['id_inventory_attachment'], 'Auto-detach karena ada replacement (swap)');
+                
+                if (!$detachResult) {
+                    log_message('error', '[Warehouse::swapUnit] Failed to detach existing attachment');
+                }
                 
                 // Log auto-detach
                 $this->logActivity('auto_detach', 'inventory_attachment', $existingAttachment['id_inventory_attachment'], "Attachment lama dilepas dari unit tujuan (auto swap)", [
@@ -2150,58 +2199,77 @@ class Warehouse extends BaseController
                 ]);
             }
             
-            // Use swap method
-            $result = $attachmentModel->swapAttachmentBetweenUnits($attachmentId, $fromUnitId, $toUnitId, $reason);
+            // Use swap method with ACTUAL from_unit_id
+            log_message('info', '[Warehouse::swapUnit] Calling swapAttachmentBetweenUnits');
+            $result = $attachmentModel->swapAttachmentBetweenUnits($attachmentId, $actualFromUnitId, $toUnitId, $reason);
             
-            if ($result) {
-                $db->transComplete();
-                
-                if ($db->transStatus() === false) {
-                    throw new \Exception('Transaction failed');
-                }
-                
-                // Get unit numbers for message
-                $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $fromUnitId)->get()->getRowArray();
-                $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $toUnitId)->get()->getRowArray();
-                
-                // Log activity
-                $this->logActivity('swap_unit', 'inventory_attachment', (int)$attachmentId, "Attachment dipindah dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}", [
-                    'attachment_id' => $attachmentId,
-                    'from_unit_id' => $fromUnitId,
-                    'to_unit_id' => $toUnitId,
-                    'reason' => $reason
-                ]);
-                
-                // Send cross-division notification to Service
-                helper('notification');
-                if (function_exists('notify_attachment_swapped')) {
-                    notify_attachment_swapped([
-                        'attachment_id' => $attachmentId,
-                        'from_unit_id' => $fromUnitId,
-                        'from_unit_number' => $fromUnit['no_unit'],
-                        'to_unit_id' => $toUnitId,
-                        'to_unit_number' => $toUnit['no_unit'],
-                        'tipe_item' => $movingAttachment['tipe_item'] ?? '',
-                        'attachment_info' => ($movingAttachment['merk'] ?? '') . ' ' . ($movingAttachment['model'] ?? ''),
-                        'reason' => $reason,
-                        'performed_by' => session('username') ?? 'System',
-                        'performed_at' => date('Y-m-d H:i:s'),
-                        'url' => base_url('/warehouse/attachment/view/' . $attachmentId)
-                    ]);
-                }
-                
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => "Berhasil memindahkan attachment dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}"
-                ]);
-            } else {
+            log_message('info', '[Warehouse::swapUnit] Swap result: ' . ($result ? 'true' : 'false'));
+            
+            if (!$result) {
+                $db->transRollback();
+                log_message('error', '[Warehouse::swapUnit] swapAttachmentBetweenUnits returned false');
                 return $this->response->setJSON([
                     'success' => false,
-                    'message' => 'Gagal memindahkan attachment'
+                    'message' => 'Gagal memindahkan attachment - operasi swap gagal'
                 ]);
             }
+            
+            $db->transComplete();
+            
+            if ($db->transStatus() === false) {
+                log_message('error', '[Warehouse::swapUnit] Transaction failed');
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Gagal memindahkan attachment - transaksi database gagal'
+                ]);
+            }
+            
+            // Get unit numbers for message
+            $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $actualFromUnitId)->get()->getRowArray();
+            $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $toUnitId)->get()->getRowArray();
+            
+            // Log activity
+            $this->logActivity('swap_unit', 'inventory_attachment', (int)$attachmentId, "Attachment dipindah dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}", [
+                'attachment_id' => $attachmentId,
+                'from_unit_id' => $actualFromUnitId,
+                'to_unit_id' => $toUnitId,
+                'reason' => $reason
+            ]);
+            
+            // Send cross-division notification to Service
+            helper('notification');
+            if (function_exists('notify_attachment_swapped')) {
+                // Get full attachment details with JOIN
+                $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
+                
+                // Build attachment_info with proper data
+                $attachmentInfo = $attachmentModel->buildAttachmentInfo($fullAttachment);
+                
+                notify_attachment_swapped([
+                    'attachment_id' => $attachmentId,
+                    'from_unit_id' => $actualFromUnitId,
+                    'from_unit_number' => $fromUnit['no_unit'],
+                    'to_unit_id' => $toUnitId,
+                    'to_unit_number' => $toUnit['no_unit'],
+                    'tipe_item' => $fullAttachment['tipe_item'] ?? '',
+                    'attachment_info' => $attachmentInfo,
+                    'reason' => $reason,
+                    'performed_by' => session('username') ?? 'System',
+                    'performed_at' => date('Y-m-d H:i:s'),
+                    'url' => base_url('/warehouse/attachment/view/' . $attachmentId),
+                    'module' => 'inventory'
+                ]);
+            }
+            
+            log_message('info', '[Warehouse::swapUnit] Success');
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => "Berhasil memindahkan attachment dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}"
+            ]);
+            
         } catch (\Exception $e) {
-            log_message('error', '[Warehouse::swapUnit] Error: ' . $e->getMessage());
+            log_message('error', '[Warehouse::swapUnit] Exception: ' . $e->getMessage());
+            log_message('error', '[Warehouse::swapUnit] Stack trace: ' . $e->getTraceAsString());
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Terjadi kesalahan: ' . $e->getMessage()
