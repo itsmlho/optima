@@ -1,0 +1,3812 @@
+{
+  "summary": {
+    "total_events": 118,
+    "fully_working": 0,
+    "missing_data": 3,
+    "wrong_variable_names": 53,
+    "not_implemented": 62
+  },
+  "events": [
+    {
+      "trigger_event": "attachment_added",
+      "function": "notify_attachment_added",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "brand",
+        "status",
+        "added_by",
+        "url",
+        "attachment_id",
+        "merk",
+        "model",
+        "kondisi",
+        "lokasi",
+        "added_at"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Service.php",
+        "data_sent": {
+          "attachment_id": "$insertId",
+          "tipe_item": "$type",
+          "merk": "$data['merk'",
+          "model": "$data['model'",
+          "serial_number": "$serialNumber",
+          "kondisi": "$data['kondisi_fisik'",
+          "lokasi": "$data['lokasi_penyimpanan'",
+          "added_by": "session('username') ?? 'System'",
+          "added_at": "date('Y-m-d H:i:s')",
+          "url": "base_url('/warehouse/attachment/view/' . $insertId)"
+        }
+      },
+      "keys_sent": [
+        "attachment_id",
+        "tipe_item",
+        "merk",
+        "model",
+        "serial_number",
+        "kondisi",
+        "lokasi",
+        "added_by",
+        "added_at",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "brand",
+        "id",
+        "status"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "attachment_attached",
+      "function": "notify_attachment_attached",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "no_unit",
+        "attached_by",
+        "attachment_date",
+        "url",
+        "attachment_id",
+        "unit_id",
+        "attachment_info",
+        "performed_by",
+        "performed_at",
+        "notes"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse.php",
+        "data_sent": {
+          "attachment_id": "$attachmentId",
+          "unit_id": "$unitId",
+          "unit_number": "$unit['no_unit'",
+          "tipe_item": "$newAttachment['tipe_item'",
+          "attachment_info": "($newAttachment['merk'",
+          "performed_by": "session('username') ?? 'System'",
+          "performed_at": "date('Y-m-d H:i:s')",
+          "notes": "$notes ?? ''",
+          "url": "base_url('/warehouse/unit/view/' . $unitId)"
+        }
+      },
+      "keys_sent": [
+        "attachment_id",
+        "unit_id",
+        "unit_number",
+        "tipe_item",
+        "attachment_info",
+        "performed_by",
+        "performed_at",
+        "notes",
+        "url"
+      ],
+      "missing_variables": [
+        "attached_by",
+        "no_unit",
+        "module",
+        "serial_number",
+        "id",
+        "attachment_date"
+      ],
+      "extra_variables": [
+        "unit_number"
+      ],
+      "data_validity_issues": [
+        "notes: Might produce empty string due to null coalescing to ''"
+      ],
+      "status": "DATA_ISSUES",
+      "severity": "CRITICAL"
+    },
+    {
+      "trigger_event": "attachment_broken",
+      "function": "notify_attachment_broken",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "no_unit",
+        "damage_description",
+        "reported_by",
+        "report_date",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "attachment_detached",
+      "function": "notify_attachment_detached",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "no_unit",
+        "detached_by",
+        "reason",
+        "url",
+        "attachment_id",
+        "unit_id",
+        "attachment_info",
+        "new_location",
+        "performed_by",
+        "performed_at"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse.php",
+        "data_sent": {
+          "id": "$id",
+          "attachment_type": "$attachment['tipe'",
+          "serial_number": "$attachment['sn_attachment'",
+          "new_status": "$updateData['status_unit'",
+          "new_location": "$updateData['lokasi_unit'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/warehouse/attachments')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "attachment_type",
+        "serial_number",
+        "new_status",
+        "new_location",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "tipe_item",
+        "reason",
+        "no_unit",
+        "module",
+        "performed_by",
+        "unit_id",
+        "detached_by",
+        "performed_at",
+        "attachment_info",
+        "attachment_id"
+      ],
+      "extra_variables": [
+        "attachment_type",
+        "updated_by",
+        "new_status"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "attachment_maintenance",
+      "function": "notify_attachment_maintenance",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "maintenance_reason",
+        "scheduled_date",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "attachment_swapped",
+      "function": "notify_attachment_swapped",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "old_unit",
+        "new_unit",
+        "swapped_by",
+        "url",
+        "attachment_id",
+        "from_unit_id",
+        "from_unit_number",
+        "to_unit_id",
+        "to_unit_number",
+        "attachment_info",
+        "reason",
+        "performed_by",
+        "performed_at"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse.php",
+        "data_sent": {
+          "attachment_id": "$attachmentId",
+          "from_unit_id": "$actualFromUnitId",
+          "from_unit_number": "$fromUnit['no_unit'",
+          "to_unit_id": "$toUnitId",
+          "to_unit_number": "$toUnit['no_unit'",
+          "tipe_item": "$movingAttachment['tipe_item'",
+          "attachment_info": "($movingAttachment['merk'",
+          "reason": "$reason",
+          "performed_by": "session('username') ?? 'System'",
+          "performed_at": "date('Y-m-d H:i:s')",
+          "url": "base_url('/warehouse/attachment/view/' . $attachmentId)"
+        }
+      },
+      "keys_sent": [
+        "attachment_id",
+        "from_unit_id",
+        "from_unit_number",
+        "to_unit_id",
+        "to_unit_number",
+        "tipe_item",
+        "attachment_info",
+        "reason",
+        "performed_by",
+        "performed_at",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "serial_number",
+        "old_unit",
+        "swapped_by",
+        "new_unit",
+        "id"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "attachment_uploaded",
+      "function": "notify_attachment_uploaded",
+      "expected_variables": [
+        "module",
+        "id",
+        "stage_name",
+        "spk_number",
+        "unit_code",
+        "file_name",
+        "uploaded_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Service.php",
+        "data_sent": {
+          "id": "$approvalData['attachment_id'",
+          "stage_name": "$approvalData['stage'",
+          "spk_number": "$spk['nomor_spk'",
+          "unit_code": "''",
+          "file_name": "'Attachment for ' . $approvalData['stage'",
+          "uploaded_by": "session()->get('username') ?? 'System'",
+          "url": "base_url('/service/spk_service')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "stage_name",
+        "spk_number",
+        "unit_code",
+        "file_name",
+        "uploaded_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "budget_threshold_exceeded",
+      "function": "notify_budget_threshold_exceeded",
+      "expected_variables": [
+        "module",
+        "budget_id",
+        "budget_name",
+        "department",
+        "allocated_amount",
+        "spent_amount",
+        "percentage_used",
+        "threshold",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "contract_completed",
+      "function": "notify_contract_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "total_value",
+        "completion_date",
+        "completed_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Marketing.php",
+        "data_sent": {
+          "id": "$quotationId",
+          "contract_number": "$quotation['quotation_number'",
+          "customer_name": "$quotation['prospect_name'",
+          "total_value": "$quotation['total_amount'",
+          "completion_date": "date('Y-m-d')",
+          "completed_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/marketing/quotations/view/' . $quotationId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "contract_number",
+        "customer_name",
+        "total_value",
+        "completion_date",
+        "completed_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "contract_created",
+      "function": "notify_contract_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "contract_type",
+        "start_date",
+        "end_date",
+        "total_value",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Kontrak.php",
+        "data_sent": {
+          "id": "$newId",
+          "contract_number": "$contract['no_kontrak'",
+          "customer_name": "$customerInfo",
+          "contract_type": "$contract['jenis_sewa'",
+          "start_date": "$contract['tanggal_mulai'",
+          "end_date": "$contract['tanggal_berakhir'",
+          "total_value": "$contract['nilai_total'",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/marketing/contracts/view/' . $newId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "contract_number",
+        "customer_name",
+        "contract_type",
+        "start_date",
+        "end_date",
+        "total_value",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "contract_deleted",
+      "function": "notify_contract_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "deleted_by",
+        "deletion_reason",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Kontrak.php",
+        "data_sent": {
+          "id": "$id",
+          "contract_number": "$contract['no_kontrak'",
+          "customer_name": "$customerInfo",
+          "deleted_by": "session('username') ?? session('user_id')",
+          "deletion_reason": "'Contract deletion requested'",
+          "url": "base_url('/marketing/contracts')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "contract_number",
+        "customer_name",
+        "deleted_by",
+        "deletion_reason",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "contract_updated",
+      "function": "notify_contract_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Kontrak.php",
+        "data_sent": {
+          "id": "$contractId",
+          "contract_number": "$data['no_kontrak'",
+          "customer_name": "$customerInfo",
+          "changes": "!empty($changes) ? implode('",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/marketing/contracts/view/' . $contractId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "contract_number",
+        "customer_name",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "customer_contract_created",
+      "function": "notify_customer_contract_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "nilai_total",
+        "tanggal_mulai",
+        "tanggal_selesai",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Marketing.php",
+        "data_sent": {
+          "id": "$contractId",
+          "contract_number": "$contractNumber",
+          "customer_name": "$customer['customer_name'",
+          "nilai_total": "$contractData['nilai_total'",
+          "tanggal_mulai": "$contractData['tanggal_mulai'",
+          "tanggal_selesai": "$contractData['tanggal_berakhir'"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "contract_number",
+        "customer_name",
+        "nilai_total",
+        "tanggal_mulai",
+        "tanggal_selesai"
+      ],
+      "missing_variables": [
+        "url",
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "customer_contract_expired",
+      "function": "notify_customer_contract_expired",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "end_date",
+        "days",
+        "contract_value",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "customer_created",
+      "function": "notify_customer_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_name",
+        "customer_code",
+        "contact_person",
+        "phone",
+        "url",
+        "customer_type",
+        "email",
+        "created_by"
+      ],
+      "implementation": {
+        "file": "app/Controllers/CustomerManagementController.php",
+        "data_sent": {
+          "id": "$customerId",
+          "customer_name": "$customerData['customer_name'",
+          "customer_code": "$customerData['customer_code'",
+          "customer_type": "$customerData['customer_type'",
+          "phone": "$locationData['phone'",
+          "email": "$locationData['email'",
+          "created_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/customers/view/' . $customerId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "customer_name",
+        "customer_code",
+        "customer_type",
+        "phone",
+        "email",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "contact_person"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "customer_deleted",
+      "function": "notify_customer_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_name",
+        "customer_code",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/CustomerManagementController.php",
+        "data_sent": {
+          "id": "$id",
+          "customer_name": "$customer['customer_name'",
+          "customer_code": "$customer['customer_code'"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "customer_name",
+        "customer_code"
+      ],
+      "missing_variables": [
+        "url",
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "customer_location_added",
+      "function": "notify_customer_location_added",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_name",
+        "location_name",
+        "address",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/CustomerManagementController.php",
+        "data_sent": {
+          "id": "$locationId",
+          "customer_name": "$customerData['customer_name'",
+          "location_name": "$locationData['location_name'",
+          "address": "$locationData['address'"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "customer_name",
+        "location_name",
+        "address"
+      ],
+      "missing_variables": [
+        "url",
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "customer_status_changed",
+      "function": "notify_customer_status_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_code",
+        "customer_name",
+        "old_status",
+        "new_status",
+        "reason",
+        "changed_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/CustomerManagementController.php",
+        "data_sent": {
+          "id": "$id",
+          "customer_code": "$data['customer_code'",
+          "customer_name": "$data['customer_name'",
+          "old_status": "$customer['is_active'",
+          "new_status": "$data['is_active'",
+          "reason": "'Status updated from Customer Management'",
+          "changed_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/customers/view/' . $id)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "customer_code",
+        "customer_name",
+        "old_status",
+        "new_status",
+        "reason",
+        "changed_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "customer_updated",
+      "function": "notify_customer_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_name",
+        "customer_code",
+        "url",
+        "changes",
+        "updated_by"
+      ],
+      "implementation": {
+        "file": "app/Controllers/CustomerManagementController.php",
+        "data_sent": {
+          "id": "$id",
+          "customer_name": "$data['customer_name'",
+          "customer_code": "$data['customer_code'",
+          "changes": "implode('",
+          "updated_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/customers/view/' . $id)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "customer_name",
+        "customer_code",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "delivery_arrived",
+      "function": "notify_delivery_arrived",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "customer_name",
+        "arrival_time",
+        "driver_name",
+        "location",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "delivery_assigned",
+      "function": "notify_delivery_assigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "driver_name",
+        "vehicle",
+        "customer_name",
+        "destination",
+        "assigned_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "delivery_completed",
+      "function": "notify_delivery_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "customer_name",
+        "completed_time",
+        "signature",
+        "notes",
+        "completed_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "delivery_created",
+      "function": "notify_delivery_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "delivery_number",
+        "po_number",
+        "supplier_name",
+        "delivery_date",
+        "items_count",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$deliveryId",
+          "delivery_number": "$packingListNo",
+          "po_number": "$poInfo ? $poInfo->no_po : 'Unknown PO'",
+          "supplier_name": "$poInfo ? $poInfo->nama_supplier : 'Unknown Supplier'",
+          "delivery_date": "$deliveryDate",
+          "items_count": "$totalItems",
+          "created_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/purchasing/delivery-detail/' . $deliveryId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "delivery_number",
+        "po_number",
+        "supplier_name",
+        "delivery_date",
+        "items_count",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "delivery_delayed",
+      "function": "notify_delivery_delayed",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "customer_name",
+        "scheduled_time",
+        "current_time",
+        "delay_reason",
+        "estimated_arrival",
+        "driver_name",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "delivery_in_transit",
+      "function": "notify_delivery_in_transit",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "driver_name",
+        "current_location",
+        "destination",
+        "eta",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "delivery_status_changed",
+      "function": "notify_delivery_status_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "delivery_number",
+        "po_number",
+        "old_status",
+        "new_status",
+        "supplier_name",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$deliveryId",
+          "delivery_number": "$deliveryInfo ? $deliveryInfo->packing_list_no : 'Unknown'",
+          "po_number": "$deliveryInfo ? $deliveryInfo->no_po : 'Unknown PO'",
+          "old_status": "$deliveryInfo ? $deliveryInfo->old_status : 'Unknown'",
+          "new_status": "$status",
+          "supplier_name": "$deliveryInfo ? $deliveryInfo->nama_supplier : 'Unknown Supplier'",
+          "updated_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/purchasing/delivery-detail/' . $deliveryId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "delivery_number",
+        "po_number",
+        "old_status",
+        "new_status",
+        "supplier_name",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "di_approved",
+      "function": "notify_di_approved",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "customer",
+        "approved_by",
+        "approval_date",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "di_cancelled",
+      "function": "notify_di_cancelled",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "customer",
+        "alasan",
+        "cancelled_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "di_created",
+      "function": "notify_di_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "unit_code",
+        "customer",
+        "jenis_perintah",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Marketing.php",
+        "data_sent": {
+          "id": "$diId",
+          "nomor_di": "$payload['nomor_di'",
+          "unit_code": "''",
+          "customer": "$pelanggan",
+          "jenis_perintah": "$jenisPerintahName"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nomor_di",
+        "unit_code",
+        "customer",
+        "jenis_perintah"
+      ],
+      "missing_variables": [
+        "url",
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "di_delivered",
+      "function": "notify_di_delivered",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "customer",
+        "delivery_date",
+        "driver_name",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "di_in_progress",
+      "function": "notify_di_in_progress",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "customer",
+        "driver_name",
+        "current_status",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "di_submitted",
+      "function": "notify_di_submitted",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "pelanggan",
+        "lokasi",
+        "jenis_perintah",
+        "submitted_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "employee_assigned",
+      "function": "notify_employee_assigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "position",
+        "assigned_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "employee_unassigned",
+      "function": "notify_employee_unassigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "reason",
+        "unassigned_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "inspection_completed",
+      "function": "notify_inspection_completed",
+      "expected_variables": [
+        "module",
+        "inspection_id",
+        "unit_code",
+        "inspection_type",
+        "result",
+        "findings_count",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "inspection_scheduled",
+      "function": "notify_inspection_scheduled",
+      "expected_variables": [
+        "module",
+        "inspection_id",
+        "unit_code",
+        "inspection_type",
+        "scheduled_date",
+        "assigned_to",
+        "priority",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "inventory_unit_added",
+      "function": "notify_inventory_unit_added",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "model",
+        "serial_number",
+        "status",
+        "added_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "inventory_unit_low_stock",
+      "function": "notify_inventory_unit_low_stock",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe",
+        "count",
+        "minimum_stock",
+        "status",
+        "category",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "inventory_unit_maintenance",
+      "function": "notify_inventory_unit_maintenance",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "alasan",
+        "scheduled_date",
+        "estimated_completion",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "inventory_unit_rental_active",
+      "function": "notify_inventory_unit_rental_active",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "customer",
+        "rental_start_date",
+        "rental_duration",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "inventory_unit_returned",
+      "function": "notify_inventory_unit_returned",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "customer",
+        "return_date",
+        "condition",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "inventory_unit_status_changed",
+      "function": "notify_inventory_unit_status_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "old_status",
+        "new_status",
+        "changed_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse.php",
+        "data_sent": {
+          "id": "$id",
+          "no_unit": "$unit['no_unit'",
+          "old_status": "$statusNames[$unit['status_unit_id'",
+          "new_status": "$statusNames[$data['status_unit_id'",
+          "lokasi": "$data['lokasi_unit'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/warehouse/units')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "no_unit",
+        "old_status",
+        "new_status",
+        "lokasi",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "changed_by"
+      ],
+      "extra_variables": [
+        "updated_by",
+        "lokasi"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "invoice_created",
+      "function": "notify_invoice_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "due_date",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Finance.php",
+        "data_sent": {
+          "id": "$invoiceId",
+          "invoice_number": "$invoiceNumber",
+          "customer_name": "$invoiceData['customer_name'",
+          "amount": "$invoiceData['total_amount'",
+          "due_date": "$invoiceData['due_date'",
+          "created_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/finance/invoices/' . $invoiceId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "due_date",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "invoice_overdue",
+      "function": "notify_invoice_overdue",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "due_date",
+        "days_overdue",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "invoice_paid",
+      "function": "notify_invoice_paid",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "payment_date",
+        "payment_method",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "invoice_sent",
+      "function": "notify_invoice_sent",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "sent_date",
+        "sent_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "maintenance_completed",
+      "function": "notify_maintenance_completed",
+      "expected_variables": [
+        "module",
+        "maintenance_id",
+        "unit_code",
+        "maintenance_type",
+        "actual_hours",
+        "parts_replaced",
+        "total_cost",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "maintenance_scheduled",
+      "function": "notify_maintenance_scheduled",
+      "expected_variables": [
+        "module",
+        "maintenance_id",
+        "unit_code",
+        "maintenance_type",
+        "scheduled_date",
+        "estimated_hours",
+        "assigned_mechanic",
+        "priority",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "password_reset",
+      "function": "notify_password_reset",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "reset_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "payment_overdue",
+      "function": "notify_payment_overdue",
+      "expected_variables": [
+        "module",
+        "invoice_id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "due_date",
+        "days_overdue",
+        "outstanding_balance",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "payment_received",
+      "function": "notify_payment_received",
+      "expected_variables": [
+        "module",
+        "id",
+        "amount",
+        "customer_name",
+        "payment_method",
+        "invoice_number",
+        "received_by",
+        "url",
+        "payment_id",
+        "received_at"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "payment_status_updated",
+      "function": "notify_payment_status_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "old_status",
+        "new_status",
+        "amount",
+        "payment_date",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Finance.php",
+        "data_sent": {
+          "id": "$id",
+          "invoice_number": "$invoiceNumber",
+          "customer_name": "$statusData['customer_name'",
+          "old_status": "$oldStatus",
+          "new_status": "$newStatus",
+          "amount": "$statusData['paid_amount'",
+          "payment_date": "$statusData['payment_date'",
+          "updated_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/finance/invoices/' . $id)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "invoice_number",
+        "customer_name",
+        "old_status",
+        "new_status",
+        "amount",
+        "payment_date",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "permission_changed",
+      "function": "notify_permission_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "changed_permissions",
+        "changed_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "permission_created",
+      "function": "notify_permission_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "permission_name",
+        "permission_code",
+        "module_name",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Admin/PermissionController.php",
+        "data_sent": {
+          "id": "$permissionId",
+          "permission_name": "$permissionData['display_name'",
+          "permission_code": "$permissionData['key_name'",
+          "module_name": "$permissionData['module'",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/admin/permissions')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "permission_name",
+        "permission_code",
+        "module_name",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "pmps_completed",
+      "function": "notify_pmps_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_no",
+        "unit_model",
+        "completion_date",
+        "service_type",
+        "mechanic",
+        "next_service_date",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "pmps_due_soon",
+      "function": "notify_pmps_due_soon",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_no",
+        "unit_model",
+        "due_date",
+        "days",
+        "current_hours",
+        "service_type",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "pmps_overdue",
+      "function": "notify_pmps_overdue",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_no",
+        "unit_model",
+        "due_date",
+        "days",
+        "current_hours",
+        "service_type",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "po_approved",
+      "function": "notify_po_approved",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "total_amount",
+        "approved_by",
+        "approval_date",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "po_attachment_created",
+      "function": "notify_po_attachment_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "attachment_type",
+        "quantity",
+        "total_amount",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$newPoId",
+          "nomor_po": "$this->request->getPost('no_po')",
+          "supplier_name": "$supplier['nama_supplier'",
+          "item_type": "$item_type",
+          "quantity": "$quantity",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/warehouse/purchase-orders')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "item_type",
+        "quantity",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "attachment_type",
+        "total_amount"
+      ],
+      "extra_variables": [
+        "item_type"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "po_created",
+      "function": "notify_po_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier",
+        "total_items",
+        "url",
+        "po_number",
+        "supplier_name",
+        "po_type",
+        "total_amount",
+        "delivery_date",
+        "created_by"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$poId",
+          "po_number": "$poData['no_po'",
+          "supplier_name": "$supplierName",
+          "po_type": "$poData['tipe_po'",
+          "total_amount": "$totalAmount",
+          "delivery_date": "$poData['tanggal_po'",
+          "created_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/purchasing/po-detail/' . $poId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "po_number",
+        "supplier_name",
+        "po_type",
+        "total_amount",
+        "delivery_date",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "total_items",
+        "supplier",
+        "nomor_po"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "po_created_from_quotation",
+      "function": "notify_po_created_from_quotation",
+      "expected_variables": [
+        "module",
+        "id",
+        "po_number",
+        "quotation_number",
+        "customer_name",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Marketing.php",
+        "data_sent": {
+          "id": "null",
+          "po_number": "'PENDING'",
+          "quotation_number": "$quotation['quotation_number'",
+          "customer_name": "$quotation['prospect_name'",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/purchasing/po')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "po_number",
+        "quotation_number",
+        "customer_name",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "po_delivery_created",
+      "function": "notify_po_delivery_created",
+      "expected_variables": [
+        "module",
+        "delivery_id",
+        "po_id",
+        "po_number",
+        "supplier_name",
+        "delivery_date",
+        "delivery_type",
+        "item_count",
+        "total_quantity",
+        "created_by",
+        "created_at",
+        "notes",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "delivery_id": "$deliveryId",
+          "po_id": "$poId",
+          "po_number": "$poInfo ? $poInfo->no_po : 'Unknown PO'",
+          "supplier_name": "$poInfo ? $poInfo->nama_supplier : 'Unknown Supplier'",
+          "delivery_date": "$deliveryDate",
+          "delivery_type": "'Purchase Order Delivery'",
+          "item_count": "$totalItems",
+          "total_quantity": "$totalItems",
+          "created_by": "session()->get('user_name') ?? 'System'",
+          "created_at": "date('Y-m-d H:i:s')",
+          "notes": "$notes ?? ''",
+          "url": "base_url('/purchasing/delivery-detail/' . $deliveryId)"
+        }
+      },
+      "keys_sent": [
+        "delivery_id",
+        "po_id",
+        "po_number",
+        "supplier_name",
+        "delivery_date",
+        "delivery_type",
+        "item_count",
+        "total_quantity",
+        "created_by",
+        "created_at",
+        "notes",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [
+        "notes: Might produce empty string due to null coalescing to ''"
+      ],
+      "status": "DATA_ISSUES",
+      "severity": "CRITICAL"
+    },
+    {
+      "trigger_event": "po_received",
+      "function": "notify_po_received",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "received_date",
+        "received_by",
+        "items_received",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "po_rejected",
+      "function": "notify_po_rejected",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "alasan",
+        "rejected_by",
+        "rejection_date",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$poId",
+          "nomor_po": "$po['no_po'",
+          "supplier_name": "$supplier['nama_supplier'",
+          "alasan": "'PO Cancelled'",
+          "rejected_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/purchasing/po-list')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "alasan",
+        "rejected_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "rejection_date"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "po_sparepart_created",
+      "function": "notify_po_sparepart_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "items_count",
+        "total_amount",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$newPoId",
+          "nomor_po": "$this->request->getPost('no_po')",
+          "supplier_name": "$supplier['nama_supplier'",
+          "total_items": "count($itemsToInsert)",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/warehouse/purchase-orders')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "total_items",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "items_count",
+        "total_amount"
+      ],
+      "extra_variables": [
+        "total_items"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "po_unit_created",
+      "function": "notify_po_unit_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "unit_type",
+        "quantity",
+        "total_amount",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$newPoId",
+          "nomor_po": "$poNumber",
+          "supplier_name": "$supplier['nama_supplier'",
+          "unit_type": "$this->request->getPost('jenis_unit')",
+          "quantity": "$qty_duplicates",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/warehouse/purchase-orders')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "unit_type",
+        "quantity",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "total_amount"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "po_verification_updated",
+      "function": "notify_po_verification_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "po_number",
+        "verification_status",
+        "verified_by",
+        "verification_date",
+        "notes",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/WarehousePO.php",
+        "data_sent": {
+          "id": "$poId",
+          "po_number": "$noPO",
+          "verification_status": "$status",
+          "verified_by": "session()->get('user_name') ?? 'System'",
+          "verification_date": "date('Y-m-d H:i:s')",
+          "notes": "$comments ?? 'N/A'",
+          "url": "base_url('/warehouse/po-verification/' . $poId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "po_number",
+        "verification_status",
+        "verified_by",
+        "verification_date",
+        "notes",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "po_verified",
+      "function": "notify_po_verified",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "verified_by",
+        "verification_date",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/WarehousePO.php",
+        "data_sent": {
+          "id": "$po_id",
+          "nomor_po": "$po['no_po'",
+          "supplier_name": "$supplier['nama_supplier'",
+          "verified_by": "session('username') ?? session('user_id')",
+          "status": "$status",
+          "url": "base_url('/warehouse/purchase-orders')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "verified_by",
+        "status",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "verification_date"
+      ],
+      "extra_variables": [
+        "status"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "purchase_order_created",
+      "function": "notify_purchase_order_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "po_number",
+        "vendor",
+        "amount",
+        "created_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "quotation_created",
+      "function": "notify_quotation_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "quotation_number",
+        "customer_name",
+        "total_value",
+        "stage",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Marketing.php",
+        "data_sent": {
+          "id": "$quotationId",
+          "quotation_number": "$quotationNumber",
+          "customer_name": "$quotationData['prospect_name'",
+          "total_value": "0",
+          "stage": "'DRAFT'",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/marketing/quotations/view/' . $quotationId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "quotation_number",
+        "customer_name",
+        "total_value",
+        "stage",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "quotation_follow_up_required",
+      "function": "notify_quotation_follow_up_required",
+      "expected_variables": [
+        "module",
+        "id",
+        "quote_number",
+        "customer_name",
+        "days_since_sent",
+        "last_contact",
+        "assigned_to",
+        "follow_up_priority",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "quotation_sent_to_customer",
+      "function": "notify_quotation_sent_to_customer",
+      "expected_variables": [
+        "module",
+        "id",
+        "quote_number",
+        "customer_name",
+        "customer_email",
+        "sent_method",
+        "sent_by",
+        "sent_at",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Marketing.php",
+        "data_sent": {
+          "id": "$quotationId",
+          "quote_number": "$quotation['quotation_number'",
+          "customer_name": "$quotation['customer_name'",
+          "customer_email": "$quotation['customer_email'",
+          "sent_method": "'email'",
+          "sent_by": "session()->get('user_name') ?? 'System'",
+          "sent_at": "date('Y-m-d H:i:s')",
+          "url": "base_url('/marketing/quotations/view/' . $quotationId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "quote_number",
+        "customer_name",
+        "customer_email",
+        "sent_method",
+        "sent_by",
+        "sent_at",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "quotation_stage_changed",
+      "function": "notify_quotation_stage_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "quotation_number",
+        "customer_name",
+        "old_stage",
+        "new_stage",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Marketing.php",
+        "data_sent": {
+          "id": "$quotationId",
+          "quotation_number": "$quotation['quotation_number'",
+          "customer_name": "$quotation['prospect_name'",
+          "old_stage": "$oldStage",
+          "new_stage": "$updateData['stage'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/marketing/quotations/view/' . $quotationId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "quotation_number",
+        "customer_name",
+        "old_stage",
+        "new_stage",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "role_created",
+      "function": "notify_role_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "role_name",
+        "permissions_count",
+        "created_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "role_saved",
+      "function": "notify_role_saved",
+      "expected_variables": [
+        "module",
+        "id",
+        "role_name",
+        "action",
+        "permissions_count",
+        "saved_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Admin/RoleController.php",
+        "data_sent": {
+          "id": "$roleId",
+          "role_name": "$roleData['name'",
+          "action": "$action",
+          "permissions_count": "$permissionsCount",
+          "saved_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/admin/roles')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "role_name",
+        "action",
+        "permissions_count",
+        "saved_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "role_updated",
+      "function": "notify_role_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "role_name",
+        "updated_by",
+        "changes",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "service_assignment_created",
+      "function": "notify_service_assignment_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "role",
+        "start_date",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/ServiceAreaManagementController.php",
+        "data_sent": {
+          "id": "$assignmentId",
+          "employee_name": "$assignment['employee_name'",
+          "area_name": "$assignment['area_name'",
+          "role": "$assignment['assignment_type'",
+          "start_date": "$assignment['start_date'",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/service/area-management')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "employee_name",
+        "area_name",
+        "role",
+        "start_date",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "service_assignment_deleted",
+      "function": "notify_service_assignment_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "deleted_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/ServiceAreaManagementController.php",
+        "data_sent": {
+          "id": "$id",
+          "employee_name": "$details['employee_name'",
+          "area_name": "$details['area_name'",
+          "deleted_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/service/area-management')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "employee_name",
+        "area_name",
+        "deleted_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "service_assignment_updated",
+      "function": "notify_service_assignment_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/ServiceAreaManagementController.php",
+        "data_sent": {
+          "id": "$id",
+          "employee_name": "$details['employee_name'",
+          "area_name": "$details['area_name'",
+          "changes": "'Assignment details updated'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/service/area-management')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "employee_name",
+        "area_name",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "sparepart_added",
+      "function": "notify_sparepart_added",
+      "expected_variables": [
+        "module",
+        "id",
+        "nama_sparepart",
+        "kode_sparepart",
+        "qty",
+        "unit",
+        "supplier",
+        "added_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "sparepart_low_stock",
+      "function": "notify_sparepart_low_stock",
+      "expected_variables": [
+        "module",
+        "id",
+        "nama_sparepart",
+        "kode_sparepart",
+        "qty",
+        "minimum_stock",
+        "unit",
+        "location",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse.php",
+        "data_sent": {
+          "id": "$id",
+          "nama_sparepart": "$sparepart['desc_sparepart'",
+          "kode": "$sparepart['kode'",
+          "stok_saat_ini": "$newStock",
+          "minimum_stock": "$minStock",
+          "lokasi": "$data['lokasi_rak'",
+          "url": "base_url('/warehouse/spareparts/' . $id)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nama_sparepart",
+        "kode",
+        "stok_saat_ini",
+        "minimum_stock",
+        "lokasi",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "location",
+        "unit",
+        "qty",
+        "kode_sparepart"
+      ],
+      "extra_variables": [
+        "stok_saat_ini",
+        "kode",
+        "lokasi"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "sparepart_out_of_stock",
+      "function": "notify_sparepart_out_of_stock",
+      "expected_variables": [
+        "module",
+        "id",
+        "nama_sparepart",
+        "kode_sparepart",
+        "last_used_date",
+        "location",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse.php",
+        "data_sent": {
+          "id": "$id",
+          "nama_sparepart": "$sparepart['desc_sparepart'",
+          "kode": "$sparepart['kode'",
+          "lokasi": "$data['lokasi_rak'",
+          "url": "base_url('/warehouse/spareparts/' . $id)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nama_sparepart",
+        "kode",
+        "lokasi",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "last_used_date",
+        "kode_sparepart",
+        "location"
+      ],
+      "extra_variables": [
+        "kode",
+        "lokasi"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "sparepart_returned",
+      "function": "notify_sparepart_returned",
+      "expected_variables": [
+        "module",
+        "return_id",
+        "sparepart_id",
+        "sparepart_name",
+        "quantity",
+        "condition",
+        "returned_by",
+        "returned_from",
+        "confirmed_by",
+        "confirmed_at",
+        "notes",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse/SparepartUsageController.php",
+        "data_sent": {
+          "return_id": "$id",
+          "sparepart_id": "$returnDetails['sparepart_id'",
+          "sparepart_name": "$sparepart['name'",
+          "quantity": "$returnDetails['quantity'",
+          "condition": "$returnDetails['condition'",
+          "returned_by": "$returnDetails['returned_by_name'",
+          "returned_from": "$returnDetails['work_order_number'",
+          "confirmed_by": "session('username') ?? 'System'",
+          "confirmed_at": "date('Y-m-d H:i:s')",
+          "notes": "$notes ?? ''",
+          "url": "base_url('/warehouse/sparepart-usage/return-detail/' . $id)"
+        }
+      },
+      "keys_sent": [
+        "return_id",
+        "sparepart_id",
+        "sparepart_name",
+        "quantity",
+        "condition",
+        "returned_by",
+        "returned_from",
+        "confirmed_by",
+        "confirmed_at",
+        "notes",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [
+        "notes: Might produce empty string due to null coalescing to ''"
+      ],
+      "status": "DATA_ISSUES",
+      "severity": "CRITICAL"
+    },
+    {
+      "trigger_event": "sparepart_used",
+      "function": "notify_sparepart_used",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "sparepart_name",
+        "quantity",
+        "unit_code",
+        "used_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse.php",
+        "data_sent": {
+          "id": "$id",
+          "nama_sparepart": "$sparepart['desc_sparepart'",
+          "kode": "$sparepart['kode'",
+          "qty": "$data['stok'",
+          "lokasi": "$data['lokasi_rak'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/warehouse/spareparts')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nama_sparepart",
+        "kode",
+        "qty",
+        "lokasi",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "quantity",
+        "wo_number",
+        "unit_code",
+        "sparepart_name",
+        "used_by"
+      ],
+      "extra_variables": [
+        "updated_by",
+        "kode",
+        "nama_sparepart",
+        "lokasi",
+        "qty"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "sparepart_validation_saved",
+      "function": "notify_sparepart_validation_saved",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "sparepart_count",
+        "validated_by",
+        "validation_date",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/WorkOrderController.php",
+        "data_sent": {
+          "id": "$workOrderId",
+          "wo_number": "$workOrder['work_order_number'",
+          "sparepart_count": "$sparepartCount",
+          "validated_by": "session('username') ?? session('user_id')",
+          "validation_date": "date('Y-m-d H:i:s')",
+          "url": "base_url('/service/work-orders/view/' . $workOrderId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "wo_number",
+        "sparepart_count",
+        "validated_by",
+        "validation_date",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "spk_assigned",
+      "function": "notify_spk_assigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_spk",
+        "no_unit",
+        "mechanic_name",
+        "assigned_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Service.php",
+        "data_sent": {
+          "id": "$spkId",
+          "nomor_spk": "$spk['nomor_spk'",
+          "unit_id": "$unitId",
+          "attachment_id": "$attachmentId",
+          "assigned_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/service/spk/detail/' . $spkId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "nomor_spk",
+        "unit_id",
+        "attachment_id",
+        "assigned_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "mechanic_name",
+        "no_unit"
+      ],
+      "extra_variables": [
+        "unit_id",
+        "attachment_id"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "spk_cancelled",
+      "function": "notify_spk_cancelled",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_spk",
+        "pelanggan",
+        "alasan",
+        "cancelled_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "spk_completed",
+      "function": "notify_spk_completed",
+      "expected_variables": [
+        "module",
+        "spk_id",
+        "spk_number",
+        "unit_code",
+        "work_type",
+        "actual_duration",
+        "result",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "spk_created",
+      "function": "notify_spk_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_spk",
+        "pelanggan",
+        "departemen",
+        "url",
+        "spk_id",
+        "spk_number",
+        "unit_code",
+        "work_type",
+        "assigned_to",
+        "target_date",
+        "priority",
+        "created_by"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "spk_fabrication_completed",
+      "function": "notify_spk_fabrication_completed",
+      "expected_variables": [
+        "module",
+        "spk_id",
+        "spk_number",
+        "stage",
+        "pelanggan",
+        "lokasi",
+        "approved_by",
+        "approved_at",
+        "attachment_info",
+        "fabrication_notes",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "spk_pdi_completed",
+      "function": "notify_spk_pdi_completed",
+      "expected_variables": [
+        "module",
+        "spk_id",
+        "spk_number",
+        "stage",
+        "pelanggan",
+        "lokasi",
+        "approved_by",
+        "approved_at",
+        "spk_status",
+        "ready_for_delivery",
+        "pdi_results",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "spk_unit_prep_completed",
+      "function": "notify_spk_unit_prep_completed",
+      "expected_variables": [
+        "module",
+        "spk_id",
+        "spk_number",
+        "stage",
+        "pelanggan",
+        "lokasi",
+        "approved_by",
+        "approved_at",
+        "unit_info",
+        "items_prepared",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "supplier_created",
+      "function": "notify_supplier_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "supplier_name",
+        "supplier_code",
+        "contact_person",
+        "phone",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$supplierId",
+          "kode_supplier": "$kodeSupplier",
+          "nama_supplier": "$data['nama_supplier'",
+          "business_type": "$data['business_type'",
+          "created_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/purchasing/supplier-management')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "kode_supplier",
+        "nama_supplier",
+        "business_type",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "supplier_code",
+        "module",
+        "contact_person",
+        "supplier_name",
+        "phone"
+      ],
+      "extra_variables": [
+        "kode_supplier",
+        "business_type",
+        "nama_supplier"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "supplier_deleted",
+      "function": "notify_supplier_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "supplier_name",
+        "deleted_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$id",
+          "kode_supplier": "$supplier['kode_supplier'",
+          "nama_supplier": "$supplier['nama_supplier'",
+          "deleted_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/purchasing/supplier-management')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "kode_supplier",
+        "nama_supplier",
+        "deleted_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "supplier_name"
+      ],
+      "extra_variables": [
+        "kode_supplier",
+        "nama_supplier"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "supplier_updated",
+      "function": "notify_supplier_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "supplier_name",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Purchasing.php",
+        "data_sent": {
+          "id": "$id",
+          "kode_supplier": "$data['kode_supplier'",
+          "nama_supplier": "$data['nama_supplier'",
+          "business_type": "$data['business_type'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/purchasing/supplier-management')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "kode_supplier",
+        "nama_supplier",
+        "business_type",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "supplier_name"
+      ],
+      "extra_variables": [
+        "kode_supplier",
+        "business_type",
+        "nama_supplier"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "unit_location_updated",
+      "function": "notify_unit_location_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_code",
+        "old_location",
+        "new_location",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/UnitRolling.php",
+        "data_sent": {
+          "id": "$id",
+          "unit_code": "$unitRolling['no_unit'",
+          "old_location": "$unitRolling['previous_location'",
+          "new_location": "$data['current_location'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/operational/unit-rolling')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "unit_code",
+        "old_location",
+        "new_location",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "unit_prep_completed",
+      "function": "notify_unit_prep_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "nomor_spk",
+        "mechanic",
+        "completion_date",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Service.php",
+        "data_sent": {
+          "id": "$workOrderId",
+          "no_unit": "$unit['no_unit'",
+          "nomor_spk": "$unit['nomor_spk'",
+          "verified_by": "$verificationData['verified_by'",
+          "verification_date": "$verificationData['verification_date'",
+          "url": "base_url('/service/work-order/detail/' . $workOrderId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "no_unit",
+        "nomor_spk",
+        "verified_by",
+        "verification_date",
+        "url"
+      ],
+      "missing_variables": [
+        "module",
+        "completion_date",
+        "mechanic"
+      ],
+      "extra_variables": [
+        "verification_date",
+        "verified_by"
+      ],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "unit_prep_started",
+      "function": "notify_unit_prep_started",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "nomor_spk",
+        "mechanic",
+        "start_date",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "unit_verification_saved",
+      "function": "notify_unit_verification_saved",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "unit_code",
+        "verification_status",
+        "verified_by",
+        "verification_date",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/WorkOrderController.php",
+        "data_sent": {
+          "id": "$workOrderId",
+          "wo_number": "$workOrder['work_order_number'",
+          "unit_code": "$workOrder['unit_code'",
+          "verification_status": "'COMPLETED'",
+          "verified_by": "session('username') ?? session('user_id')",
+          "verification_date": "date('Y-m-d H:i:s')",
+          "url": "base_url('/service/work-orders/view/' . $workOrderId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "wo_number",
+        "unit_code",
+        "verification_status",
+        "verified_by",
+        "verification_date",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "user_activated",
+      "function": "notify_user_activated",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "activated_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "user_created",
+      "function": "notify_user_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "role",
+        "division",
+        "created_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "user_deactivated",
+      "function": "notify_user_deactivated",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "reason",
+        "deactivated_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "user_deleted",
+      "function": "notify_user_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "deleted_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "user_permissions_updated",
+      "function": "notify_user_permissions_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "user_name",
+        "permissions_changed",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Admin/AdvancedUserManagement.php",
+        "data_sent": {
+          "id": "$userId",
+          "user_name": "$user['username'",
+          "permissions_changed": "count($validIds) . ' custom permissions updated'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/admin/user-management/edit/' . $userId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "user_name",
+        "permissions_changed",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "user_removed_from_division",
+      "function": "notify_user_removed_from_division",
+      "expected_variables": [
+        "module",
+        "id",
+        "user_name",
+        "division_name",
+        "removed_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Admin/AdvancedUserManagement.php",
+        "data_sent": {
+          "id": "$userId",
+          "user_name": "$user['username'",
+          "division_name": "$division['name'",
+          "removed_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/admin/user-management')"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "user_name",
+        "division_name",
+        "removed_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "user_updated",
+      "function": "notify_user_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "updated_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "warehouse_stock_alert",
+      "function": "notify_warehouse_stock_alert",
+      "expected_variables": [
+        "module",
+        "item_id",
+        "item_name",
+        "current_stock",
+        "minimum_stock",
+        "warehouse_name",
+        "unit",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/Warehouse.php",
+        "data_sent": {
+          "item_id": "null",
+          "item_name": "$alert['item_name'",
+          "current_stock": "$alert['current_stock'",
+          "minimum_stock": "$alert['min_stock'",
+          "warehouse_name": "'Main Warehouse'",
+          "unit": "'pcs'",
+          "url": "base_url('/warehouse/inventory')"
+        }
+      },
+      "keys_sent": [
+        "item_id",
+        "item_name",
+        "current_stock",
+        "minimum_stock",
+        "warehouse_name",
+        "unit",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "warehouse_stocktake_completed",
+      "function": "notify_warehouse_stocktake_completed",
+      "expected_variables": [
+        "module",
+        "stocktake_id",
+        "stocktake_code",
+        "warehouse_name",
+        "items_counted",
+        "discrepancies",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "warehouse_transfer_completed",
+      "function": "notify_warehouse_transfer_completed",
+      "expected_variables": [
+        "module",
+        "transfer_id",
+        "transfer_code",
+        "from_warehouse",
+        "to_warehouse",
+        "item_count",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "warehouse_unit_updated",
+      "function": "notify_warehouse_unit_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_code",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "work_order_assigned",
+      "function": "notify_work_order_assigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "mechanic_name",
+        "priority",
+        "assigned_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "work_order_cancelled",
+      "function": "notify_work_order_cancelled",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "cancellation_reason",
+        "cancelled_by",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "work_order_completed",
+      "function": "notify_work_order_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "completion_date",
+        "mechanic",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "work_order_created",
+      "function": "notify_work_order_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "priority",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "work_order_in_progress",
+      "function": "notify_work_order_in_progress",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "mechanic",
+        "progress",
+        "url"
+      ],
+      "implementation": null,
+      "status": "NOT_IMPLEMENTED",
+      "severity": "HIGH"
+    },
+    {
+      "trigger_event": "workorder_created",
+      "function": "notify_workorder_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "unit_code",
+        "order_type",
+        "priority",
+        "category",
+        "complaint",
+        "created_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/WorkOrderController.php",
+        "data_sent": {
+          "id": "$result",
+          "wo_number": "$woNumber",
+          "unit_code": "$woInfo ? $woInfo->no_unit : 'Unknown Unit'",
+          "order_type": "$woInfo ? $woInfo->order_type : 'Unknown'",
+          "priority": "$woInfo ? $woInfo->priority_name : 'Unknown'",
+          "category": "$woInfo ? $woInfo->category_name : 'Unknown'",
+          "complaint": "$woInfo ? $woInfo->complaint_description : 'N/A'",
+          "created_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/service/work-order-detail/' . $result)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "wo_number",
+        "unit_code",
+        "order_type",
+        "priority",
+        "category",
+        "complaint",
+        "created_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "workorder_status_changed",
+      "function": "notify_workorder_status_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "unit_code",
+        "old_status",
+        "new_status",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/WorkOrderController.php",
+        "data_sent": {
+          "id": "$id",
+          "wo_number": "$woInfo ? $woInfo->wo_number : 'Unknown WO'",
+          "unit_code": "$woInfo ? $woInfo->no_unit : 'Unknown Unit'",
+          "old_status": "$woInfo ? $woInfo->old_status : 'Unknown'",
+          "new_status": "$statusData['status_name'",
+          "updated_by": "session()->get('user_name') ?? 'System'",
+          "url": "base_url('/service/work-order-detail/' . $id)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "wo_number",
+        "unit_code",
+        "old_status",
+        "new_status",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    },
+    {
+      "trigger_event": "workorder_ttr_updated",
+      "function": "notify_workorder_ttr_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "unit_code",
+        "ttr_hours",
+        "updated_by",
+        "url"
+      ],
+      "implementation": {
+        "file": "app/Controllers/WorkOrderController.php",
+        "data_sent": {
+          "id": "$workOrderId",
+          "wo_number": "$workOrder['work_order_number'",
+          "unit_code": "$workOrder['unit_code'",
+          "ttr_hours": "$data['time_to_repair'",
+          "updated_by": "session('username') ?? session('user_id')",
+          "url": "base_url('/service/work-orders/view/' . $workOrderId)"
+        }
+      },
+      "keys_sent": [
+        "id",
+        "wo_number",
+        "unit_code",
+        "ttr_hours",
+        "updated_by",
+        "url"
+      ],
+      "missing_variables": [
+        "module"
+      ],
+      "extra_variables": [],
+      "data_validity_issues": [],
+      "status": "INCOMPLETE",
+      "severity": "MEDIUM"
+    }
+  ],
+  "standardization_issues": {
+    "unit_number": [
+      {
+        "event": "attachment_attached",
+        "wrong_name": "unit_number",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "attachment_uploaded",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "di_created",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "unit_location_updated",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "unit_verification_saved",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "workorder_created",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "workorder_status_changed",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "workorder_ttr_updated",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      }
+    ],
+    "generic_id": [
+      {
+        "event": "attachment_detached",
+        "should_be_specific": "attachment_detached_id or attachment_id, etc"
+      },
+      {
+        "event": "attachment_uploaded",
+        "should_be_specific": "attachment_uploaded_id or attachment_id, etc"
+      },
+      {
+        "event": "contract_completed",
+        "should_be_specific": "contract_completed_id or attachment_id, etc"
+      },
+      {
+        "event": "contract_created",
+        "should_be_specific": "contract_created_id or attachment_id, etc"
+      },
+      {
+        "event": "contract_deleted",
+        "should_be_specific": "contract_deleted_id or attachment_id, etc"
+      },
+      {
+        "event": "contract_updated",
+        "should_be_specific": "contract_updated_id or attachment_id, etc"
+      },
+      {
+        "event": "customer_contract_created",
+        "should_be_specific": "customer_contract_created_id or attachment_id, etc"
+      },
+      {
+        "event": "customer_created",
+        "should_be_specific": "customer_created_id or attachment_id, etc"
+      },
+      {
+        "event": "customer_deleted",
+        "should_be_specific": "customer_deleted_id or attachment_id, etc"
+      },
+      {
+        "event": "customer_location_added",
+        "should_be_specific": "customer_location_added_id or attachment_id, etc"
+      },
+      {
+        "event": "customer_status_changed",
+        "should_be_specific": "customer_status_changed_id or attachment_id, etc"
+      },
+      {
+        "event": "customer_updated",
+        "should_be_specific": "customer_updated_id or attachment_id, etc"
+      },
+      {
+        "event": "delivery_created",
+        "should_be_specific": "delivery_created_id or attachment_id, etc"
+      },
+      {
+        "event": "delivery_status_changed",
+        "should_be_specific": "delivery_status_changed_id or attachment_id, etc"
+      },
+      {
+        "event": "di_created",
+        "should_be_specific": "di_created_id or attachment_id, etc"
+      },
+      {
+        "event": "inventory_unit_status_changed",
+        "should_be_specific": "inventory_unit_status_changed_id or attachment_id, etc"
+      },
+      {
+        "event": "invoice_created",
+        "should_be_specific": "invoice_created_id or attachment_id, etc"
+      },
+      {
+        "event": "payment_status_updated",
+        "should_be_specific": "payment_status_updated_id or attachment_id, etc"
+      },
+      {
+        "event": "permission_created",
+        "should_be_specific": "permission_created_id or attachment_id, etc"
+      },
+      {
+        "event": "po_attachment_created",
+        "should_be_specific": "po_attachment_created_id or attachment_id, etc"
+      },
+      {
+        "event": "po_created",
+        "should_be_specific": "po_created_id or attachment_id, etc"
+      },
+      {
+        "event": "po_created_from_quotation",
+        "should_be_specific": "po_created_from_quotation_id or attachment_id, etc"
+      },
+      {
+        "event": "po_rejected",
+        "should_be_specific": "po_rejected_id or attachment_id, etc"
+      },
+      {
+        "event": "po_sparepart_created",
+        "should_be_specific": "po_sparepart_created_id or attachment_id, etc"
+      },
+      {
+        "event": "po_unit_created",
+        "should_be_specific": "po_unit_created_id or attachment_id, etc"
+      },
+      {
+        "event": "po_verification_updated",
+        "should_be_specific": "po_verification_updated_id or attachment_id, etc"
+      },
+      {
+        "event": "po_verified",
+        "should_be_specific": "po_verified_id or attachment_id, etc"
+      },
+      {
+        "event": "quotation_created",
+        "should_be_specific": "quotation_created_id or attachment_id, etc"
+      },
+      {
+        "event": "quotation_sent_to_customer",
+        "should_be_specific": "quotation_sent_to_customer_id or attachment_id, etc"
+      },
+      {
+        "event": "quotation_stage_changed",
+        "should_be_specific": "quotation_stage_changed_id or attachment_id, etc"
+      },
+      {
+        "event": "role_saved",
+        "should_be_specific": "role_saved_id or attachment_id, etc"
+      },
+      {
+        "event": "service_assignment_created",
+        "should_be_specific": "service_assignment_created_id or attachment_id, etc"
+      },
+      {
+        "event": "service_assignment_deleted",
+        "should_be_specific": "service_assignment_deleted_id or attachment_id, etc"
+      },
+      {
+        "event": "service_assignment_updated",
+        "should_be_specific": "service_assignment_updated_id or attachment_id, etc"
+      },
+      {
+        "event": "sparepart_low_stock",
+        "should_be_specific": "sparepart_low_stock_id or attachment_id, etc"
+      },
+      {
+        "event": "sparepart_out_of_stock",
+        "should_be_specific": "sparepart_out_of_stock_id or attachment_id, etc"
+      },
+      {
+        "event": "sparepart_used",
+        "should_be_specific": "sparepart_used_id or attachment_id, etc"
+      },
+      {
+        "event": "sparepart_validation_saved",
+        "should_be_specific": "sparepart_validation_saved_id or attachment_id, etc"
+      },
+      {
+        "event": "spk_assigned",
+        "should_be_specific": "spk_assigned_id or attachment_id, etc"
+      },
+      {
+        "event": "supplier_created",
+        "should_be_specific": "supplier_created_id or attachment_id, etc"
+      },
+      {
+        "event": "supplier_deleted",
+        "should_be_specific": "supplier_deleted_id or attachment_id, etc"
+      },
+      {
+        "event": "supplier_updated",
+        "should_be_specific": "supplier_updated_id or attachment_id, etc"
+      },
+      {
+        "event": "unit_location_updated",
+        "should_be_specific": "unit_location_updated_id or attachment_id, etc"
+      },
+      {
+        "event": "unit_prep_completed",
+        "should_be_specific": "unit_prep_completed_id or attachment_id, etc"
+      },
+      {
+        "event": "unit_verification_saved",
+        "should_be_specific": "unit_verification_saved_id or attachment_id, etc"
+      },
+      {
+        "event": "user_permissions_updated",
+        "should_be_specific": "user_permissions_updated_id or attachment_id, etc"
+      },
+      {
+        "event": "user_removed_from_division",
+        "should_be_specific": "user_removed_from_division_id or attachment_id, etc"
+      },
+      {
+        "event": "workorder_created",
+        "should_be_specific": "workorder_created_id or attachment_id, etc"
+      },
+      {
+        "event": "workorder_status_changed",
+        "should_be_specific": "workorder_status_changed_id or attachment_id, etc"
+      },
+      {
+        "event": "workorder_ttr_updated",
+        "should_be_specific": "workorder_ttr_updated_id or attachment_id, etc"
+      }
+    ],
+    "quantity": [
+      {
+        "event": "sparepart_used",
+        "wrong_name": "qty",
+        "should_be": "quantity"
+      }
+    ]
+  },
+  "critical_data_issues": [
+    {
+      "event": "attachment_attached",
+      "issues": [
+        "notes: Might produce empty string due to null coalescing to ''"
+      ]
+    },
+    {
+      "event": "po_delivery_created",
+      "issues": [
+        "notes: Might produce empty string due to null coalescing to ''"
+      ]
+    },
+    {
+      "event": "sparepart_returned",
+      "issues": [
+        "notes: Might produce empty string due to null coalescing to ''"
+      ]
+    }
+  ]
+}

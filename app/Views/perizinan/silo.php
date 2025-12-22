@@ -160,20 +160,17 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable" class="table table-striped table-hover">
-                            <thead>
+                        <table id="siloTable" class="table table-sm table-striped table-hover" style="font-size: 0.875rem;">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Unit Number</th>
-                                    <th>Serial Number</th>
-                                    <th>Unit Type</th>
-                                    <th>Department</th>
-                                    <th>Company Name</th>
-                                    <th>Address</th>
-                                    <th>Status</th>
-                                    <th>SILO Number</th>
-                                    <th>Issue Date</th>
-                                    <th>Expiry Date</th>
-                                    <th width="10%">Actions</th>
+                                    <th style="min-width: 150px;">Unit Info</th>
+                                    <th style="min-width: 100px;">Department</th>
+                                    <th style="min-width: 150px;">Customer</th>
+                                    <th style="min-width: 120px;">Status</th>
+                                    <th style="min-width: 100px;">SILO No</th>
+                                    <th style="min-width: 90px;">Issue</th>
+                                    <th style="min-width: 90px;">Expiry</th>
+                                    <th style="width: 80px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -217,20 +214,17 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable2" class="table table-striped table-hover">
-                            <thead>
+                        <table id="siloTable2" class="table table-sm table-striped table-hover" style="font-size: 0.875rem;">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Unit Number</th>
-                                    <th>Serial Number</th>
-                                    <th>Unit Type</th>
-                                    <th>Department</th>
-                                    <th>Company Name</th>
-                                    <th>Address</th>
-                                    <th>Status</th>
-                                    <th>SILO Number</th>
-                                    <th>Issue Date</th>
-                                    <th>Expiry Date</th>
-                                    <th width="10%">Actions</th>
+                                    <th style="min-width: 150px;">Unit Info</th>
+                                    <th style="min-width: 100px;">Department</th>
+                                    <th style="min-width: 150px;">Customer</th>
+                                    <th style="min-width: 120px;">Status</th>
+                                    <th style="min-width: 100px;">SILO No</th>
+                                    <th style="min-width: 90px;">Issue</th>
+                                    <th style="min-width: 90px;">Expiry</th>
+                                    <th style="width: 80px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -273,20 +267,17 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable3" class="table table-striped table-hover">
-                            <thead>
+                        <table id="siloTable3" class="table table-sm table-striped table-hover" style="font-size: 0.875rem;">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Unit Number</th>
-                                    <th>Serial Number</th>
-                                    <th>Unit Type</th>
-                                    <th>Department</th>
-                                    <th>Company Name</th>
-                                    <th>Address</th>
-                                    <th>Status</th>
-                                    <th>SILO Number</th>
-                                    <th>Issue Date</th>
-                                    <th>Expiry Date</th>
-                                    <th width="10%">Actions</th>
+                                    <th style="min-width: 150px;">Unit Info</th>
+                                    <th style="min-width: 100px;">Department</th>
+                                    <th style="min-width: 150px;">Customer</th>
+                                    <th style="min-width: 120px;">Status</th>
+                                    <th style="min-width: 100px;">SILO No</th>
+                                    <th style="min-width: 90px;">Issue</th>
+                                    <th style="min-width: 90px;">Expiry</th>
+                                    <th style="width: 80px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -317,20 +308,17 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable5" class="table table-striped table-hover">
-                            <thead>
+                        <table id="siloTable5" class="table table-sm table-striped table-hover" style="font-size: 0.875rem;">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Unit Number</th>
-                                    <th>Serial Number</th>
-                                    <th>Unit Type</th>
-                                    <th>Department</th>
-                                    <th>Company Name</th>
-                                    <th>Address</th>
-                                    <th>Status</th>
-                                    <th>SILO Number</th>
-                                    <th>Issue Date</th>
-                                    <th>Expiry Date</th>
-                                    <th width="10%">Actions</th>
+                                    <th style="min-width: 150px;">Unit Info</th>
+                                    <th style="min-width: 100px;">Department</th>
+                                    <th style="min-width: 150px;">Customer</th>
+                                    <th style="min-width: 120px;">Status</th>
+                                    <th style="min-width: 100px;">SILO No</th>
+                                    <th style="min-width: 90px;">Issue</th>
+                                    <th style="min-width: 90px;">Expiry</th>
+                                    <th style="width: 80px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -361,20 +349,17 @@
                     
                     <!-- DataTable -->
                     <div class="table-responsive">
-                        <table id="siloTable6" class="table table-striped table-hover">
-                            <thead>
+                        <table id="siloTable6" class="table table-sm table-striped table-hover" style="font-size: 0.875rem;">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Unit Number</th>
-                                    <th>Serial Number</th>
-                                    <th>Unit Type</th>
-                                    <th>Department</th>
-                                    <th>Company Name</th>
-                                    <th>Address</th>
-                                    <th>Status</th>
-                                    <th>SILO Number</th>
-                                    <th>Issue Date</th>
-                                    <th>Expiry Date</th>
-                                    <th width="10%">Actions</th>
+                                    <th style="min-width: 150px;">Unit Info</th>
+                                    <th style="min-width: 100px;">Department</th>
+                                    <th style="min-width: 150px;">Customer</th>
+                                    <th style="min-width: 120px;">Status</th>
+                                    <th style="min-width: 100px;">SILO No</th>
+                                    <th style="min-width: 90px;">Issue</th>
+                                    <th style="min-width: 90px;">Expiry</th>
+                                    <th style="width: 80px;">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -405,16 +390,13 @@
                 
                 <!-- DataTable -->
                 <div class="table-responsive">
-                    <table id="siloTable4" class="table table-striped table-hover">
-                        <thead>
+                    <table id="siloTable4" class="table table-sm table-striped table-hover" style="font-size: 0.875rem;">
+                        <thead class="table-light">
                             <tr>
-                                <th>Unit Number</th>
-                                <th>Serial Number</th>
-                                <th>Unit Type</th>
-                                <th>Department</th>
-                                <th>Company Name</th>
-                                <th>Address</th>
-                                <th width="10%">Actions</th>
+                                <th style="min-width: 180px;">Unit Info</th>
+                                <th style="min-width: 100px;">Department</th>
+                                <th style="min-width: 180px;">Customer</th>
+                                <th style="width: 100px;">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -537,49 +519,36 @@ function getColumnDefinitions(tableId) {
     if (tableId === '#siloTable4') {
         return [
             { 
-                data: 'no_unit',
-                render: function(data) {
-                    return data || '-';
-                }
-            },
-            { 
-                data: 'serial_number',
-                render: function(data) {
-                    return data || '-';
-                }
-            },
-            { 
-                data: 'tipe_unit',
-                render: function(data) {
-                    return data || '-';
+                data: null,
+                render: function(data, type, row) {
+                    return '<div class="unit-info-compact">' +
+                        '<div class="fw-bold text-primary" style="font-size: 0.9rem;">' + (row.no_unit || '-') + '</div>' +
+                        '<small class="text-muted d-block">SN: ' + (row.serial_number || '-') + '</small>' +
+                        '<small class="text-muted d-block">' + (row.tipe_unit || '-') + '</small>' +
+                        '</div>';
                 }
             },
             { 
                 data: 'departemen',
                 render: function(data) {
-                    return data || '-';
+                    return '<span class="badge bg-secondary">' + (data || '-') + '</span>';
                 }
             },
             { 
                 data: 'nama_perusahaan',
-                render: function(data) {
-                    return data || '-';
-                }
-            },
-            { 
-                data: 'alamat',
-                render: function(data) {
+                render: function(data, type, row) {
                     if (!data) return '-';
-                    return data.length > 40 ? data.substring(0, 40) + '...' : data;
+                    return '<div class="customer-info-compact">' +
+                        '<div class="fw-bold" style="font-size: 0.85rem;">' + data + '</div>' +
+                        '</div>';
                 }
             },
             { 
                 data: 'id_silo',
                 orderable: false,
                 render: function(data, type, row) {
-                    return '<div class="btn-group-vertical btn-group-sm" role="group">' +
-                        '<button type="button" class="btn btn-sm btn-success" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO Submission"><i class="fas fa-plus me-1"></i> Create Submission</button>' +
-                        '</div>';
+                    return '<button type="button" class="btn btn-sm btn-success w-100" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO Submission">' +
+                        '<i class="fas fa-plus me-1"></i>Create</button>';
                 }
             }
         ];
@@ -588,41 +557,28 @@ function getColumnDefinitions(tableId) {
     // For other tables (with SILO data)
     return [
         { 
-            data: 'no_unit',
-            render: function(data) {
-                return data ?  + data : '-';
+            data: null,
+            render: function(data, type, row) {
+                return '<div class="unit-info-compact">' +
+                    '<div class="fw-bold text-primary" style="font-size: 0.9rem;">' + (row.no_unit || '-') + '</div>' +
+                    '<small class="text-muted d-block">SN: ' + (row.serial_number || '-') + '</small>' +
+                    '<small class="text-muted d-block">' + (row.tipe_unit || '-') + '</small>' +
+                    '</div>';
             }
         },
             { 
-                data: 'serial_number',
-                render: function(data) {
-                    return data || '-';
-                }
-            },
-            { 
-                data: 'tipe_unit',
-                render: function(data) {
-                    return data || '-';
-                }
-            },
-            { 
                 data: 'departemen',
                 render: function(data) {
-                    return data || '-';
+                    return '<span class="badge bg-secondary">' + (data || '-') + '</span>';
                 }
             },
             { 
                 data: 'nama_perusahaan',
-                render: function(data) {
-                    return data || '-';
-                }
-            },
-            { 
-                data: 'alamat',
-                render: function(data) {
+                render: function(data, type, row) {
                     if (!data) return '-';
-                    // Truncate long addresses
-                    return data.length > 50 ? data.substring(0, 50) + '...' : data;
+                    return '<div class="customer-info-compact">' +
+                        '<div class="fw-bold" style="font-size: 0.85rem;">' + data + '</div>' +
+                        '</div>';
                 }
             },
             { 
@@ -633,11 +589,11 @@ function getColumnDefinitions(tableId) {
                 }
                 const statusLabels = {
                     'BELUM_ADA': 'No SILO',
-                    'PENGAJUAN_PJK3': 'Submission to PJK3',
-                    'SURAT_KETERANGAN_PJK3': 'PJK3 Certificate',
-                    'PENGAJUAN_UPTD': 'Submission to DISNAKER',
+                    'PENGAJUAN_PJK3': 'PJK3 Submit',
+                    'SURAT_KETERANGAN_PJK3': 'PJK3 Letter',
+                    'PENGAJUAN_UPTD': 'UPTD Submit',
                     'SILO_TERBIT': 'SILO Issued',
-                    'SILO_EXPIRED': 'SILO Expired'
+                    'SILO_EXPIRED': 'Expired'
                 };
                 const statusColors = {
                     'BELUM_ADA': 'danger',
@@ -655,13 +611,13 @@ function getColumnDefinitions(tableId) {
         { 
             data: 'nomor_silo',
             render: function(data) {
-                return data || '-';
+                return data ? '<small>' + data + '</small>' : '-';
             }
         },
         { 
             data: 'tanggal_terbit_silo',
             render: function(data) {
-                return data ? formatDate(data) : '-';
+                return data ? '<small>' + formatDate(data) + '</small>' : '-';
             }
         },
             { 
@@ -671,9 +627,9 @@ function getColumnDefinitions(tableId) {
                     const expired = new Date(data) < new Date();
                     const expiringSoon = new Date(data) <= new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
                     let badge = '';
-                    if (expired) badge = ' <span class="badge bg-danger">Expired</span>';
-                    else if (expiringSoon) badge = ' <span class="badge bg-warning">Expiring Soon</span>';
-                    return formatDate(data) + badge;
+                    if (expired) badge = '<br><span class="badge bg-danger mt-1">Expired</span>';
+                    else if (expiringSoon) badge = '<br><span class="badge bg-warning mt-1">Soon</span>';
+                    return '<small>' + formatDate(data) + '</small>' + badge;
                 }
             },
             { 
@@ -684,16 +640,16 @@ function getColumnDefinitions(tableId) {
                     
                     // For units without SILO, show create button
                     if (!row.status || row.status === null) {
-                        buttons.push('<button type="button" class="btn btn-sm btn-success" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO"><i class="fas fa-plus me-1"></i>Create Submission</button>');
+                        buttons.push('<button type="button" class="btn btn-sm btn-success w-100 mb-1" onclick="createSiloForUnit(' + row.id_silo + ')" title="Create SILO"><i class="fas fa-plus me-1"></i>Create</button>');
                     } else {
                         // Always show detail button
-                        buttons.push('<button type="button" class="btn btn-sm btn-info" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye me-1"></i>Detail</button>');
+                        buttons.push('<button type="button" class="btn btn-sm btn-info w-100 mb-1" onclick="showDetail(' + data + ')" title="Detail"><i class="fas fa-eye me-1"></i>Detail</button>');
                         
                         // Show update button based on status (stage by stage)
                         if (row.status !== 'SILO_TERBIT' && row.status !== 'SILO_EXPIRED') {
                             const actionLabel = getActionButtonLabel(row.status);
                             if (actionLabel) {
-                                buttons.push('<button type="button" class="btn btn-sm btn-primary" onclick="showUpdateModal(' + data + ')" title="' + actionLabel + '"><i class="fas fa-arrow-right me-1"></i>' + actionLabel + '</button>');
+                                buttons.push('<button type="button" class="btn btn-sm btn-primary w-100" onclick="showUpdateModal(' + data + ')" title="' + actionLabel + '">' + actionLabel + '</button>');
                             }
                         }
                         
@@ -854,6 +810,24 @@ $(document).ready(function() {
     // Tab switching handler - initialize and reload table when tab is shown
     $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
         const target = $(e.target).attr('data-bs-target');
+        
+        // Adjust columns after tab is shown to prevent overlap
+        setTimeout(function() {
+            if (target === '#all' && siloTable) {
+                siloTable.columns.adjust().draw();
+            } else if (target === '#sudah-ada' && siloTable2) {
+                siloTable2.columns.adjust().draw();
+            } else if (target === '#progres' && siloTable3) {
+                siloTable3.columns.adjust().draw();
+            } else if (target === '#belum-ada' && siloTable4) {
+                siloTable4.columns.adjust().draw();
+            } else if (target === '#akan-expired' && siloTable5) {
+                siloTable5.columns.adjust().draw();
+            } else if (target === '#sudah-expired' && siloTable6) {
+                siloTable6.columns.adjust().draw();
+            }
+        }, 100);
+        
         if (target === '#all') {
             currentStatus = 'all';
             if (siloTable) siloTable.ajax.reload();
@@ -909,9 +883,17 @@ $(document).ready(function() {
         if (siloTable6) siloTable6.ajax.reload();
     });
     
-    // Ensure "Semua" tab is active on page load (in case of refresh)
-    // This prevents other tabs from showing their tables stacked
-    $('#all-tab').tab('show');
+    // Ensure "All" tab is active and initialized on page load
+    // This prevents overlap when clicking other tabs after refresh
+    $('#all-tab').addClass('active');
+    $('#all').addClass('show active');
+    
+    // Wait for DOM to be ready, then ensure table columns are adjusted
+    setTimeout(function() {
+        if (siloTable) {
+            siloTable.columns.adjust().draw();
+        }
+    }, 200);
 
     // Create form handler
     $('#createForm').on('submit', function(e) {

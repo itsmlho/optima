@@ -254,14 +254,20 @@
                         </div>
                         
                         <div class="col-12">
-                            <label class="form-label">Title Template <span class="text-danger">*</span></label>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label class="form-label mb-0">Title Template <span class="text-danger">*</span></label>
+                                <button type="button" id="variablesInfoBtn" class="btn btn-sm btn-outline-info" onclick="showVariablesInfo()" title="View all available variables">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </div>
                             <input type="text" class="form-control" id="title_template" name="title_template" required placeholder="Use {{variable}} for dynamic values">
-                            <small class="text-muted">Available variables: {{nomor_spk}}, {{nomor_po}}, {{pelanggan}}, {{departemen}}, etc.</small>
+                            <small class="text-muted" id="title_variables_hint"><i class="fas fa-search me-1"></i>Click "Available Variables" to browse all 118 events with search</small>
                         </div>
                         
                         <div class="col-12">
                             <label class="form-label">Message Template</label>
                             <textarea class="form-control" id="message_template" name="message_template" rows="3" placeholder="Notification message with {{variables}}"></textarea>
+                            <small class="text-muted" id="message_variables_hint">Use {{variable_name}} format to insert dynamic values</small>
                         </div>
                         
                         
@@ -295,6 +301,33 @@
     </div>
 </div>
 
+<!-- Variables Info Modal -->
+<div class="modal fade" id="variablesModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-l">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-muted">
+                <h5 class="modal-title"><i class="fas fa-code me-2"></i>Available Variables</h5>
+                <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong id="variablesCount">118 events</strong> found. Click any variable to copy.
+                </div>
+                <div class="mb-3">
+                    <input type="text" id="variableSearchInput" class="form-control form-control-lg" placeholder="🔍 Type to search events or variables..." autocomplete="off">
+                </div>
+                <div id="variablesContainer" style="max-height: 500px; overflow-y: auto;">
+                    <!-- Variables will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- View Rule Detail Modal -->
 <div class="modal fade" id="viewRuleModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -321,6 +354,24 @@ let notificationMetadataLoaded = false;
 let notificationMetadataPromise = null;
 let notificationMetadata = null;
 let cascadingListenersInitialized = false;
+
+// Add custom styles for variables modal to ensure it's on top
+const style = document.createElement('style');
+style.textContent = `
+    .variables-modal-container {
+        z-index: 10000 !important;
+    }
+    .variables-modal-popup {
+        z-index: 10001 !important;
+    }
+    .swal2-container.variables-modal-container .swal2-popup {
+        z-index: 10001 !important;
+    }
+    .swal2-container.variables-modal-container {
+        z-index: 10000 !important;
+    }
+`;
+document.head.appendChild(style);
 
 window.notificationRuleSelectionCache = window.notificationRuleSelectionCache || {
     eventType: '',
@@ -1239,6 +1290,29 @@ document.addEventListener('DOMContentLoaded', function() {
         currentDivisionFilter = division;
         filterByDivision(division);
     });
+    
+    // Initialize variables modal on page load
+    loadNotificationVariables();
+    
+    // Update hint when event type changes
+    $('#event_type').on('change', function() {
+        const selectedEvent = $(this).val();
+        const eventData = availableVariables[selectedEvent];
+        
+        if (eventData && eventData.variables && eventData.variables.length > 0) {
+            const varCount = eventData.variables.length;
+            const firstThree = eventData.variables.slice(0, 3).map(v => `{{${v}}}`).join(', ');
+            const hintText = varCount > 3 
+                ? `${varCount} variables available: ${firstThree}...` 
+                : `${varCount} variable(s): ${firstThree}`;
+            
+            $('#title_variables_hint').html(`<i class="fas fa-check-circle text-success me-1"></i>${hintText}`);
+            $('#message_variables_hint').html(`<i class="fas fa-lightbulb text-warning me-1"></i>Click "Available Variables" button to see all ${varCount} options`);
+        } else {
+            $('#title_variables_hint').text('No variables defined for this event');
+            $('#message_variables_hint').text('Use {{variable_name}} format to insert dynamic values');
+        }
+    });
 });
 
 // Filter by division
@@ -1250,6 +1324,153 @@ function filterByDivision(division) {
         // Filter by specific division - search in target column
         rulesTable.column(3).search(division, false, false).draw();
     }
+}
+
+// Variables info modal functionality
+let availableVariables = {};
+
+async function loadNotificationVariables() {
+    try {
+        const response = await fetch(baseUrl + '/assets/data/notification_variables.json');
+        if (!response.ok) {
+            throw new Error('Failed to load notification variables');
+        }
+        availableVariables = await response.json();
+        console.log('Notification variables loaded:', Object.keys(availableVariables).length, 'events');
+    } catch (error) {
+        console.error('Error loading notification variables:', error);
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to load notification variables data'
+        });
+    }
+}
+
+function showVariablesInfo() {
+    // Sort events alphabetically
+    const sortedEvents = Object.keys(availableVariables).sort();
+    
+    // Build simple list of all variables
+    let variablesHtml = '';
+    
+    sortedEvents.forEach(eventName => {
+        const eventData = availableVariables[eventName];
+        if (!eventData || !eventData.variables || eventData.variables.length === 0) return;
+        
+        const varCount = eventData.variables.length;
+        const varsText = eventData.variables.join(' ');
+        
+        variablesHtml += `
+            <div class="event-group mb-3 p-3 border rounded" data-event="${eventName.toLowerCase()}" data-vars="${varsText.toLowerCase()}">
+                <div class="mb-2">
+                    <h6 class="mb-1 text-primary">${eventName} <span class="badge bg-secondary">${varCount}</span></h6>
+                </div>
+                <div class="row g-2">
+        `;
+        
+        eventData.variables.forEach(variable => {
+            const varName = `{{${variable}}}`;
+            variablesHtml += `
+                <div class="col-md-6">
+                    <div class="p-2 bg-light rounded" onclick="copyVariable('${varName}')" style="cursor: pointer;" title="Click to copy">
+                        <code class="text-dark">${varName}</code>
+                    </div>
+                </div>
+            `;
+        });
+        
+        variablesHtml += `
+                </div>
+            </div>
+        `;
+    });
+    
+    // Update modal content
+    document.getElementById('variablesContainer').innerHTML = variablesHtml;
+    document.getElementById('variablesCount').textContent = `${sortedEvents.length} events`;
+    
+    // Show modal
+    const variablesModal = new bootstrap.Modal(document.getElementById('variablesModal'));
+    variablesModal.show();
+    
+    // Setup search after modal is shown
+    setTimeout(() => {
+        const searchInput = document.getElementById('variableSearchInput');
+        const eventGroups = document.querySelectorAll('.event-group');
+        
+        searchInput.value = '';
+        searchInput.focus();
+        
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            
+            eventGroups.forEach(group => {
+                const eventName = group.getAttribute('data-event');
+                const vars = group.getAttribute('data-vars');
+                
+                if (searchTerm === '' || eventName.includes(searchTerm) || vars.includes(searchTerm)) {
+                    group.style.display = 'block';
+                } else {
+                    group.style.display = 'none';
+                }
+            });
+        });
+    }, 300);
+}
+
+
+// Simple copy function
+window.copyVariable = function(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 1500,
+            timerProgressBar: true
+        });
+        Toast.fire({
+            icon: 'success',
+            title: `Copied: ${text}`
+        });
+    });
+};
+
+function copyToClipboard(text, element) {
+    navigator.clipboard.writeText(text).then(() => {
+        // Visual feedback
+        const originalBg = element.style.backgroundColor;
+        element.style.backgroundColor = '#d4edda';
+        element.style.transition = 'background-color 0.3s';
+        
+        // Show toast notification
+        const Toast = Swal.mixin({
+            toast: true,
+            position: 'top-end',
+            showConfirmButton: false,
+            timer: 2000,
+            timerProgressBar: true
+        });
+        
+        Toast.fire({
+            icon: 'success',
+            title: `Copied: ${text}`
+        });
+        
+        // Reset background after animation
+        setTimeout(() => {
+            element.style.backgroundColor = originalBg;
+        }, 500);
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        Swal.fire({
+            icon: 'error',
+            title: 'Copy Failed',
+            text: 'Failed to copy to clipboard',
+            timer: 2000
+        });
+    });
 }
 
 

@@ -1,0 +1,3601 @@
+{
+  "total_events": 118,
+  "events": [
+    {
+      "trigger_event": "attachment_added",
+      "function": "notify_attachment_added",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "brand",
+        "status",
+        "added_by",
+        "url",
+        "attachment_id",
+        "merk",
+        "model",
+        "kondisi",
+        "lokasi",
+        "added_at"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Service.php",
+          "keys_sent": [
+            "attachment_id",
+            "tipe_item",
+            "merk",
+            "model",
+            "serial_number",
+            "kondisi",
+            "lokasi",
+            "added_by",
+            "added_at",
+            "url"
+          ],
+          "missing_variables": [
+            "status",
+            "brand",
+            "id",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "status",
+        "brand",
+        "id",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "attachment_attached",
+      "function": "notify_attachment_attached",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "no_unit",
+        "attached_by",
+        "attachment_date",
+        "url",
+        "attachment_id",
+        "unit_id",
+        "attachment_info",
+        "performed_by",
+        "performed_at",
+        "notes"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "attachment_id",
+            "unit_id",
+            "unit_number",
+            "tipe_item",
+            "attachment_info",
+            "performed_by",
+            "performed_at",
+            "notes",
+            "url"
+          ],
+          "missing_variables": [
+            "id",
+            "attached_by",
+            "module",
+            "no_unit",
+            "serial_number",
+            "attachment_date"
+          ],
+          "extra_variables": [
+            "unit_number"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "id",
+        "attached_by",
+        "module",
+        "no_unit",
+        "serial_number",
+        "attachment_date"
+      ]
+    },
+    {
+      "trigger_event": "attachment_broken",
+      "function": "notify_attachment_broken",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "no_unit",
+        "damage_description",
+        "reported_by",
+        "report_date",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "attachment_detached",
+      "function": "notify_attachment_detached",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "no_unit",
+        "detached_by",
+        "reason",
+        "url",
+        "attachment_id",
+        "unit_id",
+        "attachment_info",
+        "new_location",
+        "performed_by",
+        "performed_at"
+      ],
+      "calls_found": 2,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "id",
+            "attachment_type",
+            "serial_number",
+            "new_status",
+            "new_location",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "unit_id",
+            "module",
+            "no_unit",
+            "detached_by",
+            "tipe_item",
+            "attachment_info",
+            "attachment_id",
+            "performed_at",
+            "performed_by",
+            "reason"
+          ],
+          "extra_variables": [
+            "updated_by",
+            "new_status",
+            "attachment_type"
+          ],
+          "status": "INCOMPLETE"
+        },
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "attachment_id",
+            "unit_id",
+            "unit_number",
+            "tipe_item",
+            "attachment_info",
+            "reason",
+            "new_location",
+            "performed_by",
+            "performed_at",
+            "url"
+          ],
+          "missing_variables": [
+            "id",
+            "module",
+            "no_unit",
+            "detached_by",
+            "serial_number"
+          ],
+          "extra_variables": [
+            "unit_number"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "detached_by",
+        "no_unit",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "attachment_maintenance",
+      "function": "notify_attachment_maintenance",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "maintenance_reason",
+        "scheduled_date",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "attachment_swapped",
+      "function": "notify_attachment_swapped",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe_item",
+        "serial_number",
+        "old_unit",
+        "new_unit",
+        "swapped_by",
+        "url",
+        "attachment_id",
+        "from_unit_id",
+        "from_unit_number",
+        "to_unit_id",
+        "to_unit_number",
+        "attachment_info",
+        "reason",
+        "performed_by",
+        "performed_at"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "attachment_id",
+            "from_unit_id",
+            "from_unit_number",
+            "to_unit_id",
+            "to_unit_number",
+            "tipe_item",
+            "attachment_info",
+            "reason",
+            "performed_by",
+            "performed_at",
+            "url"
+          ],
+          "missing_variables": [
+            "id",
+            "new_unit",
+            "module",
+            "swapped_by",
+            "serial_number",
+            "old_unit"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "id",
+        "new_unit",
+        "module",
+        "swapped_by",
+        "serial_number",
+        "old_unit"
+      ]
+    },
+    {
+      "trigger_event": "attachment_uploaded",
+      "function": "notify_attachment_uploaded",
+      "expected_variables": [
+        "module",
+        "id",
+        "stage_name",
+        "spk_number",
+        "unit_code",
+        "file_name",
+        "uploaded_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Service.php",
+          "keys_sent": [
+            "id",
+            "stage_name",
+            "spk_number",
+            "unit_code",
+            "file_name",
+            "uploaded_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "budget_threshold_exceeded",
+      "function": "notify_budget_threshold_exceeded",
+      "expected_variables": [
+        "module",
+        "budget_id",
+        "budget_name",
+        "department",
+        "allocated_amount",
+        "spent_amount",
+        "percentage_used",
+        "threshold",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "contract_completed",
+      "function": "notify_contract_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "total_value",
+        "completion_date",
+        "completed_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "contract_number",
+            "customer_name",
+            "total_value",
+            "completion_date",
+            "completed_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "contract_created",
+      "function": "notify_contract_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "contract_type",
+        "start_date",
+        "end_date",
+        "total_value",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Kontrak.php",
+          "keys_sent": [
+            "id",
+            "contract_number",
+            "customer_name",
+            "contract_type",
+            "start_date",
+            "end_date",
+            "total_value",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "contract_deleted",
+      "function": "notify_contract_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "deleted_by",
+        "deletion_reason",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Kontrak.php",
+          "keys_sent": [
+            "id",
+            "contract_number",
+            "customer_name",
+            "deleted_by",
+            "deletion_reason",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "contract_updated",
+      "function": "notify_contract_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Kontrak.php",
+          "keys_sent": [
+            "id",
+            "contract_number",
+            "customer_name",
+            "changes",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "customer_contract_created",
+      "function": "notify_customer_contract_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "nilai_total",
+        "tanggal_mulai",
+        "tanggal_selesai",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "contract_number",
+            "customer_name",
+            "nilai_total",
+            "tanggal_mulai",
+            "tanggal_selesai"
+          ],
+          "missing_variables": [
+            "url",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "url",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "customer_contract_expired",
+      "function": "notify_customer_contract_expired",
+      "expected_variables": [
+        "module",
+        "id",
+        "contract_number",
+        "customer_name",
+        "end_date",
+        "days",
+        "contract_value",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Helpers/notification_helper.php",
+          "keys_sent": [
+            "id",
+            "contract_number",
+            "customer_name",
+            "location_name",
+            "expiry_date",
+            "days_until_expiry",
+            "contract_value",
+            "url"
+          ],
+          "missing_variables": [
+            "end_date",
+            "days",
+            "module"
+          ],
+          "extra_variables": [
+            "expiry_date",
+            "location_name",
+            "days_until_expiry"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "end_date",
+        "days",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "customer_created",
+      "function": "notify_customer_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_name",
+        "customer_code",
+        "contact_person",
+        "phone",
+        "url",
+        "customer_type",
+        "email",
+        "created_by"
+      ],
+      "calls_found": 3,
+      "implementations": [
+        {
+          "file": "app/Controllers/CustomerManagementController.php",
+          "keys_sent": [
+            "id",
+            "customer_name",
+            "customer_code",
+            "customer_type",
+            "phone",
+            "email",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "contact_person",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        },
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "customer_name",
+            "customer_code",
+            "contact_person",
+            "phone"
+          ],
+          "missing_variables": [
+            "url",
+            "module",
+            "created_by",
+            "customer_type",
+            "email"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        },
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "customer_name",
+            "customer_code",
+            "contact_person",
+            "phone"
+          ],
+          "missing_variables": [
+            "url",
+            "module",
+            "created_by",
+            "customer_type",
+            "email"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "customer_deleted",
+      "function": "notify_customer_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_name",
+        "customer_code",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/CustomerManagementController.php",
+          "keys_sent": [
+            "id",
+            "customer_name",
+            "customer_code"
+          ],
+          "missing_variables": [
+            "url",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "url",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "customer_location_added",
+      "function": "notify_customer_location_added",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_name",
+        "location_name",
+        "address",
+        "url"
+      ],
+      "calls_found": 3,
+      "implementations": [
+        {
+          "file": "app/Controllers/CustomerManagementController.php",
+          "keys_sent": [
+            "id",
+            "customer_name",
+            "location_name",
+            "address"
+          ],
+          "missing_variables": [
+            "url",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        },
+        {
+          "file": "app/Controllers/CustomerManagementController.php",
+          "keys_sent": [
+            "id",
+            "customer_name",
+            "location_name",
+            "address"
+          ],
+          "missing_variables": [
+            "url",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        },
+        {
+          "file": "app/Controllers/CustomerManagementController.php",
+          "keys_sent": [
+            "id",
+            "customer_name",
+            "location_name",
+            "address"
+          ],
+          "missing_variables": [
+            "url",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "url",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "customer_status_changed",
+      "function": "notify_customer_status_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_code",
+        "customer_name",
+        "old_status",
+        "new_status",
+        "reason",
+        "changed_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/CustomerManagementController.php",
+          "keys_sent": [
+            "id",
+            "customer_code",
+            "customer_name",
+            "old_status",
+            "new_status",
+            "reason",
+            "changed_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "customer_updated",
+      "function": "notify_customer_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "customer_name",
+        "customer_code",
+        "url",
+        "changes",
+        "updated_by"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/CustomerManagementController.php",
+          "keys_sent": [
+            "id",
+            "customer_name",
+            "customer_code",
+            "changes",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "delivery_arrived",
+      "function": "notify_delivery_arrived",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "customer_name",
+        "arrival_time",
+        "driver_name",
+        "location",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "delivery_assigned",
+      "function": "notify_delivery_assigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "driver_name",
+        "vehicle",
+        "customer_name",
+        "destination",
+        "assigned_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "delivery_completed",
+      "function": "notify_delivery_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "customer_name",
+        "completed_time",
+        "signature",
+        "notes",
+        "completed_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "delivery_created",
+      "function": "notify_delivery_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "delivery_number",
+        "po_number",
+        "supplier_name",
+        "delivery_date",
+        "items_count",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "delivery_number",
+            "po_number",
+            "supplier_name",
+            "delivery_date",
+            "items_count",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "delivery_delayed",
+      "function": "notify_delivery_delayed",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "customer_name",
+        "scheduled_time",
+        "current_time",
+        "delay_reason",
+        "estimated_arrival",
+        "driver_name",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "delivery_in_transit",
+      "function": "notify_delivery_in_transit",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_delivery",
+        "driver_name",
+        "current_location",
+        "destination",
+        "eta",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "delivery_status_changed",
+      "function": "notify_delivery_status_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "delivery_number",
+        "po_number",
+        "old_status",
+        "new_status",
+        "supplier_name",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "delivery_number",
+            "po_number",
+            "old_status",
+            "new_status",
+            "supplier_name",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "di_approved",
+      "function": "notify_di_approved",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "customer",
+        "approved_by",
+        "approval_date",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "di_cancelled",
+      "function": "notify_di_cancelled",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "customer",
+        "alasan",
+        "cancelled_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "di_created",
+      "function": "notify_di_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "unit_code",
+        "customer",
+        "jenis_perintah",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "nomor_di",
+            "unit_code",
+            "customer",
+            "jenis_perintah"
+          ],
+          "missing_variables": [
+            "url",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "url",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "di_delivered",
+      "function": "notify_di_delivered",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "customer",
+        "delivery_date",
+        "driver_name",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "di_in_progress",
+      "function": "notify_di_in_progress",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "customer",
+        "driver_name",
+        "current_status",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "di_submitted",
+      "function": "notify_di_submitted",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_di",
+        "pelanggan",
+        "lokasi",
+        "jenis_perintah",
+        "submitted_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "employee_assigned",
+      "function": "notify_employee_assigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "position",
+        "assigned_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "employee_unassigned",
+      "function": "notify_employee_unassigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "reason",
+        "unassigned_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "inspection_completed",
+      "function": "notify_inspection_completed",
+      "expected_variables": [
+        "module",
+        "inspection_id",
+        "unit_code",
+        "inspection_type",
+        "result",
+        "findings_count",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "inspection_scheduled",
+      "function": "notify_inspection_scheduled",
+      "expected_variables": [
+        "module",
+        "inspection_id",
+        "unit_code",
+        "inspection_type",
+        "scheduled_date",
+        "assigned_to",
+        "priority",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "inventory_unit_added",
+      "function": "notify_inventory_unit_added",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "model",
+        "serial_number",
+        "status",
+        "added_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "inventory_unit_low_stock",
+      "function": "notify_inventory_unit_low_stock",
+      "expected_variables": [
+        "module",
+        "id",
+        "tipe",
+        "count",
+        "minimum_stock",
+        "status",
+        "category",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "inventory_unit_maintenance",
+      "function": "notify_inventory_unit_maintenance",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "alasan",
+        "scheduled_date",
+        "estimated_completion",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "inventory_unit_rental_active",
+      "function": "notify_inventory_unit_rental_active",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "customer",
+        "rental_start_date",
+        "rental_duration",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "inventory_unit_returned",
+      "function": "notify_inventory_unit_returned",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "customer",
+        "return_date",
+        "condition",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "inventory_unit_status_changed",
+      "function": "notify_inventory_unit_status_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "old_status",
+        "new_status",
+        "changed_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "id",
+            "no_unit",
+            "old_status",
+            "new_status",
+            "lokasi",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "changed_by",
+            "module"
+          ],
+          "extra_variables": [
+            "updated_by",
+            "lokasi"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "changed_by",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "invoice_created",
+      "function": "notify_invoice_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "due_date",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Finance.php",
+          "keys_sent": [
+            "id",
+            "invoice_number",
+            "customer_name",
+            "amount",
+            "due_date",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "invoice_overdue",
+      "function": "notify_invoice_overdue",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "due_date",
+        "days_overdue",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "invoice_paid",
+      "function": "notify_invoice_paid",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "payment_date",
+        "payment_method",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "invoice_sent",
+      "function": "notify_invoice_sent",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "sent_date",
+        "sent_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "maintenance_completed",
+      "function": "notify_maintenance_completed",
+      "expected_variables": [
+        "module",
+        "maintenance_id",
+        "unit_code",
+        "maintenance_type",
+        "actual_hours",
+        "parts_replaced",
+        "total_cost",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "maintenance_scheduled",
+      "function": "notify_maintenance_scheduled",
+      "expected_variables": [
+        "module",
+        "maintenance_id",
+        "unit_code",
+        "maintenance_type",
+        "scheduled_date",
+        "estimated_hours",
+        "assigned_mechanic",
+        "priority",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "password_reset",
+      "function": "notify_password_reset",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "reset_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "payment_overdue",
+      "function": "notify_payment_overdue",
+      "expected_variables": [
+        "module",
+        "invoice_id",
+        "invoice_number",
+        "customer_name",
+        "amount",
+        "due_date",
+        "days_overdue",
+        "outstanding_balance",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "payment_received",
+      "function": "notify_payment_received",
+      "expected_variables": [
+        "module",
+        "id",
+        "amount",
+        "customer_name",
+        "payment_method",
+        "invoice_number",
+        "received_by",
+        "url",
+        "payment_id",
+        "received_at"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "payment_status_updated",
+      "function": "notify_payment_status_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "invoice_number",
+        "customer_name",
+        "old_status",
+        "new_status",
+        "amount",
+        "payment_date",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Finance.php",
+          "keys_sent": [
+            "id",
+            "invoice_number",
+            "customer_name",
+            "old_status",
+            "new_status",
+            "amount",
+            "payment_date",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "permission_changed",
+      "function": "notify_permission_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "changed_permissions",
+        "changed_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "permission_created",
+      "function": "notify_permission_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "permission_name",
+        "permission_code",
+        "module_name",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Admin/PermissionController.php",
+          "keys_sent": [
+            "id",
+            "permission_name",
+            "permission_code",
+            "module_name",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "pmps_completed",
+      "function": "notify_pmps_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_no",
+        "unit_model",
+        "completion_date",
+        "service_type",
+        "mechanic",
+        "next_service_date",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "pmps_due_soon",
+      "function": "notify_pmps_due_soon",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_no",
+        "unit_model",
+        "due_date",
+        "days",
+        "current_hours",
+        "service_type",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "pmps_overdue",
+      "function": "notify_pmps_overdue",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_no",
+        "unit_model",
+        "due_date",
+        "days",
+        "current_hours",
+        "service_type",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "po_approved",
+      "function": "notify_po_approved",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "total_amount",
+        "approved_by",
+        "approval_date",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "po_attachment_created",
+      "function": "notify_po_attachment_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "attachment_type",
+        "quantity",
+        "total_amount",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "nomor_po",
+            "supplier_name",
+            "item_type",
+            "quantity",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "attachment_type",
+            "total_amount",
+            "module"
+          ],
+          "extra_variables": [
+            "item_type"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "attachment_type",
+        "total_amount",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "po_created",
+      "function": "notify_po_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier",
+        "total_items",
+        "url",
+        "po_number",
+        "supplier_name",
+        "po_type",
+        "total_amount",
+        "delivery_date",
+        "created_by"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "po_number",
+            "supplier_name",
+            "po_type",
+            "total_amount",
+            "delivery_date",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "total_items",
+            "supplier",
+            "nomor_po",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "total_items",
+        "supplier",
+        "nomor_po",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "po_created_from_quotation",
+      "function": "notify_po_created_from_quotation",
+      "expected_variables": [
+        "module",
+        "id",
+        "po_number",
+        "quotation_number",
+        "customer_name",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "po_number",
+            "quotation_number",
+            "customer_name",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "po_delivery_created",
+      "function": "notify_po_delivery_created",
+      "expected_variables": [
+        "module",
+        "delivery_id",
+        "po_id",
+        "po_number",
+        "supplier_name",
+        "delivery_date",
+        "delivery_type",
+        "item_count",
+        "total_quantity",
+        "created_by",
+        "created_at",
+        "notes",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "delivery_id",
+            "po_id",
+            "po_number",
+            "supplier_name",
+            "delivery_date",
+            "delivery_type",
+            "item_count",
+            "total_quantity",
+            "created_by",
+            "created_at",
+            "notes",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "po_received",
+      "function": "notify_po_received",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "received_date",
+        "received_by",
+        "items_received",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "po_rejected",
+      "function": "notify_po_rejected",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "alasan",
+        "rejected_by",
+        "rejection_date",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "nomor_po",
+            "supplier_name",
+            "alasan",
+            "rejected_by",
+            "url"
+          ],
+          "missing_variables": [
+            "rejection_date",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "rejection_date",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "po_sparepart_created",
+      "function": "notify_po_sparepart_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "items_count",
+        "total_amount",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "nomor_po",
+            "supplier_name",
+            "total_items",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "items_count",
+            "total_amount",
+            "module"
+          ],
+          "extra_variables": [
+            "total_items"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "items_count",
+        "total_amount",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "po_unit_created",
+      "function": "notify_po_unit_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "unit_type",
+        "quantity",
+        "total_amount",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "nomor_po",
+            "supplier_name",
+            "unit_type",
+            "quantity",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "total_amount",
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "total_amount",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "po_verification_updated",
+      "function": "notify_po_verification_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "po_number",
+        "verification_status",
+        "verified_by",
+        "verification_date",
+        "notes",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/WarehousePO.php",
+          "keys_sent": [
+            "id",
+            "po_number",
+            "verification_status",
+            "verified_by",
+            "verification_date",
+            "notes",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "po_verified",
+      "function": "notify_po_verified",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_po",
+        "supplier_name",
+        "verified_by",
+        "verification_date",
+        "url"
+      ],
+      "calls_found": 3,
+      "implementations": [
+        {
+          "file": "app/Controllers/WarehousePO.php",
+          "keys_sent": [
+            "id",
+            "nomor_po",
+            "supplier_name",
+            "verified_by",
+            "status",
+            "url"
+          ],
+          "missing_variables": [
+            "verification_date",
+            "module"
+          ],
+          "extra_variables": [
+            "status"
+          ],
+          "status": "INCOMPLETE"
+        },
+        {
+          "file": "app/Controllers/WarehousePO.php",
+          "keys_sent": [
+            "id",
+            "nomor_po",
+            "supplier_name",
+            "verified_by",
+            "status",
+            "item_type",
+            "url"
+          ],
+          "missing_variables": [
+            "verification_date",
+            "module"
+          ],
+          "extra_variables": [
+            "status",
+            "item_type"
+          ],
+          "status": "INCOMPLETE"
+        },
+        {
+          "file": "app/Controllers/WarehousePO.php",
+          "keys_sent": [
+            "id",
+            "nomor_po",
+            "supplier_name",
+            "verified_by",
+            "status",
+            "po_type",
+            "url"
+          ],
+          "missing_variables": [
+            "verification_date",
+            "module"
+          ],
+          "extra_variables": [
+            "status",
+            "po_type"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "verification_date",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "purchase_order_created",
+      "function": "notify_purchase_order_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "po_number",
+        "vendor",
+        "amount",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "quotation_created",
+      "function": "notify_quotation_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "quotation_number",
+        "customer_name",
+        "total_value",
+        "stage",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "quotation_number",
+            "customer_name",
+            "total_value",
+            "stage",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "quotation_follow_up_required",
+      "function": "notify_quotation_follow_up_required",
+      "expected_variables": [
+        "module",
+        "id",
+        "quote_number",
+        "customer_name",
+        "days_since_sent",
+        "last_contact",
+        "assigned_to",
+        "follow_up_priority",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "quotation_sent_to_customer",
+      "function": "notify_quotation_sent_to_customer",
+      "expected_variables": [
+        "module",
+        "id",
+        "quote_number",
+        "customer_name",
+        "customer_email",
+        "sent_method",
+        "sent_by",
+        "sent_at",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "quote_number",
+            "customer_name",
+            "customer_email",
+            "sent_method",
+            "sent_by",
+            "sent_at",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "quotation_stage_changed",
+      "function": "notify_quotation_stage_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "quotation_number",
+        "customer_name",
+        "old_stage",
+        "new_stage",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Marketing.php",
+          "keys_sent": [
+            "id",
+            "quotation_number",
+            "customer_name",
+            "old_stage",
+            "new_stage",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "role_created",
+      "function": "notify_role_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "role_name",
+        "permissions_count",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "role_saved",
+      "function": "notify_role_saved",
+      "expected_variables": [
+        "module",
+        "id",
+        "role_name",
+        "action",
+        "permissions_count",
+        "saved_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Admin/RoleController.php",
+          "keys_sent": [
+            "id",
+            "role_name",
+            "action",
+            "permissions_count",
+            "saved_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "role_updated",
+      "function": "notify_role_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "role_name",
+        "updated_by",
+        "changes",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "service_assignment_created",
+      "function": "notify_service_assignment_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "role",
+        "start_date",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/ServiceAreaManagementController.php",
+          "keys_sent": [
+            "id",
+            "employee_name",
+            "area_name",
+            "role",
+            "start_date",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "service_assignment_deleted",
+      "function": "notify_service_assignment_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "deleted_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/ServiceAreaManagementController.php",
+          "keys_sent": [
+            "id",
+            "employee_name",
+            "area_name",
+            "deleted_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "service_assignment_updated",
+      "function": "notify_service_assignment_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "employee_name",
+        "area_name",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/ServiceAreaManagementController.php",
+          "keys_sent": [
+            "id",
+            "employee_name",
+            "area_name",
+            "changes",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "sparepart_added",
+      "function": "notify_sparepart_added",
+      "expected_variables": [
+        "module",
+        "id",
+        "nama_sparepart",
+        "kode_sparepart",
+        "qty",
+        "unit",
+        "supplier",
+        "added_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "sparepart_low_stock",
+      "function": "notify_sparepart_low_stock",
+      "expected_variables": [
+        "module",
+        "id",
+        "nama_sparepart",
+        "kode_sparepart",
+        "qty",
+        "minimum_stock",
+        "unit",
+        "location",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "id",
+            "nama_sparepart",
+            "kode",
+            "stok_saat_ini",
+            "minimum_stock",
+            "lokasi",
+            "url"
+          ],
+          "missing_variables": [
+            "unit",
+            "module",
+            "kode_sparepart",
+            "qty",
+            "location"
+          ],
+          "extra_variables": [
+            "stok_saat_ini",
+            "kode",
+            "lokasi"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "unit",
+        "module",
+        "kode_sparepart",
+        "qty",
+        "location"
+      ]
+    },
+    {
+      "trigger_event": "sparepart_out_of_stock",
+      "function": "notify_sparepart_out_of_stock",
+      "expected_variables": [
+        "module",
+        "id",
+        "nama_sparepart",
+        "kode_sparepart",
+        "last_used_date",
+        "location",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "id",
+            "nama_sparepart",
+            "kode",
+            "lokasi",
+            "url"
+          ],
+          "missing_variables": [
+            "last_used_date",
+            "kode_sparepart",
+            "location",
+            "module"
+          ],
+          "extra_variables": [
+            "kode",
+            "lokasi"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "last_used_date",
+        "kode_sparepart",
+        "location",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "sparepart_returned",
+      "function": "notify_sparepart_returned",
+      "expected_variables": [
+        "module",
+        "return_id",
+        "sparepart_id",
+        "sparepart_name",
+        "quantity",
+        "condition",
+        "returned_by",
+        "returned_from",
+        "confirmed_by",
+        "confirmed_at",
+        "notes",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse/SparepartUsageController.php",
+          "keys_sent": [
+            "return_id",
+            "sparepart_id",
+            "sparepart_name",
+            "quantity",
+            "condition",
+            "returned_by",
+            "returned_from",
+            "confirmed_by",
+            "confirmed_at",
+            "notes",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "sparepart_used",
+      "function": "notify_sparepart_used",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "sparepart_name",
+        "quantity",
+        "unit_code",
+        "used_by",
+        "url"
+      ],
+      "calls_found": 2,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "id",
+            "nama_sparepart",
+            "kode",
+            "qty",
+            "lokasi",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module",
+            "unit_code",
+            "quantity",
+            "used_by",
+            "sparepart_name",
+            "wo_number"
+          ],
+          "extra_variables": [
+            "kode",
+            "lokasi",
+            "updated_by",
+            "qty",
+            "nama_sparepart"
+          ],
+          "status": "INCOMPLETE"
+        },
+        {
+          "file": "app/Controllers/WorkOrderController.php",
+          "keys_sent": [
+            "id",
+            "wo_number",
+            "sparepart_name",
+            "quantity",
+            "unit_code",
+            "used_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "sparepart_validation_saved",
+      "function": "notify_sparepart_validation_saved",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "sparepart_count",
+        "validated_by",
+        "validation_date",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/WorkOrderController.php",
+          "keys_sent": [
+            "id",
+            "wo_number",
+            "sparepart_count",
+            "validated_by",
+            "validation_date",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "spk_assigned",
+      "function": "notify_spk_assigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_spk",
+        "no_unit",
+        "mechanic_name",
+        "assigned_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Service.php",
+          "keys_sent": [
+            "id",
+            "nomor_spk",
+            "unit_id",
+            "attachment_id",
+            "assigned_by",
+            "url"
+          ],
+          "missing_variables": [
+            "no_unit",
+            "mechanic_name",
+            "module"
+          ],
+          "extra_variables": [
+            "unit_id",
+            "attachment_id"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "no_unit",
+        "mechanic_name",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "spk_cancelled",
+      "function": "notify_spk_cancelled",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_spk",
+        "pelanggan",
+        "alasan",
+        "cancelled_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "spk_completed",
+      "function": "notify_spk_completed",
+      "expected_variables": [
+        "module",
+        "spk_id",
+        "spk_number",
+        "unit_code",
+        "work_type",
+        "actual_duration",
+        "result",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "spk_created",
+      "function": "notify_spk_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_spk",
+        "pelanggan",
+        "departemen",
+        "url",
+        "spk_id",
+        "spk_number",
+        "unit_code",
+        "work_type",
+        "assigned_to",
+        "target_date",
+        "priority",
+        "created_by"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "spk_fabrication_completed",
+      "function": "notify_spk_fabrication_completed",
+      "expected_variables": [
+        "module",
+        "spk_id",
+        "spk_number",
+        "stage",
+        "pelanggan",
+        "lokasi",
+        "approved_by",
+        "approved_at",
+        "attachment_info",
+        "fabrication_notes",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "spk_pdi_completed",
+      "function": "notify_spk_pdi_completed",
+      "expected_variables": [
+        "module",
+        "spk_id",
+        "spk_number",
+        "stage",
+        "pelanggan",
+        "lokasi",
+        "approved_by",
+        "approved_at",
+        "spk_status",
+        "ready_for_delivery",
+        "pdi_results",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "spk_unit_prep_completed",
+      "function": "notify_spk_unit_prep_completed",
+      "expected_variables": [
+        "module",
+        "spk_id",
+        "spk_number",
+        "stage",
+        "pelanggan",
+        "lokasi",
+        "approved_by",
+        "approved_at",
+        "unit_info",
+        "items_prepared",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "supplier_created",
+      "function": "notify_supplier_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "supplier_name",
+        "supplier_code",
+        "contact_person",
+        "phone",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "kode_supplier",
+            "nama_supplier",
+            "business_type",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "contact_person",
+            "phone",
+            "module",
+            "supplier_name",
+            "supplier_code"
+          ],
+          "extra_variables": [
+            "business_type",
+            "nama_supplier",
+            "kode_supplier"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "contact_person",
+        "phone",
+        "module",
+        "supplier_name",
+        "supplier_code"
+      ]
+    },
+    {
+      "trigger_event": "supplier_deleted",
+      "function": "notify_supplier_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "supplier_name",
+        "deleted_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "kode_supplier",
+            "nama_supplier",
+            "deleted_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module",
+            "supplier_name"
+          ],
+          "extra_variables": [
+            "nama_supplier",
+            "kode_supplier"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module",
+        "supplier_name"
+      ]
+    },
+    {
+      "trigger_event": "supplier_updated",
+      "function": "notify_supplier_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "supplier_name",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Purchasing.php",
+          "keys_sent": [
+            "id",
+            "kode_supplier",
+            "nama_supplier",
+            "business_type",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module",
+            "supplier_name"
+          ],
+          "extra_variables": [
+            "business_type",
+            "nama_supplier",
+            "kode_supplier"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module",
+        "supplier_name"
+      ]
+    },
+    {
+      "trigger_event": "unit_location_updated",
+      "function": "notify_unit_location_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_code",
+        "old_location",
+        "new_location",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/UnitRolling.php",
+          "keys_sent": [
+            "id",
+            "unit_code",
+            "old_location",
+            "new_location",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "unit_prep_completed",
+      "function": "notify_unit_prep_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "nomor_spk",
+        "mechanic",
+        "completion_date",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Service.php",
+          "keys_sent": [
+            "id",
+            "no_unit",
+            "nomor_spk",
+            "verified_by",
+            "verification_date",
+            "url"
+          ],
+          "missing_variables": [
+            "mechanic",
+            "completion_date",
+            "module"
+          ],
+          "extra_variables": [
+            "verification_date",
+            "verified_by"
+          ],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "mechanic",
+        "completion_date",
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "unit_prep_started",
+      "function": "notify_unit_prep_started",
+      "expected_variables": [
+        "module",
+        "id",
+        "no_unit",
+        "nomor_spk",
+        "mechanic",
+        "start_date",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "unit_verification_saved",
+      "function": "notify_unit_verification_saved",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "unit_code",
+        "verification_status",
+        "verified_by",
+        "verification_date",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/WorkOrderController.php",
+          "keys_sent": [
+            "id",
+            "wo_number",
+            "unit_code",
+            "verification_status",
+            "verified_by",
+            "verification_date",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "user_activated",
+      "function": "notify_user_activated",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "activated_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "user_created",
+      "function": "notify_user_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "role",
+        "division",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "user_deactivated",
+      "function": "notify_user_deactivated",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "reason",
+        "deactivated_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "user_deleted",
+      "function": "notify_user_deleted",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "deleted_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "user_permissions_updated",
+      "function": "notify_user_permissions_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "user_name",
+        "permissions_changed",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Admin/AdvancedUserManagement.php",
+          "keys_sent": [
+            "id",
+            "user_name",
+            "permissions_changed",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "user_removed_from_division",
+      "function": "notify_user_removed_from_division",
+      "expected_variables": [
+        "module",
+        "id",
+        "user_name",
+        "division_name",
+        "removed_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Admin/AdvancedUserManagement.php",
+          "keys_sent": [
+            "id",
+            "user_name",
+            "division_name",
+            "removed_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "user_updated",
+      "function": "notify_user_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "username",
+        "email",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "warehouse_stock_alert",
+      "function": "notify_warehouse_stock_alert",
+      "expected_variables": [
+        "module",
+        "item_id",
+        "item_name",
+        "current_stock",
+        "minimum_stock",
+        "warehouse_name",
+        "unit",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/Warehouse.php",
+          "keys_sent": [
+            "item_id",
+            "item_name",
+            "current_stock",
+            "minimum_stock",
+            "warehouse_name",
+            "unit",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "warehouse_stocktake_completed",
+      "function": "notify_warehouse_stocktake_completed",
+      "expected_variables": [
+        "module",
+        "stocktake_id",
+        "stocktake_code",
+        "warehouse_name",
+        "items_counted",
+        "discrepancies",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "warehouse_transfer_completed",
+      "function": "notify_warehouse_transfer_completed",
+      "expected_variables": [
+        "module",
+        "transfer_id",
+        "transfer_code",
+        "from_warehouse",
+        "to_warehouse",
+        "item_count",
+        "completed_by",
+        "completed_at",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "warehouse_unit_updated",
+      "function": "notify_warehouse_unit_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "unit_code",
+        "changes",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "work_order_assigned",
+      "function": "notify_work_order_assigned",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "mechanic_name",
+        "priority",
+        "assigned_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "work_order_cancelled",
+      "function": "notify_work_order_cancelled",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "cancellation_reason",
+        "cancelled_by",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "work_order_completed",
+      "function": "notify_work_order_completed",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "completion_date",
+        "mechanic",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "work_order_created",
+      "function": "notify_work_order_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "priority",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "work_order_in_progress",
+      "function": "notify_work_order_in_progress",
+      "expected_variables": [
+        "module",
+        "id",
+        "nomor_wo",
+        "unit_code",
+        "mechanic",
+        "progress",
+        "url"
+      ],
+      "calls_found": 0,
+      "implementations": [],
+      "status": "NOT_IMPLEMENTED",
+      "issue": "Function not called anywhere"
+    },
+    {
+      "trigger_event": "workorder_created",
+      "function": "notify_workorder_created",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "unit_code",
+        "order_type",
+        "priority",
+        "category",
+        "complaint",
+        "created_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/WorkOrderController.php",
+          "keys_sent": [
+            "id",
+            "wo_number",
+            "unit_code",
+            "order_type",
+            "priority",
+            "category",
+            "complaint",
+            "created_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "workorder_status_changed",
+      "function": "notify_workorder_status_changed",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "unit_code",
+        "old_status",
+        "new_status",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/WorkOrderController.php",
+          "keys_sent": [
+            "id",
+            "wo_number",
+            "unit_code",
+            "old_status",
+            "new_status",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    },
+    {
+      "trigger_event": "workorder_ttr_updated",
+      "function": "notify_workorder_ttr_updated",
+      "expected_variables": [
+        "module",
+        "id",
+        "wo_number",
+        "unit_code",
+        "ttr_hours",
+        "updated_by",
+        "url"
+      ],
+      "calls_found": 1,
+      "implementations": [
+        {
+          "file": "app/Controllers/WorkOrderController.php",
+          "keys_sent": [
+            "id",
+            "wo_number",
+            "unit_code",
+            "ttr_hours",
+            "updated_by",
+            "url"
+          ],
+          "missing_variables": [
+            "module"
+          ],
+          "extra_variables": [],
+          "status": "INCOMPLETE"
+        }
+      ],
+      "status": "INCOMPLETE",
+      "missing_globally": [
+        "module"
+      ]
+    }
+  ]
+}

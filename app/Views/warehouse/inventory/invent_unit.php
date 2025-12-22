@@ -503,8 +503,6 @@ $can_export = $permissions['export'];
     }
 
     function viewUnit(id) {
-        console.log('viewUnit called for ID:', id);
-        
         $.ajax({
             url: `<?= base_url('warehouse/inventory/get-unit-full-detail/') ?>${id}`,
             type: 'GET',
@@ -514,8 +512,6 @@ $can_export = $permissions['export'];
                 $('#viewUnitModal').modal('show');
             },
             success: function(response) {
-                console.log('AJAX Success Response:', response);
-                
                 if (response.success) {
                     const data = response.data;
                     currentUnitData = data; // Store data for modal actions
@@ -569,21 +565,11 @@ $can_export = $permissions['export'];
             return String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;');
         };
         
-        const formatCurrency = (value) => {
-            if (!value || value === '' || value === null) return '-';
-            return new Intl.NumberFormat('id-ID', { 
-                style: 'currency', 
-                currency: 'IDR',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(value);
-        };
-        
         const formatDate = (dateStr) => {
             if (!dateStr || dateStr === '' || dateStr === null) return '-';
             return new Date(dateStr).toLocaleDateString('id-ID', { 
                 year: 'numeric', 
-                month: 'long', 
+                month: 'short', 
                 day: 'numeric' 
             });
         };
@@ -604,319 +590,301 @@ $can_export = $permissions['export'];
             else if (s.includes('RENTAL_INACTIVE')) cls = 'bg-secondary';
             return `<span class="badge ${cls}">${h(status)}</span>`;
         };
+
+        const getSiloBadge = (status) => {
+            if (!status || status === 'BELUM_ADA') return '<span class="badge bg-secondary">NO SILO</span>';
+            const s = status.toUpperCase();
+            if (s === 'SILO_TERBIT') return '<span class="badge bg-success">SILO ISSUED</span>';
+            if (s === 'SILO_EXPIRED') return '<span class="badge bg-danger">EXPIRED</span>';
+            if (s === 'PENGAJUAN_PJK3') return '<span class="badge bg-info">PJK3 SUBMISSION</span>';
+            if (s === 'TESTING_PJK3') return '<span class="badge bg-info">PJK3 TESTING</span>';
+            if (s === 'SURAT_KETERANGAN_PJK3') return '<span class="badge bg-info">PJK3 LETTER</span>';
+            if (s === 'PENGAJUAN_UPTD') return '<span class="badge bg-warning text-dark">UPTD SUBMISSION</span>';
+            if (s === 'PROSES_UPTD') return '<span class="badge bg-warning text-dark">UPTD PROCESS</span>';
+            return `<span class="badge bg-secondary">${h(status)}</span>`;
+        };
         
-        console.log('Creating detail HTML for data:', data);
-        
-        // Create attachment gallery
-        let attachmentHtml = '';
+        // Create simple attachment table
+        let attachmentRows = '';
         if (data.attachments && data.attachments.length > 0) {
-            attachmentHtml = data.attachments.map(att => `
-                <div class="col-md-6 mb-3">
-                    <div class="card border-start border-primary border-3">
-                        <div class="card-body py-2">
-                            <div class="d-flex justify-content-between align-items-center mb-1">
-                                <h6 class="card-title mb-0 text-primary">${h(att.attachment_name || att.tipe_item)}</h6>
-                                <span class="badge bg-${att.attachment_status === 'AVAILABLE' ? 'success' : att.attachment_status === 'USED' ? 'warning' : 'secondary'} rounded-pill">
-                                    ${h(att.attachment_status)}
-                                </span>
-                            </div>
-                            <div class="row text-sm">
-                                <div class="col-6">
-                                    <small class="text-muted">Type:</small><br>
-                                    <small>${h(att.attachment_type || att.tipe_item)}</small>
-                                </div>
-                                <div class="col-6">
-                                    <small class="text-muted">Serial:</small><br>
-                                    <small>${h(att.sn_attachment || att.sn_baterai || att.sn_charger)}</small>
-                                </div>
-                                <div class="col-6 mt-1">
-                                    <small class="text-muted">Condition:</small><br>
-                                    <small class="badge bg-${att.kondisi_fisik === 'Baik' ? 'success' : att.kondisi_fisik === 'Rusak Ringan' ? 'warning' : 'danger'}">${h(att.kondisi_fisik)}</small>
-                                </div>
-                                <div class="col-6 mt-1">
-                                    <small class="text-muted">Completeness:</small><br>
-                                    <small class="badge bg-${att.kelengkapan === 'Lengkap' ? 'success' : 'warning'}">${h(att.kelengkapan)}</small>
-                                </div>
-                                <div class="col-12 mt-2">
-                                    <div class="d-flex align-items-center">
-                                        <i class="fas fa-map-marker-alt text-${att.is_following_unit ? 'success' : 'secondary'} me-1"></i>
-                                        <small class="text-muted me-1">${h(att.location_label || 'Lokasi')}:</small>
-                                        <small class="fw-bold text-${att.is_following_unit ? 'success' : 'dark'}">${h(att.smart_location || att.lokasi_penyimpanan || 'Tidak diketahui')}</small>
-                                        ${att.is_following_unit ? '<span class="badge bg-success ms-1" style="font-size: 0.6rem;">Mengikuti Unit</span>' : ''}
-                                    </div>
-                                </div>
-                            </div>
-                            ${att.catatan_fisik ? `<hr class="my-2"><small class="text-muted">${h(att.catatan_fisik)}</small>` : ''}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
+            attachmentRows = data.attachments.map((att, index) => {
+                // Initialize variables
+                let name = '';
+                let type = '';
+                let serialNum = '-';
+                let status = 'N/A';
+                let condition = 'N/A';
+                let location = 'Not Set';
+                
+                // Determine type based on tipe_item field
+                const itemType = (att.tipe_item || '').toLowerCase();
+                
+                if (itemType === 'battery' || att.sn_baterai) {
+                    // BATTERY - build comprehensive name with brand and type
+                    const batteryBrand = att.merk_baterai || '';
+                    const batteryType = att.baterai_type || '';
+                    const batteryJenis = att.jenis_baterai || '';
+                    
+                    // Build name with available info
+                    const nameParts = [];
+                    if (batteryBrand) nameParts.push(batteryBrand);
+                    if (batteryJenis) nameParts.push(batteryJenis);
+                    if (batteryType) nameParts.push(batteryType);
+                    
+                    name = nameParts.length > 0 ? nameParts.join(' - ') : 'Battery';
+                    type = 'BATTERY';
+                    serialNum = att.sn_baterai || '-';
+                    status = att.attachment_status || att.status_baterai || att.status || 'N/A';
+                    condition = att.kondisi_fisik || att.kondisi_baterai || att.kondisi || 'N/A';
+                    location = att.smart_location || att.lokasi_penyimpanan || att.lokasi_baterai || 'Not Set';
+                } 
+                else if (itemType === 'charger' || att.sn_charger) {
+                    // CHARGER - build comprehensive name with brand
+                    const chargerBrand = att.merk_charger || '';
+                    const chargerType = att.charger_type || '';
+                    
+                    // Build name with available info
+                    const nameParts = [];
+                    if (chargerBrand) nameParts.push(chargerBrand);
+                    if (chargerType) nameParts.push(chargerType);
+                    
+                    name = nameParts.length > 0 ? nameParts.join(' - ') : 'Charger';
+                    type = 'CHARGER';
+                    serialNum = att.sn_charger || '-';
+                    status = att.attachment_status || att.status_charger || att.status || 'N/A';
+                    condition = att.kondisi_fisik || att.kondisi_charger || att.kondisi || 'N/A';
+                    location = att.smart_location || att.lokasi_penyimpanan || att.lokasi_charger || 'Not Set';
+                }
+                else {
+                    // REGULAR ATTACHMENT
+                    name = att.attachment_name || att.nama_attachment || att.nama || att.name || 'Attachment';
+                    type = (att.attachment_type || att.tipe_attachment || att.tipe_item || 'ATTACHMENT').toUpperCase();
+                    serialNum = att.sn_attachment || att.serial_number || att.serial_number_attachment || '-';
+                    status = att.attachment_status || att.status || att.status_item || 'N/A';
+                    condition = att.kondisi_fisik || att.kondisi || att.physical_condition || 'N/A';
+                    location = att.smart_location || att.lokasi_penyimpanan || att.lokasi_attachment || att.location || att.lokasi || 'Not Set';
+                }
+                
+                return `
+                <tr>
+                    <td><strong>${h(name)}</strong></td>
+                    <td>${h(type)}</td>
+                    <td><code class="small">${h(serialNum)}</code></td>
+                    <td><span class="badge bg-light text-dark border">${h(status)}</span></td>
+                    <td>${h(condition)}</td>
+                    <td><small class="text-muted">${h(location)}</small></td>
+                </tr>
+                `;
+            }).join('');
         } else {
-            attachmentHtml = '<div class="col-12"><div class="alert alert-info mb-0"><i class="fas fa-info-circle me-2"></i>No attachments related to this unit.</div></div>';
+            attachmentRows = '<tr><td colspan="6" class="text-center text-muted py-3">No attachments available</td></tr>';
         }
         
         return `
-            <!-- Header Info Bar -->
-            <div class="bg-light border-bottom p-3">
+            <!-- Simple Header -->
+            <div class="border-bottom px-3 py-3" style="background-color: #f8f9fa;">
                 <div class="row align-items-center">
                     <div class="col-md-8">
-                        <h4 class="mb-1">${h(data.merk_unit)} ${h(data.model_unit)}</h4>
-                        <p class="mb-0 text-muted">
-                            <i class="fas fa-barcode me-2 text-secondary"></i>SN: ${h(data.serial_number)} 
-                            ${data.no_unit ? `| <i class="fas fa-hashtag me-1 text-secondary"></i>Unit Number: ${h(data.no_unit)}` : ''}
-                        </p>
+                        <div class="d-flex align-items-center gap-2 mb-2">
+                            ${data.no_unit ? `<span class="badge text-dark px-2 py-1" style="background-color: #dce4f7; font-size: 0.75rem; font-weight: 600;">UNIT NO: ${h(data.no_unit)}</span>` : ''}
+                            <h5 class="mb-0">${h(data.merk_unit)} ${h(data.model_unit)}</h5>
+                        </div>
+                        <div class="text-muted small">
+                            <i class="fas fa-barcode me-1"></i>Serial Number: <strong>${h(data.serial_number || data.serial_number_po || data.sn_unit || 'Not Available')}</strong>
+                        </div>
                     </div>
                     <div class="col-md-4 text-end">
-                        <div class="mb-2">${getStatusBadge(data.status_unit_name)}</div>
-                        <small class="text-muted"><i class="fas fa-map-marker-alt me-1 text-secondary"></i>${h(data.display_location || data.lokasi_unit)}</small>
-                        <br><small class="text-muted" style="font-size: 0.7rem;">${h(data.location_label || 'Lokasi')}</small>
+                        ${getStatusBadge(data.status_unit_name)}
+                        <div class="small text-muted mt-2">
+                            <i class="fas fa-map-marker-alt me-1"></i>${h(data.display_location || data.lokasi_unit || 'Location Not Set')}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Tabbed Content -->
-            <div class="p-3">
-                <ul class="nav nav-tabs nav-fill mb-3" id="unitDetailTabs" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="basic-tab" data-bs-toggle="tab" data-bs-target="#basic" type="button" role="tab">
-                            <i class="fas fa-info-circle me-1"></i>Basic Information
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="specs-tab" data-bs-toggle="tab" data-bs-target="#specs" type="button" role="tab">
-                            <i class="fas fa-cogs me-1"></i>Specifications
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="customer-tab" data-bs-toggle="tab" data-bs-target="#customer" type="button" role="tab">
-                            <i class="fas fa-user-tie me-1"></i>Customer & Area
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="attachments-tab" data-bs-toggle="tab" data-bs-target="#attachments" type="button" role="tab">
-                            <i class="fas fa-paperclip me-1"></i>Attachment
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="contract-tab" data-bs-toggle="tab" data-bs-target="#contract" type="button" role="tab">
-                            <i class="fas fa-handshake me-1"></i>Contract
-                        </button>
-                    </li>
-                </ul>
+            <!-- Tab Navigation -->
+            <ul class="nav nav-tabs px-3 pt-2" style="background-color: #f8f9fa; margin-bottom: 0;">
+                <li class="nav-item">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-unit-info">
+                        <i class="fas fa-info-circle me-1"></i>Unit Details
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-customer">
+                        <i class="fas fa-user-tie me-1"></i>Customer & Contract
+                    </button>
+                </li>
+            </ul>
 
-                <div class="tab-content" id="unitDetailTabContent">
-                    <!-- Basic Information Tab -->
-                    <div class="tab-pane fade show active" id="basic" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card border-primary">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-truck me-2 text-secondary"></i>Unit Information</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="40%"><strong>Unit Number</strong></td><td>: ${h(data.id_inventory_unit)}</td></tr>
-                                            <tr><td><strong>Serial Number</strong></td><td>: <code>${h(data.serial_number)}</code></td></tr>
-                                            <tr><td><strong>Unit Number</strong></td><td>: ${h(data.no_unit) || '<span class="text-muted">Not available</span>'}</td></tr>
-                                            <tr><td><strong>Brand</strong></td><td>: ${h(data.merk_unit)}</td></tr>
-                                            <tr><td><strong>Model</strong></td><td>: ${h(data.model_unit)}</td></tr>
-                                            <tr><td><strong>Unit Type</strong></td><td>: ${h(data.nama_tipe_unit)}</td></tr>
-                                            <tr><td><strong>Capacity</strong></td><td>: ${h(data.kapasitas_unit)}</td></tr>
-                                            <tr><td><strong>Year</strong></td><td>: ${h(data.tahun_unit)}</td></tr>
-                                            <tr><td><strong>Department</strong></td><td>: ${h(data.nama_departemen)}</td></tr>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-success">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-calendar me-2 text-secondary"></i>Timeline & Status</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="40%"><strong>Status</strong></td><td>: ${getStatusBadge(data.status_unit_name)}</td></tr>
-                                            <tr><td><strong>${h(data.location_label || 'Location')}</strong></td><td>: <i class="fas fa-map-marker-alt text-${data.is_rental_active ? 'success' : 'danger'} me-1"></i>${h(data.display_location || data.lokasi_unit)}</td></tr>
-                                            ${data.is_rental_active && data.lokasi_unit ? `<tr><td><strong>Warehouse Location</strong></td><td>: <i class="fas fa-warehouse text-secondary me-1"></i>${h(data.lokasi_unit)}</td></tr>` : ''}
-                                            <tr><td><strong>Entry Date</strong></td><td>: ${formatDate(data.tanggal_masuk)}</td></tr>
-                                            <tr><td><strong>Update Date</strong></td><td>: ${formatDate(data.tanggal_update)}</td></tr>
-                                            <tr><td><strong>Shipping Date</strong></td><td>: ${formatDate(data.tanggal_kirim)}</td></tr>
-                                            ${data.workflow_status ? `<tr><td><strong>Workflow</strong></td><td>: <span class="badge bg-info">${h(data.workflow_status)}</span></td></tr>` : ''}
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+            <!-- Tab Content -->
+            <div class="tab-content p-3">
+                <!-- Tab 1: Unit Details -->
+                <div class="tab-pane fade show active" id="tab-unit-info">
+                    <!-- Basic Information -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr><td width="40%" class="text-muted">Unit Type</td><td><strong>${h(data.nama_tipe_unit)}</strong></td></tr>
+                                <tr><td class="text-muted">Capacity</td><td><strong>${h(data.kapasitas_unit)}</strong></td></tr>
+                                <tr><td class="text-muted">Year</td><td>${h(data.tahun_unit)}</td></tr>
+                                <tr><td class="text-muted">Department</td><td>${h(data.nama_departemen)}</td></tr>
+                                <tr><td class="text-muted">HM (Hour Meter)</td><td><span class="badge bg-primary text-white px-2">${h(data.hm_unit) || '0'} Hours</span></td></tr>
+                            </table>
                         </div>
-                        ${data.keterangan ? `
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="card border-info">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-sticky-note me-2 text-secondary"></i>Description</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p class="mb-0">${h(data.keterangan)}</p>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-md-6">
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr><td width="40%" class="text-muted">Entry Date</td><td>${formatDate(data.tanggal_masuk)}</td></tr>
+                                <tr><td class="text-muted">Update Date</td><td>${formatDate(data.tanggal_update)}</td></tr>
+                                <tr><td class="text-muted">Shipping Date</td><td>${formatDate(data.tanggal_kirim)}</td></tr>
+                                <tr><td class="text-muted">Location Type</td><td><strong>${h(data.location_label || 'Warehouse')}</strong></td></tr>
+                                ${data.workflow_status ? `<tr><td class="text-muted">Workflow</td><td><span class="badge bg-info text-white px-2">${h(data.workflow_status)}</span></td></tr>` : ''}
+                            </table>
                         </div>
-                        ` : ''}
                     </div>
 
-                    <!-- Specifications Tab -->
-                    <div class="tab-pane fade" id="specs" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card border-light">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-cogs me-2 text-secondary"></i>Main Components</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>Mast Type</strong></td><td>: ${h(data.tipe_mast)}</td></tr>
-                                            <tr><td><strong>Mast Height</strong></td><td>: ${h(data.tinggi_mast)}</td></tr>
-                                            <tr><td><strong>Mast SN</strong></td><td>: <code>${h(data.sn_mast)}</code></td></tr>
-                                            <tr><td><strong>Engine Brand</strong></td><td>: ${h(data.merk_mesin)}</td></tr>
-                                            <tr><td><strong>Engine Model</strong></td><td>: ${h(data.model_mesin)}</td></tr>
-                                            <tr><td><strong>Engine SN</strong></td><td>: <code>${h(data.sn_mesin)}</code></td></tr>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-light">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-circle me-2 text-secondary"></i>Wheels & Tires</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>Tire Type</strong></td><td>: ${h(data.tipe_ban)}</td></tr>
-                                            <tr><td><strong>Wheel Type</strong></td><td>: ${h(data.tipe_roda)}</td></tr>
-                                            <tr><td><strong>Valves</strong></td><td>: ${h(data.jumlah_valve)}</td></tr>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                    <!-- Specifications -->
+                    <h6 class="border-bottom pb-2 mb-3 mt-2"><i class="fas fa-cogs me-2"></i>Specifications</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="mb-2"><span class="badge bg-secondary text-white px-2 py-1" style="font-size: 0.7rem;">MAIN COMPONENTS</span></div>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr><td width="40%" class="text-muted">Mast Type</td><td>${h(data.tipe_mast)}</td></tr>
+                                <tr><td class="text-muted">Mast Height</td><td>${h(data.tinggi_mast)}</td></tr>
+                                <tr><td class="text-muted">Mast SN</td><td><code class="small">${h(data.sn_mast)}</code></td></tr>
+                                <tr><td class="text-muted">Engine Brand</td><td><strong>${h(data.merk_mesin)}</strong></td></tr>
+                                <tr><td class="text-muted">Engine Model</td><td>${h(data.model_mesin)}</td></tr>
+                                <tr><td class="text-muted">Engine SN</td><td><code class="small">${h(data.sn_mesin)}</code></td></tr>
+                            </table>
                         </div>
-                        ${data.aksesoris ? `
-                        <div class="row mt-3">
-                            <div class="col-12">
-                                <div class="card border-info">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-plus-circle me-2 text-secondary"></i>Accessories</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <p class="mb-0">${h(data.aksesoris)}</p>
-                                    </div>
+                        <div class="col-md-6">
+                            <div class="mb-2"><span class="badge bg-secondary text-white px-2 py-1" style="font-size: 0.7rem;">WHEELS & TIRES</span></div>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr><td width="40%" class="text-muted">Tire Type</td><td>${h(data.tipe_ban)}</td></tr>
+                                <tr><td class="text-muted">Wheel Type</td><td>${h(data.tipe_roda)}</td></tr>
+                                <tr><td class="text-muted">Valves</td><td>${h(data.jumlah_valve)}</td></tr>
+                            </table>
+                            ${data.aksesoris ? `
+                                <div class="mt-3">
+                                    <div class="mb-2"><span class="badge bg-secondary text-white px-2 py-1" style="font-size: 0.7rem;">ACCESSORIES</span></div>
+                                    <p class="small mb-0 text-muted">${h(data.aksesoris)}</p>
                                 </div>
-                            </div>
+                            ` : ''}
                         </div>
-                        ` : ''}
                     </div>
 
-                    <!-- Customer & Area Tab -->
-                    <div class="tab-pane fade" id="customer" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card border-primary">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-building me-2 text-secondary"></i>Customer Information</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>Name</strong></td><td>: ${h(data.customer_name)}</td></tr>
-                                            <tr><td><strong>Code</strong></td><td>: <code>${h(data.customer_code)}</code></td></tr>
-                                            <tr><td><strong>Location</strong></td><td>: ${h(data.customer_location_name)}</td></tr>
-                                            <tr><td><strong>Address</strong></td><td>: ${h(data.customer_address)}</td></tr>
-                                            <tr><td><strong>City</strong></td><td>: ${h(data.customer_city)}</td></tr>
-                                            <tr><td><strong>Contact Person</strong></td><td>: ${h(data.customer_contact)}</td></tr>
-                                            <tr><td><strong>Phone</strong></td><td>: ${h(data.customer_phone)}</td></tr>
-                                            <tr><td><strong>Email</strong></td><td>: ${h(data.customer_email)}</td></tr>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card border-success">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-map me-2 text-secondary"></i>Area Information</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>Area</strong></td><td>: ${h(data.area_name)}</td></tr>
-                                            <tr><td><strong>Area Code</strong></td><td>: <code>${h(data.area_code)}</code></td></tr>
-                                            <tr><td><strong>Description</strong></td><td>: ${h(data.area_description)}</td></tr>
-                                        </table>
-                                    </div>
-                                </div>
-                                
-                                <div class="card border-light mt-3">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-file-invoice me-2 text-secondary"></i>Purchase Order</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>PO Number</strong></td><td>: <code>${h(data.no_po)}</code></td></tr>
-                                            <tr><td><strong>PO Date</strong></td><td>: ${formatDate(data.tanggal_po)}</td></tr>
-                                            <tr><td><strong>PO Status</strong></td><td>: <span class="badge bg-secondary">${h(data.status_po)}</span></td></tr>
-                                        </table>
+                    <!-- Attachments -->
+                    <h6 class="border-bottom pb-2 mb-3">
+                        <i class="fas fa-paperclip me-2"></i>Attachments & Components <small class="text-muted">(${data.attachments ? data.attachments.length : 0})</small>
+                    </h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0" style="border: 1px solid #dee2e6;">
+                            <thead style="background-color: #e9ecef;">
+                                <tr>
+                                    <th class="text-uppercase" style="font-size: 0.75rem; font-weight: 600;">Name</th>
+                                    <th class="text-uppercase" style="font-size: 0.75rem; font-weight: 600;">Type</th>
+                                    <th class="text-uppercase" style="font-size: 0.75rem; font-weight: 600;">Serial Number</th>
+                                    <th class="text-uppercase" style="font-size: 0.75rem; font-weight: 600;">Status</th>
+                                    <th class="text-uppercase" style="font-size: 0.75rem; font-weight: 600;">Condition</th>
+                                    <th class="text-uppercase" style="font-size: 0.75rem; font-weight: 600;">Location</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${attachmentRows}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- SILO Dropdown -->
+                    <div class="mt-4">
+                        <div class="accordion" id="siloAccordion">
+                            <div class="accordion-item" style="border: 1px solid #dee2e6;">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#siloCollapse" style="background-color: #f8f9fa;">
+                                        <i class="fas fa-certificate me-2"></i><strong>SILO Information</strong>
+                                        <span class="ms-2">${getSiloBadge(data.silo_status)}</span>
+                                    </button>
+                                </h2>
+                                <div id="siloCollapse" class="accordion-collapse collapse" data-bs-parent="#siloAccordion">
+                                    <div class="accordion-body">
+                                        ${data.silo_number ? `
+                                        <div class="row">
+                                            <div class="col-md-8">
+                                                <table class="table table-sm table-borderless mb-0">
+                                                    <tr><td width="35%">SILO Number</td><td><strong>${h(data.silo_number)}</strong></td></tr>
+                                                    <tr><td>Issue Date</td><td>${formatDate(data.silo_issue_date)}</td></tr>
+                                                    <tr><td>Expiry Date</td><td class="${data.silo_status === 'SILO_EXPIRED' ? 'text-danger fw-bold' : ''}">${formatDate(data.silo_expiry_date)}</td></tr>
+                                                    ${data.silo_pjk3_name ? `<tr><td>PJK3 Company</td><td>${h(data.silo_pjk3_name)}</td></tr>` : ''}
+                                                    ${data.silo_pjk3_letter ? `<tr><td>PJK3 Letter No</td><td>${h(data.silo_pjk3_letter)}</td></tr>` : ''}
+                                                    ${data.silo_disnaker_location ? `<tr><td>Disnaker Location</td><td>${h(data.silo_disnaker_location)}</td></tr>` : ''}
+                                                </table>
+                                            </div>
+                                            <div class="col-md-4 text-end">
+                                                ${data.silo_status === 'SILO_TERBIT' && data.silo_file_path ? `
+                                                    <a href="<?= base_url() ?>${data.silo_file_path}" 
+                                                       class="btn btn-sm btn-outline-primary" 
+                                                       target="_blank">
+                                                        <i class="fas fa-download me-1"></i>Download SILO
+                                                    </a>
+                                                ` : `
+                                                    <button class="btn btn-sm btn-secondary" disabled>
+                                                        <i class="fas fa-file-pdf me-1"></i>No File
+                                                    </button>
+                                                `}
+                                            </div>
+                                        </div>
+                                        ` : `
+                                        <div class="text-center text-muted py-3">
+                                            <i class="fas fa-info-circle me-2"></i>No SILO data available for this unit
+                                        </div>
+                                        `}
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Attachments Tab -->
-                    <div class="tab-pane fade" id="attachments" role="tabpanel">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0"><i class="fas fa-paperclip me-2"></i>Attachments & Components</h6>
-                            <span class="badge bg-primary rounded-pill">${data.attachments ? data.attachments.length : 0} Items</span>
-                        </div>
-                        <div class="row">
-                            ${attachmentHtml}
-                        </div>
+                    ${data.keterangan ? `
+                    <div class="mt-3 p-2 border-start border-3 border-info" style="background-color: #f8f9fa;">
+                        <small class="text-muted"><strong>Notes:</strong></small>
+                        <p class="mb-0 small">${h(data.keterangan)}</p>
                     </div>
+                    ` : ''}
+                </div>
 
-                    <!-- Contract Tab -->
-                    <div class="tab-pane fade" id="contract" role="tabpanel">
-                        <div class="row">
-                            <div class="col-md-8">
-                                <div class="card border-success">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-handshake me-2 text-secondary"></i>Contract Information</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr><td width="35%"><strong>Contract Number</strong></td><td>: <code>${h(data.no_kontrak)}</code></td></tr>
-                                            <tr><td><strong>Status</strong></td><td>: <span class="badge bg-${data.status_kontrak === 'Aktif' ? 'success' : data.status_kontrak === 'Berakhir' ? 'danger' : 'warning'}">${h(data.status_kontrak)}</span></td></tr>
-                                            <tr><td><strong>Lease Type</strong></td><td>: ${h(data.jenis_sewa)}</td></tr>
-                                            <tr><td><strong>Start</strong></td><td>: ${formatDate(data.kontrak_mulai)}</td></tr>
-                                            <tr><td><strong>End</strong></td><td>: ${formatDate(data.kontrak_berakhir)}</td></tr>
-                                            ${data.contract_disconnect_date ? `<tr><td><strong>Disconnect</strong></td><td>: ${formatDate(data.contract_disconnect_date)}</td></tr>` : ''}
-                                            ${data.contract_disconnect_stage ? `<tr><td><strong>Stage</strong></td><td>: <span class="badge bg-warning">${h(data.contract_disconnect_stage)}</span></td></tr>` : ''}
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-4">
-                                <div class="card border-info">
-                                    <div class="card-header border-bottom">
-                                        <h6 class="mb-0"><i class="fas fa-clipboard-list me-2 text-secondary"></i>SPK & Delivery</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <table class="table table-sm table-borderless mb-0">
-                                            <tr>
-                                                <td width="40%"><strong>SPK Number</strong></td>
-                                                <td>: ${h(data.nomor_spk) || '-'}</td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Delivery Number</strong></td>
-                                                <td>: ${h(data.nomor_di) || '-'}</td>
-                                            </tr>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                <!-- Tab 2: Customer & Contract -->
+                <div class="tab-pane fade" id="tab-customer">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-2 mb-2"><i class="fas fa-building me-1"></i>Customer Information</h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr><td width="35%">Name</td><td>${h(data.customer_name)}</td></tr>
+                                <tr><td>Code</td><td><small>${h(data.customer_code)}</small></td></tr>
+                                <tr><td>Location</td><td>${h(data.customer_location_name)}</td></tr>
+                                <tr><td>Address</td><td>${h(data.customer_address)}</td></tr>
+                                <tr><td>City</td><td>${h(data.customer_city)}</td></tr>
+                                <tr><td>Contact</td><td>${h(data.customer_contact)}</td></tr>
+                                <tr><td>Phone</td><td>${h(data.customer_phone)}</td></tr>
+                                <tr><td>Email</td><td>${h(data.customer_email)}</td></tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="border-bottom pb-2 mb-2"><i class="fas fa-handshake me-1"></i>Contract Information</h6>
+                            <table class="table table-sm table-borderless mb-3">
+                                <tr><td width="35%">Contract No</td><td><small>${h(data.no_kontrak)}</small></td></tr>
+                                <tr><td>Status</td><td>${getStatusBadge(data.status_kontrak)}</td></tr>
+                                <tr><td>Lease Type</td><td>${h(data.jenis_sewa)}</td></tr>
+                                <tr><td>Start Date</td><td>${formatDate(data.kontrak_mulai)}</td></tr>
+                                <tr><td>End Date</td><td>${formatDate(data.kontrak_berakhir)}</td></tr>
+                                ${data.contract_disconnect_date ? `<tr><td>Disconnect Date</td><td>${formatDate(data.contract_disconnect_date)}</td></tr>` : ''}
+                            </table>
+
+                            <h6 class="border-bottom pb-2 mb-2"><i class="fas fa-file-alt me-1"></i>Documents</h6>
+                            <table class="table table-sm table-borderless mb-0">
+                                <tr><td width="35%">SPK Number</td><td>${h(data.nomor_spk) || '-'}</td></tr>
+                                <tr><td>Delivery Number</td><td>${h(data.nomor_di) || '-'}</td></tr>
+                                <tr><td>PO Number</td><td><small>${h(data.no_po)}</small></td></tr>
+                                <tr><td>PO Date</td><td>${formatDate(data.tanggal_po)}</td></tr>
+                            </table>
                         </div>
                     </div>
                 </div>

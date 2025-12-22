@@ -87,6 +87,104 @@ class InventoryAttachmentModel extends Model
     protected $skipValidation = false;
     protected $cleanValidationRules = true;
 
+    /**
+     * Get full attachment details with JOIN to related tables based on tipe_item.
+     * Returns complete data including merk, model, type for notifications.
+     */
+    public function getFullAttachmentDetail($id)
+    {
+        $attachment = $this->find($id);
+        if (!$attachment) {
+            return null;
+        }
+        
+        // Join based on tipe_item to get merk, model, type
+        switch ($attachment['tipe_item']) {
+            case 'attachment':
+                if (!empty($attachment['attachment_id'])) {
+                    $attachmentDetail = $this->db->table('attachment')
+                        ->where('id_attachment', $attachment['attachment_id'])
+                        ->get()->getRowArray();
+                    
+                    if ($attachmentDetail) {
+                        $attachment['merk'] = $attachmentDetail['merk'] ?? '';
+                        $attachment['model'] = $attachmentDetail['model'] ?? '';
+                        $attachment['tipe'] = $attachmentDetail['tipe'] ?? '';
+                    }
+                }
+                break;
+                
+            case 'battery':
+                if (!empty($attachment['baterai_id'])) {
+                    $batteryDetail = $this->db->table('baterai')
+                        ->where('id', $attachment['baterai_id'])
+                        ->get()->getRowArray();
+                    
+                    if ($batteryDetail) {
+                        $attachment['merk_baterai'] = $batteryDetail['merk_baterai'] ?? '';
+                        $attachment['jenis_baterai'] = $batteryDetail['jenis_baterai'] ?? '';
+                        $attachment['tipe_baterai'] = $batteryDetail['tipe_baterai'] ?? '';
+                    }
+                }
+                break;
+                
+            case 'charger':
+                if (!empty($attachment['charger_id'])) {
+                    $chargerDetail = $this->db->table('charger')
+                        ->where('id_charger', $attachment['charger_id'])
+                        ->get()->getRowArray();
+                    
+                    if ($chargerDetail) {
+                        $attachment['merk_charger'] = $chargerDetail['merk_charger'] ?? '';
+                        $attachment['tipe_charger'] = $chargerDetail['tipe_charger'] ?? '';
+                    }
+                }
+                break;
+        }
+        
+        return $attachment;
+    }
+
+    /**
+     * Build formatted attachment info string for notifications.
+     * Combines merk, model/jenis, and type based on tipe_item.
+     */
+    public function buildAttachmentInfo($attachmentData): string
+    {
+        if (!$attachmentData) {
+            return '';
+        }
+        
+        $info = '';
+        
+        switch ($attachmentData['tipe_item']) {
+            case 'attachment':
+                $info = trim(
+                    ($attachmentData['merk'] ?? '') . ' ' . 
+                    ($attachmentData['model'] ?? '') . ' ' . 
+                    ($attachmentData['tipe'] ?? '')
+                );
+                break;
+                
+            case 'battery':
+                $info = trim(
+                    ($attachmentData['merk_baterai'] ?? '') . ' ' . 
+                    ($attachmentData['tipe_baterai'] ?? '') . ' ' . 
+                    ($attachmentData['jenis_baterai'] ?? '')
+                );
+                break;
+                
+            case 'charger':
+                $info = trim(
+                    ($attachmentData['merk_charger'] ?? '') . ' ' . 
+                    ($attachmentData['tipe_charger'] ?? '')
+                );
+                break;
+        }
+        
+        return $info;
+    }
+
     /** Check if an attachment is available (attachment_status = 'AVAILABLE'). */
     public function isAvailable(int $inventoryAttachmentId): bool
     {
@@ -357,6 +455,10 @@ class InventoryAttachmentModel extends Model
         $builder->select('
             ia.*
         ');
+        
+        // Add unit info (no_unit, serial_number)
+        $builder->select('iu.no_unit, iu.serial_number as unit_serial_number');
+        $builder->join('inventory_unit iu', 'ia.id_inventory_unit = iu.id_inventory_unit', 'left');
 
         // Add status name if status_unit table exists
         if ($tablesExist['status_unit']) {
@@ -564,12 +666,9 @@ class InventoryAttachmentModel extends Model
      */
     public function attachToUnit($attachmentId, $unitId, $unitNumber = null): bool
     {
-        $locationNote = $unitNumber ? "Terpasang di Unit {$unitNumber}" : "Terpasang di Unit ID {$unitId}";
-        
+        // Note: attachment_status dan lokasi_penyimpanan akan otomatis di-set oleh trigger tr_inventory_attachment_status_sync
         return $this->update($attachmentId, [
             'id_inventory_unit' => $unitId,
-            'attachment_status' => 'IN_USE', // Auto set to IN_USE when attached
-            'lokasi_penyimpanan' => $locationNote,
             'updated_at' => date('Y-m-d H:i:s')
         ]);
         // Note: status_unit akan otomatis sinkronisasi dengan trigger berdasarkan unit status
@@ -577,19 +676,19 @@ class InventoryAttachmentModel extends Model
 
     /**
      * Swap attachment between units (untuk backup/emergency)
+     * FINAL FIX: Use raw UPDATE without trigger + fix log column names
      * @param int $attachmentId - ID attachment yang akan dipindah
-     * @param int $fromUnitId - Unit asal
-     * @param int $toUnitId - Unit tujuan
+     * @param int $fromUnitId - Unit asal  
+     * @param int $toUnitId - Unit tujuan  
      * @param string $reason - Alasan swap (backup, repair, dll)
      * @return bool
      */
     public function swapAttachmentBetweenUnits($attachmentId, $fromUnitId, $toUnitId, $reason = 'Swap for backup'): bool
     {
         $db = \Config\Database::connect();
-        $db->transStart();
         
         try {
-            // Get unit numbers
+            // Get unit numbers FIRST
             $fromUnit = $db->table('inventory_unit')
                 ->select('no_unit')
                 ->where('id_inventory_unit', $fromUnitId)
@@ -600,29 +699,46 @@ class InventoryAttachmentModel extends Model
                 ->where('id_inventory_unit', $toUnitId)
                 ->get()->getRowArray();
             
-            // Update attachment ke unit baru
-            $this->update($attachmentId, [
-                'id_inventory_unit' => $toUnitId,
-                'attachment_status' => 'IN_USE', // Tetap IN_USE
-                'lokasi_penyimpanan' => 'Terpasang di Unit ' . ($toUnit['no_unit'] ?? $toUnitId),
-                'updated_at' => date('Y-m-d H:i:s')
-            ]);
+            $toUnitNo = $toUnit['no_unit'] ?? "ID {$toUnitId}";
+            $fromUnitNo = $fromUnit['no_unit'] ?? "ID {$fromUnitId}";
+            
+            // Use Query Builder (not Model->update) to avoid any trigger issues
+            $updateResult = $db->table('inventory_attachment')
+                ->where('id_inventory_attachment', $attachmentId)
+                ->update([
+                    'id_inventory_unit' => $toUnitId,
+                    'attachment_status' => 'IN_USE',
+                    'lokasi_penyimpanan' => "Terpasang di Unit {$toUnitNo}",
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+            
+            if (!$updateResult) {
+                log_message('error', 'Failed to update attachment ' . $attachmentId . ' - affected rows: ' . $db->affectedRows());
+                return false;
+            }
             
             // Log swap activity
-            $db->table('inventory_item_unit_log')->insert([
+            // Note: action ENUM only supports 'assign' or 'remove', use 'assign' for swap
+            // Note: column is 'note' not 'catatan'
+            $logResult = $db->table('inventory_item_unit_log')->insert([
                 'id_inventory_attachment' => $attachmentId,
                 'id_inventory_unit' => $toUnitId,
-                'action' => 'swap',
-                'catatan' => "Swap from Unit {$fromUnit['no_unit']} to Unit {$toUnit['no_unit']}. Reason: {$reason}",
+                'action' => 'assign', // Use 'assign' since 'swap' not in ENUM
+                'user_id' => session('user_id') ?? null,
+                'note' => "Swap from Unit {$fromUnitNo} to Unit {$toUnitNo}. Reason: {$reason}",
                 'created_at' => date('Y-m-d H:i:s')
             ]);
             
-            $db->transComplete();
-            return $db->transStatus();
+            if (!$logResult) {
+                log_message('warning', 'Failed to insert log for swap attachment ' . $attachmentId);
+            }
+            
+            log_message('info', 'Successfully swapped attachment ' . $attachmentId . ' from Unit ' . $fromUnitNo . ' to Unit ' . $toUnitNo);
+            return true;
             
         } catch (\Exception $e) {
-            $db->transRollback();
             log_message('error', 'Swap attachment error: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
             return false;
         }
     }
