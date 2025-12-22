@@ -2083,16 +2083,21 @@ class Warehouse extends BaseController
                 // Send cross-division notification to Service
                 helper('notification');
                 if (function_exists('notify_attachment_attached')) {
+                    // Get full attachment details with JOIN
+                    $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
+                    $attachmentInfo = $attachmentModel->buildAttachmentInfo($fullAttachment);
+                    
                     notify_attachment_attached([
                         'attachment_id' => $attachmentId,
                         'unit_id' => $unitId,
-                        'unit_number' => $unit['no_unit'],
-                        'tipe_item' => $newAttachment['tipe_item'] ?? '',
-                        'attachment_info' => ($newAttachment['merk'] ?? '') . ' ' . ($newAttachment['model'] ?? ''),
+                        'no_unit' => $unit['no_unit'],
+                        'tipe_item' => $fullAttachment['tipe_item'] ?? '',
+                        'attachment_info' => $attachmentInfo,
                         'performed_by' => session('username') ?? 'System',
                         'performed_at' => date('Y-m-d H:i:s'),
                         'notes' => $notes ?? '',
-                        'url' => base_url('/warehouse/unit/view/' . $unitId)
+                        'url' => base_url('/warehouse/unit/view/' . $unitId),
+                        'module' => 'inventory'
                     ]);
                 }
                 
@@ -2329,18 +2334,22 @@ class Warehouse extends BaseController
                 // Send cross-division notification to Service
                 helper('notification');
                 if (function_exists('notify_attachment_detached')) {
-                    $attachmentDetails = $attachmentModel->find($attachmentId);
+                    // Get full attachment details with JOIN
+                    $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
+                    $attachmentInfo = $attachmentModel->buildAttachmentInfo($fullAttachment);
+                    
                     notify_attachment_detached([
                         'attachment_id' => $attachmentId,
                         'unit_id' => $attachment['id_inventory_unit'] ?? null,
-                        'unit_number' => $unitInfo,
-                        'tipe_item' => $attachmentDetails['tipe_item'] ?? '',
-                        'attachment_info' => ($attachmentDetails['merk'] ?? '') . ' ' . ($attachmentDetails['model'] ?? ''),
+                        'no_unit' => $unitInfo,
+                        'tipe_item' => $fullAttachment['tipe_item'] ?? '',
+                        'attachment_info' => $attachmentInfo,
                         'reason' => $reason,
                         'new_location' => $newLocation ?? 'Workshop',
                         'performed_by' => session('username') ?? 'System',
                         'performed_at' => date('Y-m-d H:i:s'),
-                        'url' => base_url('/warehouse/attachment/view/' . $attachmentId)
+                        'url' => base_url('/warehouse/attachment/view/' . $attachmentId),
+                        'module' => 'inventory'
                     ]);
                 }
                 

@@ -4450,12 +4450,16 @@ class Purchasing extends BaseController
                 notify_delivery_created([
                     'id' => $deliveryId,
                     'delivery_number' => $packingListNo,
+                    'nomor_delivery' => $packingListNo,  // Alias for template
                     'po_number' => $poInfo ? $poInfo->no_po : 'Unknown PO',
                     'supplier_name' => $poInfo ? $poInfo->nama_supplier : 'Unknown Supplier',
+                    'customer' => $poInfo ? $poInfo->nama_supplier : 'Unknown Supplier',  // Alias
+                    'customer_name' => $poInfo ? $poInfo->nama_supplier : 'Unknown Supplier',  // Standard
                     'delivery_date' => $deliveryDate,
                     'items_count' => $totalItems,
                     'created_by' => session()->get('user_name') ?? 'System',
-                    'url' => base_url('/purchasing/delivery-detail/' . $deliveryId)
+                    'url' => base_url('/purchasing/delivery-detail/' . $deliveryId),
+                    'module' => 'purchasing'
                 ]);
                 
                 // Send PO-specific delivery notification (for Warehouse & Purchasing cross-division)

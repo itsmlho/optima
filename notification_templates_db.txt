@@ -1,0 +1,112 @@
+id	trigger_event	title_template	message_template
+60	attachment_added	{{tipe_item}} Baru: {{serial_number}}	{{tipe_item}} baru dengan SN {{serial_number}} telah ditambahkan
+61	attachment_attached	{{tipe_item}} Dipasang: {{no_unit}}	{{tipe_item}} ({{attachment_info}}) telah dipasang ke unit {{no_unit}}
+65	attachment_broken	{{tipe_item}} RUSAK: {{serial_number}}	URGENT! {{tipe_item}} {{serial_number}} dilaporkan RUSAK
+62	attachment_detached	{{tipe_item}} Dilepas: {{no_unit}}	{{tipe_item}} ({{attachment_info}}) telah dilepas dari unit {{no_unit}}
+64	attachment_maintenance	{{tipe_item}} Maintenance: {{serial_number}}	{{tipe_item}} {{serial_number}} masuk maintenance
+63	attachment_swapped	{{tipe_item}} Swap: {{from_unit_number}} ? {{to_unit_number}}	{{tipe_item}} ({{attachment_info}}) di-swap dari unit {{from_unit_number}} ke unit {{to_unit_number}}. Alasan: {{reason}}
+138	budget_threshold_exceeded	Alert Budget: {{budget_name}}	PERINGATAN: Budget "{{budget_name}}" ({{department}}) melebihi {{threshold}}% threshold. Alokasi: Rp {{allocated_amount}}. Terpakai: Rp {{spent_amount}} ({{percentage_used}}%)
+125	contract_created	Kontrak Baru: {{contract_number}}	Kontrak {{contract_number}} telah dibuat untuk {{customer_name}} dengan nilai {{total_amount}}
+31	customer_contract_created	Kontrak Baru: {{contract_number}}	Kontrak baru {{contract_number}} telah dibuat untuk {{customer_name}}
+32	customer_contract_expired	Peringatan Kontrak Expired: {{contract_number}}	Kontrak {{contract_number}} untuk {{customer_name}} akan expired dalam {{days}} hari
+126	customer_created	Customer Baru: {{customer_name}}	Customer baru {{customer_name}} telah ditambahkan. CP: {{contact_person}}, Phone: {{phone}}
+29	customer_deleted	Customer Dihapus: {{customer_name}}	Customer {{customer_name}} telah dihapus dari sistem
+30	customer_location_added	Lokasi Baru: {{customer_name}}	Lokasi baru "{{location_name}}" telah ditambahkan untuk customer {{customer_name}}
+128	customer_status_changed	Status Customer Berubah: {{customer_name}}	Status customer {{customer_name}} ({{customer_code}}) berubah dari {{old_status}} ke {{new_status}}. Alasan: {{reason}}. Oleh: {{changed_by}}
+28	customer_updated	Customer Diupdate: {{customer_name}}	Data customer {{customer_name}} telah diperbarui
+83	delivery_arrived	Delivery Sampai: {{nomor_delivery}}	Delivery {{nomor_delivery}} telah sampai di lokasi {{customer}}
+81	delivery_assigned	Delivery Assigned: {{nomor_delivery}}	Delivery {{nomor_delivery}} telah di-assign kepada Anda
+84	delivery_completed	Delivery Selesai: {{nomor_delivery}}	Delivery {{nomor_delivery}} telah selesai untuk {{customer}}
+80	delivery_created	Delivery Baru: {{nomor_delivery}}	Delivery {{nomor_delivery}} telah dibuat untuk {{customer}}
+85	delivery_delayed	Delivery TERLAMBAT: {{nomor_delivery}}	URGENT! Delivery {{nomor_delivery}} mengalami keterlambatan
+82	delivery_in_transit	Delivery Dalam Perjalanan: {{nomor_delivery}}	Delivery {{nomor_delivery}} sedang dalam perjalanan ke {{customer}}
+108	delivery_status_changed	Status Surat Jalan Berubah	Status Surat Jalan {{delivery_number}} berubah dari {{old_status}} menjadi {{new_status}}. PO: {{po_number}}. Supplier: {{supplier_name}}. Diubah oleh: {{updated_by}} pada {{updated_at}}
+34	di_approved	DI Disetujui: {{nomor_di}}	DI {{nomor_di}} telah disetujui dan siap diproses
+37	di_cancelled	DI Dibatalkan: {{nomor_di}}	DI {{nomor_di}} telah dibatalkan. Alasan: {{alasan}}
+33	di_created	DI Baru: {{nomor_di}}	Delivery Instruction {{nomor_di}} telah dibuat oleh {{creator_name}} untuk customer {{customer_name}}. Segera proses.
+36	di_delivered	DI Selesai: {{nomor_di}}	DI {{nomor_di}} telah berhasil dikirim ke {{customer}}
+35	di_in_progress	DI Diproses: {{nomor_di}}	DI {{nomor_di}} sedang dalam proses pengiriman
+3	di_submitted	DI Siap Diproses: {{nomor_di}}	DI {{nomor_di}} siap diproses oleh tim Operational.
+52	employee_assigned	Assignment Baru: {{employee_name}}	{{employee_name}} telah di-assign ke area {{area_name}}
+53	employee_unassigned	Assignment Dihapus: {{employee_name}}	{{employee_name}} telah di-unassign dari area {{area_name}}
+133	inspection_completed	Inspeksi Selesai: {{unit_code}}	Inspeksi unit {{unit_code}} selesai. Tipe: {{inspection_type}}. Hasil: {{result}}. Temuan: {{findings_count}}. Oleh: {{completed_by}}
+132	inspection_scheduled	Inspeksi Dijadwalkan: {{unit_code}}	Inspeksi unit {{unit_code}} dijadwalkan. Tipe: {{inspection_type}}. Tanggal: {{scheduled_date}}. Assigned: {{assigned_to}}. Prioritas: {{priority}}
+54	inventory_unit_added	Unit Baru: {{no_unit}}	Unit baru {{no_unit}} ({{model}}) telah ditambahkan ke inventory
+59	inventory_unit_low_stock	Low Stock Alert: {{tipe}}	Peringatan! Stock unit {{tipe}} rendah ({{count}} unit)
+58	inventory_unit_maintenance	Unit Maintenance: {{no_unit}}	Unit {{no_unit}} masuk maintenance. Alasan: {{alasan}}
+56	inventory_unit_rental_active	Unit Di-Rental: {{no_unit}}	Unit {{no_unit}} telah aktif di-rental ke {{customer}}
+57	inventory_unit_returned	Unit Kembali: {{no_unit}}	Unit {{no_unit}} telah dikembalikan dari {{customer}}
+55	inventory_unit_status_changed	Status Unit Berubah: {{no_unit}}	Status unit {{no_unit}} berubah dari {{old_status}} menjadi {{new_status}}
+86	invoice_created	Invoice Baru: {{invoice_number}}	Invoice {{invoice_number}} telah dibuat untuk {{customer}}
+89	invoice_overdue	Invoice OVERDUE: {{invoice_number}}	Invoice {{invoice_number}} OVERDUE sejak {{due_date}}. Customer: {{customer_name}}. Segera follow up!
+88	invoice_paid	Invoice Lunas: {{invoice_number}}	Invoice {{invoice_number}} telah LUNAS ({{amount}})
+87	invoice_sent	Invoice Terkirim: {{invoice_number}}	Invoice {{invoice_number}} telah dikirim ke {{customer}}
+135	maintenance_completed	Maintenance Selesai: {{unit_code}}	Maintenance unit {{unit_code}} selesai. Tipe: {{maintenance_type}}. Durasi: {{actual_hours}}h. Parts: {{parts_replaced}}. Biaya: Rp {{total_cost}}. Oleh: {{completed_by}}
+134	maintenance_scheduled	Maintenance Dijadwalkan: {{unit_code}}	Maintenance unit {{unit_code}} dijadwalkan. Tipe: {{maintenance_type}}. Tanggal: {{scheduled_date}}. Est: {{estimated_hours}}h. Mekanik: {{assigned_mechanic}}
+96	password_reset	Password Reset: {{username}}	Password untuk akun {{username}} telah di-reset
+137	payment_overdue	PEMBAYARAN TERLAMBAT: {{invoice_number}}	URGENT: Invoice {{invoice_number}} terlambat {{days_overdue}} hari. Customer: {{customer_name}}. Outstanding: Rp {{outstanding_balance}}. Jatuh tempo: {{due_date}}
+90	payment_received	Payment Diterima: {{amount}}	Payment sebesar {{amount}} telah diterima dari {{customer}}
+136	payment_received	Pembayaran Diterima: {{invoice_number}}	Pembayaran untuk invoice {{invoice_number}} diterima. Customer: {{customer_name}}. Jumlah: Rp {{amount}}. Metode: {{payment_method}}. Oleh: {{received_by}}
+105	payment_status_updated	Status Pembayaran Diperbarui	Status pembayaran invoice {{invoice_number}} ({{customer_name}}) telah diubah dari {{old_status}} menjadi {{new_status}}. Nilai: {{amount}}. Tanggal: {{payment_date}}. Diperbarui oleh: {{updated_by}}
+99	permission_changed	Permission Diupdate	Permission Anda telah diperbarui. Silakan login ulang untuk melihat perubahan
+51	pmps_completed	PMPS Selesai [{{departemen}}]: {{unit_no}}	PMPS untuk unit {{unit_no}} telah diselesaikan
+49	pmps_due_soon	PMPS Due [{{departemen}}]: {{unit_no}}	PMPS untuk unit {{unit_no}} akan jatuh tempo dalam {{days}} hari
+50	pmps_overdue	PMPS OVERDUE [{{departemen}}]: {{unit_no}}	URGENT! PMPS untuk unit {{unit_no}} sudah OVERDUE {{days}} hari
+73	po_approved	PO Disetujui: {{nomor_po}}	Purchase Order {{nomor_po}} telah disetujui
+71	po_attachment_created	PO Attachment Baru: {{nomor_po}}	Purchase Order Attachment {{nomor_po}} telah dibuat untuk {{supplier}}
+106	po_created	Purchase Order Baru Dibuat	PO {{po_number}} telah dibuat untuk supplier {{supplier_name}}. Tipe: {{po_type}}. Nilai Total: {{total_amount}}. Tanggal Kirim: {{delivery_date}}. Dibuat oleh: {{created_by}}
+75	po_received	PO Diterima: {{nomor_po}}	Barang untuk PO {{nomor_po}} telah diterima
+74	po_rejected	PO Ditolak: {{nomor_po}}	PO {{nomor_po}} DITOLAK oleh {{rejected_by}}. Alasan: {{rejection_reason}}
+72	po_sparepart_created	PO Sparepart Baru: {{nomor_po}}	Purchase Order Sparepart {{nomor_po}} telah dibuat untuk {{supplier}}
+70	po_unit_created	PO Unit Baru: {{nomor_po}}	Purchase Order Unit {{nomor_po}} telah dibuat untuk {{supplier}}
+111	po_verification_updated	Verifikasi PO Diperbarui	Verifikasi PO {{po_number}} ({{delivery_number}}) diperbarui. Status: {{verification_status}}. Item Terverifikasi: {{verified_items}}/{{total_items}}. Catatan: {{notes}}. Diverifikasi oleh: {{verified_by}}
+76	po_verified	PO Terverifikasi: {{nomor_po}}	Purchase Order {{nomor_po}} telah terverifikasi
+20	purchase_order_created	PO Baru: {{po_number}} - {{vendor}}	Purchase Order {{po_number}} telah dibuat untuk vendor {{vendor}} dengan nilai {{amount}}. Silakan lakukan verifikasi dan proses selanjutnya.
+114	quotation_approved	Quotation Disetujui: {{quotation_number}}	Quotation {{quotation_number}} ({{customer_name}}) telah disetujui. Nilai: {{total_value}}. Disetujui oleh: {{approved_by}} pada {{approved_at}}
+38	quotation_created	Penawaran Baru: {{quotation_number}}	Quotation {{quotation_number}} telah dibuat untuk {{customer_name}} dengan nilai {{total_amount}}
+142	quotation_follow_up_required	Follow-up Diperlukan: {{quote_number}}	Quotation {{quote_number}} untuk {{customer_name}} perlu follow-up. Sudah {{days_since_sent}} hari sejak dikirim. Last contact: {{last_contact}}. Assigned: {{assigned_to}}
+115	quotation_rejected	Quotation Ditolak: {{quotation_number}}	Quotation {{quotation_number}} ({{customer_name}}) telah ditolak. Alasan: {{rejection_reason}}. Ditolak oleh: {{rejected_by}} pada {{rejected_at}}
+141	quotation_sent_to_customer	Quotation Terkirim: {{quote_number}}	Quotation {{quote_number}} telah dikirim ke {{customer_name}} via {{sent_method}}. Email: {{customer_email}}. Oleh: {{sent_by}}
+113	quotation_updated	Quotation Diperbarui: {{quotation_number}}	Quotation {{quotation_number}} ({{customer_name}}) telah diperbarui. Perubahan: {{changes}}. Diperbarui oleh: {{updated_by}}
+97	role_created	Role Baru: {{role_name}}	Role baru {{role_name}} telah dibuat
+98	role_updated	Role Diupdate: {{role_name}}	Role {{role_name}} telah diperbarui
+122	service_assignment_completed	Penugasan Selesai: {{unit_code}}	Penugasan {{unit_code}} di area {{area_name}} (Customer {{customer_name}}) telah selesai. Durasi: {{duration}} hari. Diselesaikan: {{completed_at}}
+120	service_assignment_created	Penugasan Area Baru: {{unit_code}}	{{unit_code}} ditugaskan ke area {{area_name}} untuk customer {{customer_name}}. Mulai: {{start_date}}. Selesai: {{end_date}}
+121	service_assignment_updated	Penugasan Area Diperbarui: {{unit_code}}	Penugasan {{unit_code}} (Area {{area_name}}) diperbarui. Perubahan: {{changes}}. Oleh: {{updated_by}}
+66	sparepart_added	Sparepart Baru: {{nama_sparepart}}	Sparepart {{nama_sparepart}} telah ditambahkan (Qty: {{qty}})
+68	sparepart_low_stock	Low Stock Alert: {{nama_sparepart}}	Peringatan! Stock {{nama_sparepart}} rendah (Sisa: {{qty}})
+69	sparepart_out_of_stock	OUT OF STOCK: {{nama_sparepart}}	URGENT! {{nama_sparepart}} HABIS! Segera lakukan pemesanan
+146	sparepart_returned	Sparepart Return Confirmed - {{sparepart_name}}	Sparepart return has been confirmed. Item: {{sparepart_name}}, Quantity: {{quantity}}. Returned by: {{returned_by}}, Confirmed by: {{confirmed_by}}.
+67	sparepart_used	Sparepart Digunakan: {{nama_sparepart}}	Sparepart {{nama_sparepart}} digunakan (Qty: {{qty}})
+100	spk_assigned	SPK Assigned [{{departemen}}]: {{nomor_spk}} ke {{mechanic_name}}	SPK {{nomor_spk}} telah di-assign kepada Anda. Silakan proses unit {{no_unit}}.
+103	spk_cancelled	SPK Dibatalkan [{{departemen}}]: {{nomor_spk}}	SPK {{nomor_spk}} telah dibatalkan. Alasan: {{alasan}}.
+140	spk_completed	SPK Selesai [{{departemen}}]: {{nomor_spk}}	SPK {{spk_number}} (Unit {{unit_code}}) selesai. Jenis: {{work_type}}. Durasi: {{actual_duration}}h. Hasil: {{result}}. Oleh: {{completed_by}}
+21	spk_created	SPK Baru [{{departemen}}]: {{nomor_spk}} - {{pelanggan}}	SPK {{nomor_spk}} telah dibuat untuk {{pelanggan}} departemen {{departemen}}. Unit: {{unit_no}}
+144	spk_fabrication_completed	Fabrication Completed - {{spk_number}}	Fabrication has been completed for SPK {{spk_number}}. Customer: {{pelanggan}}. Approved by: {{approved_by}}.
+145	spk_pdi_completed	PDI Completed - SPK Ready - {{spk_number}}	PDI has been completed for SPK {{spk_number}}. Unit is now READY for delivery. Customer: {{pelanggan}}. Approved by: {{approved_by}}.
+143	spk_unit_prep_completed	Unit Preparation Completed - {{spk_number}}	Unit preparation has been completed for SPK {{spk_number}}. Customer: {{pelanggan}}. Approved by: {{approved_by}}.
+77	supplier_created	Supplier Baru: {{supplier_name}}	Supplier baru {{supplier_name}} telah ditambahkan ke sistem
+79	supplier_deleted	Supplier Dihapus: {{supplier_name}}	Supplier {{supplier_name}} telah dihapus dari sistem
+78	supplier_updated	Supplier Diupdate: {{supplier_name}}	Data supplier {{supplier_name}} telah diperbarui
+123	unit_location_updated	Lokasi Unit Diperbarui: {{unit_code}}	Lokasi unit {{unit_code}} diperbarui. Dari: {{old_location}} ke {{new_location}}. Koordinat: {{coordinates}}. Oleh: {{updated_by}}
+42	unit_prep_completed	Unit Siap: {{no_unit}}	Unit {{no_unit}} telah siap untuk SPK {{nomor_spk}}
+41	unit_prep_started	Persiapan Unit Dimulai: {{no_unit}}	Persiapan unit {{no_unit}} untuk SPK {{nomor_spk}} telah dimulai
+94	user_activated	Akun Aktif: {{username}}	Akun Anda telah diaktifkan. Selamat datang di OPTIMA!
+91	user_created	User Baru: {{username}}	User baru {{username}} telah dibuat dengan role {{role}}
+95	user_deactivated	Akun Nonaktif: {{username}}	Akun {{username}} telah dinonaktifkan
+93	user_deleted	User Dihapus: {{username}}	User {{username}} telah dihapus dari sistem
+92	user_updated	User Diupdate: {{username}}	Data user {{username}} telah diperbarui
+131	warehouse_stocktake_completed	Stocktake Selesai: {{warehouse_name}}	Stocktake {{stocktake_code}} selesai untuk {{warehouse_name}}. Items: {{items_counted}}. Selisih: {{discrepancies}}. Oleh: {{completed_by}}
+129	warehouse_stock_alert	Alert Stok Rendah: {{item_name}}	URGENT: Stok {{item_name}} rendah. Saat ini: {{current_stock}} {{unit}}. Minimum: {{minimum_stock}} {{unit}}. Warehouse: {{warehouse_name}}
+130	warehouse_transfer_completed	Transfer Selesai: {{transfer_code}}	Transfer {{transfer_code}} selesai. Dari {{from_warehouse}} ke {{to_warehouse}}. Items: {{item_count}}. Oleh: {{completed_by}}
+124	warehouse_unit_updated	Unit Warehouse Diperbarui: {{unit_code}}	Status warehouse unit {{unit_code}} diperbarui. Perubahan: {{changes}}. Oleh: {{updated_by}}
+116	workorder_assigned	Work Order Ditugaskan: {{wo_number}}	WO {{wo_number}} (Unit {{unit_code}}) ditugaskan kepada {{assigned_to}}. Prioritas: {{priority}}. Target: {{target_date}}
+117	workorder_completed	WO Selesai [{{departemen}}]: {{wo_number}}	WO {{wo_number}} (Unit {{unit_code}}) telah selesai. Durasi: {{duration}} jam. Sparepart: {{parts_used}}. Biaya: {{total_cost}}. Oleh: {{completed_by}}
+118	workorder_delayed	WO Terlambat [{{departemen}}]: {{wo_number}}	WO {{wo_number}} (Unit {{unit_code}}) terlambat {{delay_days}} hari dari target. Target: {{target_date}}. Status: {{current_status}}
+119	workorder_sparepart_added	Sparepart Ditambahkan: WO {{wo_number}}	Sparepart {{part_name}} (Qty: {{quantity}}) ditambahkan ke WO {{wo_number}}. Harga: {{unit_price}}. Total: {{total_price}}
+110	workorder_status_changed	Status Work Order Berubah	Status WO {{wo_number}} (Unit {{unit_code}}) berubah dari {{old_status}} menjadi {{new_status}}. Kategori: {{category}}. Progress: {{progress}}%. Diubah oleh: {{updated_by}}
+45	work_order_assigned	WO Assigned [{{departemen}}]: {{nomor_wo}} ke {{mechanic_name}}	Work Order {{nomor_wo}} telah di-assign kepada Anda
+48	work_order_cancelled	WO Dibatalkan [{{departemen}}]: {{nomor_wo}}	Work Order {{nomor_wo}} telah dibatalkan
+47	work_order_completed	WO Selesai [{{departemen}}]: {{nomor_wo}}	Work Order {{nomor_wo}} telah diselesaikan
+44	work_order_created	WO Baru [{{departemen}}]: {{nomor_wo}} - {{unit_no}}	Work Order {{nomor_wo}} telah dibuat untuk unit {{no_unit}}
+46	work_order_in_progress	WO Dikerjakan [{{departemen}}]: {{nomor_wo}}	Work Order {{nomor_wo}} sedang dalam pengerjaan oleh {{mechanic}}

@@ -1,0 +1,3095 @@
+{
+  "missing_variables": [
+    {
+      "event": "attachment_attached",
+      "rule_id": "61",
+      "template_vars": [
+        "attachment_info",
+        "no_unit",
+        "tipe_item"
+      ],
+      "sent_vars": [
+        "attached_by",
+        "attachment_date",
+        "id",
+        "module",
+        "no_unit",
+        "serial_number",
+        "sn",
+        "tipe_item",
+        "type",
+        "unit_code",
+        "url"
+      ],
+      "missing": [
+        "attachment_info"
+      ],
+      "title": "{{tipe_item}} Dipasang: {{no_unit}}",
+      "message": "{{tipe_item}} ({{attachment_info}}) telah dipasang ke unit {{no_unit}}"
+    },
+    {
+      "event": "attachment_detached",
+      "rule_id": "62",
+      "template_vars": [
+        "attachment_info",
+        "no_unit",
+        "tipe_item"
+      ],
+      "sent_vars": [
+        "detached_by",
+        "id",
+        "module",
+        "no_unit",
+        "reason",
+        "serial_number",
+        "sn",
+        "tipe_item",
+        "type",
+        "unit_code",
+        "url"
+      ],
+      "missing": [
+        "attachment_info"
+      ],
+      "title": "{{tipe_item}} Dilepas: {{no_unit}}",
+      "message": "{{tipe_item}} ({{attachment_info}}) telah dilepas dari unit {{no_unit}}"
+    },
+    {
+      "event": "contract_created",
+      "rule_id": "125",
+      "template_vars": [
+        "contract_number",
+        "customer_name",
+        "total_amount"
+      ],
+      "sent_vars": [
+        "contract_number",
+        "contract_type",
+        "created_by",
+        "customer_name",
+        "end_date",
+        "id",
+        "module",
+        "nilai_total",
+        "no_kontrak",
+        "start_date",
+        "tanggal_mulai",
+        "tanggal_selesai",
+        "tipe_kontrak",
+        "total_value",
+        "url"
+      ],
+      "missing": [
+        "total_amount"
+      ],
+      "title": "Kontrak Baru: {{contract_number}}",
+      "message": "Kontrak {{contract_number}} telah dibuat untuk {{customer_name}} dengan nilai {{total_amount}}"
+    },
+    {
+      "event": "delivery_arrived",
+      "rule_id": "83",
+      "template_vars": [
+        "customer",
+        "nomor_delivery"
+      ],
+      "sent_vars": [
+        "arrival_time",
+        "customer_name",
+        "delivery_number",
+        "driver_name",
+        "id",
+        "location",
+        "module",
+        "nomor_delivery",
+        "url"
+      ],
+      "missing": [
+        "customer"
+      ],
+      "title": "Delivery Sampai: {{nomor_delivery}}",
+      "message": "Delivery {{nomor_delivery}} telah sampai di lokasi {{customer}}"
+    },
+    {
+      "event": "delivery_completed",
+      "rule_id": "84",
+      "template_vars": [
+        "customer",
+        "nomor_delivery"
+      ],
+      "sent_vars": [
+        "completed_by",
+        "completed_time",
+        "customer_name",
+        "delivery_number",
+        "id",
+        "module",
+        "nomor_delivery",
+        "notes",
+        "signature",
+        "url"
+      ],
+      "missing": [
+        "customer"
+      ],
+      "title": "Delivery Selesai: {{nomor_delivery}}",
+      "message": "Delivery {{nomor_delivery}} telah selesai untuk {{customer}}"
+    },
+    {
+      "event": "delivery_created",
+      "rule_id": "80",
+      "template_vars": [
+        "customer",
+        "nomor_delivery"
+      ],
+      "sent_vars": [
+        "created_by",
+        "delivery_date",
+        "delivery_number",
+        "id",
+        "items_count",
+        "module",
+        "nomor_po",
+        "nomor_surat_jalan",
+        "po_number",
+        "supplier_name",
+        "tanggal_kirim",
+        "url"
+      ],
+      "missing": [
+        "customer",
+        "nomor_delivery"
+      ],
+      "title": "Delivery Baru: {{nomor_delivery}}",
+      "message": "Delivery {{nomor_delivery}} telah dibuat untuk {{customer}}"
+    },
+    {
+      "event": "delivery_in_transit",
+      "rule_id": "82",
+      "template_vars": [
+        "customer",
+        "nomor_delivery"
+      ],
+      "sent_vars": [
+        "current_location",
+        "delivery_number",
+        "destination",
+        "driver_name",
+        "eta",
+        "id",
+        "module",
+        "nomor_delivery",
+        "url"
+      ],
+      "missing": [
+        "customer"
+      ],
+      "title": "Delivery Dalam Perjalanan: {{nomor_delivery}}",
+      "message": "Delivery {{nomor_delivery}} sedang dalam perjalanan ke {{customer}}"
+    },
+    {
+      "event": "delivery_status_changed",
+      "rule_id": "108",
+      "template_vars": [
+        "delivery_number",
+        "new_status",
+        "old_status",
+        "po_number",
+        "supplier_name",
+        "updated_at",
+        "updated_by"
+      ],
+      "sent_vars": [
+        "delivery_number",
+        "id",
+        "module",
+        "new_status",
+        "nomor_po",
+        "nomor_surat_jalan",
+        "old_status",
+        "po_number",
+        "status",
+        "supplier_name",
+        "updated_by",
+        "url"
+      ],
+      "missing": [
+        "updated_at"
+      ],
+      "title": "Status Surat Jalan Berubah",
+      "message": "Status Surat Jalan {{delivery_number}} berubah dari {{old_status}} menjadi {{new_status}}. PO: {{po_number}}. Supplier: {{supplier_name}}. Diubah oleh: {{updated_by}} pada {{updated_at}}"
+    },
+    {
+      "event": "di_created",
+      "rule_id": "33",
+      "template_vars": [
+        "creator_name",
+        "customer_name",
+        "nomor_di"
+      ],
+      "sent_vars": [
+        "customer",
+        "id",
+        "jenis_perintah",
+        "module",
+        "nomor_di",
+        "unit_code",
+        "url"
+      ],
+      "missing": [
+        "creator_name",
+        "customer_name"
+      ],
+      "title": "DI Baru: {{nomor_di}}",
+      "message": "Delivery Instruction {{nomor_di}} telah dibuat oleh {{creator_name}} untuk customer {{customer_name}}. Segera proses."
+    },
+    {
+      "event": "invoice_created",
+      "rule_id": "86",
+      "template_vars": [
+        "customer",
+        "invoice_number"
+      ],
+      "sent_vars": [
+        "amount",
+        "created_by",
+        "customer_name",
+        "due_date",
+        "id",
+        "invoice_number",
+        "module",
+        "nomor_invoice",
+        "tanggal_jatuh_tempo",
+        "total_amount",
+        "url"
+      ],
+      "missing": [
+        "customer"
+      ],
+      "title": "Invoice Baru: {{invoice_number}}",
+      "message": "Invoice {{invoice_number}} telah dibuat untuk {{customer}}"
+    },
+    {
+      "event": "invoice_sent",
+      "rule_id": "87",
+      "template_vars": [
+        "customer",
+        "invoice_number"
+      ],
+      "sent_vars": [
+        "amount",
+        "customer_name",
+        "id",
+        "invoice_number",
+        "module",
+        "nomor_invoice",
+        "sent_by",
+        "sent_date",
+        "total_amount",
+        "url"
+      ],
+      "missing": [
+        "customer"
+      ],
+      "title": "Invoice Terkirim: {{invoice_number}}",
+      "message": "Invoice {{invoice_number}} telah dikirim ke {{customer}}"
+    },
+    {
+      "event": "payment_received",
+      "rule_id": "90",
+      "template_vars": [
+        "amount",
+        "customer"
+      ],
+      "sent_vars": [
+        "amount",
+        "customer_name",
+        "id",
+        "invoice_number",
+        "jumlah",
+        "metode_pembayaran",
+        "module",
+        "nomor_invoice",
+        "payment_method",
+        "received_by",
+        "url"
+      ],
+      "missing": [
+        "customer"
+      ],
+      "title": "Payment Diterima: {{amount}}",
+      "message": "Payment sebesar {{amount}} telah diterima dari {{customer}}"
+    },
+    {
+      "event": "pmps_completed",
+      "rule_id": "51",
+      "template_vars": [
+        "departemen",
+        "unit_no"
+      ],
+      "sent_vars": [
+        "completion_date",
+        "id",
+        "mechanic",
+        "mekanik",
+        "model",
+        "module",
+        "next_service_date",
+        "no_unit",
+        "service_type",
+        "tipe_service",
+        "unit_model",
+        "unit_no",
+        "url"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "PMPS Selesai [{{departemen}}]: {{unit_no}}",
+      "message": "PMPS untuk unit {{unit_no}} telah diselesaikan"
+    },
+    {
+      "event": "pmps_due_soon",
+      "rule_id": "49",
+      "template_vars": [
+        "days",
+        "departemen",
+        "unit_no"
+      ],
+      "sent_vars": [
+        "current_hours",
+        "days",
+        "days_until_due",
+        "due_date",
+        "id",
+        "jam_operasional",
+        "model",
+        "module",
+        "no_unit",
+        "service_type",
+        "tanggal_jatuh_tempo",
+        "tipe_service",
+        "unit_model",
+        "unit_no",
+        "url"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "PMPS Due [{{departemen}}]: {{unit_no}}",
+      "message": "PMPS untuk unit {{unit_no}} akan jatuh tempo dalam {{days}} hari"
+    },
+    {
+      "event": "pmps_overdue",
+      "rule_id": "50",
+      "template_vars": [
+        "days",
+        "departemen",
+        "unit_no"
+      ],
+      "sent_vars": [
+        "current_hours",
+        "days",
+        "days_overdue",
+        "due_date",
+        "id",
+        "jam_operasional",
+        "model",
+        "module",
+        "no_unit",
+        "service_type",
+        "tanggal_jatuh_tempo",
+        "tipe_service",
+        "unit_model",
+        "unit_no",
+        "url"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "PMPS OVERDUE [{{departemen}}]: {{unit_no}}",
+      "message": "URGENT! PMPS untuk unit {{unit_no}} sudah OVERDUE {{days}} hari"
+    },
+    {
+      "event": "po_attachment_created",
+      "rule_id": "71",
+      "template_vars": [
+        "nomor_po",
+        "supplier"
+      ],
+      "sent_vars": [
+        "attachment_type",
+        "created_by",
+        "id",
+        "module",
+        "nilai_total",
+        "nomor_po",
+        "po_number",
+        "qty",
+        "quantity",
+        "supplier_name",
+        "tipe_attachment",
+        "total_amount",
+        "url"
+      ],
+      "missing": [
+        "supplier"
+      ],
+      "title": "PO Attachment Baru: {{nomor_po}}",
+      "message": "Purchase Order Attachment {{nomor_po}} telah dibuat untuk {{supplier}}"
+    },
+    {
+      "event": "po_created",
+      "rule_id": "106",
+      "template_vars": [
+        "created_by",
+        "delivery_date",
+        "po_number",
+        "po_type",
+        "supplier_name",
+        "total_amount"
+      ],
+      "sent_vars": [
+        "id",
+        "module",
+        "nomor_po",
+        "supplier",
+        "total_items",
+        "url"
+      ],
+      "missing": [
+        "created_by",
+        "delivery_date",
+        "po_number",
+        "po_type",
+        "supplier_name",
+        "total_amount"
+      ],
+      "title": "Purchase Order Baru Dibuat",
+      "message": "PO {{po_number}} telah dibuat untuk supplier {{supplier_name}}. Tipe: {{po_type}}. Nilai Total: {{total_amount}}. Tanggal Kirim: {{delivery_date}}. Dibuat oleh: {{created_by}}"
+    },
+    {
+      "event": "po_sparepart_created",
+      "rule_id": "72",
+      "template_vars": [
+        "nomor_po",
+        "supplier"
+      ],
+      "sent_vars": [
+        "created_by",
+        "id",
+        "items_count",
+        "module",
+        "nilai_total",
+        "nomor_po",
+        "po_number",
+        "supplier_name",
+        "total_amount",
+        "url"
+      ],
+      "missing": [
+        "supplier"
+      ],
+      "title": "PO Sparepart Baru: {{nomor_po}}",
+      "message": "Purchase Order Sparepart {{nomor_po}} telah dibuat untuk {{supplier}}"
+    },
+    {
+      "event": "po_unit_created",
+      "rule_id": "70",
+      "template_vars": [
+        "nomor_po",
+        "supplier"
+      ],
+      "sent_vars": [
+        "created_by",
+        "id",
+        "module",
+        "nilai_total",
+        "nomor_po",
+        "po_number",
+        "qty",
+        "quantity",
+        "supplier_name",
+        "tipe_unit",
+        "total_amount",
+        "unit_type",
+        "url"
+      ],
+      "missing": [
+        "supplier"
+      ],
+      "title": "PO Unit Baru: {{nomor_po}}",
+      "message": "Purchase Order Unit {{nomor_po}} telah dibuat untuk {{supplier}}"
+    },
+    {
+      "event": "po_verification_updated",
+      "rule_id": "111",
+      "template_vars": [
+        "delivery_number",
+        "notes",
+        "po_number",
+        "total_items",
+        "verification_status",
+        "verified_by",
+        "verified_items"
+      ],
+      "sent_vars": [
+        "catatan",
+        "id",
+        "module",
+        "nomor_po",
+        "notes",
+        "po_number",
+        "status_verifikasi",
+        "url",
+        "verification_date",
+        "verification_status",
+        "verified_by"
+      ],
+      "missing": [
+        "delivery_number",
+        "total_items",
+        "verified_items"
+      ],
+      "title": "Verifikasi PO Diperbarui",
+      "message": "Verifikasi PO {{po_number}} ({{delivery_number}}) diperbarui. Status: {{verification_status}}. Item Terverifikasi: {{verified_items}}/{{total_items}}. Catatan: {{notes}}. Diverifikasi oleh: {{verified_by}}"
+    },
+    {
+      "event": "quotation_approved",
+      "status": "FUNCTION NOT IMPLEMENTED",
+      "template_vars": [
+        "total_value",
+        "approved_at",
+        "approved_by",
+        "customer_name",
+        "quotation_number"
+      ],
+      "missing": [
+        "total_value",
+        "approved_at",
+        "approved_by",
+        "customer_name",
+        "quotation_number"
+      ]
+    },
+    {
+      "event": "quotation_created",
+      "rule_id": "38",
+      "template_vars": [
+        "customer_name",
+        "quotation_number",
+        "total_amount"
+      ],
+      "sent_vars": [
+        "created_by",
+        "customer_name",
+        "id",
+        "module",
+        "nilai_total",
+        "nomor_quotation",
+        "quotation_number",
+        "stage",
+        "total_value",
+        "url"
+      ],
+      "missing": [
+        "total_amount"
+      ],
+      "title": "Penawaran Baru: {{quotation_number}}",
+      "message": "Quotation {{quotation_number}} telah dibuat untuk {{customer_name}} dengan nilai {{total_amount}}"
+    },
+    {
+      "event": "quotation_rejected",
+      "status": "FUNCTION NOT IMPLEMENTED",
+      "template_vars": [
+        "rejected_at",
+        "rejection_reason",
+        "rejected_by",
+        "customer_name",
+        "quotation_number"
+      ],
+      "missing": [
+        "rejected_at",
+        "rejection_reason",
+        "rejected_by",
+        "customer_name",
+        "quotation_number"
+      ]
+    },
+    {
+      "event": "quotation_updated",
+      "status": "FUNCTION NOT IMPLEMENTED",
+      "template_vars": [
+        "updated_by",
+        "changes",
+        "customer_name",
+        "quotation_number"
+      ],
+      "missing": [
+        "updated_by",
+        "changes",
+        "customer_name",
+        "quotation_number"
+      ]
+    },
+    {
+      "event": "service_assignment_completed",
+      "status": "FUNCTION NOT IMPLEMENTED",
+      "template_vars": [
+        "unit_code",
+        "area_name",
+        "completed_at",
+        "customer_name",
+        "duration"
+      ],
+      "missing": [
+        "unit_code",
+        "area_name",
+        "completed_at",
+        "customer_name",
+        "duration"
+      ]
+    },
+    {
+      "event": "service_assignment_created",
+      "rule_id": "120",
+      "template_vars": [
+        "area_name",
+        "customer_name",
+        "end_date",
+        "start_date",
+        "unit_code"
+      ],
+      "sent_vars": [
+        "area_name",
+        "created_by",
+        "employee_name",
+        "id",
+        "module",
+        "role",
+        "start_date",
+        "url"
+      ],
+      "missing": [
+        "customer_name",
+        "end_date",
+        "unit_code"
+      ],
+      "title": "Penugasan Area Baru: {{unit_code}}",
+      "message": "{{unit_code}} ditugaskan ke area {{area_name}} untuk customer {{customer_name}}. Mulai: {{start_date}}. Selesai: {{end_date}}"
+    },
+    {
+      "event": "service_assignment_updated",
+      "rule_id": "121",
+      "template_vars": [
+        "area_name",
+        "changes",
+        "unit_code",
+        "updated_by"
+      ],
+      "sent_vars": [
+        "area_name",
+        "changes",
+        "employee_name",
+        "id",
+        "module",
+        "updated_by",
+        "url"
+      ],
+      "missing": [
+        "unit_code"
+      ],
+      "title": "Penugasan Area Diperbarui: {{unit_code}}",
+      "message": "Penugasan {{unit_code}} (Area {{area_name}}) diperbarui. Perubahan: {{changes}}. Oleh: {{updated_by}}"
+    },
+    {
+      "event": "sparepart_used",
+      "rule_id": "67",
+      "template_vars": [
+        "nama_sparepart",
+        "qty"
+      ],
+      "sent_vars": [
+        "id",
+        "module",
+        "quantity",
+        "sparepart_name",
+        "unit_code",
+        "url",
+        "used_by",
+        "wo_number"
+      ],
+      "missing": [
+        "nama_sparepart",
+        "qty"
+      ],
+      "title": "Sparepart Digunakan: {{nama_sparepart}}",
+      "message": "Sparepart {{nama_sparepart}} digunakan (Qty: {{qty}})"
+    },
+    {
+      "event": "spk_assigned",
+      "rule_id": "100",
+      "template_vars": [
+        "departemen",
+        "mechanic_name",
+        "no_unit",
+        "nomor_spk"
+      ],
+      "sent_vars": [
+        "assigned_by",
+        "id",
+        "mechanic_name",
+        "mekanik",
+        "module",
+        "no_unit",
+        "nomor_spk",
+        "unit_code",
+        "url"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "SPK Assigned [{{departemen}}]: {{nomor_spk}} ke {{mechanic_name}}",
+      "message": "SPK {{nomor_spk}} telah di-assign kepada Anda. Silakan proses unit {{no_unit}}."
+    },
+    {
+      "event": "spk_cancelled",
+      "rule_id": "103",
+      "template_vars": [
+        "alasan",
+        "departemen",
+        "nomor_spk"
+      ],
+      "sent_vars": [
+        "alasan",
+        "cancellation_reason",
+        "cancelled_by",
+        "customer",
+        "id",
+        "module",
+        "nomor_spk",
+        "pelanggan",
+        "url"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "SPK Dibatalkan [{{departemen}}]: {{nomor_spk}}",
+      "message": "SPK {{nomor_spk}} telah dibatalkan. Alasan: {{alasan}}."
+    },
+    {
+      "event": "spk_completed",
+      "rule_id": "140",
+      "template_vars": [
+        "actual_duration",
+        "completed_by",
+        "departemen",
+        "nomor_spk",
+        "result",
+        "spk_number",
+        "unit_code",
+        "work_type"
+      ],
+      "sent_vars": [
+        "actual_duration",
+        "completed_at",
+        "completed_by",
+        "module",
+        "result",
+        "spk_id",
+        "spk_number",
+        "unit_code",
+        "url",
+        "work_type"
+      ],
+      "missing": [
+        "departemen",
+        "nomor_spk"
+      ],
+      "title": "SPK Selesai [{{departemen}}]: {{nomor_spk}}",
+      "message": "SPK {{spk_number}} (Unit {{unit_code}}) selesai. Jenis: {{work_type}}. Durasi: {{actual_duration}}h. Hasil: {{result}}. Oleh: {{completed_by}}"
+    },
+    {
+      "event": "spk_created",
+      "rule_id": "21",
+      "template_vars": [
+        "departemen",
+        "nomor_spk",
+        "pelanggan",
+        "unit_no"
+      ],
+      "sent_vars": [
+        "departemen",
+        "id",
+        "module",
+        "nama_customer",
+        "nomor_spk",
+        "pelanggan",
+        "url"
+      ],
+      "missing": [
+        "unit_no"
+      ],
+      "title": "SPK Baru [{{departemen}}]: {{nomor_spk}} - {{pelanggan}}",
+      "message": "SPK {{nomor_spk}} telah dibuat untuk {{pelanggan}} departemen {{departemen}}. Unit: {{unit_no}}"
+    },
+    {
+      "event": "unit_location_updated",
+      "rule_id": "123",
+      "template_vars": [
+        "coordinates",
+        "new_location",
+        "old_location",
+        "unit_code",
+        "updated_by"
+      ],
+      "sent_vars": [
+        "id",
+        "location",
+        "module",
+        "new_location",
+        "no_unit",
+        "old_location",
+        "unit_code",
+        "updated_by",
+        "url"
+      ],
+      "missing": [
+        "coordinates"
+      ],
+      "title": "Lokasi Unit Diperbarui: {{unit_code}}",
+      "message": "Lokasi unit {{unit_code}} diperbarui. Dari: {{old_location}} ke {{new_location}}. Koordinat: {{coordinates}}. Oleh: {{updated_by}}"
+    },
+    {
+      "event": "workorder_assigned",
+      "status": "FUNCTION NOT IMPLEMENTED",
+      "template_vars": [
+        "unit_code",
+        "wo_number",
+        "priority",
+        "target_date",
+        "assigned_to"
+      ],
+      "missing": [
+        "unit_code",
+        "wo_number",
+        "priority",
+        "target_date",
+        "assigned_to"
+      ]
+    },
+    {
+      "event": "workorder_completed",
+      "status": "FUNCTION NOT IMPLEMENTED",
+      "template_vars": [
+        "parts_used",
+        "total_cost",
+        "completed_by",
+        "duration",
+        "unit_code",
+        "departemen",
+        "wo_number"
+      ],
+      "missing": [
+        "parts_used",
+        "total_cost",
+        "completed_by",
+        "duration",
+        "unit_code",
+        "departemen",
+        "wo_number"
+      ]
+    },
+    {
+      "event": "workorder_delayed",
+      "status": "FUNCTION NOT IMPLEMENTED",
+      "template_vars": [
+        "current_status",
+        "unit_code",
+        "delay_days",
+        "departemen",
+        "wo_number",
+        "target_date"
+      ],
+      "missing": [
+        "current_status",
+        "unit_code",
+        "delay_days",
+        "departemen",
+        "wo_number",
+        "target_date"
+      ]
+    },
+    {
+      "event": "workorder_sparepart_added",
+      "status": "FUNCTION NOT IMPLEMENTED",
+      "template_vars": [
+        "unit_price",
+        "part_name",
+        "quantity",
+        "wo_number",
+        "total_price"
+      ],
+      "missing": [
+        "unit_price",
+        "part_name",
+        "quantity",
+        "wo_number",
+        "total_price"
+      ]
+    },
+    {
+      "event": "workorder_status_changed",
+      "rule_id": "110",
+      "template_vars": [
+        "category",
+        "new_status",
+        "old_status",
+        "progress",
+        "unit_code",
+        "updated_by",
+        "wo_number"
+      ],
+      "sent_vars": [
+        "id",
+        "module",
+        "new_status",
+        "no_unit",
+        "nomor_wo",
+        "old_status",
+        "status",
+        "unit_code",
+        "updated_by",
+        "url",
+        "wo_number"
+      ],
+      "missing": [
+        "category",
+        "progress"
+      ],
+      "title": "Status Work Order Berubah",
+      "message": "Status WO {{wo_number}} (Unit {{unit_code}}) berubah dari {{old_status}} menjadi {{new_status}}. Kategori: {{category}}. Progress: {{progress}}%. Diubah oleh: {{updated_by}}"
+    },
+    {
+      "event": "work_order_assigned",
+      "rule_id": "45",
+      "template_vars": [
+        "departemen",
+        "mechanic_name",
+        "nomor_wo"
+      ],
+      "sent_vars": [
+        "assigned_by",
+        "id",
+        "mechanic_name",
+        "mekanik",
+        "module",
+        "no_unit",
+        "nomor_wo",
+        "priority",
+        "unit_code",
+        "url",
+        "wo_number"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "WO Assigned [{{departemen}}]: {{nomor_wo}} ke {{mechanic_name}}",
+      "message": "Work Order {{nomor_wo}} telah di-assign kepada Anda"
+    },
+    {
+      "event": "work_order_cancelled",
+      "rule_id": "48",
+      "template_vars": [
+        "departemen",
+        "nomor_wo"
+      ],
+      "sent_vars": [
+        "alasan",
+        "cancellation_reason",
+        "cancelled_by",
+        "id",
+        "module",
+        "no_unit",
+        "nomor_wo",
+        "unit_code",
+        "url",
+        "wo_number"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "WO Dibatalkan [{{departemen}}]: {{nomor_wo}}",
+      "message": "Work Order {{nomor_wo}} telah dibatalkan"
+    },
+    {
+      "event": "work_order_completed",
+      "rule_id": "47",
+      "template_vars": [
+        "departemen",
+        "nomor_wo"
+      ],
+      "sent_vars": [
+        "completion_date",
+        "id",
+        "mechanic",
+        "mekanik",
+        "module",
+        "no_unit",
+        "nomor_wo",
+        "unit_code",
+        "url",
+        "wo_number"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "WO Selesai [{{departemen}}]: {{nomor_wo}}",
+      "message": "Work Order {{nomor_wo}} telah diselesaikan"
+    },
+    {
+      "event": "work_order_created",
+      "rule_id": "44",
+      "template_vars": [
+        "departemen",
+        "no_unit",
+        "nomor_wo",
+        "unit_no"
+      ],
+      "sent_vars": [
+        "id",
+        "module",
+        "nomor_wo",
+        "priority",
+        "unit_code",
+        "url"
+      ],
+      "missing": [
+        "departemen",
+        "no_unit",
+        "unit_no"
+      ],
+      "title": "WO Baru [{{departemen}}]: {{nomor_wo}} - {{unit_no}}",
+      "message": "Work Order {{nomor_wo}} telah dibuat untuk unit {{no_unit}}"
+    },
+    {
+      "event": "work_order_in_progress",
+      "rule_id": "46",
+      "template_vars": [
+        "departemen",
+        "mechanic",
+        "nomor_wo"
+      ],
+      "sent_vars": [
+        "id",
+        "mechanic",
+        "mekanik",
+        "module",
+        "no_unit",
+        "nomor_wo",
+        "progress",
+        "unit_code",
+        "url",
+        "wo_number"
+      ],
+      "missing": [
+        "departemen"
+      ],
+      "title": "WO Dikerjakan [{{departemen}}]: {{nomor_wo}}",
+      "message": "Work Order {{nomor_wo}} sedang dalam pengerjaan oleh {{mechanic}}"
+    }
+  ],
+  "extra_variables": [
+    {
+      "event": "attachment_added",
+      "rule_id": "60",
+      "extra": [
+        "added_by",
+        "brand",
+        "id",
+        "merk",
+        "module",
+        "sn",
+        "status",
+        "type",
+        "url"
+      ]
+    },
+    {
+      "event": "attachment_attached",
+      "rule_id": "61",
+      "extra": [
+        "attached_by",
+        "attachment_date",
+        "id",
+        "module",
+        "serial_number",
+        "sn",
+        "type",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "attachment_broken",
+      "rule_id": "65",
+      "extra": [
+        "damage_description",
+        "id",
+        "keterangan",
+        "module",
+        "no_unit",
+        "report_date",
+        "reported_by",
+        "sn",
+        "type",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "attachment_detached",
+      "rule_id": "62",
+      "extra": [
+        "detached_by",
+        "id",
+        "module",
+        "reason",
+        "serial_number",
+        "sn",
+        "type",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "attachment_maintenance",
+      "rule_id": "64",
+      "extra": [
+        "alasan",
+        "id",
+        "maintenance_reason",
+        "module",
+        "scheduled_date",
+        "sn",
+        "type",
+        "url"
+      ]
+    },
+    {
+      "event": "attachment_swapped",
+      "rule_id": "63",
+      "extra": [
+        "attachment_id",
+        "from_unit_id",
+        "module",
+        "performed_at",
+        "performed_by",
+        "to_unit_id",
+        "url"
+      ]
+    },
+    {
+      "event": "budget_threshold_exceeded",
+      "rule_id": "138",
+      "extra": [
+        "budget_id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "contract_created",
+      "rule_id": "125",
+      "extra": [
+        "contract_type",
+        "created_by",
+        "end_date",
+        "id",
+        "module",
+        "nilai_total",
+        "no_kontrak",
+        "start_date",
+        "tanggal_mulai",
+        "tanggal_selesai",
+        "tipe_kontrak",
+        "total_value",
+        "url"
+      ]
+    },
+    {
+      "event": "customer_contract_created",
+      "rule_id": "31",
+      "extra": [
+        "id",
+        "module",
+        "nilai_total",
+        "no_kontrak",
+        "tanggal_mulai",
+        "tanggal_selesai",
+        "url"
+      ]
+    },
+    {
+      "event": "customer_contract_expired",
+      "rule_id": "32",
+      "extra": [
+        "contract_value",
+        "days_until_expired",
+        "end_date",
+        "id",
+        "module",
+        "nilai_total",
+        "no_kontrak",
+        "tanggal_selesai",
+        "url"
+      ]
+    },
+    {
+      "event": "customer_created",
+      "rule_id": "126",
+      "extra": [
+        "customer_code",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "customer_deleted",
+      "rule_id": "29",
+      "extra": [
+        "customer_code",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "customer_location_added",
+      "rule_id": "30",
+      "extra": [
+        "address",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "customer_status_changed",
+      "rule_id": "128",
+      "extra": [
+        "id",
+        "module",
+        "name",
+        "url"
+      ]
+    },
+    {
+      "event": "customer_updated",
+      "rule_id": "28",
+      "extra": [
+        "customer_code",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "delivery_arrived",
+      "rule_id": "83",
+      "extra": [
+        "arrival_time",
+        "customer_name",
+        "delivery_number",
+        "driver_name",
+        "id",
+        "location",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "delivery_assigned",
+      "rule_id": "81",
+      "extra": [
+        "assigned_by",
+        "customer_name",
+        "delivery_number",
+        "destination",
+        "driver_name",
+        "id",
+        "module",
+        "no_unit",
+        "url",
+        "vehicle"
+      ]
+    },
+    {
+      "event": "delivery_completed",
+      "rule_id": "84",
+      "extra": [
+        "completed_by",
+        "completed_time",
+        "customer_name",
+        "delivery_number",
+        "id",
+        "module",
+        "notes",
+        "signature",
+        "url"
+      ]
+    },
+    {
+      "event": "delivery_created",
+      "rule_id": "80",
+      "extra": [
+        "created_by",
+        "delivery_date",
+        "delivery_number",
+        "id",
+        "items_count",
+        "module",
+        "nomor_po",
+        "nomor_surat_jalan",
+        "po_number",
+        "supplier_name",
+        "tanggal_kirim",
+        "url"
+      ]
+    },
+    {
+      "event": "delivery_delayed",
+      "rule_id": "85",
+      "extra": [
+        "current_time",
+        "customer_name",
+        "delay_reason",
+        "delivery_number",
+        "driver_name",
+        "estimated_arrival",
+        "id",
+        "module",
+        "scheduled_time",
+        "url"
+      ]
+    },
+    {
+      "event": "delivery_in_transit",
+      "rule_id": "82",
+      "extra": [
+        "current_location",
+        "delivery_number",
+        "destination",
+        "driver_name",
+        "eta",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "delivery_status_changed",
+      "rule_id": "108",
+      "extra": [
+        "id",
+        "module",
+        "nomor_po",
+        "nomor_surat_jalan",
+        "status",
+        "url"
+      ]
+    },
+    {
+      "event": "di_approved",
+      "rule_id": "34",
+      "extra": [
+        "approval_date",
+        "approved_by",
+        "customer",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "di_cancelled",
+      "rule_id": "37",
+      "extra": [
+        "cancellation_reason",
+        "cancelled_by",
+        "customer",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "di_created",
+      "rule_id": "33",
+      "extra": [
+        "customer",
+        "id",
+        "jenis_perintah",
+        "module",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "di_delivered",
+      "rule_id": "36",
+      "extra": [
+        "delivery_date",
+        "driver_name",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "di_in_progress",
+      "rule_id": "35",
+      "extra": [
+        "current_status",
+        "customer",
+        "driver_name",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "di_submitted",
+      "rule_id": "3",
+      "extra": [
+        "customer",
+        "id",
+        "jenis_perintah",
+        "location",
+        "lokasi",
+        "module",
+        "pelanggan",
+        "submitted_by",
+        "url"
+      ]
+    },
+    {
+      "event": "employee_assigned",
+      "rule_id": "52",
+      "extra": [
+        "assigned_by",
+        "id",
+        "jabatan",
+        "module",
+        "name",
+        "position",
+        "url"
+      ]
+    },
+    {
+      "event": "employee_unassigned",
+      "rule_id": "53",
+      "extra": [
+        "id",
+        "module",
+        "name",
+        "reason",
+        "unassigned_by",
+        "url"
+      ]
+    },
+    {
+      "event": "inspection_completed",
+      "rule_id": "133",
+      "extra": [
+        "completed_at",
+        "inspection_id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "inspection_scheduled",
+      "rule_id": "132",
+      "extra": [
+        "inspection_id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "inventory_unit_added",
+      "rule_id": "54",
+      "extra": [
+        "added_by",
+        "id",
+        "module",
+        "serial_number",
+        "status",
+        "tipe",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "inventory_unit_low_stock",
+      "rule_id": "59",
+      "extra": [
+        "available_count",
+        "category",
+        "id",
+        "kategori",
+        "min_stock",
+        "minimum_stock",
+        "model",
+        "module",
+        "status",
+        "type",
+        "url"
+      ]
+    },
+    {
+      "event": "inventory_unit_maintenance",
+      "rule_id": "58",
+      "extra": [
+        "estimated_completion",
+        "id",
+        "maintenance_reason",
+        "module",
+        "scheduled_date",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "inventory_unit_rental_active",
+      "rule_id": "56",
+      "extra": [
+        "customer_name",
+        "id",
+        "module",
+        "rental_duration",
+        "rental_start_date",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "inventory_unit_returned",
+      "rule_id": "57",
+      "extra": [
+        "condition",
+        "customer_name",
+        "id",
+        "module",
+        "return_date",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "inventory_unit_status_changed",
+      "rule_id": "55",
+      "extra": [
+        "changed_by",
+        "id",
+        "module",
+        "status",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "invoice_created",
+      "rule_id": "86",
+      "extra": [
+        "amount",
+        "created_by",
+        "customer_name",
+        "due_date",
+        "id",
+        "module",
+        "nomor_invoice",
+        "tanggal_jatuh_tempo",
+        "total_amount",
+        "url"
+      ]
+    },
+    {
+      "event": "invoice_overdue",
+      "rule_id": "89",
+      "extra": [
+        "amount",
+        "days_overdue",
+        "id",
+        "module",
+        "nomor_invoice",
+        "tanggal_jatuh_tempo",
+        "total_amount",
+        "url"
+      ]
+    },
+    {
+      "event": "invoice_paid",
+      "rule_id": "88",
+      "extra": [
+        "customer_name",
+        "id",
+        "module",
+        "nomor_invoice",
+        "payment_date",
+        "payment_method",
+        "tanggal_bayar",
+        "total_amount",
+        "url"
+      ]
+    },
+    {
+      "event": "invoice_sent",
+      "rule_id": "87",
+      "extra": [
+        "amount",
+        "customer_name",
+        "id",
+        "module",
+        "nomor_invoice",
+        "sent_by",
+        "sent_date",
+        "total_amount",
+        "url"
+      ]
+    },
+    {
+      "event": "maintenance_completed",
+      "rule_id": "135",
+      "extra": [
+        "completed_at",
+        "maintenance_id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "maintenance_scheduled",
+      "rule_id": "134",
+      "extra": [
+        "maintenance_id",
+        "module",
+        "priority",
+        "url"
+      ]
+    },
+    {
+      "event": "password_reset",
+      "rule_id": "96",
+      "extra": [
+        "email",
+        "id",
+        "module",
+        "reset_by",
+        "url"
+      ]
+    },
+    {
+      "event": "payment_overdue",
+      "rule_id": "137",
+      "extra": [
+        "amount",
+        "invoice_id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "payment_received",
+      "rule_id": "90",
+      "extra": [
+        "customer_name",
+        "id",
+        "invoice_number",
+        "jumlah",
+        "metode_pembayaran",
+        "module",
+        "nomor_invoice",
+        "payment_method",
+        "received_by",
+        "url"
+      ]
+    },
+    {
+      "event": "payment_received",
+      "rule_id": "136",
+      "extra": [
+        "id",
+        "jumlah",
+        "metode_pembayaran",
+        "module",
+        "nomor_invoice",
+        "url"
+      ]
+    },
+    {
+      "event": "payment_status_updated",
+      "rule_id": "105",
+      "extra": [
+        "id",
+        "module",
+        "nomor_invoice",
+        "paid_amount",
+        "status",
+        "tanggal_bayar",
+        "url"
+      ]
+    },
+    {
+      "event": "permission_changed",
+      "rule_id": "99",
+      "extra": [
+        "changed_by",
+        "changed_permissions",
+        "id",
+        "module",
+        "url",
+        "username"
+      ]
+    },
+    {
+      "event": "pmps_completed",
+      "rule_id": "51",
+      "extra": [
+        "completion_date",
+        "id",
+        "mechanic",
+        "mekanik",
+        "model",
+        "module",
+        "next_service_date",
+        "no_unit",
+        "service_type",
+        "tipe_service",
+        "unit_model",
+        "url"
+      ]
+    },
+    {
+      "event": "pmps_due_soon",
+      "rule_id": "49",
+      "extra": [
+        "current_hours",
+        "days_until_due",
+        "due_date",
+        "id",
+        "jam_operasional",
+        "model",
+        "module",
+        "no_unit",
+        "service_type",
+        "tanggal_jatuh_tempo",
+        "tipe_service",
+        "unit_model",
+        "url"
+      ]
+    },
+    {
+      "event": "pmps_overdue",
+      "rule_id": "50",
+      "extra": [
+        "current_hours",
+        "days_overdue",
+        "due_date",
+        "id",
+        "jam_operasional",
+        "model",
+        "module",
+        "no_unit",
+        "service_type",
+        "tanggal_jatuh_tempo",
+        "tipe_service",
+        "unit_model",
+        "url"
+      ]
+    },
+    {
+      "event": "po_approved",
+      "rule_id": "73",
+      "extra": [
+        "approval_date",
+        "approved_by",
+        "id",
+        "module",
+        "nilai_total",
+        "po_number",
+        "supplier_name",
+        "total_amount",
+        "url"
+      ]
+    },
+    {
+      "event": "po_attachment_created",
+      "rule_id": "71",
+      "extra": [
+        "attachment_type",
+        "created_by",
+        "id",
+        "module",
+        "nilai_total",
+        "po_number",
+        "qty",
+        "quantity",
+        "supplier_name",
+        "tipe_attachment",
+        "total_amount",
+        "url"
+      ]
+    },
+    {
+      "event": "po_created",
+      "rule_id": "106",
+      "extra": [
+        "id",
+        "module",
+        "nomor_po",
+        "supplier",
+        "total_items",
+        "url"
+      ]
+    },
+    {
+      "event": "po_received",
+      "rule_id": "75",
+      "extra": [
+        "id",
+        "items_received",
+        "module",
+        "po_number",
+        "received_by",
+        "received_date",
+        "supplier_name",
+        "url"
+      ]
+    },
+    {
+      "event": "po_rejected",
+      "rule_id": "74",
+      "extra": [
+        "alasan",
+        "id",
+        "module",
+        "po_number",
+        "rejection_date",
+        "supplier_name",
+        "url"
+      ]
+    },
+    {
+      "event": "po_sparepart_created",
+      "rule_id": "72",
+      "extra": [
+        "created_by",
+        "id",
+        "items_count",
+        "module",
+        "nilai_total",
+        "po_number",
+        "supplier_name",
+        "total_amount",
+        "url"
+      ]
+    },
+    {
+      "event": "po_unit_created",
+      "rule_id": "70",
+      "extra": [
+        "created_by",
+        "id",
+        "module",
+        "nilai_total",
+        "po_number",
+        "qty",
+        "quantity",
+        "supplier_name",
+        "tipe_unit",
+        "total_amount",
+        "unit_type",
+        "url"
+      ]
+    },
+    {
+      "event": "po_verification_updated",
+      "rule_id": "111",
+      "extra": [
+        "catatan",
+        "id",
+        "module",
+        "nomor_po",
+        "status_verifikasi",
+        "url",
+        "verification_date"
+      ]
+    },
+    {
+      "event": "po_verified",
+      "rule_id": "76",
+      "extra": [
+        "id",
+        "module",
+        "po_number",
+        "supplier_name",
+        "url",
+        "verification_date",
+        "verified_by"
+      ]
+    },
+    {
+      "event": "purchase_order_created",
+      "rule_id": "20",
+      "extra": [
+        "created_by",
+        "id",
+        "module",
+        "nomor_po",
+        "supplier_name",
+        "total_amount",
+        "url"
+      ]
+    },
+    {
+      "event": "quotation_created",
+      "rule_id": "38",
+      "extra": [
+        "created_by",
+        "id",
+        "module",
+        "nilai_total",
+        "nomor_quotation",
+        "stage",
+        "total_value",
+        "url"
+      ]
+    },
+    {
+      "event": "quotation_follow_up_required",
+      "rule_id": "142",
+      "extra": [
+        "follow_up_priority",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "quotation_sent_to_customer",
+      "rule_id": "141",
+      "extra": [
+        "id",
+        "module",
+        "sent_at",
+        "url"
+      ]
+    },
+    {
+      "event": "role_created",
+      "rule_id": "97",
+      "extra": [
+        "created_by",
+        "id",
+        "module",
+        "name",
+        "permissions_count",
+        "url"
+      ]
+    },
+    {
+      "event": "role_updated",
+      "rule_id": "98",
+      "extra": [
+        "changes",
+        "id",
+        "module",
+        "name",
+        "updated_by",
+        "url"
+      ]
+    },
+    {
+      "event": "service_assignment_created",
+      "rule_id": "120",
+      "extra": [
+        "created_by",
+        "employee_name",
+        "id",
+        "module",
+        "role",
+        "url"
+      ]
+    },
+    {
+      "event": "service_assignment_updated",
+      "rule_id": "121",
+      "extra": [
+        "employee_name",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "sparepart_added",
+      "rule_id": "66",
+      "extra": [
+        "added_by",
+        "code",
+        "id",
+        "kode_sparepart",
+        "module",
+        "name",
+        "satuan",
+        "stock",
+        "supplier",
+        "unit",
+        "url"
+      ]
+    },
+    {
+      "event": "sparepart_low_stock",
+      "rule_id": "68",
+      "extra": [
+        "code",
+        "id",
+        "kode_sparepart",
+        "location",
+        "lokasi",
+        "min_stock",
+        "minimum_stock",
+        "module",
+        "name",
+        "satuan",
+        "stock",
+        "unit",
+        "url"
+      ]
+    },
+    {
+      "event": "sparepart_out_of_stock",
+      "rule_id": "69",
+      "extra": [
+        "code",
+        "id",
+        "kode_sparepart",
+        "last_used_date",
+        "location",
+        "lokasi",
+        "module",
+        "name",
+        "url"
+      ]
+    },
+    {
+      "event": "sparepart_returned",
+      "rule_id": "146",
+      "extra": [
+        "condition",
+        "confirmed_at",
+        "module",
+        "notes",
+        "return_id",
+        "returned_from",
+        "sparepart_id",
+        "url"
+      ]
+    },
+    {
+      "event": "sparepart_used",
+      "rule_id": "67",
+      "extra": [
+        "id",
+        "module",
+        "quantity",
+        "sparepart_name",
+        "unit_code",
+        "url",
+        "used_by",
+        "wo_number"
+      ]
+    },
+    {
+      "event": "spk_assigned",
+      "rule_id": "100",
+      "extra": [
+        "assigned_by",
+        "id",
+        "mekanik",
+        "module",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "spk_cancelled",
+      "rule_id": "103",
+      "extra": [
+        "cancellation_reason",
+        "cancelled_by",
+        "customer",
+        "id",
+        "module",
+        "pelanggan",
+        "url"
+      ]
+    },
+    {
+      "event": "spk_completed",
+      "rule_id": "140",
+      "extra": [
+        "completed_at",
+        "module",
+        "spk_id",
+        "url"
+      ]
+    },
+    {
+      "event": "spk_created",
+      "rule_id": "21",
+      "extra": [
+        "id",
+        "module",
+        "nama_customer",
+        "url"
+      ]
+    },
+    {
+      "event": "spk_fabrication_completed",
+      "rule_id": "144",
+      "extra": [
+        "approved_at",
+        "attachment_info",
+        "fabrication_notes",
+        "lokasi",
+        "module",
+        "spk_id",
+        "stage",
+        "url"
+      ]
+    },
+    {
+      "event": "spk_pdi_completed",
+      "rule_id": "145",
+      "extra": [
+        "approved_at",
+        "lokasi",
+        "module",
+        "pdi_results",
+        "ready_for_delivery",
+        "spk_id",
+        "spk_status",
+        "stage",
+        "url"
+      ]
+    },
+    {
+      "event": "spk_unit_prep_completed",
+      "rule_id": "143",
+      "extra": [
+        "approved_at",
+        "items_prepared",
+        "lokasi",
+        "module",
+        "spk_id",
+        "stage",
+        "unit_info",
+        "url"
+      ]
+    },
+    {
+      "event": "supplier_created",
+      "rule_id": "77",
+      "extra": [
+        "code",
+        "contact_person",
+        "created_by",
+        "id",
+        "module",
+        "name",
+        "phone",
+        "supplier_code",
+        "url"
+      ]
+    },
+    {
+      "event": "supplier_deleted",
+      "rule_id": "79",
+      "extra": [
+        "deleted_by",
+        "id",
+        "module",
+        "name",
+        "url"
+      ]
+    },
+    {
+      "event": "supplier_updated",
+      "rule_id": "78",
+      "extra": [
+        "id",
+        "module",
+        "name",
+        "updated_by",
+        "url"
+      ]
+    },
+    {
+      "event": "unit_location_updated",
+      "rule_id": "123",
+      "extra": [
+        "id",
+        "location",
+        "module",
+        "no_unit",
+        "url"
+      ]
+    },
+    {
+      "event": "unit_prep_completed",
+      "rule_id": "42",
+      "extra": [
+        "completion_date",
+        "id",
+        "mechanic",
+        "mekanik",
+        "module",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "unit_prep_started",
+      "rule_id": "41",
+      "extra": [
+        "id",
+        "mechanic",
+        "mekanik",
+        "module",
+        "start_date",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "user_activated",
+      "rule_id": "94",
+      "extra": [
+        "activated_by",
+        "email",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "user_created",
+      "rule_id": "91",
+      "extra": [
+        "created_by",
+        "division",
+        "division_name",
+        "email",
+        "id",
+        "module",
+        "role_name",
+        "url"
+      ]
+    },
+    {
+      "event": "user_deactivated",
+      "rule_id": "95",
+      "extra": [
+        "deactivated_by",
+        "email",
+        "id",
+        "module",
+        "reason",
+        "url"
+      ]
+    },
+    {
+      "event": "user_deleted",
+      "rule_id": "93",
+      "extra": [
+        "deleted_by",
+        "email",
+        "id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "user_updated",
+      "rule_id": "92",
+      "extra": [
+        "email",
+        "id",
+        "module",
+        "updated_by",
+        "url"
+      ]
+    },
+    {
+      "event": "warehouse_stocktake_completed",
+      "rule_id": "131",
+      "extra": [
+        "completed_at",
+        "module",
+        "stocktake_id",
+        "url"
+      ]
+    },
+    {
+      "event": "warehouse_stock_alert",
+      "rule_id": "129",
+      "extra": [
+        "item_id",
+        "module",
+        "url"
+      ]
+    },
+    {
+      "event": "warehouse_transfer_completed",
+      "rule_id": "130",
+      "extra": [
+        "completed_at",
+        "module",
+        "transfer_id",
+        "url"
+      ]
+    },
+    {
+      "event": "warehouse_unit_updated",
+      "rule_id": "124",
+      "extra": [
+        "id",
+        "module",
+        "no_unit",
+        "url"
+      ]
+    },
+    {
+      "event": "workorder_status_changed",
+      "rule_id": "110",
+      "extra": [
+        "id",
+        "module",
+        "no_unit",
+        "nomor_wo",
+        "status",
+        "url"
+      ]
+    },
+    {
+      "event": "work_order_assigned",
+      "rule_id": "45",
+      "extra": [
+        "assigned_by",
+        "id",
+        "mekanik",
+        "module",
+        "no_unit",
+        "priority",
+        "unit_code",
+        "url",
+        "wo_number"
+      ]
+    },
+    {
+      "event": "work_order_cancelled",
+      "rule_id": "48",
+      "extra": [
+        "alasan",
+        "cancellation_reason",
+        "cancelled_by",
+        "id",
+        "module",
+        "no_unit",
+        "unit_code",
+        "url",
+        "wo_number"
+      ]
+    },
+    {
+      "event": "work_order_completed",
+      "rule_id": "47",
+      "extra": [
+        "completion_date",
+        "id",
+        "mechanic",
+        "mekanik",
+        "module",
+        "no_unit",
+        "unit_code",
+        "url",
+        "wo_number"
+      ]
+    },
+    {
+      "event": "work_order_created",
+      "rule_id": "44",
+      "extra": [
+        "id",
+        "module",
+        "priority",
+        "unit_code",
+        "url"
+      ]
+    },
+    {
+      "event": "work_order_in_progress",
+      "rule_id": "46",
+      "extra": [
+        "id",
+        "mekanik",
+        "module",
+        "no_unit",
+        "progress",
+        "unit_code",
+        "url",
+        "wo_number"
+      ]
+    }
+  ],
+  "variable_usage": {
+    "serial_number": [
+      "attachment_added",
+      "attachment_broken",
+      "attachment_maintenance"
+    ],
+    "tipe_item": [
+      "attachment_added",
+      "attachment_attached",
+      "attachment_broken",
+      "attachment_detached",
+      "attachment_maintenance",
+      "attachment_swapped"
+    ],
+    "attachment_info": [
+      "attachment_attached",
+      "attachment_detached",
+      "attachment_swapped"
+    ],
+    "no_unit": [
+      "attachment_attached",
+      "attachment_detached",
+      "inventory_unit_added",
+      "inventory_unit_maintenance",
+      "inventory_unit_rental_active",
+      "inventory_unit_returned",
+      "inventory_unit_status_changed",
+      "spk_assigned",
+      "unit_prep_completed",
+      "unit_prep_started",
+      "work_order_created"
+    ],
+    "from_unit_number": [
+      "attachment_swapped"
+    ],
+    "reason": [
+      "attachment_swapped",
+      "customer_status_changed"
+    ],
+    "to_unit_number": [
+      "attachment_swapped"
+    ],
+    "percentage_used": [
+      "budget_threshold_exceeded"
+    ],
+    "budget_name": [
+      "budget_threshold_exceeded"
+    ],
+    "allocated_amount": [
+      "budget_threshold_exceeded"
+    ],
+    "spent_amount": [
+      "budget_threshold_exceeded"
+    ],
+    "department": [
+      "budget_threshold_exceeded"
+    ],
+    "threshold": [
+      "budget_threshold_exceeded"
+    ],
+    "contract_number": [
+      "contract_created",
+      "customer_contract_created",
+      "customer_contract_expired"
+    ],
+    "customer_name": [
+      "contract_created",
+      "customer_contract_created",
+      "customer_contract_expired",
+      "customer_created",
+      "customer_deleted",
+      "customer_location_added",
+      "customer_status_changed",
+      "customer_updated",
+      "di_created",
+      "invoice_overdue",
+      "payment_overdue",
+      "payment_received",
+      "payment_status_updated",
+      "quotation_created",
+      "quotation_follow_up_required",
+      "quotation_sent_to_customer",
+      "service_assignment_created"
+    ],
+    "total_amount": [
+      "contract_created",
+      "po_created",
+      "quotation_created"
+    ],
+    "days": [
+      "customer_contract_expired",
+      "pmps_due_soon",
+      "pmps_overdue"
+    ],
+    "phone": [
+      "customer_created"
+    ],
+    "contact_person": [
+      "customer_created"
+    ],
+    "location_name": [
+      "customer_location_added"
+    ],
+    "old_status": [
+      "customer_status_changed",
+      "delivery_status_changed",
+      "inventory_unit_status_changed",
+      "payment_status_updated",
+      "workorder_status_changed"
+    ],
+    "new_status": [
+      "customer_status_changed",
+      "delivery_status_changed",
+      "inventory_unit_status_changed",
+      "payment_status_updated",
+      "workorder_status_changed"
+    ],
+    "changed_by": [
+      "customer_status_changed"
+    ],
+    "customer_code": [
+      "customer_status_changed"
+    ],
+    "nomor_delivery": [
+      "delivery_arrived",
+      "delivery_assigned",
+      "delivery_completed",
+      "delivery_created",
+      "delivery_delayed",
+      "delivery_in_transit"
+    ],
+    "customer": [
+      "delivery_arrived",
+      "delivery_completed",
+      "delivery_created",
+      "delivery_in_transit",
+      "di_delivered",
+      "inventory_unit_rental_active",
+      "inventory_unit_returned",
+      "invoice_created",
+      "invoice_sent",
+      "payment_received"
+    ],
+    "delivery_number": [
+      "delivery_status_changed",
+      "po_verification_updated"
+    ],
+    "po_number": [
+      "delivery_status_changed",
+      "po_created",
+      "po_verification_updated",
+      "purchase_order_created"
+    ],
+    "updated_at": [
+      "delivery_status_changed"
+    ],
+    "supplier_name": [
+      "delivery_status_changed",
+      "po_created",
+      "supplier_created",
+      "supplier_deleted",
+      "supplier_updated"
+    ],
+    "updated_by": [
+      "delivery_status_changed",
+      "payment_status_updated",
+      "service_assignment_updated",
+      "unit_location_updated",
+      "warehouse_unit_updated",
+      "workorder_status_changed"
+    ],
+    "nomor_di": [
+      "di_approved",
+      "di_cancelled",
+      "di_created",
+      "di_delivered",
+      "di_in_progress",
+      "di_submitted"
+    ],
+    "alasan": [
+      "di_cancelled",
+      "inventory_unit_maintenance",
+      "spk_cancelled"
+    ],
+    "creator_name": [
+      "di_created"
+    ],
+    "area_name": [
+      "employee_assigned",
+      "employee_unassigned",
+      "service_assignment_created",
+      "service_assignment_updated"
+    ],
+    "employee_name": [
+      "employee_assigned",
+      "employee_unassigned"
+    ],
+    "unit_code": [
+      "inspection_completed",
+      "inspection_scheduled",
+      "maintenance_completed",
+      "maintenance_scheduled",
+      "service_assignment_created",
+      "service_assignment_updated",
+      "spk_completed",
+      "unit_location_updated",
+      "warehouse_unit_updated",
+      "workorder_status_changed"
+    ],
+    "completed_by": [
+      "inspection_completed",
+      "maintenance_completed",
+      "spk_completed",
+      "warehouse_stocktake_completed",
+      "warehouse_transfer_completed"
+    ],
+    "inspection_type": [
+      "inspection_completed",
+      "inspection_scheduled"
+    ],
+    "result": [
+      "inspection_completed",
+      "spk_completed"
+    ],
+    "findings_count": [
+      "inspection_completed"
+    ],
+    "scheduled_date": [
+      "inspection_scheduled",
+      "maintenance_scheduled"
+    ],
+    "priority": [
+      "inspection_scheduled"
+    ],
+    "assigned_to": [
+      "inspection_scheduled",
+      "quotation_follow_up_required"
+    ],
+    "model": [
+      "inventory_unit_added"
+    ],
+    "tipe": [
+      "inventory_unit_low_stock"
+    ],
+    "count": [
+      "inventory_unit_low_stock"
+    ],
+    "invoice_number": [
+      "invoice_created",
+      "invoice_overdue",
+      "invoice_paid",
+      "invoice_sent",
+      "payment_overdue",
+      "payment_received",
+      "payment_status_updated"
+    ],
+    "due_date": [
+      "invoice_overdue",
+      "payment_overdue"
+    ],
+    "amount": [
+      "invoice_paid",
+      "payment_received",
+      "payment_received",
+      "payment_status_updated",
+      "purchase_order_created"
+    ],
+    "total_cost": [
+      "maintenance_completed"
+    ],
+    "maintenance_type": [
+      "maintenance_completed",
+      "maintenance_scheduled"
+    ],
+    "actual_hours": [
+      "maintenance_completed"
+    ],
+    "parts_replaced": [
+      "maintenance_completed"
+    ],
+    "assigned_mechanic": [
+      "maintenance_scheduled"
+    ],
+    "estimated_hours": [
+      "maintenance_scheduled"
+    ],
+    "username": [
+      "password_reset",
+      "user_activated",
+      "user_created",
+      "user_deactivated",
+      "user_deleted",
+      "user_updated"
+    ],
+    "days_overdue": [
+      "payment_overdue"
+    ],
+    "outstanding_balance": [
+      "payment_overdue"
+    ],
+    "payment_method": [
+      "payment_received"
+    ],
+    "received_by": [
+      "payment_received"
+    ],
+    "payment_date": [
+      "payment_status_updated"
+    ],
+    "unit_no": [
+      "pmps_completed",
+      "pmps_due_soon",
+      "pmps_overdue",
+      "spk_created",
+      "work_order_created"
+    ],
+    "departemen": [
+      "pmps_completed",
+      "pmps_due_soon",
+      "pmps_overdue",
+      "spk_assigned",
+      "spk_cancelled",
+      "spk_completed",
+      "spk_created",
+      "work_order_assigned",
+      "work_order_cancelled",
+      "work_order_completed",
+      "work_order_created",
+      "work_order_in_progress"
+    ],
+    "nomor_po": [
+      "po_approved",
+      "po_attachment_created",
+      "po_received",
+      "po_rejected",
+      "po_sparepart_created",
+      "po_unit_created",
+      "po_verified"
+    ],
+    "supplier": [
+      "po_attachment_created",
+      "po_sparepart_created",
+      "po_unit_created"
+    ],
+    "delivery_date": [
+      "po_created"
+    ],
+    "po_type": [
+      "po_created"
+    ],
+    "created_by": [
+      "po_created"
+    ],
+    "rejected_by": [
+      "po_rejected"
+    ],
+    "rejection_reason": [
+      "po_rejected"
+    ],
+    "verified_by": [
+      "po_verification_updated"
+    ],
+    "verified_items": [
+      "po_verification_updated"
+    ],
+    "verification_status": [
+      "po_verification_updated"
+    ],
+    "notes": [
+      "po_verification_updated"
+    ],
+    "total_items": [
+      "po_verification_updated"
+    ],
+    "vendor": [
+      "purchase_order_created"
+    ],
+    "quotation_number": [
+      "quotation_created"
+    ],
+    "quote_number": [
+      "quotation_follow_up_required",
+      "quotation_sent_to_customer"
+    ],
+    "last_contact": [
+      "quotation_follow_up_required"
+    ],
+    "days_since_sent": [
+      "quotation_follow_up_required"
+    ],
+    "sent_method": [
+      "quotation_sent_to_customer"
+    ],
+    "sent_by": [
+      "quotation_sent_to_customer"
+    ],
+    "customer_email": [
+      "quotation_sent_to_customer"
+    ],
+    "role_name": [
+      "role_created",
+      "role_updated"
+    ],
+    "start_date": [
+      "service_assignment_created"
+    ],
+    "end_date": [
+      "service_assignment_created"
+    ],
+    "changes": [
+      "service_assignment_updated",
+      "warehouse_unit_updated"
+    ],
+    "qty": [
+      "sparepart_added",
+      "sparepart_low_stock",
+      "sparepart_used"
+    ],
+    "nama_sparepart": [
+      "sparepart_added",
+      "sparepart_low_stock",
+      "sparepart_out_of_stock",
+      "sparepart_used"
+    ],
+    "sparepart_name": [
+      "sparepart_returned"
+    ],
+    "confirmed_by": [
+      "sparepart_returned"
+    ],
+    "quantity": [
+      "sparepart_returned"
+    ],
+    "returned_by": [
+      "sparepart_returned"
+    ],
+    "mechanic_name": [
+      "spk_assigned",
+      "work_order_assigned"
+    ],
+    "nomor_spk": [
+      "spk_assigned",
+      "spk_cancelled",
+      "spk_completed",
+      "spk_created",
+      "unit_prep_completed",
+      "unit_prep_started"
+    ],
+    "work_type": [
+      "spk_completed"
+    ],
+    "actual_duration": [
+      "spk_completed"
+    ],
+    "spk_number": [
+      "spk_completed",
+      "spk_fabrication_completed",
+      "spk_pdi_completed",
+      "spk_unit_prep_completed"
+    ],
+    "pelanggan": [
+      "spk_created",
+      "spk_fabrication_completed",
+      "spk_pdi_completed",
+      "spk_unit_prep_completed"
+    ],
+    "approved_by": [
+      "spk_fabrication_completed",
+      "spk_pdi_completed",
+      "spk_unit_prep_completed"
+    ],
+    "new_location": [
+      "unit_location_updated"
+    ],
+    "old_location": [
+      "unit_location_updated"
+    ],
+    "coordinates": [
+      "unit_location_updated"
+    ],
+    "role": [
+      "user_created"
+    ],
+    "items_counted": [
+      "warehouse_stocktake_completed"
+    ],
+    "discrepancies": [
+      "warehouse_stocktake_completed"
+    ],
+    "warehouse_name": [
+      "warehouse_stocktake_completed",
+      "warehouse_stock_alert"
+    ],
+    "stocktake_code": [
+      "warehouse_stocktake_completed"
+    ],
+    "minimum_stock": [
+      "warehouse_stock_alert"
+    ],
+    "item_name": [
+      "warehouse_stock_alert"
+    ],
+    "unit": [
+      "warehouse_stock_alert"
+    ],
+    "current_stock": [
+      "warehouse_stock_alert"
+    ],
+    "to_warehouse": [
+      "warehouse_transfer_completed"
+    ],
+    "transfer_code": [
+      "warehouse_transfer_completed"
+    ],
+    "item_count": [
+      "warehouse_transfer_completed"
+    ],
+    "from_warehouse": [
+      "warehouse_transfer_completed"
+    ],
+    "category": [
+      "workorder_status_changed"
+    ],
+    "wo_number": [
+      "workorder_status_changed"
+    ],
+    "progress": [
+      "workorder_status_changed"
+    ],
+    "nomor_wo": [
+      "work_order_assigned",
+      "work_order_cancelled",
+      "work_order_completed",
+      "work_order_created",
+      "work_order_in_progress"
+    ],
+    "mechanic": [
+      "work_order_in_progress"
+    ]
+  },
+  "standardization_issues": {
+    "unit_naming": [
+      {
+        "event": "inspection_completed",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "inspection_scheduled",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "maintenance_completed",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "maintenance_scheduled",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "pmps_completed",
+        "wrong_name": "unit_no",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "pmps_due_soon",
+        "wrong_name": "unit_no",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "pmps_overdue",
+        "wrong_name": "unit_no",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "service_assignment_created",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "service_assignment_updated",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "spk_completed",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "spk_created",
+        "wrong_name": "unit_no",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "unit_location_updated",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "warehouse_unit_updated",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "workorder_status_changed",
+        "wrong_name": "unit_code",
+        "should_be": "no_unit"
+      },
+      {
+        "event": "work_order_created",
+        "wrong_name": "unit_no",
+        "should_be": "no_unit"
+      }
+    ],
+    "quantity_naming": [
+      {
+        "event": "sparepart_added",
+        "wrong_name": "qty",
+        "should_be": "quantity"
+      },
+      {
+        "event": "sparepart_low_stock",
+        "wrong_name": "qty",
+        "should_be": "quantity"
+      },
+      {
+        "event": "sparepart_used",
+        "wrong_name": "qty",
+        "should_be": "quantity"
+      }
+    ],
+    "generic_id": []
+  }
+}

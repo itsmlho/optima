@@ -1348,33 +1348,88 @@ async function loadNotificationVariables() {
 }
 
 function showVariablesInfo() {
-    // Sort events alphabetically
-    const sortedEvents = Object.keys(availableVariables).sort();
+    // Check if data loaded
+    if (!availableVariables || !availableVariables.events) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Data Not Loaded',
+            text: 'Please wait for variable data to load...'
+        });
+        loadNotificationVariables().then(() => showVariablesInfo());
+        return;
+    }
     
-    // Build simple list of all variables
+    const events = availableVariables.events;
+    const sortedEvents = Object.keys(events).sort();
+    
+    // Build standardized variables list with categories
     let variablesHtml = '';
     
+    // Add standards info banner
+    if (availableVariables.standards) {
+        variablesHtml += `
+            <div class="alert alert-success mb-3">
+                <h6 class="mb-2"><i class="fas fa-check-circle me-2"></i>Variable Names</h6>
+                <ul class="mb-0 small">
+                    <li><strong>Unit:</strong> Use <code>{{no_unit}}</code> (not unit_code/unit_no)</li>
+                    <li><strong>Customer:</strong> Use <code>{{customer}}</code> (not customer_name)</li>
+                    <li><strong>Quantity:</strong> Use <code>{{quantity}}</code> (not qty)</li>
+                    <li><strong>Sparepart:</strong> Use <code>{{sparepart_name}}</code> (not nama_sparepart)</li>
+                    <li><strong>Delivery:</strong> Use <code>{{nomor_delivery}}</code> (not delivery_number)</li>
+                </ul>
+                <p class="mb-0 mt-2 small text-muted"><i class="fas fa-info-circle me-1"></i>Old variable names still work for backward compatibility</p>
+            </div>
+        `;
+    }
+    
+    // Build events list
     sortedEvents.forEach(eventName => {
-        const eventData = availableVariables[eventName];
+        const eventData = events[eventName];
         if (!eventData || !eventData.variables || eventData.variables.length === 0) return;
         
-        const varCount = eventData.variables.length;
-        const varsText = eventData.variables.join(' ');
+        const variables = eventData.variables.filter(v => v !== 'id'); // Hide internal 'id'
+        if (variables.length === 0) return;
+        
+        const varCount = variables.length;
+        const varsText = variables.join(' ');
         
         variablesHtml += `
             <div class="event-group mb-3 p-3 border rounded" data-event="${eventName.toLowerCase()}" data-vars="${varsText.toLowerCase()}">
                 <div class="mb-2">
-                    <h6 class="mb-1 text-primary">${eventName} <span class="badge bg-secondary">${varCount}</span></h6>
+                    <h6 class="mb-1 text-primary">
+                        <i class="fas fa-bell me-2"></i>${eventName} 
+                        <span class="badge bg-secondary">${varCount} vars</span>
+                    </h6>
                 </div>
                 <div class="row g-2">
         `;
         
-        eventData.variables.forEach(variable => {
+        variables.forEach(variable => {
             const varName = `{{${variable}}}`;
+            
+            // Check if this is a standardized variable
+            let badgeClass = '';
+            let badgeText = '';
+            if (variable === 'no_unit' || variable === 'customer' || variable === 'quantity' || 
+                variable === 'sparepart_name' || variable === 'nomor_delivery') {
+                badgeClass = ' border-success border-2';
+                badgeText = '<span class="badge bg-success ms-1" style="font-size:0.6rem;">STANDARD</span>';
+            } else if (variable === 'unit_code' || variable === 'unit_no' || variable === 'customer_name' || 
+                       variable === 'qty' || variable === 'nama_sparepart' || variable === 'delivery_number') {
+                badgeClass = ' border-warning border-2';
+                badgeText = '<span class="badge bg-warning ms-1" style="font-size:0.6rem;">ALIAS</span>';
+            }
+            
+            // Get description if available
+            let description = '';
+            if (availableVariables.variable_descriptions && availableVariables.variable_descriptions[variable]) {
+                description = `<br><small class="text-muted">${availableVariables.variable_descriptions[variable]}</small>`;
+            }
+            
             variablesHtml += `
-                <div class="col-md-6">
-                    <div class="p-2 bg-light rounded" onclick="copyVariable('${varName}')" style="cursor: pointer;" title="Click to copy">
-                        <code class="text-dark">${varName}</code>
+                <div class="col-md-6 col-lg-4">
+                    <div class="p-2 bg-light rounded${badgeClass}" onclick="copyVariable('${varName}')" style="cursor: pointer;" title="Click to copy">
+                        <code class="text-dark">${varName}</code>${badgeText}${description}
                     </div>
                 </div>
             `;
