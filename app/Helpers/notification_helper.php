@@ -254,8 +254,10 @@ if (!function_exists('notify_spk_created')) {
             'id' => $spkData['id'] ?? null,
             'nomor_spk' => $spkData['nomor_spk'] ?? '',
             'pelanggan' => $spkData['pelanggan'] ?? $spkData['nama_customer'] ?? '',
-            'departemen' => $spkData['departemen'] ?? '',
-            'url' => base_url('/service/spk/detail/' . ($spkData['id'] ?? ''))
+            'departemen' => $spkData['departemen'] ?? session('division') ?? 'Marketing',
+            'unit_no' => $spkData['unit_no'] ?? $spkData['no_unit'] ?? '',
+            'no_unit' => $spkData['no_unit'] ?? $spkData['unit_no'] ?? '',
+            'url' => $spkData['url'] ?? base_url('/service/spk/detail/' . ($spkData['id'] ?? ''))
         ]);
     }
 }
@@ -292,10 +294,13 @@ if (!function_exists('notify_work_order_created')) {
         return send_notification('work_order_created', [
             'module' => 'work_order',
             'id' => $woData['id'] ?? null,
+            'departemen' => $woData['departemen'] ?? session('division') ?? 'Service',
             'nomor_wo' => $woData['nomor_wo'] ?? '',
-            'unit_code' => $woData['unit_code'] ?? '',
+            'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'no_unit' => $woData['no_unit'] ?? $woData['unit_code'] ?? '',
+            'unit_no' => $woData['unit_no'] ?? $woData['no_unit'] ?? $woData['unit_code'] ?? '',
             'priority' => $woData['priority'] ?? 'Normal',
-            'url' => base_url('/service/work-orders/detail/' . ($woData['id'] ?? ''))
+            'url' => $woData['url'] ?? base_url('/service/work-orders/view/' . ($woData['id'] ?? ''))
         ]);
     }
 }
@@ -337,7 +342,7 @@ if (!function_exists('notify_customer_created')) {
             'customer_code' => $customerData['customer_code'] ?? '',
             'contact_person' => $customerData['contact_person'] ?? '',
             'phone' => $customerData['phone'] ?? '',
-            'url' => base_url('/marketing/customer-management')
+            'url' => base_url('/marketing/customer-management/showCustomer/' . ($customerData['id'] ?? ''))
         ]);
     }
 }
@@ -356,7 +361,7 @@ if (!function_exists('notify_customer_updated')) {
             'id' => $customerData['id'] ?? null,
             'customer_name' => $customerData['customer_name'] ?? '',
             'customer_code' => $customerData['customer_code'] ?? '',
-            'url' => base_url('/marketing/customer-management')
+            'url' => base_url('/marketing/customer-management/showCustomer/' . ($customerData['id'] ?? ''))
         ]);
     }
 }
@@ -395,7 +400,7 @@ if (!function_exists('notify_customer_location_added')) {
             'customer_name' => $locationData['customer_name'] ?? '',
             'location_name' => $locationData['location_name'] ?? '',
             'address' => $locationData['address'] ?? '',
-            'url' => base_url('/marketing/customer-management')
+            'url' => base_url('/marketing/customer-management/showCustomer/' . ($locationData['customer_id'] ?? ''))
         ]);
     }
 }
@@ -417,7 +422,7 @@ if (!function_exists('notify_customer_contract_created')) {
             'nilai_total' => $contractData['nilai_total'] ?? '',
             'tanggal_mulai' => $contractData['tanggal_mulai'] ?? '',
             'tanggal_selesai' => $contractData['tanggal_selesai'] ?? '',
-            'url' => base_url('/marketing/customer-management')
+            'url' => base_url('/marketing/customer-management/showCustomer/' . ($contractData['customer_id'] ?? ''))
         ]);
     }
 }
@@ -461,7 +466,8 @@ if (!function_exists('notify_invoice_created')) {
             'module' => 'finance',
             'id' => $invoiceData['id'] ?? null,
             'invoice_number' => $invoiceData['invoice_number'] ?? $invoiceData['nomor_invoice'] ?? '',
-            'customer_name' => $invoiceData['customer_name'] ?? '',
+            'customer' => $invoiceData['customer'] ?? $invoiceData['customer_name'] ?? '',
+            'customer_name' => $invoiceData['customer_name'] ?? $invoiceData['customer'] ?? '',
             'amount' => $invoiceData['amount'] ?? $invoiceData['total_amount'] ?? 0,
             'due_date' => $invoiceData['due_date'] ?? $invoiceData['tanggal_jatuh_tempo'] ?? '',
             'created_by' => $invoiceData['created_by'] ?? '',
@@ -527,15 +533,18 @@ if (!function_exists('notify_delivery_created')) {
     function notify_delivery_created($deliveryData)
     {
         return send_notification('delivery_created', [
-            'module' => 'purchasing',
+            'module' => $deliveryData['module'] ?? 'purchasing',
             'id' => $deliveryData['id'] ?? null,
             'delivery_number' => $deliveryData['delivery_number'] ?? $deliveryData['nomor_surat_jalan'] ?? '',
+            'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? $deliveryData['nomor_surat_jalan'] ?? '',
             'po_number' => $deliveryData['po_number'] ?? $deliveryData['nomor_po'] ?? '',
             'supplier_name' => $deliveryData['supplier_name'] ?? '',
+            'customer' => $deliveryData['customer'] ?? $deliveryData['customer_name'] ?? $deliveryData['supplier_name'] ?? '',
+            'customer_name' => $deliveryData['customer_name'] ?? $deliveryData['supplier_name'] ?? '',
             'delivery_date' => $deliveryData['delivery_date'] ?? $deliveryData['tanggal_kirim'] ?? '',
             'items_count' => $deliveryData['items_count'] ?? 0,
             'created_by' => $deliveryData['created_by'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/purchasing/deliveries')
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
         ]);
     }
 }
@@ -558,7 +567,7 @@ if (!function_exists('notify_delivery_status_changed')) {
             'new_status' => $deliveryData['new_status'] ?? $deliveryData['status'] ?? '',
             'supplier_name' => $deliveryData['supplier_name'] ?? '',
             'updated_by' => $deliveryData['updated_by'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/purchasing/deliveries')
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
         ]);
     }
 }
@@ -581,7 +590,7 @@ if (!function_exists('notify_delivery_assigned')) {
             'customer_name' => $deliveryData['customer_name'] ?? '',
             'destination' => $deliveryData['destination'] ?? '',
             'assigned_by' => $deliveryData['assigned_by'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
         ]);
     }
 }
@@ -599,11 +608,14 @@ if (!function_exists('notify_delivery_in_transit')) {
             'module' => 'operational',
             'id' => $deliveryData['id'] ?? null,
             'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
+            'delivery_number' => $deliveryData['delivery_number'] ?? $deliveryData['nomor_delivery'] ?? '',
+            'customer' => $deliveryData['customer'] ?? $deliveryData['customer_name'] ?? '',
+            'customer_name' => $deliveryData['customer_name'] ?? $deliveryData['customer'] ?? '',
             'driver_name' => $deliveryData['driver_name'] ?? '',
             'current_location' => $deliveryData['current_location'] ?? '',
             'destination' => $deliveryData['destination'] ?? '',
             'eta' => $deliveryData['eta'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
         ]);
     }
 }
@@ -621,11 +633,13 @@ if (!function_exists('notify_delivery_arrived')) {
             'module' => 'operational',
             'id' => $deliveryData['id'] ?? null,
             'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
-            'customer_name' => $deliveryData['customer_name'] ?? '',
+            'delivery_number' => $deliveryData['delivery_number'] ?? $deliveryData['nomor_delivery'] ?? '',
+            'customer' => $deliveryData['customer'] ?? $deliveryData['customer_name'] ?? '',
+            'customer_name' => $deliveryData['customer_name'] ?? $deliveryData['customer'] ?? '',
             'arrival_time' => $deliveryData['arrival_time'] ?? date('Y-m-d H:i:s'),
             'driver_name' => $deliveryData['driver_name'] ?? '',
             'location' => $deliveryData['location'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
         ]);
     }
 }
@@ -643,12 +657,14 @@ if (!function_exists('notify_delivery_completed')) {
             'module' => 'operational',
             'id' => $deliveryData['id'] ?? null,
             'nomor_delivery' => $deliveryData['nomor_delivery'] ?? $deliveryData['delivery_number'] ?? '',
-            'customer_name' => $deliveryData['customer_name'] ?? '',
+            'delivery_number' => $deliveryData['delivery_number'] ?? $deliveryData['nomor_delivery'] ?? '',
+            'customer' => $deliveryData['customer'] ?? $deliveryData['customer_name'] ?? '',
+            'customer_name' => $deliveryData['customer_name'] ?? $deliveryData['customer'] ?? '',
             'completed_time' => $deliveryData['completed_time'] ?? date('Y-m-d H:i:s'),
             'signature' => $deliveryData['signature'] ?? 'Yes',
             'notes' => $deliveryData['notes'] ?? '',
             'completed_by' => $deliveryData['completed_by'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
         ]);
     }
 }
@@ -672,7 +688,7 @@ if (!function_exists('notify_delivery_delayed')) {
             'delay_reason' => $deliveryData['delay_reason'] ?? 'Unknown',
             'estimated_arrival' => $deliveryData['estimated_arrival'] ?? '',
             'driver_name' => $deliveryData['driver_name'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/operational/delivery')
+            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
         ]);
     }
 }
@@ -806,7 +822,8 @@ if (!function_exists('notify_invoice_sent')) {
             'module' => 'finance',
             'id' => $invoiceData['id'] ?? null,
             'invoice_number' => $invoiceData['invoice_number'] ?? $invoiceData['nomor_invoice'] ?? '',
-            'customer_name' => $invoiceData['customer_name'] ?? '',
+            'customer' => $invoiceData['customer'] ?? $invoiceData['customer_name'] ?? '',
+            'customer_name' => $invoiceData['customer_name'] ?? $invoiceData['customer'] ?? '',
             'amount' => $invoiceData['amount'] ?? $invoiceData['total_amount'] ?? 0,
             'sent_date' => $invoiceData['sent_date'] ?? date('Y-m-d H:i:s'),
             'sent_by' => $invoiceData['sent_by'] ?? '',
@@ -894,7 +911,9 @@ if (!function_exists('notify_pmps_due_soon')) {
         return send_notification('pmps_due_soon', [
             'module' => 'maintenance',
             'id' => $pmpsData['id'] ?? null,
+            'departemen' => $pmpsData['departemen'] ?? session('division') ?? 'Service',
             'unit_no' => $pmpsData['unit_no'] ?? $pmpsData['no_unit'] ?? '',
+            'no_unit' => $pmpsData['no_unit'] ?? $pmpsData['unit_no'] ?? '',
             'unit_model' => $pmpsData['unit_model'] ?? $pmpsData['model'] ?? '',
             'due_date' => $pmpsData['due_date'] ?? $pmpsData['tanggal_jatuh_tempo'] ?? '',
             'days' => $pmpsData['days'] ?? $pmpsData['days_until_due'] ?? 0,
@@ -917,7 +936,9 @@ if (!function_exists('notify_pmps_overdue')) {
         return send_notification('pmps_overdue', [
             'module' => 'maintenance',
             'id' => $pmpsData['id'] ?? null,
+            'departemen' => $pmpsData['departemen'] ?? session('division') ?? 'Service',
             'unit_no' => $pmpsData['unit_no'] ?? $pmpsData['no_unit'] ?? '',
+            'no_unit' => $pmpsData['no_unit'] ?? $pmpsData['unit_no'] ?? '',
             'unit_model' => $pmpsData['unit_model'] ?? $pmpsData['model'] ?? '',
             'due_date' => $pmpsData['due_date'] ?? $pmpsData['tanggal_jatuh_tempo'] ?? '',
             'days' => $pmpsData['days'] ?? $pmpsData['days_overdue'] ?? 0,
@@ -940,7 +961,9 @@ if (!function_exists('notify_pmps_completed')) {
         return send_notification('pmps_completed', [
             'module' => 'maintenance',
             'id' => $pmpsData['id'] ?? null,
+            'departemen' => $pmpsData['departemen'] ?? session('division') ?? 'Service',
             'unit_no' => $pmpsData['unit_no'] ?? $pmpsData['no_unit'] ?? '',
+            'no_unit' => $pmpsData['no_unit'] ?? $pmpsData['unit_no'] ?? '',
             'unit_model' => $pmpsData['unit_model'] ?? $pmpsData['model'] ?? '',
             'completion_date' => $pmpsData['completion_date'] ?? date('Y-m-d H:i:s'),
             'service_type' => $pmpsData['service_type'] ?? $pmpsData['tipe_service'] ?? '',
@@ -1324,8 +1347,11 @@ if (!function_exists('notify_work_order_assigned')) {
         return send_notification('work_order_assigned', [
             'module' => 'work_order',
             'id' => $woData['id'] ?? null,
+            'departemen' => $woData['departemen'] ?? session('division') ?? 'Service',
             'nomor_wo' => $woData['nomor_wo'] ?? $woData['wo_number'] ?? '',
+            'wo_number' => $woData['wo_number'] ?? $woData['nomor_wo'] ?? '',
             'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'no_unit' => $woData['no_unit'] ?? $woData['unit_code'] ?? '',
             'mechanic_name' => $woData['mechanic_name'] ?? $woData['mekanik'] ?? '',
             'priority' => $woData['priority'] ?? '',
             'assigned_by' => $woData['assigned_by'] ?? '',
@@ -1346,8 +1372,11 @@ if (!function_exists('notify_work_order_in_progress')) {
         return send_notification('work_order_in_progress', [
             'module' => 'work_order',
             'id' => $woData['id'] ?? null,
+            'departemen' => $woData['departemen'] ?? session('division') ?? 'Service',
             'nomor_wo' => $woData['nomor_wo'] ?? $woData['wo_number'] ?? '',
+            'wo_number' => $woData['wo_number'] ?? $woData['nomor_wo'] ?? '',
             'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'no_unit' => $woData['no_unit'] ?? $woData['unit_code'] ?? '',
             'mechanic' => $woData['mechanic'] ?? $woData['mekanik'] ?? '',
             'progress' => $woData['progress'] ?? 0,
             'url' => $woData['url'] ?? base_url('/service/work-orders')
@@ -1367,8 +1396,11 @@ if (!function_exists('notify_work_order_completed')) {
         return send_notification('work_order_completed', [
             'module' => 'work_order',
             'id' => $woData['id'] ?? null,
+            'departemen' => $woData['departemen'] ?? session('division') ?? 'Service',
             'nomor_wo' => $woData['nomor_wo'] ?? $woData['wo_number'] ?? '',
+            'wo_number' => $woData['wo_number'] ?? $woData['nomor_wo'] ?? '',
             'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'no_unit' => $woData['no_unit'] ?? $woData['unit_code'] ?? '',
             'completion_date' => $woData['completion_date'] ?? date('Y-m-d H:i:s'),
             'mechanic' => $woData['mechanic'] ?? $woData['mekanik'] ?? '',
             'url' => $woData['url'] ?? base_url('/service/work-orders')
@@ -1388,8 +1420,11 @@ if (!function_exists('notify_work_order_cancelled')) {
         return send_notification('work_order_cancelled', [
             'module' => 'work_order',
             'id' => $woData['id'] ?? null,
+            'departemen' => $woData['departemen'] ?? session('division') ?? 'Service',
             'nomor_wo' => $woData['nomor_wo'] ?? $woData['wo_number'] ?? '',
+            'wo_number' => $woData['wo_number'] ?? $woData['nomor_wo'] ?? '',
             'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
+            'no_unit' => $woData['no_unit'] ?? $woData['unit_code'] ?? '',
             'cancellation_reason' => $woData['cancellation_reason'] ?? $woData['alasan'] ?? '',
             'cancelled_by' => $woData['cancelled_by'] ?? '',
             'url' => $woData['url'] ?? base_url('/service/work-orders')
@@ -1418,7 +1453,7 @@ if (!function_exists('notify_inventory_unit_added')) {
             'serial_number' => $unitData['serial_number'] ?? '',
             'status' => $unitData['status'] ?? 'Available',
             'added_by' => $unitData['added_by'] ?? '',
-            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($unitData['id'] ?? ''))
         ]);
     }
 }
@@ -1439,7 +1474,7 @@ if (!function_exists('notify_inventory_unit_status_changed')) {
             'old_status' => $unitData['old_status'] ?? '',
             'new_status' => $unitData['new_status'] ?? $unitData['status'] ?? '',
             'changed_by' => $unitData['changed_by'] ?? '',
-            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($unitData['id'] ?? ''))
         ]);
     }
 }
@@ -1460,7 +1495,7 @@ if (!function_exists('notify_inventory_unit_rental_active')) {
             'customer' => $unitData['customer'] ?? $unitData['customer_name'] ?? '',
             'rental_start_date' => $unitData['rental_start_date'] ?? date('Y-m-d'),
             'rental_duration' => $unitData['rental_duration'] ?? '',
-            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($unitData['id'] ?? ''))
         ]);
     }
 }
@@ -1481,7 +1516,7 @@ if (!function_exists('notify_inventory_unit_returned')) {
             'customer' => $unitData['customer'] ?? $unitData['customer_name'] ?? '',
             'return_date' => $unitData['return_date'] ?? date('Y-m-d H:i:s'),
             'condition' => $unitData['condition'] ?? 'Good',
-            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($unitData['id'] ?? ''))
         ]);
     }
 }
@@ -1502,7 +1537,7 @@ if (!function_exists('notify_inventory_unit_maintenance')) {
             'alasan' => $unitData['alasan'] ?? $unitData['maintenance_reason'] ?? '',
             'scheduled_date' => $unitData['scheduled_date'] ?? date('Y-m-d'),
             'estimated_completion' => $unitData['estimated_completion'] ?? '',
-            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/invent_unit')
+            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($unitData['id'] ?? ''))
         ]);
     }
 }
@@ -1543,13 +1578,16 @@ if (!function_exists('notify_attachment_attached')) {
     function notify_attachment_attached($attachmentData)
     {
         return send_notification('attachment_attached', [
-            'module' => 'inventory',
-            'id' => $attachmentData['id'] ?? null,
+            'module' => $attachmentData['module'] ?? 'inventory',
+            'attachment_id' => $attachmentData['attachment_id'] ?? $attachmentData['id'] ?? null,
             'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
+            'attachment_info' => $attachmentData['attachment_info'] ?? '',
             'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
             'no_unit' => $attachmentData['no_unit'] ?? $attachmentData['unit_code'] ?? '',
-            'attached_by' => $attachmentData['attached_by'] ?? '',
-            'attachment_date' => $attachmentData['attachment_date'] ?? date('Y-m-d H:i:s'),
+            'unit_id' => $attachmentData['unit_id'] ?? null,
+            'performed_by' => $attachmentData['performed_by'] ?? $attachmentData['attached_by'] ?? '',
+            'performed_at' => $attachmentData['performed_at'] ?? $attachmentData['attachment_date'] ?? date('Y-m-d H:i:s'),
+            'notes' => $attachmentData['notes'] ?? '',
             'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
         ]);
     }
@@ -1565,13 +1603,17 @@ if (!function_exists('notify_attachment_detached')) {
     function notify_attachment_detached($attachmentData)
     {
         return send_notification('attachment_detached', [
-            'module' => 'inventory',
-            'id' => $attachmentData['id'] ?? null,
+            'module' => $attachmentData['module'] ?? 'inventory',
+            'attachment_id' => $attachmentData['attachment_id'] ?? $attachmentData['id'] ?? null,
             'tipe_item' => $attachmentData['tipe_item'] ?? $attachmentData['type'] ?? '',
+            'attachment_info' => $attachmentData['attachment_info'] ?? '',
             'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
             'no_unit' => $attachmentData['no_unit'] ?? $attachmentData['unit_code'] ?? '',
-            'detached_by' => $attachmentData['detached_by'] ?? '',
+            'unit_id' => $attachmentData['unit_id'] ?? null,
+            'performed_by' => $attachmentData['performed_by'] ?? $attachmentData['detached_by'] ?? '',
+            'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
             'reason' => $attachmentData['reason'] ?? '',
+            'new_location' => $attachmentData['new_location'] ?? '',
             'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
         ]);
     }
@@ -1911,6 +1953,7 @@ if (!function_exists('notify_spk_assigned')) {
         return send_notification('spk_assigned', [
             'module' => 'spk',
             'id' => $spkData['id'] ?? null,
+            'departemen' => $spkData['departemen'] ?? session('division') ?? 'Service',
             'nomor_spk' => $spkData['nomor_spk'] ?? '',
             'no_unit' => $spkData['no_unit'] ?? $spkData['unit_code'] ?? '',
             'mechanic_name' => $spkData['mechanic_name'] ?? $spkData['mekanik'] ?? '',
@@ -1932,6 +1975,7 @@ if (!function_exists('notify_spk_cancelled')) {
         return send_notification('spk_cancelled', [
             'module' => 'spk',
             'id' => $spkData['id'] ?? null,
+            'departemen' => $spkData['departemen'] ?? session('division') ?? 'Marketing',
             'nomor_spk' => $spkData['nomor_spk'] ?? '',
             'pelanggan' => $spkData['pelanggan'] ?? $spkData['customer'] ?? '',
             'alasan' => $spkData['alasan'] ?? $spkData['cancellation_reason'] ?? '',
@@ -2000,7 +2044,8 @@ if (!function_exists('notify_payment_received')) {
             'module' => 'payment',
             'id' => $paymentData['id'] ?? null,
             'amount' => $paymentData['amount'] ?? $paymentData['jumlah'] ?? 0,
-            'customer_name' => $paymentData['customer_name'] ?? '',
+            'customer' => $paymentData['customer'] ?? $paymentData['customer_name'] ?? '',
+            'customer_name' => $paymentData['customer_name'] ?? $paymentData['customer'] ?? '',
             'payment_method' => $paymentData['payment_method'] ?? $paymentData['metode_pembayaran'] ?? '',
             'invoice_number' => $paymentData['invoice_number'] ?? $paymentData['nomor_invoice'] ?? '',
             'received_by' => $paymentData['received_by'] ?? '',
@@ -2796,8 +2841,11 @@ if (!function_exists('notify_spk_completed')) {
         return send_notification('spk_completed', [
             'module' => 'spk',
             'spk_id' => $spkData['spk_id'] ?? null,
+            'departemen' => $spkData['departemen'] ?? session('division') ?? 'Marketing',
             'spk_number' => $spkData['spk_number'] ?? '',
+            'nomor_spk' => $spkData['nomor_spk'] ?? $spkData['spk_number'] ?? '',
             'unit_code' => $spkData['unit_code'] ?? '',
+            'no_unit' => $spkData['no_unit'] ?? $spkData['unit_code'] ?? '',
             'work_type' => $spkData['work_type'] ?? '',
             'actual_duration' => $spkData['actual_duration'] ?? 0,
             'result' => $spkData['result'] ?? '',
@@ -2964,7 +3012,7 @@ if (!function_exists('notify_attachment_added')) {
             'lokasi' => $attachmentData['lokasi'] ?? 'Workshop',
             'added_by' => $attachmentData['added_by'] ?? '',
             'added_at' => $attachmentData['added_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/attachment/view/' . ($attachmentData['attachment_id'] ?? ''))
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/get-attachment-detail/' . ($attachmentData['attachment_id'] ?? ''))
         ]);
     }
 }
@@ -2989,7 +3037,7 @@ if (!function_exists('notify_attachment_attached')) {
             'performed_by' => $attachmentData['performed_by'] ?? '',
             'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
             'notes' => $attachmentData['notes'] ?? '',
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/unit/view/' . ($attachmentData['unit_id'] ?? ''))
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($attachmentData['unit_id'] ?? ''))
         ]);
     }
 }
@@ -3015,7 +3063,7 @@ if (!function_exists('notify_attachment_detached')) {
             'new_location' => $attachmentData['new_location'] ?? 'Workshop',
             'performed_by' => $attachmentData['performed_by'] ?? '',
             'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/attachment/view/' . ($attachmentData['attachment_id'] ?? ''))
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/get-attachment-detail/' . ($attachmentData['attachment_id'] ?? ''))
         ]);
     }
 }
@@ -3042,7 +3090,7 @@ if (!function_exists('notify_attachment_swapped')) {
             'reason' => $attachmentData['reason'] ?? '',
             'performed_by' => $attachmentData['performed_by'] ?? '',
             'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/attachment/view/' . ($attachmentData['attachment_id'] ?? ''))
+            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/get-attachment-detail/' . ($attachmentData['attachment_id'] ?? ''))
         ]);
     }
 }
