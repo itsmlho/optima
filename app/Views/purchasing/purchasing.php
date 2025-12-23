@@ -50,28 +50,28 @@ $can_export = $permissions['export'];
                 </button>
                 <?php endif; ?>
                 <button type="button" class="btn btn-outline-primary" onclick="refreshTable()">
-                    <i class="fas fa-sync-alt me-1"></i><?= lang('App.refresh') ?>
+                    <i class="fas fa-sync-alt me-1"></i><?= lang('Common.refresh') ?>
                 </button>
                 <?php if ($can_export): ?>
                 <div class="dropdown">
                     <button class="btn btn-outline-success dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-file-excel me-1"></i><?= lang('App.export') ?>
+                        <i class="fas fa-file-excel me-1"></i><?= lang('Common.export') ?>
                     </button>
                     <ul class="dropdown-menu" aria-labelledby="exportDropdown">
                         <li><a class="dropdown-item" href="<?= base_url('purchasing/export_po_progres') ?>">
-                            <i class="fas fa-clock me-2 text-success"></i><?= lang('App.export') ?> <?= lang('App.progress') ?>
+                            <i class="fas fa-clock me-2 text-success"></i><?= lang('Common.export') ?> <?= lang('Common.progress') ?>
                         </a></li>
                         <li><a class="dropdown-item" href="<?= base_url('purchasing/export_po_delivery') ?>">
-                            <i class="fas fa-truck me-2 text-warning"></i><?= lang('App.export') ?> <?= lang('App.delivery') ?>
+                            <i class="fas fa-truck me-2 text-warning"></i><?= lang('Common.export') ?> <?= lang('App.delivery') ?>
                         </a></li>
                         <li><a class="dropdown-item" href="<?= base_url('purchasing/export_po_completed') ?>">
-                            <i class="fas fa-check-circle me-2 text-info"></i><?= lang('App.export') ?> <?= lang('App.completed') ?>
+                            <i class="fas fa-check-circle me-2 text-info"></i><?= lang('Common.export') ?> <?= lang('Common.completed') ?>
                         </a></li>
                     </ul>
                 </div>
                 <?php else: ?>
                 <button type="button" class="btn btn-outline-secondary" disabled title="<?= lang('App.access_denied') ?>: <?= lang('App.no_permission_export') ?>">
-                    <i class="fas fa-lock me-1"></i><?= lang('App.export') ?>
+                    <i class="fas fa-lock me-1"></i><?= lang('Common.export') ?>
                 </button>
                 <?php endif; ?>
             </div>
@@ -84,7 +84,7 @@ $can_export = $permissions['export'];
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="progres-tab" data-bs-toggle="tab" data-bs-target="#progres-pane" type="button" role="tab" aria-controls="progres-pane" aria-selected="true">
                         <i class="fas fa-clock"></i>
-                        <span><?= lang('App.progress') ?></span>
+                        <span><?= lang('Common.progress') ?></span>
                         <span class="badge" id="progres-count">0</span>
                     </button>
                 </li>
@@ -98,7 +98,7 @@ $can_export = $permissions['export'];
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed-pane" type="button" role="tab" aria-controls="completed-pane" aria-selected="false">
                         <i class="fas fa-check-circle"></i>
-                        <span>Completed</span>
+                        <span><?= lang('Common.completed') ?></span>
                     </button>
                 </li>
             </ul>
@@ -111,8 +111,8 @@ $can_export = $permissions['export'];
             <?php if (!can_view('purchasing')): ?>
             <div class="alert alert-warning m-3">
                 <i class="fas fa-lock me-2"></i>
-                <strong>Access Denied:</strong> You do not have permission to view Purchase Order details. 
-                Please contact your administrator to request access.
+                <strong><?= lang('App.access_restricted') ?>:</strong> <?= lang('App.no_permission_view') ?> <?= lang('App.purchase_orders') ?> <?= strtolower(lang('App.details')) ?>. 
+                <?= lang('App.contact_administrator') ?>.
             </div>
             <?php endif; ?>
             <div class="card-body p-0">
@@ -120,14 +120,14 @@ $can_export = $permissions['export'];
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOTable">
                 <thead>
                     <tr>
-                        <th>PO Number</th>
-                        <th>Date</th>
-                        <th>Supplier</th>
-                        <th>Status</th>
-                        <th>Total Items</th>
-                        <th>Verification Progress</th>
-                        <th>Delivery Status</th>
-                        <th>Actions</th>
+                        <th><?= lang('App.po_number') ?></th>
+                        <th><?= lang('Common.date') ?></th>
+                        <th><?= lang('App.supplier') ?></th>
+                        <th><?= lang('Common.status') ?></th>
+                        <th><?= lang('App.total_items') ?></th>
+                        <th><?= lang('App.verification_progress') ?></th>
+                        <th><?= lang('App.delivery_status') ?></th>
+                        <th><?= lang('Common.actions') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -143,8 +143,8 @@ $can_export = $permissions['export'];
             <?php if (!can_view('purchasing')): ?>
             <div class="alert alert-warning m-3">
                 <i class="fas fa-lock me-2"></i>
-                <strong>Access Denied:</strong> You do not have permission to view delivery details. 
-                Please contact your administrator to request access.
+                <strong><?= lang('App.access_restricted') ?>:</strong> <?= lang('App.no_permission_view') ?> <?= strtolower(lang('App.delivery')) ?> <?= strtolower(lang('App.details')) ?>. 
+                <?= lang('App.contact_administrator') ?>.
             </div>
             <?php endif; ?>
             <div class="card-body p-0">
@@ -152,12 +152,12 @@ $can_export = $permissions['export'];
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="poDeliveryTable">
                         <thead>
                             <tr>
-                                <th>Packing List</th>
-                                <th>PO Number</th>
-                                <th>Supplier</th>
-                                <th>Delivery Date</th>
-                                <th>Driver</th>
-                                <th>Items</th>
+                                <th><?= lang('App.packing_list') ?></th>
+                                <th><?= lang('App.po_number') ?></th>
+                                <th><?= lang('App.supplier') ?></th>
+                                <th><?= lang('App.delivery_date') ?></th>
+                                <th><?= lang('App.driver') ?></th>
+                                <th><?= lang('App.items') ?></th>
                                 <th>Status</th>
                                 <th>Actions</th>
                                 <th>Print Packing List</th>
@@ -176,8 +176,8 @@ $can_export = $permissions['export'];
             <?php if (!can_view('purchasing')): ?>
             <div class="alert alert-warning m-3">
                 <i class="fas fa-lock me-2"></i>
-                <strong>Access Denied:</strong> You do not have permission to view completed orders. 
-                Please contact your administrator to request access.
+                <strong><?= lang('App.access_restricted') ?>:</strong> <?= lang('App.no_permission_view') ?> <?= strtolower(lang('Common.completed')) ?> orders. 
+                <?= lang('App.contact_administrator') ?>.
             </div>
             <?php endif; ?>
             <div class="card-body p-0">
@@ -185,14 +185,14 @@ $can_export = $permissions['export'];
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOCompletedTable">
                         <thead>
                             <tr>
-                                <th>PO Number</th>
-                                <th>Date</th>
-                                <th>Supplier</th>
-                                <th>Status</th>
-                                <th>Total Items</th>
-                                <th>Verification Progress</th>
-                                <th>Delivery Status</th>
-                                <th>Actions</th>
+                                <th><?= lang('App.po_number') ?></th>
+                                <th><?= lang('Common.date') ?></th>
+                                <th><?= lang('App.supplier') ?></th>
+                                <th><?= lang('Common.status') ?></th>
+                                <th><?= lang('App.total_items') ?></th>
+                                <th><?= lang('App.verification_progress') ?></th>
+                                <th><?= lang('App.delivery_status') ?></th>
+                                <th><?= lang('Common.actions') ?></th>
                             </tr>
                         </thead>
                         <tbody>

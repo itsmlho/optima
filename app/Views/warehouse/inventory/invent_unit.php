@@ -23,35 +23,35 @@ $can_export = $permissions['export'];
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="all-tab" data-category="" type="button" role="tab">
                         <i class="fas fa-list me-1"></i>
-                        <span>Semua</span>
+                        <span><?= lang('Common.all') ?></span>
                         <span class="badge bg-secondary ms-1" id="count-all"><?= $stats['total'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="stock-tab" data-category="stock" type="button" role="tab">
                         <i class="fas fa-warehouse me-1"></i>
-                        <span>Stock Unit</span>
+                        <span><?= lang('App.stock_unit') ?></span>
                         <span class="badge bg-success ms-1" id="count-stock">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="rental-tab" data-category="rental" type="button" role="tab">
                         <i class="fas fa-handshake me-1"></i>
-                        <span>Rental</span>
+                        <span><?= lang('App.rental') ?></span>
                         <span class="badge bg-warning ms-1" id="count-rental">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="progress-tab" data-category="progress" type="button" role="tab">
                         <i class="fas fa-cogs me-1"></i>
-                        <span>Progress</span>
+                        <span><?= lang('Common.progress') ?></span>
                         <span class="badge bg-info ms-1" id="count-progress">0</span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="sold-tab" data-category="sold" type="button" role="tab">
                         <i class="fas fa-shopping-cart me-1"></i>
-                        <span>Terjual</span>
+                        <span><?= lang('App.sold') ?></span>
                         <span class="badge bg-dark ms-1" id="count-sold"><?= $stats['sold'] ?? 0 ?></span>
                     </button>
                 </li>
@@ -61,42 +61,42 @@ $can_export = $permissions['export'];
         <!-- Sub-filter untuk setiap kategori -->
         <div class="card-body border-top" id="subFilterContainer" style="display: none;">
             <div class="d-flex flex-wrap gap-2 align-items-center">
-                <small class="text-muted me-2">Filter:</small>
+                <small class="text-muted me-2"><?= lang('Common.filter') ?>:</small>
                 <div id="stockSubFilters" class="sub-filter-group" style="display: none;">
-                    <button class="btn btn-sm btn-outline-success active" data-sub-status="" type="button">All Stock</button>
-                    <button class="btn btn-sm btn-outline-success" data-sub-status="1" type="button">Available Stock</button>
-                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="2" type="button">Stock Non Aset</button>
-                    <button class="btn btn-sm btn-outline-primary" data-sub-status="3" type="button">Booked</button>
-                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="9" type="button">Returned</button>
+                    <button class="btn btn-sm btn-outline-success active" data-sub-status="" type="button"><?= lang('App.all_stock') ?></button>
+                    <button class="btn btn-sm btn-outline-success" data-sub-status="1" type="button"><?= lang('App.available_stock') ?></button>
+                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="2" type="button"><?= lang('App.stock_non_asset') ?></button>
+                    <button class="btn btn-sm btn-outline-primary" data-sub-status="3" type="button"><?= lang('App.booked') ?></button>
+                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="9" type="button"><?= lang('App.returned') ?></button>
                 </div>
                 <div id="rentalSubFilters" class="sub-filter-group" style="display: none;">
-                    <button class="btn btn-sm btn-outline-warning active" data-sub-status="" type="button">All Rental</button>
-                    <button class="btn btn-sm btn-outline-warning" data-sub-status="7" type="button">Rental Active</button>
-                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="11" type="button">Rental Inactive</button>
+                    <button class="btn btn-sm btn-outline-warning active" data-sub-status="" type="button"><?= lang('App.all_rental') ?></button>
+                    <button class="btn btn-sm btn-outline-warning" data-sub-status="7" type="button"><?= lang('App.rental_active') ?></button>
+                    <button class="btn btn-sm btn-outline-secondary" data-sub-status="11" type="button"><?= lang('App.rental_inactive') ?></button>
                 </div>
                 <div id="progressSubFilters" class="sub-filter-group" style="display: none;">
-                    <button class="btn btn-sm btn-outline-info active" data-sub-status="" type="button">All Progress</button>
-                    <button class="btn btn-sm btn-outline-info" data-sub-status="4" type="button">In Preparation</button>
-                    <button class="btn btn-sm btn-outline-success" data-sub-status="5" type="button">Ready to Deliver</button>
-                    <button class="btn btn-sm btn-outline-info" data-sub-status="6" type="button">In Delivery</button>
-                    <button class="btn btn-sm btn-outline-danger" data-sub-status="8" type="button">Maintenance</button>
+                    <button class="btn btn-sm btn-outline-info active" data-sub-status="" type="button"><?= lang('App.all_progress') ?></button>
+                    <button class="btn btn-sm btn-outline-info" data-sub-status="4" type="button"><?= lang('App.in_preparation') ?></button>
+                    <button class="btn btn-sm btn-outline-success" data-sub-status="5" type="button"><?= lang('App.ready_to_deliver') ?></button>
+                    <button class="btn btn-sm btn-outline-info" data-sub-status="6" type="button"><?= lang('App.in_delivery') ?></button>
+                    <button class="btn btn-sm btn-outline-danger" data-sub-status="8" type="button"><?= lang('App.maintenance') ?></button>
                 </div>
             </div>
         </div>
         
         <div class="card-header d-flex align-items-center justify-content-between gap-2 flex-wrap">
-            <h6 class="card-title mb-0">List of Unit Stock</h6>
+            <h6 class="card-title mb-0"><?= lang('App.list_unit_stock') ?></h6>
             <div class="d-flex gap-2 ms-auto">
-                <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false" aria-controls="filterCollapse" title="Show / Hide Filter">
-                    <i class="fas fa-filter me-1"></i>Filter
+                <button class="btn btn-sm btn-primary" data-bs-toggle="collapse" href="#filterCollapse" role="button" aria-expanded="false" aria-controls="filterCollapse" title="<?= lang('App.show_hide_filter') ?>">
+                    <i class="fas fa-filter me-1"></i><?= lang('Common.filter') ?>
                 </button>
                 <?php if ($can_export): ?>
-                <a href="<?= base_url('warehouse/inventory/export_unit_inventory') ?>" class="btn btn-sm btn-outline-success" id="btnExport" title="Export CSV">
-                    <i class="fas fa-file-export me-1"></i>Export Unit
+                <a href="<?= base_url('warehouse/inventory/export_unit_inventory') ?>" class="btn btn-sm btn-outline-success" id="btnExport" title="<?= lang('Common.export') ?> CSV">
+                    <i class="fas fa-file-export me-1"></i><?= lang('Common.export') ?> <?= lang('App.unit') ?>
                 </a>
                 <?php else: ?>
-                <button class="btn btn-sm btn-outline-success" disabled onclick="return false;" title="Access Denied">
-                    <i class="fas fa-file-export me-1"></i>Export Unit
+                <button class="btn btn-sm btn-outline-success" disabled onclick="return false;" title="<?= lang('App.access_restricted') ?>">
+                    <i class="fas fa-file-export me-1"></i><?= lang('Common.export') ?> <?= lang('App.unit') ?>
                 </button>
                 <?php endif; ?>
             </div>
@@ -138,23 +138,23 @@ $can_export = $permissions['export'];
             <?php if (!can_view('warehouse')): ?>
             <div class="alert alert-warning m-3">
                 <i class="fas fa-lock me-2"></i>
-                <strong>Access Denied:</strong> You do not have permission to view unit inventory. 
-                Please contact your administrator to request access.
+                <strong><?= lang('App.access_restricted') ?>:</strong> <?= lang('App.no_permission_view') ?> <?= strtolower(lang('App.unit_inventory')) ?>. 
+                <?= lang('App.contact_administrator') ?>.
             </div>
             <?php endif; ?>
             <div class="table-responsive">
                 <table id="inventory-unit-table" class="table table-sm mb-0 <?= !$can_view ? 'table-disabled' : '' ?>">
                     <thead>
                         <tr>
-                        <th>Unit Number</th>
-                        <th>Serial Number</th>
-                        <th>Brand</th>
-                        <th>Model</th>
-                        <th>Type</th>
-                        <th>Department</th>
-                        <th>Status</th>
-                        <th>Location</th>
-                        <th>Entry Date  </th>
+                        <th><?= lang('App.unit_number') ?></th>
+                        <th><?= lang('App.serial_number') ?></th>
+                        <th><?= lang('App.brand') ?></th>
+                        <th><?= lang('App.model') ?></th>
+                        <th><?= lang('Common.type') ?></th>
+                        <th><?= lang('App.department') ?></th>
+                        <th><?= lang('Common.status') ?></th>
+                        <th><?= lang('App.location') ?></th>
+                        <th><?= lang('App.entry_date') ?></th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -168,7 +168,7 @@ $can_export = $permissions['export'];
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-light border-bottom">
-                <h5 class="modal-title fw-bold"><i class="fas fa-cube me-2 text-secondary"></i>Detailed Unit Information</h5>
+                <h5 class="modal-title fw-bold"><i class="fas fa-cube me-2 text-secondary"></i><?= lang('App.detailed_unit_information') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-0">
@@ -179,11 +179,11 @@ $can_export = $permissions['export'];
             <div class="modal-footer bg-light d-flex justify-content-between">
                 <div>
                     <button type="button" class="btn btn-warning me-2" onclick="editUnitFromModal()">
-                        <i class="fas fa-edit me-1"></i>Edit Unit
+                        <i class="fas fa-edit me-1"></i><?= lang('Common.edit') ?> <?= lang('App.unit') ?>
                     </button>
                 </div>
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Close
+                    <i class="fas fa-times me-1"></i><?= lang('Common.close') ?>
                 </button>
             </div>
         </div>
@@ -195,22 +195,22 @@ $can_export = $permissions['export'];
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit Stock Unit</h5>
+                <h5 class="modal-title"><?= lang('Common.edit') ?> <?= lang('App.stock_unit') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editUnitForm">
                 <div class="modal-body">
                     <input type="hidden" id="edit_id" name="id_inventory_unit">
                     <div class="mb-3">
-                        <label class="form-label">Serial Number</label>
+                        <label class="form-label"><?= lang('App.serial_number') ?></label>
                         <input type="text" class="form-control" id="edit_serial_number" readonly>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Merk</label>
+                        <label class="form-label"><?= lang('App.brand') ?></label>
                         <input type="text" class="form-control" id="edit_merk" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_status_unit" class="form-label">Unit Status</label>
+                        <label for="edit_status_unit" class="form-label"><?= lang('App.unit_status') ?></label>
                         <select class="form-select" id="edit_status_unit" name="status_unit" required>
                             <option value="7">STOCK ASSET</option>
                             <option value="3">RENTAL</option>
@@ -219,7 +219,7 @@ $can_export = $permissions['export'];
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_lokasi" class="form-label">Unit Location</label>
+                        <label for="edit_lokasi" class="form-label"><?= lang('App.unit_location') ?></label>
                         <select class="form-select" id="edit_lokasi" name="lokasi_unit">
                             <option value="POS 1">POS 1</option>
                             <option value="POS 2">POS 2</option>
@@ -230,8 +230,8 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('Common.cancel') ?></button>
+                    <button type="submit" class="btn btn-primary"><?= lang('Common.save') ?> <?= lang('App.changes') ?></button>
                 </div>
             </form>
         </div>
