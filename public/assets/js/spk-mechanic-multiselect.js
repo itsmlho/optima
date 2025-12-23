@@ -64,14 +64,14 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
                 }
             });
             
-            console.log('🔄 API Response status:', response.status);
+            // API Response received
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
             const data = await response.json();
-            console.log('📊 API Response data:', data);
+            // API data processed
             
             if (data.success) {
                 this.allEmployees = data.data.map(emp => ({
@@ -119,7 +119,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     }
     
     render() {
-        console.log('🎨 Rendering component for container:', this.containerId);
+        // Rendering component
         
         // Clear any existing content first
         this.container.innerHTML = '';
@@ -256,7 +256,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         const dropdown = document.getElementById(`${this.containerId}_dropdown`);
         const container = this.container;
         
-        console.log('🔗 Binding events for:', this.containerId, { searchInput, dropdown, container });
+        // Binding events
         
         if (!searchInput || !dropdown || !container) {
             console.error('❌ Required elements not found for event binding');
@@ -265,7 +265,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         
         // Search input events
         searchInput.addEventListener('focus', () => {
-            console.log('🔍 Search input focused');
+            // Search input focused
             this.openDropdown();
         });
         searchInput.addEventListener('input', (e) => this.handleSearch(e.target.value));
@@ -274,7 +274,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         const searchContainer = container.querySelector('.search-input-container');
         if (searchContainer) {
             searchContainer.addEventListener('click', (e) => {
-                console.log('👆 Search container clicked');
+                // Container clicked
                 this.isOpen ? this.closeDropdown() : this.openDropdown();
             });
         }
@@ -282,7 +282,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         // Option selection - use event delegation
         dropdown.addEventListener('click', (e) => {
             e.stopPropagation();
-            console.log('👆 Dropdown clicked:', e.target);
+            // Dropdown clicked
             
             const optionItem = e.target.closest('.option-item');
             if (optionItem) {
@@ -298,7 +298,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         // Remove selected items
         container.addEventListener('click', (e) => {
             if (e.target.classList.contains('remove-item')) {
-                console.log('🗑️ Remove button clicked');
+                // Remove button clicked
                 const employeeId = parseInt(e.target.dataset.id);
                 this.removeSelection(employeeId);
             }
@@ -322,30 +322,28 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
     }
     
     toggleSelection(employeeId, role) {
-        console.log('🔄 Toggling selection for:', { employeeId, role });
-        console.log('📝 Current selected items:', Array.from(this.selectedItems.keys()));
+        // Toggling selection
         
         if (this.selectedItems.has(employeeId)) {
-            console.log('🗑️ Removing selection');
+            // Removing selection
             this.removeSelection(employeeId);
         } else {
-            console.log('➕ Adding selection');
+            // Adding selection
             this.addSelection(employeeId, role);
         }
     }
     
     addSelection(employeeId, role) {
-        console.log('➕ Adding selection:', { employeeId, role });
+        // Adding selection
         // Convert to number to ensure consistent comparison
         const numEmployeeId = parseInt(employeeId);
         const employee = this.allEmployees.find(emp => parseInt(emp.id) === numEmployeeId);
         
-        console.log('🔍 All employee IDs:', this.allEmployees.map(e => ({ id: e.id, name: e.name })));
-        console.log('🔍 Looking for ID:', numEmployeeId, 'Type:', typeof numEmployeeId);
+        // Searching for employee
         
         if (!employee) {
             console.error('❌ Employee not found:', numEmployeeId);
-            console.log('Available employees:', this.allEmployees);
+            // Available employees listed
             return;
         }
         
@@ -361,7 +359,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         const currentMechanics = Array.from(this.selectedItems.values()).filter(item => item.role !== 'HELPER');
         const isPrimary = role !== 'HELPER' && currentMechanics.length === 0;
         
-        console.log('✅ Adding employee to selection:', employee.name);
+        // Adding employee to selection
         this.selectedItems.set(numEmployeeId, {
             id: employee.id,
             name: employee.name,
@@ -374,7 +372,7 @@ window.SPKMechanicMultiSelect = class SPKMechanicMultiSelect {
         this.updateSelectedDisplay();
         this.updateDropdownOptions();
         this.clearValidationError();
-        console.log('🔄 Selection updated, total selected:', this.selectedItems.size);
+        // Selection updated
     }
     
     removeSelection(employeeId) {

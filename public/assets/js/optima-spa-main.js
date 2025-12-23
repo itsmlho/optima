@@ -64,7 +64,7 @@ class OptimaSPAMain {
     setupPopStateListener() {
         window.addEventListener('popstate', () => {
             // For browser back/forward, just reload to ensure data consistency
-            console.log('SPA: Browser navigation detected, reloading for data consistency');
+            // Browser navigation detected
             this.saveScrollPosition();
             window.location.reload();
         });
@@ -97,7 +97,7 @@ class OptimaSPAMain {
             // Expand parent dropdown if exists
             this.expandParentDropdown(activeLink);
             
-            console.log('✅ Active state set for:', activeLink.textContent.trim());
+            // Active state set
         }
     }
 
@@ -176,7 +176,7 @@ class OptimaSPAMain {
         if (sidebar) {
             const scrollPos = sidebar.scrollTop;
             sessionStorage.setItem('sidebar-scroll-position', scrollPos);
-            console.log('💾 Saved sidebar scroll position:', scrollPos);
+            // Saved scroll position
         }
     }
 
@@ -190,7 +190,6 @@ class OptimaSPAMain {
                 // Use requestAnimationFrame to ensure DOM is ready
                 requestAnimationFrame(() => {
                     sidebar.scrollTop = scrollPos;
-                    console.log('📜 Restored sidebar scroll position:', scrollPos);
                 });
             }
         }
@@ -236,7 +235,7 @@ class OptimaSPAMain {
                     behavior: 'smooth',
                     block: 'center'
                 });
-                console.log('📍 Scrolled to active menu item');
+                // Scrolled to active menu
             }
         }
     }
@@ -249,7 +248,7 @@ class OptimaSPAMain {
         this.isLoading = true;
         this.showLoadingIndicator();
         
-        console.log(`SPA: Navigating to ${url} with reload mode`);
+        // Navigating with reload
         
         // Small delay to show loading indicator, then reload
         setTimeout(() => {
@@ -335,7 +334,7 @@ class OptimaSPAMain {
 if (typeof window.optimaSPA === 'undefined') {
     window.optimaSPA = new OptimaSPAMain();
 } else {
-    console.log('📋 OptimaSPAMain already running.');
+    // OptimaSPAMain already running
 }
 
 // Enhanced Sidebar Toggle based on OPTIMA Pro design
@@ -364,7 +363,7 @@ window.toggleSidebar = function() {
         window.dispatchEvent(new Event('resize'));
     }, 300);
     
-    console.log(`Sidebar ${isCollapsed ? 'collapsed' : 'expanded'}`);
+    // Sidebar toggled
 };
 
 // Update tooltips for sidebar items when collapsed
