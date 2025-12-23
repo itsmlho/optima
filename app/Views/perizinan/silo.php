@@ -14,7 +14,7 @@
                     <div class="stat-value" id="stat-sudah-ada">
                         <?= $stats['sudah_ada'] ?? 0 ?>
                     </div>
-                    <div class="text-muted">Already Have SILO</div>
+                    <div class="text-muted"><?= lang('App.already_have_silo') ?></div>
                 </div>
             </div>
         </div>
@@ -29,7 +29,7 @@
                     <div class="stat-value" id="stat-progres">
                         <?= $stats['progres'] ?? 0 ?>
                     </div>
-                    <div class="text-muted">Progress</div>
+                    <div class="text-muted"><?= lang('Common.progress') ?></div>
                 </div>
             </div>
         </div>
@@ -44,7 +44,7 @@
                     <div class="stat-value" id="stat-belum-ada">
                         <?= $stats['belum_ada'] ?? 0 ?>
                     </div>
-                    <div class="text-muted">No SILO Yet</div>
+                    <div class="text-muted"><?= lang('App.no_silo_yet') ?></div>
                 </div>
             </div>
         </div>
@@ -55,8 +55,8 @@
 <?php if (($stats['expiring_soon'] ?? 0) > 0): ?>
 <div class="alert alert-warning alert-dismissible fade show" role="alert">
     <i class="fas fa-exclamation-triangle me-2"></i>
-    <strong>Warning!</strong> There are <?= $stats['expiring_soon'] ?> SILOs that will expire within the next 30 days.
-    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    <strong><?= lang('App.warning') ?>!</strong> <?= lang('App.silo_expiring_message', [$stats['expiring_soon']]) ?>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?= lang('Common.close') ?>"></button>
 </div>
 <?php endif; ?>
 
@@ -70,41 +70,41 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab" aria-controls="all" aria-selected="true">
                             <i class="fas fa-list"></i>
-                            <span>All</span>
+                            <span><?= lang('Common.all') ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="sudah-ada-tab" data-bs-toggle="tab" data-bs-target="#sudah-ada" type="button" role="tab" aria-controls="sudah-ada" aria-selected="false">
                             <i class="fas fa-check-circle"></i>
-                            <span>Already Have SILO</span>
+                            <span><?= lang('App.already_have_silo') ?></span>
                             <span class="badge bg-success ms-2" id="badge-sudah-ada"><?= $stats['sudah_ada'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="progres-tab" data-bs-toggle="tab" data-bs-target="#progres" type="button" role="tab" aria-controls="progres" aria-selected="false">
                             <i class="fas fa-clock"></i>
-                            <span>Progress</span>
+                            <span><?= lang('Common.progress') ?></span>
                             <span class="badge bg-warning ms-2" id="badge-progres"><?= $stats['progres'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="belum-ada-tab" data-bs-toggle="tab" data-bs-target="#belum-ada" type="button" role="tab" aria-controls="belum-ada" aria-selected="false">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <span>No SILO Yet</span>
+                            <span><?= lang('App.no_silo_yet') ?></span>
                             <span class="badge bg-danger ms-2" id="badge-belum-ada"><?= $stats['belum_ada'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="akan-expired-tab" data-bs-toggle="tab" data-bs-target="#akan-expired" type="button" role="tab" aria-controls="akan-expired" aria-selected="false">
                             <i class="fas fa-exclamation-circle"></i>
-                            <span>Expiring Soon (30d)</span>
+                            <span><?= lang('App.expiring_soon_30d') ?></span>
                             <span class="badge bg-warning ms-2" id="badge-akan-expired"><?= $stats['expiring_soon'] ?? 0 ?></span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="sudah-expired-tab" data-bs-toggle="tab" data-bs-target="#sudah-expired" type="button" role="tab" aria-controls="sudah-expired" aria-selected="false">
                             <i class="fas fa-times-circle"></i>
-                            <span>Expired</span>
+                            <span><?= lang('App.expired') ?></span>
                             <span class="badge bg-danger ms-2" id="badge-sudah-expired"><?= $stats['expired'] ?? 0 ?></span>
                         </button>
                     </li>
@@ -120,21 +120,21 @@
                     <div class="row mb-2">
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label for="filter-status-all">Status</label>
+                                <label for="filter-status-all"><?= lang('Common.status') ?></label>
                                 <select id="filter-status-all" class="form-select form-select-sm">
-                                    <option value="">All Statuses</option>
-                                    <option value="PENGAJUAN_PJK3">Submission to PJK3</option>
-                                    <option value="SURAT_KETERANGAN_PJK3">PJK3 Certificate</option>
-                                    <option value="PENGAJUAN_UPTD">Submission to DISNAKER</option>
-                                    <option value="SILO_TERBIT">SILO Issued</option>
+                                    <option value=""><?= lang('App.all_statuses') ?></option>
+                                    <option value="PENGAJUAN_PJK3"><?= lang('App.submission_to_pjk3') ?></option>
+                                    <option value="SURAT_KETERANGAN_PJK3"><?= lang('App.pjk3_certificate') ?></option>
+                                    <option value="PENGAJUAN_UPTD"><?= lang('App.submission_to_disnaker') ?></option>
+                                    <option value="SILO_TERBIT"><?= lang('App.silo_issued') ?></option>
                                 </select>
                             </div>
                         </div>
                         <div class="col-md-3">
                             <div class="form-group mb-3">
-                                <label for="filter-departemen-all" class="form-label small fw-semibold text-muted">Department</label>
+                                <label for="filter-departemen-all" class="form-label small fw-semibold text-muted"><?= lang('App.department') ?></label>
                                 <select id="filter-departemen-all" class="form-select form-select-sm">
-                                    <option value="">All Departments</option>
+                                    <option value=""><?= lang('App.all_departments') ?></option>
                                     <?php if (isset($departments) && is_array($departments)): ?>
                                         <?php foreach ($departments as $dept): ?>
                                             <option value="<?= esc($dept['id_departemen']) ?>"><?= esc($dept['nama_departemen']) ?></option>
@@ -145,14 +145,14 @@
                         </div>
                         <div class="col-md-3">
                             <div class="form-group">
-                                <label for="filter-expired-all">Filter Expired</label>
+                                <label for="filter-expired-all"><?= lang('App.filter_expired') ?></label>
                                 <select id="filter-expired-all" class="form-select form-select-sm">
-                                    <option value="">All</option>
-                                    <option value="7">Expiring Soon < 7 Days</option>
-                                    <option value="30">Expiring Soon < 1 Month</option>
-                                    <option value="90">Expiring Soon < 3 Months</option>
-                                    <option value="180">Expiring Soon < 6 Months</option>
-                                    <option value="expired">Expired</option>
+                                    <option value=""><?= lang('Common.all') ?></option>
+                                    <option value="7"><?= lang('App.expiring_7days') ?></option>
+                                    <option value="30"><?= lang('App.expiring_1month') ?></option>
+                                    <option value="90"><?= lang('App.expiring_3months') ?></option>
+                                    <option value="180"><?= lang('App.expiring_6months') ?></option>
+                                    <option value="expired"><?= lang('App.expired') ?></option>
                                 </select>
                             </div>
                         </div>

@@ -90,17 +90,17 @@ $assetService = new \App\Services\AssetMinificationService();
             <div class="d-flex gap-2">
                 <?php if ($can_export): ?>
                 <a href="<?= base_url('service/export_workorder') ?>" class="btn btn-outline-success btn-sm">
-                    <i class="fas fa-file-excel"></i> <?= lang('App.export') ?> Excel
+                    <i class="fas fa-file-excel"></i> <?= lang('Common.export') ?> Excel
                 </a>
                 <?php else: ?>
                 <a href="#" class="btn btn-outline-success btn-sm disabled" onclick="return false;" title="<?= lang('App.access_denied') ?>">
-                    <i class="fas fa-file-excel"></i> <?= lang('App.export') ?> Excel
+                    <i class="fas fa-file-excel"></i> <?= lang('Common.export') ?> Excel
                 </a>
                 <?php endif; ?>
                 <?php if ($can_create): ?>
-                <button id="btn-add-wo" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> Add Work Order</button>
+                <button id="btn-add-wo" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i> <?= lang('Common.add') ?> <?= lang('Service.work_order') ?></button>
                 <?php else: ?>
-                <button id="btn-add-wo" class="btn btn-primary btn-sm disabled" onclick="return false;" title="Access Denied"><i class="fas fa-plus me-1"></i> Add Work Order</button>
+                <button id="btn-add-wo" class="btn btn-primary btn-sm disabled" onclick="return false;" title="<?= lang('App.access_restricted') ?>"><i class="fas fa-plus me-1"></i> <?= lang('Common.add') ?> <?= lang('Service.work_order') ?></button>
                 <?php endif; ?>
             </div>
         </div>
@@ -113,14 +113,14 @@ $assetService = new \App\Services\AssetMinificationService();
                     <li class="nav-item" role="presentation">
                         <button class="nav-link active" id="progress-tab" data-bs-toggle="tab" data-bs-target="#progress-pane" type="button" role="tab" aria-controls="progress-pane" aria-selected="true">
                             <i class="fas fa-tasks"></i>
-                            <span>Progress</span>
+                            <span><?= lang('Common.progress') ?></span>
                             <span class="badge" id="progress-count">0</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="closed-tab" data-bs-toggle="tab" data-bs-target="#closed-pane" type="button" role="tab" aria-controls="closed-pane" aria-selected="false">
                             <i class="fas fa-check-circle"></i>
-                            <span>Closed</span>
+                            <span><?= lang('App.closed') ?></span>
                         </button>
                     </li>
                 </ul>
@@ -133,9 +133,9 @@ $assetService = new \App\Services\AssetMinificationService();
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-status-progress">Status</label>
+                            <label for="filter-status-progress"><?= lang('Common.status') ?></label>
                             <select id="filter-status-progress" class="form-select form-select-sm">
-                                <option value="">All Status</option>
+                                <option value=""><?= lang('App.all_status') ?></option>
                                 <?php foreach ($statuses as $status): ?>
                                     <?php if (strtolower($status['status_name']) !== 'closed'): ?>
                                     <option value="<?= $status['status_name'] ?>"><?= $status['status_name'] ?></option>
@@ -146,9 +146,9 @@ $assetService = new \App\Services\AssetMinificationService();
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-priority-progress">Priority</label>
+                            <label for="filter-priority-progress"><?= lang('App.priority') ?></label>
                             <select id="filter-priority-progress" class="form-select form-select-sm">
-                                <option value="">All Priority</option>
+                                <option value=""><?= lang('App.all_priority') ?></option>
                                 <?php foreach ($priorities as $priority): ?>
                                 <option value="<?= $priority['priority_name'] ?>"><?= $priority['priority_name'] ?></option>
                                 <?php endforeach; ?>
@@ -173,23 +173,23 @@ $assetService = new \App\Services\AssetMinificationService();
                 <?php if (!can_view('service')): ?>
                 <div class="alert alert-warning m-3">
                     <i class="fas fa-lock me-2"></i>
-                    <strong>Access Denied:</strong> You do not have permission to view work orders. 
-                    Please contact your administrator to request access.
+                    <strong><?= lang('App.access_restricted') ?>:</strong> <?= lang('App.no_permission_view') ?> <?= strtolower(lang('Service.work_orders')) ?>. 
+                    <?= lang('App.contact_administrator') ?>.
                 </div>
                 <?php endif; ?>
                 <div class="table-responsive">
                     <table id="progressWorkOrdersTable" class="table table-striped table-hover <?= !$can_view ? 'table-disabled' : '' ?>">
                         <thead>
                             <tr>
-                                <th width="5%">No</th>
-                                <th>Work Order</th>
-                                <th>Date</th>
-                                <th>Unit</th>
-                                <th>Type</th>
-                                <th>Priority</th>
-                                <th>Category</th>
-                                <th>Status</th>
-                                <th width="10%">Action</th>
+                                <th width="5%"><?= lang('Common.no') ?></th>
+                                <th><?= lang('Service.work_order') ?></th>
+                                <th><?= lang('Common.date') ?></th>
+                                <th><?= lang('App.unit') ?></th>
+                                <th><?= lang('Common.type') ?></th>
+                                <th><?= lang('App.priority') ?></th>
+                                <th><?= lang('Common.category') ?></th>
+                                <th><?= lang('Common.status') ?></th>
+                                <th width="10%"><?= lang('App.action') ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -205,9 +205,9 @@ $assetService = new \App\Services\AssetMinificationService();
                 <div class="row mb-4">
                     <div class="col-md-3">
                         <div class="form-group">
-                            <label for="filter-priority-closed">Priority</label>
+                            <label for="filter-priority-closed"><?= lang('App.priority') ?></label>
                             <select id="filter-priority-closed" class="form-select form-select-sm">
-                                <option value="">All Priority</option>
+                                <option value=""><?= lang('App.all_priority') ?></option>
                                 <?php foreach ($priorities as $priority): ?>
                                 <option value="<?= $priority['priority_name'] ?>"><?= $priority['priority_name'] ?></option>
                                 <?php endforeach; ?>

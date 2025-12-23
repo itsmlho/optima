@@ -12,7 +12,7 @@
                   </div>
                   <div>
                       <div class="stat-value"><?= $totalAreas ?></div>
-                      <div class="text-muted">Total Areas</div>
+                      <div class="text-muted"><?= lang('App.total_areas') ?></div>
                   </div>
               </div>
           </div>
@@ -25,7 +25,7 @@
                   </div>
                   <div>
                       <div class="stat-value"><?= $totalEmployees ?></div>
-                      <div class="text-muted">Total Employees</div>
+                      <div class="text-muted"><?= lang('App.total_employees') ?></div>
                   </div>
               </div>
           </div>
@@ -38,7 +38,7 @@
                   </div>
                   <div>
                       <div class="stat-value"><?= $totalAssignments ?></div>
-                      <div class="text-muted">Active Assignments</div>
+                      <div class="text-muted"><?= lang('App.active_assignments') ?></div>
                   </div>
               </div>
           </div>
@@ -51,7 +51,7 @@
                   </div>
                   <div>
                       <div class="stat-value" id="roleDistribution">-</div>
-                      <div class="text-muted">Role Distribution</div>
+                      <div class="text-muted"><?= lang('App.role_distribution') ?></div>
                   </div>
               </div>
           </div>
@@ -71,22 +71,22 @@
           <ul class="nav nav-tabs flex-grow-1" role="tablist">
               <li class="nav-item">
                   <a class="nav-link active" id="areas-tab" data-bs-toggle="tab" href="#areasTab" role="tab" aria-controls="areasTab" aria-selected="true">
-                      <i class="fas fa-map-marked-alt mr-1"></i> Service Areas
+                      <i class="fas fa-map-marked-alt mr-1"></i> <?= lang('App.service_areas') ?>
                   </a>
               </li>
               <li class="nav-item">
                   <a class="nav-link" id="employees-tab" data-bs-toggle="tab" href="#employeesTab" role="tab" aria-controls="employeesTab" aria-selected="false">
-                      <i class="fas fa-users mr-1"></i> Employees
+                      <i class="fas fa-users mr-1"></i> <?= lang('App.employees') ?>
                   </a>
               </li>
               <li class="nav-item">
                   <a class="nav-link" id="assignments-tab" data-bs-toggle="tab" href="#assignmentsTab" role="tab" aria-controls="assignmentsTab" aria-selected="false">
-                      <i class="fas fa-link mr-1"></i> Assignments
+                      <i class="fas fa-link mr-1"></i> <?= lang('App.assignments') ?>
                   </a>
               </li>
               <li class="nav-item">
                   <a class="nav-link" id="analytics-tab" data-bs-toggle="tab" href="#analyticsTab" role="tab" aria-controls="analyticsTab" aria-selected="false">
-                      <i class="fas fa-chart-bar mr-1"></i> Analytics
+                      <i class="fas fa-chart-bar mr-1"></i> <?= lang('App.analytics') ?>
                   </a>
               </li>
           </ul>
@@ -96,16 +96,16 @@
                       <!-- Areas Tab -->
                       <div class="tab-pane fade show active" id="areasTab" role="tabpanel">
                           <div class="card-header bg-light d-flex justify-content-between align-items-center mb-3">
-                              <h6 class="mb-0"><i class="fas fa-map-marked-alt text-primary"></i> Service Areas</h6>
+                              <h6 class="mb-0"><i class="fas fa-map-marked-alt text-primary"></i> <?= lang('App.service_areas') ?></h6>
                               <div>
-                                  <button type="button" class="btn btn-info btn-sm mr-2" onclick="refreshAreas()" title="Refresh Areas Data">
-                                      <i class="fas fa-sync-alt"></i> Refresh
+                                  <button type="button" class="btn btn-info btn-sm mr-2" onclick="refreshAreas()" title="<?= lang('App.refresh_areas_data') ?>">
+                                      <i class="fas fa-sync-alt"></i> <?= lang('Common.refresh') ?>
                                   </button>
                                   <a href="<?= base_url('service/export_area') ?>" class="btn btn-outline-success btn-sm">
-                                      <i class="fas fa-file-excel"></i> Export Area
+                                      <i class="fas fa-file-excel"></i> <?= lang('Common.export') ?> <?= lang('App.area') ?>
                                   </a>
                                   <button type="button" class="btn btn-primary btn-sm" onclick="showAddAreaModal()">
-                                      <i class="fas fa-plus"></i> Add New Area
+                                      <i class="fas fa-plus"></i> <?= lang('App.add_new_area') ?>
                                   </button>
                               </div>
                           </div>
@@ -113,13 +113,13 @@
                               <table id="areasTable" class="table table-striped dt-responsive nowrap">
                                   <thead>
                                       <tr>
-                                          <th>Area Code</th>
-                                          <th>Area Name</th>
-                                          <th>Type</th>
-                                          <th>Description</th>
-                                          <th>Customers</th>
-                                          <th>Employee Details</th>
-                                          <th>Status</th>
+                                          <th><?= lang('App.area_code') ?></th>
+                                          <th><?= lang('App.area_name') ?></th>
+                                          <th><?= lang('Common.type') ?></th>
+                                          <th><?= lang('Common.description') ?></th>
+                                          <th><?= lang('App.customers') ?></th>
+                                          <th><?= lang('App.employee_details') ?></th>
+                                          <th><?= lang('Common.status') ?></th>
                                       </tr>
                                   </thead>
                                   <tbody></tbody>
@@ -130,16 +130,16 @@
                       <!-- Employees Tab -->
                       <div class="tab-pane fade" id="employeesTab" role="tabpanel">
                           <div class="card-header bg-light d-flex justify-content-between align-items-center mb-3">
-                              <h6 class="mb-0"><i class="fas fa-users text-success"></i> Employees</h6>
+                              <h6 class="mb-0"><i class="fas fa-users text-success"></i> <?= lang('App.employees') ?></h6>
                               <div>
-                                  <button type="button" class="btn btn-info btn-sm mr-2" onclick="refreshEmployees()" title="Refresh Employees Data">
-                                      <i class="fas fa-sync-alt"></i> Refresh
+                                  <button type="button" class="btn btn-info btn-sm mr-2" onclick="refreshEmployees()" title="<?= lang('App.refresh_employees_data') ?>">
+                                      <i class="fas fa-sync-alt"></i> <?= lang('Common.refresh') ?>
                                   </button>
                                   <a href="<?= base_url('service/export_employee') ?>" class="btn btn-outline-success btn-sm">
-                                      <i class="fas fa-file-excel"></i> Export Employee
+                                      <i class="fas fa-file-excel"></i> <?= lang('Common.export') ?> <?= lang('App.employee') ?>
                                   </a>
                                   <button type="button" class="btn btn-primary btn-sm" onclick="showAddEmployeeModal()">
-                                      <i class="fas fa-plus"></i> Add New Employee
+                                      <i class="fas fa-plus"></i> <?= lang('App.add_new_employee') ?>
                                   </button>
                               </div>
                           </div>
@@ -148,12 +148,12 @@
                               <table id="employeesTable" class="table table-striped dt-responsive nowrap">
                                   <thead>
                                       <tr>
-                                          <th>Staff Code</th>
-                                          <th>Name</th>
-                                          <th>Role</th>
-                                          <th>Work Location</th>
-                                          <th>Department</th>
-                                          <th>Assigned To</th>
+                                          <th><?= lang('App.staff_code') ?></th>
+                                          <th><?= lang('Common.name') ?></th>
+                                          <th><?= lang('App.role') ?></th>
+                                          <th><?= lang('App.work_location') ?></th>
+                                          <th><?= lang('App.department') ?></th>
+                                          <th><?= lang('App.assigned_to') ?></th>
                                       </tr>
                                   </thead>
                                   <tbody></tbody>
@@ -165,8 +165,8 @@
                       <div class="tab-pane fade" id="assignmentsTab" role="tabpanel">
                           <div class="row mb-4">
                               <div class="col-md-8">
-                                  <h5 class="card-title mb-0">Area Assignments Management</h5>
-                                  <p class="text-muted small mb-0">Manage employee assignments to service areas</p>
+                                  <h5 class="card-title mb-0"><?= lang('App.area_assignments_management') ?></h5>
+                                  <p class="text-muted small mb-0"><?= lang('App.manage_employee_assignments') ?></p>
                               </div>
                           </div>
                           <div class="alert alert-info">
@@ -183,11 +183,11 @@
                               <div class="col-md-4">
                                   <div class="card shadow-sm">
                                       <div class="card-header bg-light">
-                                          <h6 class="mb-0"><i class="fas fa-map-marker-alt text-primary"></i> Select Area</h6>
+                                          <h6 class="mb-0"><i class="fas fa-map-marker-alt text-primary"></i> <?= lang('App.select_area') ?></h6>
                                       </div>
                                       <div class="card-body">
                                           <select id="assignAreaSelect" class="form-control mb-3" onchange="loadAreaAssignments()">
-                                              <option value="">-- Select Area --</option>
+                                              <option value="">-- <?= lang('App.select_area') ?> --</option>
                                               <?php if(isset($areas) && is_array($areas)): ?>
                                                   <?php foreach ($areas as $area): ?>
                                                       <option value="<?= $area['id'] ?>"><?= $area['area_code'] ?> - <?= $area['area_name'] ?></option>
@@ -201,21 +201,21 @@
                               <div class="col-md-8">
                                   <div class="card shadow-sm">
                                       <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                          <h6 class="mb-0"><i class="fas fa-users text-info"></i> Area Assignments</h6>
+                                          <h6 class="mb-0"><i class="fas fa-users text-info"></i> <?= lang('App.area_assignments') ?></h6>
                                           <div class="d-flex align-items-center gap-2">
                                               <select id="filterRoleAssignments" class="form-control form-control-sm" onchange="filterAssignments()" style="width:auto; min-width: 120px;">
-                                                  <option value="">All Roles</option>
-                                                  <option value="SUPERVISOR">Supervisor</option>
-                                                  <option value="FOREMAN">Foreman</option>
-                                                  <option value="ADMIN">Admin</option>
-                                                  <option value="MECHANIC">Mechanic</option>
-                                                  <option value="HELPER">Helper</option>
+                                                  <option value=""><?= lang('App.all_roles') ?></option>
+                                                  <option value="SUPERVISOR"><?= lang('App.supervisor') ?></option>
+                                                  <option value="FOREMAN"><?= lang('App.foreman') ?></option>
+                                                  <option value="ADMIN"><?= lang('App.admin') ?></option>
+                                                  <option value="MECHANIC"><?= lang('App.mechanic') ?></option>
+                                                  <option value="HELPER"><?= lang('App.helper') ?></option>
                                               </select>
                                               <button type="button" class="btn btn-primary btn-sm" onclick="showAddAssignmentModal()">
-                                                  <i class="fas fa-link"></i> New Assignment
+                                                  <i class="fas fa-link"></i> <?= lang('App.new_assignment') ?>
                                               </button>
-                                              <button type="button" class="btn btn-secondary btn-sm" onclick="forceRefreshAssignments()" title="Refresh assignments data">
-                                                  <i class="fas fa-sync-alt"></i> Refresh
+                                              <button type="button" class="btn btn-secondary btn-sm" onclick="forceRefreshAssignments()" title="<?= lang('App.refresh_assignments_data') ?>">
+                                                  <i class="fas fa-sync-alt"></i> <?= lang('Common.refresh') ?>
                                               </button>
                                           </div>
                                       </div>
