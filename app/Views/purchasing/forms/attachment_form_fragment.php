@@ -2,7 +2,7 @@
 <div class="row g-3">
     <div class="col-12 mb-2">
         <button type="button" class="btn btn-sm btn-outline-primary" onclick="QuickAddModal.open('attachment_type', 'att_tipe');">
-            <i class="fas fa-plus-circle me-1"></i>Add Attachment
+            <i class="fas fa-plus-circle me-1"></i>Add New Attachment
         </button>
     </div>
     <!-- Tipe -->

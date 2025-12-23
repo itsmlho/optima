@@ -148,7 +148,7 @@ $can_export = $permissions['export'];
                         <button class="nav-link active" id="company-tab" data-bs-toggle="tab" data-bs-target="#company-content" type="button">
                             <i class="fas fa-building me-1"></i>Company Info
                         </button>
-                    </li>
+                    </li>          
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="locations-tab" data-bs-toggle="tab" data-bs-target="#locations-content" type="button">
                             <i class="fas fa-map-marker-alt me-1"></i>Locations (<span id="locationCount">0</span>)
@@ -468,6 +468,7 @@ $can_export = $permissions['export'];
                         </small>
                     </div>
                     <div class="row">
+                        <input type="hidden" name="customer_id" id="contractCustomerId">
                         <div class="col-md-6 mb-3">
                             <label class="form-label"><?= lang('Marketing.contract_number') ?>*</label>
                             <div class="input-group">
@@ -480,10 +481,11 @@ $can_export = $permissions['export'];
                         <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.client_po_number') ?></label><input type="text" class="form-control" name="po_number"></div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label"><?= lang('Marketing.customer') ?>*</label>
+                            <input type="text" class="form-control" id="customerDisplay" readonly style="display:none;">
                             <select class="form-select" id="customerSelect" required>
                                 <option value="">-- Pilih Customer --</option>
                             </select>
-                            <small class="form-text text-muted">Pilih customer terlebih dahulu</small>
+                            <small class="form-text text-muted" id="customerHelpText">Pilih customer terlebih dahulu</small>
                         </div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label"><?= lang('Marketing.location') ?>*</label>
@@ -507,10 +509,7 @@ $can_export = $permissions['export'];
                 <div class="modal-footer">
                     <input type="hidden" name="submit_action" id="submitAction" value="save_and_spec">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" id="btnSaveAndSpec" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Simpan & Lanjut ke Spesifikasi
-                    </button>
-                    <button type="button" id="btnSaveOnly" class="btn btn-outline-primary">Simpan Kontrak</button>
+                    <button type="button" id="btnSaveOnly" class="btn btn-primary">Simpan Kontrak</button>
                 </div>
             </form>
         </div>
@@ -712,6 +711,7 @@ $can_export = $permissions['export'];
 <script>
 let customerTable;
 let currentCustomerId = null;
+let currentCustomerName = null;
 let currentContractId = null;
 
 $(document).ready(function() {
@@ -855,7 +855,7 @@ function initializeCustomerTable() {
         },
         drawCallback: function(settings) {
             // Use DataTable API to get record count
-            const api = this.api();
+            const api = new $.fn.dataTable.Api(settings);
             const recordsDisplay = api.page.info().recordsDisplay;
             console.log('🎨 DataTable drawn with', recordsDisplay, 'visible records');
         }
@@ -965,6 +965,9 @@ function displayCustomerDetail(data) {
     const stats = data.stats || {};
     const locations = data.locations || [];
     const contracts = data.contracts || [];
+    
+    // Store customer name globally for contract modal
+    currentCustomerName = customer.customer_name || '';
     
     // Update modal title
     $('#customerName').text(customer.customer_name || 'Customer Details');
@@ -1316,8 +1319,49 @@ function generateLocationCodeModal() {
 }
 
 function openAddContractModal() {
-    // Load customers for dropdown
-    loadCustomers();
+    // Reset form
+    $('#addContractForm')[0].reset();
+    
+    // If opened from customer detail modal, show readonly customer name
+    if (currentCustomerId && currentCustomerName) {
+        // Set customer ID in hidden field
+        $('#contractCustomerId').val(currentCustomerId);
+        
+        // Show readonly input with customer name, hide dropdown
+        $('#customerDisplay').val(currentCustomerName).show();
+        $('#customerSelect').hide().prop('required', false);
+        $('#customerHelpText').hide();
+        
+        // Load locations for current customer
+        $.ajax({
+            url: `<?= base_url('marketing/customer-management/getCustomerLocations/') ?>${currentCustomerId}`,
+            method: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    const locationSelect = $('#locationSelect');
+                    locationSelect.empty().append('<option value="">-- Pilih Lokasi --</option>');
+                    response.data.forEach(location => {
+                        locationSelect.append(`<option value="${location.id}">${location.location_name}</option>`);
+                    });
+                    locationSelect.prop('disabled', false);
+                }
+            },
+            error: function() {
+                console.error('Error loading customer locations');
+            }
+        });
+    } else {
+        // Clear hidden field and show dropdown for manual selection
+        $('#contractCustomerId').val('');
+        $('#customerDisplay').hide();
+        $('#customerSelect').show().prop('required', true);
+        $('#customerHelpText').show();
+        
+        // Load customers for dropdown
+        loadCustomers();
+        
+        $('#locationSelect').prop('disabled', true).empty().append('<option value="">-- <?= lang('Marketing.select_customer_first') ?> --</option>');
+    }
     
     // Show modal
     $('#addContractModal').modal('show');
@@ -1949,7 +1993,7 @@ function loadLocationAreas() {
 }
 
 
-function loadCustomers() {
+function loadCustomers(callback) {
     $.ajax({
         url: '<?= base_url('marketing/customer-management/getCustomers') ?>',
         method: 'GET',
@@ -1960,6 +2004,11 @@ function loadCustomers() {
                 response.data.forEach(customer => {
                     customerSelect.append(`<option value="${customer.id}">${customer.customer_name}</option>`);
                 });
+                
+                // Call callback if provided
+                if (typeof callback === 'function') {
+                    callback();
+                }
             }
         },
         error: function() {
@@ -2044,16 +2093,33 @@ $(document).on('submit', '#addContractForm', function(e) {
     e.preventDefault();
     clearFormErrors('#addContractForm');
 
+    // Get form data
+    let formData = $(this).serializeArray();
+    
+    // Ensure customer_id is included even if select is disabled
+    if (currentCustomerId && !formData.find(item => item.name === 'customer_id')) {
+        formData.push({name: 'customer_id', value: currentCustomerId});
+    }
+
     $.ajax({
         url: '<?= base_url('marketing/kontrak/store') ?>',
         method: 'POST',
-        data: $(this).serialize(),
+        data: $.param(formData),
         success: function(response) {
             if (response.success) {
                 showNotification(response.message, 'success');
                 $('#addContractModal').modal('hide');
                 $('#addContractForm')[0].reset();
-                customerTable.ajax.reload();
+                
+                // Reload customer table
+                if (customerTable) {
+                    customerTable.ajax.reload();
+                }
+                
+                // Reload contracts if we're in customer detail modal
+                if (currentCustomerId) {
+                    loadCustomerContracts(currentCustomerId);
+                }
             } else {
                 if (response.errors) {
                     showFormErrors('#addContractForm', response.errors);
@@ -2065,6 +2131,15 @@ $(document).on('submit', '#addContractForm', function(e) {
             showNotification('Terjadi kesalahan pada sistem', 'error');
         }
     });
+});
+
+// Handle save contract buttons
+$(document).on('click', '#btnSaveOnly, #btnSaveAndSpec', function() {
+    const action = $(this).attr('id') === 'btnSaveAndSpec' ? 'save_and_spec' : 'save_only';
+    $('#submitAction').val(action);
+    
+    // Trigger form submit
+    $('#addContractForm').trigger('submit');
 });
 
 $(document).on('submit', '#addLocationForm', function(e) {

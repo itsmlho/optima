@@ -39,6 +39,7 @@ class Filters extends BaseFilters
         'level'         => \App\Filters\LevelFilter::class,
         'auth'          => \App\Filters\AuthFilter::class,
         'performancemonitor' => \App\Filters\PerformanceMonitorFilter::class,
+        'language'      => \App\Filters\LanguageFilter::class,
     ];
 
     /**
@@ -74,6 +75,7 @@ class Filters extends BaseFilters
      */
     public array $globals = [
         'before' => [
+            'language', // Set language from session preference
             'auth', // Protect all routes - public paths handled in filter itself
             // 'honeypot',
             // 'csrf',

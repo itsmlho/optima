@@ -65,6 +65,8 @@ $currentLang = service('request')->getLocale();
     
     <!-- OPTIMA Pro CSS (Enhanced with Centralized Components) -->
     <link href="<?= base_url('assets/css/optima-pro.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <!-- Select2 Custom CSS -->
+    <link href="<?= base_url('assets/css/select2-custom.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Global Permission CSS -->
     <link href="<?= base_url('assets/css/global-permission.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Notification Popup CSS -->

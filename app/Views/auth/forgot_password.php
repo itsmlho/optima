@@ -1,14 +1,13 @@
 <!DOCTYPE html>
-<html lang="id" data-bs-theme="light">
+<html lang="<?= service('request')->getLocale() ?>" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <meta name="description" content="<?= lang('Auth.meta_forgot_password_description') ?>">
+    <meta name="description" content="Reset Password - OPTIMA | PT Sarana Mitra Luas Tbk">
     <meta name="robots" content="noindex, nofollow">
     
-    <!-- Title -->
-    <title><?= lang('Auth.forgot_password_title') ?> - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title>Lupa Password - OPTIMA | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -17,7 +16,7 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Metropolis:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Metropolis:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -25,595 +24,366 @@
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
-    <!-- Custom CSS -->
-    <link href="<?= base_url('assets/css/optima-pro.css') ?>" rel="stylesheet">
-    
-    <!-- Custom Styles -->
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
         body {
             font-family: 'Metropolis', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 2rem 1rem;
         }
         
-        .forgot-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 1rem;
-            box-shadow: 0 2rem 4rem rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            max-width: 600px;
+        .auth-container {
             width: 100%;
+            max-width: 420px;
         }
         
-        .forgot-header {
-            background: linear-gradient(135deg, #39afd1 0%, #70c6e0 100%);
-            color: white;
-            padding: 3rem 2rem;
-            text-align: center;
+        .auth-card {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            padding: 2rem 1.75rem;
+            border: 1px solid #e9ecef;
             position: relative;
             overflow: hidden;
         }
         
-        .forgot-header::before {
+        .auth-card::before {
             content: '';
             position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-            animation: float 20s linear infinite;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #0061f2, #00ac69);
         }
         
-        @keyframes float {
-            0% { transform: translateX(0) translateY(0); }
-            100% { transform: translateX(-10px) translateY(-10px); }
+        .auth-header {
+            text-align: center;
+            margin-bottom: 2rem;
         }
         
-        .forgot-header-content {
-            position: relative;
-            z-index: 2;
-        }
-        
-        .forgot-logo {
-            width: 100px;
-            height: 100px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: inline-flex;
+        .auth-logo {
+            display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.5rem;
+            gap: 0.75rem;
             margin-bottom: 1.5rem;
-            backdrop-filter: blur(10px);
         }
         
-        .forgot-title {
+        .auth-logo img {
+            height: 35px;
+            width: auto;
+        }
+        
+        .logo-divider {
+            width: 2px;
+            height: 25px;
+            background: linear-gradient(180deg, #0061f2, #00ac69);
+        }
+        
+        .auth-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #0061f2, #00ac69);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .auth-icon i {
             font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-            text-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.1);
-        }
-        
-        .forgot-subtitle {
-            font-size: 1rem;
-            opacity: 0.9;
-            margin-bottom: 0;
-        }
-        
-        .forgot-body {
-            padding: 3rem 2rem;
-        }
-        
-        .forgot-description {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-        
-        .forgot-description h3 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 1rem;
-        }
-        
-        .forgot-description p {
-            color: #69707a;
-            line-height: 1.6;
-            margin-bottom: 0;
-        }
-        
-        .forgot-steps {
-            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            border: 1px solid #e9ecef;
-        }
-        
-        .forgot-steps h6 {
-            color: #495057;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            font-size: 0.875rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .forgot-steps ol {
-            margin: 0;
-            padding-left: 1.25rem;
-            color: #69707a;
-        }
-        
-        .forgot-steps li {
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
-        }
-        
-        .form-floating {
-            position: relative;
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-floating .form-control {
-            border: 2px solid #e9ecef;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-        
-        .form-floating .form-control:focus {
-            border-color: #39afd1;
-            box-shadow: 0 0 0 0.2rem rgba(57, 175, 209, 0.25);
-        }
-        
-        .form-floating label {
-            padding: 1rem;
-            font-weight: 500;
-            color: #69707a;
-        }
-        
-        .btn-reset {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-radius: 0.5rem;
-            background: linear-gradient(135deg, #39afd1 0%, #70c6e0 100%);
-            border: none;
             color: white;
-            transition: all 0.3s ease;
+        }
+        
+        .auth-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 0.5rem;
+        }
+        
+        .auth-subtitle {
+            color: #6c757d;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        
+        .form-group {
             margin-bottom: 1.5rem;
         }
         
-        .btn-reset:hover {
-            background: linear-gradient(135deg, #2e8ba8 0%, #39afd1 100%);
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .form-control {
+            padding: 0.75rem 0.875rem;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus {
+            border-color: #0061f2;
+            box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.1);
+        }
+        
+        .btn-primary {
+            width: 100%;
+            padding: 0.875rem;
+            font-weight: 600;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0061f2, #0056b3);
+            border: none;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 97, 242, 0.3);
+        }
+        
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #0056b3, #004085);
             transform: translateY(-2px);
-            box-shadow: 0 0.5rem 1rem rgba(57, 175, 209, 0.3);
+            box-shadow: 0 6px 20px rgba(0, 97, 242, 0.4);
         }
         
-        .btn-reset:active {
-            transform: translateY(0);
+        .btn-secondary {
+            width: 100%;
+            padding: 0.875rem;
+            font-weight: 600;
+            border-radius: 10px;
+            background: white;
+            border: 2px solid #e9ecef;
+            color: #495057;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin-top: 0.75rem;
         }
         
-        .btn-reset:disabled {
-            opacity: 0.7;
-            cursor: not-allowed;
-            transform: none;
+        .btn-secondary:hover {
+            background: #f8f9fa;
+            border-color: #0061f2;
+            color: #0061f2;
         }
         
-        .forgot-links {
+        .auth-links {
             text-align: center;
-            margin-top: 2rem;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
         }
         
-        .forgot-links a {
-            color: #39afd1;
+        .auth-links a {
+            color: #0061f2;
             text-decoration: none;
             font-weight: 500;
             transition: color 0.3s ease;
-            margin: 0 1rem;
         }
         
-        .forgot-links a:hover {
-            color: #2e8ba8;
-        }
-        
-        .forgot-divider {
-            display: flex;
-            align-items: center;
-            margin: 2rem 0;
-        }
-        
-        .forgot-divider::before,
-        .forgot-divider::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: #e9ecef;
-        }
-        
-        .forgot-divider span {
-            padding: 0 1rem;
-            color: #69707a;
-            font-size: 0.875rem;
+        .auth-links a:hover {
+            color: #004085;
         }
         
         .alert {
-            border-radius: 0.5rem;
-            font-weight: 500;
+            border-radius: 10px;
+            padding: 1rem;
             margin-bottom: 1.5rem;
+            border: none;
         }
         
         .alert-danger {
-            background: linear-gradient(135deg, rgba(232, 21, 0, 0.1) 0%, rgba(232, 21, 0, 0.05) 100%);
-            color: #bb1100;
-            border: 1px solid rgba(232, 21, 0, 0.2);
+            background-color: #ffe5e5;
+            color: #c92a2a;
         }
         
         .alert-success {
-            background: linear-gradient(135deg, rgba(0, 172, 105, 0.1) 0%, rgba(0, 172, 105, 0.05) 100%);
-            color: #006644;
-            border: 1px solid rgba(0, 172, 105, 0.2);
+            background-color: #d4edda;
+            color: #155724;
         }
         
-        .alert-info {
-            background: linear-gradient(135deg, rgba(57, 175, 209, 0.1) 0%, rgba(57, 175, 209, 0.05) 100%);
-            color: #2e8ba8;
-            border: 1px solid rgba(57, 175, 209, 0.2);
-        }
-        
-        .footer-links {
-            text-align: center;
-            padding: 2rem;
+        .info-box {
             background: #f8f9fa;
-            border-top: 1px solid #e9ecef;
+            border-left: 4px solid #0061f2;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1.5rem;
         }
         
-        .footer-links a {
-            color: #69707a;
-            text-decoration: none;
-            margin: 0 1rem;
-            font-size: 0.875rem;
-            transition: color 0.3s ease;
-        }
-        
-        .footer-links a:hover {
-            color: #39afd1;
-        }
-        
-        .loading-spinner {
-            display: none;
-            width: 1.5rem;
-            height: 1.5rem;
-            border: 2px solid transparent;
-            border-top: 2px solid white;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
+        .info-box i {
+            color: #0061f2;
             margin-right: 0.5rem;
         }
         
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .info-box p {
+            margin: 0;
+            font-size: 0.85rem;
+            color: #6c757d;
         }
         
-        .success-message {
-            text-align: center;
-            padding: 2rem;
+        /* Dark mode support */
+        [data-bs-theme="dark"] body {
+            background: linear-gradient(135deg, #1a1d23 0%, #2c3034 100%);
         }
         
-        .success-icon {
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #00ac69 0%, #4dd289 100%);
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: white;
-            margin-bottom: 1.5rem;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(0, 172, 105, 0.7);
-            }
-            70% {
-                transform: scale(1.05);
-                box-shadow: 0 0 0 10px rgba(0, 172, 105, 0);
-            }
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(0, 172, 105, 0);
-            }
-        }
-        
-        .success-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 1rem;
-        }
-        
-        .success-text {
-            color: #69707a;
-            line-height: 1.6;
-            margin-bottom: 2rem;
-        }
-        
-        /* Responsive Design */
-        @media (max-width: 768px) {
-            .forgot-container {
-                margin: 1rem;
-            }
-            
-            .forgot-header {
-                padding: 2rem 1rem;
-            }
-            
-            .forgot-title {
-                font-size: 1.75rem;
-            }
-            
-            .forgot-body {
-                padding: 2rem 1rem;
-            }
-        }
-        
-        /* Dark Mode Support */
-        [data-bs-theme="dark"] .forgot-container {
-            background: rgba(33, 37, 41, 0.95);
-        }
-        
-        [data-bs-theme="dark"] .forgot-description h3 {
-            color: #ffffff;
-        }
-        
-        [data-bs-theme="dark"] .forgot-steps {
-            background: linear-gradient(135deg, #2c3034 0%, #343a40 100%);
-            border-color: #495057;
-        }
-        
-        [data-bs-theme="dark"] .forgot-steps h6 {
-            color: #adb5bd;
-        }
-        
-        [data-bs-theme="dark"] .forgot-steps ol {
-            color: #adb5bd;
-        }
-        
-        [data-bs-theme="dark"] .form-floating .form-control {
-            background-color: #2c3034;
-            border-color: #495057;
-            color: #ffffff;
-        }
-        
-        [data-bs-theme="dark"] .form-floating label {
-            color: #adb5bd;
-        }
-        
-        [data-bs-theme="dark"] .success-title {
-            color: #ffffff;
-        }
-        
-        [data-bs-theme="dark"] .footer-links {
+        [data-bs-theme="dark"] .auth-card {
             background: #2c3034;
-            border-top-color: #495057;
+            border-color: #343a40;
         }
         
-        [data-bs-theme="dark"] .footer-links a {
+        [data-bs-theme="dark"] .auth-title {
+            color: #e2e8f0;
+        }
+        
+        [data-bs-theme="dark"] .auth-subtitle,
+        [data-bs-theme="dark"] .form-label {
             color: #adb5bd;
+        }
+        
+        [data-bs-theme="dark"] .form-control {
+            background: #343a40;
+            border-color: #495057;
+            color: #e2e8f0;
+        }
+        
+        [data-bs-theme="dark"] .form-control:focus {
+            background: #343a40;
+            border-color: #0061f2;
+        }
+        
+        [data-bs-theme="dark"] .btn-secondary {
+            background: #343a40;
+            border-color: #495057;
+            color: #adb5bd;
+        }
+        
+        [data-bs-theme="dark"] .btn-secondary:hover {
+            background: #495057;
+            border-color: #0061f2;
+            color: #0061f2;
+        }
+        
+        [data-bs-theme="dark"] .info-box {
+            background: #343a40;
+            border-color: #0061f2;
+        }
+        
+        [data-bs-theme="dark"] .info-box p {
+            color: #adb5bd;
+        }
+        
+        /* Responsive */
+        @media (max-width: 576px) {
+            body {
+                padding: 1rem;
+            }
+            
+            .auth-card {
+                padding: 2rem 1.5rem;
+            }
+            
+            .auth-title {
+                font-size: 1.5rem;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="forgot-container">
-        <!-- Header Section -->
-        <div class="forgot-header">
-            <div class="forgot-header-content">
-                <div class="forgot-logo">
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <div class="auth-logo">
+                    <img src="<?= base_url('assets/images/company-logo.svg') ?>" alt="SML Logo">
+                    <div class="logo-divider"></div>
+                    <img src="<?= base_url('logo-optima.ico') ?>" alt="OPTIMA Logo">
+                </div>
+                
+                <div class="auth-icon">
                     <i class="fas fa-key"></i>
                 </div>
-                <h1 class="forgot-title"><?= lang('Auth.forgot_password_welcome') ?></h1>
-                <p class="forgot-subtitle"><?= lang('Auth.dont_worry_help_you') ?></p>
-            </div>
-        </div>
-        
-        <!-- Body Section -->
-        <div class="forgot-body">
-            <!-- Description -->
-            <div class="forgot-description">
-                <h3><?= lang('Auth.reset_your_password') ?></h3>
-                <p><?= lang('Auth.forgot_password_instruction') ?></p>
+                
+                <h1 class="auth-title">Lupa Password?</h1>
             </div>
             
-            <!-- Steps -->
-            <div class="forgot-steps">
-                <h6><?= lang('Auth.reset_password_steps') ?>:</h6>
-                <ol>
-                    <li><?= lang('Auth.step_enter_email') ?></li>
-                    <li><?= lang('Auth.step_click_send_link') ?></li>
-                    <li><?= lang('Auth.step_check_email') ?></li>
-                    <li><?= lang('Auth.step_create_new_password') ?></li>
-                    <li><?= lang('Auth.step_login_new_password') ?></li>
-                </ol>
-            </div>
-            
-            <!-- Flash Messages -->
             <?php if (session()->getFlashdata('error')): ?>
-                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                <div class="alert alert-danger">
                     <i class="fas fa-exclamation-circle me-2"></i>
                     <?= session()->getFlashdata('error') ?>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                 </div>
             <?php endif; ?>
             
             <?php if (session()->getFlashdata('success')): ?>
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    <div class="success-message">
-                        <div class="success-icon">
-                            <i class="fas fa-check"></i>
-                        </div>
-                        <div class="success-title"><?= lang('Auth.email_sent') ?>!</div>
-                        <div class="success-text">
-                            <?= lang('Auth.reset_link_sent_message') ?>
-                        </div>
-                        <a href="<?= base_url('auth/login') ?>" class="btn btn-reset">
-                            <i class="fas fa-arrow-left me-2"></i><?= lang('Auth.back_to_login') ?>
-                        </a>
-                    </div>
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <?= session()->getFlashdata('success') ?>
                 </div>
-            <?php else: ?>
-                <!-- Reset Form -->
-                <form action="<?= base_url('auth/sendResetLink') ?>" method="post" class="needs-validation" novalidate>
-                    <?= csrf_field() ?>
-                    
-                    <div class="form-floating">
-                        <input type="email" class="form-control" id="email" name="email" 
-                               placeholder="<?= lang('Auth.email') ?>" value="<?= old('email') ?>" required>
-                        <label for="email">
-                            <i class="fas fa-envelope me-2"></i><?= lang('Auth.registered_email') ?>
-                        </label>
-                        <div class="invalid-feedback">
-                            <?= lang('Auth.please_enter_valid_email') ?>
-                        </div>
-                    </div>
-                    
-                    <button type="submit" class="btn btn-reset" id="resetBtn">
-                        <div class="loading-spinner" id="resetSpinner"></div>
-                        <i class="fas fa-paper-plane me-2" id="resetIcon"></i>
-                        <span id="resetText"><?= lang('Auth.send_reset_link') ?></span>
-                    </button>
-                </form>
             <?php endif; ?>
             
-            <!-- Links -->
-            <div class="forgot-links">
-                <a href="<?= base_url('auth/login') ?>">
-                    <i class="fas fa-arrow-left me-1"></i><?= lang('Auth.back_to_login') ?>
-                </a>
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <p>
+                    Link reset password akan dikirim ke email Anda. Pastikan email yang Anda masukkan sudah terdaftar di sistem.
+                </p>
+            </div>
+            
+            <form action="<?= base_url('auth/send-reset-link') ?>" method="POST" id="forgotPasswordForm">
+                <?= csrf_field() ?>
                 
-                <div class="forgot-divider">
-                    <span><?= lang('App.or') ?></span>
+                <div class="form-group">
+                    <label for="email" class="form-label">
+                        <i class="fas fa-envelope me-1"></i> Email
+                    </label>
+                    <input 
+                        type="email" 
+                        class="form-control" 
+                        id="email" 
+                        name="email" 
+                        placeholder="nama@email.com"
+                        required
+                        value="<?= old('email') ?>"
+                    >
                 </div>
                 
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <i class="fas fa-paper-plane me-2"></i> Kirim Link Reset
+                </button>
+                
+                <a href="<?= base_url('auth/login') ?>" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i> Kembali ke Login
+                </a>
+            </form>
+            
+            <div class="auth-links">
+                Belum punya akun? 
                 <a href="<?= base_url('auth/register') ?>">
-                    <i class="fas fa-user-plus me-1"></i><?= lang('Auth.create_new_account') ?>
+                    <i class="fas fa-user-plus me-1"></i> Daftar di sini
                 </a>
             </div>
         </div>
-        
-        <!-- Footer -->
-        <div class="footer-links">
-            <a href="#">Bantuan</a>
-            <a href="#">Hubungi Support</a>
-            <a href="#">FAQ</a>
-        </div>
     </div>
     
-    <!-- Scripts -->
+    <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // Form validation
-        (function() {
-            'use strict';
-            const forms = document.querySelectorAll('.needs-validation');
-            
-            Array.from(forms).forEach(form => {
-                form.addEventListener('submit', function(event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                    } else {
-                        // Show loading state
-                        const resetBtn = document.getElementById('resetBtn');
-                        const resetSpinner = document.getElementById('resetSpinner');
-                        const resetIcon = document.getElementById('resetIcon');
-                        const resetText = document.getElementById('resetText');
-                        
-                        if (resetBtn) {
-                            resetBtn.disabled = true;
-                            resetSpinner.style.display = 'inline-block';
-                            resetIcon.style.display = 'none';
-                            resetText.textContent = 'Mengirim...';
-                        }
-                    }
-                    
-                    form.classList.add('was-validated');
-                }, false);
-            });
-        })();
-        
-        // Auto-hide alerts
-        document.addEventListener('DOMContentLoaded', function() {
-            const alerts = document.querySelectorAll('.alert:not(.alert-success)');
-            alerts.forEach(alert => {
-                setTimeout(() => {
-                    const bsAlert = new bootstrap.Alert(alert);
-                    bsAlert.close();
-                }, 5000);
-            });
-        });
-        
-        // Focus first input
-        window.addEventListener('load', function() {
-            const firstInput = document.querySelector('input:not([type="hidden"])');
-            if (firstInput) {
-                firstInput.focus();
-            }
-        });
-        
-        // Enhanced form interactions
-        document.querySelectorAll('.form-control').forEach(input => {
-            input.addEventListener('focus', function() {
-                this.parentElement.classList.add('focused');
-            });
-            
-            input.addEventListener('blur', function() {
-                this.parentElement.classList.remove('focused');
-            });
-        });
-        
-        // Email validation
-        document.getElementById('email')?.addEventListener('blur', function() {
-            const email = this.value;
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            
-            if (email && !emailRegex.test(email)) {
-                this.setCustomValidity('Format email tidak valid');
-            } else {
-                this.setCustomValidity('');
-            }
-        });
-        
-        // Add animation to success message if present
-        if (document.querySelector('.success-message')) {
-            setTimeout(() => {
-                document.querySelector('.success-message').classList.add('animate-fadeIn');
-            }, 100);
-        }
-        
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(event) {
-            // Escape key to go back
-            if (event.key === 'Escape') {
-                window.location.href = '<?= base_url('auth/login') ?>';
-            }
+        // Prevent double submission
+        document.getElementById('forgotPasswordForm').addEventListener('submit', function(e) {
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Mengirim...';
         });
     </script>
 </body>
-</html> 
+</html>

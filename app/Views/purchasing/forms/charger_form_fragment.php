@@ -2,7 +2,7 @@
 <div class="row g-3">
     <div class="col-12 mb-2">
         <button type="button" class="btn btn-sm btn-outline-primary" onclick="QuickAddModal.open('charger', 'charger_merk');">
-            <i class="fas fa-plus-circle me-1"></i>Add Charger
+            <i class="fas fa-plus-circle me-1"></i>Add New Charger
         </button>
     </div>
     <!-- Merk Charger -->

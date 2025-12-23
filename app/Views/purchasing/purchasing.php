@@ -541,11 +541,13 @@ $can_export = $permissions['export'];
                                 </div>
                                 <div class="col-md-4">
                                     <label for="id_supplier_modal" class="form-label">Supplier <span class="text-danger">*</span></label>
-                                    <select name="id_supplier" id="id_supplier_modal" class="form-select" required>
+                                    <select name="id_supplier" id="id_supplier_modal" class="form-select select2-supplier-modal" required>
                                         <option value="">Select Supplier...</option>
                                         <?php if (isset($suppliers) && is_array($suppliers)): ?>
                                             <?php foreach ($suppliers as $item): ?>
-                                                <option value="<?= $item['id_supplier'] ?>"><?= esc($item['nama_supplier']) ?></option>
+                                                <option value="<?= $item['id_supplier'] ?>">
+                                                    [<?= esc($item['kode_supplier'] ?? '-') ?>] <?= esc($item['nama_supplier']) ?>
+                                                </option>
                                             <?php endforeach; ?>
                                         <?php endif; ?>
                                     </select>
@@ -3250,6 +3252,16 @@ function initCreatePOModal() {
                 theme: 'bootstrap-5',
                 dropdownParent: $('#createPoModal'),
                 width: '100%'
+            });
+            
+            // Enhanced Select2 for supplier dropdown with search
+            $('.select2-supplier-modal').select2({
+                theme: 'bootstrap-5',
+                dropdownParent: $('#createPoModal'),
+                width: '100%',
+                placeholder: 'Cari supplier...',
+                allowClear: true,
+                minimumInputLength: 0
             });
         }
     });
