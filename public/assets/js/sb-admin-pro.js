@@ -364,7 +364,7 @@
     const query = $(this).val();
     if (query.length >= 3) {
       // Implement global search functionality here
-      console.log('Searching for:', query);
+      // Searching
     }
   }, 300));
 
@@ -522,7 +522,7 @@
     $(window).on('load', function() {
       setTimeout(function() {
         const perfData = performance.getEntriesByType('navigation')[0];
-        console.log('Page Load Performance:', {
+        // Page Load Performance: {
           'Total Load Time': Math.round(perfData.loadEventEnd - perfData.fetchStart) + 'ms',
           'DOM Content Loaded': Math.round(perfData.domContentLoadedEventEnd - perfData.fetchStart) + 'ms',
           'Time to Interactive': Math.round(perfData.domInteractive - perfData.fetchStart) + 'ms'

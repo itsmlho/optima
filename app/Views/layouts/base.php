@@ -852,8 +852,7 @@ $currentLang = service('request')->getLocale();
                     }
                 }
                 
-                // Final initialization check
-                console.log('OPTIMA Theme System initialized successfully');
+                // Final initialization complete
             }
         });
 

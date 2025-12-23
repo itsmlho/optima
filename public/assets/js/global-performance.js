@@ -7,7 +7,7 @@
 (function() {
     'use strict';
 
-    console.log('🚀 OPTIMA Global Performance Optimization loaded');
+    // Global Performance Optimization loaded
 
     // GLOBAL PERFORMANCE CONFIGURATION
     window.OPTIMA_PERF = {
@@ -103,7 +103,7 @@
         // Performance logger
         log: function(message, data) {
             if (window.OPTIMA_PERF.DEBUG_MODE) {
-                console.log(`[OPTIMA-PERF] ${message}`, data || '');
+                // Performance log suppressed
             }
         }
     };
@@ -361,7 +361,7 @@
 
     // INITIALIZATION
     OptimaPerfUtils.ready(function() {
-        console.log('🚀 Initializing OPTIMA Global Performance...');
+        // Initializing Global Performance
         
         // Apply all optimizations
         OptimaDataTableManager.optimizeSearch();
@@ -375,7 +375,7 @@
             $.extend(true, $.fn.dataTable.defaults, OptimaDataTableManager.getOptimalDefaults());
         }
 
-        console.log('✅ OPTIMA Global Performance optimization complete');
+        // Global Performance optimization complete
         
         // Performance monitoring
         setTimeout(() => {

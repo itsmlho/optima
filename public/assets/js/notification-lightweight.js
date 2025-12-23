@@ -28,8 +28,7 @@ class OptimaNotificationLightweight {
             this.baseUrl = window.location.origin + '/index.php';
         }
         
-        console.log('🔗 Notification System BaseURL:', this.baseUrl);
-        console.log('📍 Current pathname:', path);
+        // BaseURL configured: this.baseUrl
         
         this.pollingInterval = 60000; // 60 seconds (reduced frequency for performance)
         this.pollingTimer = null;
@@ -50,7 +49,6 @@ class OptimaNotificationLightweight {
         // Simplified popup tracking (in-memory only for performance)
         this.shownPopupIds = new Set();
         
-        console.log('🚀 Optima Notification Lightweight Client initialized');
         this.init();
     }
     
@@ -75,8 +73,7 @@ class OptimaNotificationLightweight {
         this.badge = document.getElementById('notificationBadge');
         this.dropdownMenu = document.getElementById('notificationDropdownMenu');
         
-        console.log('🔧 Init - Badge element:', this.badge);
-        console.log('🔧 Init - Dropdown menu:', this.dropdownMenu);
+        // DOM elements cached
         
         // Update count immediately
         this.updateCount();
@@ -95,16 +92,13 @@ class OptimaNotificationLightweight {
         if (notificationDropdownParent) {
             const notificationButton = notificationDropdownParent.querySelector('[data-bs-toggle="dropdown"]');
             if (notificationButton) {
-                console.log('✅ Notification dropdown button found, attaching event listener');
                 notificationButton.addEventListener('click', () => {
-                    console.log('🔔 Notification dropdown clicked!');
                     this.updateCount();
                     this.fetchRecent();
                 });
                 
                 // Also listen to Bootstrap's show event
                 this.dropdownMenu.addEventListener('show.bs.dropdown', () => {
-                    console.log('🔔 Dropdown showing (Bootstrap event)');
                     this.fetchRecent();
                 });
             } else {
@@ -151,8 +145,6 @@ class OptimaNotificationLightweight {
         
         // Mark this notification as shown (prevent duplicate popup)
         this.shownPopupIds.add(notification.id);
-        
-        console.log(`📢 Showing popup for notification ID: ${notification.id}`);
         
         // Show notification popup
         await this.showNotificationPopup(notification);
@@ -281,7 +273,6 @@ class OptimaNotificationLightweight {
         if (this.isPolling) return;
         
         this.isPolling = true;
-        console.log('🔄 Starting notification polling...');
         
         this.pollingTimer = setInterval(() => {
             this.pollForNotifications();
@@ -294,14 +285,12 @@ class OptimaNotificationLightweight {
             this.pollingTimer = null;
         }
         this.isPolling = false;
-        console.log('⏹️ Stopped notification polling');
     }
     
     /**
      * Trigger immediate check (call this after CRUD operations)
      */
     triggerImmediateCheck() {
-        console.log('🚀 Triggering immediate notification check...');
         this.pollForNotifications();
     }
     
@@ -328,14 +317,10 @@ class OptimaNotificationLightweight {
                 
                 // Process new notifications
                 if (data.notifications.length > 0) {
-                    console.log(`🔔 Received ${data.notifications.length} new notifications`);
-                    
                     // Filter out notifications that have already been shown as popup
                     const newNotifications = data.notifications.filter(n => {
                         return !this.shownPopupIds.has(n.id);
                     });
-                    
-                    console.log(`📢 ${newNotifications.length} notifications ready for popup (${data.notifications.length - newNotifications.length} already shown)`);
                     
                     // Add to queue only new notifications
                     newNotifications.forEach(notification => {
@@ -393,7 +378,7 @@ class OptimaNotificationLightweight {
     
     async fetchRecent() {
         try {
-            console.log('📥 Fetching recent notifications from:', `${this.baseUrl}/notifications/get`);
+            // Fetching notifications
             
             const response = await fetch(`${this.baseUrl}/notifications/get?limit=5`, {
                 headers: {
@@ -401,7 +386,7 @@ class OptimaNotificationLightweight {
                 }
             });
             
-            console.log('📡 Response status:', response.status);
+            // Response received
             
             if (!response.ok) {
                 console.warn('⚠️ Fetch recent failed:', response.status, response.statusText);
@@ -410,10 +395,10 @@ class OptimaNotificationLightweight {
             }
             
             const data = await response.json();
-            console.log('📦 Received data:', data);
+            // Data received
             
             if (data.success && data.notifications) {
-                console.log('✅ Updating dropdown with', data.notifications.length, 'notifications');
+                // Updating dropdown
                 // Update dropdown content
                 this.updateDropdownContent(data.notifications); 
             } else {
@@ -652,7 +637,7 @@ class OptimaNotificationLightweight {
                 // Update count
                 this.updateCount();
                 
-                console.log('✅ All notifications marked as read');
+                // All notifications marked as read
             }
         })
         .catch(error => {
@@ -662,7 +647,7 @@ class OptimaNotificationLightweight {
     
     destroy() {
         this.stopPolling();
-        console.log('🗑️ Notification client destroyed');
+        // Notification client destroyed
     }
 }
 
@@ -670,11 +655,6 @@ class OptimaNotificationLightweight {
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize lightweight notification client
     window.optimaNotification = new OptimaNotificationLightweight();
-    
-    // Debug: Check if class is properly initialized
-    console.log('🔍 Notification client initialized:', window.optimaNotification);
-    console.log('🔍 markAsRead method exists:', typeof window.optimaNotification.markAsRead);
-    console.log('🔍 markAllAsRead method exists:', typeof window.optimaNotification.markAllAsRead);
     
     // Expose for compatibility with existing code
     window.updateNotificationCount = function() {
@@ -697,9 +677,7 @@ document.addEventListener('DOMContentLoaded', function() {
     };
     
     window.markAllAsRead = function() {
-        console.log('🔍 Global markAllAsRead called');
-        console.log('🔍 optimaNotification exists:', !!window.optimaNotification);
-        console.log('🔍 markAllAsRead method exists:', typeof window.optimaNotification?.markAllAsRead);
+        // Global markAllAsRead called
         
         if (window.optimaNotification && typeof window.optimaNotification.markAllAsRead === 'function') {
             window.optimaNotification.markAllAsRead();
