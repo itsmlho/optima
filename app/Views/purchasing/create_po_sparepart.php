@@ -30,11 +30,13 @@
                     </div>
                     <div class="col-md-4">
                         <label for="id_supplier" class="form-label">Supplier <span class="text-danger">*</span></label>
-                        <select name="id_supplier" id="id_supplier" class="form-select select2-basic" required>
+                        <select name="id_supplier" id="id_supplier" class="form-select select2-supplier" required>
                             <option value="">Pilih Supplier...</option>
                             <?php if (isset($suppliers) && is_array($suppliers)): ?>
                                 <?php foreach ($suppliers as $item): ?>
-                                    <option value="<?= $item['id_supplier'] ?>"><?= esc($item['nama_supplier']) ?></option>
+                                    <option value="<?= $item['id_supplier'] ?>">
+                                        [<?= esc($item['kode_supplier'] ?? '-') ?>] <?= esc($item['nama_supplier']) ?>
+                                    </option>
                                 <?php endforeach; ?>
                             <?php endif; ?>
                         </select>
@@ -148,10 +150,13 @@
 <script src="https://cdn.jsdelivr.net/npm/select2@4.0.13/dist/js/select2.full.min.js"></script>
 <script>
     $(document).ready(function() {
-        // Inisialisasi Select2 untuk supplier
-        $('.select2-basic').select2({ 
+        // Inisialisasi Select2 untuk supplier dengan search
+        $('.select2-supplier').select2({ 
             theme: "bootstrap-5",
-            width: '100%'
+            width: '100%',
+            placeholder: 'Cari supplier berdasarkan kode atau nama...',
+            allowClear: true,
+            minimumInputLength: 0 // Allow search from first character
         });
 
         function addRow() {

@@ -1,38 +1,48 @@
 /* Custom Select2 Styling for Bootstrap 5 */
-.select2-container--default .select2-selection--single {
-    height: calc(2.25rem + 2px) !important;
+/* Support both default and bootstrap-5 themes */
+.select2-container--default .select2-selection--single,
+.select2-container--bootstrap-5 .select2-selection--single {
+    height: calc(1.5em + 0.75rem + 2px) !important;
     border: 1px solid #ced4da !important;
     border-radius: 0.375rem !important;
     background-color: #fff !important;
-    padding: 0.375rem 0.75rem !important;
-    font-size: 1rem !important;
+    padding: 0.375rem 2.25rem 0.375rem 0.75rem !important;
+    font-family: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 0.8125rem !important;
     font-weight: 400 !important;
-    line-height: 1.5 !important;
+    line-height: 1.4 !important;
     color: #212529 !important;
 }
 
-.select2-container--default .select2-selection--single .select2-selection__rendered {
+.select2-container--default .select2-selection--single .select2-selection__rendered,
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
     color: #212529 !important;
-    line-height: 1.5 !important;
+    font-family: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
     padding-left: 0 !important;
-    padding-right: 20px !important;
+    padding-right: 0 !important;
     background-color: transparent !important;
 }
 
-.select2-container--default .select2-selection--single:hover {
+.select2-container--default .select2-selection--single:hover,
+.select2-container--bootstrap-5 .select2-selection--single:hover {
     border-color: #86b7fe !important;
 }
 
-.select2-container--default.select2-container--focus .select2-selection--single {
+.select2-container--default.select2-container--focus .select2-selection--single,
+.select2-container--bootstrap-5.select2-container--focus .select2-selection--single {
     border-color: #86b7fe !important;
     outline: 0 !important;
     box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25) !important;
 }
 
+/* Arrow styling - only for default theme */
 .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: calc(2.25rem) !important;
+    height: calc(1.5em + 0.75rem) !important;
     right: 0.75rem !important;
-    top: 0 !important;
+    top: 1px !important;
     width: 20px !important;
 }
 
@@ -49,6 +59,11 @@
     width: 0 !important;
 }
 
+/* Hide default arrow for bootstrap-5 theme (uses CSS arrow) */
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__arrow {
+    display: none !important;
+}
+
 /* Dropdown styling */
 .select2-dropdown {
     border: 1px solid #ced4da !important;
@@ -62,7 +77,10 @@
     border: 1px solid #ced4da !important;
     border-radius: 0.375rem !important;
     padding: 0.375rem 0.75rem !important;
-    font-size: 0.875rem !important;
+    font-family: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
     background-color: #fff !important;
     color: #212529 !important;
 }
@@ -73,8 +91,11 @@
 }
 
 .select2-results__option {
-    padding: 0.5rem 0.75rem !important;
-    font-size: 0.875rem !important;
+    padding: 0.375rem 0.75rem !important;
+    font-family: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
     color: #212529 !important;
     background-color: #fff !important;
     cursor: pointer !important;
@@ -113,8 +134,13 @@
 }
 
 /* Placeholder styling */
-.select2-container--default .select2-selection--single .select2-selection__placeholder {
+.select2-container--default .select2-selection--single .select2-selection__placeholder,
+.select2-container--bootstrap-5 .select2-selection--single .select2-selection__placeholder {
     color: #6c757d !important;
+    font-family: "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", system-ui, "Helvetica Neue", Arial, sans-serif !important;
+    font-size: 0.8125rem !important;
+    font-weight: 400 !important;
+    line-height: 1.4 !important;
 }
 
 /* Disabled state */

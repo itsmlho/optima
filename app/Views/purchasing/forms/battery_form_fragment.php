@@ -2,7 +2,7 @@
 <div class="row g-3">
     <div class="col-12 mb-2">
         <button type="button" class="btn btn-sm btn-outline-primary" onclick="QuickAddModal.open('battery', 'battery_jenis');">
-            <i class="fas fa-plus-circle me-1"></i>Add Battery
+            <i class="fas fa-plus-circle me-1"></i>Add New Battery
         </button>
     </div>
     <!-- Jenis Battery -->
