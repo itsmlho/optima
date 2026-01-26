@@ -22,24 +22,7 @@ class App extends BaseConfig
      * E.g., http://example.com/
      */
     // public string $baseURL = 'http://localhost/ci4/public/';
-    public string $baseURL;
-
-    public function __construct()
-    {
-        parent::__construct();
-
-        // Detect base URL
-        if (PHP_SAPI === 'cli') {
-            $this->baseURL = 'http://localhost/';
-        } else {
-            $scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
-            $host   = $_SERVER['HTTP_HOST'] ?? 'localhost';
-            $script = $_SERVER['SCRIPT_NAME'] ?? '';
-            $path   = rtrim(str_replace(basename($script), '', $script), '/');
-
-            $this->baseURL = $scheme . $host . $path . '/';
-        }
-    }
+    public string $baseURL = 'http://localhost/optima/';
     
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.
@@ -63,7 +46,7 @@ class App extends BaseConfig
      * something else. If you have configured your web server to remove this file
      * from your site URIs, set this variable to an empty string.
      */
-    public string $indexPage = 'index.php';
+    public string $indexPage = '';
 
     /**
      * --------------------------------------------------------------------------
