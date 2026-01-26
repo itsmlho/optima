@@ -115,20 +115,20 @@ class Auth extends BaseController
         $ipAddress = $this->request->getIPAddress();
         $userAgent = $this->request->getUserAgent()->getAgentString();
 
-        // Check rate limiting BEFORE checking user/password
-        $rateLimit = $this->rateLimitService->checkAndRecord($username, $ipAddress, $userAgent, false);
-        
-        if (!$rateLimit['allowed']) {
-            // Account is locked or rate limited
-            return redirect()->back()
-                ->withInput()
-                ->with('error', $rateLimit['message'])
-                ->with('rate_limit', [
-                    'remaining_attempts' => $rateLimit['remaining_attempts'],
-                    'locked_until' => $rateLimit['locked_until'] ?? null,
-                    'locked_until_timestamp' => $rateLimit['locked_until_timestamp'] ?? null,
-                ]);
-        }
+        // TEMPORARILY DISABLED - Check rate limiting BEFORE checking user/password
+        // $rateLimit = $this->rateLimitService->checkAndRecord($username, $ipAddress, $userAgent, false);
+        // 
+        // if (!$rateLimit['allowed']) {
+        //     // Account is locked or rate limited
+        //     return redirect()->back()
+        //         ->withInput()
+        //         ->with('error', $rateLimit['message'])
+        //         ->with('rate_limit', [
+        //             'remaining_attempts' => $rateLimit['remaining_attempts'],
+        //             'locked_until' => $rateLimit['locked_until'] ?? null,
+        //             'locked_until_timestamp' => $rateLimit['locked_until_timestamp'] ?? null,
+        //         ]);
+        // }
 
         // Find user by username or email (check both active and inactive)
         $user = $this->userModel->where('username', $username)
@@ -154,28 +154,25 @@ class Auth extends BaseController
 
         // Record attempt (success or failure)
         if (!$isPasswordValid) {
-            // Record failed attempt
-            $rateLimit = $this->rateLimitService->checkAndRecord($username, $ipAddress, $userAgent, false);
-            
-            if (!$rateLimit['allowed']) {
-                // After failed attempt, check if we need to lock
-                return redirect()->back()
-                    ->withInput()
-                    ->with('error', $rateLimit['message'] ?? 'Username/Email atau password salah.')
-                    ->with('rate_limit', [
-                        'remaining_attempts' => $rateLimit['remaining_attempts'],
-                        'locked_until' => $rateLimit['locked_until'] ?? null,
-                        'locked_until_timestamp' => $rateLimit['locked_until_timestamp'] ?? null,
-                    ]);
-            }
+            // TEMPORARILY DISABLED - Record failed attempt
+            // $rateLimit = $this->rateLimitService->checkAndRecord($username, $ipAddress, $userAgent, false);
+            // 
+            // if (!$rateLimit['allowed']) {
+            //     // After failed attempt, check if we need to lock
+            //     return redirect()->back()
+            //         ->withInput()
+            //         ->with('error', $rateLimit['message'] ?? 'Username/Email atau password salah.')
+            //         ->with('rate_limit', [
+            //             'remaining_attempts' => $rateLimit['remaining_attempts'],
+            //             'locked_until' => $rateLimit['locked_until'] ?? null,
+            //             'locked_until_timestamp' => $rateLimit['locked_until_timestamp'] ?? null,
+            //         ]);
+            // }
 
             // Still have attempts remaining
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Username/Email atau password salah.')
-                ->with('rate_limit', [
-                    'remaining_attempts' => $rateLimit['remaining_attempts'],
-                ]);
+                ->with('error', 'Username/Email atau password salah.');
         }
 
         // Check if OTP is enabled for this user
@@ -207,11 +204,11 @@ class Auth extends BaseController
         }
 
         // OTP not enabled - proceed with normal login
-        // Reset rate limiting after successful login
-        $this->rateLimitService->resetAttempts($username, $ipAddress);
+        // TEMPORARILY DISABLED - Reset rate limiting after successful login
+        // $this->rateLimitService->resetAttempts($username, $ipAddress);
         
-        // Record successful login attempt
-        $this->rateLimitService->checkAndRecord($username, $ipAddress, $userAgent, true);
+        // TEMPORARILY DISABLED - Record successful login attempt
+        // $this->rateLimitService->checkAndRecord($username, $ipAddress, $userAgent, true);
 
         // Set session data
         $sessionData = [

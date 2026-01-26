@@ -1,1765 +1,571 @@
 <?= $this->extend('layouts/base') ?>
 
-
 <?= $this->section('content') ?>
-<!-- Executive Summary - Director Dashboard -->
-<div class="row g-4 mb-4" aria-label="Executive Summary" role="region">
-    <!-- Total Units -->
-    <div class="col-xl-3 col-md-6">
-        <div class="card-stats bg-primary text-white h-100 shadow-business border-0 hover-lift" onclick="location.href='<?= base_url('/units') ?>'" tabindex="0" role="button" aria-pressed="false" aria-label="Total Unit">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="stats-value h2 mb-2 fw-bold" data-count="<?= $director_metrics['total_units'] ?>">0</div>
-                        <div class="stats-label text-uppercase"><?= lang('Dashboard.total_units') ?></div>
-                        <div class="small mt-1 opacity-75">
-                            <i class="fas fa-arrow-up me-1" aria-hidden="true"></i>12% <?= lang('Dashboard.from_last_month') ?>
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        <i class="fas fa-truck fa-2x opacity-75"></i>
-                    </div>
-                </div>
+
+<style>
+/* Dashboard Compact Styles */
+.dashboard-header {
+    background: white;
+    padding: 1rem 1.5rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    margin-bottom: 1rem;
+    border-left: 4px solid #0061f2;
+}
+.dashboard-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #212529;
+    margin: 0;
+}
+.dashboard-subtitle {
+    font-size: 0.875rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+/* Summary Cards */
+.summary-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border-left: 4px solid #dee2e6;
+    transition: transform 0.2s;
+}
+.summary-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.summary-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+}
+.summary-icon.bg-primary { background: linear-gradient(135deg, #0061f2, #4d8fff); }
+.summary-icon.bg-success { background: linear-gradient(135deg, #28a745, #4cbb68); }
+.summary-icon.bg-warning { background: linear-gradient(135deg, #ffc107, #ffd04a); }
+.summary-icon.bg-info { background: linear-gradient(135deg, #17a2b8, #45b5c6); }
+
+.summary-content {
+    flex: 1;
+}
+.summary-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+}
+.summary-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #212529;
+    margin: 0;
+    line-height: 1;
+}
+
+/* Compact Cards */
+.compact-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    overflow: hidden;
+}
+.compact-card-header {
+    background: #f8f9fa;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: between;
+    align-items: center;
+}
+.compact-card-header h6 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #212529;
+}
+.compact-card-body {
+    padding: 1rem;
+}
+
+/* Stat Box */
+.stat-box {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 0.75rem;
+}
+.stat-box small {
+    display: block;
+    font-size: 0.7rem;
+    color: #6c757d;
+    margin-bottom: 0.25rem;
+}
+.stat-box h4 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.asset-stats small {
+    font-size: 0.75rem;
+}
+.area-stat {
+    font-size: 0.875rem;
+}
+</style>
+
+<!-- Dashboard Container -->
+
+    
+<!-- Dashboard Header -->
+<div class="dashboard-header">
+    <div class="row align-items-center">
+        <div class="col-md-8">
+            <h1 class="dashboard-title mb-1">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard OPTIMA
+            </h1>
+            <p class="dashboard-subtitle">
+                Selamat datang, <strong><?= session()->get('first_name') ?></strong> | <span id="currentDateTime"></span>
+            </p>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-sm btn-primary" onclick="location.reload()">
+                <i class="fas fa-sync-alt me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-3">
+    <div class="col-lg-3 col-md-6">
+        <div class="summary-card">
+            <div class="summary-icon bg-primary">
+                <i class="fas fa-boxes"></i>
+            </div>
+            <div class="summary-content">
+                <h6 class="summary-label">Total Aset</h6>
+                <h3 class="summary-value"><?= $summary['total_assets'] ?></h3>
+                <small class="text-muted" style="font-size: 0.7rem;">Unit + Attachment + Charger + Baterai</small>
             </div>
         </div>
     </div>
     
-    <!-- Active Contracts -->
-    <div class="col-xl-3 col-md-6">
-        <div class="card-stats bg-success text-white h-100 shadow-business border-0 hover-lift" onclick="location.href='<?= base_url('/kontrak') ?>'">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="h2 mb-2 fw-bold text-white" data-count="<?= $director_metrics['active_contracts'] ?>">0</div>
-                        <div class="text-uppercase text-white"><?= lang('Dashboard.active_contracts') ?></div>
-                        <div class="small mt-1 text-white opacity-75">
-                            <i class="fas fa-arrow-up me-1"></i>8% <?= lang('Dashboard.from_last_month') ?>
-                        </div>
-                    </div>
-                    <div class="text-end">
-                        <i class="fas fa-handshake fa-2x opacity-75"></i>
-                    </div>
-                </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="summary-card">
+            <div class="summary-icon bg-success">
+                <i class="fas fa-handshake"></i>
+            </div>
+            <div class="summary-content">
+                <h6 class="summary-label">Kontrak Aktif</h6>
+                <h3 class="summary-value"><?= $summary['active_contracts'] ?></h3>
+                <small class="text-success"><i class="fas fa-arrow-up"></i> <?= $summary['contract_growth'] ?>% bulan ini</small>
             </div>
         </div>
     </div>
     
-    <!-- Total Customers -->
-    <div class="col-xl-3 col-md-6">
-        <div class="card stats-card bg-gradient-info text-white h-100 shadow-lg border-0" onclick="location.href='<?= base_url('/customers') ?>'">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="stats-value h2 mb-2 fw-bold" data-count="<?= $director_metrics['total_customers'] ?>">0</div>
-                        <div class="stats-label text-uppercase"><?= lang('Dashboard.total_customers') ?></div>
-                        <div class="small mt-1 opacity-75">
-                            <i class="fas fa-arrow-up me-1"></i>15% <?= lang('Dashboard.from_last_month') ?>
-                        </div>
-                    </div>
-                    <div class="stats-icon">
-                        <i class="fas fa-users"></i>
-                    </div>
-                </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="summary-card">
+            <div class="summary-icon bg-warning">
+                <i class="fas fa-wrench"></i>
+            </div>
+            <div class="summary-content">
+                <h6 class="summary-label">WO Bulan Ini</h6>
+                <h3 class="summary-value"><?= $summary['wo_this_month'] ?></h3>
+                <small class="text-muted" style="font-size: 0.75rem;"><?= $summary['wo_pending'] ?> pending | <?= $summary['wo_completed'] ?> selesai</small>
             </div>
         </div>
     </div>
     
-    <!-- Utilization Rate -->
-    <div class="col-xl-3 col-md-6">
-        <div class="card stats-card bg-gradient-warning text-white h-100 shadow-lg border-0" onclick="location.href='<?= base_url('/analytics') ?>'">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between">
-                    <div>
-                        <div class="stats-value h2 mb-2 fw-bold"><?= $director_metrics['utilization_rate'] ?>%</div>
-                        <div class="stats-label text-uppercase"><?= lang('Dashboard.utilization') ?></div>
-                        <div class="small mt-1 opacity-75">
-                            <i class="fas fa-chart-line me-1"></i><?= lang('Dashboard.target') ?>: 80%
-                        </div>
-                    </div>
-                    <div class="stats-icon">
-                        <i class="fas fa-chart-pie"></i>
-                    </div>
-                </div>
+    <div class="col-lg-3 col-md-6">
+        <div class="summary-card">
+            <div class="summary-icon bg-info">
+                <i class="fas fa-truck"></i>
+            </div>
+            <div class="summary-content">
+                <h6 class="summary-label">SPK & DI Bulan Ini</h6>
+                <h3 class="summary-value"><?= $summary['spk_di_this_month'] ?></h3>
+                <small class="text-muted" style="font-size: 0.75rem;">SPK: <?= $summary['spk_count'] ?> | DI: <?= $summary['di_count'] ?></small>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Director Dashboard - Main Content -->
-<div class="row g-4 mb-4">
-    <!-- Operational Overview -->
-    <div class="col-12">
-        <div class="card division-card division-operational h-100">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-tachometer-alt me-2" style="color: var(--optima-primary);"></i>
-                    <?= lang('Dashboard.operational_overview') ?>
-                </h5>
-                <div class="btn-group" role="group">
-                    <input type="radio" class="btn-check" name="operationalChart" id="operationalUnits" autocomplete="off" checked>
-                    <label class="btn btn-outline-primary btn-sm" for="operationalUnits"><?= lang('Dashboard.unit_status') ?></label>
-                    
-                    <input type="radio" class="btn-check" name="operationalChart" id="operationalComplaints" autocomplete="off">
-                    <label class="btn btn-outline-primary btn-sm" for="operationalComplaints"><?= lang('Dashboard.service_complaints') ?></label>
+<!-- Main Content: 3-Column Layout -->
+<div class="row g-3">
+    
+    <!-- LEFT COLUMN: Assets Overview -->
+    <div class="col-lg-4">
+        <!-- Units Status -->
+        <div class="compact-card mb-3">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-truck me-2 text-primary"></i>Inventory Unit</h6>
+            </div>
+            <div class="compact-card-body">
+                <canvas id="unitChart" height="160"></canvas>
+                <div class="row g-2 mt-2">
+                    <div class="col-6">
+                        <small class="text-muted d-block">Disewakan</small>
+                        <strong class="text-success"><?= $assets['units']['rented'] ?></strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Tersedia</small>
+                        <strong class="text-primary"><?= $assets['units']['available'] ?></strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Maintenance</small>
+                        <strong class="text-warning"><?= $assets['units']['maintenance'] ?></strong>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block">Out of Service</small>
+                        <strong class="text-danger"><?= $assets['units']['out_of_service'] ?></strong>
+                    </div>
                 </div>
             </div>
-            <div class="card-body">
-                <!-- Unit Status Visualization -->
-                <div id="unitStatusSection">
-                    <!-- Detailed Unit Metrics -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card bg-gradient-success">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-truck-loading text-white" style="font-size: 2rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <div class="metric-value text-white"><?= $operational_overview['unit_status'][0]['count'] ?? 87 ?></div>
-                                        <div class="metric-label text-white-50"><?= lang('Dashboard.unit_rented') ?></div>
-                                        <div class="small text-white-50"><?= lang('Dashboard.active_in_contract') ?></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card bg-gradient-warning">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-parking text-white" style="font-size: 2rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <div class="metric-value text-white"><?= $operational_overview['unit_status'][1]['count'] ?? 28 ?></div>
-                                        <div class="metric-label text-white-50">Unit Tersedia</div>
-                                        <div class="small text-white-50">Siap untuk disewa</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card bg-gradient-danger">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-tools text-white" style="font-size: 2rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <div class="metric-value text-white"><?= $operational_overview['unit_status'][2]['count'] ?? 10 ?></div>
-                                        <div class="metric-label text-white-50">Dalam Maintenance</div>
-                                        <div class="small text-white-50">Sedang diperbaiki</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card bg-gradient-info">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-chart-line text-white" style="font-size: 2rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <div class="metric-value text-white"><?= $director_metrics['utilization_rate'] ?>%</div>
-                                        <div class="metric-label text-white-50">Tingkat Utilisasi</div>
-                                        <div class="small text-white-50">Efisiensi operasional</div>
-                                    </div>
-                                </div>
-                            </div>
+        </div>
+        
+        <!-- Attachment Status -->
+        <div class="compact-card mb-3">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-puzzle-piece me-2 text-warning"></i>Attachment</h6>
+            </div>
+            <div class="compact-card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <div class="stat-box">
+                            <small>Total</small>
+                            <h4 class="mb-0"><?= $assets['attachments']['total'] ?></h4>
                         </div>
                     </div>
-                    
-                    <!-- Operational Chart -->
-                    <div class="chart-container mb-4">
-                        <canvas id="operationalChart" style="height: 200px;"></canvas>
+                    <div class="col-6">
+                        <div class="stat-box">
+                            <small>Digunakan</small>
+                            <h4 class="mb-0 text-success"><?= $assets['attachments']['active'] ?></h4>
+                        </div>
                     </div>
-                    
-                    <!-- Performance Indicators -->
-                    <div class="row g-3">
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="h4 mb-1 text-success"><?= $director_metrics['customer_satisfaction'] ?>/5</div>
-                                        <div class="small text-muted">Customer Satisfaction</div>
-                                        <div class="progress mt-2" style="height: 6px;">
-                                            <div class="progress-bar bg-success" style="width: <?= ($director_metrics['customer_satisfaction']/5)*100 ?>%"></div>
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-star text-success" style="font-size: 1.5rem;"></i>
-                                </div>
-                            </div>
+                    <div class="col-12">
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: <?= $assets['attachments']['utilization'] ?>%"></div>
                         </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="h4 mb-1 text-warning"><?= $director_metrics['on_time_delivery'] ?>%</div>
-                                        <div class="small text-muted">On-Time Delivery</div>
-                                        <div class="progress mt-2" style="height: 6px;">
-                                            <div class="progress-bar bg-warning" style="width: <?= $director_metrics['on_time_delivery'] ?>%"></div>
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-clock text-warning" style="font-size: 1.5rem;"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="h4 mb-1 text-danger"><?= $director_metrics['downtime_rate'] ?>%</div>
-                                        <div class="small text-muted">Downtime Rate</div>
-                                        <div class="progress mt-2" style="height: 6px;">
-                                            <div class="progress-bar bg-danger" style="width: <?= $director_metrics['downtime_rate'] ?>%"></div>
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-exclamation-triangle text-danger" style="font-size: 1.5rem;"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="h4 mb-1 text-info"><?= $director_metrics['total_customers'] ?></div>
-                                        <div class="small text-muted">Total Customers</div>
-                                        <div class="small text-success">+5 this month</div>
-                                    </div>
-                                    <i class="fas fa-users text-info" style="font-size: 1.5rem;"></i>
-                                </div>
-                            </div>
-                        </div>
+                        <small class="text-muted" style="font-size: 0.7rem;">Utilisasi: <?= $assets['attachments']['utilization'] ?>%</small>
                     </div>
                 </div>
-                
-                <!-- Service Complaints Section (Hidden by default) -->
-                <div id="workOrdersSection" style="display: none;">
-                    <!-- Complaint Overview Cards -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card bg-gradient-danger">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-exclamation-triangle text-white" style="font-size: 2rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <div class="metric-value text-white">12</div>
-                                        <div class="metric-label text-white-50">Critical Issues</div>
-                                        <div class="small text-white-50">Unit breakdown</div>
-                                    </div>
-                                </div>
-                            </div>
+            </div>
+        </div>
+        
+        <!-- Charger & Baterai -->
+        <div class="compact-card">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-battery-three-quarters me-2 text-success"></i>Charger & Baterai</h6>
+            </div>
+            <div class="compact-card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <small class="text-muted d-block mb-2" style="font-weight: 600;">Charger</small>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span style="font-size: 0.875rem;">Total:</span>
+                            <strong><?= $assets['chargers']['total'] ?></strong>
                         </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card bg-gradient-warning">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-tools text-white" style="font-size: 2rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <div class="metric-value text-white">28</div>
-                                        <div class="metric-label text-white-50">Maintenance</div>
-                                        <div class="small text-white-50">Scheduled repairs</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card bg-gradient-info">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-user-times text-white" style="font-size: 2rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <div class="metric-value text-white">8</div>
-                                        <div class="metric-label text-white-50">Customer Complaints</div>
-                                        <div class="small text-white-50">Service issues</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-3 col-md-6">
-                            <div class="metric-card bg-gradient-success">
-                                <div class="d-flex align-items-center">
-                                    <div class="flex-shrink-0">
-                                        <i class="fas fa-check-circle text-white" style="font-size: 2rem;"></i>
-                                    </div>
-                                    <div class="flex-grow-1 ms-3">
-                                        <div class="metric-value text-white">85%</div>
-                                        <div class="metric-label text-white-50">Resolution Rate</div>
-                                        <div class="small text-white-50">Issues resolved</div>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size: 0.875rem;"><i class="fas fa-check-circle text-success"></i> Aktif:</span>
+                            <strong class="text-success"><?= $assets['chargers']['active'] ?></strong>
                         </div>
                     </div>
-                    
-                    <!-- Complaint Categories -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-12">
-                            <h6 class="mb-3">
-                                <i class="fas fa-list-alt me-2 text-primary"></i>
-                                Complaint Categories
-                            </h6>
-                            <div class="row g-2">
-                                <div class="col-md-4">
-                                    <div class="professional-card text-center">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div>
-                                                <div class="h5 mb-1 text-danger">12</div>
-                                                <div class="small text-muted">Mechanical Issues</div>
-                                                <div class="small text-danger">Engine, Hydraulic</div>
-                                            </div>
-                                            <i class="fas fa-cog text-danger fs-2"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="professional-card text-center">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div>
-                                                <div class="h5 mb-1 text-warning">8</div>
-                                                <div class="small text-muted">Electrical Issues</div>
-                                                <div class="small text-warning">Battery, Wiring</div>
-                                            </div>
-                                            <i class="fas fa-bolt text-warning fs-2"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-md-4">
-                                    <div class="professional-card text-center">
-                                        <div class="d-flex align-items-center justify-content-between">
-                                            <div>
-                                                <div class="h5 mb-1 text-info">6</div>
-                                                <div class="small text-muted">Safety Issues</div>
-                                                <div class="small text-info">Brakes, Lights</div>
-                                            </div>
-                                            <i class="fas fa-shield-alt text-info fs-2"></i>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block mb-2" style="font-weight: 600;">Baterai</small>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span style="font-size: 0.875rem;">Total:</span>
+                            <strong><?= $assets['batteries']['total'] ?></strong>
                         </div>
-                    </div>
-                    
-                    <!-- Service Performance Metrics -->
-                    <div class="row g-3 mb-4">
-                        <div class="col-lg-4">
-                            <div class="metric-card">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="h4 mb-1 text-success">2.3 days</div>
-                                        <div class="small text-muted">Avg. Resolution Time</div>
-                                        <div class="progress mt-2" style="height: 6px;">
-                                            <div class="progress-bar bg-success" style="width: 85%"></div>
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-clock text-success" style="font-size: 1.5rem;"></i>
-                                </div>
-                            </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span style="font-size: 0.875rem;"><i class="fas fa-check-circle text-success"></i> Aktif:</span>
+                            <strong class="text-success"><?= $assets['batteries']['active'] ?></strong>
                         </div>
-                        <div class="col-lg-4">
-                            <div class="metric-card">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="h4 mb-1 text-warning">15%</div>
-                                        <div class="small text-muted">Repeat Issues</div>
-                                        <div class="progress mt-2" style="height: 6px;">
-                                            <div class="progress-bar bg-warning" style="width: 15%"></div>
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-redo text-warning" style="font-size: 1.5rem;"></i>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <div class="metric-card">
-                                <div class="d-flex align-items-center justify-content-between">
-                                    <div>
-                                        <div class="h4 mb-1 text-info">92%</div>
-                                        <div class="small text-muted">First Call Resolution</div>
-                                        <div class="progress mt-2" style="height: 6px;">
-                                            <div class="progress-bar bg-info" style="width: 92%"></div>
-                                        </div>
-                                    </div>
-                                    <i class="fas fa-phone text-info" style="font-size: 1.5rem;"></i>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Service Complaints Chart -->
-                    <div class="chart-container">
-                        <canvas id="workOrderChart" style="height: 200px;"></canvas>
                     </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Warehouse Insights -->
-    <div class="col-12">
-        <div class="card division-card division-warehouse h-100">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-warehouse me-2" style="color: var(--optima-success);"></i>
-                    Warehouse Insights
-                </h5>
+    <!-- MIDDLE COLUMN: Work Orders & Service -->
+    <div class="col-lg-4">
+        <!-- WO Complaint by Category -->
+        <div class="compact-card mb-3">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-tools me-2 text-danger"></i>WO Complaint - Top Kategori</h6>
+                <small class="text-muted" style="font-size: 0.7rem;">Bulan ini</small>
             </div>
-            <div class="card-body">
-                <!-- Unit Status Chart -->
-                <div class="chart-container mb-4">
-                    <canvas id="warehouseChart" style="height: 200px;"></canvas>
+            <div class="compact-card-body">
+                <canvas id="woCategoryChart" height="140"></canvas>
+                <div class="mt-2">
+                    <?php $i = 1; foreach($workorders['by_category'] as $cat): ?>
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                            <span style="font-size: 0.875rem;"><?= $i ?>. <?= $cat['category'] ?></span>
+                            <strong class="text-danger"><?= $cat['count'] ?></strong>
+                        </div>
+                    <?php $i++; if($i > 5) break; endforeach; ?>
                 </div>
-                
-                <!-- Warehouse Metrics -->
-                <div class="row g-2 mb-3">
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-success"><?= $warehouse_insights['available_units'] ?></div>
-                            <div class="metric-label">Available</div>
+            </div>
+        </div>
+        
+        <!-- WO by Area -->
+        <div class="compact-card mb-3">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-map-marker-alt me-2 text-warning"></i>WO Complaint - Area</h6>
+            </div>
+            <div class="compact-card-body">
+                <?php foreach($workorders['by_area'] as $area): ?>
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between mb-1">
+                            <span style="font-size: 0.875rem;"><?= $area['area_name'] ?></span>
+                            <strong><?= $area['count'] ?></strong>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-warning" style="width: <?= $area['percentage'] ?>%"></div>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-warning"><?= $warehouse_insights['preparation_units'] ?></div>
-                            <div class="metric-label">Preparation</div>
+                <?php endforeach; ?>
+            </div>
+        </div>
+        
+        <!-- PMPS Schedule -->
+        <div class="compact-card">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-calendar-check me-2 text-info"></i>PMPS Schedule</h6>
+            </div>
+            <div class="compact-card-body">
+                <div class="row g-2 text-center">
+                    <div class="col-4">
+                        <div class="stat-box">
+                            <small>Overdue</small>
+                            <h4 class="mb-0 text-danger"><?= $pmps['overdue'] ?></h4>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-danger"><?= $warehouse_insights['damaged_units'] ?></div>
-                            <div class="metric-label">Damaged</div>
+                    <div class="col-4">
+                        <div class="stat-box">
+                            <small>7 Hari</small>
+                            <h4 class="mb-0 text-warning"><?= $pmps['next_7_days'] ?></h4>
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-info"><?= $warehouse_insights['warehouse_efficiency'] ?>%</div>
-                            <div class="metric-label">Efficiency</div>
+                    <div class="col-4">
+                        <div class="stat-box">
+                            <small>30 Hari</small>
+                            <h4 class="mb-0 text-info"><?= $pmps['next_30_days'] ?></h4>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Location Distribution -->
-                <div class="mt-3">
-                    <h6 class="mb-2">Unit Distribution by Location</h6>
-                    <?php foreach($warehouse_insights['units_by_location'] as $location): ?>
-                    <div class="d-flex align-items-center justify-content-between mb-1 p-2 border rounded">
-                        <span class="small"><?= $location['lokasi_unit'] ?></span>
-                        <span class="badge bg-success"><?= $location['count'] ?></span>
-                    </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- RIGHT COLUMN: SPK, DI, Customer -->
+    <div class="col-lg-4">
+        <!-- SPK This Month -->
+        <div class="compact-card mb-3">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-file-alt me-2 text-primary"></i>SPK Bulan Ini</h6>
+            </div>
+            <div class="compact-card-body">
+                <canvas id="spkChart" height="140"></canvas>
+                <div class="mt-2">
+                    <small class="text-muted d-block mb-1" style="font-weight: 600;">Jenis Perintah Kerja:</small>
+                    <?php foreach($spk['by_jenis_perintah'] as $jenis): ?>
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                            <span style="font-size: 0.875rem;"><?= $jenis['jenis'] ?></span>
+                            <strong><?= $jenis['count'] ?></strong>
+                        </div>
                     <?php endforeach; ?>
                 </div>
             </div>
         </div>
-    </div>
-</div>
-
-<!-- Director Dashboard - Critical Information -->
-<div class="row g-4 mb-4">
-    <!-- Work Order Trends -->
-    <div class="col-xl-6">
-        <div class="card division-card division-operational">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-chart-bar me-2" style="color: var(--optima-info);"></i>
-                    Work Order Trends
-                </h5>
-                <span class="badge bg-info">
-                    <?= $work_order_trends['completion_rate'] ?>% Complete
-                </span>
+        
+        <!-- DI This Month -->
+        <div class="compact-card mb-3">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-shipping-fast me-2 text-success"></i>Delivery Instruction</h6>
             </div>
-            <div class="card-body">
-                <!-- Complaint Categories Chart -->
-                <div class="chart-container mb-4">
-                    <canvas id="complaintTrendsChart" style="height: 200px;"></canvas>
+            <div class="compact-card-body">
+                <div class="row g-2 mb-2">
+                    <div class="col-4">
+                        <div class="stat-box text-center">
+                            <small>Total</small>
+                            <h4 class="mb-0"><?= $di['total'] ?></h4>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-box text-center">
+                            <small>Pending</small>
+                            <h4 class="mb-0 text-warning"><?= $di['pending'] ?></h4>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-box text-center">
+                            <small>Selesai</small>
+                            <h4 class="mb-0 text-success"><?= $di['completed'] ?></h4>
+                        </div>
+                    </div>
                 </div>
-                
-                <!-- Work Order Metrics -->
-                <div class="row g-2 mb-3">
+                <small class="text-muted d-block mb-1" style="font-weight: 600;">Top Lokasi:</small>
+                <?php $i = 1; foreach($di['top_locations'] as $loc): ?>
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <span style="font-size: 0.875rem;"><?= $i ?>. <?= $loc['location'] ?></span>
+                        <strong><?= $loc['count'] ?></strong>
+                    </div>
+                <?php $i++; if($i > 4) break; endforeach; ?>
+            </div>
+        </div>
+        
+        <!-- Customer & Contract -->
+        <div class="compact-card">
+            <div class="compact-card-header">
+                <h6><i class="fas fa-users me-2 text-info"></i>Customer & Contract</h6>
+            </div>
+            <div class="compact-card-body">
+                <div class="row g-2 mb-2">
                     <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-primary"><?= $work_order_trends['avg_resolution_time'] ?>h</div>
-                            <div class="metric-label">Avg Resolution Time</div>
+                        <div class="stat-box">
+                            <small>Total Customer</small>
+                            <h4 class="mb-0"><?= $customers['total'] ?></h4>
+                            <small class="text-success"><i class="fas fa-arrow-up"></i> <?= $customers['growth'] ?>%</small>
                         </div>
                     </div>
                     <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-success"><?= $work_order_trends['completion_rate'] ?>%</div>
-                            <div class="metric-label">Completion Rate</div>
+                        <div class="stat-box">
+                            <small>Kontrak Aktif</small>
+                            <h4 class="mb-0 text-success"><?= $customers['active_contracts'] ?></h4>
                         </div>
                     </div>
                 </div>
-                
-                <!-- Priority Distribution -->
-                <div class="mb-3">
-                    <h6 class="mb-2">Priority Distribution</h6>
-                    <?php foreach($work_order_trends['priority_distribution'] as $priority => $count): ?>
-                    <div class="d-flex align-items-center justify-content-between mb-1 p-2 border rounded">
-                        <span class="small"><?= $priority ?></span>
-                        <span class="badge bg-<?= $priority == 'Critical' ? 'danger' : ($priority == 'High' ? 'warning' : 'info') ?>"><?= $count ?></span>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-                
-                <div class="text-center mt-3">
-                    <a href="<?= base_url('/work-orders') ?>" class="btn btn-outline-info">
-                        <i class="fas fa-tools me-1"></i>Lihat Detail Work Orders
-                    </a>
+                <div class="alert alert-warning py-2 px-2 mb-0" style="font-size: 0.75rem;">
+                    <strong><i class="fas fa-exclamation-triangle me-1"></i>Alert:</strong>
+                    <?= $customers['expiring_contracts'] ?> kontrak akan berakhir dalam 30 hari
                 </div>
             </div>
         </div>
     </div>
     
-
-
-<!-- Contract Summary Section -->
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-file-contract me-2 text-success"></i>
-                    Contract Summary
-                </h5>
-                <span class="badge bg-success"><?= $contract_summary['active'] ?> Active</span>
-            </div>
-            <div class="card-body">
-                <!-- Contract Metrics -->
-                <div class="row g-3 mb-3">
-                    <div class="col-md-3">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1 text-success"><?= $contract_summary['active'] ?></div>
-                            <div class="small text-muted">Active Contracts</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1 text-warning"><?= $contract_summary['expiring_soon'] ?></div>
-                            <div class="small text-muted">Expiring Soon</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1 text-primary"><?= $contract_summary['new_this_month'] ?></div>
-                            <div class="small text-muted">New This Month</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1 text-info"><?= $contract_summary['high_value_contracts'] + $contract_summary['medium_value_contracts'] + $contract_summary['standard_contracts'] ?></div>
-                            <div class="small text-muted">Total Value Contracts</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Contract Value Distribution -->
-                <div class="row g-3">
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center justify-content-between p-3 border rounded">
-                            <div>
-                                <div class="fw-semibold">High Value (>Rp 100M)</div>
-                                <div class="small text-muted">Premium contracts</div>
-                            </div>
-                            <span class="badge bg-danger fs-6"><?= $contract_summary['high_value_contracts'] ?></span>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center justify-content-between p-3 border rounded">
-                            <div>
-                                <div class="fw-semibold">Medium Value (Rp 50-100M)</div>
-                                <div class="small text-muted">Standard contracts</div>
-                            </div>
-                            <span class="badge bg-warning fs-6"><?= $contract_summary['medium_value_contracts'] ?></span>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center justify-content-between p-3 border rounded">
-                            <div>
-                                <div class="fw-semibold">Standard (<Rp 50M)</div>
-                                <div class="small text-muted">Basic contracts</div>
-                            </div>
-                            <span class="badge bg-info fs-6"><?= $contract_summary['standard_contracts'] ?></span>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="text-center mt-4">
-                    <a href="<?= base_url('/kontrak') ?>" class="btn btn-outline-success">
-                        <i class="fas fa-file-contract me-1"></i>Lihat Semua Kontrak
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
-
-<!-- Delivery & Purchase Order Insights -->
-<div class="row g-4 mb-4">
-    <!-- Delivery Insights -->
-    <div class="col-xl-6">
-        <div class="card division-card division-delivery">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-shipping-fast me-2" style="color: var(--optima-info);"></i>
-                    Delivery Insights
-                </h5>
-                <span class="badge bg-info">
-                    <?= $delivery_insights['on_time_rate'] ?>% On-Time
-                </span>
-            </div>
-            <div class="card-body">
-                <!-- Delivery Status Overview -->
-                <div class="row g-3 mb-4">
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-warning"><?= $delivery_insights['pending_deliveries'] ?></div>
-                            <div class="metric-label">Pending</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-info"><?= $delivery_insights['in_transit_deliveries'] ?></div>
-                            <div class="metric-label">In Transit</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-success"><?= $delivery_insights['completed_this_month'] ?></div>
-                            <div class="metric-label">Completed This Month</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-primary"><?= $delivery_insights['avg_delivery_time'] ?>h</div>
-                            <div class="metric-label">Avg Delivery Time</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Delivery Chart -->
-                <div class="chart-container mb-3">
-                    <canvas id="deliveryChart" style="height: 150px;"></canvas>
-                </div>
-                
-                <!-- Delivery Performance -->
-                <div class="mb-3">
-                    <h6 class="mb-2">Delivery Performance</h6>
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="small">On-Time Rate</span>
-                        <div class="progress" style="width: 60%; height: 8px;">
-                            <div class="progress-bar bg-success" style="width: <?= $delivery_insights['on_time_rate'] ?>%"></div>
-                        </div>
-                        <span class="small fw-semibold"><?= $delivery_insights['on_time_rate'] ?>%</span>
-                    </div>
-                    <div class="d-flex align-items-center justify-content-between">
-                        <span class="small">Efficiency</span>
-                        <div class="progress" style="width: 60%; height: 8px;">
-                            <div class="progress-bar bg-info" style="width: <?= $delivery_insights['delivery_efficiency'] ?>%"></div>
-                        </div>
-                        <span class="small fw-semibold"><?= $delivery_insights['delivery_efficiency'] ?>%</span>
-                    </div>
-                </div>
-                
-                <div class="text-center mt-3">
-                    <a href="<?= base_url('/delivery') ?>" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-shipping-fast me-1"></i>Lihat Detail Delivery
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
     
-    <!-- Purchase Order Insights -->
-    <div class="col-xl-6">
-        <div class="card division-card division-purchase">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-shopping-cart me-2" style="color: var(--optima-danger);"></i>
-                    Purchase Order Insights
-                </h5>
-                <span class="badge bg-danger">
-                    <?= $purchase_order_insights['approval_rate'] ?>% Approval Rate
-                </span>
-            </div>
-            <div class="card-body">
-                <!-- PO Status Overview -->
-                <div class="row g-3 mb-4">
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-warning"><?= $purchase_order_insights['pending_pos'] ?></div>
-                            <div class="metric-label">Pending POs</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-success"><?= $purchase_order_insights['approved_pos'] ?></div>
-                            <div class="metric-label">Approved POs</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-primary"><?= $purchase_order_insights['po_this_month'] ?></div>
-                            <div class="metric-label">POs This Month</div>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="metric-card">
-                            <div class="metric-value text-info"><?= $purchase_order_insights['avg_processing_time'] ?>h</div>
-                            <div class="metric-label">Avg Processing Time</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Purchase Order Chart -->
-                <div class="chart-container mb-3">
-                    <canvas id="purchaseOrderChart" style="height: 150px;"></canvas>
-                </div>
-                
-                <!-- PO Performance -->
-                <div class="mb-3">
-                    <h6 class="mb-2">PO Performance</h6>
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <span class="small">Approval Rate</span>
-                        <div class="progress" style="width: 60%; height: 8px;">
-                            <div class="progress-bar bg-warning" style="width: <?= $purchase_order_insights['approval_rate'] ?>%"></div>
-                        </div>
-                        <span class="small fw-semibold"><?= $purchase_order_insights['approval_rate'] ?>%</span>
-                    </div>
-                    <div class="d-flex align-items-center justify-content-between">
-                        <span class="small">Efficiency</span>
-                        <div class="progress" style="width: 60%; height: 8px;">
-                            <div class="progress-bar bg-success" style="width: <?= $purchase_order_insights['po_efficiency'] ?>%"></div>
-                        </div>
-                        <span class="small fw-semibold"><?= $purchase_order_insights['po_efficiency'] ?>%</span>
-                    </div>
-                </div>
-                
-                <div class="text-center mt-3">
-                    <a href="<?= base_url('/purchase-orders') ?>" class="btn btn-sm btn-outline-warning">
-                        <i class="fas fa-shopping-cart me-1"></i>Lihat Detail Purchase Orders
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Quick Actions & Activity -->
-<div class="row g-4 mb-4">
-
-    
-    <!-- Recent Activity -->
-    <div class="col-xl-6">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-history me-2 text-info"></i>
-                    Aktivitas Terbaru
-                </h5>
-                <a href="<?= base_url('/activity') ?>" class="btn btn-sm btn-outline-primary">Lihat Semua</a>
-            </div>
-            <div class="card-body p-0">
-                <div class="activity-item" role="listitem">
-                    <div class="activity-icon success" aria-hidden="true">
-                        <i class="fas fa-handshake"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Rental FL-125 dimulai</div>
-                        <div class="small text-muted">PT Sinar Jaya - 2 jam yang lalu</div>
-                    </div>
-                    <div class="badge bg-success" role="status" aria-label="Aktif">
-                        <i class="fas fa-check-circle me-1" aria-hidden="true"></i>Aktif
-                    </div>
-                </div>
-                
-                <div class="activity-item" role="listitem">
-                    <div class="activity-icon warning">
-                        <i class="fas fa-wrench"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Maintenance FL-087 selesai</div>
-                        <div class="small text-muted">Teknisi: Ahmad Rifai - 4 jam yang lalu</div>
-                    </div>
-                    <div class="badge bg-warning">Selesai</div>
-                </div>
-                
-                <div class="activity-item" role="listitem">
-                    <div class="activity-icon info">
-                        <i class="fas fa-file-invoice-dollar"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Invoice #INV-2024-001234</div>
-                        <div class="small text-muted">PT Mandiri Logistik - 6 jam yang lalu</div>
-                    </div>
-                    <div class="badge bg-info">Terkirim</div>
-                </div>
-                
-                <div class="activity-item" role="listitem">
-                    <div class="activity-icon danger">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Unit FL-045 butuh maintenance</div>
-                        <div class="small text-muted">Alert otomatis - 8 jam yang lalu</div>
-                    </div>
-                    <div class="badge bg-danger">Urgent</div>
-                </div>
-                
-                <div class="activity-item" role="listitem">
-                    <div class="activity-icon success">
-                        <i class="fas fa-user-plus"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold">Customer baru terdaftar</div>
-                        <div class="small text-muted">CV Sejahtera Bersama - 1 hari yang lalu</div>
-                    </div>
-                    <div class="badge bg-success">Baru</div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Performance & Notifications -->
-<div class="row g-4 mb-4">
-    <!-- Performance Metrics -->
-    <div class="col-xl-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-tachometer-alt me-2 text-primary"></i>
-                    Metrik Performa
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="row g-4">
-                    <!-- Utilization Rate -->
-                    <div class="col-md-4">
-                        <div class="text-center">
-                            <div class="mb-3">
-                                <svg class="progress-ring" width="100" height="100">
-                                    <circle class="progress-ring-circle" stroke="#0061f2" stroke-width="8" fill="transparent" r="30" cx="50" cy="50" style="stroke-dashoffset: 47.1;"></circle>
-                                </svg>
-                                <div class="position-absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                                    <div class="h4 mb-0 fw-bold text-primary">75%</div>
-                                </div>
-                            </div>
-                            <div class="fw-semibold">Tingkat Utilisasi</div>
-                            <div class="small text-muted">Target: 80%</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Customer Satisfaction -->
-                    <div class="col-md-4">
-                        <div class="text-center">
-                            <div class="mb-3">
-                                <svg class="progress-ring" width="100" height="100">
-                                    <circle class="progress-ring-circle" stroke="#00ac69" stroke-width="8" fill="transparent" r="30" cx="50" cy="50" style="stroke-dashoffset: 37.7;"></circle>
-                                </svg>
-                                <div class="position-absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                                    <div class="h4 mb-0 fw-bold text-success">80%</div>
-                                </div>
-                            </div>
-                            <div class="fw-semibold">Kepuasan Customer</div>
-                            <div class="small text-muted">Rata-rata rating: 4.2/5</div>
-                        </div>
-                    </div>
-                    
-                    <!-- On-time Delivery -->
-                    <div class="col-md-4">
-                        <div class="text-center">
-                            <div class="mb-3">
-                                <svg class="progress-ring" width="100" height="100">
-                                    <circle class="progress-ring-circle" stroke="#ffb607" stroke-width="8" fill="transparent" r="30" cx="50" cy="50" style="stroke-dashoffset: 18.8;"></circle>
-                                </svg>
-                                <div class="position-absolute" style="top: 50%; left: 50%; transform: translate(-50%, -50%);">
-                                    <div class="h4 mb-0 fw-bold text-warning">90%</div>
-                                </div>
-                            </div>
-                            <div class="fw-semibold">Ketepatan Waktu</div>
-                            <div class="small text-muted">Delivery & pickup</div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Additional Metrics -->
-                <div class="row g-3 mt-2">
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-primary bg-opacity-10 rounded p-2 me-3">
-                                <i class="fas fa-clock text-primary"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold">4.2 hari</div>
-                                <div class="small text-muted">Rata-rata durasi rental</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-success bg-opacity-10 rounded p-2 me-3">
-                                <i class="fas fa-redo text-success"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold">65%</div>
-                                <div class="small text-muted">Customer berulang</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-warning bg-opacity-10 rounded p-2 me-3">
-                                <i class="fas fa-tools text-warning"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold">2.1%</div>
-                                <div class="small text-muted">Downtime rate</div>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="d-flex align-items-center">
-                            <div class="bg-info bg-opacity-10 rounded p-2 me-3">
-                                <i class="fas fa-dollar-sign text-info"></i>
-                            </div>
-                            <div>
-                                <div class="fw-semibold">Rp 2.5M</div>
-                                <div class="small text-muted">Revenue per unit</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Notifications -->
-    <div class="col-xl-4">
-        <div class="card">
-            <div class="card-header d-flex align-items-center justify-content-between">
-                <h5 class="card-title mb-0">
-                    <i class="fas fa-bell me-2 text-warning"></i>
-                    Notifikasi
-                </h5>
-                <div class="dropdown">
-                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                        Filter
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#">Semua</a></li>
-                        <li><a class="dropdown-item" href="#">Urgent</a></li>
-                        <li><a class="dropdown-item" href="#">Maintenance</a></li>
-                        <li><a class="dropdown-item" href="#">Pembayaran</a></li>
-                    </ul>
-                </div>
-            </div>
-            <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;" role="list" aria-label="Daftar notifikasi">
-                <div class="notification-item" role="listitem">
-                    <div class="notification-icon bg-danger text-white" aria-hidden="true">
-                        <i class="fas fa-exclamation"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold small">Unit FL-045 Maintenance Urgent</div>
-                        <div class="text-muted small">Engine overheat detected. Perlu segera diperiksa.</div>
-                        <div class="text-muted small">2 jam yang lalu</div>
-                    </div>
-                </div>
-                
-                <div class="notification-item" role="listitem">
-                    <div class="notification-icon bg-warning text-white">
-                        <i class="fas fa-calendar"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold small">Maintenance Terjadwal Besok</div>
-                        <div class="text-muted small">5 unit memerlukan service rutin.</div>
-                        <div class="text-muted small">5 jam yang lalu</div>
-                    </div>
-                </div>
-                
-                <div class="notification-item" role="listitem">
-                    <div class="notification-icon bg-info text-white">
-                        <i class="fas fa-file-invoice"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold small">Invoice Overdue</div>
-                        <div class="text-muted small">PT Mandiri Logistik - INV-001234</div>
-                        <div class="text-muted small">1 hari yang lalu</div>
-                    </div>
-                </div>
-                
-                <div class="notification-item" role="listitem">
-                    <div class="notification-icon bg-success text-white">
-                        <i class="fas fa-handshake"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold small">Kontrak Baru Ditandatangani</div>
-                        <div class="text-muted small">CV Sejahtera - 12 bulan kontrak</div>
-                        <div class="text-muted small">2 hari yang lalu</div>
-                    </div>
-                </div>
-                
-                <div class="notification-item" role="listitem">
-                    <div class="notification-icon bg-primary text-white">
-                        <i class="fas fa-truck"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="fw-semibold small">Unit Baru Tersedia</div>
-                        <div class="text-muted small">FL-126 telah siap untuk disewakan.</div>
-                        <div class="text-muted small">3 hari yang lalu</div>
-                    </div>
-                </div>
-            </div>
-            <div class="card-footer text-center">
-                <a href="<?= base_url('/notifications') ?>" class="btn btn-sm btn-outline-primary">Lihat Semua Notifikasi</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Maintenance Alert -->
-<div class="maintenance-alert" role="alert" aria-live="polite">
-    <div class="d-flex align-items-center">
-        <div class="me-3">
-            <i class="fas fa-exclamation-triangle fa-2x text-warning" aria-hidden="true"></i>
-        </div>
-        <div class="flex-grow-1">
-            <h6 class="mb-1">Peringatan Maintenance</h6>
-            <p class="mb-2">Ada 12 unit yang memerlukan maintenance. 3 diantaranya bersifat urgent dan perlu segera ditangani.</p>
-            <a href="<?= base_url('/maintenance') ?>" class="btn btn-warning btn-sm" role="button" aria-label="Lihat detail maintenance">
-                <i class="fas fa-wrench me-1" aria-hidden="true"></i>Lihat Detail
-            </a>
-        </div>
-    </div>
-</div>
-
-<!-- Footer Statistics -->
-<div class="row g-4">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="h3 mb-2 text-primary" data-count="1247">0</div>
-                <div class="text-muted">Total Rental Selesai</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="h3 mb-2 text-success" data-count="98">0</div>
-                <div class="text-muted">Customer Aktif</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="h3 mb-2 text-warning">98.5%</div>
-                <div class="text-muted">Uptime Rate</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <div class="h3 mb-2 text-info" data-currency="32500000000">Rp 0</div>
-                <div class="text-muted">Total Revenue YTD</div>
-            </div>
-        </div>
-    </div>
-</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize dashboard
-    initializeDashboard();
+// Real-time clock
+function updateDateTime() {
+    const now = new Date();
+    const options = { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+    document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
+}
+updateDateTime();
+setInterval(updateDateTime, 60000);
+
+// Chart.js Configuration
+Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI"';
+Chart.defaults.font.size = 11;
+
+// Chart 1: Unit Status
+const unitCtx = document.getElementById('unitChart').getContext('2d');
+new Chart(unitCtx, {
+    type: 'doughnut',
+    data: {
+        labels: ['Disewakan', 'Tersedia', 'Maintenance', 'Out of Service'],
+        datasets: [{
+            data: [
+                <?= $assets['units']['rented'] ?>,
+                <?= $assets['units']['available'] ?>,
+                <?= $assets['units']['maintenance'] ?>,
+                <?= $assets['units']['out_of_service'] ?>
+            ],
+            backgroundColor: ['#28a745', '#0061f2', '#ffc107', '#dc3545'],
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 10,
+                    usePointStyle: true,
+                    font: { size: 10 }
+                }
+            }
+        },
+        cutout: '70%'
+    }
 });
 
-function initializeDashboard() {
-    // Initialize counters
-    initializeCounters();
-    
-    
-    // Initialize director dashboard
-    initializeDirectorDashboard();
-    
-    // Initialize real-time updates
-    initializeRealTimeUpdates();
-    
-    // Initialize chart period filters
-    initializeChartFilters();
-}
-
-// Counter animations
-function initializeCounters() {
-    const counters = document.querySelectorAll('[data-count]');
-    const currencyCounters = document.querySelectorAll('[data-currency]');
-    
-    counters.forEach(counter => {
-        animateCounter(counter, parseInt(counter.dataset.count));
-    });
-    
-    currencyCounters.forEach(counter => {
-        animateCurrencyCounter(counter, parseInt(counter.dataset.currency));
-    });
-}
-
-function animateCounter(element, target) {
-    let current = 0;
-    const increment = target / 100;
-    const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-            element.textContent = target;
-            clearInterval(timer);
-        } else {
-            element.textContent = Math.floor(current);
-        }
-    }, 20);
-}
-
-function animateCurrencyCounter(element, target) {
-    let current = 0;
-    const increment = target / 100;
-    const timer = setInterval(() => {
-        current += increment;
-        if (current >= target) {
-            element.textContent = formatCurrency(target);
-            clearInterval(timer);
-        } else {
-            element.textContent = formatCurrency(Math.floor(current));
-        }
-    }, 20);
-}
-
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('id-ID', {
-        style: 'currency',
-        currency: 'IDR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0
-    }).format(amount);
-}
-
-
-
-// Chart period filters
-function initializeChartFilters() {
-    const revenueFilters = document.querySelectorAll('input[name="revenueChart"]');
-    
-    revenueFilters.forEach(filter => {
-        filter.addEventListener('change', function() {
-            updateRevenueChart(this.id);
-        });
-    });
-}
-
-function updateRevenueChart(period) {
-    if (!window.revenueChart) return;
-    
-    let newData, newLabels;
-    
-    switch(period) {
-        case 'revenue7d':
-            newLabels = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-            newData = [150, 180, 165, 190, 175, 155, 140];
-            break;
-        case 'revenue30d':
-            newLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            newData = [2.1, 2.3, 2.8, 2.4, 2.7, 3.1, 2.9, 3.2, 2.8, 3.0, 2.9, 2.7];
-            break;
-        case 'revenue12m':
-            newLabels = ['2022', '2023', '2024'];
-            newData = [28.5, 31.2, 34.8];
-            break;
-    }
-    
-    window.revenueChart.data.labels = newLabels;
-    window.revenueChart.data.datasets[0].data = newData;
-    window.revenueChart.update('active');
-}
-
-// Real-time updates
-function initializeRealTimeUpdates() {
-    // Update every 3 minutes to reduce server load
-    setInterval(() => {
-        fetchDashboardData();
-    }, 180000);
-}
-
-function fetchDashboardData() {
-    // Simulate API call to fetch real-time data
-    fetch('/api/dashboard/realtime')
-        .then(response => response.json())
-        .then(data => {
-            updateDashboardData(data);
-        })
-        .catch(error => {
-            console.log('Real-time update temporarily unavailable');
-        });
-}
-
-function updateDashboardData(data) {
-    // Update counters
-    if (data.totalUnits) {
-        const element = document.querySelector('[data-count="125"]');
-        if (element) {
-            element.dataset.count = data.totalUnits;
-            animateCounter(element, data.totalUnits);
-        }
-    }
-    
-    // Update charts if needed
-    if (data.unitStatus && window.unitStatusChart) {
-        window.unitStatusChart.data.datasets[0].data = data.unitStatus;
-        window.unitStatusChart.update();
-    }
-}
-
-// Notification handling
-function markNotificationAsRead(notificationId) {
-    fetch('/api/notifications/' + notificationId + '/read', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': window.csrfToken
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // Update notification count
-            updateNotificationCount();
-        }
-    });
-}
-
-function updateNotificationCount() {
-    fetch('/api/notifications/count')
-        .then(response => response.json())
-        .then(data => {
-            const countElement = document.querySelector('.notification-count');
-            if (countElement) {
-                countElement.textContent = data.count;
-            }
-        });
-}
-
-// Director Dashboard specific functions
-function initializeDirectorDashboard() {
-    // Initialize operational chart toggles
-    const operationalToggles = document.querySelectorAll('input[name="operationalChart"]');
-    operationalToggles.forEach(toggle => {
-        toggle.addEventListener('change', function() {
-            if (this.id === 'operationalUnits') {
-                document.getElementById('unitStatusSection').style.display = 'block';
-                document.getElementById('workOrdersSection').style.display = 'none';
-            } else if (this.id === 'operationalComplaints') {
-                document.getElementById('unitStatusSection').style.display = 'none';
-                document.getElementById('workOrdersSection').style.display = 'block';
-            }
-        });
-    });
-    
-    // Initialize warehouse chart
-    initializeWarehouseChart();
-    
-    // Initialize work order trends chart
-    initializeWorkOrderTrendsChart();
-    
-    // Initialize operational chart
-    initializeOperationalChart();
-    
-    // Initialize work order chart
-    initializeWorkOrderChart();
-    
-    // Initialize maintenance chart
-    initializeMaintenanceChart();
-    
-    // Initialize delivery chart
-    initializeDeliveryChart();
-    
-    // Initialize purchase order chart
-    initializePurchaseOrderChart();
-}
-
-function initializeWarehouseChart() {
-    const canvas = document.getElementById('warehouseChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.warehouseChartInstance) {
-        window.warehouseChartInstance.destroy();
-    }
-    
-    // Get warehouse data from PHP
-    const warehouseData = <?= json_encode($warehouse_insights['unit_status']) ?>;
-    const labels = warehouseData.map(item => item.nama_status);
-    const values = warehouseData.map(item => item.count);
-    const colors = ['#00ac69', '#ffb607', '#e81500', '#6c757d', '#17a2b8'];
-    
-    window.warehouseChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: colors.slice(0, values.length),
-                borderWidth: 3,
-                borderColor: '#ffffff',
-                hoverBorderWidth: 5
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#0061f2',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = Math.round((context.parsed / total) * 100);
-                            return context.label + ': ' + context.parsed + ' unit (' + percentage + '%)';
-                        }
-                    }
-                }
-            },
-            cutout: '70%'
-        }
-    });
-}
-
-function initializeWorkOrderTrendsChart() {
-    const canvas = document.getElementById('complaintTrendsChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.workOrderTrendsChartInstance) {
-        window.workOrderTrendsChartInstance.destroy();
-    }
-    
-    // Get work order trends data from PHP
-    const trendsData = <?= json_encode($work_order_trends['complaint_trends']) ?>;
-    const labels = Object.keys(trendsData);
-    const values = Object.values(trendsData);
-    const colors = ['#0061f2', '#00ac69', '#ffb607', '#e81500', '#6c757d'];
-    
-    window.workOrderTrendsChartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Work Orders',
-                data: values,
-                backgroundColor: colors.slice(0, values.length),
-                borderColor: colors.slice(0, values.length),
-                borderWidth: 1,
-                borderRadius: 4,
-                borderSkipped: false
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#0061f2',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    displayColors: false,
-                    callbacks: {
-                        label: function(context) {
-                            return context.label + ': ' + context.parsed.y + ' work orders';
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    display: true,
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: '#69707a',
-                        maxRotation: 45
-                    }
-                },
-                y: {
-                    display: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    },
-                    ticks: {
-                        color: '#69707a',
-                        beginAtZero: true,
-                        stepSize: 1
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Operational Chart
-function initializeOperationalChart() {
-    const canvas = document.getElementById('operationalChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.operationalChartInstance) {
-        window.operationalChartInstance.destroy();
-    }
-    
-    window.operationalChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Disewakan', 'Tersedia', 'Maintenance'],
-            datasets: [{
-                data: [87, 28, 10],
-                backgroundColor: [
-                    'rgba(0, 172, 105, 0.8)',
-                    'rgba(255, 182, 7, 0.8)',
-                    'rgba(232, 21, 0, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(0, 172, 105, 1)',
-                    'rgba(255, 182, 7, 1)',
-                    'rgba(232, 21, 0, 1)'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 20,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#0061f2',
-                    borderWidth: 1,
-                    cornerRadius: 8
-                }
-            }
-        }
-    });
-}
-
-// Service Complaints Chart
-function initializeWorkOrderChart() {
-    const canvas = document.getElementById('workOrderChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.workOrderChartInstance) {
-        window.workOrderChartInstance.destroy();
-    }
-    
-    window.workOrderChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Mechanical Issues', 'Electrical Issues', 'Safety Issues', 'Customer Complaints'],
-            datasets: [{
-                data: [12, 8, 6, 8],
-                backgroundColor: [
-                    'rgba(232, 21, 0, 0.8)',
-                    'rgba(255, 182, 7, 0.8)',
-                    'rgba(23, 162, 184, 0.8)',
-                    'rgba(108, 117, 125, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(232, 21, 0, 1)',
-                    'rgba(255, 182, 7, 1)',
-                    'rgba(23, 162, 184, 1)',
-                    'rgba(108, 117, 125, 1)'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 15,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#0061f2',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = Math.round((context.parsed / total) * 100);
-                            return context.label + ': ' + context.parsed + ' issues (' + percentage + '%)';
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Maintenance Chart
-function initializeMaintenanceChart() {
-    const canvas = document.getElementById('maintenanceChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.maintenanceChartInstance) {
-        window.maintenanceChartInstance.destroy();
-    }
-    
-    window.maintenanceChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                label: 'Maintenance Requests',
-                data: [12, 8, 15, 10, 18, 14],
-                borderColor: 'rgba(255, 182, 7, 1)',
-                backgroundColor: 'rgba(255, 182, 7, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: 'rgba(255, 182, 7, 1)',
-                pointBorderColor: '#ffffff',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#ffb607',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            return 'Maintenance: ' + context.parsed.y + ' requests';
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    display: true,
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: '#6c757d'
-                    }
-                },
-                y: {
-                    display: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    },
-                    ticks: {
-                        color: '#6c757d',
-                        beginAtZero: true,
-                        stepSize: 5
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Delivery Chart
-function initializeDeliveryChart() {
-    const canvas = document.getElementById('deliveryChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.deliveryChartInstance) {
-        window.deliveryChartInstance.destroy();
-    }
-    
-    window.deliveryChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-            datasets: [{
-                label: 'Deliveries',
-                data: [45, 52, 38, 48, 55, 42],
-                borderColor: 'rgba(23, 162, 184, 1)',
-                backgroundColor: 'rgba(23, 162, 184, 0.1)',
-                borderWidth: 3,
-                fill: true,
-                tension: 0.4,
-                pointBackgroundColor: 'rgba(23, 162, 184, 1)',
-                pointBorderColor: '#ffffff',
-                pointBorderWidth: 2,
-                pointRadius: 5,
-                pointHoverRadius: 7
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#17a2b8',
-                    borderWidth: 1,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            return 'Deliveries: ' + context.parsed.y;
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    display: true,
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: '#6c757d'
-                    }
-                },
-                y: {
-                    display: true,
-                    grid: {
-                        color: 'rgba(0, 0, 0, 0.05)'
-                    },
-                    ticks: {
-                        color: '#6c757d',
-                        beginAtZero: true,
-                        stepSize: 10
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Purchase Order Chart
-function initializePurchaseOrderChart() {
-    const canvas = document.getElementById('purchaseOrderChart');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    
-    // Destroy existing chart if it exists
-    if (window.purchaseOrderChartInstance) {
-        window.purchaseOrderChartInstance.destroy();
-    }
-    
-    window.purchaseOrderChartInstance = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Pending', 'Approved', 'Completed'],
-            datasets: [{
-                data: [8, 25, 45],
-                backgroundColor: [
-                    'rgba(255, 182, 7, 0.8)',
-                    'rgba(0, 172, 105, 0.8)',
-                    'rgba(23, 162, 184, 0.8)'
-                ],
-                borderColor: [
-                    'rgba(255, 182, 7, 1)',
-                    'rgba(0, 172, 105, 1)',
-                    'rgba(23, 162, 184, 1)'
-                ],
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: {
-                        padding: 15,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#ffffff',
-                    bodyColor: '#ffffff',
-                    borderColor: '#e81500',
-                    borderWidth: 1,
-                    cornerRadius: 8
-                }
-            }
-        }
-    });
-}
-
-// Export functions for external use
-window.dashboardFunctions = {
-    refreshCharts: function() {
-        if (window.revenueChart) window.revenueChart.update();
-        if (window.unitStatusChart) window.unitStatusChart.update();
-        if (window.warehouseChartInstance) window.warehouseChartInstance.update();
-        if (window.workOrderTrendsChartInstance) window.workOrderTrendsChartInstance.update();
-        if (window.operationalChartInstance) window.operationalChartInstance.update();
-        if (window.workOrderChartInstance) window.workOrderChartInstance.update();
-        if (window.maintenanceChartInstance) window.maintenanceChartInstance.update();
-        if (window.deliveryChartInstance) window.deliveryChartInstance.update();
-        if (window.purchaseOrderChartInstance) window.purchaseOrderChartInstance.update();
+// Chart 2: WO Category
+const woCatCtx = document.getElementById('woCategoryChart').getContext('2d');
+new Chart(woCatCtx, {
+    type: 'bar',
+    data: {
+        labels: [<?php foreach($workorders['by_category'] as $cat): ?>'<?= $cat['category'] ?>',<?php endforeach; ?>],
+        datasets: [{
+            label: 'Jumlah WO',
+            data: [<?php foreach($workorders['by_category'] as $cat): ?><?= $cat['count'] ?>,<?php endforeach; ?>],
+            backgroundColor: '#dc3545'
+        }]
     },
-    updateData: updateDashboardData,
-    markNotificationAsRead: markNotificationAsRead,
-    initializeDirectorDashboard: initializeDirectorDashboard
-};
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: { display: false }
+        },
+        scales: {
+            y: { beginAtZero: true }
+        }
+    }
+});
+
+// Chart 3: SPK Status
+const spkCtx = document.getElementById('spkChart').getContext('2d');
+new Chart(spkCtx, {
+    type: 'pie',
+    data: {
+        labels: [<?php foreach($spk['by_status'] as $status): ?>'<?= $status['status'] ?>',<?php endforeach; ?>],
+        datasets: [{
+            data: [<?php foreach($spk['by_status'] as $status): ?><?= $status['count'] ?>,<?php endforeach; ?>],
+            backgroundColor: ['#28a745', '#ffc107', '#0061f2', '#dc3545']
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    padding: 8,
+                    usePointStyle: true,
+                    font: { size: 10 }
+                }
+            }
+        }
+    }
+});
+
+console.log('✅ OPTIMA Dashboard Compact loaded successfully');
 </script>
 <?= $this->endSection() ?>
