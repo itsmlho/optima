@@ -280,30 +280,22 @@ $currentLang = service('request')->getLocale();
                 <button class="btn btn-link sidebar-toggle" type="button" id="sidebarToggle">
                     <i class="fas fa-bars"></i>
                 </button>
-                <a href="<?= base_url('/welcome') ?>" class="header-brand">
-                    <img src="<?= base_url('assets/images/logo-optima.ico') ?>" alt="OPTIMA" class="header-logo">
-                    <span class="header-brand-text">OPTIMA</span>
+                <a href="<?= base_url('/welcome') ?>" class="header-brand d-flex align-items-center text-decoration-none gap-2">
+                    <!-- Logo & Nama Sistem -->
+                    <img src="<?= base_url('assets/images/logo-optima.ico') ?>" alt="OPTIMA" class="header-logo" style="height: 32px;">
+                    <span class="header-brand-text me-2">OPTIMA</span>
+                    
+                    <!-- Divider Vertical -->
+                    <div class="vr text-secondary d-none d-md-block" style="height: 20px; opacity: 0.5;"></div>
+                    
+                    <!-- Logo & Nama Perusahaan -->
+                    <div class="d-flex align-items-center gap-2 d-none d-md-flex">
+                        <img src="<?= base_url('assets/images/company-logo.png') ?>" alt="SML" style="height: 24px; width: auto;">
+                        <span class="fw-bold text-dark" style="font-size: 0.8rem; letter-spacing: 0.5px; white-space: nowrap;">
+                            PT SARANA MITRA LUAS Tbk
+                        </span>
+                    </div>
                 </a>
-            </div>
-            
-            <!-- Center Section: Title + Breadcrumb (Small) -->
-            <div class="header-center">
-                <h1 class="header-title"><?= $title ?? 'Dashboard' ?></h1>
-                <?php if (isset($breadcrumbs) && is_array($breadcrumbs) && count($breadcrumbs) > 0): ?>
-                <nav class="header-breadcrumb">
-                    <ol class="breadcrumb-small">
-                        <?php foreach ($breadcrumbs as $key => $breadcrumb): ?>
-                            <?php if ($key === array_key_last($breadcrumbs)): ?>
-                                <li class="breadcrumb-item-small active"><?= $breadcrumb ?></li>
-                            <?php else: ?>
-                                <li class="breadcrumb-item-small">
-                                    <a href="<?= base_url($key) ?>"><?= $breadcrumb ?></a>
-                                </li>
-                            <?php endif; ?>
-                        <?php endforeach; ?>
-                    </ol>
-                </nav>
-                <?php endif; ?>
             </div>
             
             <!-- Right Section: Controls -->
