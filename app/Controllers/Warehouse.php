@@ -19,6 +19,21 @@ class Warehouse extends BaseController
             return redirect()->to('/')->with('error', 'Access denied: You do not have permission to access warehouse dashboard');
         }
         
+        // Extract attachment/unit ID from URL for auto-opening modal (from notification deep linking)
+        $uri = service('uri');
+        $autoOpenAttachmentId = null;
+        $autoOpenUnitId = null;
+        
+        // Check if URL matches /warehouse/attachment/view/{id}
+        $segments = $uri->getSegments();
+        if (count($segments) >= 3 && $segments[1] === 'attachment' && $segments[2] === 'view' && isset($segments[3]) && is_numeric($segments[3])) {
+            $autoOpenAttachmentId = (int)$segments[3];
+        }
+        // Check if URL matches /warehouse/unit/view/{id}
+        elseif (count($segments) >= 3 && $segments[1] === 'unit' && $segments[2] === 'view' && isset($segments[3]) && is_numeric($segments[3])) {
+            $autoOpenUnitId = (int)$segments[3];
+        }
+        
         $data = [
             'title' => 'Warehouse Division',
             'page_title' => 'Warehouse Division Dashboard',
@@ -29,7 +44,9 @@ class Warehouse extends BaseController
             'warehouse_stats' => $this->getWarehouseStats(),
             'inventory_overview' => $this->getInventoryOverview(),
             'recent_transactions' => $this->getRecentTransactions(),
-            'low_stock_alerts' => $this->getLowStockAlerts()
+            'low_stock_alerts' => $this->getLowStockAlerts(),
+            'autoOpenAttachmentId' => $autoOpenAttachmentId,
+            'autoOpenUnitId' => $autoOpenUnitId
         ];
 
         return view('warehouse/index', $data);

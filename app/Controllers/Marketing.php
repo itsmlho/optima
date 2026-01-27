@@ -65,6 +65,16 @@ class Marketing extends BaseDataTableController
         // Load simple_rbac helper
         helper('simple_rbac');
         
+        // Extract contract ID from URL for auto-opening modal (from notification deep linking)
+        $uri = service('uri');
+        $autoOpenContractId = null;
+        
+        // Check if URL matches /marketing/contracts/view/{id}
+        $segments = $uri->getSegments();
+        if (count($segments) >= 3 && $segments[1] === 'contracts' && $segments[2] === 'view' && isset($segments[3]) && is_numeric($segments[3])) {
+            $autoOpenContractId = (int)$segments[3];
+        }
+        
         // Get marketing statistics
         $marketing_stats = $this->getMarketingDashboardStats();
         
@@ -86,7 +96,8 @@ class Marketing extends BaseDataTableController
             'marketing_stats' => $marketing_stats,
             'recent_quotations' => $recent_quotations,
             'active_contracts' => $active_contracts,
-            'revenue_data' => $revenue_data
+            'revenue_data' => $revenue_data,
+            'autoOpenContractId' => $autoOpenContractId
         ];
         
         return view('marketing/index', $data);
@@ -1560,44 +1571,15 @@ class Marketing extends BaseDataTableController
                 ->groupEnd();
         }
 
-        $quotations = $builder->orderBy('quotation_date', 'DESC')->findAll();
+        // Add User Join for Assigned To Name
+        $builder->select('quotations.*, u.username as assigned_to_name');
+        $builder->join('users u', 'u.id = quotations.assigned_to', 'left');
 
-        // Generate CSV
-        $filename = 'quotations_' . date('Y-m-d_H-i-s') . '.csv';
+        $quotations = $builder->orderBy('quotation_date', 'DESC')->findAll();
         
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-        
-        $output = fopen('php://output', 'w');
-        
-        // CSV headers
-        fputcsv($output, [
-            'Quotation Number',
-            'Prospect Name',
-            'Title',
-            'Date',
-            'Valid Until',
-            'Stage',
-            'Total Amount',
-            'Currency'
-        ]);
-        
-        // CSV data
-        foreach ($quotations as $quotation) {
-            fputcsv($output, [
-                $quotation['quotation_number'],
-                $quotation['prospect_name'],
-                $quotation['quotation_title'],
-                $quotation['quotation_date'],
-                $quotation['valid_until'],
-                $quotation['stage'],
-                $quotation['total_amount'],
-                $quotation['currency']
-            ]);
-        }
-        
-        fclose($output);
-        exit;
+        // Pass to View for Excel Export
+        $data = ['quotations' => $quotations];
+        return view('marketing/export_quotations', $data);
     }
 
     /**
@@ -1831,6 +1813,16 @@ class Marketing extends BaseDataTableController
         // Load simple_rbac helper
         helper('simple_rbac');
         
+        // Extract SPK ID from URL for auto-opening modal (from notification deep linking)
+        $uri = service('uri');
+        $autoOpenSpkId = null;
+        
+        // Check if URL matches /marketing/spk/detail/{id}
+        $segments = $uri->getSegments();
+        if (count($segments) >= 3 && $segments[1] === 'spk' && $segments[2] === 'detail' && isset($segments[3]) && is_numeric($segments[3])) {
+            $autoOpenSpkId = (int)$segments[3];
+        }
+        
         return view('marketing/spk', [
             'title' => 'Work Orders (SPK)',
             'breadcrumbs' => [
@@ -1840,6 +1832,7 @@ class Marketing extends BaseDataTableController
             'can_view_marketing' => can_view('marketing'),
             'can_create_marketing' => $this->canManage('marketing'),
             'can_export_marketing' => $this->canExport('marketing'),
+            'autoOpenSpkId' => $autoOpenSpkId
         ]);
     }
     public function di()

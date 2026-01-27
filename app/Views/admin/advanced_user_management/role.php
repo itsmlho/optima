@@ -250,9 +250,20 @@
                     <h1 class="h3 mb-0">Simple Role Management</h1>
                     <p class="text-muted">Manage user roles and permissions with a simple interface</p>
                 </div>
-                <button class="btn btn-primary btn-simple" onclick="createNewRole()">
-                    <i class="fas fa-plus me-2"></i>Create New Role
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-primary btn-simple" onclick="createNewRole()">
+                        <i class="fas fa-plus me-2"></i>Create New Role
+                    </button>
+                    <div class="dropdown">
+                        <button class="btn btn-secondary dropdown-toggle btn-simple" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cog"></i> Actions
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="<?= base_url('admin/advanced-users') ?>"><i class="fas fa-users"></i> Manage Users</a></li>
+                            <li><a class="dropdown-item" href="<?= base_url('admin/permissions') ?>"><i class="fas fa-key"></i> Manage Permissions</a></li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <!-- Permission Info -->

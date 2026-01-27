@@ -422,15 +422,27 @@ function showMarketAnalysis() {
 }
 
 function viewContract(contractNumber) {
-    showNotification('Opening contract ' + contractNumber, 'info');
+    // Navigate to kontrak page with contract number
+    window.location.href = '<?= base_url('marketing/kontrak') ?>?no_kontrak=' + encodeURIComponent(contractNumber);
 }
 
-// Ensure viewContract exists for compatibility with other views/scripts
-if (typeof viewContract === 'undefined') {
-    function viewContract(contractNumber) {
-        window.location.href = '<?= base_url('marketing/kontrak') ?>?no_kontrak=' + encodeURIComponent(contractNumber);
-    }
-}
+// Auto-trigger contract view if autoOpenContractId is set (from notification deep linking)
+<?php if (isset($autoOpenContractId) && $autoOpenContractId): ?>
+console.log('🔔 Auto-opening contract from notification: <?= $autoOpenContractId ?>');
+setTimeout(() => {
+    // Fetch contract data to get contract number
+    fetch('<?= base_url('marketing/kontrak/detail/') ?><?= $autoOpenContractId ?>')
+        .then(r => r.json())
+        .then(j => {
+            if (j.success && j.data && j.data.no_kontrak) {
+                viewContract(j.data.no_kontrak);
+            } else {
+                console.error('❌ Failed to load contract data for auto-open');
+            }
+        })
+        .catch(e => console.error('❌ Error fetching contract:', e));
+}, 800);
+<?php endif; ?>
 
 function editContract(contractNumber) {
     showNotification('Editing contract ' + contractNumber, 'info');

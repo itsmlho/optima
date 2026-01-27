@@ -10,6 +10,18 @@
                     <h5 class="card-title fw-bold m-0">List Attachment</h5>
                 </div>
                 <div class="col-auto">
+                    <!-- Export Dropdown -->
+                    <div class="btn-group me-2">
+                        <button type="button" class="btn btn-outline-success dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-file-export me-1"></i>Export
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/export_attachment_inventory') ?>"><i class="fas fa-puzzle-piece me-2"></i>Attachment</a></li>
+                            <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/export_battery_inventory') ?>"><i class="fas fa-battery-half me-2"></i>Battery</a></li>
+                            <li><a class="dropdown-item" href="<?= base_url('warehouse/inventory/export_charger_inventory') ?>"><i class="fas fa-plug me-2"></i>Charger</a></li>
+                        </ul>
+                    </div>
+
                     <button type="button" class="btn btn-primary" id="btnTambahItem">
                         <i class="fas fa-plus me-1"></i>Add Item
                     </button>

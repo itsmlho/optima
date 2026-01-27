@@ -138,30 +138,166 @@ $currentLang = service('request')->getLocale();
         
         // Global function for handling notification clicks
         window.handleNotificationClick = function(notificationId, url) {
-            console.log('🔔 SSE notification clicked:', notificationId, url);
+            console.log('🔔 Notification clicked:', notificationId, url);
             
             // Mark as read first
             if (window.optimaSSENotifications) {
                 window.optimaSSENotifications.markAsRead(notificationId);
             }
             
-            // Navigate to URL if not '#'
-            if (url && url !== '#') {
-                // Close dropdown first
-                const dropdown = document.querySelector('[data-bs-toggle="dropdown"]');
-                if (dropdown) {
-                    const bsDropdown = bootstrap.Dropdown.getInstance(dropdown);
-                    if (bsDropdown) {
-                        bsDropdown.hide();
-                    }
+            // Close notification dropdown
+            const dropdown = document.querySelector('[data-bs-toggle="dropdown"]');
+            if (dropdown) {
+                const bsDropdown = bootstrap.Dropdown.getInstance(dropdown);
+                if (bsDropdown) {
+                    bsDropdown.hide();
                 }
-                
-                // Navigate after a short delay
+            }
+            
+            // Try to open modal instead of redirect
+            const modalOpened = window.tryOpenModalFromUrl(url);
+            
+            // If modal not opened, fallback to normal navigation
+            if (!modalOpened && url && url !== '#') {
                 setTimeout(() => {
                     window.location.href = url;
                 }, 100);
             }
         };
+        
+        /**
+         * Universal Modal Router
+         * Attempts to open detail modal based on URL pattern
+         * Returns true if modal was opened, false if navigation needed
+         */
+        window.tryOpenModalFromUrl = function(url) {
+            if (!url || url === '#') return false;
+            
+            console.log('🔍 Trying to open modal for URL:', url);
+            
+            // Parse URL to extract module and ID
+            const urlObj = new URL(url, window.location.origin);
+            const pathname = urlObj.pathname;
+            
+            // ==================== PURCHASING ====================
+            // Pattern: /purchasing/detail/{id} or /purchasing/po/detail/{id}
+            let match = pathname.match(/\/purchasing\/(?:po\/)?detail\/(\d+)/);
+            if (match) {
+                const poId = match[1];
+                console.log('✅ Opening PO Detail Modal for ID:', poId);
+                
+                if (typeof viewPODetail === 'function') {
+                    viewPODetail(poId);
+                    return true;
+                } else {
+                    window.location.href = '/optima/public/purchasing#view-po-' + poId;
+                    return true;
+                }
+            }
+            
+            // ==================== SERVICE ====================
+            // Pattern: /service/work-orders/detail/{id}
+            match = pathname.match(/\/service\/work-orders\/detail\/(\d+)/);
+            if (match) {
+                const woId = match[1];
+                console.log('✅ Opening Work Order Detail Modal for ID:', woId);
+                
+                if (typeof viewWorkOrderDetail === 'function') {
+                    viewWorkOrderDetail(woId);
+                    return true;
+                } else {
+                    window.location.href = '/optima/public/service#view-wo-' + woId;
+                    return true;
+                }
+            }
+            
+            // ==================== MARKETING ====================
+            // Pattern: /marketing/spk/detail/{id}
+            match = pathname.match(/\/marketing\/spk\/detail\/(\d+)/);
+            if (match) {
+                const spkId = match[1];
+                console.log('✅ Opening SPK Detail Modal for ID:', spkId);
+                
+                if (typeof viewSPKDetail === 'function') {
+                    viewSPKDetail(spkId);
+                    return true;
+                } else {
+                    window.location.href = '/optima/public/marketing#view-spk-' + spkId;
+                    return true;
+                }
+            }
+            
+            // ==================== OPERATIONAL ====================
+            // Pattern: /operational/delivery/detail/{id}
+            match = pathname.match(/\/operational\/delivery\/detail\/(\d+)/);
+            if (match) {
+                const diId = match[1];
+                console.log('✅ Opening DI Detail Modal for ID:', diId);
+                
+                if (typeof viewDIDetail === 'function') {
+                    viewDIDetail(diId);
+                    return true;
+                } else {
+                    window.location.href = '/optima/public/operational/delivery#view-di-' + diId;
+                    return true;
+                }
+            }
+            
+            console.log('❌ No modal handler found for URL:', url);
+            return false;
+        };
+        
+        /**
+         * Handle URL hash on page load (for deep linking)
+         * Example: /purchasing#view-po-123
+         */
+        window.handleUrlHashModal = function() {
+            const hash = window.location.hash;
+            if (!hash) return;
+            
+            console.log('🔗 Handling URL hash:', hash);
+            
+            // Pattern: #view-po-{id}
+            let match = hash.match(/#view-po-(\d+)/);
+            if (match && typeof viewPODetail === 'function') {
+                const poId = match[1];
+                console.log('✅ Opening PO from hash:', poId);
+                setTimeout(() => viewPODetail(poId), 500);
+                return;
+            }
+            
+            // Pattern: #view-wo-{id}
+            match = hash.match(/#view-wo-(\d+)/);
+            if (match && typeof viewWorkOrderDetail === 'function') {
+                const woId = match[1];
+                console.log('✅ Opening Work Order from hash:', woId);
+                setTimeout(() => viewWorkOrderDetail(woId), 500);
+                return;
+            }
+            
+            // Pattern: #view-spk-{id}
+            match = hash.match(/#view-spk-(\d+)/);
+            if (match && typeof viewSPKDetail === 'function') {
+                const spkId = match[1];
+                console.log('✅ Opening SPK from hash:', spkId);
+                setTimeout(() => viewSPKDetail(spkId), 500);
+                return;
+            }
+            
+            // Pattern: #view-di-{id}
+            match = hash.match(/#view-di-(\d+)/);
+            if (match && typeof viewDIDetail === 'function') {
+                const diId = match[1];
+                console.log('✅ Opening DI from hash:', diId);
+                setTimeout(() => viewDIDetail(diId), 500);
+                return;
+            }
+        };
+        
+        // Call hash handler on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            window.handleUrlHashModal();
+        });
         
         // Helper function untuk format waktu relatif (16 jam lalu, dll)
         window.formatRelativeTime = function(timestamp) {
@@ -1028,16 +1164,19 @@ $currentLang = service('request')->getLocale();
                         const viewportHeight = window.innerHeight;
                         
                         // Position dropdown smartly to avoid viewport overflow
-                        let topPosition = itemRect.top - 60; // Subtract header height
+                        // ALIGNMENT FIX: Use itemRect.top directly so it aligns with the icon 
+                        // and stays below the 60px header.
+                        // Clamp to minimum 60px to ensuring "menampilkannya kebawah" (below header)
+                        let topPosition = Math.max(itemRect.top, 60);
                         
                         // Adjust if dropdown would overflow bottom
-                        if (topPosition + dropdownHeight > viewportHeight - 20) {
-                            topPosition = viewportHeight - dropdownHeight - 20;
+                        if (topPosition + dropdownHeight > viewportHeight - 10) {
+                            topPosition = viewportHeight - dropdownHeight - 10;
                         }
                         
-                        // Ensure minimum top position
-                        if (topPosition < 20) {
-                            topPosition = 20;
+                        // Ensure minimum top position (redundant but safe)
+                        if (topPosition < 60) {
+                            topPosition = 60;
                         }
                         
                         dropdown.style.top = topPosition + 'px';

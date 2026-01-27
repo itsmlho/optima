@@ -1,6 +1,6 @@
 <?php
 /**
- * Export CSV - PO Delivery
+ * Export Excel - Detailed PO Deliveries
  * Purchasing Division
  */
 
@@ -10,36 +10,17 @@ ini_set('display_errors', 0);
 ini_set('log_errors', 0);
 ob_clean();
 
-// Set headers for CSV download
-header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename="PO_Delivery_' . date('Y-m-d_H-i-s') . '.csv"');
-header('Cache-Control: max-age=0');
+// Set headers for Excel download
+header('Content-Type: application/vnd.ms-excel');
+header('Content-Disposition: attachment; filename="PO_Delivery_Detailed_' . date('Y-m-d_H-i-s') . '.xls"');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 try {
-    // Get data from database using direct MySQL connection
-    $host = 'localhost';
-    $dbname = 'optima_ci';
-    $username = 'root';
-    $password = 'root';
+    // Get data directly using Query Builder
+    $db = \Config\Database::connect();
     
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Create CSV output
-    $output = fopen('php://output', 'w');
-    
-    // Add BOM for UTF-8
-    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-    
-    // Set headers - Data delivery yang lengkap
-    $headers = [
-        'No', 'No PO', 'Supplier', 'Packing List No', 'Delivery Sequence', 'Tanggal Delivery',
-        'Driver Name', 'Driver Phone', 'Vehicle Info', 'Vehicle Plate', 'Item Type',
-        'Item Name', 'Item Description', 'Qty', 'Serial Numbers', 'Status'
-    ];
-    fputcsv($output, $headers);
-    
-    $stmt = $pdo->prepare("
+    $query = $db->query("
         SELECT 
             po.no_po,
             s.nama_supplier,
@@ -63,35 +44,81 @@ try {
         WHERE po.status IN ('Partial Received', 'Completed')
         ORDER BY pd.delivery_date DESC, pd.delivery_sequence ASC
     ");
-    $stmt->execute();
-    $deliveries = $stmt->fetchAll(PDO::FETCH_OBJ);
+    $deliveries = $query->getResult();
+
+    // EXCEL OUTPUT
+    echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    echo '<head>';
+    echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>PO Deliveries</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+    echo '<style>
+            body { font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 100%; }
+            th { background-color: #4472C4; color: white; border: 1px solid #000000; padding: 10px; text-align: left; vertical-align: middle; }
+            td { border: 1px solid #000000; padding: 5px; vertical-align: top; }
+            .header-info { margin-bottom: 20px; font-weight: bold; font-size: 14px; }
+            .bg-blue { background-color: #DAE7F5; }
+          </style>';
+    echo '</head>';
+    echo '<body>';
+    
+    echo '<div class="header-info">';
+    echo 'DETAILED PO DELIVERY REPORT<br>';
+    echo 'Generated Date: ' . date('d F Y H:i') . '<br>';
+    echo 'Total Delivery Items: ' . count($deliveries) . '<br>';
+    echo '</div>';
+    
+    echo '<table border="1">';
+    echo '<thead>';
+    echo '<tr>';
+    echo '<th width="50">No</th>';
+    echo '<th width="120">No PO</th>';
+    echo '<th width="200">Supplier</th>';
+    echo '<th width="150">Packing List</th>';
+    echo '<th width="80">Del. Seq</th>';
+    echo '<th width="120">Del. Date</th>';
+    echo '<th width="150">Driver</th>';
+    echo '<th width="120">Phone</th>';
+    echo '<th width="150">Vehicle Info</th>';
+    echo '<th width="120">Plate No</th>';
+    echo '<th width="120">Item Type</th>';
+    echo '<th width="200">Item Name</th>';
+    echo '<th width="250">Description</th>';
+    echo '<th width="80">Qty</th>';
+    echo '<th width="150">Serial Numbers</th>';
+    echo '<th width="100">PO Status</th>';
+    echo '</tr>';
+    echo '</thead>';
+    echo '<tbody>';
     
     $no = 1;
     foreach ($deliveries as $delivery) {
-        $row = [
-            $no++,
-            $delivery->no_po,
-            $delivery->nama_supplier,
-            $delivery->packing_list_no,
-            $delivery->delivery_sequence,
-            $delivery->delivery_date ? date('d/m/Y', strtotime($delivery->delivery_date)) : '-',
-            $delivery->driver_name,
-            $delivery->driver_phone,
-            $delivery->vehicle_info,
-            $delivery->vehicle_plate,
-            $delivery->item_type,
-            $delivery->item_name,
-            $delivery->item_description,
-            $delivery->qty,
-            $delivery->serial_number,
-            $delivery->status
-        ];
-        fputcsv($output, $row);
+        $bgClass = ($no % 2 == 0) ? 'class="bg-blue"' : '';
+        echo "<tr $bgClass>";
+        echo "<td align='center'>{$no}</td>";
+        echo "<td><b>" . htmlspecialchars($delivery->no_po ?? '') . "</b></td>";
+        echo "<td>" . htmlspecialchars($delivery->nama_supplier ?? '') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->packing_list_no ?? '-') . "</td>";
+        echo "<td align='center'>" . htmlspecialchars($delivery->delivery_sequence ?? '-') . "</td>";
+        echo "<td>" . ($delivery->delivery_date ? date('d/m/Y', strtotime($delivery->delivery_date)) : '-') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->driver_name ?? '-') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->driver_phone ?? '-') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->vehicle_info ?? '-') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->vehicle_plate ?? '-') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->item_type ?? '-') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->item_name ?? '-') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->item_description ?? '-') . "</td>";
+        echo "<td align='center'>" . htmlspecialchars($delivery->qty ?? 0) . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->serial_number ?? '-') . "</td>";
+        echo "<td>" . htmlspecialchars($delivery->status ?? '-') . "</td>";
+        echo '</tr>';
+        $no++;
     }
     
-    fclose($output);
-    exit;
+    echo '</tbody>';
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
 
 } catch (\Exception $e) {
-    echo "Error: " . $e->getMessage();
+    echo "Error generating report: " . $e->getMessage();
 }

@@ -2757,6 +2757,18 @@ $can_export = $permissions['export'];
             });
         }
     });
+    
+    // Auto-trigger modal if autoOpenSpkId is set (from notification deep linking)
+    <?php if (isset($autoOpenSpkId) && $autoOpenSpkId): ?>
+    console.log('🔔 Auto-opening SPK modal from notification: <?= $autoOpenSpkId ?>');
+    setTimeout(() => {
+        if (typeof openDetail === 'function') {
+            openDetail(<?= $autoOpenSpkId ?>);
+        } else {
+            console.error('❌ openDetail function not found');
+        }
+    }, 800); // Wait for page to fully load
+    <?php endif; ?>
     </script>
     
     <style>

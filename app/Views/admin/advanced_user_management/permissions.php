@@ -10,9 +10,20 @@
             </h1>
             <p class="mb-0 text-muted">Create and manage system permissions. Permissions are assigned to roles.</p>
         </div>
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPermissionModal">
-            <i class="fas fa-plus me-2"></i>Create Permission
-        </button>
+        <div class="d-flex gap-2">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#createPermissionModal">
+                <i class="fas fa-plus me-2"></i>Create Permission
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="fas fa-cog"></i> Actions
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="<?= base_url('admin/advanced-users') ?>"><i class="fas fa-users"></i> Manage Users</a></li>
+                    <li><a class="dropdown-item" href="<?= base_url('admin/roles') ?>"><i class="fas fa-user-tag"></i> Manage Roles</a></li>
+                </ul>
+            </div>
+        </div>
     </div>
 
     <!-- Stats Cards -->
@@ -235,6 +246,7 @@
                                     <option value="accounting">Accounting</option>
                                     <option value="reports">Reports</option>
                                     <option value="system">System</option>
+                                    <option value="perizinan">Perizinan</option>
                                 </select>
                             </div>
                         </div>
@@ -265,6 +277,7 @@
                                     <option value="approve">Approve</option>
                                     <option value="reject">Reject</option>
                                     <option value="access">Access</option>
+                                    <option value="navigation">Navigation</option>
                                 </select>
                             </div>
                         </div>
@@ -289,7 +302,7 @@
         <div class="modal-content">
             <form id="editPermissionForm">
                 <input type="hidden" id="editPermissionId" name="id">
-                <div class="modal-header bg-primary text-white">
+                <div class="modal-header bg-primary text-secondary">
                     <h5 class="modal-title" id="editPermissionModalLabel">
                         <i class="fas fa-edit me-2"></i>Edit Permission
                     </h5>
@@ -343,6 +356,7 @@
                                     <option value="accounting">Accounting</option>
                                     <option value="reports">Reports</option>
                                     <option value="system">System</option>
+                                    <option value="perizinan">Perizinan</option>
                                 </select>
                             </div>
                         </div>
@@ -371,6 +385,7 @@
                                     <option value="approve">Approve</option>
                                     <option value="reject">Reject</option>
                                     <option value="access">Access</option>
+                                    <option value="navigation">Navigation</option>
                                 </select>
                             </div>
                         </div>
@@ -734,9 +749,21 @@ function editPermission(id) {
             $('#editPermissionDisplayName').val(permission.display_name);
             $('#editPermissionKeyName').val(permission.key_name);
             $('#editPermissionDescription').val(permission.description);
+            
+            // Fix: Check if module exists in dropdown, if not add it
+            if (permission.module && $('#editPermissionModule option[value="'+permission.module+'"]').length === 0) {
+                $('#editPermissionModule').append(new Option(permission.module, permission.module));
+            }
             $('#editPermissionModule').val(permission.module);
+            
             $('#editPermissionPage').val(permission.page);
+            
+            // Fix: Check if action exists in dropdown, if not add it
+            if (permission.action && $('#editPermissionAction option[value="'+permission.action+'"]').length === 0) {
+                $('#editPermissionAction').append(new Option(permission.action, permission.action));
+            }
             $('#editPermissionAction').val(permission.action);
+            
             $('#editPermissionModal').modal('show');
         } else {
             Swal.fire('Error!', response.message || 'Failed to load permission.', 'error');
