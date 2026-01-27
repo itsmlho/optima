@@ -1,571 +1,447 @@
 <?= $this->extend('layouts/base') ?>
 
-<?= $this->section('content') ?>
+<?= $this->section('title') ?>Executive Dashboard<?= $this->endSection() ?>
 
+<?= $this->section('css') ?>
 <style>
-/* Dashboard Compact Styles */
-.dashboard-header {
-    background: white;
-    padding: 1rem 1.5rem;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    margin-bottom: 1rem;
-    border-left: 4px solid #0061f2;
-}
-.dashboard-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    color: #212529;
-    margin: 0;
-}
-.dashboard-subtitle {
-    font-size: 0.875rem;
-    color: #6c757d;
-    margin: 0;
-}
-
-/* Summary Cards */
-.summary-card {
-    background: white;
-    border-radius: 8px;
-    padding: 1rem;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    border-left: 4px solid #dee2e6;
-    transition: transform 0.2s;
-}
-.summary-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-}
-.summary-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    color: white;
-}
-.summary-icon.bg-primary { background: linear-gradient(135deg, #0061f2, #4d8fff); }
-.summary-icon.bg-success { background: linear-gradient(135deg, #28a745, #4cbb68); }
-.summary-icon.bg-warning { background: linear-gradient(135deg, #ffc107, #ffd04a); }
-.summary-icon.bg-info { background: linear-gradient(135deg, #17a2b8, #45b5c6); }
-
-.summary-content {
-    flex: 1;
-}
-.summary-label {
-    font-size: 0.75rem;
-    color: #6c757d;
-    text-transform: uppercase;
-    font-weight: 600;
-    margin: 0 0 0.25rem 0;
-}
-.summary-value {
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: #212529;
-    margin: 0;
-    line-height: 1;
-}
-
-/* Compact Cards */
-.compact-card {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    overflow: hidden;
-}
-.compact-card-header {
-    background: #f8f9fa;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;
-    justify-content: between;
-    align-items: center;
-}
-.compact-card-header h6 {
-    margin: 0;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #212529;
-}
-.compact-card-body {
-    padding: 1rem;
-}
-
-/* Stat Box */
-.stat-box {
-    background: #f8f9fa;
-    border-radius: 6px;
-    padding: 0.75rem;
-}
-.stat-box small {
-    display: block;
-    font-size: 0.7rem;
-    color: #6c757d;
-    margin-bottom: 0.25rem;
-}
-.stat-box h4 {
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin: 0;
-}
-
-.asset-stats small {
-    font-size: 0.75rem;
-}
-.area-stat {
-    font-size: 0.875rem;
-}
-</style>
-
-<!-- Dashboard Container -->
-
+    /* Executive Dashboard Custom CSS */
+    .kpi-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+    }
     
-<!-- Dashboard Header -->
-<div class="dashboard-header">
-    <div class="row align-items-center">
-        <div class="col-md-8">
-            <h1 class="dashboard-title mb-1">
-                <i class="fas fa-tachometer-alt me-2"></i>Dashboard OPTIMA
-            </h1>
-            <p class="dashboard-subtitle">
-                Selamat datang, <strong><?= session()->get('first_name') ?></strong> | <span id="currentDateTime"></span>
-            </p>
+    .kpi-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    
+    .kpi-icon-wrapper {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+    }
+    
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        line-height: 1.2;
+    }
+    
+    .kpi-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .chart-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    .chart-header {
+        background: transparent;
+        border-bottom: 1px solid #f1f2f6;
+        padding: 1.5rem;
+    }
+    
+    .chart-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .table-alert th {
+        font-weight: 600;
+        color: #95a5a6;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border-top: none;
+    }
+    
+    .table-alert td {
+        vertical-align: middle;
+        font-size: 0.95rem;
+    }
+    
+    /* Animations */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-fade-in-up {
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+    
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+    .delay-400 { animation-delay: 0.4s; }
+</style>
+<?= $this->endSection() ?>
+
+<?= $this->section('content') ?>
+<div class="content-wrapper container-fluid p-4">
+    
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Operational Command Center</h2>
+            <p class="text-muted mb-0">Real-time overview of PT Sarana Mitra Luas Tbk operations.</p>
         </div>
-        <div class="col-md-4 text-end">
-            <button class="btn btn-sm btn-primary" onclick="location.reload()">
-                <i class="fas fa-sync-alt me-1"></i>Refresh
+        <div class="d-flex gap-2">
+            <span class="badge bg-light text-dark border d-flex align-items-center px-3">
+                <i class="fas fa-clock me-2 text-primary"></i>
+                <span id="currentDateTime">Loading...</span>
+            </span>
+            <button class="btn btn-primary" onclick="window.location.reload()">
+                <i class="fas fa-sync-alt me-2"></i>Refresh Data
             </button>
         </div>
     </div>
-</div>
 
-<!-- Summary Cards -->
-<div class="row g-3 mb-3">
-    <div class="col-lg-3 col-md-6">
-        <div class="summary-card">
-            <div class="summary-icon bg-primary">
-                <i class="fas fa-boxes"></i>
+    <!-- KPI Cards Row -->
+    <div class="row g-4 mb-4">
+        <!-- 1. Fleet Utilization -->
+        <div class="col-xl-3 col-md-6 animate-fade-in-up delay-100">
+            <div class="card kpi-card shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="kpi-icon-wrapper bg-primary bg-opacity-10 text-primary me-4">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Fleet Utilization</div>
+                        <div class="kpi-value text-primary"><?= number_format($kpi['utilization_rate'], 1) ?>%</div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-truck me-1"></i> <?= $kpi['total_rented'] ?> / <?= $kpi['total_units'] ?> Units
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="summary-content">
-                <h6 class="summary-label">Total Aset</h6>
-                <h3 class="summary-value"><?= $summary['total_assets'] ?></h3>
-                <small class="text-muted" style="font-size: 0.7rem;">Unit + Attachment + Charger + Baterai</small>
+        </div>
+
+        <!-- 2. Units on Service/Breakdown -->
+        <div class="col-xl-3 col-md-6 animate-fade-in-up delay-200">
+            <div class="card kpi-card shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="kpi-icon-wrapper bg-warning bg-opacity-10 text-warning me-4">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Breakdown/Service</div>
+                        <div class="kpi-value text-warning"><?= $kpi['units_breakdown'] ?></div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-exclamation-circle me-1"></i> Requires Attention
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Active Contracts -->
+        <div class="col-xl-3 col-md-6 animate-fade-in-up delay-300">
+            <div class="card kpi-card shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="kpi-icon-wrapper bg-success bg-opacity-10 text-success me-4">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Active Contracts</div>
+                        <div class="kpi-value text-success"><?= $kpi['active_contracts'] ?></div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-handshake me-1"></i> Total Deals
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Pending Deliveries -->
+        <div class="col-xl-3 col-md-6 animate-fade-in-up delay-400">
+            <div class="card kpi-card shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="kpi-icon-wrapper bg-info bg-opacity-10 text-info me-4">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Pending Delivery</div>
+                        <div class="kpi-value text-info"><?= $kpi['pending_delivery'] ?></div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-clock me-1"></i> Scheduled for today/tmrw
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-    
-    <div class="col-lg-3 col-md-6">
-        <div class="summary-card">
-            <div class="summary-icon bg-success">
-                <i class="fas fa-handshake"></i>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <!-- Unit Status Composition -->
+        <div class="col-lg-5 animate-fade-in-up delay-200">
+            <div class="card chart-card h-100">
+                <div class="card-header chart-header d-flex justify-content-between align-items-center bg-white">
+                    <h5 class="chart-title">Fleet Composition</h5>
+                    <button class="btn btn-sm btn-light rounded-circle" type="button"><i class="fas fa-ellipsis-h text-muted"></i></button>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center" style="min-height: 300px;">
+                    <div style="width: 100%; max-width: 350px;">
+                        <canvas id="unitStatusChart"></canvas>
+                    </div>
+                </div>
             </div>
-            <div class="summary-content">
-                <h6 class="summary-label">Kontrak Aktif</h6>
-                <h3 class="summary-value"><?= $summary['active_contracts'] ?></h3>
-                <small class="text-success"><i class="fas fa-arrow-up"></i> <?= $summary['contract_growth'] ?>% bulan ini</small>
+        </div>
+        
+        <!-- Sales Trend -->
+        <div class="col-lg-7 animate-fade-in-up delay-300">
+            <div class="card chart-card h-100">
+                <div class="card-header chart-header d-flex justify-content-between align-items-center bg-white">
+                    <h5 class="chart-title">Sales Performance (Recent)</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary active">6 Months</button>
+                        <button type="button" class="btn btn-outline-secondary">Year</button>
+                    </div>
+                </div>
+                <div class="card-body" style="min-height: 300px;">
+                    <canvas id="salesTrendChart"></canvas>
+                </div>
             </div>
         </div>
     </div>
-    
-    <div class="col-lg-3 col-md-6">
-        <div class="summary-card">
-            <div class="summary-icon bg-warning">
-                <i class="fas fa-wrench"></i>
-            </div>
-            <div class="summary-content">
-                <h6 class="summary-label">WO Bulan Ini</h6>
-                <h3 class="summary-value"><?= $summary['wo_this_month'] ?></h3>
-                <small class="text-muted" style="font-size: 0.75rem;"><?= $summary['wo_pending'] ?> pending | <?= $summary['wo_completed'] ?> selesai</small>
+
+    <!-- Alert Tables Row -->
+    <div class="row g-4 animate-fade-in-up delay-400">
+        <!-- Low Stock Alert -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-danger"><i class="fas fa-cubes me-2"></i>Low Stock Alert (Warehouse)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-alert mb-0 align-middle">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Item Name</th>
+                                    <th>Stock</th>
+                                    <th>Min</th>
+                                    <th>Link</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($alerts['low_stock'])): ?>
+                                    <tr><td colspan="4" class="text-center py-4 text-muted">All stock levels are healthy via Optima.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach (array_slice($alerts['low_stock'], 0, 5) as $item): ?>
+                                    <tr>
+                                        <td class="ps-4 fw-medium"><?= $item['name'] ?></td>
+                                        <td><span class="text-danger fw-bold"><?= $item['qty'] ?></span></td>
+                                        <td><?= $item['min_stock'] ?></td>
+                                        <td><a href="#" class="btn btn-sm btn-light text-primary"><i class="fas fa-arrow-right"></i></a></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
-    </div>
-    
-    <div class="col-lg-3 col-md-6">
-        <div class="summary-card">
-            <div class="summary-icon bg-info">
-                <i class="fas fa-truck"></i>
+
+        <!-- Preventive Maintenance -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-warning"><i class="fas fa-wrench me-2"></i>Upcoming Maintenance</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-alert mb-0 align-middle">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Unit Code</th>
+                                    <th>Type</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($alerts['maintenance'])): ?>
+                                    <tr><td colspan="4" class="text-center py-4 text-muted">No immediate maintenance required.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach (array_slice($alerts['maintenance'], 0, 5) as $unit): ?>
+                                    <tr>
+                                        <td class="ps-4 fw-bold text-dark"><?= $unit['code'] ?></td>
+                                        <td><small class="text-muted"><?= $unit['type'] ?></small></td>
+                                        <td><?= date('d M', strtotime($unit['next_service_date'])) ?></td>
+                                        <td><span class="badge bg-warning text-dark">Upcoming</span></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="summary-content">
-                <h6 class="summary-label">SPK & DI Bulan Ini</h6>
-                <h3 class="summary-value"><?= $summary['spk_di_this_month'] ?></h3>
-                <small class="text-muted" style="font-size: 0.75rem;">SPK: <?= $summary['spk_count'] ?> | DI: <?= $summary['di_count'] ?></small>
+        </div>
+
+        <!-- Expiring Contracts -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-info"><i class="fas fa-file-signature me-2"></i>Expiring Contracts</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-alert mb-0 align-middle">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Customer</th>
+                                    <th>Unit</th>
+                                    <th>End Date</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($alerts['expiring_contracts'])): ?>
+                                    <tr><td colspan="4" class="text-center py-4 text-muted">No contracts expiring next 30 days.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach (array_slice($alerts['expiring_contracts'], 0, 5) as $contract): ?>
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="text-truncate" style="max-width: 120px;"><?= $contract['customer'] ?></div>
+                                        </td>
+                                        <td><small><?= $contract['unit_code'] ?></small></td>
+                                        <td class="text-danger"><?= date('d M', strtotime($contract['end_date'])) ?></td>
+                                        <td><a href="#" class="btn btn-sm btn-outline-info rounded-pill px-2">Renew</a></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
-
-<!-- Main Content: 3-Column Layout -->
-<div class="row g-3">
-    
-    <!-- LEFT COLUMN: Assets Overview -->
-    <div class="col-lg-4">
-        <!-- Units Status -->
-        <div class="compact-card mb-3">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-truck me-2 text-primary"></i>Inventory Unit</h6>
-            </div>
-            <div class="compact-card-body">
-                <canvas id="unitChart" height="160"></canvas>
-                <div class="row g-2 mt-2">
-                    <div class="col-6">
-                        <small class="text-muted d-block">Disewakan</small>
-                        <strong class="text-success"><?= $assets['units']['rented'] ?></strong>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Tersedia</small>
-                        <strong class="text-primary"><?= $assets['units']['available'] ?></strong>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Maintenance</small>
-                        <strong class="text-warning"><?= $assets['units']['maintenance'] ?></strong>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block">Out of Service</small>
-                        <strong class="text-danger"><?= $assets['units']['out_of_service'] ?></strong>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Attachment Status -->
-        <div class="compact-card mb-3">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-puzzle-piece me-2 text-warning"></i>Attachment</h6>
-            </div>
-            <div class="compact-card-body">
-                <div class="row g-2">
-                    <div class="col-6">
-                        <div class="stat-box">
-                            <small>Total</small>
-                            <h4 class="mb-0"><?= $assets['attachments']['total'] ?></h4>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="stat-box">
-                            <small>Digunakan</small>
-                            <h4 class="mb-0 text-success"><?= $assets['attachments']['active'] ?></h4>
-                        </div>
-                    </div>
-                    <div class="col-12">
-                        <div class="progress" style="height: 8px;">
-                            <div class="progress-bar bg-success" style="width: <?= $assets['attachments']['utilization'] ?>%"></div>
-                        </div>
-                        <small class="text-muted" style="font-size: 0.7rem;">Utilisasi: <?= $assets['attachments']['utilization'] ?>%</small>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Charger & Baterai -->
-        <div class="compact-card">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-battery-three-quarters me-2 text-success"></i>Charger & Baterai</h6>
-            </div>
-            <div class="compact-card-body">
-                <div class="row g-2">
-                    <div class="col-6">
-                        <small class="text-muted d-block mb-2" style="font-weight: 600;">Charger</small>
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span style="font-size: 0.875rem;">Total:</span>
-                            <strong><?= $assets['chargers']['total'] ?></strong>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span style="font-size: 0.875rem;"><i class="fas fa-check-circle text-success"></i> Aktif:</span>
-                            <strong class="text-success"><?= $assets['chargers']['active'] ?></strong>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <small class="text-muted d-block mb-2" style="font-weight: 600;">Baterai</small>
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span style="font-size: 0.875rem;">Total:</span>
-                            <strong><?= $assets['batteries']['total'] ?></strong>
-                        </div>
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span style="font-size: 0.875rem;"><i class="fas fa-check-circle text-success"></i> Aktif:</span>
-                            <strong class="text-success"><?= $assets['batteries']['active'] ?></strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- MIDDLE COLUMN: Work Orders & Service -->
-    <div class="col-lg-4">
-        <!-- WO Complaint by Category -->
-        <div class="compact-card mb-3">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-tools me-2 text-danger"></i>WO Complaint - Top Kategori</h6>
-                <small class="text-muted" style="font-size: 0.7rem;">Bulan ini</small>
-            </div>
-            <div class="compact-card-body">
-                <canvas id="woCategoryChart" height="140"></canvas>
-                <div class="mt-2">
-                    <?php $i = 1; foreach($workorders['by_category'] as $cat): ?>
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
-                            <span style="font-size: 0.875rem;"><?= $i ?>. <?= $cat['category'] ?></span>
-                            <strong class="text-danger"><?= $cat['count'] ?></strong>
-                        </div>
-                    <?php $i++; if($i > 5) break; endforeach; ?>
-                </div>
-            </div>
-        </div>
-        
-        <!-- WO by Area -->
-        <div class="compact-card mb-3">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-map-marker-alt me-2 text-warning"></i>WO Complaint - Area</h6>
-            </div>
-            <div class="compact-card-body">
-                <?php foreach($workorders['by_area'] as $area): ?>
-                    <div class="mb-2">
-                        <div class="d-flex justify-content-between mb-1">
-                            <span style="font-size: 0.875rem;"><?= $area['area_name'] ?></span>
-                            <strong><?= $area['count'] ?></strong>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div class="progress-bar bg-warning" style="width: <?= $area['percentage'] ?>%"></div>
-                        </div>
-                    </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        
-        <!-- PMPS Schedule -->
-        <div class="compact-card">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-calendar-check me-2 text-info"></i>PMPS Schedule</h6>
-            </div>
-            <div class="compact-card-body">
-                <div class="row g-2 text-center">
-                    <div class="col-4">
-                        <div class="stat-box">
-                            <small>Overdue</small>
-                            <h4 class="mb-0 text-danger"><?= $pmps['overdue'] ?></h4>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="stat-box">
-                            <small>7 Hari</small>
-                            <h4 class="mb-0 text-warning"><?= $pmps['next_7_days'] ?></h4>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="stat-box">
-                            <small>30 Hari</small>
-                            <h4 class="mb-0 text-info"><?= $pmps['next_30_days'] ?></h4>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <!-- RIGHT COLUMN: SPK, DI, Customer -->
-    <div class="col-lg-4">
-        <!-- SPK This Month -->
-        <div class="compact-card mb-3">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-file-alt me-2 text-primary"></i>SPK Bulan Ini</h6>
-            </div>
-            <div class="compact-card-body">
-                <canvas id="spkChart" height="140"></canvas>
-                <div class="mt-2">
-                    <small class="text-muted d-block mb-1" style="font-weight: 600;">Jenis Perintah Kerja:</small>
-                    <?php foreach($spk['by_jenis_perintah'] as $jenis): ?>
-                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
-                            <span style="font-size: 0.875rem;"><?= $jenis['jenis'] ?></span>
-                            <strong><?= $jenis['count'] ?></strong>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-        </div>
-        
-        <!-- DI This Month -->
-        <div class="compact-card mb-3">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-shipping-fast me-2 text-success"></i>Delivery Instruction</h6>
-            </div>
-            <div class="compact-card-body">
-                <div class="row g-2 mb-2">
-                    <div class="col-4">
-                        <div class="stat-box text-center">
-                            <small>Total</small>
-                            <h4 class="mb-0"><?= $di['total'] ?></h4>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="stat-box text-center">
-                            <small>Pending</small>
-                            <h4 class="mb-0 text-warning"><?= $di['pending'] ?></h4>
-                        </div>
-                    </div>
-                    <div class="col-4">
-                        <div class="stat-box text-center">
-                            <small>Selesai</small>
-                            <h4 class="mb-0 text-success"><?= $di['completed'] ?></h4>
-                        </div>
-                    </div>
-                </div>
-                <small class="text-muted d-block mb-1" style="font-weight: 600;">Top Lokasi:</small>
-                <?php $i = 1; foreach($di['top_locations'] as $loc): ?>
-                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
-                        <span style="font-size: 0.875rem;"><?= $i ?>. <?= $loc['location'] ?></span>
-                        <strong><?= $loc['count'] ?></strong>
-                    </div>
-                <?php $i++; if($i > 4) break; endforeach; ?>
-            </div>
-        </div>
-        
-        <!-- Customer & Contract -->
-        <div class="compact-card">
-            <div class="compact-card-header">
-                <h6><i class="fas fa-users me-2 text-info"></i>Customer & Contract</h6>
-            </div>
-            <div class="compact-card-body">
-                <div class="row g-2 mb-2">
-                    <div class="col-6">
-                        <div class="stat-box">
-                            <small>Total Customer</small>
-                            <h4 class="mb-0"><?= $customers['total'] ?></h4>
-                            <small class="text-success"><i class="fas fa-arrow-up"></i> <?= $customers['growth'] ?>%</small>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="stat-box">
-                            <small>Kontrak Aktif</small>
-                            <h4 class="mb-0 text-success"><?= $customers['active_contracts'] ?></h4>
-                        </div>
-                    </div>
-                </div>
-                <div class="alert alert-warning py-2 px-2 mb-0" style="font-size: 0.75rem;">
-                    <strong><i class="fas fa-exclamation-triangle me-1"></i>Alert:</strong>
-                    <?= $customers['expiring_contracts'] ?> kontrak akan berakhir dalam 30 hari
-                </div>
-            </div>
-        </div>
-    </div>
-    
-</div>
-    
-
-<?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
 <script>
-// Real-time clock
-function updateDateTime() {
-    const now = new Date();
-    const options = { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    };
-    document.getElementById('currentDateTime').textContent = now.toLocaleDateString('id-ID', options);
-}
-updateDateTime();
-setInterval(updateDateTime, 60000);
+    // --- 1. DateTime Clock ---
+    function updateDateTime() {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+        document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-US', options);
+    }
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
 
-// Chart.js Configuration
-Chart.defaults.font.family = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI"';
-Chart.defaults.font.size = 11;
-
-// Chart 1: Unit Status
-const unitCtx = document.getElementById('unitChart').getContext('2d');
-new Chart(unitCtx, {
-    type: 'doughnut',
-    data: {
-        labels: ['Disewakan', 'Tersedia', 'Maintenance', 'Out of Service'],
-        datasets: [{
-            data: [
-                <?= $assets['units']['rented'] ?>,
-                <?= $assets['units']['available'] ?>,
-                <?= $assets['units']['maintenance'] ?>,
-                <?= $assets['units']['out_of_service'] ?>
-            ],
-            backgroundColor: ['#28a745', '#0061f2', '#ffc107', '#dc3545'],
-            borderWidth: 0
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 10,
-                    usePointStyle: true,
-                    font: { size: 10 }
+    // --- 2. Unit Status Pie Chart ---
+    const ctxUnit = document.getElementById('unitStatusChart').getContext('2d');
+    new Chart(ctxUnit, {
+        type: 'doughnut',
+        data: {
+            labels: ['Rented', 'Ready/Available', 'Maintenance', 'Breakdown'],
+            datasets: [{
+                data: [
+                    <?= $charts['unit_status']['rented'] ?>,
+                    <?= $charts['unit_status']['ready'] ?>,
+                    <?= $charts['unit_status']['maintenance'] ?>,
+                    <?= $charts['unit_status']['breakdown'] ?>
+                ],
+                backgroundColor: [
+                    '#0d6efd', // Primary Blue (Rented)
+                    '#198754', // Success Green (Ready)
+                    '#ffc107', // Warning Yellow (Maintenance)
+                    '#dc3545'  // Danger Red (Breakdown)
+                ],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
                 }
-            }
-        },
-        cutout: '70%'
-    }
-});
-
-// Chart 2: WO Category
-const woCatCtx = document.getElementById('woCategoryChart').getContext('2d');
-new Chart(woCatCtx, {
-    type: 'bar',
-    data: {
-        labels: [<?php foreach($workorders['by_category'] as $cat): ?>'<?= $cat['category'] ?>',<?php endforeach; ?>],
-        datasets: [{
-            label: 'Jumlah WO',
-            data: [<?php foreach($workorders['by_category'] as $cat): ?><?= $cat['count'] ?>,<?php endforeach; ?>],
-            backgroundColor: '#dc3545'
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: { display: false }
-        },
-        scales: {
-            y: { beginAtZero: true }
+            },
+            cutout: '70%'
         }
-    }
-});
+    });
 
-// Chart 3: SPK Status
-const spkCtx = document.getElementById('spkChart').getContext('2d');
-new Chart(spkCtx, {
-    type: 'pie',
-    data: {
-        labels: [<?php foreach($spk['by_status'] as $status): ?>'<?= $status['status'] ?>',<?php endforeach; ?>],
-        datasets: [{
-            data: [<?php foreach($spk['by_status'] as $status): ?><?= $status['count'] ?>,<?php endforeach; ?>],
-            backgroundColor: ['#28a745', '#ffc107', '#0061f2', '#dc3545']
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-            legend: {
-                position: 'bottom',
-                labels: {
-                    padding: 8,
-                    usePointStyle: true,
-                    font: { size: 10 }
+    // --- 3. Sales Trend Bar Chart (Quotation vs Contract) ---
+    const ctxSales = document.getElementById('salesTrendChart').getContext('2d');
+    new Chart(ctxSales, {
+        type: 'bar',
+        data: {
+            labels: <?= json_encode($charts['sales_trend']['labels']) ?>,
+            datasets: [
+                {
+                    label: 'Quotations',
+                    data: <?= json_encode($charts['sales_trend']['quotations']) ?>,
+                    backgroundColor: '#e9ecef',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                },
+                {
+                    label: 'Contracts (Deal)',
+                    data: <?= json_encode($charts['sales_trend']['contracts']) ?>,
+                    backgroundColor: '#0d6efd',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    align: 'end'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        drawBorder: false,
+                        color: '#f8f9fa'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
                 }
             }
         }
-    }
-});
-
-console.log('✅ OPTIMA Dashboard Compact loaded successfully');
+    });
 </script>
+<?= $this->endSection() ?>
 <?= $this->endSection() ?>
