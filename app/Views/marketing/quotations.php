@@ -79,9 +79,14 @@
             </h5>
             <p class="text-muted small mb-0"><?= lang('Marketing.manage_prospects') ?></p>
         </div>
-        <button type="button" class="btn btn-primary" onclick="openCreateProspectModal()">
-            <i class="bi bi-plus-circle me-2"></i><?= lang('Marketing.add_prospect') ?>
-        </button>
+        <div>
+            <a href="<?= base_url('marketing/quotations/export') ?>" class="btn btn-outline-success me-2">
+                <i class="fas fa-file-excel me-1"></i><?= lang('App.export') ?>
+            </a>
+            <button type="button" class="btn btn-primary" onclick="openCreateProspectModal()">
+                <i class="bi bi-plus-circle me-2"></i><?= lang('Marketing.add_prospect') ?>
+            </button>
+        </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">

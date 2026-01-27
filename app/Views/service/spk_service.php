@@ -5267,16 +5267,28 @@ function applyDepartmentalRulesAfterUIGeneration(unitData, suffix) {
 	console.log('DEBUG: applyDepartmentalRulesAfterUIGeneration called with:', unitData, suffix);
 	
 	if (unitData && unitData.departement_name) {
-		console.log('DEBUG: Applying departmental rules for department:', unitData.departement_name);
-		
-		// Small delay to ensure UI is fully rendered
-		setTimeout(() => {
-			handleDepartmentalRules(unitData.departement_name, unitData.unit_id, suffix);
-		}, 100);
-	} else {
-		console.log('DEBUG: No department name found, skipping departmental rules');
+			console.log('DEBUG: Applying departmental rules for department:', unitData.departement_name);
+			
+			// Small delay to ensure UI is fully rendered
+			setTimeout(() => {
+				handleDepartmentalRules(unitData.departement_name, unitData.unit_id, suffix);
+			}, 100);
+		} else {
+			console.log('DEBUG: No department name found, skipping departmental rules');
+		}
 	}
-}
+	
+	// Auto-trigger modal if autoOpenSpkId is set (from notification deep linking)
+	<?php if (isset($autoOpenSpkId) && $autoOpenSpkId): ?>
+	console.log('🔔 Auto-opening SPK modal from notification: <?= $autoOpenSpkId ?>');
+	setTimeout(() => {
+		if (typeof openDetail === 'function') {
+			openDetail(<?= $autoOpenSpkId ?>);
+		} else {
+			console.error('❌ openDetail function not found');
+		}
+	}, 800); // Wait for page to fully load
+	<?php endif; ?>
 </script>
 
         </div>

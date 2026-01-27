@@ -1,74 +1,89 @@
 <?php
 /**
- * Export CSV - Charger Inventory
- * Warehouse Division
+ * Export Excel - Charger Inventory
+ * Warehouse Division - Detailed Report
  */
 
-// Disable all output buffering and error reporting
+// Disable error reporting for clean output
 error_reporting(0);
 ini_set('display_errors', 0);
-ini_set('log_errors', 0);
-ob_clean();
 
-// Set headers for CSV download
-header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename="Charger_Inventory_' . date('Y-m-d_H-i-s') . '.csv"');
+// Use CI4 Database Connection
+$db = \Config\Database::connect();
+
+// Set headers for Excel download
+header('Content-Type: application/vnd.ms-excel');
+header('Content-Disposition: attachment; filename="Charger_Inventory_Detailed_' . date('Y-m-d_H-i-s') . '.xls"');
 header('Cache-Control: max-age=0');
 
-try {
-    // Get data from database using direct MySQL connection
-    $host = 'localhost';
-    $dbname = 'optima_ci';
-    $username = 'root';
-    $password = 'root';
-    
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Create CSV output
-    $output = fopen('php://output', 'w');
-    
-    // Add BOM for UTF-8
-    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-    
-    // Set headers
-    $headers = ['No', 'ID', 'Merk', 'Tipe', 'Serial Number', 'Kondisi Fisik', 'Status', 'Lokasi Penyimpanan', 'Tanggal Masuk', 'Keterangan'];
-    fputcsv($output, $headers);
-    
-    $stmt = $pdo->prepare("
-        SELECT
-            ia.*,
-            ks.kondisi_fisik,
-            ss.status_stock
-        FROM inventory_attachment ia
-        LEFT JOIN kondisi_stock ks ON ks.id_kondisi = ia.kondisi_fisik_id
-        LEFT JOIN status_stock ss ON ss.id_status = ia.status_stock_id
-        WHERE ia.tipe_item = 'charger'
-        ORDER BY ia.id_inventory_attachment ASC
-    ");
-    $stmt->execute();
-    $chargers = $stmt->fetchAll(PDO::FETCH_OBJ);
-    
-    $no = 1;
-    foreach ($chargers as $charger) {
-        $row = [
-            $no++,
-            $charger->id_inventory_attachment,
-            $charger->merk,
-            $charger->tipe,
-            $charger->serial_number,
-            $charger->kondisi_fisik,
-            $charger->status_stock,
-            $charger->lokasi_penyimpanan,
-            $charger->tanggal_masuk ? date('d/m/Y', strtotime($charger->tanggal_masuk)) : '-',
-            $charger->keterangan ?? '-'
-        ];
-        fputcsv($output, $row);
-    }
-    
-    fclose($output);
-    exit;
+// Query Data
+$builder = $db->table('inventory_attachment ia');
+$builder->select('ia.*, iu.no_unit, c.merk_charger, c.tipe_charger');
+$builder->join('inventory_unit iu', 'iu.id_inventory_unit = ia.id_inventory_unit', 'left');
+$builder->join('charger c', 'c.id_charger = ia.charger_id', 'left');
+$builder->where('ia.tipe_item', 'charger');
+$builder->orderBy('ia.id_inventory_attachment', 'DESC');
+$query = $builder->get();
+$chargers = $query->getResult();
 
-} catch (\Exception $e) {
-    echo "Error: " . $e->getMessage();
+// EXCEL OUTPUT
+echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+echo '<head>';
+echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Charger Inventory</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+echo '<style>
+        body { font-family: Arial, sans-serif; }
+        table { border-collapse: collapse; width: 100%; }
+        th { background-color: #4472C4; color: white; border: 1px solid #000000; padding: 10px; text-align: left; vertical-align: middle; }
+        td { border: 1px solid #000000; padding: 5px; vertical-align: top; }
+        .header-info { margin-bottom: 20px; font-weight: bold; font-size: 14px; }
+        .bg-blue { background-color: #DAE7F5; }
+      </style>';
+echo '</head>';
+echo '<body>';
+
+echo '<div class="header-info">';
+echo 'DETAILED CHARGER INVENTORY REPORT<br>';
+echo 'Generated Date: ' . date('d F Y H:i') . '<br>';
+echo 'Total Records: ' . count($chargers) . '<br>';
+echo '</div>';
+
+echo '<table border="1">';
+echo '<thead>';
+echo '<tr>';
+echo '<th width="50">No</th>';
+echo '<th width="100">PO ID</th>';
+echo '<th width="120">No Unit</th>';
+echo '<th width="250">Charger Detail (Merk - Tipe)</th>';
+echo '<th width="150">SN Charger</th>';
+echo '<th width="100">Status</th>';
+echo '<th width="150">Created Date</th>';
+echo '</tr>';
+echo '</thead>';
+echo '<tbody>';
+
+$no = 1;
+foreach ($chargers as $item) {
+    $bgClass = ($no % 2 == 0) ? 'class="bg-blue"' : '';
+    
+    // Format Charger Detail
+    $chargerDetail = trim(($item->merk_charger ?? '') . ' ' . ($item->tipe_charger ?? ''));
+    if (empty($chargerDetail)) {
+        $chargerDetail = '-';
+    }
+
+    echo "<tr $bgClass>";
+    echo "<td align='center'>{$no}</td>";
+    echo "<td>" . htmlspecialchars($item->po_id ?? '-') . "</td>";
+    echo "<td>" . htmlspecialchars($item->no_unit ?? '-') . "</td>";
+    echo "<td>" . htmlspecialchars($chargerDetail) . "</td>";
+    echo "<td>" . htmlspecialchars($item->serial_number ?? '-') . "</td>";
+    echo "<td>" . htmlspecialchars($item->status ?? '-') . "</td>";
+    echo "<td>" . ($item->created_at ? date('d/m/Y H:i', strtotime($item->created_at)) : '-') . "</td>";
+    echo '</tr>';
+    $no++;
 }
+
+echo '</tbody>';
+echo '</table>';
+echo '</body>';
+echo '</html>';

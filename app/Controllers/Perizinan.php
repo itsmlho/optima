@@ -794,4 +794,15 @@ class Perizinan extends BaseController
 
         return view('perizinan/emisi', $data);
     }
+
+    /**
+     * Export Silo Data to Excel
+     */
+    public function exportSilo()
+    {
+        if (!$this->hasPermission('perizinan.access')) {
+            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        }
+        return view('perizinan/export_silo');
+    }
 }

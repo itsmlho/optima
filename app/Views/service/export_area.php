@@ -1,6 +1,6 @@
 <?php
 /**
- * Export CSV - Area Management
+ * Export Excel - Area Management (Detailed)
  * Service Division
  */
 
@@ -9,59 +9,90 @@ error_reporting(0);
 ini_set('display_errors', 0);
 ob_clean();
 
-// Set headers for CSV download
-header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename="Area_Management_' . date('Y-m-d_H-i-s') . '.csv"');
-header('Cache-Control: max-age=0');
+// Set headers for Excel download
+header('Content-Type: application/vnd.ms-excel');
+header('Content-Disposition: attachment; filename="Area_Management_Detailed_' . date('Y-m-d_H-i-s') . '.xls"');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 try {
-    // Get data from database using direct MySQL connection
-    $host = 'localhost';
-    $dbname = 'optima_ci';
-    $username = 'root';
-    $password = 'root';
+    // Get data directly using Query Builder for maximum control
+    $db = \Config\Database::connect();
     
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Create CSV output
-    $output = fopen('php://output', 'w');
-    
-    // Add BOM for UTF-8
-    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-    
-    // Set headers
-    $headers = ['No', 'Kode Area', 'Nama Area', 'Departemen', 'Deskripsi', 'Status', 'Created Date'];
-    fputcsv($output, $headers);
-    
-    $stmt = $pdo->prepare("
+    // Main query with basic joins
+    $query = $db->query("
         SELECT 
             a.*, 
-            d.nama_departemen
+            (
+                SELECT COUNT(*) 
+                FROM area_employee_assignments aea 
+                WHERE aea.area_id = a.id 
+                AND (aea.end_date IS NULL OR aea.end_date > CURDATE())
+            ) as employee_count
         FROM areas a
-        LEFT JOIN departemen d ON d.id_departemen = a.departemen_id
         ORDER BY a.area_name ASC
     ");
-    $stmt->execute();
-    $areas = $stmt->fetchAll(PDO::FETCH_OBJ);
+    $areas = $query->getResult();
+    
+    // Output HTML Table
+    echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    echo '<head>';
+    echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Area Management</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+    echo '<style>
+            body { font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 100%; }
+            th { background-color: #4472C4; color: white; border: 1px solid #000000; padding: 10px; text-align: left; vertical-align: middle; }
+            td { border: 1px solid #000000; padding: 5px; vertical-align: top; }
+            .header-info { margin-bottom: 20px; font-weight: bold; font-size: 14px; }
+            .bg-blue { background-color: #DAE7F5; }
+          </style>';
+    echo '</head>';
+    echo '<body>';
+    
+    // Report Information
+    echo '<div class="header-info">';
+    echo 'DETAILED AREA MANAGEMENT REPORT<br>';
+    echo 'Generated Date: ' . date('d F Y H:i') . '<br>';
+    echo 'Total Areas: ' . count($areas) . '<br>';
+    echo '</div>';
+    
+    echo '<table border="1">';
+    echo '<thead>';
+    echo '<tr>';
+    echo '<th width="50">No</th>';
+    echo '<th width="100">Kode Area</th>';
+    echo '<th width="200">Nama Area</th>';
+    echo '<th width="250">Deskripsi</th>';
+    echo '<th width="100">Status</th>';
+    echo '<th width="100">Jumlah Karyawan Aktif</th>';
+    echo '<th width="120">Tanggal Dibuat</th>';
+    echo '</tr>';
+    echo '</thead>';
+    echo '<tbody>';
     
     $no = 1;
     foreach ($areas as $area) {
-        $row = [
-            $no++,
-            $area->area_code,
-            $area->area_name,
-            $area->nama_departemen,
-            $area->area_description,
-            $area->is_active ? 'Active' : 'Inactive',
-            date('d/m/Y', strtotime($area->created_at))
-        ];
-        fputcsv($output, $row);
+        $bgClass = ($no % 2 == 0) ? 'class="bg-blue"' : '';
+        $status = $area->is_active ? 'Active' : 'Inactive';
+        
+        echo "<tr $bgClass>";
+        echo "<td align='center'>{$no}</td>";
+        echo "<td>" . htmlspecialchars($area->area_code ?? '') . "</td>";
+        echo "<td>" . htmlspecialchars($area->area_name ?? '') . "</td>";
+        echo "<td>" . htmlspecialchars($area->area_description ?? '-') . "</td>";
+        echo "<td>{$status}</td>";
+        echo "<td align='center'>{$area->employee_count}</td>";
+        echo "<td>" . date('d/m/Y', strtotime($area->created_at)) . "</td>";
+        echo '</tr>';
+        
+        $no++;
     }
     
-    fclose($output);
-    exit;
+    echo '</tbody>';
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
 
 } catch (\Exception $e) {
-    echo "Error: " . $e->getMessage();
+    echo "Error generating report: " . $e->getMessage();
 }

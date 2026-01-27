@@ -55,7 +55,7 @@
 <?php if (($stats['expiring_soon'] ?? 0) > 0): ?>
 <div class="alert alert-warning alert-dismissible fade show" role="alert">
     <i class="fas fa-exclamation-triangle me-2"></i>
-    <strong><?= lang('App.warning') ?>!</strong> <?= lang('App.silo_expiring_message', [$stats['expiring_soon']]) ?>
+    <strong><?= lang('App.warning') ?>!</strong> <?= sprintf(lang('App.silo_expiring_message'), $stats['expiring_soon']) ?>
     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="<?= lang('Common.close') ?>"></button>
 </div>
 <?php endif; ?>
@@ -109,6 +109,11 @@
                         </button>
                     </li>
                 </ul>
+                <div class="px-3">
+                    <a href="<?= base_url('perizinan/export-silo') ?>" class="btn btn-success btn-sm">
+                        <i class="fas fa-file-excel me-1"></i> Export Excel
+                    </a>
+                </div>
             </div>
 
         <!-- Tab Content -->

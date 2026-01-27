@@ -459,7 +459,7 @@ class OptimaNotificationLightweight {
                 
                 html += `
                     <li class="notification-item ${readClass}" data-id="${notification.id}" data-read="${notification.is_read}">
-                        <a class="dropdown-item" href="${this.getNotificationUrl(notification)}" onclick="markAsRead(${notification.id})">
+                        <a class="dropdown-item" href="javascript:void(0)" onclick="handleNotificationClick(${notification.id}, '${this.getNotificationUrl(notification)}')">
                             <div class="d-flex align-items-start position-relative">
                                 <i class="fas fa-${this.getNotificationIcon(notification.type)} text-${this.getNotificationColor(notification.type)} me-2 mt-1"></i>
                                 <div class="flex-grow-1">

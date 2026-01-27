@@ -151,10 +151,10 @@ class Purchasing extends BaseController
             }
 
             $start_date = $this->request->getPost("start_date");
-            $where["purchase_orders.tanggal_po >="] = empty($start_date) ? "2025-01-01" : $start_date;
+            $where["purchase_orders.tanggal_po >="] = empty($start_date) ? date('Y', strtotime('-1 year')) . "-01-01" : $start_date;
 
             $end_date = $this->request->getPost("end_date");
-            $where["purchase_orders.tanggal_po <="] = empty($end_date) ? "2025-12-31" : $end_date;
+            $where["purchase_orders.tanggal_po <="] = empty($end_date) ? date('Y') . "-12-31" : $end_date;
 
             $tipewhere = $tipe == "unit" ? "Unit" : ($tipe == "sparepart" ? "Sparepart" : "Attachment & Battery");
             $where["purchase_orders.tipe_po"] = $tipewhere;
@@ -407,6 +407,19 @@ class Purchasing extends BaseController
         if (!$this->canAccess('purchasing')) {
             return redirect()->to('/dashboard')->with('error', 'Access denied.');
         }
+        
+        // Extract PO ID from URL for auto-opening modal (from notification deep linking)
+        $uri = service('uri');
+        $autoOpenPoId = null;
+        
+        // Check if URL matches /purchasing/detail/{id} or /purchasing/po/detail/{id}
+        $segments = $uri->getSegments();
+        if (count($segments) >= 3 && $segments[1] === 'detail' && is_numeric($segments[2])) {
+            $autoOpenPoId = (int)$segments[2];
+        } elseif (count($segments) >= 4 && $segments[1] === 'po' && $segments[2] === 'detail' && is_numeric($segments[3])) {
+            $autoOpenPoId = (int)$segments[3];
+        }
+        
         // Get suppliers
         $suppliers = $this->supplierModel->findAll();
         
@@ -447,7 +460,9 @@ class Purchasing extends BaseController
             'attachments' => $attachments,
             'baterais' => $baterais,
             'chargers' => $chargers,
-            'spareparts' => $spareparts
+            'spareparts' => $spareparts,
+            // For auto-opening modal from notification
+            'autoOpenPoId' => $autoOpenPoId
         ];
         
         return view('purchasing/purchasing', $data);
@@ -1314,13 +1329,14 @@ class Purchasing extends BaseController
         if (!empty($start_date)) {
             $builder->where('po.tanggal_po >=', $start_date);
         } else {
-            $builder->where('po.tanggal_po >=', '2025-01-01');
+            // Default range: Previous year to Current year
+            $builder->where('po.tanggal_po >=', date('Y', strtotime('-1 year')) . '-01-01');
         }
         
         if (!empty($end_date)) {
             $builder->where('po.tanggal_po <=', $end_date);
         } else {
-            $builder->where('po.tanggal_po <=', '2025-12-31');
+            $builder->where('po.tanggal_po <=', date('Y') . '-12-31');
         }
         
         // Search

@@ -1,6 +1,6 @@
 <?php
 /**
- * Export CSV - Attachment Inventory
+ * Export Excel - Detailed Attachment Inventory
  * Warehouse Division
  */
 
@@ -9,63 +9,86 @@ error_reporting(0);
 ini_set('display_errors', 0);
 ob_clean();
 
-// Set headers for CSV download
-header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename="Attachment_Inventory_' . date('Y-m-d_H-i-s') . '.csv"');
-header('Cache-Control: max-age=0');
+// Set headers for Excel download
+header('Content-Type: application/vnd.ms-excel');
+header('Content-Disposition: attachment; filename="Attachment_Inventory_Detailed_' . date('Y-m-d_H-i-s') . '.xls"');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 try {
-    // Get data from database using direct MySQL connection
-    $host = 'localhost';
-    $dbname = 'optima_ci';
-    $username = 'root';
-    $password = 'root';
+    // Get data directly using Query Builder
+    $db = \Config\Database::connect();
     
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Create CSV output
-    $output = fopen('php://output', 'w');
-    
-    // Add BOM for UTF-8
-    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-    
-    // Set headers
-    $headers = ['No', 'Tipe Item', 'PO ID', 'No Unit', 'Attachment ID', 'SN Attachment', 'Baterai ID', 'SN Baterai', 'Charger ID', 'SN Charger', 'Status', 'Created Date'];
-    fputcsv($output, $headers);
-    
-    $stmt = $pdo->prepare("
+
+    $query = $db->query("
         SELECT 
             ia.*,
-            iu.no_unit
+            iu.no_unit,
+            a.tipe, a.merk, a.model
         FROM inventory_attachment ia
         LEFT JOIN inventory_unit iu ON iu.id_inventory_unit = ia.id_inventory_unit
+        LEFT JOIN attachment a ON a.id_attachment = ia.attachment_id
+        WHERE ia.tipe_item = 'attachment'
         ORDER BY ia.id_inventory_attachment DESC
     ");
-    $stmt->execute();
-    $attachments = $stmt->fetchAll(PDO::FETCH_OBJ);
+    $attachments = $query->getResult();
+    
+    // EXCEL OUTPUT
+    echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    echo '<head>';
+    echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Attachment Inventory</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+    echo '<style>
+            body { font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 100%; }
+            th { background-color: #4472C4; color: white; border: 1px solid #000000; padding: 10px; text-align: left; vertical-align: middle; }
+            td { border: 1px solid #000000; padding: 5px; vertical-align: top; }
+            .header-info { margin-bottom: 20px; font-weight: bold; font-size: 14px; }
+            .bg-blue { background-color: #DAE7F5; }
+          </style>';
+    echo '</head>';
+    echo '<body>';
+    
+    echo '<div class="header-info">';
+    echo 'DETAILED ATTACHMENT INVENTORY REPORT<br>';
+    echo 'Generated Date: ' . date('d F Y H:i') . '<br>';
+    echo 'Total Records: ' . count($attachments) . '<br>';
+    echo '</div>';
+    
+    echo '<table border="1">';
+    echo '<thead>';
+    echo '<tr>';
+    echo '<th width="50">No</th>';
+    echo '<th width="100">PO ID</th>';
+    echo '<th width="120">No Unit</th>';
+    echo '<th width="200">Attachment Detail</th>';
+    echo '<th width="150">SN Attachment</th>';
+    echo '<th width="100">Status</th>';
+    echo '<th width="120">Created Date</th>';
+    echo '</tr>';
+    echo '</thead>';
+    echo '<tbody>';
     
     $no = 1;
     foreach ($attachments as $attachment) {
-        $row = [
-            $no++,
-            $attachment->tipe_item,
-            $attachment->po_id,
-            $attachment->no_unit,
-            $attachment->attachment_id,
-            $attachment->sn_attachment,
-            $attachment->baterai_id,
-            $attachment->sn_baterai,
-            $attachment->charger_id,
-            $attachment->sn_charger,
-            $attachment->status ?? 'Active',
-            $attachment->created_at ? date('d/m/Y', strtotime($attachment->created_at)) : '-'
-        ];
-        fputcsv($output, $row);
+        $bgClass = ($no % 2 == 0) ? 'class="bg-blue"' : '';
+        $detail = trim(($attachment->merk ?? '') . ' ' . ($attachment->model ?? '') . ' ' . ($attachment->tipe ?? ''));
+
+        echo "<tr $bgClass>";
+        echo "<td align='center'>{$no}</td>";
+        echo "<td>" . htmlspecialchars($attachment->po_id ?? '') . "</td>";
+        echo "<td><b>" . htmlspecialchars($attachment->no_unit ?? '') . "</b></td>";
+        echo "<td>" . htmlspecialchars($detail) . "</td>";
+        echo "<td>" . htmlspecialchars($attachment->sn_attachment ?? '-') . "</td>";
+        echo "<td>" . htmlspecialchars($attachment->attachment_status ?? '-') . "</td>";
+        echo "<td>" . ($attachment->created_at ? date('d/m/Y', strtotime($attachment->created_at)) : '-') . "</td>";
+        echo '</tr>';
+        $no++;
     }
     
-    fclose($output);
-    exit;
+    echo '</tbody>';
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
 
 } catch (\Exception $e) {
     echo "Error: " . $e->getMessage();

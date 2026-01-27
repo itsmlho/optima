@@ -123,6 +123,10 @@ $routes->group('unitRolling', static function ($routes) {
 // Marketing Routes
 $routes->group('marketing',  static function ($routes) {
     $routes->get('/', 'Marketing::index');
+    
+    // --- Detail Routes (for notification deep linking) ---
+    $routes->get('contracts/view/(:num)', 'Marketing::index'); // Contract detail via notification
+    $routes->get('spk/detail/(:num)', 'Marketing::spk'); // SPK detail via notification
     $routes->get('quotations', 'Marketing::quotations');
     $routes->get('quotations/stats', 'Marketing::getQuotationStats');
     $routes->post('quotations/data', 'Marketing::getQuotationsData');
@@ -365,6 +369,9 @@ $routes->group('marketing',  static function ($routes) {
 // Service Division Routes
 $routes->group('service', static function ($routes) {
     $routes->get('/', 'Service::index');
+    
+    // --- Detail Routes (for notification deep linking) ---
+    $routes->get('spk/detail/(:num)', 'Service::spkService'); // SPK detail via notification
     $routes->get('work-orders', 'Service::workOrders');
     $routes->post('work-orders/data', 'WorkOrderController::getWorkOrders');
     $routes->get('work-orders/stats', 'WorkOrderController::getStats');
@@ -540,6 +547,10 @@ $routes->group('operational', static function ($routes) {
 // Warehouse Routes
 $routes->group('warehouse', static function ($routes) {
     $routes->get('/', 'Warehouse::index');
+    
+    // --- Detail Routes (for notification deep linking) ---
+    $routes->get('attachment/view/(:num)', 'Warehouse::index'); // Attachment detail via notification
+    $routes->get('unit/view/(:num)', 'Warehouse::index'); // Unit detail via notification
     // $routes->get('sparepart', 'Warehouse::sparepart');
     
     // Master data API endpoints (outside inventory group for direct access)
@@ -639,6 +650,11 @@ $routes->group('purchasing', static function ($routes) {
     
     // --- Unified Purchasing Hub ---
     $routes->get('purchasing-hub', 'Purchasing::purchasingHub'); // Alias for hub
+    
+    // --- Detail Routes (for notification deep linking) ---
+    $routes->get('detail/(:num)', 'Purchasing::purchasingHub'); // PO detail via notification
+    $routes->get('po/detail/(:num)', 'Purchasing::purchasingHub'); // Alternative PO detail route
+    $routes->get('delivery-detail/(:num)', 'Purchasing::purchasingHub'); // Delivery detail via notification
     
     // --- Supplier Management ---
     $routes->get('supplier-management', 'Purchasing::supplierManagement'); // Supplier DataTable AJAX
@@ -789,6 +805,7 @@ $routes->group('finance', static function ($routes) {
 // Perizinan Management Routes
 $routes->group('perizinan', static function ($routes) {
     $routes->get('silo', 'Perizinan::silo');
+    $routes->get('export-silo', 'Perizinan::exportSilo');
     $routes->get('get-silo-list', 'Perizinan::getSiloList');
     $routes->get('get-silo-stats', 'Perizinan::getSiloStats');
     $routes->get('get-available-units', 'Perizinan::getAvailableUnits');

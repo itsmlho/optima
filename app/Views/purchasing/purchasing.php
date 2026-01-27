@@ -4355,6 +4355,18 @@ function initializeChargerDropdowns() {
         } else {
             submitBtn.prop('disabled', true).removeClass('btn-primary').addClass('btn-secondary');
         }
-}
+    }
+    
+    // Auto-open PO detail modal if coming from notification
+    <?php if (isset($autoOpenPoId) && $autoOpenPoId): ?>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🔗 Auto-opening PO detail from URL:', <?= $autoOpenPoId ?>);
+        setTimeout(function() {
+            if (typeof viewPODetail === 'function') {
+                viewPODetail(<?= $autoOpenPoId ?>);
+            }
+        }, 800); // Wait for DataTables to initialize
+    });
+    <?php endif; ?>
 </script>
 <?= $this->endSection() ?>

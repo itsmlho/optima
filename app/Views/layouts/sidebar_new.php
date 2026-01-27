@@ -229,9 +229,6 @@ helper('permission_helper');
                     <a href="<?= base_url('/admin') ?>" class="nav-dropdown-item <?= (strpos(current_url(), '/admin') !== false && strpos(current_url(), 'activity-log') === false && strpos(current_url(), 'advanced-users') === false && strpos(current_url(), 'roles') === false && strpos(current_url(), 'permissions') === false) ? 'active' : '' ?>">
                         <i class="fas fa-tachometer-alt"></i> <?= lang('App.administration') ?>
                     </a>
-                    <a href="<?= base_url('/settings') ?>" class="nav-dropdown-item">
-                        <i class="fas fa-sliders-h"></i> <?= lang('App.configuration') ?>
-                    </a>
                     <?php else: ?>
                     <div class="nav-dropdown-item text-muted">
                         <i class="fas fa-lock"></i> <?= lang('App.access_restricted') ?>
@@ -572,17 +569,6 @@ helper('permission_helper');
                     <span class="nav-link-text"><?= lang('App.administration') ?></span>
                 </a>
             </li>
-
-            <!-- Configuration -->
-            <?php if (can_view('admin')): ?>
-            <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/settings') ?>"
-                   data-search-terms="configuration konfigurasi">
-                    <i class="fas fa-sliders-h"></i>
-                    <span class="nav-link-text"><?= lang('App.configuration') ?></span>
-                </a>
-            </li>
-            <?php endif; ?>
             <?php endif; ?>
 
         </ul>

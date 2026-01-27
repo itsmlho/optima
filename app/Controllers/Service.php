@@ -279,13 +279,24 @@ class Service extends BaseController
     // --- SPK Service Handlers ---
     public function spkService()
     {
+        // Extract SPK ID from URL for auto-opening modal (from notification deep linking)
+        $uri = service('uri');
+        $autoOpenSpkId = null;
+        
+        // Check if URL matches /service/spk/detail/{id}
+        $segments = $uri->getSegments();
+        if (count($segments) >= 3 && $segments[1] === 'spk' && $segments[2] === 'detail' && isset($segments[3]) && is_numeric($segments[3])) {
+            $autoOpenSpkId = (int)$segments[3];
+        }
+        
         $data = [
             'title' => 'Work Orders (SPK) | OPTIMA',
             'page_title' => 'Work Orders (SPK) from Marketing',
             'breadcrumbs' => [
                 '/' => 'Dashboard',
                 '/service/spk_service' => 'Work Orders (SPK)'
-            ]
+            ],
+            'autoOpenSpkId' => $autoOpenSpkId
         ];
     // Use single view (modular content merged into spk_service.php)
     return view('service/spk_service', $data);

@@ -1,6 +1,6 @@
 <?php
 /**
- * Export CSV - Kontrak PO/Rental
+ * Export Excel - Kontrak PO/Rental (Detailed)
  * Marketing Division
  */
 
@@ -9,64 +9,116 @@ error_reporting(0);
 ini_set('display_errors', 0);
 ob_clean();
 
-// Set headers for CSV download
-header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename="Kontrak_PO_Rental_' . date('Y-m-d_H-i-s') . '.csv"');
+// Set headers for Excel download
+header('Content-Type: application/vnd.ms-excel');
+header('Content-Disposition: attachment; filename="Kontrak_PO_Rental_' . date('Y-m-d_H-i-s') . '.xls"');
 header('Cache-Control: max-age=0');
 
 try {
-    // Get data from database using direct MySQL connection
-    $host = 'localhost';
-    $dbname = 'optima_ci';
-    $username = 'root';
-    $password = 'root';
+    // Get data from database using CodeIgniter connection
+    $db = \Config\Database::connect();
     
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    $stmt = $pdo->prepare("
+    // Detailed query: Contract -> Units
+    $query = $db->query("
         SELECT 
             k.*, 
             c.customer_name, 
-            cl.location_name
+            cl.location_name,
+            cl.city,
+            iu.no_unit,
+            iu.serial_number,
+            iu.tahun_unit,
+            mu.model_unit,
+            mu.merk_unit,
+            su.status_unit
         FROM kontrak k
         LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
         LEFT JOIN customers c ON c.id = cl.customer_id
-        ORDER BY k.dibuat_pada DESC
+        LEFT JOIN inventory_unit iu ON iu.kontrak_id = k.id
+        LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+        LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
+        ORDER BY k.dibuat_pada DESC, iu.no_unit ASC
     ");
-    $stmt->execute();
-    $kontraks = $stmt->fetchAll(PDO::FETCH_OBJ);
+    $results = $query->getResult();
 
-    // Create CSV output
-    $output = fopen('php://output', 'w');
+    // Create Excel output (HTML Table method)
+    echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    echo '<head>';
+    echo '<meta http-equiv="content-type" content="application/vnd.ms-excel; charset=UTF-8">';
+    echo '<!--[if gte mso 9]><xml>';
+    echo '<x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Contracts</x:Name>';
+    echo '<x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook>';
+    echo '</xml><![endif]-->';
+    echo '<style>
+        body { font-family: Arial, sans-serif; font-size: 12px; }
+        table { border-collapse: collapse; width: 100%; }
+        th { background-color: #4472C4; color: #ffffff; border: 1px solid #000000; padding: 5px; text-align: center; vertical-align: middle; }
+        td { border: 1px solid #000000; padding: 3px; vertical-align: top; }
+        .text-center { text-align: center; }
+        .text-right { text-align: right; }
+        .bg-yellow { background-color: #fff2cc; }
+    </style>';
+    echo '</head>';
+    echo '<body>';
     
-    // Add BOM for UTF-8
-    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+    echo '<h3>CONTRACT MANAGEMENT REPORT (DETAILED)</h3>';
+    echo '<p>Export Date: ' . date('d F Y H:i') . '</p>';
+
+    echo '<table>';
+    echo '<thead>';
+    echo '<tr>';
+    echo '<th>No</th>';
+    echo '<th>Nomor Kontrak</th>';
+    echo '<th>No PO Marketing</th>';
+    echo '<th>Customer</th>';
+    echo '<th>Lokasi</th>';
+    echo '<th>Kota</th>';
+    echo '<th>Jenis Sewa</th>';
+    echo '<th>Periode Sewa</th>';
+    echo '<th>Nilai Kontrak</th>';
+    echo '<th>Status Kontrak</th>';
     
-    // Set headers
-    $headers = ['No', 'Nomor Kontrak', 'No PO Marketing', 'Customer', 'Lokasi', 'Jenis Sewa', 'Tanggal Mulai', 'Tanggal Berakhir', 'Total Units', 'Nilai Total', 'Status'];
-    fputcsv($output, $headers);
+    // Unit Details
+    echo '<th>No Unit (CN)</th>';
+    echo '<th>Brand</th>';
+    echo '<th>Model</th>';
+    echo '<th>Serial Number</th>';
+    echo '<th>Tahun</th>';
+    echo '<th>Status Unit</th>';
+    echo '</tr>';
+    echo '</thead>';
+    echo '<tbody>';
     
-    // Fill data
     $no = 1;
-    foreach ($kontraks as $kontrak) {
-        $row = [
-            $no++,
-            $kontrak->no_kontrak,
-            $kontrak->no_po_marketing,
-            $kontrak->customer_name,
-            $kontrak->location_name,
-            $kontrak->jenis_sewa,
-            date('d/m/Y', strtotime($kontrak->tanggal_mulai)),
-            date('d/m/Y', strtotime($kontrak->tanggal_berakhir)),
-            $kontrak->total_units,
-            'Rp ' . number_format($kontrak->nilai_total, 0, ',', '.'),
-            $kontrak->status
-        ];
-        fputcsv($output, $row);
+    foreach ($results as $row) {
+        $periode = date('d/m/y', strtotime($row->tanggal_mulai)) . ' - ' . date('d/m/y', strtotime($row->tanggal_berakhir));
+        
+        echo '<tr>';
+        echo '<td class="text-center">' . $no++ . '</td>';
+        echo '<td><b>' . htmlspecialchars($row->no_kontrak ?? '-') . '</b></td>';
+        echo '<td>' . htmlspecialchars($row->no_po_marketing ?? '-') . '</td>';
+        echo '<td>' . htmlspecialchars($row->customer_name ?? '-') . '</td>';
+        echo '<td>' . htmlspecialchars($row->location_name ?? '-') . '</td>';
+        echo '<td>' . htmlspecialchars($row->city ?? '-') . '</td>';
+        echo '<td>' . htmlspecialchars($row->jenis_sewa ?? '-') . '</td>';
+        echo '<td class="text-center">' . $periode . '</td>';
+        echo '<td class="text-right">' . number_format($row->nilai_total, 0) . '</td>';
+        echo '<td>' . htmlspecialchars($row->status) . '</td>';
+        
+        // Unit Columns
+        echo '<td class="bg-yellow">' . htmlspecialchars($row->no_unit ?? '-') . '</td>';
+        echo '<td class="bg-yellow">' . htmlspecialchars($row->merk_unit ?? '-') . '</td>';
+        echo '<td class="bg-yellow">' . htmlspecialchars($row->model_unit ?? '-') . '</td>';
+        echo '<td class="bg-yellow">' . htmlspecialchars($row->serial_number ?? '-') . '</td>';
+        echo '<td class="bg-yellow">' . htmlspecialchars($row->tahun_unit ?? '') . '</td>';
+        echo '<td class="bg-yellow">' . htmlspecialchars($row->status_unit ?? '-') . '</td>';
+        echo '</tr>';
     }
     
-    fclose($output);
+    echo '</tbody>';
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
     exit;
 
 } catch (\Exception $e) {

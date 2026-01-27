@@ -1,6 +1,6 @@
 <?php
 /**
- * Export CSV - PO Progres
+ * Export Excel - Detailed PO Progres
  * Purchasing Division
  */
 
@@ -9,32 +9,17 @@ error_reporting(0);
 ini_set('display_errors', 0);
 ob_clean();
 
-// Set headers for CSV download
-header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename="PO_Progres_' . date('Y-m-d_H-i-s') . '.csv"');
-header('Cache-Control: max-age=0');
+// Set headers for Excel download
+header('Content-Type: application/vnd.ms-excel');
+header('Content-Disposition: attachment; filename="PO_Progres_Detailed_' . date('Y-m-d_H-i-s') . '.xls"');
+header('Pragma: no-cache');
+header('Expires: 0');
 
 try {
-    // Get data from database using direct MySQL connection
-    $host = 'localhost';
-    $dbname = 'optima_ci';
-    $username = 'root';
-    $password = 'root';
+    // Get data directly using Query Builder
+    $db = \Config\Database::connect();
     
-    $pdo = new PDO("mysql:host=$host;dbname=$dbname", $username, $password);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    
-    // Create CSV output
-    $output = fopen('php://output', 'w');
-    
-    // Add BOM for UTF-8
-    fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-    
-    // Set headers
-    $headers = ['No', 'No PO', 'Supplier', 'Tanggal PO', 'Total Items', 'Total Value', 'Status', 'Created Date'];
-    fputcsv($output, $headers);
-    
-    $stmt = $pdo->prepare("
+    $query = $db->query("
         SELECT 
             po.*, 
             s.nama_supplier
@@ -43,27 +28,65 @@ try {
         WHERE po.status = 'Pending'
         ORDER BY po.created_at DESC
     ");
-    $stmt->execute();
-    $poProgres = $stmt->fetchAll(PDO::FETCH_OBJ);
+    $data = $query->getResult();
+
+    // EXCEL OUTPUT
+    echo '<html xmlns:x="urn:schemas-microsoft-com:office:excel">';
+    echo '<head>';
+    echo '<!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>PO Progres</x:Name><x:WorksheetOptions><x:Print><x:ValidPrinterInfo/></x:Print></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]-->';
+    echo '<style>
+            body { font-family: Arial, sans-serif; }
+            table { border-collapse: collapse; width: 100%; }
+            th { background-color: #4472C4; color: white; border: 1px solid #000000; padding: 10px; text-align: left; vertical-align: middle; }
+            td { border: 1px solid #000000; padding: 5px; vertical-align: top; }
+            .header-info { margin-bottom: 20px; font-weight: bold; font-size: 14px; }
+            .bg-blue { background-color: #DAE7F5; }
+          </style>';
+    echo '</head>';
+    echo '<body>';
+    
+    echo '<div class="header-info">';
+    echo 'DETAILED PO PROGRES REPORT<br>';
+    echo 'Generated Date: ' . date('d F Y H:i') . '<br>';
+    echo 'Total Records: ' . count($data) . '<br>';
+    echo '</div>';
+    
+    echo '<table border="1">';
+    echo '<thead>';
+    echo '<tr>';
+    echo '<th width="50">No</th>';
+    echo '<th width="120">No PO</th>';
+    echo '<th width="250">Supplier</th>';
+    echo '<th width="120">Tanggal PO</th>';
+    echo '<th width="100">Total Items</th>';
+    echo '<th width="150">Total Value</th>';
+    echo '<th width="100">Status</th>';
+    echo '<th width="120">Created Date</th>';
+    echo '</tr>';
+    echo '</thead>';
+    echo '<tbody>';
     
     $no = 1;
-    foreach ($poProgres as $po) {
-        $row = [
-            $no++,
-            $po->no_po,
-            $po->nama_supplier,
-            date('d/m/Y', strtotime($po->tanggal_po)),
-            $po->total_items,
-            'Rp ' . number_format($po->total_value, 0, ',', '.'),
-            $po->status,
-            date('d/m/Y', strtotime($po->created_at))
-        ];
-        fputcsv($output, $row);
+    foreach ($data as $po) {
+        $bgClass = ($no % 2 == 0) ? 'class="bg-blue"' : '';
+        echo "<tr $bgClass>";
+        echo "<td align='center'>{$no}</td>";
+        echo "<td><b>" . htmlspecialchars($po->no_po ?? '') . "</b></td>";
+        echo "<td>" . htmlspecialchars($po->nama_supplier ?? '') . "</td>";
+        echo "<td>" . date('d/m/Y', strtotime($po->tanggal_po)) . "</td>";
+        echo "<td align='center'>" . ($po->total_items ?? 0) . "</td>";
+        echo "<td align='right'>Rp " . number_format($po->total_value ?? 0, 0, ',', '.') . "</td>";
+        echo "<td>" . htmlspecialchars($po->status ?? '-') . "</td>";
+        echo "<td>" . date('d/m/Y', strtotime($po->created_at)) . "</td>";
+        echo '</tr>';
+        $no++;
     }
     
-    fclose($output);
-    exit;
+    echo '</tbody>';
+    echo '</table>';
+    echo '</body>';
+    echo '</html>';
 
 } catch (\Exception $e) {
-    echo "Error: " . $e->getMessage();
+    echo "Error generating report: " . $e->getMessage();
 }

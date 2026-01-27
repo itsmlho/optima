@@ -206,9 +206,14 @@ $can_export = $permissions['export'];
                     <div class="tab-pane fade" id="contracts-content" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0"><strong>Customer Contracts</strong></h6>
-                            <button class="btn btn-sm btn-primary" onclick="openAddContractModal()">
-                                <i class="fas fa-plus me-1"></i>Add Contract
-                            </button>
+                            <div>
+                                <a href="<?= base_url('marketing/export_kontrak') ?>" class="btn btn-sm btn-outline-success me-1" title="Export All Contracts">
+                                    <i class="fas fa-file-excel me-1"></i>Export All
+                                </a>
+                                <button class="btn btn-sm btn-primary" onclick="openAddContractModal()">
+                                    <i class="fas fa-plus me-1"></i>Add Contract
+                                </button>
+                            </div>
                         </div>
                         <div class="table-responsive">
                             <table class="table table-striped table-hover" id="contractsTable">
