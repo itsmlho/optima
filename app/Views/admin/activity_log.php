@@ -23,6 +23,84 @@
                 </a>
             </div>
         </div>
+
+        <!-- Advanced Filters -->
+        <div class="card mb-3">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">
+                    <i class="fas fa-filter"></i> Advanced Filters
+                    <button class="btn btn-sm btn-link float-end" type="button" data-bs-toggle="collapse" data-bs-target="#advancedFilters">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </h6>
+            </div>
+            <div class="card-body collapse" id="advancedFilters">
+                <form id="filterForm">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Date From</label>
+                            <input type="date" class="form-control" id="filterDateFrom" name="date_from">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Date To</label>
+                            <input type="date" class="form-control" id="filterDateTo" name="date_to">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Module</label>
+                            <select class="form-select" id="filterModule" name="module_filter">
+                                <option value="">All Modules</option>
+                                <option value="QUOTATION">Quotation</option>
+                                <option value="INVOICE">Invoice</option>
+                                <option value="PURCHASE_ORDER">Purchase Order</option>
+                                <option value="ASSET">Asset Management</option>
+                                <option value="INVENTORY">Inventory</option>
+                                <option value="USER">User Management</option>
+                                <option value="SETTINGS">Settings</option>
+                                <option value="PROFILE">Profile</option>
+                                <option value="EXPORT">Export</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Action Type</label>
+                            <select class="form-select" id="filterAction" name="action_filter">
+                                <option value="">All Actions</option>
+                                <option value="CREATE">CREATE</option>
+                                <option value="UPDATE">UPDATE</option>
+                                <option value="DELETE">DELETE</option>
+                                <option value="EXPORT">EXPORT</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Business Impact</label>
+                            <select class="form-select" id="filterImpact" name="impact_filter">
+                                <option value="">All Impact Levels</option>
+                                <option value="LOW">LOW</option>
+                                <option value="MEDIUM">MEDIUM</option>
+                                <option value="HIGH">HIGH</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check mt-4">
+                                <input class="form-check-input" type="checkbox" id="filterCritical" name="critical_only" value="1">
+                                <label class="form-check-label" for="filterCritical">
+                                    Critical Activities Only
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mt-4">
+                                <button type="button" class="btn btn-primary" onclick="applyFilters()">
+                                    <i class="fas fa-search"></i> Apply Filters
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="resetFilters()">
+                                    <i class="fas fa-times"></i> Reset
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
         
         <div class="card">
             <div class="card-body">
@@ -79,7 +157,7 @@ $(document).ready(function() {
         $('#activityLogTable').DataTable().destroy();
     }
     
-    $('#activityLogTable').DataTable({
+    var table = $('#activityLogTable').DataTable({
         processing: true,
         serverSide: true,
         deferRender: false, // Render immediately for instant display
@@ -92,6 +170,15 @@ $(document).ready(function() {
             url: '<?= base_url('/admin/activity-log/data') ?>',
             type: 'POST',
             timeout: 15000, // Increased timeout
+            data: function(d) {
+                // Add filter parameters to request
+                d.date_from = $('#filterDateFrom').val();
+                d.date_to = $('#filterDateTo').val();
+                d.module_filter = $('#filterModule').val();
+                d.impact_filter = $('#filterImpact').val();
+                d.critical_only = $('#filterCritical').is(':checked') ? 1 : 0;
+                d.action_filter = $('#filterAction').val();
+            },
             error: function(xhr, error, thrown) {
                 console.error('❌ DataTables AJAX Error:', error, thrown);
                 $('#activityLogTable_processing').hide();
@@ -107,7 +194,8 @@ $(document).ready(function() {
                 data: 'created_at', 
                 title: 'Waktu',
                 render: function(data, type, row) {
-                    return data ? new Date(data).toLocaleString('id-ID') : '-';
+                    // Server sends formatted string "27/01/2026 15:30:45" - display directly
+                    return data || '-';
                 }
             },
             { data: 'username', title: '<?= lang("App.user") ?>' },
@@ -335,6 +423,16 @@ function viewDetails(id) {
             alert('Error loading activity details: ' + error);
         }
     });
+}
+
+// Filter functions
+function applyFilters() {
+    table.ajax.reload();
+}
+
+function resetFilters() {
+    $('#filterForm')[0].reset();
+    table.ajax.reload();
 }
 </script>
 <?= $this->endSection() ?>

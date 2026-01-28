@@ -1131,6 +1131,13 @@ $routes->group('admin', static function ($routes) {
     $routes->get('activity-log', 'ActivityLogViewer::index');
     $routes->post('activity-log/data', 'ActivityLogViewer::getData');
     $routes->get('activity-log/details/(:num)', 'ActivityLogViewer::getDetails/$1');
+    $routes->get('activity-log/export', 'ActivityLogViewer::export');
+});
+
+// Dashboard Activity Log Widget Routes
+$routes->group('dashboard', static function ($routes) {
+    $routes->get('recent-activities', 'Dashboard::getRecentActivities');
+    $routes->get('activity-analytics', 'Dashboard::getActivityAnalytics');
 });
 
 // Additional routes outside group to ensure they work

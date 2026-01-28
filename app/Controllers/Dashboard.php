@@ -21,6 +21,137 @@ class Dashboard extends BaseController
         $this->inventoryUnitModel = new InventoryUnitModel();
     }
 
+    /**
+     * Get recent activities for dashboard widget
+     */
+    public function getRecentActivities()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+        $limit = $this->request->getGet('limit') ?? 10;
+        $moduleFilter = $this->request->getGet('module');
+        $userFilter = $this->request->getGet('user');
+
+        $builder = $db->table('system_activity_log sal');
+        $builder->select('sal.*, u.username, u.first_name, u.last_name');
+        $builder->join('users u', 'u.id = sal.user_id', 'left');
+
+        if ($moduleFilter) {
+            $builder->where('sal.module_name', $moduleFilter);
+        }
+
+        if ($userFilter) {
+            $builder->where('sal.user_id', $userFilter);
+        }
+
+        $builder->orderBy('sal.created_at', 'DESC');
+        $builder->limit($limit);
+
+        $activities = $builder->get()->getResultArray();
+
+        // Format for display
+        $formatted = [];
+        foreach ($activities as $activity) {
+            $formatted[] = [
+                'id' => $activity['id'],
+                'formatted_time' => date('d/m/Y H:i', strtotime($activity['created_at'])),
+                'time_ago' => $this->timeAgo($activity['created_at']),
+                'username' => $activity['username'] ?? 'System',
+                'action_type' => $activity['action_type'] ?? 'UNKNOWN',
+                'action_description' => $activity['action_description'] ?? 'No description',
+                'module_name' => $activity['module_name'] ?? '-',
+                'business_impact' => $activity['business_impact'] ?? 'LOW',
+                'is_critical' => (bool)($activity['is_critical'] ?? 0)
+            ];
+        }
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => $formatted
+        ]);
+    }
+
+    /**
+     * Get activity analytics for dashboard
+     */
+    public function getActivityAnalytics()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+        $days = $this->request->getGet('days') ?? 7;
+
+        // Activity trends
+        $trends = $db->query("
+            SELECT DATE(created_at) as date, COUNT(*) as count
+            FROM system_activity_log
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+            GROUP BY DATE(created_at)
+            ORDER BY date ASC
+        ", [$days])->getResultArray();
+
+        // Most active users
+        $activeUsers = $db->query("
+            SELECT u.username, u.first_name, u.last_name, COUNT(sal.id) as activity_count
+            FROM system_activity_log sal
+            LEFT JOIN users u ON u.id = sal.user_id
+            WHERE sal.created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+            GROUP BY sal.user_id, u.username, u.first_name, u.last_name
+            ORDER BY activity_count DESC
+            LIMIT 5
+        ", [$days])->getResultArray();
+
+        // Most modified tables
+        $activeTables = $db->query("
+            SELECT table_name, COUNT(*) as modification_count
+            FROM system_activity_log
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+            AND action_type IN ('CREATE', 'UPDATE', 'DELETE')
+            GROUP BY table_name
+            ORDER BY modification_count DESC
+            LIMIT 5
+        ", [$days])->getResultArray();
+
+        // Action distribution
+        $actionDistribution = $db->query("
+            SELECT action_type, COUNT(*) as count
+            FROM system_activity_log
+            WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+            GROUP BY action_type
+            ORDER BY count DESC
+        ", [$days])->getResultArray();
+
+        return $this->response->setJSON([
+            'success' => true,
+            'data' => [
+                'trends' => $trends,
+                'active_users' => $activeUsers,
+                'active_tables' => $activeTables,
+                'action_distribution' => $actionDistribution
+            ]
+        ]);
+    }
+
+    /**
+     * Helper: Calculate time ago
+     */
+    private function timeAgo($datetime)
+    {
+        $timestamp = strtotime($datetime);
+        $diff = time() - $timestamp;
+
+        if ($diff < 60) return $diff . ' detik yang lalu';
+        if ($diff < 3600) return floor($diff / 60) . ' menit yang lalu';
+        if ($diff < 86400) return floor($diff / 3600) . ' jam yang lalu';
+        if ($diff < 604800) return floor($diff / 86400) . ' hari yang lalu';
+        return date('d/m/Y H:i', $timestamp);
+    }
+
     public function index()
     {
         // Check if user is logged in
