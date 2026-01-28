@@ -608,11 +608,13 @@ class Purchasing extends BaseController
                             // Get full specifications based on item type
                             if ($itemType === 'Unit' && !empty($delivery['po_id'])) {
                                 // Get unit specs from po_units with complete details
+                                // SAME QUERY STRUCTURE AS whVerification
                                 $unitSpec = $db->table('po_units pu')
                                     ->select('
                                         pu.*,
-                                        mu.merk_unit,
+                                        pu.merk_unit as brand_name_po,
                                         mu.model_unit,
+                                        mu.merk_unit as brand_from_model_table,
                                         tu.tipe as jenis_unit,
                                         tu.tipe as tipe_unit,
                                         pu.tahun_po as tahun_unit,
@@ -645,8 +647,9 @@ class Purchasing extends BaseController
                                     $unitSpec = $db->table('po_units pu')
                                         ->select('
                                             pu.*,
-                                            mu.merk_unit,
+                                            pu.merk_unit as brand_name_po,
                                             mu.model_unit,
+                                            mu.merk_unit as brand_from_model_table,
                                             tu.tipe as jenis_unit,
                                             tu.tipe as tipe_unit,
                                             pu.tahun_po as tahun_unit,
@@ -676,11 +679,14 @@ class Purchasing extends BaseController
                                 }
                                 
                                 if ($unitSpec) {
+                                    // Use brand_name_po from po_units (VARCHAR), fallback to brand_from_model_table
+                                    $brandValue = $unitSpec['brand_name_po'] ?? $unitSpec['brand_from_model_table'] ?? '-';
+                                    
                                     $items[] = [
                                         'item_type' => 'Unit',
-                                        'item_name' => $itemName ?: trim(($unitSpec['merk_unit'] ?? '') . ' ' . ($unitSpec['model_unit'] ?? '')),
+                                        'item_name' => $itemName ?: trim($brandValue . ' ' . ($unitSpec['model_unit'] ?? '')),
                                         'serial_number' => $serialNumber, // Use SN from delivery (even if empty, don't fallback to PO SN)
-                                        'merk_unit' => $unitSpec['merk_unit'] ?? '-',
+                                        'merk_unit' => $brandValue,
                                         'model_unit' => $unitSpec['model_unit'] ?? '-',
                                         'jenis_unit' => $unitSpec['jenis_unit'] ?? '-',
                                         'tipe_unit' => $unitSpec['tipe_unit'] ?? '-',
@@ -881,11 +887,13 @@ class Purchasing extends BaseController
                             
                             // Get full specifications based on item type (same as above)
                             if ($itemType === 'Unit' && !empty($delivery['po_id'])) {
+                                // SAME QUERY STRUCTURE AS whVerification
                                 $unitSpec = $db->table('po_units pu')
                                     ->select('
                                         pu.*,
-                                        mu.merk_unit,
+                                        pu.merk_unit as brand_name_po,
                                         mu.model_unit,
+                                        mu.merk_unit as brand_from_model_table,
                                         tu.tipe as jenis_unit,
                                         tu.tipe as tipe_unit,
                                         pu.tahun_po as tahun_unit,
@@ -914,11 +922,14 @@ class Purchasing extends BaseController
                                     ->getRowArray();
                                 
                                 if ($unitSpec) {
+                                    // Use brand_name_po from po_units (VARCHAR), fallback to brand_from_model_table
+                                    $brandValue = $unitSpec['brand_name_po'] ?? $unitSpec['brand_from_model_table'] ?? '-';
+                                    
                                     $items[] = [
                                         'item_type' => 'Unit',
-                                        'item_name' => $itemName ?: trim(($unitSpec['merk_unit'] ?? '') . ' ' . ($unitSpec['model_unit'] ?? '')),
+                                        'item_name' => $itemName ?: trim($brandValue . ' ' . ($unitSpec['model_unit'] ?? '')),
                                         'serial_number' => $serialNumber,
-                                        'merk_unit' => $unitSpec['merk_unit'] ?? '-',
+                                        'merk_unit' => $brandValue,
                                         'model_unit' => $unitSpec['model_unit'] ?? '-',
                                         'jenis_unit' => $unitSpec['jenis_unit'] ?? '-',
                                         'tipe_unit' => $unitSpec['tipe_unit'] ?? '-',
@@ -2857,11 +2868,25 @@ class Purchasing extends BaseController
             $qty_duplicates = $this->request->getPost('qty_duplicates') ?: 1;
             $poUnitData = []; // Initialize array
             
+            // Get brand name from model_unit table based on selected ID
+            $db = \Config\Database::connect();
+            $merkId = $this->request->getPost('merk_unit'); // This is ID from dropdown
+            $merkName = null;
+            
+            if ($merkId) {
+                $merkData = $db->table('model_unit')
+                    ->select('merk_unit')
+                    ->where('id_model_unit', $merkId)
+                    ->get()
+                    ->getRowArray();
+                $merkName = $merkData['merk_unit'] ?? null;
+            }
+            
             for ($i=1; $i <= $qty_duplicates; $i++) { 
                 $poUnitData[] = [
                     'po_id'             => $newPoId,
                     'jenis_unit'        => $this->request->getPost('jenis_unit'),
-                    'merk_unit'         => $this->request->getPost('merk_unit'), // This is now the ID from the dropdown
+                    'merk_unit'         => $merkName, // Save brand name (VARCHAR), not ID
                     'model_unit_id'     => $this->request->getPost('model_unit_id'),
                     'tipe_unit_id'      => $this->request->getPost('tipe_unit_id'),
                     'tahun_po'          => $this->request->getPost('tahun_unit'),

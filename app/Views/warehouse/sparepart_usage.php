@@ -181,7 +181,7 @@
 <div class="modal fade" id="usageDetailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-info text-white">
+            <div class="modal-header bg-info text-secondary">
                 <h5 class="modal-title">
                     <i class="fas fa-info-circle me-2"></i><?= lang('App.detail') ?> <?= lang('Warehouse.usage') ?> <?= lang('Warehouse.sparepart') ?>
                 </h5>

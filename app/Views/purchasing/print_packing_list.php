@@ -493,13 +493,12 @@ $items = $items ?? [];
                     
                     // Get specification details based on item type - same format as Detail Purchase Order > Daftar Items
                     if (strtolower($itemType) === 'unit' || $itemType === 'Unit') {
-                        // Format sesuai renderSpecificationDetails di purchasing.php
-                        // SN already extracted above
+                        // Format sesuai PO Verification - KONSISTEN
                         $specDetails = [
                             'Departemen' => $item['nama_departemen'] ?? '-',
                             'Jenis Unit' => $item['jenis_unit'] ?? '-',
                             'Brand' => $item['merk_unit'] ?? '-',
-                            'Model' => $item['model_unit'] ?? '-',
+                            'Model' => $item['model_unit'] ?? '-',  // SELALU TAMPILKAN (seperti verification)
                             'Tahun' => $item['tahun_unit'] ?? '-',
                             'Kapasitas' => $item['kapasitas_unit'] ?? '-',
                             'Mast Type' => $item['tipe_mast'] ?? '-',
@@ -509,7 +508,9 @@ $items = $items ?? [];
                             'Wheel Type' => $item['tipe_roda'] ?? '-',
                             'Valve' => $item['jumlah_valve'] ?? '-',
                             'Keterangan' => $item['keterangan'] ?? '-',
-                            'Serial Number' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN'
+                            'Serial Number' => !empty($serialNumber) ? $serialNumber : 'Belum ada SN',
+                            'SN Mast' => 'Belum ada SN',  // Tambah agar konsisten dengan verification
+                            'SN Mesin' => 'Belum ada SN'  // Tambah agar konsisten dengan verification
                         ];
                     } elseif (strtolower($itemType) === 'attachment' || $itemType === 'Attachment') {
                         // Format sesuai renderSpecificationDetails di purchasing.php
@@ -580,11 +581,16 @@ $items = $items ?? [];
                                 <?php if (!empty($specDetails) && is_array($specDetails)): ?>
                                 <?php foreach ($specDetails as $label => $value): ?>
                                     <?php
-                                    // Skip empty values but show "Belum ada SN" for serial numbers
-                                    if (empty($value) || ($value === '-' && strpos($label, 'SN') === false && $label !== 'Keterangan')) continue;
+                                    // Always show Model and all SN fields (konsisten dengan verification)
+                                    $isModelOrSN = ($label === 'Model' || strpos($label, 'SN') !== false || strpos($label, 'Serial') !== false);
                                     
-                                    // Determine if required field (SN fields)
-                                    $isRequired = in_array($label, ['Serial Number', 'SN']);
+                                    // Skip empty values EXCEPT Model and SN fields
+                                    if (!$isModelOrSN && (empty($value) || ($value === '-' && $label !== 'Keterangan'))) {
+                                        continue;
+                                    }
+                                    
+                                    // Determine if required field (all SN fields)
+                                    $isRequired = in_array($label, ['Serial Number', 'SN', 'SN Mast', 'SN Mesin']);
                                     ?>
                                     <tr>
                                         <td><?= esc($label) ?><?= $isRequired ? ' <span class="required">*</span>' : '' ?></td>

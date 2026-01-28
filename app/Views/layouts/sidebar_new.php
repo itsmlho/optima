@@ -43,14 +43,14 @@ helper('permission_helper');
                 </a>
                 <div class="nav-dropdown">
                     <div class="nav-dropdown-header"><?= lang('App.customer_relationship_management') ?></div>
-                    <?php if (canNavigateTo('marketing', 'customer')): ?>
-                    <a href="<?= base_url('/marketing/customer-management') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'customer-management') !== false) ? 'active' : '' ?>">
-                        <i class="fas fa-users"></i> <?= lang('Marketing.customer_management') ?>
-                    </a>
-                    <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'quotation')): ?>
                     <a href="<?= base_url('/marketing/quotations') ?>" class="nav-dropdown-item">
                         <i class="fas fa-file-invoice-dollar"></i> <?= lang('Marketing.quotations') ?>
+                    </a>
+                    <?php endif; ?>
+                    <?php if (canNavigateTo('marketing', 'customer')): ?>
+                    <a href="<?= base_url('/marketing/customer-management') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'customer-management') !== false) ? 'active' : '' ?>">
+                        <i class="fas fa-users"></i> <?= lang('Marketing.customer_management') ?>
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'spk')): ?>
