@@ -430,12 +430,13 @@ function viewContract(contractNumber) {
 <?php if (isset($autoOpenContractId) && $autoOpenContractId): ?>
 console.log('🔔 Auto-opening contract from notification: <?= $autoOpenContractId ?>');
 setTimeout(() => {
-    // Fetch contract data to get contract number
-    fetch('<?= base_url('marketing/kontrak/detail/') ?><?= $autoOpenContractId ?>')
+    // Fetch contract data to get contract number using Kontrak controller
+    fetch('<?= base_url('kontrak/detail/') ?><?= $autoOpenContractId ?>')
         .then(r => r.json())
         .then(j => {
             if (j.success && j.data && j.data.no_kontrak) {
-                viewContract(j.data.no_kontrak);
+                // Redirect to contract management page with contract number
+                window.location.href = '<?= base_url('marketing/kontrak') ?>?no_kontrak=' + encodeURIComponent(j.data.no_kontrak);
             } else {
                 console.error('❌ Failed to load contract data for auto-open');
             }

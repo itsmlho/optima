@@ -800,8 +800,9 @@ class Perizinan extends BaseController
      */
     public function exportSilo()
     {
-        if (!$this->hasPermission('perizinan.access')) {
-            return redirect()->to('/dashboard')->with('error', 'Access denied.');
+        // Check specific export permission
+        if (!$this->hasPermission('perizinan.silo.export')) {
+            return redirect()->to('/dashboard')->with('error', 'Anda tidak memiliki izin untuk export data SILO.');
         }
         return view('perizinan/export_silo');
     }

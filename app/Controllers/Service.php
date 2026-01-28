@@ -2254,6 +2254,20 @@ EOF;
                     ->where('id', $spkId)
                     ->update(['status' => 'READY', 'diperbarui_pada' => date('Y-m-d H:i:s')]);
                 log_message('info', "SPK {$spkId}: Status updated to READY");
+                
+                // Send notification to Operational division
+                helper('notification');
+                if (function_exists('notify_spk_ready')) {
+                    notify_spk_ready([
+                        'id' => $spkId,
+                        'nomor_spk' => $spk['nomor_spk'] ?? '',
+                        'pelanggan' => $spk['nama_customer'] ?? $spk['pelanggan'] ?? '',
+                        'jumlah_unit' => $totalUnits,
+                        'no_unit' => $spk['no_unit'] ?? '',
+                        'departemen' => 'Service',
+                        'url' => base_url('/operational/spk/detail/' . $spkId)
+                    ]);
+                }
             }
         } catch (\Exception $e) {
             log_message('error', "SPK Status Update Error: " . $e->getMessage());

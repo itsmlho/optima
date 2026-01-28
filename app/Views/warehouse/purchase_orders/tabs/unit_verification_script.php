@@ -170,26 +170,47 @@
         
         // Load dropdown options for all dropdown fields
         function loadDropdownOptions() {
+            console.log('🔄 Loading dropdown options...');
             $('.verify-dropdown').each(function() {
                 const $dropdown = $(this);
                 const dropdownType = $dropdown.data('dropdown-type');
-                const currentValue = $dropdown.find('option:selected').val();
+                let currentValue = $dropdown.find('option:selected').val();
                 const cascadingParent = $dropdown.data('cascading-parent');
                 const parentValue = $dropdown.data('parent-value');
                 
-                if (!dropdownType || $dropdown.data('loaded')) return;
+                // Treat "-" as empty value
+                if (currentValue === '-' || currentValue === 'Loading...') {
+                    currentValue = '';
+                }
+                
+                console.log('Dropdown:', {
+                    dropdownType: dropdownType,
+                    currentValue: currentValue,
+                    cascadingParent: cascadingParent,
+                    parentValue: parentValue,
+                    isLoaded: $dropdown.data('loaded')
+                });
+                
+                if (!dropdownType || $dropdown.data('loaded')) {
+                    console.log('⏭️ Skipping dropdown (no type or already loaded)');
+                    return;
+                }
                 
                 // Build request data
                 const requestData = { field: dropdownType };
                 
                 // Add parent filter for cascading dropdowns
-                if (cascadingParent && parentValue) {
+                if (cascadingParent && parentValue && parentValue !== '-') {
                     if (dropdownType === 'model_unit' && cascadingParent === 'merk') {
                         requestData.merk_unit = parentValue;
+                        console.log('🔗 Cascading: Model filtered by Brand =', parentValue);
                     } else if (dropdownType === 'model_mesin' && cascadingParent === 'engine_type') {
                         requestData.merk_mesin = parentValue;
+                        console.log('🔗 Cascading: Model Mesin filtered by Engine Type =', parentValue);
                     }
                 }
+                
+                console.log('📤 AJAX Request:', baseUrl + '/warehouse/purchase-orders/get-unit-verification-options', requestData);
                 
                 $.ajax({
                     url: baseUrl + '/warehouse/purchase-orders/get-unit-verification-options',
@@ -197,15 +218,19 @@
                     data: requestData,
                     dataType: 'json',
                     success: function(response) {
+                        console.log('📥 AJAX Response:', response);
+                        
                         if (response.success && response.data) {
                             // Clear existing options except the first one
                             $dropdown.find('option:not(:first)').remove();
+                            
+                            console.log(`✅ Loading ${response.data.length} options for ${dropdownType}`);
                             
                             // Add options from API
                             response.data.forEach(function(option) {
                                 const optionText = option.text || option.label || option.name || option.id;
                                 const optionValue = optionText; // Use text as value for display
-                                const isSelected = (optionValue === currentValue || option.id == currentValue);
+                                const isSelected = (currentValue && optionValue === currentValue) || (currentValue && option.id == currentValue);
                                 
                                 $dropdown.append(
                                     $('<option>', {
@@ -217,8 +242,8 @@
                                 );
                             });
                             
-                            // If current value not found in options, keep it as selected
-                            if (currentValue && !$dropdown.find(`option[value="${currentValue}"]`).length) {
+                            // If current value not found in options and it's a valid value, keep it as selected
+                            if (currentValue && currentValue !== '' && currentValue !== '-' && !$dropdown.find(`option[value="${currentValue}"]`).length) {
                                 $dropdown.prepend(
                                     $('<option>', {
                                         value: currentValue,
@@ -226,13 +251,23 @@
                                         selected: true
                                     })
                                 );
+                                console.log('ℹ️ Current value not in list, added:', currentValue);
                             }
                             
                             $dropdown.data('loaded', true);
+                            console.log('✅ Dropdown loaded successfully with', $dropdown.find('option').length - 1, 'options');
+                        } else {
+                            console.error('❌ Invalid response:', response);
                         }
                     },
                     error: function(xhr, status, error) {
-                        console.error('Error loading dropdown options:', error);
+                        console.error('❌ Error loading dropdown options:', {
+                            status: status,
+                            error: error,
+                            responseText: xhr.responseText,
+                            statusCode: xhr.status,
+                            url: baseUrl + '/warehouse/purchase-orders/get-unit-verification-options'
+                        });
                     }
                 });
             });
@@ -893,13 +928,24 @@
         
         if (data.nama_departemen) specDetails.push({label: 'Departemen', value: h(data.nama_departemen), fieldName: 'departemen', required: false, dropdownType: 'departemen'});
         if (data.jenis) specDetails.push({label: 'Jenis Unit', value: h(data.jenis), fieldName: 'jenis_unit', required: false, dropdownType: 'tipe_unit'});
-        if (data.merk_unit) specDetails.push({label: 'Brand', value: h(data.merk_unit), fieldName: 'merk', required: false, dropdownType: 'merk_unit', cascadingParent: null});
-        if (data.model_unit) specDetails.push({label: 'Model', value: h(data.model_unit), fieldName: 'model', required: false, dropdownType: 'model_unit', cascadingParent: 'merk', parentValue: h(data.merk_unit)});
+        
+        // Brand - always shown (use brand_name_po from po_units, fallback to merk_unit from model_unit)
+        const brandValue = data.brand_name_po || data.merk_unit || '-';
+        specDetails.push({label: 'Brand', value: h(brandValue), fieldName: 'merk', required: false, dropdownType: 'merk_unit', cascadingParent: null});
+        
+        // Model - always shown (required for verification even if empty in PO)
+        specDetails.push({label: 'Model', value: h(data.model_unit) || '-', fieldName: 'model', required: false, dropdownType: 'model_unit', cascadingParent: 'merk', parentValue: h(brandValue)});
+        
         if (data.tahun_po) specDetails.push({label: 'Tahun', value: h(data.tahun_po), fieldName: 'tahun', required: false, dropdownType: null});
         if (data.kapasitas_unit) specDetails.push({label: 'Kapasitas', value: h(data.kapasitas_unit), fieldName: 'kapasitas', required: false, dropdownType: 'kapasitas'});
         if (data.tipe_mast) specDetails.push({label: 'Mast Type', value: h(data.tipe_mast) + (data.tinggi_mast ? ' (' + h(data.tinggi_mast) + ')' : ''), fieldName: 'mast_type', required: false, dropdownType: 'tipe_mast'});
         if (data.merk_mesin) specDetails.push({label: 'Engine Type', value: h(data.merk_mesin), fieldName: 'engine_type', required: false, dropdownType: 'merk_mesin', cascadingParent: null});
-        if (data.model_mesin) specDetails.push({label: 'Model Mesin', value: h(data.model_mesin), fieldName: 'model_mesin', required: false, dropdownType: 'model_mesin', cascadingParent: 'engine_type', parentValue: h(data.merk_mesin)});
+        
+        // Model Mesin always shown (required for verification even if empty in PO)
+        if (data.merk_mesin) {
+            specDetails.push({label: 'Model Mesin', value: h(data.model_mesin) || '-', fieldName: 'model_mesin', required: false, dropdownType: 'model_mesin', cascadingParent: 'engine_type', parentValue: h(data.merk_mesin)});
+        }
+        
         if (data.tipe_ban) specDetails.push({label: 'Tire Type', value: h(data.tipe_ban), fieldName: 'tire_type', required: false, dropdownType: 'tipe_ban'});
         if (data.tipe_roda) specDetails.push({label: 'Wheel Type', value: h(data.tipe_roda), fieldName: 'wheel_type', required: false, dropdownType: 'jenis_roda'});
         if (data.jumlah_valve) specDetails.push({label: 'Valve', value: h(data.jumlah_valve), fieldName: 'valve', required: false, dropdownType: 'valve'});
@@ -917,8 +963,20 @@
             const checkId = `check_${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
             const dbId = `db_${spec.fieldName || spec.label.toLowerCase().replace(/\s+/g, '_')}`;
             
-            // Nilai database
-            const dbValue = spec.value && spec.value !== '-' && spec.value !== 'Belum ada SN' ? spec.value : '';
+            // Nilai database - untuk Model dan SN fields, tampilkan '-' atau 'Belum ada SN' 
+            // (konsisten dengan print packing list)
+            let dbValue = '';
+            if (spec.value) {
+                if (spec.value === 'Belum ada SN') {
+                    dbValue = 'Belum ada SN';  // Keep for SN fields
+                } else if (spec.value === '-' && (spec.fieldName === 'model' || spec.fieldName === 'model_mesin')) {
+                    dbValue = '-';  // Keep '-' for Model fields (show empty model)
+                } else if (spec.value !== '-') {
+                    dbValue = spec.value;  // Show actual value
+                }
+                // else: empty string for other '-' values
+            }
+            
             // Nilai awal "Real Lapangan" selalu sama dengan "Database" (akan berubah jika user edit)
             const realValue = dbValue;
             
@@ -965,6 +1023,9 @@
                     const cascadingAttr = isCascading ? `data-cascading-parent="${spec.cascadingParent}" data-parent-value="${spec.parentValue}"` : '';
                     
                     // Create dropdown for non-SN fields
+                    // Don't pre-populate with "-" or empty value - let AJAX load the options
+                    const hasValidValue = realValue && realValue !== '-' && realValue !== '';
+                    
                     realFieldInput = `
                         <select class="form-select form-select-sm verify-field verify-dropdown" 
                                 id="${fieldId}" 
@@ -975,7 +1036,7 @@
                                 ${spec.required ? 'required' : ''}
                                 style="border: 1px solid #333; border-radius: 4px; padding: 4px 8px;">
                             <option value="">Pilih ${spec.label}...</option>
-                            <option value="${realValue}" selected>${realValue || 'Loading...'}</option>
+                            ${hasValidValue ? `<option value="${realValue}" selected>${realValue}</option>` : ''}
                         </select>
                     `;
                 } else {

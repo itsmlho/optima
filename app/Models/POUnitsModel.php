@@ -49,7 +49,7 @@ class POUnitsModel extends Model
     protected $validationRules = [
         'po_id'             => 'required|integer',
         'jenis_unit'        => 'permit_empty|integer',
-        'merk_unit'         => 'required|integer',
+        'merk_unit'         => 'required|max_length[100]',
         'model_unit_id'     => 'permit_empty|integer',
         'tipe_unit_id'      => 'permit_empty|integer',
         'tahun_po'          => 'permit_empty|integer|greater_than[1900]',

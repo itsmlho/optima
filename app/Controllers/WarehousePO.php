@@ -96,7 +96,9 @@ class WarehousePO extends BaseController
                 po_units.*, 
                 purchase_orders.no_po, 
                 purchase_orders.id_po as po_id,
-                mu.model_unit, mu.merk_unit,
+                po_units.merk_unit as brand_name_po,
+                mu.model_unit, 
+                mu.merk_unit as brand_from_model_table,
                 tu.jenis as jenis, 
                 d.nama_departemen,
                 k.kapasitas_unit,
@@ -121,9 +123,12 @@ class WarehousePO extends BaseController
             ->join('tipe_ban tb', 'tb.id_ban = po_units.ban_id', 'left')
             ->join('jenis_roda jr', 'jr.id_roda = po_units.roda_id', 'left')
             ->join('valve v', 'v.id_valve = po_units.valve_id', 'left')
-            ->join('po_delivery_items pdi', 'pdi.id_po_unit = po_units.id_po_unit', 'left')
-            ->join('po_deliveries pd', 'pd.id_delivery = pdi.delivery_id AND pd.status = "Received"', 'left')
+            // INNER JOIN to only show units that are in a delivery
+            ->join('po_delivery_items pdi', 'pdi.id_po_unit = po_units.id_po_unit', 'inner')
+            // INNER JOIN to only show units in "Received" deliveries
+            ->join('po_deliveries pd', 'pd.id_delivery = pdi.delivery_id', 'inner')
             ->where('po_units.status_verifikasi', 'Belum Dicek')
+            ->where('pd.status', 'Received') // Only Received deliveries
             ->orderBy('pd.actual_date', 'DESC')
             ->orderBy('po_units.id_po_unit', 'DESC') // Fallback ordering jika tidak ada delivery date
             ->get()->getResultArray();
@@ -915,10 +920,13 @@ class WarehousePO extends BaseController
                     $this->pounitsmodel->skipValidation(false);
                     // Jika verifikasi "Sesuai", masukkan ke tabel inventory
                     if ($status === 'Sesuai') {
-                        // Ambil semua data detail dari unit yang baru diverifikasi dengan JOIN untuk mendapatkan merk_unit
+                        // Ambil semua data detail dari unit yang baru diverifikasi dengan JOIN untuk mendapatkan merk_unit dan departemen
                         $verifiedUnit = $this->pounitsmodel
-                            ->select('po_units.*, model_unit.merk_unit')
+                            ->select('po_units.*, 
+                                      model_unit.merk_unit,
+                                      tipe_unit.id_departemen')
                             ->join('model_unit', 'model_unit.id_model_unit = po_units.model_unit_id', 'left')
+                            ->join('tipe_unit', 'tipe_unit.id_tipe_unit = po_units.tipe_unit_id', 'left')
                             ->find($id_unit);
 
                         if ($verifiedUnit) {
@@ -930,7 +938,7 @@ class WarehousePO extends BaseController
                                 'tahun_unit'         => $verifiedUnit['tahun_po'] ?? null,
                                 'status_unit_id'     => 2, // 2 = STOCK NON-ASET
                                 'lokasi_unit'        => $lokasi_unit,
-                                'departemen_id'      => $verifiedUnit['jenis_unit'] ?? null, // jenis_unit holds departemen id
+                                'departemen_id'      => $verifiedUnit['id_departemen'] ?? null, // ✅ FIX: dari tipe_unit.id_departemen
                                 'keterangan'         => $verifiedUnit['keterangan'] ?? null,
                                 'tipe_unit_id'       => $verifiedUnit['tipe_unit_id'] ?? null,
                                 'model_unit_id'      => $verifiedUnit['model_unit_id'] ?? null,

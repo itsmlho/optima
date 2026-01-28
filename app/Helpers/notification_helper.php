@@ -262,6 +262,28 @@ if (!function_exists('notify_spk_created')) {
     }
 }
 
+if (!function_exists('notify_spk_ready')) {
+    /**
+     * Send notification when SPK is READY for operational execution
+     * 
+     * @param array $spkData SPK data
+     * @return bool|array
+     */
+    function notify_spk_ready($spkData)
+    {
+        return send_notification('spk_ready', [
+            'module' => 'spk',
+            'id' => $spkData['id'] ?? null,
+            'nomor_spk' => $spkData['nomor_spk'] ?? '',
+            'pelanggan' => $spkData['pelanggan'] ?? $spkData['nama_customer'] ?? '',
+            'jumlah_unit' => $spkData['jumlah_unit'] ?? 0,
+            'no_unit' => $spkData['no_unit'] ?? '',
+            'departemen' => 'Service',
+            'url' => $spkData['url'] ?? base_url('/operational/spk/detail/' . ($spkData['id'] ?? ''))
+        ]);
+    }
+}
+
 if (!function_exists('notify_po_created')) {
     /**
      * Send notification when PO is created
@@ -341,8 +363,8 @@ if (!function_exists('notify_customer_created')) {
             'customer_name' => $customerData['customer_name'] ?? '',
             'customer_code' => $customerData['customer_code'] ?? '',
             'contact_person' => $customerData['contact_person'] ?? '',
-            'phone' => $customerData['phone'] ?? '',
-            'url' => base_url('/marketing/customer-management/showCustomer/' . ($customerData['id'] ?? ''))
+            'phone' => $customerData['phone'] ?? ''
+            // No URL - customer created, FYI to other teams
         ]);
     }
 }
@@ -360,8 +382,8 @@ if (!function_exists('notify_customer_updated')) {
             'module' => 'customer',
             'id' => $customerData['id'] ?? null,
             'customer_name' => $customerData['customer_name'] ?? '',
-            'customer_code' => $customerData['customer_code'] ?? '',
-            'url' => base_url('/marketing/customer-management/showCustomer/' . ($customerData['id'] ?? ''))
+            'customer_code' => $customerData['customer_code'] ?? ''
+            // No URL - customer updated, informational only
         ]);
     }
 }
@@ -379,8 +401,8 @@ if (!function_exists('notify_customer_deleted')) {
             'module' => 'customer',
             'id' => $customerData['id'] ?? null,
             'customer_name' => $customerData['customer_name'] ?? '',
-            'customer_code' => $customerData['customer_code'] ?? '',
-            'url' => base_url('/marketing/customer-management')
+            'customer_code' => $customerData['customer_code'] ?? ''
+            // No URL - customer deleted, no detail page exists
         ]);
     }
 }
@@ -399,8 +421,8 @@ if (!function_exists('notify_customer_location_added')) {
             'id' => $locationData['id'] ?? null,
             'customer_name' => $locationData['customer_name'] ?? '',
             'location_name' => $locationData['location_name'] ?? '',
-            'address' => $locationData['address'] ?? '',
-            'url' => base_url('/marketing/customer-management/showCustomer/' . ($locationData['customer_id'] ?? ''))
+            'address' => $locationData['address'] ?? ''
+            // No URL - location added, informational only
         ]);
     }
 }
@@ -421,8 +443,8 @@ if (!function_exists('notify_customer_contract_created')) {
             'customer_name' => $contractData['customer_name'] ?? '',
             'nilai_total' => $contractData['nilai_total'] ?? '',
             'tanggal_mulai' => $contractData['tanggal_mulai'] ?? '',
-            'tanggal_selesai' => $contractData['tanggal_selesai'] ?? '',
-            'url' => base_url('/marketing/customer-management/showCustomer/' . ($contractData['customer_id'] ?? ''))
+            'tanggal_selesai' => $contractData['tanggal_selesai'] ?? ''
+            // No URL - contract created, informational only
         ]);
     }
 }
@@ -443,8 +465,8 @@ if (!function_exists('notify_attachment_uploaded')) {
             'spk_number' => $attachmentData['spk_number'] ?? '',
             'unit_code' => $attachmentData['unit_code'] ?? '',
             'file_name' => $attachmentData['file_name'] ?? '',
-            'uploaded_by' => $attachmentData['uploaded_by'] ?? '',
-            'url' => $attachmentData['url'] ?? base_url('/service/spk_service')
+            'uploaded_by' => $attachmentData['uploaded_by'] ?? ''
+            // No URL - file already uploaded, informational only
         ]);
     }
 }
@@ -663,8 +685,8 @@ if (!function_exists('notify_delivery_completed')) {
             'completed_time' => $deliveryData['completed_time'] ?? date('Y-m-d H:i:s'),
             'signature' => $deliveryData['signature'] ?? 'Yes',
             'notes' => $deliveryData['notes'] ?? '',
-            'completed_by' => $deliveryData['completed_by'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/operational/delivery/detail/' . ($deliveryData['id'] ?? ''))
+            'completed_by' => $deliveryData['completed_by'] ?? ''
+            // No URL - delivery already completed, informational only
         ]);
     }
 }
@@ -803,8 +825,8 @@ if (!function_exists('notify_invoice_paid')) {
             'customer_name' => $invoiceData['customer_name'] ?? '',
             'amount' => $invoiceData['amount'] ?? $invoiceData['total_amount'] ?? 0,
             'payment_date' => $invoiceData['payment_date'] ?? $invoiceData['tanggal_bayar'] ?? '',
-            'payment_method' => $invoiceData['payment_method'] ?? '',
-            'url' => $invoiceData['url'] ?? base_url('/finance/invoices')
+            'payment_method' => $invoiceData['payment_method'] ?? ''
+            // No URL - invoice already paid, informational only
         ]);
     }
 }
@@ -826,8 +848,8 @@ if (!function_exists('notify_invoice_sent')) {
             'customer_name' => $invoiceData['customer_name'] ?? $invoiceData['customer'] ?? '',
             'amount' => $invoiceData['amount'] ?? $invoiceData['total_amount'] ?? 0,
             'sent_date' => $invoiceData['sent_date'] ?? date('Y-m-d H:i:s'),
-            'sent_by' => $invoiceData['sent_by'] ?? '',
-            'url' => $invoiceData['url'] ?? base_url('/finance/invoices')
+            'sent_by' => $invoiceData['sent_by'] ?? ''
+            // No URL - invoice already sent, informational only
         ]);
     }
 }
@@ -893,8 +915,8 @@ if (!function_exists('notify_sparepart_added')) {
             'qty' => $sparepartData['qty'] ?? $sparepartData['stock'] ?? 0,
             'unit' => $sparepartData['unit'] ?? $sparepartData['satuan'] ?? '',
             'supplier' => $sparepartData['supplier'] ?? '',
-            'added_by' => $sparepartData['added_by'] ?? '',
-            'url' => $sparepartData['url'] ?? base_url('/warehouse/inventory/invent_sparepart')
+            'added_by' => $sparepartData['added_by'] ?? ''
+            // No URL - sparepart added, FYI only
         ]);
     }
 }
@@ -968,8 +990,8 @@ if (!function_exists('notify_pmps_completed')) {
             'completion_date' => $pmpsData['completion_date'] ?? date('Y-m-d H:i:s'),
             'service_type' => $pmpsData['service_type'] ?? $pmpsData['tipe_service'] ?? '',
             'mechanic' => $pmpsData['mechanic'] ?? $pmpsData['mekanik'] ?? '',
-            'next_service_date' => $pmpsData['next_service_date'] ?? '',
-            'url' => $pmpsData['url'] ?? base_url('/service/pmps')
+            'next_service_date' => $pmpsData['next_service_date'] ?? ''
+            // No URL - PMPS already completed, informational only
         ]);
     }
 }
@@ -1061,8 +1083,8 @@ if (!function_exists('notify_po_approved')) {
             'supplier_name' => $poData['supplier_name'] ?? '',
             'total_amount' => $poData['total_amount'] ?? $poData['nilai_total'] ?? 0,
             'approved_by' => $poData['approved_by'] ?? '',
-            'approval_date' => $poData['approval_date'] ?? date('Y-m-d H:i:s'),
-            'url' => $poData['url'] ?? base_url('/purchasing/po-unit')
+            'approval_date' => $poData['approval_date'] ?? date('Y-m-d H:i:s')
+            // No URL - PO already approved, informational only
         ]);
     }
 }
@@ -1105,8 +1127,8 @@ if (!function_exists('notify_po_received')) {
             'supplier_name' => $poData['supplier_name'] ?? '',
             'received_date' => $poData['received_date'] ?? date('Y-m-d H:i:s'),
             'received_by' => $poData['received_by'] ?? '',
-            'items_received' => $poData['items_received'] ?? 0,
-            'url' => $poData['url'] ?? base_url('/warehouse/purchase-orders')
+            'items_received' => $poData['items_received'] ?? 0
+            // No URL - PO already received, informational only
         ]);
     }
 }
@@ -1126,8 +1148,8 @@ if (!function_exists('notify_po_verified')) {
             'nomor_po' => $poData['nomor_po'] ?? $poData['po_number'] ?? '',
             'supplier_name' => $poData['supplier_name'] ?? '',
             'verified_by' => $poData['verified_by'] ?? '',
-            'verification_date' => $poData['verification_date'] ?? date('Y-m-d H:i:s'),
-            'url' => $poData['url'] ?? base_url('/purchasing/po-unit')
+            'verification_date' => $poData['verification_date'] ?? date('Y-m-d H:i:s')
+            // No URL - informational only, no action required
         ]);
     }
 }
@@ -1262,8 +1284,8 @@ if (!function_exists('notify_di_approved')) {
             'nomor_di' => $diData['nomor_di'] ?? '',
             'customer' => $diData['customer'] ?? '',
             'approved_by' => $diData['approved_by'] ?? '',
-            'approval_date' => $diData['approval_date'] ?? date('Y-m-d H:i:s'),
-            'url' => $diData['url'] ?? base_url('/operational/delivery')
+            'approval_date' => $diData['approval_date'] ?? date('Y-m-d H:i:s')
+            // No URL - DI already approved, informational only
         ]);
     }
 }
@@ -1304,8 +1326,8 @@ if (!function_exists('notify_di_delivered')) {
             'nomor_di' => $diData['nomor_di'] ?? '',
             'customer' => $diData['customer'] ?? '',
             'delivery_date' => $diData['delivery_date'] ?? date('Y-m-d H:i:s'),
-            'driver_name' => $diData['driver_name'] ?? '',
-            'url' => $diData['url'] ?? base_url('/operational/delivery')
+            'driver_name' => $diData['driver_name'] ?? ''
+            // No URL - DI already delivered, informational only
         ]);
     }
 }
@@ -1325,8 +1347,8 @@ if (!function_exists('notify_di_cancelled')) {
             'nomor_di' => $diData['nomor_di'] ?? '',
             'customer' => $diData['customer'] ?? '',
             'alasan' => $diData['alasan'] ?? $diData['cancellation_reason'] ?? '',
-            'cancelled_by' => $diData['cancelled_by'] ?? '',
-            'url' => $diData['url'] ?? base_url('/operational/delivery')
+            'cancelled_by' => $diData['cancelled_by'] ?? ''
+            // No URL - DI cancelled, no action needed
         ]);
     }
 }
@@ -1402,8 +1424,8 @@ if (!function_exists('notify_work_order_completed')) {
             'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
             'no_unit' => $woData['no_unit'] ?? $woData['unit_code'] ?? '',
             'completion_date' => $woData['completion_date'] ?? date('Y-m-d H:i:s'),
-            'mechanic' => $woData['mechanic'] ?? $woData['mekanik'] ?? '',
-            'url' => $woData['url'] ?? base_url('/service/work-orders')
+            'mechanic' => $woData['mechanic'] ?? $woData['mekanik'] ?? ''
+            // No URL - work order already completed, informational only
         ]);
     }
 }
@@ -1426,8 +1448,8 @@ if (!function_exists('notify_work_order_cancelled')) {
             'unit_code' => $woData['unit_code'] ?? $woData['no_unit'] ?? '',
             'no_unit' => $woData['no_unit'] ?? $woData['unit_code'] ?? '',
             'cancellation_reason' => $woData['cancellation_reason'] ?? $woData['alasan'] ?? '',
-            'cancelled_by' => $woData['cancelled_by'] ?? '',
-            'url' => $woData['url'] ?? base_url('/service/work-orders')
+            'cancelled_by' => $woData['cancelled_by'] ?? ''
+            // No URL - work order cancelled, no action needed
         ]);
     }
 }
@@ -1452,8 +1474,8 @@ if (!function_exists('notify_inventory_unit_added')) {
             'model' => $unitData['model'] ?? $unitData['tipe'] ?? '',
             'serial_number' => $unitData['serial_number'] ?? '',
             'status' => $unitData['status'] ?? 'Available',
-            'added_by' => $unitData['added_by'] ?? '',
-            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($unitData['id'] ?? ''))
+            'added_by' => $unitData['added_by'] ?? ''
+            // No URL - unit added, FYI only
         ]);
     }
 }
@@ -1515,8 +1537,8 @@ if (!function_exists('notify_inventory_unit_returned')) {
             'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
             'customer' => $unitData['customer'] ?? $unitData['customer_name'] ?? '',
             'return_date' => $unitData['return_date'] ?? date('Y-m-d H:i:s'),
-            'condition' => $unitData['condition'] ?? 'Good',
-            'url' => $unitData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($unitData['id'] ?? ''))
+            'condition' => $unitData['condition'] ?? 'Good'
+            // No URL - unit returned, informational only
         ]);
     }
 }
@@ -1562,8 +1584,8 @@ if (!function_exists('notify_attachment_added')) {
             'serial_number' => $attachmentData['serial_number'] ?? $attachmentData['sn'] ?? '',
             'brand' => $attachmentData['brand'] ?? $attachmentData['merk'] ?? '',
             'status' => $attachmentData['status'] ?? 'Available',
-            'added_by' => $attachmentData['added_by'] ?? '',
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/invent_attachment')
+            'added_by' => $attachmentData['added_by'] ?? ''
+            // No URL - attachment added, FYI only
         ]);
     }
 }
@@ -1660,8 +1682,8 @@ if (!function_exists('notify_user_created')) {
             'email' => $userData['email'] ?? '',
             'role' => $userData['role'] ?? $userData['role_name'] ?? '',
             'division' => $userData['division'] ?? $userData['division_name'] ?? '',
-            'created_by' => $userData['created_by'] ?? '',
-            'url' => $userData['url'] ?? base_url('/admin/advanced-users')
+            'created_by' => $userData['created_by'] ?? ''
+            // No URL - user created, FYI to admins
         ]);
     }
 }
@@ -1680,8 +1702,8 @@ if (!function_exists('notify_user_updated')) {
             'id' => $userData['id'] ?? null,
             'username' => $userData['username'] ?? '',
             'email' => $userData['email'] ?? '',
-            'updated_by' => $userData['updated_by'] ?? '',
-            'url' => $userData['url'] ?? base_url('/admin/advanced-users')
+            'updated_by' => $userData['updated_by'] ?? ''
+            // No URL - user updated, FYI to admins
         ]);
     }
 }
@@ -1700,8 +1722,8 @@ if (!function_exists('notify_user_deleted')) {
             'id' => $userData['id'] ?? null,
             'username' => $userData['username'] ?? '',
             'email' => $userData['email'] ?? '',
-            'deleted_by' => $userData['deleted_by'] ?? '',
-            'url' => $userData['url'] ?? base_url('/admin/advanced-users')
+            'deleted_by' => $userData['deleted_by'] ?? ''
+            // No URL - user deleted, no detail page exists
         ]);
     }
 }
@@ -1720,8 +1742,8 @@ if (!function_exists('notify_user_activated')) {
             'id' => $userData['id'] ?? null,
             'username' => $userData['username'] ?? '',
             'email' => $userData['email'] ?? '',
-            'activated_by' => $userData['activated_by'] ?? '',
-            'url' => $userData['url'] ?? base_url('/dashboard')
+            'activated_by' => $userData['activated_by'] ?? ''
+            // No URL - user activated, informational only
         ]);
     }
 }
@@ -1741,8 +1763,8 @@ if (!function_exists('notify_user_deactivated')) {
             'username' => $userData['username'] ?? '',
             'email' => $userData['email'] ?? '',
             'reason' => $userData['reason'] ?? '',
-            'deactivated_by' => $userData['deactivated_by'] ?? '',
-            'url' => $userData['url'] ?? base_url('/admin/advanced-users')
+            'deactivated_by' => $userData['deactivated_by'] ?? ''
+            // No URL - user deactivated, informational only
         ]);
     }
 }
@@ -1781,8 +1803,8 @@ if (!function_exists('notify_role_created')) {
             'id' => $roleData['id'] ?? null,
             'role_name' => $roleData['role_name'] ?? $roleData['name'] ?? '',
             'permissions_count' => $roleData['permissions_count'] ?? 0,
-            'created_by' => $roleData['created_by'] ?? '',
-            'url' => $roleData['url'] ?? base_url('/admin/advanced-users')
+            'created_by' => $roleData['created_by'] ?? ''
+            // No URL - role created, FYI to admins
         ]);
     }
 }
@@ -1801,8 +1823,8 @@ if (!function_exists('notify_role_updated')) {
             'id' => $roleData['id'] ?? null,
             'role_name' => $roleData['role_name'] ?? $roleData['name'] ?? '',
             'updated_by' => $roleData['updated_by'] ?? '',
-            'changes' => $roleData['changes'] ?? '',
-            'url' => $roleData['url'] ?? base_url('/admin/advanced-users')
+            'changes' => $roleData['changes'] ?? ''
+            // No URL - role updated, informational only
         ]);
     }
 }
@@ -1847,8 +1869,8 @@ if (!function_exists('notify_supplier_created')) {
             'supplier_code' => $supplierData['supplier_code'] ?? $supplierData['code'] ?? '',
             'contact_person' => $supplierData['contact_person'] ?? '',
             'phone' => $supplierData['phone'] ?? '',
-            'created_by' => $supplierData['created_by'] ?? '',
-            'url' => $supplierData['url'] ?? base_url('/purchasing/supplier-management')
+            'created_by' => $supplierData['created_by'] ?? ''
+            // No URL - supplier created, FYI only
         ]);
     }
 }
@@ -1866,8 +1888,8 @@ if (!function_exists('notify_supplier_updated')) {
             'module' => 'supplier',
             'id' => $supplierData['id'] ?? null,
             'supplier_name' => $supplierData['supplier_name'] ?? $supplierData['name'] ?? '',
-            'updated_by' => $supplierData['updated_by'] ?? '',
-            'url' => $supplierData['url'] ?? base_url('/purchasing/supplier-management')
+            'updated_by' => $supplierData['updated_by'] ?? ''
+            // No URL - supplier updated, informational only
         ]);
     }
 }
@@ -1885,8 +1907,8 @@ if (!function_exists('notify_supplier_deleted')) {
             'module' => 'supplier',
             'id' => $supplierData['id'] ?? null,
             'supplier_name' => $supplierData['supplier_name'] ?? $supplierData['name'] ?? '',
-            'deleted_by' => $supplierData['deleted_by'] ?? '',
-            'url' => $supplierData['url'] ?? base_url('/purchasing/supplier-management')
+            'deleted_by' => $supplierData['deleted_by'] ?? ''
+            // No URL - supplier deleted, no detail page exists
         ]);
     }
 }
@@ -1979,8 +2001,8 @@ if (!function_exists('notify_spk_cancelled')) {
             'nomor_spk' => $spkData['nomor_spk'] ?? '',
             'pelanggan' => $spkData['pelanggan'] ?? $spkData['customer'] ?? '',
             'alasan' => $spkData['alasan'] ?? $spkData['cancellation_reason'] ?? '',
-            'cancelled_by' => $spkData['cancelled_by'] ?? '',
-            'url' => $spkData['url'] ?? base_url('/marketing/spk')
+            'cancelled_by' => $spkData['cancelled_by'] ?? ''
+            // No URL - SPK cancelled, no action needed
         ]);
     }
 }
@@ -2021,8 +2043,8 @@ if (!function_exists('notify_unit_prep_completed')) {
             'no_unit' => $unitData['no_unit'] ?? $unitData['unit_code'] ?? '',
             'nomor_spk' => $unitData['nomor_spk'] ?? '',
             'mechanic' => $unitData['mechanic'] ?? $unitData['mekanik'] ?? '',
-            'completion_date' => $unitData['completion_date'] ?? date('Y-m-d H:i:s'),
-            'url' => $unitData['url'] ?? base_url('/operational/delivery')
+            'completion_date' => $unitData['completion_date'] ?? date('Y-m-d H:i:s')
+            // No URL - unit prep already completed, informational only
         ]);
     }
 }
@@ -2048,8 +2070,8 @@ if (!function_exists('notify_payment_received')) {
             'customer_name' => $paymentData['customer_name'] ?? $paymentData['customer'] ?? '',
             'payment_method' => $paymentData['payment_method'] ?? $paymentData['metode_pembayaran'] ?? '',
             'invoice_number' => $paymentData['invoice_number'] ?? $paymentData['nomor_invoice'] ?? '',
-            'received_by' => $paymentData['received_by'] ?? '',
-            'url' => $paymentData['url'] ?? base_url('/accounting/payment-validation')
+            'received_by' => $paymentData['received_by'] ?? ''
+            // No URL - payment already received, informational only
         ]);
     }
 }
@@ -2120,8 +2142,8 @@ if (!function_exists('notify_contract_completed')) {
             'customer_name' => $contractData['customer_name'] ?? '',
             'total_value' => $contractData['total_value'] ?? $contractData['nilai_total'] ?? 0,
             'completion_date' => $contractData['completion_date'] ?? date('Y-m-d'),
-            'completed_by' => $contractData['completed_by'] ?? '',
-            'url' => $contractData['url'] ?? base_url('/marketing/contracts')
+            'completed_by' => $contractData['completed_by'] ?? ''
+            // No URL - contract already completed, informational only
         ]);
     }
 }
@@ -2317,8 +2339,8 @@ if (!function_exists('notify_unit_location_updated')) {
             'unit_code' => $unitData['unit_code'] ?? $unitData['no_unit'] ?? '',
             'old_location' => $unitData['old_location'] ?? '',
             'new_location' => $unitData['new_location'] ?? $unitData['location'] ?? '',
-            'updated_by' => $unitData['updated_by'] ?? '',
-            'url' => $unitData['url'] ?? base_url('/operational/unit-rolling')
+            'updated_by' => $unitData['updated_by'] ?? ''
+            // No URL - location updated, informational only
         ]);
     }
 }
@@ -2337,8 +2359,8 @@ if (!function_exists('notify_warehouse_unit_updated')) {
             'id' => $unitData['id'] ?? null,
             'unit_code' => $unitData['unit_code'] ?? $unitData['no_unit'] ?? '',
             'changes' => $unitData['changes'] ?? 'Unit information updated',
-            'updated_by' => $unitData['updated_by'] ?? '',
-            'url' => $unitData['url'] ?? base_url('/warehouse/units')
+            'updated_by' => $unitData['updated_by'] ?? ''
+            // No URL - warehouse unit updated, informational only
         ]);
     }
 }
@@ -2363,8 +2385,8 @@ if (!function_exists('notify_contract_created')) {
             'start_date' => $contractData['start_date'] ?? $contractData['tanggal_mulai'] ?? '',
             'end_date' => $contractData['end_date'] ?? $contractData['tanggal_selesai'] ?? '',
             'total_value' => $contractData['total_value'] ?? $contractData['nilai_total'] ?? 0,
-            'created_by' => $contractData['created_by'] ?? '',
-            'url' => $contractData['url'] ?? base_url('/marketing/contracts')
+            'created_by' => $contractData['created_by'] ?? ''
+            // No URL - contract created, informational only
         ]);
     }
 }
@@ -2384,8 +2406,8 @@ if (!function_exists('notify_contract_updated')) {
             'contract_number' => $contractData['contract_number'] ?? $contractData['no_kontrak'] ?? '',
             'customer_name' => $contractData['customer_name'] ?? '',
             'changes' => $contractData['changes'] ?? 'Contract details updated',
-            'updated_by' => $contractData['updated_by'] ?? '',
-            'url' => $contractData['url'] ?? base_url('/marketing/contracts')
+            'updated_by' => $contractData['updated_by'] ?? ''
+            // No URL - contract updated, informational only
         ]);
     }
 }
@@ -2405,8 +2427,8 @@ if (!function_exists('notify_contract_deleted')) {
             'contract_number' => $contractData['contract_number'] ?? $contractData['no_kontrak'] ?? '',
             'customer_name' => $contractData['customer_name'] ?? '',
             'deleted_by' => $contractData['deleted_by'] ?? '',
-            'deletion_reason' => $contractData['deletion_reason'] ?? 'N/A',
-            'url' => $contractData['url'] ?? base_url('/marketing/contracts')
+            'deletion_reason' => $contractData['deletion_reason'] ?? 'N/A'
+            // No URL - contract deleted, informational only
         ]);
     }
 }
@@ -2427,8 +2449,8 @@ if (!function_exists('notify_user_removed_from_division')) {
             'id' => $userData['id'] ?? null,
             'user_name' => $userData['user_name'] ?? $userData['username'] ?? '',
             'division_name' => $userData['division_name'] ?? '',
-            'removed_by' => $userData['removed_by'] ?? '',
-            'url' => $userData['url'] ?? base_url('/admin/user-management')
+            'removed_by' => $userData['removed_by'] ?? ''
+            // No URL - user removed, informational only
         ]);
     }
 }
@@ -2447,8 +2469,8 @@ if (!function_exists('notify_user_permissions_updated')) {
             'id' => $userData['id'] ?? null,
             'user_name' => $userData['user_name'] ?? $userData['username'] ?? '',
             'permissions_changed' => $userData['permissions_changed'] ?? 'Custom permissions updated',
-            'updated_by' => $userData['updated_by'] ?? '',
-            'url' => $userData['url'] ?? base_url('/admin/user-management')
+            'updated_by' => $userData['updated_by'] ?? ''
+            // No URL - permissions updated, informational only
         ]);
     }
 }
@@ -2468,8 +2490,8 @@ if (!function_exists('notify_permission_created')) {
             'permission_name' => $permissionData['permission_name'] ?? '',
             'permission_code' => $permissionData['permission_code'] ?? '',
             'module_name' => $permissionData['module_name'] ?? '',
-            'created_by' => $permissionData['created_by'] ?? '',
-            'url' => $permissionData['url'] ?? base_url('/admin/permissions')
+            'created_by' => $permissionData['created_by'] ?? ''
+            // No URL - permission created, FYI to admins
         ]);
     }
 }
@@ -2518,8 +2540,8 @@ if (!function_exists('notify_customer_created')) {
             'customer_type' => $customerData['customer_type'] ?? $customerData['type'] ?? '',
             'phone' => $customerData['phone'] ?? '',
             'email' => $customerData['email'] ?? '',
-            'created_by' => $customerData['created_by'] ?? '',
-            'url' => $customerData['url'] ?? base_url('/customers/view/' . ($customerData['id'] ?? ''))
+            'created_by' => $customerData['created_by'] ?? ''
+            // No URL - customer created, informational only
         ]);
     }
 }
@@ -2539,8 +2561,8 @@ if (!function_exists('notify_customer_updated')) {
             'customer_code' => $customerData['customer_code'] ?? '',
             'customer_name' => $customerData['customer_name'] ?? $customerData['name'] ?? '',
             'changes' => $customerData['changes'] ?? '',
-            'updated_by' => $customerData['updated_by'] ?? '',
-            'url' => $customerData['url'] ?? base_url('/customers/view/' . ($customerData['id'] ?? ''))
+            'updated_by' => $customerData['updated_by'] ?? ''
+            // No URL - customer updated, informational only
         ]);
     }
 }
@@ -2562,8 +2584,8 @@ if (!function_exists('notify_customer_status_changed')) {
             'old_status' => $customerData['old_status'] ?? '',
             'new_status' => $customerData['new_status'] ?? '',
             'reason' => $customerData['reason'] ?? '',
-            'changed_by' => $customerData['changed_by'] ?? '',
-            'url' => $customerData['url'] ?? base_url('/customers/view/' . ($customerData['id'] ?? ''))
+            'changed_by' => $customerData['changed_by'] ?? ''
+            // No URL - status changed, informational only
         ]);
     }
 }
@@ -2609,8 +2631,8 @@ if (!function_exists('notify_warehouse_transfer_completed')) {
             'to_warehouse' => $transferData['to_warehouse'] ?? '',
             'item_count' => $transferData['item_count'] ?? 0,
             'completed_by' => $transferData['completed_by'] ?? '',
-            'completed_at' => $transferData['completed_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $transferData['url'] ?? base_url('/warehouse/transfers')
+            'completed_at' => $transferData['completed_at'] ?? date('Y-m-d H:i:s')
+            // No URL - transfer completed, informational only
         ]);
     }
 }
@@ -2632,8 +2654,8 @@ if (!function_exists('notify_warehouse_stocktake_completed')) {
             'items_counted' => $stocktakeData['items_counted'] ?? 0,
             'discrepancies' => $stocktakeData['discrepancies'] ?? 0,
             'completed_by' => $stocktakeData['completed_by'] ?? '',
-            'completed_at' => $stocktakeData['completed_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $stocktakeData['url'] ?? base_url('/warehouse/stocktakes')
+            'completed_at' => $stocktakeData['completed_at'] ?? date('Y-m-d H:i:s')
+            // No URL - stocktake completed, informational only
         ]);
     }
 }
@@ -2679,8 +2701,8 @@ if (!function_exists('notify_inspection_completed')) {
             'result' => $inspectionData['result'] ?? '',
             'findings_count' => $inspectionData['findings_count'] ?? 0,
             'completed_by' => $inspectionData['completed_by'] ?? '',
-            'completed_at' => $inspectionData['completed_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $inspectionData['url'] ?? base_url('/operations/inspections/view/' . ($inspectionData['inspection_id'] ?? ''))
+            'completed_at' => $inspectionData['completed_at'] ?? date('Y-m-d H:i:s')
+            // No URL - inspection completed, informational only
         ]);
     }
 }
@@ -2751,8 +2773,8 @@ if (!function_exists('notify_payment_received')) {
             'amount' => $paymentData['amount'] ?? 0,
             'payment_method' => $paymentData['payment_method'] ?? '',
             'received_by' => $paymentData['received_by'] ?? '',
-            'received_at' => $paymentData['received_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $paymentData['url'] ?? base_url('/finance/payments')
+            'received_at' => $paymentData['received_at'] ?? date('Y-m-d H:i:s')
+            // No URL - payment received, informational only
         ]);
     }
 }
@@ -2797,8 +2819,8 @@ if (!function_exists('notify_budget_threshold_exceeded')) {
             'allocated_amount' => $budgetData['allocated_amount'] ?? 0,
             'spent_amount' => $budgetData['spent_amount'] ?? 0,
             'percentage_used' => $budgetData['percentage_used'] ?? 0,
-            'threshold' => $budgetData['threshold'] ?? 90,
-            'url' => $budgetData['url'] ?? base_url('/finance/budgets')
+            'threshold' => $budgetData['threshold'] ?? 90
+            // No URL - budget threshold alert, informational only
         ]);
     }
 }
@@ -2850,8 +2872,8 @@ if (!function_exists('notify_spk_completed')) {
             'actual_duration' => $spkData['actual_duration'] ?? 0,
             'result' => $spkData['result'] ?? '',
             'completed_by' => $spkData['completed_by'] ?? '',
-            'completed_at' => $spkData['completed_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $spkData['url'] ?? base_url('/spk/view/' . ($spkData['spk_id'] ?? ''))
+            'completed_at' => $spkData['completed_at'] ?? date('Y-m-d H:i:s')
+            // No URL - SPK completed, informational only
         ]);
     }
 }
@@ -2875,8 +2897,8 @@ if (!function_exists('notify_quotation_sent_to_customer')) {
             'customer_email' => $quotationData['customer_email'] ?? '',
             'sent_method' => $quotationData['sent_method'] ?? 'email',
             'sent_by' => $quotationData['sent_by'] ?? '',
-            'sent_at' => $quotationData['sent_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $quotationData['url'] ?? base_url('/marketing/quotations/view/' . ($quotationData['id'] ?? ''))
+            'sent_at' => $quotationData['sent_at'] ?? date('Y-m-d H:i:s')
+            // No URL - quotation sent, informational only
         ]);
     }
 }
@@ -2928,8 +2950,8 @@ if (!function_exists('notify_spk_unit_prep_completed')) {
             'approved_by' => $spkData['approved_by'] ?? '',
             'approved_at' => $spkData['approved_at'] ?? date('Y-m-d H:i:s'),
             'unit_info' => $spkData['unit_info'] ?? '',
-            'items_prepared' => $spkData['items_prepared'] ?? '',
-            'url' => $spkData['url'] ?? base_url('/service/spk/view/' . ($spkData['spk_id'] ?? ''))
+            'items_prepared' => $spkData['items_prepared'] ?? ''
+            // No URL - stage completed, informational only
         ]);
     }
 }
@@ -2954,8 +2976,8 @@ if (!function_exists('notify_spk_fabrication_completed')) {
             'approved_by' => $spkData['approved_by'] ?? '',
             'approved_at' => $spkData['approved_at'] ?? date('Y-m-d H:i:s'),
             'attachment_info' => $spkData['attachment_info'] ?? '',
-            'fabrication_notes' => $spkData['fabrication_notes'] ?? '',
-            'url' => $spkData['url'] ?? base_url('/service/spk/view/' . ($spkData['spk_id'] ?? ''))
+            'fabrication_notes' => $spkData['fabrication_notes'] ?? ''
+            // No URL - fabrication completed, informational only
         ]);
     }
 }
@@ -2981,8 +3003,8 @@ if (!function_exists('notify_spk_pdi_completed')) {
             'approved_at' => $spkData['approved_at'] ?? date('Y-m-d H:i:s'),
             'spk_status' => 'READY',
             'ready_for_delivery' => true,
-            'pdi_results' => $spkData['pdi_results'] ?? '',
-            'url' => $spkData['url'] ?? base_url('/service/spk/view/' . ($spkData['spk_id'] ?? ''))
+            'pdi_results' => $spkData['pdi_results'] ?? ''
+            // No URL - PDI completed, informational only
         ]);
     }
 }
@@ -3036,8 +3058,8 @@ if (!function_exists('notify_attachment_attached')) {
             'attachment_info' => $attachmentData['attachment_info'] ?? '',
             'performed_by' => $attachmentData['performed_by'] ?? '',
             'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
-            'notes' => $attachmentData['notes'] ?? '',
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/get-unit-detail/' . ($attachmentData['unit_id'] ?? ''))
+            'notes' => $attachmentData['notes'] ?? ''
+            // No URL - attachment attached, informational only
         ]);
     }
 }
@@ -3062,8 +3084,8 @@ if (!function_exists('notify_attachment_detached')) {
             'reason' => $attachmentData['reason'] ?? '',
             'new_location' => $attachmentData['new_location'] ?? 'Workshop',
             'performed_by' => $attachmentData['performed_by'] ?? '',
-            'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/get-attachment-detail/' . ($attachmentData['attachment_id'] ?? ''))
+            'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s')
+            // No URL - attachment detached, informational only
         ]);
     }
 }
@@ -3089,8 +3111,8 @@ if (!function_exists('notify_attachment_swapped')) {
             'attachment_info' => $attachmentData['attachment_info'] ?? '',
             'reason' => $attachmentData['reason'] ?? '',
             'performed_by' => $attachmentData['performed_by'] ?? '',
-            'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s'),
-            'url' => $attachmentData['url'] ?? base_url('/warehouse/inventory/get-attachment-detail/' . ($attachmentData['attachment_id'] ?? ''))
+            'performed_at' => $attachmentData['performed_at'] ?? date('Y-m-d H:i:s')
+            // No URL - attachment swapped, informational only
         ]);
     }
 }
@@ -3120,8 +3142,8 @@ if (!function_exists('notify_sparepart_returned')) {
             'returned_from' => $returnData['returned_from'] ?? '',
             'confirmed_by' => $returnData['confirmed_by'] ?? '',
             'confirmed_at' => $returnData['confirmed_at'] ?? date('Y-m-d H:i:s'),
-            'notes' => $returnData['notes'] ?? '',
-            'url' => $returnData['url'] ?? base_url('/warehouse/sparepart-usage/return-detail/' . ($returnData['return_id'] ?? ''))
+            'notes' => $returnData['notes'] ?? ''
+            // No URL - sparepart returned, informational only
         ]);
     }
 }
@@ -3148,8 +3170,8 @@ if (!function_exists('notify_po_delivery_created')) {
             'total_quantity' => $deliveryData['total_quantity'] ?? 0,
             'created_by' => $deliveryData['created_by'] ?? '',
             'created_at' => $deliveryData['created_at'] ?? date('Y-m-d H:i:s'),
-            'notes' => $deliveryData['notes'] ?? '',
-            'url' => $deliveryData['url'] ?? base_url('/purchasing/delivery/view/' . ($deliveryData['delivery_id'] ?? ''))
+            'notes' => $deliveryData['notes'] ?? ''
+            // No URL - delivery schedule created, informational only
         ]);
     }
 }

@@ -128,4 +128,8 @@ try {
     echo '</tbody></table>';
     
     echo '</body></html>';
-    exit;
+    
+} catch (\Exception $e) {
+    echo '<div style="color:red;">Error: ' . htmlspecialchars($e->getMessage()) . '</div>';
+}
+exit;

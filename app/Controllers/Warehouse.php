@@ -1324,100 +1324,233 @@ class Warehouse extends BaseController
 
     private function getWarehouseStats()
     {
+        $db = \Config\Database::connect();
+        
+        // Get actual counts from inventory tables
+        $totalSpareparts = $db->table('inventory_sparepart')->countAllResults();
+        $totalNonAssets = $db->table('inventory_attachment')->countAllResults();
+        
+        // Count low stock items (current_stock < minimum_stock)
+        $lowStockSpareparts = $db->table('inventory_sparepart')
+            ->where('stok_tersedia < stok_minimum')
+            ->countAllResults();
+        $lowStockAttachments = $db->table('inventory_attachment')
+            ->where('stok_tersedia < stok_minimum')
+            ->countAllResults();
+        $lowStockItems = $lowStockSpareparts + $lowStockAttachments;
+        
+        // Calculate total inventory value
+        $sparepartValue = $db->query("SELECT COALESCE(SUM(stok_tersedia * harga_satuan), 0) as total FROM inventory_sparepart")->getRow()->total ?? 0;
+        $attachmentValue = $db->query("SELECT COALESCE(SUM(stok_tersedia * harga_satuan), 0) as total FROM inventory_attachment")->getRow()->total ?? 0;
+        $totalInventoryValue = $sparepartValue + $attachmentValue;
+        
+        // Calculate warehouse utilization (simplified: items with stock / total items)
+        $itemsWithStock = $db->query("SELECT 
+            (SELECT COUNT(*) FROM inventory_sparepart WHERE stok_tersedia > 0) + 
+            (SELECT COUNT(*) FROM inventory_attachment WHERE stok_tersedia > 0) as total
+        ")->getRow()->total ?? 0;
+        $totalItems = $totalSpareparts + $totalNonAssets;
+        $warehouseUtilization = $totalItems > 0 ? ($itemsWithStock / $totalItems * 100) : 0;
+        
         return [
-            'total_spareparts' => 156,
-            'total_non_assets' => 225,
-            'low_stock_items' => 15,
-            'total_inventory_value' => 47625000,
-            'warehouse_utilization' => 78.5,
-            'inventory_turnover' => 4.2
+            'total_spareparts' => $totalSpareparts,
+            'total_non_assets' => $totalNonAssets,
+            'low_stock_items' => $lowStockItems,
+            'total_inventory_value' => $totalInventoryValue,
+            'warehouse_utilization' => round($warehouseUtilization, 1),
+            'inventory_turnover' => 0 // TODO: Calculate from transaction history
         ];
     }
 
     private function getInventoryOverview()
     {
+        $db = \Config\Database::connect();
+        
+        // Spareparts data
+        $totalSparepartItems = $db->table('inventory_sparepart')->countAllResults();
+        $sparepartValue = $db->query("SELECT COALESCE(SUM(stok_tersedia * harga_satuan), 0) as total FROM inventory_sparepart")->getRow()->total ?? 0;
+        $lowStockSpareparts = $db->table('inventory_sparepart')
+            ->where('stok_tersedia < stok_minimum')
+            ->countAllResults();
+        $sparepartCategories = $db->table('inventory_sparepart')
+            ->distinct()
+            ->select('jenis_barang')
+            ->where('jenis_barang IS NOT NULL')
+            ->where('jenis_barang !=', '')
+            ->countAllResults();
+        
+        // Non-assets data
+        $totalNonAssetItems = $db->table('inventory_attachment')->countAllResults();
+        $nonAssetValue = $db->query("SELECT COALESCE(SUM(stok_tersedia * harga_satuan), 0) as total FROM inventory_attachment")->getRow()->total ?? 0;
+        $lowStockNonAssets = $db->table('inventory_attachment')
+            ->where('stok_tersedia < stok_minimum')
+            ->countAllResults();
+        $nonAssetCategories = $db->table('inventory_attachment')
+            ->distinct()
+            ->select('jenis_barang')
+            ->where('jenis_barang IS NOT NULL')
+            ->where('jenis_barang !=', '')
+            ->countAllResults();
+        
         return [
             'spareparts' => [
-                'total_items' => 156,
-                'total_value' => 45750000,
-                'low_stock' => 12,
-                'categories' => 8
+                'total_items' => $totalSparepartItems,
+                'total_value' => (int) $sparepartValue,
+                'low_stock' => $lowStockSpareparts,
+                'categories' => $sparepartCategories
             ],
             'non_assets' => [
-                'total_items' => 225,
-                'total_value' => 1875000,
-                'low_stock' => 3,
-                'categories' => 5
+                'total_items' => $totalNonAssetItems,
+                'total_value' => (int) $nonAssetValue,
+                'low_stock' => $lowStockNonAssets,
+                'categories' => $nonAssetCategories
             ]
         ];
     }
 
     private function getRecentTransactions()
     {
-        return [
-            [
-                'id' => 'TXN-2024-001',
-                'type' => 'IN',
-                'item' => 'Engine Oil Filter',
-                'quantity' => 25,
-                'date' => '2024-01-15 10:30:00',
-                'reference' => 'PO-2024-001'
-            ],
-            [
-                'id' => 'TXN-2024-002',
-                'type' => 'OUT',
-                'item' => 'Brake Pad Set',
-                'quantity' => 4,
-                'date' => '2024-01-15 14:15:00',
-                'reference' => 'WO-2024-001'
-            ],
-            [
-                'id' => 'TXN-2024-003',
-                'type' => 'IN',
-                'item' => 'Safety Helmet',
-                'quantity' => 30,
-                'date' => '2024-01-14 09:45:00',
-                'reference' => 'PO-2024-002'
-            ],
-            [
-                'id' => 'TXN-2024-004',
-                'type' => 'OUT',
-                'item' => 'Hydraulic Oil',
-                'quantity' => 8,
-                'date' => '2024-01-14 16:20:00',
-                'reference' => 'WO-2024-002'
-            ]
-        ];
+        $db = \Config\Database::connect();
+        
+        // Try to get from transaction history if table exists
+        // For now, query recent PO deliveries as IN transactions
+        $transactions = [];
+        
+        try {
+            // Get recent PO deliveries (IN transactions)
+            $poDeliveries = $db->query("
+                SELECT 
+                    CONCAT('PO-', po.id) as id,
+                    'IN' as type,
+                    CONCAT(po.nomor_po, ' - ', COALESCE(po.supplier, 'N/A')) as item,
+                    COALESCE(pod.quantity_delivered, 0) as quantity,
+                    pod.tanggal_terima as date,
+                    po.nomor_po as reference
+                FROM po_delivery pod
+                JOIN purchase_orders po ON po.id = pod.po_id
+                WHERE pod.tanggal_terima IS NOT NULL
+                ORDER BY pod.tanggal_terima DESC
+                LIMIT 10
+            ")->getResultArray();
+            
+            foreach ($poDeliveries as $delivery) {
+                $transactions[] = [
+                    'id' => $delivery['id'],
+                    'type' => 'IN',
+                    'item' => $delivery['item'],
+                    'quantity' => $delivery['quantity'],
+                    'date' => $delivery['date'],
+                    'reference' => $delivery['reference']
+                ];
+            }
+            
+            // If no data, show placeholder
+            if (empty($transactions)) {
+                $transactions[] = [
+                    'id' => 'N/A',
+                    'type' => 'INFO',
+                    'item' => 'No recent transactions',
+                    'quantity' => 0,
+                    'date' => date('Y-m-d H:i:s'),
+                    'reference' => '-'
+                ];
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error fetching warehouse transactions: ' . $e->getMessage());
+            $transactions[] = [
+                'id' => 'ERROR',
+                'type' => 'INFO',
+                'item' => 'Unable to load transaction data',
+                'quantity' => 0,
+                'date' => date('Y-m-d H:i:s'),
+                'reference' => '-'
+            ];
+        }
+        
+        return $transactions;
     }
 
     private function getLowStockAlerts()
     {
-        $alerts = [
-            [
-                'item_code' => 'SP-FL-002',
-                'item_name' => 'Brake Pad Set',
-                'current_stock' => 8,
-                'min_stock' => 12,
-                'category' => 'Sparepart',
-                'urgency' => 'High'
-            ],
-            [
-                'item_code' => 'SP-FL-004',
-                'item_name' => 'Tire Set',
-                'current_stock' => 6,
-                'min_stock' => 8,
-                'category' => 'Sparepart',
-                'urgency' => 'Medium'
-            ],
-            [
-                'item_code' => 'NA-005',
-                'item_name' => 'Cleaning Detergent',
-                'current_stock' => 25,
-                'min_stock' => 10,
-                'category' => 'Non-Asset',
+        $db = \Config\Database::connect();
+        $alerts = [];
+        
+        try {
+            // Get low stock spareparts
+            $lowSpareparts = $db->query("
+                SELECT 
+                    kode_barang as item_code,
+                    nama_barang as item_name,
+                    stok_tersedia as current_stock,
+                    stok_minimum as min_stock,
+                    'Sparepart' as category
+                FROM inventory_sparepart
+                WHERE stok_tersedia < stok_minimum
+                ORDER BY (stok_tersedia - stok_minimum) ASC
+                LIMIT 10
+            ")->getResultArray();
+            
+            // Get low stock attachments
+            $lowAttachments = $db->query("
+                SELECT 
+                    kode_barang as item_code,
+                    nama_barang as item_name,
+                    stok_tersedia as current_stock,
+                    stok_minimum as min_stock,
+                    'Non-Asset' as category
+                FROM inventory_attachment
+                WHERE stok_tersedia < stok_minimum
+                ORDER BY (stok_tersedia - stok_minimum) ASC
+                LIMIT 10
+            ")->getResultArray();
+            
+            // Merge and calculate urgency
+            $allLowStock = array_merge($lowSpareparts, $lowAttachments);
+            foreach ($allLowStock as $item) {
+                $deficit = $item['min_stock'] - $item['current_stock'];
+                $deficitPercent = $item['min_stock'] > 0 ? ($deficit / $item['min_stock'] * 100) : 0;
+                
+                // Determine urgency
+                if ($deficitPercent >= 50 || $item['current_stock'] == 0) {
+                    $urgency = 'High';
+                } elseif ($deficitPercent >= 25) {
+                    $urgency = 'Medium';
+                } else {
+                    $urgency = 'Low';
+                }
+                
+                $alerts[] = [
+                    'item_code' => $item['item_code'] ?? 'N/A',
+                    'item_name' => $item['item_name'] ?? 'Unknown',
+                    'current_stock' => (int) $item['current_stock'],
+                    'min_stock' => (int) $item['min_stock'],
+                    'category' => $item['category'],
+                    'urgency' => $urgency
+                ];
+            }
+            
+            // If no alerts, add placeholder
+            if (empty($alerts)) {
+                $alerts[] = [
+                    'item_code' => 'N/A',
+                    'item_name' => 'No low stock items',
+                    'current_stock' => 0,
+                    'min_stock' => 0,
+                    'category' => 'Info',
+                    'urgency' => 'Low'
+                ];
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Error fetching low stock alerts: ' . $e->getMessage());
+            $alerts[] = [
+                'item_code' => 'ERROR',
+                'item_name' => 'Unable to load low stock data',
+                'current_stock' => 0,
+                'min_stock' => 0,
+                'category' => 'Error',
                 'urgency' => 'Low'
-            ]
-        ];
+            ];
+        }
         
         // Send notification for critical low stock items
         helper('notification');
