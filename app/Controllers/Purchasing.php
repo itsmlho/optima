@@ -470,11 +470,27 @@ class Purchasing extends BaseController
 
     public function exportPO()
     {
+        // Activity Log: EXPORT purchase orders
+        if (method_exists($this, 'logActivity')) {
+            $this->logActivity('EXPORT', 'purchase_orders', 0, 'Export Purchase Orders CSV', [
+                'module_name' => 'PURCHASING',
+                'submenu_item' => 'Purchase Orders',
+                'business_impact' => 'LOW'
+            ]);
+        }
         return view('purchasing/export_po');
     }
 
     public function exportSupplier()
     {
+        // Activity Log: EXPORT suppliers
+        if (method_exists($this, 'logActivity')) {
+            $this->logActivity('EXPORT', 'suppliers', 0, 'Export Suppliers CSV', [
+                'module_name' => 'PURCHASING',
+                'submenu_item' => 'Supplier Management',
+                'business_impact' => 'LOW'
+            ]);
+        }
         return view('purchasing/export_supplier');
     }
 

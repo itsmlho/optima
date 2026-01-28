@@ -40,10 +40,38 @@ class ActivityLogViewer extends BaseController
         $orderColumn = $orderData[0]['column'] ?? 0;
         $orderDir = $orderData[0]['dir'] ?? 'desc';
 
+        // Advanced filters
+        $dateFrom = $request->getPost('date_from');
+        $dateTo = $request->getPost('date_to');
+        $moduleFilter = $request->getPost('module_filter');
+        $impactFilter = $request->getPost('impact_filter');
+        $criticalOnly = $request->getPost('critical_only');
+        $actionFilter = $request->getPost('action_filter');
+
         // Base query - menggunakan struktur tabel yang sudah dioptimasi
         $builder = $db->table('system_activity_log sal');
         $builder->select('sal.*, u.username, u.first_name, u.last_name');
         $builder->join('users u', 'u.id = sal.user_id', 'left');
+
+        // Apply advanced filters
+        if ($dateFrom) {
+            $builder->where('sal.created_at >=', $dateFrom . ' 00:00:00');
+        }
+        if ($dateTo) {
+            $builder->where('sal.created_at <=', $dateTo . ' 23:59:59');
+        }
+        if ($moduleFilter) {
+            $builder->where('sal.module_name', $moduleFilter);
+        }
+        if ($impactFilter) {
+            $builder->where('sal.business_impact', $impactFilter);
+        }
+        if ($criticalOnly) {
+            $builder->where('sal.is_critical', 1);
+        }
+        if ($actionFilter) {
+            $builder->where('sal.action_type', $actionFilter);
+        }
 
         // Search functionality
         if (!empty($searchValue)) {
@@ -480,5 +508,100 @@ class ActivityLogViewer extends BaseController
             case 'CRITICAL': return 'dark';
             default: return 'secondary';
         }
+    }
+
+    /**
+     * Export Activity Log to CSV
+     */
+    public function export()
+    {
+        // Get filters from query string
+        $filters = [
+            'date_from' => $this->request->getGet('date_from'),
+            'date_to' => $this->request->getGet('date_to'),
+            'module_filter' => $this->request->getGet('module_filter'),
+            'impact_filter' => $this->request->getGet('impact_filter'),
+            'action_filter' => $this->request->getGet('action_filter'),
+            'critical_only' => $this->request->getGet('critical_only')
+        ];
+
+        // Build query
+        $builder = $this->db->table('system_activity_log sal');
+        $builder->select('sal.*, u.username, u.email')
+                ->join('users u', 'u.id = sal.user_id', 'left')
+                ->orderBy('sal.created_at', 'DESC');
+
+        // Apply filters
+        if (!empty($filters['date_from'])) {
+            $builder->where('DATE(sal.created_at) >=', $filters['date_from']);
+        }
+        if (!empty($filters['date_to'])) {
+            $builder->where('DATE(sal.created_at) <=', $filters['date_to']);
+        }
+        if (!empty($filters['module_filter'])) {
+            $builder->where('sal.module_name', $filters['module_filter']);
+        }
+        if (!empty($filters['impact_filter'])) {
+            $builder->where('sal.business_impact', $filters['impact_filter']);
+        }
+        if (!empty($filters['action_filter'])) {
+            $builder->where('sal.action_type', $filters['action_filter']);
+        }
+        if (!empty($filters['critical_only']) && $filters['critical_only'] == '1') {
+            $builder->where('sal.is_critical', 1);
+        }
+
+        // Limit to prevent memory issues
+        $builder->limit(10000);
+        
+        $activities = $builder->get()->getResultArray();
+
+        // Set CSV headers
+        $filename = 'activity_log_' . date('Y-m-d_His') . '.csv';
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename=' . $filename);
+        
+        // Create output stream
+        $output = fopen('php://output', 'w');
+        
+        // Add BOM for Excel UTF-8 support
+        fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
+        
+        // Write CSV header
+        fputcsv($output, [
+            'Timestamp',
+            'User',
+            'Email',
+            'Module',
+            'Action',
+            'Table',
+            'Record ID',
+            'Description',
+            'Impact',
+            'Critical',
+            'IP Address',
+            'User Agent'
+        ]);
+
+        // Write data rows
+        foreach ($activities as $activity) {
+            fputcsv($output, [
+                $activity['created_at'],
+                $activity['username'] ?? 'Unknown',
+                $activity['email'] ?? '-',
+                $activity['module_name'] ?? '-',
+                $activity['action_type'] ?? '-',
+                $activity['table_name'] ?? '-',
+                $activity['record_id'] ?? '-',
+                $activity['action_description'] ?? '-',
+                $activity['business_impact'] ?? '-',
+                $activity['is_critical'] ? 'YES' : 'NO',
+                $activity['ip_address'] ?? '-',
+                $activity['user_agent'] ?? '-'
+            ]);
+        }
+
+        fclose($output);
+        exit;
     }
 }

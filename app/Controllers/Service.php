@@ -243,6 +243,14 @@ class Service extends BaseController
         if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.workorder')) {
             return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.workorder');
         }
+        // Activity Log: EXPORT work orders
+        if (method_exists($this, 'logActivity')) {
+            $this->logActivity('EXPORT', 'work_orders', 0, 'Export Work Order CSV', [
+                'module_name' => 'SERVICE',
+                'submenu_item' => 'Work Orders',
+                'business_impact' => 'LOW'
+            ]);
+        }
         return view('service/export_workorder');
     }
 

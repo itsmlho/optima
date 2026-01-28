@@ -362,6 +362,19 @@ class Profile extends BaseController
         ];
         
         $db->table('profile_logs')->insert($logData);
+        
+        // Also log to system_activity_log for centralized tracking
+        if (method_exists($this, 'logActivity')) {
+            $actionType = $action === 'avatar_change' ? 'UPDATE' : 'UPDATE';
+            $description = $action === 'avatar_change' ? 'User avatar updated' : 'User profile updated';
+            
+            $this->logActivity($actionType, 'users', (int)$userId, $description, [
+                'module_name' => 'USER_MANAGEMENT',
+                'submenu_item' => 'My Profile',
+                'business_impact' => 'LOW',
+                'new_values' => json_encode($changes)
+            ]);
+        }
     }
 
     private function getProfileLogs($userId)

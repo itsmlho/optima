@@ -346,6 +346,15 @@ class Warehouse extends BaseController
     /** Export CSV for unified inventory units */
     public function exportInventUnit()
     {
+        // Activity Log: EXPORT inventory units
+        if (method_exists($this, 'logActivity')) {
+            $this->logActivity('EXPORT', 'inventory_unit', 0, 'Export Inventory Unit CSV (Direct)', [
+                'module_name' => 'WAREHOUSE',
+                'submenu_item' => 'Inventory Management',
+                'business_impact' => 'LOW'
+            ]);
+        }
+        
         $db = Database::connect();
         if (!$db->tableExists('inventory_unit')) {
             return $this->response->setStatusCode(500)->setBody('Tabel inventory_unit tidak ditemukan');

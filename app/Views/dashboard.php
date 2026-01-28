@@ -342,6 +342,25 @@
             </div>
         </div>
     </div>
+
+    <!-- Simple Recent Activities (Bottom) -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted fw-bold"><i class="fas fa-history me-1"></i> Recent Activities</small>
+                        <a href="<?= base_url('/admin/activity-log') ?>" class="btn btn-sm btn-link text-decoration-none p-0">View All →</a>
+                    </div>
+                    <div id="simpleActivityLog" style="max-height: 120px; overflow-y: auto;">
+                        <div class="text-center py-2">
+                            <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <?= $this->section('javascript') ?>
@@ -355,7 +374,52 @@
     setInterval(updateDateTime, 1000);
     updateDateTime();
 
-    // --- 2. Unit Status Pie Chart ---
+    // --- 2. Load Simple Activity Log ---
+    function loadSimpleActivities() {
+        fetch('<?= base_url('/dashboard/recent-activities') ?>?limit=10')
+            .then(response => response.json())
+            .then(result => {
+                console.log('Activity Log Response:', result); // DEBUG
+                const container = document.getElementById('simpleActivityLog');
+                if (result.success && result.data && result.data.length > 0) {
+                    let html = '<div class="list-group list-group-flush">';
+                    result.data.forEach(activity => {
+                        const actionColor = {
+                            'CREATE': 'success',
+                            'UPDATE': 'info', 
+                            'DELETE': 'danger',
+                            'EXPORT': 'primary'
+                        }[activity.action_type] || 'secondary';
+                        
+                        html += `
+                            <div class="list-group-item border-1 px-1 py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-2">
+                                        <small class="text-muted">${activity.time_ago || activity.formatted_time}</small>
+                                        <span class="badge bg-${actionColor} ms-2">${activity.action_type}</span>
+                                        <div class="mt-1 small">${activity.username || 'System'} - ${activity.action_description}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    console.log('No data or failed:', result); // DEBUG
+                    container.innerHTML = '<small class="text-muted">No recent activities</small>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading activities:', error);
+                document.getElementById('simpleActivityLog').innerHTML = '<small class="text-danger">Failed to load: ' + error.message + '</small>';
+            });
+    }
+    
+    // Load on page ready
+    document.addEventListener('DOMContentLoaded', loadSimpleActivities);
+
+    // --- 3. Unit Status Pie Chart ---
     const ctxUnit = document.getElementById('unitStatusChart').getContext('2d');
     new Chart(ctxUnit, {
         type: 'doughnut',
@@ -394,7 +458,7 @@
         }
     });
 
-    // --- 3. Sales Trend Bar Chart (Quotation vs Contract) ---
+    // --- 4. Sales Trend Bar Chart (Quotation vs Contract) ---
     const ctxSales = document.getElementById('salesTrendChart').getContext('2d');
     new Chart(ctxSales, {
         type: 'bar',
@@ -442,6 +506,7 @@
             }
         }
     });
+
 </script>
 <?= $this->endSection() ?>
 <?= $this->endSection() ?>

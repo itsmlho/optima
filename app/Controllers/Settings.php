@@ -368,6 +368,18 @@ class Settings extends BaseController
                        ]);
                 }
             }
+            
+            // Activity Log: UPDATE settings
+            if (method_exists($this, 'logActivity')) {
+                $this->logActivity('UPDATE', 'system_settings', 0, 'System settings updated', [
+                    'module_name' => 'ADMIN',
+                    'submenu_item' => 'System Settings',
+                    'business_impact' => 'HIGH',
+                    'is_critical' => 1,
+                    'new_values' => json_encode($settings)
+                ]);
+            }
+            
             return true;
         } catch (\Exception $e) {
             log_message('error', 'Failed to save settings: ' . $e->getMessage());
