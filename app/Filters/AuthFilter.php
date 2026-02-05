@@ -96,6 +96,18 @@ class AuthFilter implements FilterInterface
         
         // If not a public path, check if user is logged in
         if (!$session->get('isLoggedIn')) {
+            // Check if this is an AJAX request
+            if ($request->isAJAX()) {
+                // Return JSON error instead of redirect for AJAX requests
+                $response = service('response');
+                return $response->setStatusCode(401)->setJSON([
+                    'success' => false,
+                    'message' => 'Unauthorized: Session expired. Please login again.',
+                    'redirect' => '/auth/login'
+                ]);
+            }
+            
+            // For normal requests, redirect to login
             return redirect()->to('/auth/login')
                 ->with('error', 'Anda harus login terlebih dahulu untuk mengakses halaman ini.');
         }

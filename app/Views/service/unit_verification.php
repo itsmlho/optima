@@ -731,8 +731,8 @@ $(document).ready(function() {
         // Pre-fill verification fields (verify-*) with database values
         // No Unit - always readonly and auto-filled from database
         $('#verify-no-unit').val(unitData.no_unit || '').attr('readonly', true);
-        $('#verify-pelanggan').val(unitData.pelanggan || 'N/A');
-        $('#verify-lokasi').val(unitData.lokasi || 'N/A');
+        $('#verify-pelanggan').val(unitData.pelanggan || 'N/A').attr('readonly', true).addClass('bg-light');
+        $('#verify-lokasi').val(unitData.lokasi || 'N/A').attr('readonly', true).addClass('bg-light');
         $('#verify-serial-number').val(unitData.serial_number || '');
         $('#verify-tahun-unit').val(unitData.tahun_unit || '');
         $('#verify-keterangan').val(unitData.keterangan || '');
@@ -775,6 +775,13 @@ $(document).ready(function() {
         // No auto-checking - let user manually check what's correct
         // Only keep no-unit checkbox checked as it should always be readonly
         $('#check-no-unit').prop('checked', true).prop('disabled', true);
+        
+        // IMPORTANT: Auto-check pelanggan and lokasi as they are always correct from database
+        // Make them readonly immediately and disable checkbox
+        $('#check-pelanggan').prop('checked', true).prop('disabled', true);
+        $('#check-lokasi').prop('checked', true).prop('disabled', true);
+        $('#verify-pelanggan').attr('readonly', true).addClass('bg-light');
+        $('#verify-lokasi').attr('readonly', true).addClass('bg-light');
         
         // Populate Aksesoris from database - IMPORTANT: This should auto-check existing accessories
         console.log('🔧 About to populate accessories:', data.accessories);
@@ -886,6 +893,10 @@ $(document).ready(function() {
         $('input[id^="check-"]').prop('checked', false);
         $('#check-no-unit').prop('checked', true).prop('disabled', true);
         
+        // Ensure pelanggan and lokasi are unchecked and editable
+        $('#check-pelanggan').prop('checked', false);
+        $('#check-lokasi').prop('checked', false);
+        
         // Reset accessories checkboxes
         $('input[name="accessories[]"]').prop('checked', false);
         updateAccessoriesCount();
@@ -987,111 +998,327 @@ $(document).ready(function() {
         
         // Initialize Select2 for attachment dropdown with AJAX
         $('#verify-attachment').select2({
-            placeholder: 'Cari berdasarkan Serial Number...',
+            placeholder: '🔍 Ketik Serial Number / Tipe / Merk untuk mencari...',
             allowClear: true,
             dropdownParent: $('#unitVerificationModal'),
             width: '250px',
-            minimumInputLength: 0,
+            minimumInputLength: 2, // Require at least 2 characters before searching
+            language: {
+                inputTooShort: function() {
+                    return 'Ketik minimal 2 karakter untuk mencari...';
+                },
+                searching: function() {
+                    return 'Mencari data...';
+                },
+                noResults: function() {
+                    return 'Tidak ada data ditemukan';
+                },
+                loadingMore: function() {
+                    return 'Memuat data...';
+                }
+            },
             ajax: {
                 url: '<?= base_url('service/data-attachment/simple') ?>',
                 dataType: 'json',
-                delay: 250,
+                delay: 300, // Increased delay for better performance
                 data: function (params) {
                     return {
                         q: params.term,
-                        type: 'attachment'
+                        type: 'attachment',
+                        page: params.page || 1
                     };
                 },
-                processResults: function (data) {
+                processResults: function (data, params) {
+                    params.page = params.page || 1;
+                    
                     if (data.success && data.data) {
                         return {
                             results: data.data.map(function(item) {
-                                let displayText = item.sn_attachment ? 
-                                    `${item.sn_attachment} - ${item.label}` : 
-                                    `(No SN) - ${item.label}`;
+                                let displayText = '';
+                                
+                                // Format: Nama Item [SN: xxx] - Status/Lokasi
+                                // Start with item name/label
+                                displayText = item.label || '(Attachment)';
+                                
+                                // Add serial number in brackets
+                                if (item.sn_attachment) {
+                                    displayText += ` [SN: ${item.sn_attachment}]`;
+                                } else {
+                                    displayText += ` [Tanpa SN]`;
+                                }
+                                
+                                // Add status/location
+                                if (item.attachment_status === 'USED' && item.used_by_unit) {
+                                    displayText += ` - TERPASANG DI UNIT ${item.used_by_unit}`;
+                                } else if (item.attachment_status === 'AVAILABLE') {
+                                    if (item.lokasi_penyimpanan) {
+                                        displayText += ` - Lokasi: ${item.lokasi_penyimpanan}`;
+                                    } else {
+                                        displayText += ` - ✅ TERSEDIA`;
+                                    }
+                                } else if (item.attachment_status === 'MAINTENANCE') {
+                                    displayText += ` - 🔧 MAINTENANCE`;
+                                }
+                                
                                 return {
                                     id: item.id,
                                     text: displayText,
-                                    data: item
+                                    data: item,
+                                    disabled: false // Allow selection even if used
                                 };
-                            })
+                            }),
+                            pagination: {
+                                more: (data.data.length >= 50)
+                            }
                         };
                     }
                     return { results: [] };
                 },
-                cache: false
+                cache: true // Enable caching for better performance
+            },
+            templateResult: function(item) {
+                if (!item.id) return item.text;
+                
+                // Custom template with color coding
+                let $result = $('<div style="padding: 5px 0;"></div>');
+                let $text = $('<span></span>').text(item.text);
+                
+                if (item.data && item.data.attachment_status === 'USED' && item.data.used_by_unit) {
+                    $text.css({
+                        'color': '#ff6b6b',
+                        'font-weight': '500'
+                    });
+                } else if (item.data && item.data.attachment_status === 'AVAILABLE') {
+                    $text.css({
+                        'color': '#28a745',
+                        'font-weight': '500'
+                    });
+                } else if (item.data && item.data.attachment_status === 'MAINTENANCE') {
+                    $text.css({
+                        'color': '#ffa500',
+                        'font-weight': '500'
+                    });
+                }
+                
+                $result.append($text);
+                return $result;
+            },
+            templateSelection: function(item) {
+                // Show shorter text when selected: Nama [SN: xxx]
+                if (item.data) {
+                    let selectedText = item.data.label || 'Attachment';
+                    if (item.data.sn_attachment) {
+                        // Extract first part of label if too long
+                        let shortLabel = selectedText.length > 30 ? selectedText.substring(0, 30) + '...' : selectedText;
+                        return `${shortLabel} [SN: ${item.data.sn_attachment}]`;
+                    }
+                    return selectedText.length > 40 ? selectedText.substring(0, 40) + '...' : selectedText;
+                }
+                return item.text;
             }
         });        // Initialize Select2 for baterai dropdown with AJAX
         $('#verify-baterai').select2({
-            placeholder: 'Cari berdasarkan Serial Number baterai...',
+            placeholder: '🔍 Ketik Serial Number / Merk / Tipe baterai...',
             allowClear: true,
             dropdownParent: $('#unitVerificationModal'),
             width: '250px',
-            minimumInputLength: 0,
+            minimumInputLength: 2,
+            language: {
+                inputTooShort: function() {
+                    return 'Ketik minimal 2 karakter untuk mencari...';
+                },
+                searching: function() {
+                    return 'Mencari data...';
+                },
+                noResults: function() {
+                    return 'Tidak ada data ditemukan';
+                }
+            },
             ajax: {
                 url: '<?= base_url('service/data-attachment/simple') ?>',
                 dataType: 'json',
-                delay: 250,
+                delay: 300,
                 data: function (params) {
                     return {
                         q: params.term,
-                        type: 'battery'
+                        type: 'battery',
+                        page: params.page || 1
                     };
                 },
-                processResults: function (data) {
+                processResults: function (data, params) {
+                    params.page = params.page || 1;
+                    
                     if (data.success && data.data) {
                         return {
                             results: data.data.map(function(item) {
-                                let displayText = item.sn_baterai ? 
-                                    `${item.sn_baterai} - ${item.label}` : 
-                                    `(No SN) - ${item.label}`;
+                                let displayText = '';
+                                
+                                // Format: Nama Baterai [SN: xxx] - Status/Lokasi
+                                displayText = item.label || '(Baterai)';
+                                
+                                // Add serial number in brackets
+                                if (item.sn_baterai) {
+                                    displayText += ` [SN: ${item.sn_baterai}]`;
+                                } else {
+                                    displayText += ` [Tanpa SN]`;
+                                }
+                                
+                                // Add status/location
+                                if (item.attachment_status === 'USED' && item.used_by_unit) {
+                                    displayText += ` - TERPASANG DI UNIT ${item.used_by_unit}`;
+                                } else if (item.attachment_status === 'AVAILABLE') {
+                                    if (item.lokasi_penyimpanan) {
+                                        displayText += ` - Lokasi: ${item.lokasi_penyimpanan}`;
+                                    } else {
+                                        displayText += ` - ✅ TERSEDIA`;
+                                    }
+                                } else if (item.attachment_status === 'MAINTENANCE') {
+                                    displayText += ` - 🔧 MAINTENANCE`;
+                                }
+                                
                                 return {
                                     id: item.id,
                                     text: displayText,
                                     data: item
                                 };
-                            })
+                            }),
+                            pagination: {
+                                more: (data.data.length >= 50)
+                            }
                         };
                     }
                     return { results: [] };
                 },
-                cache: false
+                cache: true
+            },
+            templateResult: function(item) {
+                if (!item.id) return item.text;
+                
+                let $result = $('<div style="padding: 5px 0;"></div>');
+                let $text = $('<span></span>').text(item.text);
+                
+                if (item.data && item.data.attachment_status === 'AVAILABLE') {
+                    $text.css({'color': '#28a745', 'font-weight': '500'});
+                } else if (item.data && item.data.attachment_status === 'USED') {
+                    $text.css({'color': '#ff6b6b', 'font-weight': '500'});
+                }
+                
+                $result.append($text);
+                return $result;
+            },
+            templateSelection: function(item) {
+                // Show shorter text when selected: Nama [SN: xxx]
+                if (item.data) {
+                    let selectedText = item.data.label || 'Baterai';
+                    if (item.data.sn_baterai) {
+                        let shortLabel = selectedText.length > 30 ? selectedText.substring(0, 30) + '...' : selectedText;
+                        return `${shortLabel} [SN: ${item.data.sn_baterai}]`;
+                    }
+                    return selectedText.length > 40 ? selectedText.substring(0, 40) + '...' : selectedText;
+                }
+                return item.text;
             }
         });        // Initialize Select2 for charger dropdown with AJAX
         $('#verify-charger').select2({
-            placeholder: 'Cari berdasarkan Serial Number charger...',
+            placeholder: '🔍 Ketik Serial Number / Merk / Tipe charger...',
             allowClear: true,
             dropdownParent: $('#unitVerificationModal'),
             width: '250px',
-            minimumInputLength: 0,
+            minimumInputLength: 2,
+            language: {
+                inputTooShort: function() {
+                    return 'Ketik minimal 2 karakter untuk mencari...';
+                },
+                searching: function() {
+                    return 'Mencari data...';
+                },
+                noResults: function() {
+                    return 'Tidak ada data ditemukan';
+                }
+            },
             ajax: {
                 url: '<?= base_url('service/data-attachment/simple') ?>',
                 dataType: 'json',
-                delay: 250,
+                delay: 300,
                 data: function (params) {
                     return {
                         q: params.term,
-                        type: 'charger'
+                        type: 'charger',
+                        page: params.page || 1
                     };
                 },
-                processResults: function (data) {
+                processResults: function (data, params) {
+                    params.page = params.page || 1;
+                    
                     if (data.success && data.data) {
                         return {
                             results: data.data.map(function(item) {
-                                let displayText = item.sn_charger ? 
-                                    `${item.sn_charger} - ${item.label}` : 
-                                    `(No SN) - ${item.label}`;
+                                let displayText = '';
+                                
+                                // Format: Nama Charger [SN: xxx] - Status/Lokasi
+                                displayText = item.label || '(Charger)';
+                                
+                                // Add serial number in brackets
+                                if (item.sn_charger) {
+                                    displayText += ` [SN: ${item.sn_charger}]`;
+                                } else {
+                                    displayText += ` [Tanpa SN]`;
+                                }
+                                
+                                // Add status/location
+                                if (item.attachment_status === 'USED' && item.used_by_unit) {
+                                    displayText += ` - TERPASANG DI UNIT ${item.used_by_unit}`;
+                                } else if (item.attachment_status === 'AVAILABLE') {
+                                    if (item.lokasi_penyimpanan) {
+                                        displayText += ` - Lokasi: ${item.lokasi_penyimpanan}`;
+                                    } else {
+                                        displayText += ` - ✅ TERSEDIA`;
+                                    }
+                                } else if (item.attachment_status === 'MAINTENANCE') {
+                                    displayText += ` - 🔧 MAINTENANCE`;
+                                }
+                                
                                 return {
                                     id: item.id,
                                     text: displayText,
                                     data: item
                                 };
-                            })
+                            }),
+                            pagination: {
+                                more: (data.data.length >= 50)
+                            }
                         };
                     }
                     return { results: [] };
                 },
-                cache: false
+                cache: true
+            },
+            templateResult: function(item) {
+                if (!item.id) return item.text;
+                
+                let $result = $('<div style="padding: 5px 0;"></div>');
+                let $text = $('<span></span>').text(item.text);
+                
+                if (item.data && item.data.attachment_status === 'AVAILABLE') {
+                    $text.css({'color': '#28a745', 'font-weight': '500'});
+                } else if (item.data && item.data.attachment_status === 'USED') {
+                    $text.css({'color': '#ff6b6b', 'font-weight': '500'});
+                }
+                
+                $result.append($text);
+                return $result;
+            },
+            templateSelection: function(item) {
+                // Show shorter text when selected: Nama [SN: xxx]
+                if (item.data) {
+                    let selectedText = item.data.label || 'Charger';
+                    if (item.data.sn_charger) {
+                        let shortLabel = selectedText.length > 30 ? selectedText.substring(0, 30) + '...' : selectedText;
+                        return `${shortLabel} [SN: ${item.data.sn_charger}]`;
+                    }
+                    return selectedText.length > 40 ? selectedText.substring(0, 40) + '...' : selectedText;
+                }
+                return item.text;
             }
         });        console.log('📝 Dropdown options populated successfully');
     }
@@ -1301,12 +1528,47 @@ $(document).ready(function() {
     $(document).on('change', 'input[id^="check-"]', function() {
         let checkbox = $(this);
         let fieldName = checkbox.attr('id').replace('check-', '');
-        let dbField = $('#db-' + fieldName);
-        let verifyField = $('#verify-' + fieldName);
+        
+        // Special mapping for fields with different naming conventions
+        let dbFieldId = 'db-' + fieldName;
+        let verifyFieldId = 'verify-' + fieldName;
+        
+        // Handle special cases for field name mapping
+        if (fieldName === 'hm') {
+            dbFieldId = 'db-hour-meter';
+        }
+        
+        let dbField = $('#' + dbFieldId);
+        let verifyField = $('#' + verifyFieldId);
         
         console.log('📝 Checkbox changed:', fieldName, 'Checked:', checkbox.is(':checked'));
+        console.log('📝 DB Field:', dbFieldId, 'Value:', dbField.val());
+        console.log('📝 Verify Field:', verifyFieldId);
+        
+        // Prevent unchecking pelanggan and lokasi - they should always be readonly
+        if (fieldName === 'pelanggan' || fieldName === 'lokasi') {
+            checkbox.prop('checked', true);
+            return false;
+        }
         
         if (checkbox.is(':checked')) {
+            // VALIDASI: Cek apakah database field ada isinya
+            let dbValue = dbField.val();
+            
+            if (!dbValue || dbValue.trim() === '' || dbValue === '-' || dbValue === 'N/A') {
+                // Database kosong, jangan allow checkbox
+                checkbox.prop('checked', false);
+                
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Data Database Kosong',
+                    text: 'Field "' + fieldName + '" di database tidak memiliki nilai. Silakan isi manual di kolom Real Lapangan.',
+                    timer: 3000
+                });
+                
+                return false;
+            }
+            
             // Copy database value to verification field and make readonly/disabled
             
             // Check if it's a Select2 field (attachment, baterai, charger)
@@ -1596,26 +1858,86 @@ $(document).ready(function() {
             const name = attachment.label;
             const kondisi = attachment.kondisi_fisik;
             
-            // Fill database fields
-            $('#db-attachment').val(name);
-            if (sn) {
-                $('#db-sn-attachment').val(sn);
+            // Check if attachment is currently USED by another unit
+            if (attachment.attachment_status === 'USED' && attachment.used_by_unit && attachment.is_used) {
+                const currentUnitNo = attachment.used_by_unit;
+                const targetUnit = $('#verify-no-unit').val() || 'unit ini';
+                
+                // Show confirmation modal
+                Swal.fire({
+                    title: '⚠️ Attachment Sudah Terpasang',
+                    html: `
+                        <div class="text-start">
+                            <p><strong>Attachment:</strong> ${name}</p>
+                            <p><strong>Serial Number:</strong> ${sn || '-'}</p>
+                            <p class="text-danger"><strong>Status Saat Ini:</strong> TERPASANG DI UNIT <strong>${currentUnitNo}</strong></p>
+                            <hr>
+                            <p class="text-warning">⚠️ <strong>Perhatian:</strong></p>
+                            <ul class="text-start">
+                                <li>Jika Anda lanjutkan, attachment akan <strong>DIPINDAHKAN</strong> dari Unit ${currentUnitNo}</li>
+                                <li>Attachment akan otomatis <strong>DILEPAS</strong> dari Unit ${currentUnitNo}</li>
+                                <li>Attachment akan <strong>DIPASANG</strong> ke ${targetUnit}</li>
+                            </ul>
+                            <p class="text-info">💡 Pastikan attachment memang akan dipindahkan secara fisik di lapangan.</p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '✓ Ya, Pindahkan Attachment',
+                    cancelButtonText: '✗ Batal',
+                    reverseButtons: true,
+                    width: '600px'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        // User confirmed - proceed with selection
+                        proceedWithAttachmentSelection(attachment, sn, name);
+                        
+                        // Show success toast
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: `Attachment akan dipindahkan dari Unit ${currentUnitNo}`,
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    } else {
+                        // User cancelled - clear the selection
+                        $('#verify-attachment').val(null).trigger('change');
+                        console.log('❌ User cancelled attachment transfer');
+                    }
+                });
+            } else {
+                // Attachment is AVAILABLE - proceed normally
+                proceedWithAttachmentSelection(attachment, sn, name);
             }
-            
-            // Auto-fill SN field if the SN field exists and is empty
-            if ($('#verify-sn-attachment').length && $('#verify-sn-attachment').val() === '' && sn) {
-                $('#verify-sn-attachment').val(sn);
-            }
-            
-            // Update tooltips for filled fields
-            updateSimpleTooltip($('#db-attachment'));
-            if (sn) {
-                updateSimpleTooltip($('#db-sn-attachment'));
-            }
-            
-            console.log(`📝 Attachment selected: ${name} (SN: ${sn})`);
         }
     });
+    
+    // Helper function to proceed with attachment selection
+    function proceedWithAttachmentSelection(attachment, sn, name) {
+        // Fill database fields
+        $('#db-attachment').val(name);
+        if (sn) {
+            $('#db-sn-attachment').val(sn);
+        }
+        
+        // Auto-fill SN field if the SN field exists and is empty
+        if ($('#verify-sn-attachment').length && $('#verify-sn-attachment').val() === '' && sn) {
+            $('#verify-sn-attachment').val(sn);
+        }
+        
+        // Update tooltips for filled fields
+        updateSimpleTooltip($('#db-attachment'));
+        if (sn) {
+            updateSimpleTooltip($('#db-sn-attachment'));
+        }
+        
+        console.log(`📝 Attachment selected: ${name} (SN: ${sn})`);
+    }
     
     $('#verify-baterai').on('select2:select', function(e) {
         const selectedData = e.params.data;
@@ -1625,25 +1947,79 @@ $(document).ready(function() {
             const name = baterai.label;
             const kondisi = baterai.kondisi_fisik;
             
-            // Fill database fields
-            $('#db-baterai').val(name);
-            if (sn) {
-                $('#db-sn-baterai').val(sn);
+            // Check if baterai is currently USED by another unit
+            if (baterai.attachment_status === 'USED' && baterai.used_by_unit && baterai.is_used) {
+                const currentUnitNo = baterai.used_by_unit;
+                const targetUnit = $('#verify-no-unit').val() || 'unit ini';
+                
+                Swal.fire({
+                    title: '⚠️ Baterai Sudah Terpasang',
+                    html: `
+                        <div class="text-start">
+                            <p><strong>Baterai:</strong> ${name}</p>
+                            <p><strong>Serial Number:</strong> ${sn || '-'}</p>
+                            <p class="text-danger"><strong>Status Saat Ini:</strong> TERPASANG DI UNIT <strong>${currentUnitNo}</strong></p>
+                            <hr>
+                            <p class="text-warning">⚠️ <strong>Perhatian:</strong></p>
+                            <ul class="text-start">
+                                <li>Jika Anda lanjutkan, baterai akan <strong>DIPINDAHKAN</strong> dari Unit ${currentUnitNo}</li>
+                                <li>Baterai akan otomatis <strong>DILEPAS</strong> dari Unit ${currentUnitNo}</li>
+                                <li>Baterai akan <strong>DIPASANG</strong> ke ${targetUnit}</li>
+                            </ul>
+                            <p class="text-info">💡 Pastikan baterai memang akan dipindahkan secara fisik di lapangan.</p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '✓ Ya, Pindahkan Baterai',
+                    cancelButtonText: '✗ Batal',
+                    reverseButtons: true,
+                    width: '600px'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        proceedWithBateraiSelection(baterai, sn, name);
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: `Baterai akan dipindahkan dari Unit ${currentUnitNo}`,
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    } else {
+                        $('#verify-baterai').val(null).trigger('change');
+                        console.log('❌ User cancelled baterai transfer');
+                    }
+                });
+            } else {
+                proceedWithBateraiSelection(baterai, sn, name);
             }
-            
-            if ($('#verify-sn-baterai').length && $('#verify-sn-baterai').val() === '' && sn) {
-                $('#verify-sn-baterai').val(sn);
-            }
-            
-            // Update tooltips for filled fields
-            updateSimpleTooltip($('#db-baterai'));
-            if (sn) {
-                updateSimpleTooltip($('#db-sn-baterai'));
-            }
-            
-            console.log(`📝 Baterai selected: ${name} (SN: ${sn})`);
         }
     });
+    
+    // Helper function for baterai selection
+    function proceedWithBateraiSelection(baterai, sn, name) {
+        // Fill database fields
+        $('#db-baterai').val(name);
+        if (sn) {
+            $('#db-sn-baterai').val(sn);
+        }
+        
+        if ($('#verify-sn-baterai').length && $('#verify-sn-baterai').val() === '' && sn) {
+            $('#verify-sn-baterai').val(sn);
+        }
+        
+        // Update tooltips for filled fields
+        updateSimpleTooltip($('#db-baterai'));
+        if (sn) {
+            updateSimpleTooltip($('#db-sn-baterai'));
+        }
+        
+        console.log(`📝 Baterai selected: ${name} (SN: ${sn})`);
+    }
     
     $('#verify-charger').on('select2:select', function(e) {
         const selectedData = e.params.data;
@@ -1653,25 +2029,79 @@ $(document).ready(function() {
             const name = charger.label;
             const kondisi = charger.kondisi_fisik;
             
-            // Fill database fields
-            $('#db-charger').val(name);
-            if (sn) {
-                $('#db-sn-charger').val(sn);
+            // Check if charger is currently USED by another unit
+            if (charger.attachment_status === 'USED' && charger.used_by_unit && charger.is_used) {
+                const currentUnitNo = charger.used_by_unit;
+                const targetUnit = $('#verify-no-unit').val() || 'unit ini';
+                
+                Swal.fire({
+                    title: '⚠️ Charger Sudah Terpasang',
+                    html: `
+                        <div class="text-start">
+                            <p><strong>Charger:</strong> ${name}</p>
+                            <p><strong>Serial Number:</strong> ${sn || '-'}</p>
+                            <p class="text-danger"><strong>Status Saat Ini:</strong> TERPASANG DI UNIT <strong>${currentUnitNo}</strong></p>
+                            <hr>
+                            <p class="text-warning">⚠️ <strong>Perhatian:</strong></p>
+                            <ul class="text-start">
+                                <li>Jika Anda lanjutkan, charger akan <strong>DIPINDAHKAN</strong> dari Unit ${currentUnitNo}</li>
+                                <li>Charger akan otomatis <strong>DILEPAS</strong> dari Unit ${currentUnitNo}</li>
+                                <li>Charger akan <strong>DIPASANG</strong> ke ${targetUnit}</li>
+                            </ul>
+                            <p class="text-info">💡 Pastikan charger memang akan dipindahkan secara fisik di lapangan.</p>
+                        </div>
+                    `,
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#6c757d',
+                    confirmButtonText: '✓ Ya, Pindahkan Charger',
+                    cancelButtonText: '✗ Batal',
+                    reverseButtons: true,
+                    width: '600px'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        proceedWithChargerSelection(charger, sn, name);
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: `Charger akan dipindahkan dari Unit ${currentUnitNo}`,
+                            showConfirmButton: false,
+                            timer: 3000,
+                            timerProgressBar: true
+                        });
+                    } else {
+                        $('#verify-charger').val(null).trigger('change');
+                        console.log('❌ User cancelled charger transfer');
+                    }
+                });
+            } else {
+                proceedWithChargerSelection(charger, sn, name);
             }
-            
-            if ($('#verify-sn-charger').length && $('#verify-sn-charger').val() === '' && sn) {
-                $('#verify-sn-charger').val(sn);
-            }
-            
-            // Update tooltips for filled fields
-            updateSimpleTooltip($('#db-charger'));
-            if (sn) {
-                updateSimpleTooltip($('#db-sn-charger'));
-            }
-            
-            console.log(`📝 Charger selected: ${name} (SN: ${sn})`);
         }
     });
+    
+    // Helper function for charger selection
+    function proceedWithChargerSelection(charger, sn, name) {
+        // Fill database fields
+        $('#db-charger').val(name);
+        if (sn) {
+            $('#db-sn-charger').val(sn);
+        }
+        
+        if ($('#verify-sn-charger').length && $('#verify-sn-charger').val() === '' && sn) {
+            $('#verify-sn-charger').val(sn);
+        }
+        
+        // Update tooltips for filled fields
+        updateSimpleTooltip($('#db-charger'));
+        if (sn) {
+            updateSimpleTooltip($('#db-sn-charger'));
+        }
+        
+        console.log(`📝 Charger selected: ${name} (SN: ${sn})`);
+    }
     
     // Open Add Attachment Modal
     function openAddAttachmentModal(type) {

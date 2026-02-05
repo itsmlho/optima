@@ -834,7 +834,6 @@ h6, .h6 { font-size: 1rem; }
 }
 
 /* Dropdown Menus */
-.notification-dropdown,
 .user-dropdown {
     min-width: 250px;
     max-height: 400px;
@@ -844,10 +843,10 @@ h6, .h6 { font-size: 1rem; }
     border-radius: 8px;
 }
 
-.notification-dropdown {
-    min-width: 380px;
-    max-width: 380px;
-    width: 380px;
+.dropdown-menu.notification-dropdown {
+    min-width: 380px !important;
+    max-width: 380px !important;
+    width: 380px !important;
 }
 
 /* Mobile Responsiveness */
@@ -6778,12 +6777,16 @@ small {
     padding: 0 4px;
 }
 
-.notification-dropdown {
-    min-width: 380px;
-    max-width: 380px;
-    width: 380px;
+.dropdown-menu.notification-dropdown {
+    min-width: 380px !important;
+    max-width: 380px !important;
+    width: 380px !important;
     max-height: 400px;
     overflow-y: auto;
+    overflow-x: hidden !important;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
 }
 
 /* STATUS INDICATORS */
@@ -7866,22 +7869,63 @@ small {
     background-color: #bbdefb;
 }
 
-/* Notification text wrapping */
-.notification-dropdown .dropdown-item {
-    white-space: normal !important;
-    word-wrap: break-word !important;
-    word-break: break-word !important;
-    overflow-wrap: break-word !important;
+/* Notification Dropdown - FORCE FIXED WIDTH WITH ID */
+#notificationDropdownMenu,
+#notificationDropdownMenu.dropdown-menu,
+.dropdown-menu.notification-dropdown {
+    min-width: 380px !important;
+    max-width: 380px !important;
+    width: 380px !important;
+    max-height: 400px !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
 }
 
-.notification-dropdown .notification-item p,
-.notification-dropdown .notification-item small,
-.notification-dropdown .notification-item .text-muted {
+/* FORCE TEXT WRAPPING WITH MAXIMUM SPECIFICITY */
+#notificationDropdownMenu li.notification-item a.dropdown-item,
+#notificationDropdownMenu li.notification-item a.dropdown-item div,
+#notificationDropdownMenu li.notification-item a.dropdown-item div.d-flex,
+#notificationDropdownMenu li.notification-item a.dropdown-item div.align-items-start,
+#notificationDropdownMenu li.notification-item a.dropdown-item div.flex-grow-1,
+#notificationDropdownMenu li.notification-item a.dropdown-item div.fw-bold,
+#notificationDropdownMenu li.notification-item a.dropdown-item div.text-muted,
+#notificationDropdownMenu li.notification-item a.dropdown-item div.small {
+    display: block !important;
     white-space: normal !important;
     word-wrap: break-word !important;
     word-break: break-word !important;
     overflow-wrap: break-word !important;
-    max-width: 100%;
+    text-overflow: clip !important;
+    overflow: visible !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    height: auto !important;
+    line-height: 1.4 !important;
+}
+
+#notificationDropdownMenu li.notification-item a.dropdown-item {
+    padding: 0.75rem 1rem !important;
+    min-height: auto !important;
+    height: auto !important;
+}
+
+#notificationDropdownMenu li.notification-item a.dropdown-item i {
+    display: inline-block !important;
+    margin-right: 0.5rem !important;
+    vertical-align: top !important;
+    flex-shrink: 0 !important;
+    float: left !important;
+    margin-top: 0.2rem !important;
+}
+
+/* Remove all flex properties */
+#notificationDropdownMenu li.notification-item a.dropdown-item div.d-flex {
+    display: block !important;
+    align-items: initial !important;
 }
 
 .unread-dot {

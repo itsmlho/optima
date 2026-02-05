@@ -99,9 +99,9 @@ class App extends BaseConfig
      * strings (like currency markers, numbers, etc), that your program
      * should run under for this request.
      * 
-     * Set to 'id' for Indonesian as default language
+     * Set to 'en' for English as default language
      */
-    public string $defaultLocale = 'id';
+    public string $defaultLocale = 'en';
 
     /**
      * --------------------------------------------------------------------------
@@ -128,11 +128,11 @@ class App extends BaseConfig
      *
      * IncomingRequest::setLocale() also uses this list.
      * 
-     * OPTIMA supports Indonesian (id) and English (en)
+     * OPTIMA supports English (en) and Indonesian (id)
      *
      * @var list<string>
      */
-    public array $supportedLocales = ['id', 'en'];
+    public array $supportedLocales = ['en', 'id'];
 
     /**
      * --------------------------------------------------------------------------

@@ -76,26 +76,26 @@ class Service extends BaseController
             'attachment' => null
         ];
 
-        // Get battery info - include both available (7) and in use (8) for the unit
+        // Get battery info - include both available and in use for the unit
         $battery = $this->db->table('inventory_attachment ia')
             ->select('ia.id_inventory_attachment, ia.baterai_id, ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
             ->join('baterai b', 'ia.baterai_id = b.id', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'battery')
-            ->whereIn('ia.status_unit', [7, 8]) // Available or In use for this unit
+            ->whereIn('ia.attachment_status', ['AVAILABLE', 'IN_USE']) // Available or In use for this unit
             ->get()->getRowArray();
 
         if ($battery) {
             $components['battery'] = $battery;
         }
 
-        // Get charger info - include both available (7) and in use (8) for the unit
+        // Get charger info - include both available and in use for the unit
         $charger = $this->db->table('inventory_attachment ia')
             ->select('ia.id_inventory_attachment, ia.charger_id, ia.sn_charger, c.merk_charger, c.tipe_charger')
             ->join('charger c', 'ia.charger_id = c.id_charger', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'charger')
-            ->whereIn('ia.status_unit', [7, 8]) // Available or In use for this unit
+            ->whereIn('ia.attachment_status', ['AVAILABLE', 'IN_USE']) // Available or In use for this unit
             ->get()->getRowArray();
 
         if ($charger) {
@@ -2530,6 +2530,9 @@ EOF;
     {
         $q = trim((string)($this->request->getGet('q') ?? ''));
         $type = trim((string)($this->request->getGet('type') ?? 'attachment'));
+        $page = (int)($this->request->getGet('page') ?? 1);
+        $perPage = 50;
+        $offset = ($page - 1) * $perPage;
         
         // Validate type
         if (!in_array($type, ['attachment', 'battery', 'charger'])) {
@@ -2541,51 +2544,47 @@ EOF;
             ->select('a.tipe as attachment_tipe, a.merk as attachment_merk, a.model as attachment_model')
             ->select('b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
             ->select('c.merk_charger, c.tipe_charger')
-            ->select('su.status_unit as status_unit_name')
             ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
             ->join('baterai b', 'b.id = ia.baterai_id', 'left')
             ->join('charger c', 'c.id_charger = ia.charger_id', 'left')
             ->join('inventory_unit iu', 'iu.id_inventory_unit = ia.id_inventory_unit', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
-            ->join('status_unit su', 'su.id_status = ia.status_unit', 'left')
-            ->where('ia.tipe_item', $type)  // Filter by requested type
-            ->groupStart()
-                // Filter: status AVAILABLE dengan status_unit AVAILABLE_STOCK atau STOCK NON ASET
-                ->groupStart()
-                    ->where('ia.attachment_status', 'AVAILABLE')
-                    ->whereIn('ia.status_unit', [7, 11]) // 7=AVAILABLE_STOCK, 11=STOCK NON ASET
-                ->groupEnd()
-                // OR status USED dengan status_unit AVAILABLE_STOCK atau STOCK NON ASET
-                ->orGroupStart()
-                    ->where('ia.attachment_status', 'USED')
-                    ->whereIn('ia.status_unit', [7, 11]) // 7=AVAILABLE_STOCK, 11=STOCK NON ASET
-                ->groupEnd()
-            ->groupEnd()
-            ->orderBy('ia.id_inventory_attachment','DESC')
-            ->limit(50);
-            
-        if ($q !== '') {
-            $qb->groupStart();
+            ->where('ia.tipe_item', $type);  // Filter by requested type
+        
+        // If no search query, prioritize AVAILABLE items first
+        if (empty($q)) {
+            $qb->whereIn('ia.attachment_status', ['AVAILABLE', 'USED'])
+               ->orderBy("FIELD(ia.attachment_status, 'AVAILABLE', 'USED')", '', false) // AVAILABLE first
+               ->orderBy('ia.id_inventory_attachment', 'DESC');
+        } else {
+            // With search query, show all matching items regardless of status
+            $qb->whereIn('ia.attachment_status', ['AVAILABLE', 'USED', 'MAINTENANCE'])
+               ->groupStart();
             
             if ($type === 'attachment') {
-                $qb->like('a.tipe', $q)
+                $qb->like('ia.sn_attachment', $q)
+                   ->orLike('a.tipe', $q)
                    ->orLike('a.merk', $q)
-                   ->orLike('a.model', $q)
-                   ->orLike('ia.sn_attachment', $q);
+                   ->orLike('a.model', $q);
             } elseif ($type === 'battery') {
-                $qb->like('b.merk_baterai', $q)
+                $qb->like('ia.sn_baterai', $q)
+                   ->orLike('b.merk_baterai', $q)
                    ->orLike('b.tipe_baterai', $q)
-                   ->orLike('b.jenis_baterai', $q)
-                   ->orLike('ia.sn_baterai', $q);
+                   ->orLike('b.jenis_baterai', $q);
             } elseif ($type === 'charger') {
-                $qb->like('c.merk_charger', $q)
-                   ->orLike('c.tipe_charger', $q)
-                   ->orLike('ia.sn_charger', $q);
+                $qb->like('ia.sn_charger', $q)
+                   ->orLike('c.merk_charger', $q)
+                   ->orLike('c.tipe_charger', $q);
             }
             
             $qb->orLike('ia.lokasi_penyimpanan', $q)
-               ->groupEnd();
+               ->groupEnd()
+               ->orderBy("FIELD(ia.attachment_status, 'AVAILABLE', 'USED', 'MAINTENANCE')", '', false)
+               ->orderBy('ia.id_inventory_attachment', 'DESC');
         }
+        
+        // Add pagination
+        $qb->limit($perPage, $offset);
         
         $rows = $qb->get()->getResultArray();
         $data = array_map(function($r) use ($type){
@@ -2608,16 +2607,6 @@ EOF;
                 $serialNumber = $r['sn_charger'];
             }
             
-            $suffix = [];
-            if (!empty($serialNumber)) $suffix[] = 'SN: '.$serialNumber;
-            if (!empty($r['lokasi_penyimpanan'])) $suffix[] = '@ '.$r['lokasi_penyimpanan'];
-            if ($suffix) $label .= ' ['.implode(', ', $suffix).']';
-            
-            if ($isUsed) {
-                $unitInfo = trim(($r['no_unit']?:'Unit-'.$r['id_inventory_unit']).' ('.($r['merk_unit']?:'').' '.($r['model_unit']?:'').')');
-                $label .= ' [TERPASANG: ' . $unitInfo . ']';
-            }
-            
             return [
                 'id'=>(int)$r['id'],
                 'label'=>$label,
@@ -2627,7 +2616,10 @@ EOF;
                 'tipe_item' => $r['tipe_item'],
                 'kondisi_fisik' => $r['kondisi_fisik'],
                 'kelengkapan' => $r['kelengkapan'],
+                'lokasi_penyimpanan' => $r['lokasi_penyimpanan'],
+                'attachment_status' => $r['attachment_status'],
                 'is_used' => $isUsed,
+                'used_by_unit' => $isUsed ? $r['no_unit'] : null,
                 'installed_unit' => $isUsed ? [
                     'unit_id' => $r['id_inventory_unit'],
                     'no_unit' => $r['no_unit'],
@@ -3025,6 +3017,31 @@ EOF;
 
             // Update attachment relationships
             if (!empty($newAttachmentId)) {
+                // VALIDASI: Cek apakah attachment available atau sudah dipakai unit lain
+                $attachmentCheck = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, attachment_status, id_inventory_unit')
+                    ->where('id_inventory_attachment', $newAttachmentId)
+                    ->get()->getRowArray();
+                
+                if (!$attachmentCheck) {
+                    throw new \Exception('Attachment tidak ditemukan di database');
+                }
+                
+                // Jika attachment USED dan bukan milik unit ini, reject
+                if ($attachmentCheck['attachment_status'] === 'USED' && 
+                    !empty($attachmentCheck['id_inventory_unit']) &&
+                    $attachmentCheck['id_inventory_unit'] != $unitId) {
+                    
+                    // Get unit number yang pakai attachment ini
+                    $usedByUnit = $db->table('inventory_unit')
+                        ->select('no_unit')
+                        ->where('id_inventory_unit', $attachmentCheck['id_inventory_unit'])
+                        ->get()->getRowArray();
+                    
+                    $usedBy = $usedByUnit ? $usedByUnit['no_unit'] : 'Unit Lain';
+                    throw new \Exception('Attachment sudah digunakan oleh ' . $usedBy . '. Silakan pilih attachment lain.');
+                }
+                
                 $unitData['attachment_inventory_attachment_id'] = $newAttachmentId;
                 $unitData['sn_attachment'] = $this->request->getPost('sn_attachment');
                 
@@ -3039,6 +3056,25 @@ EOF;
             }
 
             if (!empty($newBateraiId)) {
+                // VALIDASI: Cek apakah baterai available
+                $bateraiCheck = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, attachment_status, id_inventory_unit')
+                    ->where('id_inventory_attachment', $newBateraiId)
+                    ->get()->getRowArray();
+                
+                if ($bateraiCheck && $bateraiCheck['attachment_status'] === 'USED' && 
+                    !empty($bateraiCheck['id_inventory_unit']) &&
+                    $bateraiCheck['id_inventory_unit'] != $unitId) {
+                    
+                    $usedByUnit = $db->table('inventory_unit')
+                        ->select('no_unit')
+                        ->where('id_inventory_unit', $bateraiCheck['id_inventory_unit'])
+                        ->get()->getRowArray();
+                    
+                    $usedBy = $usedByUnit ? $usedByUnit['no_unit'] : 'Unit Lain';
+                    throw new \Exception('Baterai sudah digunakan oleh ' . $usedBy);
+                }
+                
                 $unitData['baterai_inventory_attachment_id'] = $newBateraiId;
                 $unitData['sn_baterai'] = $this->request->getPost('sn_baterai');
                 
@@ -3053,6 +3089,25 @@ EOF;
             }
 
             if (!empty($newChargerId)) {
+                // VALIDASI: Cek apakah charger available
+                $chargerCheck = $db->table('inventory_attachment')
+                    ->select('id_inventory_attachment, attachment_status, id_inventory_unit')
+                    ->where('id_inventory_attachment', $newChargerId)
+                    ->get()->getRowArray();
+                
+                if ($chargerCheck && $chargerCheck['attachment_status'] === 'USED' && 
+                    !empty($chargerCheck['id_inventory_unit']) &&
+                    $chargerCheck['id_inventory_unit'] != $unitId) {
+                    
+                    $usedByUnit = $db->table('inventory_unit')
+                        ->select('no_unit')
+                        ->where('id_inventory_unit', $chargerCheck['id_inventory_unit'])
+                        ->get()->getRowArray();
+                    
+                    $usedBy = $usedByUnit ? $usedByUnit['no_unit'] : 'Unit Lain';
+                    throw new \Exception('Charger sudah digunakan oleh ' . $usedBy);
+                }
+                
                 $unitData['charger_inventory_attachment_id'] = $newChargerId;
                 $unitData['sn_charger'] = $this->request->getPost('sn_charger');
                 

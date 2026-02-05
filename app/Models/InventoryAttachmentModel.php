@@ -18,9 +18,9 @@ class InventoryAttachmentModel extends Model
         'attachment_id','sn_attachment',
         'baterai_id','sn_baterai',
         'charger_id','sn_charger',
-        'id_inventory_unit','status_unit','lokasi_penyimpanan',
+        'id_inventory_unit','lokasi_penyimpanan',
         'kondisi_fisik','kelengkapan','tanggal_masuk','catatan_inventory',
-        'attachment_status',
+        'attachment_status','catatan_fisik',
     ];
 
     // Dates
@@ -44,7 +44,7 @@ class InventoryAttachmentModel extends Model
     'kelengkapan'      => 'permit_empty',
     'catatan_fisik'    => 'permit_empty',
     'lokasi_penyimpanan'=> 'permit_empty|max_length[255]',
-    'status_unit'      => 'permit_empty|integer',
+    'attachment_status'=> 'permit_empty|in_list[AVAILABLE,IN_USE,USED,MAINTENANCE,BROKEN,RUSAK,RESERVED]',
     'tanggal_masuk'    => 'permit_empty|valid_date',
     'catatan_inventory'=> 'permit_empty'
     ];
@@ -70,8 +70,8 @@ class InventoryAttachmentModel extends Model
         'kelengkapan' => [
             'in_list' => 'Kelengkapan harus salah satu dari: Lengkap, Tidak Lengkap'
         ],
-        'status_unit' => [
-            'integer' => 'Status unit harus berupa angka'
+        'attachment_status' => [
+            'in_list' => 'Attachment status must be one of: AVAILABLE, IN_USE, USED, MAINTENANCE, BROKEN, RUSAK, RESERVED'
         ],
         'lokasi_unit' => [
             'max_length' => 'Lokasi unit tidak boleh lebih dari 50 karakter'
@@ -260,7 +260,6 @@ class InventoryAttachmentModel extends Model
             ia.kelengkapan,
             ia.catatan_fisik,
             ia.lokasi_penyimpanan,
-            ia.status_unit,
             ia.attachment_status,
             ia.tanggal_masuk,
             ia.catatan_inventory,
@@ -276,27 +275,6 @@ class InventoryAttachmentModel extends Model
             c.tipe_charger
         ');
 
-        // Add status_unit_name if status_unit table exists
-        if ($tablesExist['status_unit']) {
-            $builder->select('COALESCE(su.status_unit, "Unknown") as status_unit_name');
-            $builder->join('status_unit su', 'ia.status_unit = su.id_status', 'left');
-        } else {
-            $builder->select('
-                CASE 
-                    WHEN ia.status_unit = 1 THEN "WORKSHOP-HIDUP"
-                    WHEN ia.status_unit = 2 THEN "WORKSHOP-RUSAK"
-                    WHEN ia.status_unit = 3 THEN "RENTAL"
-                    WHEN ia.status_unit = 4 THEN "UNIT PULANG"
-                    WHEN ia.status_unit = 5 THEN "UNIT HARIAN"
-                    WHEN ia.status_unit = 6 THEN "BOOKING"
-                    WHEN ia.status_unit = 7 THEN "STOCK ASET"
-                    WHEN ia.status_unit = 8 THEN "STOCK NON ASET"
-                    WHEN ia.status_unit = 9 THEN "JUAL"
-                    ELSE "Unknown"
-                END as status_unit_name
-            ');
-        }
-
         // Add unit number if linked to a unit
         $builder->select('COALESCE(iu.no_unit, iu.no_unit_na) as no_unit');
         $builder->join('inventory_unit iu', 'ia.id_inventory_unit = iu.id_inventory_unit', 'left');
@@ -309,11 +287,6 @@ class InventoryAttachmentModel extends Model
         // Filter by tipe_item if provided
         if (!empty($request['tipe_item'])) {
             $builder->where('ia.tipe_item', $request['tipe_item']);
-        }
-
-        // Filter by status if provided
-        if (!empty($request['status_unit'])) {
-            $builder->where('ia.status_unit', $request['status_unit']);
         }
 
         // Filter by attachment_status if provided (for tab filter)
@@ -384,19 +357,7 @@ class InventoryAttachmentModel extends Model
      */
     public function countFiltered($request)
     {
-        $tablesExist = $this->checkTablesExist();
-        
         $builder = $this->db->table($this->table . ' ia');
-
-        // Join status_unit if exists
-        if ($tablesExist['status_unit']) {
-            $builder->join('status_unit su', 'ia.status_unit = su.id_status', 'left');
-        }
-
-        // Filter by status if provided
-        if (!empty($request['status_unit'])) {
-            $builder->where('ia.status_unit', $request['status_unit']);
-        }
 
         // Search functionality
         if (!empty($request['search']['value'])) {
@@ -434,9 +395,11 @@ class InventoryAttachmentModel extends Model
     {
         $stats = [
             'total' => $this->countAll(),
-            'in_stock' => $this->where('status_unit', 7)->countAllResults(false),
-            'rented' => $this->where('status_unit', 3)->countAllResults(false),
-            'sold' => $this->where('status_unit', 9)->countAllResults(false)
+            'available' => $this->where('attachment_status', 'AVAILABLE')->countAllResults(false),
+            'in_use' => $this->where('attachment_status', 'IN_USE')->countAllResults(false),
+            'used' => $this->where('attachment_status', 'USED')->countAllResults(false),
+            'maintenance' => $this->where('attachment_status', 'MAINTENANCE')->countAllResults(false),
+            'broken' => $this->where('attachment_status', 'BROKEN')->countAllResults(false)
         ];
 
         return $stats;
@@ -459,27 +422,6 @@ class InventoryAttachmentModel extends Model
         // Add unit info (no_unit, serial_number)
         $builder->select('iu.no_unit, iu.serial_number as unit_serial_number');
         $builder->join('inventory_unit iu', 'ia.id_inventory_unit = iu.id_inventory_unit', 'left');
-
-        // Add status name if status_unit table exists
-        if ($tablesExist['status_unit']) {
-            $builder->select('su.status_unit as status_unit_name');
-            $builder->join('status_unit su', 'ia.status_unit = su.id_status', 'left');
-        } else {
-            $builder->select('
-                CASE 
-                    WHEN ia.status_unit = 1 THEN "WORKSHOP-HIDUP"
-                    WHEN ia.status_unit = 2 THEN "WORKSHOP-RUSAK"
-                    WHEN ia.status_unit = 3 THEN "RENTAL"
-                    WHEN ia.status_unit = 4 THEN "UNIT PULANG"
-                    WHEN ia.status_unit = 5 THEN "UNIT HARIAN"
-                    WHEN ia.status_unit = 6 THEN "BOOKING"
-                    WHEN ia.status_unit = 7 THEN "STOCK ASET"
-                    WHEN ia.status_unit = 8 THEN "STOCK NON ASET"
-                    WHEN ia.status_unit = 9 THEN "JUAL"
-                    ELSE "Unknown"
-                END as status_unit_name
-            ');
-        }
 
         // Add PO and supplier info if tables exist
         if ($tablesExist['purchase_orders']) {
@@ -549,7 +491,7 @@ class InventoryAttachmentModel extends Model
             ->where([
                 'inventory_attachment.attachment_id' => $attachmentId,
                 'inventory_attachment.tipe_item'     => 'attachment',
-            ])->whereIn('inventory_attachment.status_unit', [1, 11]) // available_stock (1) dan stock_non_aset (11)
+            ])->where('inventory_attachment.attachment_status', 'AVAILABLE') // Use attachment_status instead of status_unit
               ->where('inventory_attachment.attachment_id IS NOT NULL')
               ->orderBy('inventory_attachment.tanggal_masuk','ASC')
               ->findAll(100);
@@ -558,7 +500,7 @@ class InventoryAttachmentModel extends Model
     public function getAvailableChargers(): array
     {
         // Ambil inventory yang punya charger_id dan tipe_item = 'charger'
-        // Include AVAILABLE (status 1, 11) dan USED (untuk kanibal, hanya jika status_unit = 1 atau 11)
+        // Include AVAILABLE dan USED status
         return $this->select('inventory_attachment.*, c.merk_charger, c.tipe_charger, 
                              iu.no_unit as installed_unit_no, iu.serial_number as installed_unit_sn, 
                              mu.merk_unit as installed_unit_merk, mu.model_unit as installed_unit_model')
@@ -566,10 +508,7 @@ class InventoryAttachmentModel extends Model
             ->join('inventory_unit iu', 'iu.id_inventory_unit = inventory_attachment.id_inventory_unit', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->where('inventory_attachment.tipe_item', 'charger')
-            ->groupStart()
-                ->where('inventory_attachment.attachment_status', 'AVAILABLE')
-                ->orWhere('(inventory_attachment.attachment_status = "USED" AND inventory_attachment.status_unit IN (1, 11))')
-            ->groupEnd()
+            ->whereIn('inventory_attachment.attachment_status', ['AVAILABLE', 'USED']) // Use attachment_status only
             ->where('inventory_attachment.charger_id IS NOT NULL')
             ->orderBy('inventory_attachment.attachment_status', 'ASC') // AVAILABLE first, then USED
             ->orderBy('inventory_attachment.tanggal_masuk','ASC')
@@ -579,7 +518,7 @@ class InventoryAttachmentModel extends Model
     public function getAvailableBatteries(): array
     {
         // Ambil inventory yang punya baterai_id dan tipe_item = 'battery'
-        // Include AVAILABLE (status 1, 11) dan USED (untuk kanibal, hanya jika status_unit = 1 atau 11)
+        // Include AVAILABLE dan USED status
         return $this->select('inventory_attachment.*, b.merk_baterai, b.tipe_baterai, b.jenis_baterai, 
                              iu.no_unit as installed_unit_no, iu.serial_number as installed_unit_sn, 
                              mu.merk_unit as installed_unit_merk, mu.model_unit as installed_unit_model')
@@ -587,10 +526,7 @@ class InventoryAttachmentModel extends Model
             ->join('inventory_unit iu', 'iu.id_inventory_unit = inventory_attachment.id_inventory_unit', 'left')
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->where('inventory_attachment.tipe_item', 'battery')
-            ->groupStart()
-                ->where('inventory_attachment.attachment_status', 'AVAILABLE')
-                ->orWhere('(inventory_attachment.attachment_status = "USED" AND inventory_attachment.status_unit IN (1, 11))')
-            ->groupEnd()
+            ->whereIn('inventory_attachment.attachment_status', ['AVAILABLE', 'USED']) // Use attachment_status only
             ->where('inventory_attachment.baterai_id IS NOT NULL')
             ->orderBy('inventory_attachment.attachment_status', 'ASC') // AVAILABLE first, then USED
             ->orderBy('inventory_attachment.tanggal_masuk','ASC')

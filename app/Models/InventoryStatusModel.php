@@ -31,14 +31,14 @@ class InventoryStatusModel extends Model
                 WHERE (ks.kontrak_id = ? OR iu.kontrak_id = ?) AND iu.status_unit_id != 3
             ", [$kontrakId, $kontrakId]);
 
-            // Update inventory_attachment status to RENTAL (id: 3) for items linked to this contract
+            // Update inventory_attachment status to IN_USE for items linked to this contract
             // This covers attachments referenced by inventory_unit regardless of how the unit is linked
             $this->db->query("
                 UPDATE inventory_attachment ia
                 JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
                 LEFT JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
-                SET ia.status_unit = 3
-                WHERE (ks.kontrak_id = ? OR iu.kontrak_id = ?) AND ia.status_unit != 3
+                SET ia.attachment_status = 'IN_USE'
+                WHERE (ks.kontrak_id = ? OR iu.kontrak_id = ?) AND ia.attachment_status != 'IN_USE'
             ", [$kontrakId, $kontrakId]);
 
             // Handle departemen-specific attachment rules
@@ -72,13 +72,15 @@ class InventoryStatusModel extends Model
                 WHERE ks.kontrak_id = ? AND iu.status_unit_id = 3
             ", [$kontrakId]);
 
-            // Update inventory_attachment status to UNIT PULANG (id: 4) for items linked to this contract
+            // Update inventory_attachment status to AVAILABLE when contract ends (detach from unit)
             $this->db->query("
                 UPDATE inventory_attachment ia
                 JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
                 JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
-                SET ia.status_unit = 4
-                WHERE ks.kontrak_id = ? AND ia.status_unit = 3
+                SET ia.attachment_status = 'AVAILABLE',
+                    ia.id_inventory_unit = NULL,
+                    ia.lokasi_penyimpanan = 'Returned from contract'
+                WHERE ks.kontrak_id = ? AND ia.attachment_status = 'IN_USE'
             ", [$kontrakId]);
 
             $this->db->transCommit();
@@ -110,13 +112,13 @@ class InventoryStatusModel extends Model
                 WHERE ks.kontrak_id = ? AND iu.status_unit_id = 4
             ", [$kontrakId]);
 
-            // Update inventory_attachment status to STOCK ASET (id: 7) for items linked to this contract
+            // Update inventory_attachment status to AVAILABLE after DI completed
             $this->db->query("
                 UPDATE inventory_attachment ia
                 JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
                 JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
-                SET ia.status_unit = 7
-                WHERE ks.kontrak_id = ? AND ia.status_unit = 4
+                SET ia.attachment_status = 'AVAILABLE'
+                WHERE ks.kontrak_id = ? AND ia.attachment_status = 'IN_USE'
             ", [$kontrakId]);
 
             $this->db->transCommit();
@@ -154,12 +156,11 @@ class InventoryStatusModel extends Model
             SELECT 
                 ia.id_inventory_attachment,
                 ia.tipe_item,
-                su.status_unit as attachment_status,
+                ia.attachment_status,
                 iu.no_unit
             FROM inventory_attachment ia
             JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
             JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
-            JOIN status_unit su ON ia.status_unit = su.id_status
             WHERE ks.kontrak_id = ?
         ", [$kontrakId])->getResultArray();
 
@@ -201,7 +202,7 @@ class InventoryStatusModel extends Model
                     $this->db->query("
                         UPDATE inventory_attachment 
                         SET id_inventory_unit = NULL,
-                            status_unit = 7,
+                            attachment_status = 'AVAILABLE',
                             lokasi_penyimpanan = 'Detached from GASOLINE/DIESEL unit'
                         WHERE id_inventory_attachment = ?
                     ", [$attachment['id_inventory_attachment']]);
@@ -260,7 +261,7 @@ class InventoryStatusModel extends Model
                 $this->db->query("
                     UPDATE inventory_attachment 
                     SET id_inventory_unit = ?,
-                        status_unit = 3,
+                        attachment_status = 'IN_USE',
                         lokasi_penyimpanan = ?
                     WHERE id_inventory_attachment = ?
                 ", [

@@ -40,13 +40,18 @@ class StatusUnitHelper
             ->where('kontrak_id', $kontrakId)
             ->update(['status_unit_id' => $newStatusId]);
             
-        // Update attachments for units in this kontrak
+        // Update attachments for units in this kontrak - use attachment_status
         $this->db->query("
             UPDATE inventory_attachment ia
             JOIN inventory_unit iu ON iu.id_inventory_unit = ia.id_inventory_unit
-            SET ia.status_unit = ?
+            SET ia.attachment_status = 
+                CASE
+                    WHEN ? IN (3, 5) THEN 'IN_USE'  -- Rental or Daily rental
+                    WHEN ? = 4 THEN 'AVAILABLE'  -- Unit returned
+                    ELSE ia.attachment_status
+                END
             WHERE iu.kontrak_id = ?
-        ", [$newStatusId, $kontrakId]);
+        ", [$newStatusId, $newStatusId, $kontrakId]);
         
         return true;
     }

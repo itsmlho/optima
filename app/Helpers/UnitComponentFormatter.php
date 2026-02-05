@@ -47,7 +47,7 @@ class UnitComponentFormatter
             ->join("baterai b", "ia.baterai_id = b.id", "left")
             ->where("ia.id_inventory_unit", $unitId)
             ->where("ia.tipe_item", "battery")
-            ->whereIn("ia.status_unit", [7, 8]) // Available or In use
+            ->whereIn("ia.attachment_status", ['AVAILABLE', 'IN_USE']) // Available or In use
             ->get()->getRowArray();
         
         if ($battery) {
@@ -79,7 +79,7 @@ class UnitComponentFormatter
             ->join("charger c", "ia.charger_id = c.id_charger", "left")
             ->where("ia.id_inventory_unit", $unitId)
             ->where("ia.tipe_item", "charger")
-            ->whereIn("ia.status_unit", [7, 8]) // Available or In use
+            ->whereIn("ia.attachment_status", ['AVAILABLE', 'IN_USE']) // Available or In use
             ->get()->getRowArray();
         
         if ($charger) {
@@ -111,7 +111,7 @@ class UnitComponentFormatter
             ->join("attachment a", "ia.attachment_id = a.id_attachment", "left")
             ->where("ia.id_inventory_unit", $unitId)
             ->where("ia.tipe_item", "attachment")
-            ->where("ia.status_unit", 8) // In use
+            ->where("ia.attachment_status", 'IN_USE') // In use
             ->get()->getRowArray();
         
         if ($attachment) {
