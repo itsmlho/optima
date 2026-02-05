@@ -3,3 +3,6 @@ writable/*
 !writable/index.html
 !writable/.htaccess
 app/Config/Database.php
+vendor/
+.env
+node_modules
