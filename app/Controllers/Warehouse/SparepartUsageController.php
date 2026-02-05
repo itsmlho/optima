@@ -45,8 +45,22 @@ class SparepartUsageController extends BaseController
             'usage_table_exists' => $usageTableExists,
             'return_table_exists' => $returnTableExists,
             'stats' => [
-                // Count from work_order_spareparts where quantity_used > 0 (bukan dari work_order_sparepart_usage)
+                // Count from work_order_spareparts where quantity_used > 0
                 'usage_total' => $usageTableExists ? $db->table('work_order_spareparts')->where('quantity_used >', 0)->where('quantity_used IS NOT NULL')->countAllResults() : 0,
+                
+                // ← NEW: Separate counts for warehouse vs non-warehouse
+                'usage_warehouse' => $usageTableExists ? $db->table('work_order_spareparts')
+                    ->where('quantity_used >', 0)
+                    ->where('quantity_used IS NOT NULL')
+                    ->where('is_from_warehouse', 1)
+                    ->countAllResults() : 0,
+                    
+                'usage_non_warehouse' => $usageTableExists ? $db->table('work_order_spareparts')
+                    ->where('quantity_used >', 0)
+                    ->where('quantity_used IS NOT NULL')
+                    ->where('is_from_warehouse', 0)
+                    ->countAllResults() : 0,
+                
                 'return_pending' => $returnTableExists ? $this->returnModel->where('status', 'PENDING')->countAllResults(false) : 0,
                 'return_confirmed' => $returnTableExists ? $this->returnModel->where('status', 'CONFIRMED')->countAllResults(false) : 0
             ]

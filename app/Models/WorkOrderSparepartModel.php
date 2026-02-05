@@ -19,7 +19,11 @@ class WorkOrderSparepartModel extends Model
         'sparepart_name',
         'quantity_brought',
         'satuan',
-        'notes'
+        'notes',
+        'is_from_warehouse',
+        'quantity_used',
+        'is_additional',
+        'sparepart_validated'
     ];
 
     protected $useTimestamps = true;
@@ -32,7 +36,8 @@ class WorkOrderSparepartModel extends Model
         'sparepart_code' => 'required|max_length[50]',
         'sparepart_name' => 'required|max_length[255]',
         'quantity_brought' => 'required|integer|greater_than[0]',
-        'satuan' => 'required|max_length[50]'
+        'satuan' => 'required|max_length[50]',
+        'is_from_warehouse' => 'permit_empty|in_list[0,1]'
     ];
 
     protected $validationMessages = [

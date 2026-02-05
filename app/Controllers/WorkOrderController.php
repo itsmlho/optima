@@ -1137,6 +1137,7 @@ class WorkOrderController extends Controller
                     $sparepartNames = $input['sparepart_name'] ?? [];
                     $sparepartQuantities = $input['sparepart_quantity'] ?? [];
                     $sparepartUnits = $input['sparepart_unit'] ?? [];
+                    $isFromWarehouse = $input['is_from_warehouse'] ?? []; // ← NEW: Get warehouse source flags
                     
                     for ($i = 0; $i < count($sparepartNames); $i++) {
                         if (!empty($sparepartNames[$i])) {
@@ -1150,7 +1151,8 @@ class WorkOrderController extends Controller
                                     'sparepart_code' => $sparepartCode,
                                     'sparepart_name' => $sparepartName,
                                     'quantity_brought' => $sparepartQuantities[$i] ?? 1,
-                                    'satuan' => $sparepartUnits[$i] ?? 'pcs'
+                                    'satuan' => $sparepartUnits[$i] ?? 'pcs',
+                                    'is_from_warehouse' => isset($isFromWarehouse[$i]) && $isFromWarehouse[$i] == '1' ? 1 : 0 // ← NEW
                                 ];
                             }
                         }
@@ -3908,6 +3910,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         ->getRowArray();
 
                     if ($originalSparepart) {
+                        $isFromWarehouse = (int)($originalSparepart['is_from_warehouse'] ?? 1); // ← NEW: Get warehouse flag
                         $quantityBrought = (int)($originalSparepart['quantity_brought'] ?? 0);
                         $quantityUsed = (int)($sparepart['used_quantity'] ?? 0);
                         $quantityReturn = $quantityBrought - $quantityUsed;
@@ -3924,8 +3927,8 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                             ->where('work_order_id', $workOrderId)
                             ->update($updateData);
 
-                        // Auto-create return record if there's quantity to return
-                        if ($quantityReturn > 0) {
+                        // ✅ ONLY create return record if FROM WAREHOUSE and has quantity to return
+                        if ($quantityReturn > 0 && $isFromWarehouse == 1) {
                             $returnData = [
                                 'work_order_id' => $workOrderId,
                                 'work_order_sparepart_id' => $sparepart['id'],
@@ -3941,6 +3944,9 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
 
                             $returnModel->insert($returnData);
                             log_message('info', "Auto-created return record for WO {$workOrderId}, Sparepart: {$originalSparepart['sparepart_name']}, Return Qty: {$quantityReturn}");
+                        } else if ($quantityReturn > 0 && $isFromWarehouse == 0) {
+                            // ← NEW: Log skip for non-warehouse sparepart
+                            log_message('info', "Skipped return record for NON-WAREHOUSE sparepart - WO {$workOrderId}, Sparepart: {$originalSparepart['sparepart_name']} (Bekas/Reuse)");
                         }
                     }
                 }

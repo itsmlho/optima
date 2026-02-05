@@ -779,7 +779,8 @@ class WorkOrderModel extends Model
                 wos.quantity_brought as qty,
                 wos.quantity_used,
                 wos.satuan,
-                wos.notes
+                wos.notes,
+                wos.is_from_warehouse
             ', false)
             ->where('wos.work_order_id', $workOrderId)
             ->orderBy('wos.id', 'ASC')

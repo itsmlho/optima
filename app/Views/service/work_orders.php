@@ -439,9 +439,10 @@ $assetService = new \App\Services\AssetMinificationService();
                                 <table class="table table-striped table-hover" id="sparepartTable">
                                     <thead>
                                         <tr>
-                                            <th width="50%">Sparepart Name*</th>
-                                            <th width="20%">Quantity*</th>
-                                            <th width="20%">Unit*</th>
+                                            <th width="35%">Sparepart Name*</th>
+                                            <th width="15%">Quantity*</th>
+                                            <th width="15%">Unit*</th>
+                                            <th width="25%">Source*</th>
                                             <th width="10%">Action</th>
                                         </tr>
                                     </thead>
@@ -3387,6 +3388,24 @@ $(document).ready(function() {
                     </select>
                 </td>
                 <td>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" 
+                               name="is_from_warehouse[]" 
+                               id="warehouse_${sparepartRowCount}" 
+                               value="1" 
+                               checked 
+                               onchange="toggleSourceLabel(this)">
+                        <label class="form-check-label" for="warehouse_${sparepartRowCount}">
+                            <span class="badge bg-success warehouse-badge">
+                                <i class="fas fa-warehouse me-1"></i>Warehouse
+                            </span>
+                            <span class="badge bg-warning text-dark non-warehouse-badge d-none">
+                                <i class="fas fa-recycle me-1"></i>Bekas
+                            </span>
+                        </label>
+                    </div>
+                </td>
+                <td>
                     <button type="button" class="btn btn-danger btn-sm removeSparepartRow">
                         <i class="fas fa-times"></i>
                     </button>
@@ -3481,6 +3500,25 @@ $(document).ready(function() {
         }
         
         return sparepartSelect; // Return for chaining
+    };
+    
+    /**
+     * Toggle Source Label Function - Switch between Warehouse and Bekas badge
+     */
+    window.toggleSourceLabel = function(checkbox) {
+        const row = $(checkbox).closest('tr');
+        const warehouseBadge = row.find('.warehouse-badge');
+        const nonWarehouseBadge = row.find('.non-warehouse-badge');
+        
+        if (checkbox.checked) {
+            // From Warehouse - Show green badge
+            warehouseBadge.removeClass('d-none');
+            nonWarehouseBadge.addClass('d-none');
+        } else {
+            // Non-Warehouse (Bekas) - Show yellow badge
+            warehouseBadge.addClass('d-none');
+            nonWarehouseBadge.removeClass('d-none');
+        }
     };
     
     console.log('✅ Sparepart dropdown fix applied - Standard dropdown mode active');
