@@ -853,12 +853,11 @@ class Warehouse extends BaseController
                     COALESCE(bat.jenis_baterai, "-") as jenis_baterai,
                     COALESCE(ch.tipe_charger, "-") as charger_type,
                     COALESCE(ch.merk_charger, "-") as merk_charger,
-                    COALESCE(sa.nama_status, ia.attachment_status) as status_attachment_name
+                    ia.attachment_status as status_attachment_name
                 FROM inventory_attachment ia
                 LEFT JOIN attachment att ON att.id_attachment = ia.attachment_id
                 LEFT JOIN baterai bat ON bat.id = ia.baterai_id  
                 LEFT JOIN charger ch ON ch.id_charger = ia.charger_id
-                LEFT JOIN status_attachment sa ON sa.id_status_attachment = ia.status_attachment_id
                 WHERE ia.id_inventory_unit = ?
                 ORDER BY ia.tipe_item, ia.tanggal_masuk DESC
             ', [$id]);

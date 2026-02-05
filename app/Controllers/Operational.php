@@ -1095,11 +1095,12 @@ class Operational extends BaseController
 
         // Get items untuk DI ini - try delivery_items first
         $items = $this->db->table('delivery_items di')
-            ->select('di.*, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, 
-                      a.tipe as att_tipe, a.merk as att_merk, a.model as att_model')
+            ->select('di.*, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
+            ->select('ia.sn_attachment, att.tipe as att_tipe, att.merk as att_merk, att.model as att_model')
             ->join('inventory_unit iu','iu.id_inventory_unit = di.unit_id','left')
             ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
-            ->join('attachment a', 'a.id_attachment = di.attachment_id', 'left')
+            ->join('inventory_attachment ia', 'ia.id_inventory_attachment = di.attachment_id', 'left')
+            ->join('attachment att', 'att.id_attachment = ia.attachment_id', 'left')
             ->where('di.di_id', $id)
             ->get()->getResultArray();
         
@@ -1145,11 +1146,12 @@ class Operational extends BaseController
 
         // Get items untuk DI ini - try delivery_items first
         $items = $this->db->table('delivery_items di')
-            ->select('di.*, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit, 
-                      a.tipe as att_tipe, a.merk as att_merk, a.model as att_model')
+            ->select('di.*, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
+            ->select('ia.sn_attachment, att.tipe as att_tipe, att.merk as att_merk, att.model as att_model')
             ->join('inventory_unit iu','iu.id_inventory_unit = di.unit_id','left')
             ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
-            ->join('attachment a', 'a.id_attachment = di.attachment_id', 'left')
+            ->join('inventory_attachment ia', 'ia.id_inventory_attachment = di.attachment_id', 'left')
+            ->join('attachment att', 'att.id_attachment = ia.attachment_id', 'left')
             ->where('di.di_id', $id)
             ->get()->getResultArray();
         

@@ -152,6 +152,419 @@ class Dashboard extends BaseController
         return date('d/m/Y H:i', $timestamp);
     }
 
+    /**
+     * Get expiring contracts (within 30 days)
+     */
+    public function getExpiringContracts()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+
+        try {
+            $expiringContracts = $db->query("
+                SELECT 
+                    k.no_kontrak,
+                    k.tanggal_berakhir,
+                    DATEDIFF(k.tanggal_berakhir, CURDATE()) as days_left,
+                    cl.location_name as customer_location
+                FROM kontrak k
+                LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
+                WHERE k.status = 'Aktif'
+                AND k.tanggal_berakhir BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+                ORDER BY k.tanggal_berakhir ASC
+                LIMIT 10
+            ")->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $expiringContracts
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '[Dashboard] getExpiringContracts error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error fetching expiring contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get KPI data and chart unit data for dashboard
+     */
+    public function getKpiData()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['error' => 'Unauthorized']);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            // Get total units
+            $queryTotal = "SELECT COUNT(*) as total FROM inventory_unit";
+            $unitsTotal = $db->query($queryTotal)->getRow()->total ?? 0;
+
+            // Get units by status
+            $queryByStatus = "
+                SELECT su.status_unit, COUNT(*) as total
+                FROM inventory_unit iu
+                JOIN status_unit su ON iu.status_unit_id = su.id_status
+                GROUP BY su.status_unit, su.id_status
+                ORDER BY su.id_status
+            ";
+            $statusData = $db->query($queryByStatus)->getResultArray();
+
+            // Parse status data
+            $chartUnit = [
+                'rented' => 0,
+                'ready' => 0,
+                'maintenance' => 0,
+                'breakdown' => 0
+            ];
+            
+            foreach ($statusData as $row) {
+                $status = strtoupper(trim($row['status_unit']));
+                // Map actual status names from database
+                if (strpos($status, 'RENTAL_ACTIVE') !== false || strpos($status, 'RENTAL') !== false) {
+                    $chartUnit['rented'] += (int)$row['total'];
+                } elseif (strpos($status, 'AVAILABLE') !== false || strpos($status, 'STOCK') !== false || strpos($status, 'READY') !== false) {
+                    $chartUnit['ready'] += (int)$row['total'];
+                } elseif (strpos($status, 'MAINTENANCE') !== false || strpos($status, 'SERVICE') !== false || strpos($status, 'PREPARATION') !== false) {
+                    $chartUnit['maintenance'] += (int)$row['total'];
+                } elseif (strpos($status, 'BREAKDOWN') !== false || strpos($status, 'RUSAK') !== false || strpos($status, 'RETURNED') !== false) {
+                    $chartUnit['breakdown'] += (int)$row['total'];
+                }
+            }
+
+            // Get active contracts
+            $queryContracts = "SELECT COUNT(*) as total FROM kontrak WHERE status = 'Aktif'";
+            $activeContracts = $db->query($queryContracts)->getRow()->total ?? 0;
+
+            // Get pending delivery (today and tomorrow) - use tanggal_kirim
+            $queryDelivery = "
+                SELECT COUNT(*) as total
+                FROM delivery_instructions
+                WHERE tanggal_kirim BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                AND status_di NOT IN ('SELESAI', 'DIBATALKAN', 'Selesai', 'Batal')
+            ";
+            $pendingDelivery = $db->query($queryDelivery)->getRow()->total ?? 0;
+
+            // Calculate KPI
+            $kpi = [
+                'total_units' => (int)$unitsTotal,
+                'total_rented' => $chartUnit['rented'],
+                'units_breakdown' => $chartUnit['breakdown'],
+                'active_contracts' => (int)$activeContracts,
+                'pending_delivery' => (int)$pendingDelivery,
+                'utilization_rate' => $unitsTotal > 0 ? ($chartUnit['rented'] / $unitsTotal) * 100 : 0
+            ];
+
+            return $this->response->setJSON([
+                'success' => true,
+                'kpi' => $kpi,
+                'chartUnit' => $chartUnit
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '[Dashboard] getKpiData error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'error' => 'Failed to load KPI data: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get report delivery data for dashboard widget
+     */
+    public function getReportDelivery()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+
+        try {
+            // Get data from last 6 months to include all available data
+            $sixMonthsAgo = date('Y-m-d', strtotime('-6 months'));
+            
+            // Total delivered last 6 months
+            $totalDelivered = $db->table('delivery_instructions')
+                ->where('dibuat_pada >=', $sixMonthsAgo)
+                ->countAllResults();
+
+            // By Jenis Perintah (Command Type)
+            $byJenisPerintah = $db->table('delivery_instructions di')
+                ->select('jpk.nama as jenis_perintah, jpk.kode, COUNT(di.id) as total')
+                ->join('jenis_perintah_kerja jpk', 'jpk.id = di.jenis_perintah_kerja_id', 'left')
+                ->where('di.dibuat_pada >=', $sixMonthsAgo)
+                ->groupBy('jpk.id')
+                ->get()
+                ->getResultArray();
+
+            // By Tujuan Perintah (Command Destination)
+            $byTujuanPerintah = $db->table('delivery_instructions di')
+                ->select('tpk.nama as tujuan_perintah, tpk.kode, COUNT(di.id) as total')
+                ->join('tujuan_perintah_kerja tpk', 'tpk.id = di.tujuan_perintah_kerja_id', 'left')
+                ->where('di.dibuat_pada >=', $sixMonthsAgo)
+                ->groupBy('tpk.id')
+                ->get()
+                ->getResultArray();
+
+            // By Status Progress
+            $byStatus = $db->table('delivery_instructions')
+                ->select('status_di, COUNT(id) as total')
+                ->where('dibuat_pada >=', $sixMonthsAgo)
+                ->groupBy('status_di')
+                ->get()
+                ->getResultArray();
+
+            // Prepare chart data (for bar chart) - use by status
+            $chartLabels = [];
+            $chartData = [];
+            foreach ($byStatus as $status) {
+                $chartLabels[] = $status['status_di'] ?? 'Unknown';
+                $chartData[] = (int)$status['total'];
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'total_delivered' => $totalDelivered,
+                    'by_jenis_perintah' => $byJenisPerintah,
+                    'by_tujuan_perintah' => $byTujuanPerintah,
+                    'by_status' => $byStatus,
+                    'chart_labels' => $chartLabels,
+                    'chart_data' => $chartData
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error in getReportDelivery: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error fetching delivery report: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get team performance data grouped by location type
+     */
+    public function getTeamPerformance()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+
+        try {
+            // Simplified query - focus on Work Orders only since SPK structure unclear
+            $mechanics = $db->query("
+                SELECT 
+                    e.staff_name as name,
+                    COALESCE(a.area_name, 'Unassigned') as area,
+                    COALESCE(a.area_type, 'BRANCH') as area_type,
+                    COUNT(DISTINCT CASE 
+                        WHEN wo.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) 
+                        THEN wo.id END) as wo_week,
+                    COUNT(DISTINCT CASE 
+                        WHEN wo.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) 
+                        THEN wo.id END) as wo_month,
+                    0 as spk_week,
+                    0 as spk_month
+                FROM employees e
+                LEFT JOIN area_employee_assignments aea ON aea.employee_id = e.id AND aea.is_active = 1
+                LEFT JOIN areas a ON a.id = aea.area_id
+                LEFT JOIN work_orders wo ON wo.mechanic_id = e.id AND wo.order_type = 'COMPLAINT' AND wo.deleted_at IS NULL
+                WHERE e.is_active = 1
+                AND (e.staff_role LIKE '%MECHANIC%' OR e.staff_role LIKE '%MEKANIK%' OR e.staff_role LIKE '%Mechanic%')
+                GROUP BY e.id, e.staff_name, a.area_name, a.area_type
+                HAVING (wo_week > 0 OR wo_month > 0)
+                ORDER BY a.area_type DESC, wo_month DESC
+                LIMIT 20
+            ")->getResultArray();
+
+            // If no mechanics with MECHANIC role found, try to get any active employees with work orders
+            if (empty($mechanics)) {
+                $mechanics = $db->query("
+                    SELECT 
+                        e.staff_name as name,
+                        COALESCE(a.area_name, 'Unassigned') as area,
+                        COALESCE(a.area_type, 'BRANCH') as area_type,
+                        COUNT(DISTINCT CASE 
+                            WHEN wo.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) 
+                            THEN wo.id END) as wo_week,
+                        COUNT(DISTINCT CASE 
+                            WHEN wo.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) 
+                            THEN wo.id END) as wo_month,
+                        0 as spk_week,
+                        0 as spk_month
+                    FROM employees e
+                    LEFT JOIN area_employee_assignments aea ON aea.employee_id = e.id AND aea.is_active = 1
+                    LEFT JOIN areas a ON a.id = aea.area_id
+                    LEFT JOIN work_orders wo ON wo.mechanic_id = e.id AND wo.order_type = 'COMPLAINT' AND wo.deleted_at IS NULL
+                    WHERE e.is_active = 1
+                    GROUP BY e.id, e.staff_name, a.area_name, a.area_type
+                    HAVING (wo_week > 0 OR wo_month > 0)
+                    ORDER BY wo_month DESC
+                    LIMIT 20
+                ")->getResultArray();
+            }
+
+            // Group by location type
+            $central = [];
+            $branch = [];
+            
+            foreach ($mechanics as $mechanic) {
+                $data = [
+                    'name' => $mechanic['name'],
+                    'area' => $mechanic['area'] ?? 'Unassigned',
+                    'wo_week' => (int)$mechanic['wo_week'],
+                    'wo_month' => (int)$mechanic['wo_month'],
+                    'spk_week' => (int)$mechanic['spk_week'],
+                    'spk_month' => (int)$mechanic['spk_month']
+                ];
+                
+                $areaType = strtoupper($mechanic['area_type'] ?? '');
+                
+                if ($areaType === 'CENTRAL') {
+                    $central[] = $data;
+                } else {
+                    $branch[] = $data;
+                }
+            }
+
+            // Debug log
+            log_message('debug', '[Dashboard] Team Performance - Total mechanics: ' . count($mechanics) . ', Central: ' . count($central) . ', Branch: ' . count($branch));
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'central' => array_slice($central, 0, 5),
+                    'branch' => array_slice($branch, 0, 5)
+                ],
+                'debug' => [
+                    'total_found' => count($mechanics),
+                    'central_count' => count($central),
+                    'branch_count' => count($branch)
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error in getTeamPerformance: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error fetching team performance: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get quotations performance data
+     */
+    public function getQuotationsPerformance()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+
+        try {
+            // Total quotations in last 6 months
+            $totalQuotations = $db->table('quotations')
+                ->where('quotation_date >=', date('Y-m-d', strtotime('-6 months')))
+                ->countAllResults();
+
+            // Deals converted (is_deal = 1 or stage = ACCEPTED)
+            $dealsConverted = $db->table('quotations')
+                ->where('quotation_date >=', date('Y-m-d', strtotime('-6 months')))
+                ->groupStart()
+                    ->where('is_deal', 1)
+                    ->orWhere('stage', 'ACCEPTED')
+                ->groupEnd()
+                ->countAllResults();
+
+            // Calculate conversion rate
+            $conversionRate = $totalQuotations > 0 ? round(($dealsConverted / $totalQuotations) * 100, 1) : 0;
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'total_quotations' => $totalQuotations,
+                    'deals_converted' => $dealsConverted,
+                    'conversion_rate' => $conversionRate
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error in getQuotationsPerformance: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error fetching quotations performance: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get top spare parts used from WO complaints
+     */
+    public function getTopSpareParts()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+
+        try {
+            // Get top 5 spare parts used in complaint-type work orders
+            $topParts = $db->query("
+                SELECT 
+                    wos.sparepart_name,
+                    SUM(CASE WHEN wo.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN wos.quantity_used ELSE 0 END) as week_usage,
+                    SUM(CASE WHEN wo.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN wos.quantity_used ELSE 0 END) as month_usage
+                FROM work_order_spareparts wos
+                INNER JOIN work_orders wo ON wo.id = wos.work_order_id
+                WHERE wo.order_type = 'COMPLAINT'
+                    AND wos.quantity_used > 0
+                    AND wo.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+                    AND wo.deleted_at IS NULL
+                GROUP BY wos.sparepart_name
+                ORDER BY month_usage DESC
+                LIMIT 5
+            ")->getResultArray();
+
+            $formattedData = [];
+            foreach ($topParts as $part) {
+                $formattedData[] = [
+                    'name' => $part['sparepart_name'],
+                    'week' => (int)$part['week_usage'],
+                    'month' => (int)$part['month_usage']
+                ];
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $formattedData
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error in getTopSpareParts: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error fetching top spare parts: ' . $e->getMessage()
+            ]);
+        }
+    }
+
     public function index()
     {
         // Check if user is logged in

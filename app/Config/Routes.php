@@ -92,6 +92,16 @@ $routes->group('dashboard', static function ($routes) {
     $routes->get('marketing', 'Dashboard::marketing');
     $routes->get('rolling', 'Dashboard::rolling');
     $routes->get('warehouse', 'Dashboard::warehouse');
+    
+    // Dashboard widget API endpoints
+    $routes->get('kpi-data', 'Dashboard::getKpiData');
+    $routes->get('report-delivery', 'Dashboard::getReportDelivery');
+    $routes->get('team-performance', 'Dashboard::getTeamPerformance');
+    $routes->get('quotations-performance', 'Dashboard::getQuotationsPerformance');
+    $routes->get('top-spare-parts', 'Dashboard::getTopSpareParts');
+    $routes->get('recent-activities', 'Dashboard::getRecentActivities');
+    $routes->get('activity-analytics', 'Dashboard::getActivityAnalytics');
+    $routes->get('expiring-contracts', 'Dashboard::getExpiringContracts');
 }); 
 
 // System routes for topbar functionality
@@ -126,7 +136,7 @@ $routes->group('marketing',  static function ($routes) {
     
     // --- Detail Routes (for notification deep linking) ---
     $routes->get('contracts/view/(:num)', 'Marketing::index'); // Contract detail via notification
-    $routes->get('spk/detail/(:num)', 'Marketing::spk'); // SPK detail via notification
+    // Note: spk/detail/(:num) is defined below as API endpoint, not view
     $routes->get('quotations', 'Marketing::quotations');
     $routes->get('quotations/stats', 'Marketing::getQuotationStats');
     $routes->post('quotations/data', 'Marketing::getQuotationsData');
@@ -135,6 +145,9 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('quotations/getQuotation/(:num)', 'Marketing::getQuotation/$1');
     $routes->get('quotations/getSpecifications/(:num)', 'Marketing::getSpecifications/$1');
     $routes->get('quotations/getCustomerProfileStatus/(:num)', 'Marketing::getCustomerProfileStatus/$1');
+    $routes->post('quotations/update/(:num)', 'Marketing::updateQuotation/$1');
+    $routes->post('quotations/delete/(:num)', 'Marketing::deleteQuotation/$1');
+    $routes->get('quotations/history/(:num)', 'Marketing::getQuotationHistory/$1');
     $routes->post('quotations/createContract/(:num)', 'Marketing::createContract/$1');
     $routes->post('quotations/createSPK/(:num)', 'Marketing::createSPK/$1');
     $routes->post('quotations/addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
@@ -371,7 +384,7 @@ $routes->group('service', static function ($routes) {
     $routes->get('/', 'Service::index');
     
     // --- Detail Routes (for notification deep linking) ---
-    $routes->get('spk/detail/(:num)', 'Service::spkService'); // SPK detail via notification
+    // Note: spk/detail/(:num) is defined below as API endpoint, not view
     $routes->get('work-orders', 'Service::workOrders');
     $routes->post('work-orders/data', 'WorkOrderController::getWorkOrders');
     $routes->get('work-orders/stats', 'WorkOrderController::getStats');

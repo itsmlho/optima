@@ -477,7 +477,7 @@ $currentLang = service('request')->getLocale();
                             <span class="notification-count" data-realtime="notification_count">0</span>
                         </span>
                     </button>
-                    <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end notification-dropdown">
+                    <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end notification-dropdown" style="min-width: 380px !important; max-width: 380px !important; width: 380px !important; overflow-x: hidden !important;">
                         <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">
                             <span>Notifikasi</span>
                             <button class="btn btn-sm btn-primary" onclick="markAllAsRead()" style="font-size: 0.7rem;">

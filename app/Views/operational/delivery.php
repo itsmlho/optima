@@ -1,8 +1,5 @@
 <?= $this->extend('layouts/base') ?>
 
-
-<!-- CSS umum sudah ada di optima-pro.css -->
-
 <?= $this->section('content') ?>
 
 <!-- Statistics Cards -->
@@ -107,20 +104,17 @@
       </div>
 
       <div class="table-responsive">
-        <table class="table table-striped table-hover table-manual-sort" id="diTable">
+        <table class="table table-striped table-hover table-manual-sort table-sm" id="diTable">
           <thead>
             <tr>
-              <th>DI Number</th>
-              <th>PO/Contract</th>
-              <th>Customer</th>
-              <th>Location</th>
-              <th>Total Items</th>
-              <th>Command Type</th>
-              <th>Command Destination</th>
-              <th>Req. Delivery Date</th>
-              <th>Execution Status</th>
-              <th>Driver/Vehicle</th>
-              <th data-no-sort>Operational Actions</th>
+              <th style="width: 110px;">DI Number</th>
+              <th style="width: 120px;">Customer</th>
+              <th style="width: 60px;">Items</th>
+              <th style="width: 70px;">Type</th>
+              <th style="width: 85px;">Delivery</th>
+              <th style="width: 80px;">Status</th>
+              <th style="width: 80px;">Driver</th>
+              <th style="width: 160px;" data-no-sort>Actions</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -252,18 +246,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
     tb.innerHTML = '';
     dataToShow.forEach(r=>{
       const tr = document.createElement('tr');
-      // Convert Indonesian status to English for display and set badge colors
-      const getStatusDisplay = (status) => {
-        const statusUpper = (status || '').toUpperCase();
-        const statusMap = {
-          'SUBMITTED': { text: 'Submitted', color: 'secondary' },
-          'PROCESSED': { text: 'Processed', color: 'info' },
-          'SHIPPED': { text: 'Shipped', color: 'warning' },
-          'DELIVERED': { text: 'Delivered', color: 'success' },
-          'CANCELLED': { text: 'Cancelled', color: 'danger' }
-        };
-        const mapped = statusMap[statusUpper] || { text: status || 'Submitted', color: 'secondary' };
-        return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+      
+      // Helper function for compact driver display
+      const formatCompactDriver = (r) => {
+        const driver = r.nama_supir || '-';
+        const vehicle = r.no_polisi_kendaraan || '';
+        if (driver === '-') return '-';
+        return `<div class="small">${driver}${vehicle ? '<br><small class="text-muted">' + vehicle + '</small>' : ''}</div>`;
       };
       
       // Conditional action button based on status - approval workflow style
@@ -283,21 +272,24 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (!perencanaanDone) {
           approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${r.id})">Plan</button>`);
         } else if (!berangkatDone) {
-          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('berangkat', 'Depart', ${r.id})">Depart</button>`);
+          approvalButtons.push(`<button class="btn btn-sm btn-primary" onclick="openApprovalModal('berangkat', 'Depart', ${r.id})">Depart</button>`);
         } else if (!sampaiDone) {
-          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('sampai', 'Arrive', ${r.id})">Arrive</button>`);
+          approvalButtons.push(`<button class="btn btn-sm btn-success" onclick="openApprovalModal('sampai', 'Arrive', ${r.id})">Arrive</button>`);
         } else {
           // All approvals done - should be ARRIVED status already
-          approvalButtons.push('<span class="text-info">Waiting to update status to ARRIVED</span>');
+          approvalButtons.push('<span class="text-success small">Completed</span>');
         }
         
         // Add small completed badges
         const completedBadges = [];
-        if (perencanaanDone) completedBadges.push('<small class="badge bg-success me-1">✓ Plan</small>');
-        if (berangkatDone) completedBadges.push('<small class="badge bg-success me-1">✓ Depart</small>');
-        if (sampaiDone) completedBadges.push('<small class="badge bg-success me-1">✓ Arrive</small>');
+        if (perencanaanDone) completedBadges.push('<span class="badge bg-success">✓</span>');
+        if (berangkatDone) completedBadges.push('<span class="badge bg-success">✓</span>');
+        if (sampaiDone) completedBadges.push('<span class="badge bg-success">✓</span>');
         
-        aksiBtn = approvalButtons.join(' ') + (completedBadges.length > 0 ? '<br>' + completedBadges.join('') : '');
+        aksiBtn = `<div class="stage-buttons">${approvalButtons.join(' ')}</div>`;
+        if (completedBadges.length > 0) {
+          aksiBtn += `<div class="stage-badges mt-1">${completedBadges.join('')}</div>`;
+        }
       } else if (statusDi === 'SAMPAI_LOKASI' || statusDi === 'SELESAI') {
         aksiBtn = '<span class="text-success">Completed</span>';
       } else {
@@ -419,16 +411,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
       };
       
       tr.innerHTML = `
-        <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
-        <td>${r.po_kontrak_nomor||'-'}</td>
-        <td>${r.pelanggan||'-'}</td>
-        <td class="lokasi-cell">${formatLokasiColumn(r.lokasi)}</td>
-        <td class="small">${formatTotalUnits(r)}</td>
-        <td>${r.jenis_perintah || '-'}</td>
-        <td>${formatTujuanWithIndicator(r.tujuan_perintah)}</td>
-        <td>${r.tanggal_kirim||'-'}</td>
+        <td><a href="#" onclick="openDiDetail(${r.id});return false;" class="fw-medium">${r.nomor_di}</a></td>
+        <td class="small">${(r.pelanggan||'-').length > 15 ? (r.pelanggan||'-').substring(0, 15) + '...' : (r.pelanggan||'-')}</td>
+        <td class="text-center">${formatTotalUnits(r)}</td>
+        <td class="small">${r.jenis_perintah || '-'}</td>
+        <td class="small">${r.tanggal_kirim||'-'}</td>
         <td>${getOperationalStatusDisplay(r)}</td>
-        <td class="small">${formatDriverVehicle(r)}</td>
+        <td class="small">${formatCompactDriver(r)}</td>
         <td>${aksiBtn}</td>`;
 
       tb.appendChild(tr);

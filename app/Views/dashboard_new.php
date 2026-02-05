@@ -4,21 +4,18 @@
 
 <?= $this->section('css') ?>
 <style>
-    /* Clean Enterprise Dashboard - Soft Professional Colors */
+    /* Modern Dashboard Redesign - Professional & Fresh */
     :root {
-        --primary-color: #3b82f6;
-        --success-color: #22c55e;
-        --warning-color: #fb923c;
-        --danger-color: #f87171;
-        --info-color: #38bdf8;
-        --secondary-color: #94a3b8;
-        --light-bg: #f8fafc;
-        --border-color: #e2e8f0;
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --success-gradient: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        --warning-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        --info-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        --dark-gradient: linear-gradient(135deg, #434343 0%, #000000 100%);
     }
     
     body {
-        background: #f8fafc;
-        font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
+        background: #f8f9fa;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
     }
     
     /* KPI Cards - Modern Design */
@@ -33,14 +30,14 @@
     }
     
     .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+        transform: translateY(-8px);
+        box-shadow: 0 12px 40px rgba(0,0,0,0.15);
     }
     
     .kpi-card-header {
-        background: #f8fafc;
+        background: linear-gradient(135deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.02) 100%);
         padding: 1.25rem;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid rgba(0,0,0,0.05);
     }
     
     .kpi-card-body {
@@ -93,8 +90,8 @@
     
     .chart-header {
         padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-        background: white;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        background: linear-gradient(135deg, rgba(0,0,0,0.02) 0%, transparent 100%);
     }
     
     .chart-title {
@@ -175,34 +172,30 @@
         vertical-align: middle;
     }
     
-    /* Badges - Clean Enterprise Style */
+    /* Badges */
     .badge-gradient-primary {
-        background: #3b82f6;
-        color: white;
+        background: var(--primary-gradient);
         border: none;
         padding: 0.35rem 0.75rem;
         font-weight: 600;
     }
     
     .badge-gradient-success {
-        background: #22c55e;
-        color: white;
+        background: var(--success-gradient);
         border: none;
         padding: 0.35rem 0.75rem;
         font-weight: 600;
     }
     
     .badge-gradient-warning {
-        background: #fb923c;
-        color: white;
+        background: var(--warning-gradient);
         border: none;
         padding: 0.35rem 0.75rem;
         font-weight: 600;
     }
     
     .badge-gradient-info {
-        background: #38bdf8;
-        color: white;
+        background: var(--info-gradient);
         border: none;
         padding: 0.35rem 0.75rem;
         font-weight: 600;
@@ -301,12 +294,12 @@
         <div class="col-xl-3 col-md-6">
             <div class="kpi-card">
                 <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background: #3b82f6;">
+                    <div class="kpi-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                         <i class="fas fa-chart-pie text-white"></i>
                     </div>
-                    <div class="kpi-value text-primary" id="kpiFleetUtil">--</div>
+                    <div class="kpi-value text-primary" id="kpiFleetUtil"><?= number_format($kpi['utilization_rate'], 1) ?>%</div>
                     <div class="kpi-label">Fleet Utilization</div>
-                    <small class="text-muted" id="kpiFleetDetails">Loading...</small>
+                    <small class="text-muted"><?= $kpi['total_rented'] ?> / <?= $kpi['total_units'] ?> Units</small>
                 </div>
             </div>
         </div>
@@ -315,10 +308,10 @@
         <div class="col-xl-3 col-md-6">
             <div class="kpi-card">
                 <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background: #f87171;">
+                    <div class="kpi-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                         <i class="fas fa-wrench text-white"></i>
                     </div>
-                    <div class="kpi-value text-danger" id="kpiBreakdown">--</div>
+                    <div class="kpi-value text-danger" id="kpiBreakdown"><?= $kpi['units_breakdown'] ?></div>
                     <div class="kpi-label">Units in Service</div>
                     <small class="text-muted">Requires Attention</small>
                 </div>
@@ -329,10 +322,10 @@
         <div class="col-xl-3 col-md-6">
             <div class="kpi-card">
                 <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background: #22c55e;">
+                    <div class="kpi-icon" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
                         <i class="fas fa-file-contract text-white"></i>
                     </div>
-                    <div class="kpi-value text-success" id="kpiContracts">--</div>
+                    <div class="kpi-value text-success" id="kpiContracts"><?= $kpi['active_contracts'] ?></div>
                     <div class="kpi-label">Active Contracts</div>
                     <small class="text-muted">Total Deals</small>
                 </div>
@@ -343,10 +336,10 @@
         <div class="col-xl-3 col-md-6">
             <div class="kpi-card">
                 <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background: #38bdf8;">
+                    <div class="kpi-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
                         <i class="fas fa-truck text-white"></i>
                     </div>
-                    <div class="kpi-value text-info" id="kpiDelivery">--</div>
+                    <div class="kpi-value text-info" id="kpiDelivery"><?= $kpi['pending_delivery'] ?></div>
                     <div class="kpi-label">Pending Delivery</div>
                     <small class="text-muted">Scheduled for today/tmrw</small>
                 </div>
@@ -375,7 +368,7 @@
             <div class="chart-card">
                 <div class="chart-header">
                     <h5 class="chart-title">
-                        <i class="fas fa-chart-bar me-2 text-success"></i>Delivery Performance (Last 6 Months)
+                        <i class="fas fa-chart-bar me-2 text-success"></i>Delivery Performance (This Month)
                     </h5>
                 </div>
                 <div class="chart-body">
@@ -449,7 +442,7 @@
                 <div class="widget-header">
                     <h5 class="widget-title">
                         <i class="fas fa-truck-loading"></i>
-                        Delivery Report (Last 6 Months)
+                        Delivery Report (This Month)
                     </h5>
                 </div>
                 <div class="widget-body">
@@ -506,19 +499,19 @@
                 <div class="widget-body">
                     <div class="row g-3">
                         <div class="col-4">
-                            <div class="text-center p-3 rounded" style="background: #3b82f6;">
+                            <div class="text-center p-3 rounded" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
                                 <div class="text-white opacity-75 small mb-2">Total Quotations</div>
                                 <h3 class="text-white fw-bold mb-0" id="totalQuotations">0</h3>
                             </div>
                         </div>
                         <div class="col-4">
-                            <div class="text-center p-3 rounded" style="background: #22c55e;">
+                            <div class="text-center p-3 rounded" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);">
                                 <div class="text-white opacity-75 small mb-2">Deals Converted</div>
                                 <h3 class="text-white fw-bold mb-0" id="dealsConverted">0</h3>
                             </div>
                         </div>
                         <div class="col-4">
-                            <div class="text-center p-3 rounded" style="background: #ec4899;">
+                            <div class="text-center p-3 rounded" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
                                 <div class="text-white opacity-75 small mb-2">Conversion Rate</div>
                                 <h3 class="text-white fw-bold mb-0" id="conversionRate">0%</h3>
                             </div>
@@ -620,19 +613,19 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Initialize Charts
 function initializeCharts() {
-    // Fleet Status Donut Chart - will be populated by API
+    // Fleet Status Donut Chart
     const fleetCtx = document.getElementById('fleetStatusChart').getContext('2d');
     fleetChart = new Chart(fleetCtx, {
         type: 'doughnut',
         data: {
             labels: ['Rented', 'Ready', 'Maintenance', 'Breakdown'],
             datasets: [{
-                data: [0, 0, 0, 0],
+                data: [<?= $chartUnit['rented'] ?>, <?= $chartUnit['ready'] ?>, <?= $chartUnit['maintenance'] ?>, <?= $chartUnit['breakdown'] ?>],
                 backgroundColor: [
-                    '#3b82f6',
-                    '#22c55e',
-                    '#fb923c',
-                    '#f87171'
+                    'rgba(102, 126, 234, 0.8)',
+                    'rgba(17, 153, 142, 0.8)',
+                    'rgba(240, 147, 251, 0.8)',
+                    'rgba(245, 87, 108, 0.8)'
                 ],
                 borderWidth: 0
             }]
@@ -661,7 +654,7 @@ function initializeCharts() {
             datasets: [{
                 label: 'Units',
                 data: [],
-                backgroundColor: '#22c55e',
+                backgroundColor: 'rgba(17, 153, 142, 0.8)',
                 borderRadius: 8
             }]
         },
@@ -683,59 +676,11 @@ function initializeCharts() {
 
 // Load All Dashboard Data
 function loadAllData() {
-    loadKPIData();
     loadReportDelivery();
     loadTeamPerformance();
     loadQuotationsPerformance();
     loadTopSpareParts();
-    loadExpiringContracts();
     loadRecentActivities();
-}
-
-// Load KPI Data and Fleet Chart
-async function loadKPIData() {
-    try {
-        const response = await fetch('<?= base_url('dashboard/kpi-data') ?>');
-        if (!response.ok) throw new Error('Failed to load KPI data');
-        
-        const data = await response.json();
-        console.log('KPI Data received:', data);
-        
-        // Check if data has expected structure
-        if (data && data.kpi) {
-            // Update KPI Cards with safe fallbacks
-            document.getElementById('kpiFleetUtil').textContent = (data.kpi.utilization_rate || 0).toFixed(1) + '%';
-            document.getElementById('kpiFleetDetails').textContent = `${data.kpi.total_rented || 0} / ${data.kpi.total_units || 0} Units`;
-            document.getElementById('kpiBreakdown').textContent = data.kpi.units_breakdown || 0;
-            document.getElementById('kpiContracts').textContent = data.kpi.active_contracts || 0;
-            document.getElementById('kpiDelivery').textContent = data.kpi.pending_delivery || 0;
-            
-            // Update Fleet Chart
-            if (fleetChart && data.chartUnit) {
-                fleetChart.data.datasets[0].data = [
-                    data.chartUnit.rented || 0,
-                    data.chartUnit.ready || 0,
-                    data.chartUnit.maintenance || 0,
-                    data.chartUnit.breakdown || 0
-                ];
-                fleetChart.update();
-            }
-        } else {
-            console.warn('KPI data structure unexpected:', data);
-            document.getElementById('kpiFleetUtil').textContent = '0%';
-            document.getElementById('kpiFleetDetails').textContent = '0 / 0 Units';
-            document.getElementById('kpiBreakdown').textContent = '0';
-            document.getElementById('kpiContracts').textContent = '0';
-            document.getElementById('kpiDelivery').textContent = '0';
-        }
-    } catch (error) {
-        console.error('Error loading KPI data:', error);
-        document.getElementById('kpiFleetUtil').textContent = 'Error';
-        document.getElementById('kpiFleetDetails').textContent = 'Failed to load';
-        document.getElementById('kpiBreakdown').textContent = '--';
-        document.getElementById('kpiContracts').textContent = '--';
-        document.getElementById('kpiDelivery').textContent = '--';
-    }
 }
 
 // Load Report Delivery
@@ -743,7 +688,6 @@ function loadReportDelivery() {
     fetch('<?= base_url('dashboard/report-delivery') ?>')
         .then(response => response.json())
         .then(result => {
-            console.log('Delivery Report Data:', result);
             if (result.success && result.data) {
                 const data = result.data;
                 
@@ -809,19 +753,14 @@ function loadReportDelivery() {
                 document.getElementById('statusProgressList').innerHTML = statusHtml;
                 
                 // Update Delivery Chart
-                if (deliveryChart && data.chart_labels && data.chart_data) {
-                    deliveryChart.data.labels = data.chart_labels;
-                    deliveryChart.data.datasets[0].data = data.chart_data;
+                if (data.by_jenis_perintah && data.by_jenis_perintah.length > 0) {
+                    deliveryChart.data.labels = data.by_jenis_perintah.map(i => i.jenis_perintah || 'Unknown');
+                    deliveryChart.data.datasets[0].data = data.by_jenis_perintah.map(i => i.total);
                     deliveryChart.update();
                 }
-            } else {
-                console.warn('Delivery report: No data or invalid response', result);
             }
         })
-        .catch(error => {
-            console.error('Error loading delivery report:', error);
-            document.getElementById('totalDelivered').textContent = 'Error';
-        });
+        .catch(error => console.error('Error loading delivery report:', error));
 }
 
 // Load Team Performance
@@ -829,14 +768,8 @@ function loadTeamPerformance() {
     fetch('<?= base_url('dashboard/team-performance') ?>')
         .then(response => response.json())
         .then(result => {
-            console.log('Team Performance Data:', result);
             if (result.success && result.data) {
                 const data = result.data;
-                
-                // Debug info
-                if (result.debug) {
-                    console.log('Team Debug:', result.debug);
-                }
                 
                 // Central Team
                 let centralHtml = '';
@@ -880,17 +813,9 @@ function loadTeamPerformance() {
                     branchHtml = '<tr><td colspan="4" class="text-center text-muted py-3">No data</td></tr>';
                 }
                 document.getElementById('teamBranchBody').innerHTML = branchHtml;
-            } else {
-                console.warn('Team performance: No data or invalid response', result);
-                document.getElementById('teamCentralBody').innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">No data available</td></tr>';
-                document.getElementById('teamBranchBody').innerHTML = '<tr><td colspan="4" class="text-center text-muted py-3">No data available</td></tr>';
             }
         })
-        .catch(error => {
-            console.error('Error loading team performance:', error);
-            document.getElementById('teamCentralBody').innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3">Error loading data</td></tr>';
-            document.getElementById('teamBranchBody').innerHTML = '<tr><td colspan="4" class="text-center text-danger py-3">Error loading data</td></tr>';
-        });
+        .catch(error => console.error('Error loading team performance:', error));
 }
 
 // Load Quotations Performance
@@ -934,42 +859,6 @@ function loadTopSpareParts() {
             }
         })
         .catch(error => console.error('Error loading spare parts:', error));
-}
-
-// Load Expiring Contracts
-function loadExpiringContracts() {
-    fetch('<?= base_url('dashboard/expiring-contracts') ?>')
-        .then(response => response.json())
-        .then(result => {
-            if (result.success && result.data) {
-                const contracts = result.data;
-                let html = '';
-                
-                if (contracts.length === 0) {
-                    html = '<div class="text-center text-muted py-3">No expiring contracts</div>';
-                } else {
-                    contracts.forEach(contract => {
-                        const daysClass = contract.days_left <= 7 ? 'danger' : 
-                                        contract.days_left <= 14 ? 'warning' : 'info';
-                        html += `
-                            <div class="alert alert-${daysClass} alert-sm mb-2">
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        <strong>${contract.no_kontrak}</strong><br>
-                                        <small>${contract.customer_location || 'N/A'}</small>
-                                    </div>
-                                    <div class="text-end">
-                                        <div class="badge bg-${daysClass}">${contract.days_left} days</div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    });
-                }
-                document.getElementById('expiringContractsList').innerHTML = html;
-            }
-        })
-        .catch(error => console.error('Error loading expiring contracts:', error));
 }
 
 // Load Recent Activities

@@ -308,8 +308,52 @@ $can_export = true;
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="<?= base_url('assets/js/spk-mechanic-multiselect.js') ?>"></script>
+<style>
+/* Select2 basic styling */
+.select2-container {
+    width: 100% !important;
+}
+
+.select2-container--default .select2-selection--single {
+    height: 38px;
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__rendered {
+    line-height: 36px;
+    color: #495057;
+    padding-left: 12px;
+}
+
+.select2-container--default .select2-selection--single .select2-selection__arrow {
+    height: 36px;
+}
+
+.select2-dropdown {
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem;
+}
+
+.select2-search--dropdown .select2-search__field {
+    border: 1px solid #ced4da;
+    padding: 4px;
+}
+
+.select2-results__option {
+    padding: 6px 12px;
+}
+
+.select2-results__option--highlighted[aria-selected] {
+    background-color: #007bff !important;
+}
+</style>
 <script>
 // Global variables (use var to avoid redeclaration errors)
 if (typeof window.allSPKData === 'undefined') {
@@ -802,7 +846,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		const headerSpan = document.getElementById('spkNumberHeader');
 		body.innerHTML = '<p class="text-muted">Memuat...</p>';
 
-		fetch('<?= base_url('service/spk/detail/') ?>' + id).then(r=>r.json()).then(j=>{
+		fetch('<?= base_url('service/spk/detail/') ?>' + id).then(r=>{
+			// Check for 401 Unauthorized (session expired)
+			if (r.status === 401) {
+				alert('Session expired. Please login again.');
+				window.location.href = '<?= base_url('auth/login') ?>';
+				return Promise.reject('Unauthorized');
+			}
+			if (!r.ok) {
+				throw new Error(`HTTP error! Status: ${r.status}`);
+			}
+			return r.json();
+		}).then(j=>{
 			if (!j.success) { body.innerHTML = '<div class="text-danger">Gagal memuat detail</div>'; return; }
             const d = j.data || {};
             const s = j.spesifikasi || {};
@@ -1429,7 +1484,18 @@ document.addEventListener('DOMContentLoaded', () => {
 		
 		if (stage === 'persiapan_unit') {
 			// Get SPK details to show requested accessories and unit count
-			fetch('<?= base_url('service/spk/detail/') ?>' + spkId).then(r=>r.json()).then(j=>{
+			fetch('<?= base_url('service/spk/detail/') ?>' + spkId).then(r=>{
+				// Check for 401 Unauthorized (session expired)
+				if (r.status === 401) {
+					alert('Session expired. Please login again.');
+					window.location.href = '<?= base_url('auth/login') ?>';
+					return Promise.reject('Unauthorized');
+				}
+				if (!r.ok) {
+					throw new Error(`HTTP error! Status: ${r.status}`);
+				}
+				return r.json();
+			}).then(j=>{
 				if (j.success) {
 					const spkData = j.data || {};
 					const spesifikasi = j.spesifikasi || {};
@@ -2278,8 +2344,26 @@ document.addEventListener('DOMContentLoaded', () => {
 							</option>`;
 						}).join('');
 					
+					// Initialize or reinitialize Select2 with search
+					const $batterySelect = $(batterySelect);
+					if ($batterySelect.hasClass('select2-hidden-accessible')) {
+						$batterySelect.select2('destroy');
+					}
+					
+					$batterySelect.select2({
+						placeholder: '🔍 Search battery by SN / Brand / Type...',
+						allowClear: true,
+						dropdownParent: $('#approvalStageModal .modal-content'),
+						width: '100%',
+						minimumInputLength: 0,
+						language: {
+							noResults: function() { return 'No battery found'; },
+							searching: function() { return 'Searching...'; }
+						}
+					});
+					
 					// Add change event listener to check for USED items
-					batterySelect.addEventListener('change', function() {
+					$batterySelect.on('change', function() {
 						const selectedOption = this.options[this.selectedIndex];
 						if (selectedOption && selectedOption.dataset.status === 'USED') {
 							showKanibalAlert(selectedOption, 'Battery', suffix);
@@ -2333,8 +2417,26 @@ document.addEventListener('DOMContentLoaded', () => {
 					chargerSelect.innerHTML = options;
 					console.log(`🔌 Charger options loaded: ${data.length} options`);
 					
+					// Initialize or reinitialize Select2 with search
+					const $chargerSelect = $(chargerSelect);
+					if ($chargerSelect.hasClass('select2-hidden-accessible')) {
+						$chargerSelect.select2('destroy');
+					}
+					
+					$chargerSelect.select2({
+						placeholder: '🔍 Search charger by SN / Brand / Type...',
+						allowClear: true,
+						dropdownParent: $('#approvalStageModal .modal-content'),
+						width: '100%',
+						minimumInputLength: 0,
+						language: {
+							noResults: function() { return 'No charger found'; },
+							searching: function() { return 'Searching...'; }
+						}
+					});
+					
 					// Add change event listener to check for USED items
-					chargerSelect.addEventListener('change', function() {
+					$chargerSelect.on('change', function() {
 						const selectedOption = this.options[this.selectedIndex];
 						if (selectedOption && selectedOption.dataset.status === 'USED') {
 							showKanibalAlert(selectedOption, 'Charger', suffix);
@@ -2663,7 +2765,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		
 		// Get SPK details to find unit_id
 		fetch(`<?= base_url('service/spk/detail') ?>/${currentApprovalSpkId}`)
-			.then(response => response.json())
+			.then(response => {
+				if (response.status === 401) {
+					alert('Session expired. Please login again.');
+					window.location.href = '<?= base_url('auth/login') ?>';
+					return Promise.reject('Unauthorized');
+				}
+				return response.json();
+			})
 			.then(data => {
 				if (data.success && data.data) {
 					const spk = data.data;
@@ -3739,7 +3848,14 @@ document.addEventListener('DOMContentLoaded', () => {
 				'Content-Type': 'application/json'
 			}
 		})
-		.then(response => response.json())
+		.then(response => {
+			if (response.status === 401) {
+				alert('Session expired. Please login again.');
+				window.location.href = '<?= base_url('auth/login') ?>';
+				return Promise.reject('Unauthorized');
+			}
+			return response.json();
+		})
 		.then(data => {
 			if (data.success && data.spk) {
 				const spk = data.spk;
@@ -3951,7 +4067,14 @@ document.addEventListener('DOMContentLoaded', () => {
 		const infoDiv = document.getElementById('rollbackInfo');
 		
 		fetch(`<?= base_url('service/spk/detail') ?>/${spkId}`)
-			.then(response => response.json())
+			.then(response => {
+				if (response.status === 401) {
+					alert('Session expired. Please login again.');
+					window.location.href = '<?= base_url('auth/login') ?>';
+					return Promise.reject('Unauthorized');
+				}
+				return response.json();
+			})
 			.then(data => {
 				if (data.success && data.data) {
 					const spk = data.data;

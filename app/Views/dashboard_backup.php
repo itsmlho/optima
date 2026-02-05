@@ -1,0 +1,754 @@
+<?= $this->extend('layouts/base') ?>
+
+<?= $this->section('title') ?>Executive Dashboard<?= $this->endSection() ?>
+
+<?= $this->section('css') ?>
+<style>
+    /* Executive Dashboard Custom CSS */
+    .kpi-card {
+        transition: transform 0.2s, box-shadow 0.2s;
+        border: none;
+        border-radius: 12px;
+        overflow: hidden;
+    }
+    
+    .kpi-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    }
+    
+    .kpi-icon-wrapper {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+    }
+    
+    .kpi-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2c3e50;
+        line-height: 1.2;
+    }
+    
+    .kpi-label {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .chart-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    }
+    
+    .chart-header {
+        background: transparent;
+        border-bottom: 1px solid #f1f2f6;
+        padding: 1.5rem;
+    }
+    
+    .chart-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .status-badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .table-alert th {
+        font-weight: 600;
+        color: #95a5a6;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        border-top: none;
+    }
+    
+    .table-alert td {
+        vertical-align: middle;
+        font-size: 0.95rem;
+    }
+    
+    /* Animations */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .animate-fade-in-up {
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+    
+    .delay-100 { animation-delay: 0.1s; }
+    .delay-200 { animation-delay: 0.2s; }
+    .delay-300 { animation-delay: 0.3s; }
+    .delay-400 { animation-delay: 0.4s; }
+</style>
+<?= $this->endSection() ?>
+
+<?= $this->section('content') ?>
+<div class="content-wrapper container-fluid p-4">
+    
+    <!-- Header Section -->
+    <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in-up">
+        <div>
+            <h2 class="fw-bold text-dark mb-1">Operational Command Center</h2>
+            <p class="text-muted mb-0">Real-time overview of PT Sarana Mitra Luas Tbk operations.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <span class="badge bg-light text-dark border d-flex align-items-center px-3">
+                <i class="fas fa-clock me-2 text-primary"></i>
+                <span id="currentDateTime">Loading...</span>
+            </span>
+            <button class="btn btn-primary" onclick="window.location.reload()">
+                <i class="fas fa-sync-alt me-2"></i>Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <!-- KPI Cards Row -->
+    <div class="row g-4 mb-4">
+        <!-- 1. Fleet Utilization -->
+        <div class="col-xl-3 col-md-6 animate-fade-in-up delay-100">
+            <div class="card kpi-card shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="kpi-icon-wrapper bg-primary bg-opacity-10 text-primary me-4">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Fleet Utilization</div>
+                        <div class="kpi-value text-primary"><?= number_format($kpi['utilization_rate'], 1) ?>%</div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-truck me-1"></i> <?= $kpi['total_rented'] ?> / <?= $kpi['total_units'] ?> Units
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Units on Service/Breakdown -->
+        <div class="col-xl-3 col-md-6 animate-fade-in-up delay-200">
+            <div class="card kpi-card shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="kpi-icon-wrapper bg-warning bg-opacity-10 text-warning me-4">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Breakdown/Service</div>
+                        <div class="kpi-value text-warning"><?= $kpi['units_breakdown'] ?></div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-exclamation-circle me-1"></i> Requires Attention
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Active Contracts -->
+        <div class="col-xl-3 col-md-6 animate-fade-in-up delay-300">
+            <div class="card kpi-card shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="kpi-icon-wrapper bg-success bg-opacity-10 text-success me-4">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Active Contracts</div>
+                        <div class="kpi-value text-success"><?= $kpi['active_contracts'] ?></div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-handshake me-1"></i> Total Deals
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Pending Deliveries -->
+        <div class="col-xl-3 col-md-6 animate-fade-in-up delay-400">
+            <div class="card kpi-card shadow-sm h-100 bg-white">
+                <div class="card-body d-flex align-items-center p-4">
+                    <div class="kpi-icon-wrapper bg-info bg-opacity-10 text-info me-4">
+                        <i class="fas fa-shipping-fast"></i>
+                    </div>
+                    <div>
+                        <div class="kpi-label">Pending Delivery</div>
+                        <div class="kpi-value text-info"><?= $kpi['pending_delivery'] ?></div>
+                        <div class="small text-muted mt-1">
+                            <i class="fas fa-clock me-1"></i> Scheduled for today/tmrw
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="row g-4 mb-4">
+        <!-- Unit Status Composition -->
+        <div class="col-lg-5 animate-fade-in-up delay-200">
+            <div class="card chart-card h-100">
+                <div class="card-header chart-header d-flex justify-content-between align-items-center bg-white">
+                    <h5 class="chart-title">Fleet Composition</h5>
+                    <button class="btn btn-sm btn-light rounded-circle" type="button"><i class="fas fa-ellipsis-h text-muted"></i></button>
+                </div>
+                <div class="card-body d-flex align-items-center justify-content-center" style="min-height: 300px;">
+                    <div style="width: 100%; max-width: 350px;">
+                        <canvas id="unitStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Sales Trend -->
+        <div class="col-lg-7 animate-fade-in-up delay-300">
+            <div class="card chart-card h-100">
+                <div class="card-header chart-header d-flex justify-content-between align-items-center bg-white">
+                    <h5 class="chart-title">Sales Performance (Recent)</h5>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-secondary active">6 Months</button>
+                        <button type="button" class="btn btn-outline-secondary">Year</button>
+                    </div>
+                </div>
+                <div class="card-body" style="min-height: 300px;">
+                    <canvas id="salesTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Widgets Row: Operational Metrics, Team Performance, Pending Approvals -->
+    <div class="row g-4 mb-4 animate-fade-in-up delay-400">
+        <!-- Operational Metrics -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-gradient-primary text-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-chart-line me-2"></i>Operational Metrics</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <div>
+                            <small class="text-muted d-block">On-Time Delivery</small>
+                            <h4 class="mb-0 text-success fw-bold" id="onTimeDelivery">-</h4>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-truck fa-2x text-success opacity-25"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <div>
+                            <small class="text-muted d-block">Avg Response Time</small>
+                            <h4 class="mb-0 text-info fw-bold" id="avgResponseTime">-</h4>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-clock fa-2x text-info opacity-25"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <div>
+                            <small class="text-muted d-block">SPK Completion Rate</small>
+                            <h4 class="mb-0 text-primary fw-bold" id="spkCompletion">-</h4>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-tasks fa-2x text-primary opacity-25"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted d-block">Units in Service</small>
+                            <h4 class="mb-0 text-warning fw-bold" id="unitsInService">-</h4>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-wrench fa-2x text-warning opacity-25"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Team Performance -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-gradient-success text-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-users me-2"></i>Team Performance (This Week)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-3">Mechanic</th>
+                                    <th class="text-center">SPK</th>
+                                    <th class="text-center">WO</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teamPerformanceBody">
+                                <tr>
+                                    <td colspan="3" class="text-center py-3">
+                                        <div class="spinner-border spinner-border-sm text-muted"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer bg-light border-0 py-2">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">Total Progress</small>
+                            <strong class="text-success" id="teamTotalProgress">-</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quotations vs Contracts -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-gradient-info text-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-chart-bar me-2"></i>Quotations Performance</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <div>
+                            <small class="text-muted d-block">Total Quotations</small>
+                            <h4 class="mb-0 text-primary fw-bold" id="totalQuotations">-</h4>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-file-invoice fa-2x text-primary opacity-25"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-3 border-bottom">
+                        <div>
+                            <small class="text-muted d-block">Converted to Contract</small>
+                            <h4 class="mb-0 text-success fw-bold" id="dealsConverted">-</h4>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-handshake fa-2x text-success opacity-25"></i>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <small class="text-muted d-block">Conversion Rate</small>
+                            <h4 class="mb-0 text-info fw-bold" id="conversionRate">-</h4>
+                        </div>
+                        <div class="text-end">
+                            <i class="fas fa-percentage fa-2x text-info opacity-25"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Alert Tables Row -->
+    <div class="row g-4 animate-fade-in-up delay-400">
+        <!-- Most Used Spare Parts -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-danger"><i class="fas fa-tools me-2"></i>Top Spare Parts Used (WO Complaints)</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-alert mb-0 align-middle">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Part Name</th>
+                                    <th class="text-center">Week</th>
+                                    <th class="text-center">Month</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topSparePartsBody">
+                                <tr><td colspan="3" class="text-center py-4 text-muted">Loading data...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preventive Maintenance -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-warning"><i class="fas fa-wrench me-2"></i>Upcoming Maintenance</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-alert mb-0 align-middle">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Unit Code</th>
+                                    <th>Type</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($alerts['maintenance'])): ?>
+                                    <tr><td colspan="4" class="text-center py-4 text-muted">No immediate maintenance required.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach (array_slice($alerts['maintenance'], 0, 5) as $unit): ?>
+                                    <tr>
+                                        <td class="ps-4 fw-bold text-dark"><?= $unit['code'] ?></td>
+                                        <td><small class="text-muted"><?= $unit['type'] ?></small></td>
+                                        <td><?= date('d M', strtotime($unit['next_service_date'])) ?></td>
+                                        <td><span class="badge bg-warning text-dark">Upcoming</span></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Expiring Contracts -->
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h6 class="mb-0 fw-bold text-info"><i class="fas fa-file-signature me-2"></i>Expiring Contracts</h6>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-alert mb-0 align-middle">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Customer</th>
+                                    <th>Unit</th>
+                                    <th>End Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (empty($alerts['expiring_contracts'])): ?>
+                                    <tr><td colspan="4" class="text-center py-4 text-muted">No contracts expiring next 30 days.</td></tr>
+                                <?php else: ?>
+                                    <?php foreach (array_slice($alerts['expiring_contracts'], 0, 5) as $contract): ?>
+                                    <tr>
+                                        <td class="ps-4">
+                                            <div class="text-truncate" style="max-width: 120px;"><?= $contract['customer'] ?></div>
+                                        </td>
+                                        <td><small><?= $contract['unit_code'] ?></small></td>
+                                        <td class="text-danger"><?= date('d M', strtotime($contract['end_date'])) ?></td>
+                                        <td><span class="badge bg-warning">Expiring</span></td>
+                                    </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simple Recent Activities (Bottom) -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-2">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted fw-bold"><i class="fas fa-history me-1"></i> Recent Activities</small>
+                        <a href="<?= base_url('/admin/activity-log') ?>" class="btn btn-sm btn-link text-decoration-none p-0">View All →</a>
+                    </div>
+                    <div id="simpleActivityLog" style="max-height: 120px; overflow-y: auto;">
+                        <div class="text-center py-2">
+                            <div class="spinner-border spinner-border-sm text-muted" role="status"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<?= $this->section('javascript') ?>
+<script>
+    // --- 1. DateTime Clock ---
+    function updateDateTime() {
+        const now = new Date();
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+        document.getElementById('currentDateTime').textContent = now.toLocaleDateString('en-US', options);
+    }
+    setInterval(updateDateTime, 1000);
+    updateDateTime();
+
+    // --- 2. Load Simple Activity Log ---
+    function loadSimpleActivities() {
+        fetch('<?= base_url('/dashboard/recent-activities') ?>?limit=10')
+            .then(response => response.json())
+            .then(result => {
+                console.log('Activity Log Response:', result); // DEBUG
+                const container = document.getElementById('simpleActivityLog');
+                if (result.success && result.data && result.data.length > 0) {
+                    let html = '<div class="list-group list-group-flush">';
+                    result.data.forEach(activity => {
+                        const actionColor = {
+                            'CREATE': 'success',
+                            'UPDATE': 'info', 
+                            'DELETE': 'danger',
+                            'EXPORT': 'primary'
+                        }[activity.action_type] || 'secondary';
+                        
+                        html += `
+                            <div class="list-group-item border-1 px-1 py-2">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-2">
+                                        <small class="text-muted">${activity.time_ago || activity.formatted_time}</small>
+                                        <span class="badge bg-${actionColor} ms-2">${activity.action_type}</span>
+                                        <div class="mt-1 small">${activity.username || 'System'} - ${activity.action_description}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    container.innerHTML = html;
+                } else {
+                    console.log('No data or failed:', result); // DEBUG
+                    container.innerHTML = '<small class="text-muted">No recent activities</small>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading activities:', error);
+                document.getElementById('simpleActivityLog').innerHTML = '<small class="text-danger">Failed to load: ' + error.message + '</small>';
+            });
+    }
+    
+    // Load on page ready
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSimpleActivities();
+        loadOperationalMetrics();
+        loadTeamPerformance();
+        loadQuotationsPerformance();
+        loadTopSpareParts();
+    });
+
+    // --- 2a. Load Operational Metrics ---
+    function loadOperationalMetrics() {
+        fetch('<?= base_url('/dashboard/operational-metrics') ?>')
+            .then(response => response.json())
+            .then(result => {
+                if (result.success && result.data) {
+                    const data = result.data;
+                    document.getElementById('onTimeDelivery').textContent = data.on_time_delivery + '%';
+                    document.getElementById('avgResponseTime').textContent = data.avg_response_time + 'h';
+                    document.getElementById('spkCompletion').textContent = data.spk_completion_rate + '%';
+                    document.getElementById('unitsInService').textContent = data.units_in_service;
+                } else {
+                    console.error('Failed to load operational metrics:', result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading operational metrics:', error);
+            });
+    }
+
+    // --- 2b. Load Team Performance ---
+    function loadTeamPerformance() {
+        const tbody = document.getElementById('teamPerformanceBody');
+        
+        fetch('<?= base_url('/dashboard/team-performance') ?>')
+            .then(response => response.json())
+            .then(result => {
+                if (result.success && result.data) {
+                    const data = result.data;
+                    const team = data.team_members || [];
+                    
+                    let html = '';
+                    if (team.length === 0) {
+                        html = '<tr><td colspan="3" class="text-center text-muted py-3">No data available</td></tr>';
+                    } else {
+                        team.forEach((member, index) => {
+                            html += `
+                                <tr>
+                                    <td class="ps-3 py-2">
+                                        <strong>${member.badge} ${member.name}</strong>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-success">${member.spks}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-warning">${member.wos}</span>
+                                    </td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    tbody.innerHTML = html;
+                    
+                    // Update total progress
+                    const totalSpks = data.total_spks || 0;
+                    const totalWos = data.total_wos || 0;
+                    document.getElementById('teamTotalProgress').textContent = `${totalSpks} SPKs | ${totalWos} WOs`;
+                } else {
+                    console.error('Failed to load team performance:', result.message);
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3">Failed to load data</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading team performance:', error);
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-3">Error loading data</td></tr>';
+            });
+    }
+
+    // --- 2c. Load Quotations Performance ---
+    function loadQuotationsPerformance() {
+        fetch('<?= base_url('/dashboard/quotations-performance') ?>')
+            .then(response => response.json())
+            .then(result => {
+                if (result.success && result.data) {
+                    const data = result.data;
+                    document.getElementById('totalQuotations').textContent = data.total_quotations;
+                    document.getElementById('dealsConverted').textContent = data.deals_converted;
+                    document.getElementById('conversionRate').textContent = data.conversion_rate + '%';
+                } else {
+                    console.error('Failed to load quotations performance:', result.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading quotations performance:', error);
+            });
+    }
+
+    // --- 2d. Load Top Spare Parts Used ---
+    function loadTopSpareParts() {
+        const tbody = document.getElementById('topSparePartsBody');
+        
+        fetch('<?= base_url('/dashboard/top-spare-parts') ?>')
+            .then(response => response.json())
+            .then(result => {
+                if (result.success && result.data) {
+                    const spareParts = result.data;
+                    
+                    let html = '';
+                    if (spareParts.length === 0) {
+                        html = '<tr><td colspan="3" class="text-center py-4 text-muted">No data available</td></tr>';
+                    } else {
+                        spareParts.forEach(part => {
+                            html += `
+                                <tr>
+                                    <td class="ps-4 fw-medium">${part.name}</td>
+                                    <td class="text-center"><span class="badge bg-info">${part.week}</span></td>
+                                    <td class="text-center"><span class="badge bg-primary">${part.month}</span></td>
+                                </tr>
+                            `;
+                        });
+                    }
+                    tbody.innerHTML = html;
+                } else {
+                    console.error('Failed to load spare parts:', result.message);
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-4">Failed to load data</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.error('Error loading spare parts:', error);
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger py-4">Error loading data</td></tr>';
+            });
+    }
+
+    // --- 3. Unit Status Pie Chart ---
+    const ctxUnit = document.getElementById('unitStatusChart').getContext('2d');
+    new Chart(ctxUnit, {
+        type: 'doughnut',
+        data: {
+            labels: ['Rented', 'Ready/Available', 'Maintenance', 'Breakdown'],
+            datasets: [{
+                data: [
+                    <?= $charts['unit_status']['rented'] ?>,
+                    <?= $charts['unit_status']['ready'] ?>,
+                    <?= $charts['unit_status']['maintenance'] ?>,
+                    <?= $charts['unit_status']['breakdown'] ?>
+                ],
+                backgroundColor: [
+                    '#0d6efd', // Primary Blue (Rented)
+                    '#198754', // Success Green (Ready)
+                    '#ffc107', // Warning Yellow (Maintenance)
+                    '#dc3545'  // Danger Red (Breakdown)
+                ],
+                borderWidth: 0,
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 20
+                    }
+                }
+            },
+            cutout: '70%'
+        }
+    });
+
+    // --- 4. Sales Trend Bar Chart (Quotation vs Contract) ---
+    const ctxSales = document.getElementById('salesTrendChart').getContext('2d');
+    new Chart(ctxSales, {
+        type: 'bar',
+        data: {
+            labels: <?= json_encode($charts['sales_trend']['labels']) ?>,
+            datasets: [
+                {
+                    label: 'Quotations',
+                    data: <?= json_encode($charts['sales_trend']['quotations']) ?>,
+                    backgroundColor: '#e9ecef',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                },
+                {
+                    label: 'Contracts (Deal)',
+                    data: <?= json_encode($charts['sales_trend']['contracts']) ?>,
+                    backgroundColor: '#0d6efd',
+                    borderRadius: 4,
+                    barPercentage: 0.6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    align: 'end'
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: {
+                        drawBorder: false,
+                        color: '#f8f9fa'
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    }
+                }
+            }
+        }
+    });
+
+</script>
+<?= $this->endSection() ?>
+<?= $this->endSection() ?>

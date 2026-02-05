@@ -900,7 +900,7 @@
 
 <!-- Create SPK Selection Modal -->
 <div class="modal fade" id="createSPKModal" tabindex="-1">
-    <div class="modal-dialog modal-md">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <div>
@@ -1433,7 +1433,10 @@ function viewQuotation(id) {
             <div class="row">
                 <div class="col-md-6">
                     <strong>Quotation Number:</strong><br>
-                    ${data.quotation_number || 'undefined'}<br><br>
+                    ${data.quotation_number || 'undefined'}
+                    <span class="badge bg-info ms-2">v${data.version || 1}</span>
+                    ${data.revision_status === 'REVISED' ? '<span class="badge bg-warning text-dark ms-1"><i class="fas fa-exclamation-triangle me-1"></i>REVISED</span>' : ''}
+                    <br><br>
                     <strong>Customer:</strong><br>
                     ${data.customer_name || data.prospect_name || 'undefined'}<br><br>
                     <strong>Amount:</strong><br>
@@ -1468,20 +1471,39 @@ function viewQuotation(id) {
         // Populate action buttons based on workflow stage
         let actionButtons = '';
         const workflowStage = data.workflow_stage || 'PROSPECT';
+        const quotationStage = data.stage || '';
+        const hasSpecs = parseInt(data.spec_count || 0) > 0; // Check if has specifications
         
-        // Add edit button if allowed
-        if (['PROSPECT', 'QUOTATION'].includes(workflowStage)) {
-            actionButtons += `<button class="btn btn-warning me-2" onclick="editQuotation(${data.id_quotation})">
+        // Always show edit button for quotations that haven't been converted to contract
+        // Allow editing even for DEAL stage to accommodate price/spec changes
+        if (!data.contract_id) {
+            actionButtons += `<button class="btn btn-warning me-2" onclick="editQuotation(${data.id_quotation})" title="Edit quotation details">
                 <i class="fas fa-edit me-1"></i>Edit
             </button>`;
         }
         
-        // Add delete button if not DEAL
-        if (workflowStage !== 'DEAL') {
-            actionButtons += `<button class="btn btn-danger" onclick="deleteQuotation(${data.id_quotation})">
+        // Show delete button for non-contracted quotations
+        // Once it has contract_id, deletion should be prevented
+        if (!data.contract_id) {
+            actionButtons += `<button class="btn btn-danger me-2" onclick="deleteQuotation(${data.id_quotation})" title="Delete this quotation">
                 <i class="fas fa-trash me-1"></i>Delete
             </button>`;
+        } else {
+            // Show info that quotation is linked to contract
+            actionButtons += `<small class="text-muted"><i class="fas fa-link me-1"></i>Linked to Contract #${data.contract_number || data.contract_id}</small>`;
         }
+        
+        // Show print button ONLY if specifications have been created
+        if (hasSpecs) {
+            actionButtons += `<button class="btn btn-info me-2" onclick="printQuotation(${data.id_quotation})" title="Print quotation with specifications">
+                <i class="fas fa-print me-1"></i>Print
+            </button>`;
+        }
+        
+        // Show history button
+        actionButtons += `<button class="btn btn-secondary" onclick="viewQuotationHistory(${data.id_quotation})" title="View change history">
+            <i class="fas fa-history me-1"></i>History
+        </button>`;
         
         $('#quotationActions').html(actionButtons);
         
@@ -1543,18 +1565,145 @@ function viewQuotation(id) {
 }
 
 function editQuotation(id) {
-    $.get('<?= base_url('marketing/quotations/get-quotation/') ?>' + id, function(data) {
-        $('#quotationId').val(data.id);
-        $('#quotationNumber').val(data.quotation_number);
-        $('#customerId').val(data.customer_id);
-        $('#description').val(data.description);
-        $('#amount').val(data.amount);
-        $('#validUntil').val(data.valid_until);
-        $('#notes').val(data.notes);
-        $('#quotationModalLabel').text('Edit Quotation');
-        $('#quotationModal').modal('show');
+    // Fetch quotation data
+    $.get('<?= base_url('marketing/quotations/getQuotation/') ?>' + id, function(response) {
+        const data = response.data || response;
+        
+        // Transform readonly view to editable form
+        var editForm = `
+            <form id="editQuotationForm">
+                <input type="hidden" name="id_quotation" value="${data.id_quotation}">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Quotation Number:</strong></label>
+                            <input type="text" class="form-control" value="${data.quotation_number || ''}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Customer:</strong></label>
+                            <input type="text" class="form-control" value="${data.customer_name || data.prospect_name || ''}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Amount:</strong></label>
+                            <input type="number" class="form-control" name="total_amount" value="${data.total_amount || 0}" required>
+                            <small class="text-muted">Current: Rp ${data.total_amount ? parseFloat(data.total_amount).toLocaleString('id-ID') : '0'}</small>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Status:</strong></label>
+                            <input type="text" class="form-control" value="${(data.stage || 'ERROR').toUpperCase()}" disabled>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Valid Until:</strong></label>
+                            <input type="date" class="form-control" name="valid_until" value="${data.valid_until || ''}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label"><strong>Created:</strong></label>
+                            <input type="text" class="form-control" value="${data.created_at || ''}" disabled>
+                        </div>
+                    </div>
+                </div>
+                <hr>
+                <div class="mb-3">
+                    <label class="form-label"><strong>Description:</strong></label>
+                    <textarea class="form-control" name="quotation_description" rows="5" required>${data.quotation_description || ''}</textarea>
+                    <small class="text-muted">Describe the quotation details, terms, and conditions</small>
+                </div>
+            </form>
+        `;
+        
+        $('#detailContent').html(editForm);
+        
+        // Change action buttons to Save and Cancel
+        var editActions = `
+            <button class="btn btn-success me-2" onclick="saveQuotation(${data.id_quotation})" type="button">
+                <i class="fas fa-save me-1"></i>Save Changes
+            </button>
+            <button class="btn btn-secondary" onclick="viewQuotation(${data.id_quotation})" type="button">
+                <i class="fas fa-times me-1"></i>Cancel
+            </button>
+        `;
+        $('#quotationActions').html(editActions);
+        
     }).fail(function() {
         Swal.fire('Error', 'Failed to load quotation data', 'error');
+    });
+}
+
+function saveQuotation(id) {
+    // Validate form
+    var form = document.getElementById('editQuotationForm');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    // Get form data
+    var formData = new FormData(form);
+    
+    // Show loading
+    Swal.fire({
+        title: 'Saving...',
+        text: 'Please wait while we save your changes',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Send AJAX request
+    $.ajax({
+        url: '<?= base_url('marketing/quotations/update/') ?>' + id,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(response) {
+            console.log('Update response:', response); // Debug
+            Swal.close();
+            if (response.status === 'success') {
+                // Show appropriate message based on revision status
+                let message = response.message || 'Quotation updated successfully';
+                let icon = 'success';
+                let title = 'Saved!';
+                
+                if (response.is_revision) {
+                    icon = 'info';
+                    title = 'Quotation Revised!';
+                    message = `Quotation updated and marked as REVISED (version ${response.version})`;
+                }
+                
+                Swal.fire({
+                    icon: icon,
+                    title: title,
+                    text: message,
+                    timer: 3000,
+                    showConfirmButton: true
+                }).then(() => {
+                    // Reload table
+                    if (typeof quotationsTable !== 'undefined') {
+                        quotationsTable.ajax.reload(null, false);
+                    }
+                    
+                    // Reload detail view to show updated version badge
+                    setTimeout(() => {
+                        viewQuotation(id);
+                    }, 500);
+                });
+            } else {
+                Swal.fire('Error', response.message || 'Failed to update quotation', 'error');
+            }
+        },
+        error: function(xhr) {
+            Swal.close();
+            var errorMsg = 'Failed to update quotation';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+            Swal.fire('Error', errorMsg, 'error');
+        }
     });
 }
 
@@ -1591,6 +1740,110 @@ function deleteQuotation(id) {
                 }
             });
         }
+    });
+}
+
+// Function to view quotation history
+function viewQuotationHistory(id) {
+    Swal.fire({
+        title: '<i class="fas fa-spinner fa-spin"></i> Loading History...',
+        text: 'Fetching change history',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    fetch(`<?= base_url('marketing/quotations/history/') ?>${id}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                let historyHtml = '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+                
+                if (result.data && result.data.length > 0) {
+                    historyHtml += '<table class="table table-sm table-hover">';
+                    historyHtml += '<thead class="table-light sticky-top">';
+                    historyHtml += '<tr><th>Version</th><th>Action</th><th>Changed By</th><th>Date</th><th>Changes</th></tr>';
+                    historyHtml += '</thead><tbody>';
+                    
+                    result.data.forEach(h => {
+                        let actionBadge = '';
+                        switch(h.action_type) {
+                            case 'CREATED': actionBadge = '<span class="badge bg-success">Created</span>'; break;
+                            case 'UPDATED': actionBadge = '<span class="badge bg-info">Updated</span>'; break;
+                            case 'REVISED': actionBadge = '<span class="badge bg-warning">Revised</span>'; break;
+                            case 'DELETED': actionBadge = '<span class="badge bg-danger">Deleted</span>'; break;
+                            case 'SENT': actionBadge = '<span class="badge bg-primary">Sent</span>'; break;
+                            default: actionBadge = `<span class="badge bg-secondary">${h.action_type}</span>`;
+                        }
+                        
+                        historyHtml += `<tr>
+                            <td><span class="badge bg-dark">v${h.version}</span></td>
+                            <td>${actionBadge}</td>
+                            <td><small>${h.changed_by_name || h.changed_by_username || '-'}</small></td>
+                            <td><small>${formatDateTime(h.changed_at)}</small></td>
+                            <td><small class="text-muted">${h.changes_summary || 'No details'}</small></td>
+                        </tr>`;
+                    });
+                    
+                    historyHtml += '</tbody></table>';
+                } else {
+                    historyHtml += '<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No history available</div>';
+                }
+                
+                historyHtml += '</div>';
+                
+                Swal.fire({
+                    title: '<i class="fas fa-history"></i> Quotation History',
+                    html: historyHtml,
+                    width: '800px',
+                    showCloseButton: true,
+                    showConfirmButton: false,
+                    customClass: {
+                        container: 'history-modal'
+                    }
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: result.message || 'Failed to load history'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('History fetch error:', error);
+            console.error('Error details:', error.message);
+            Swal.fire({
+                icon: 'error',
+                title: 'Failed to fetch history',
+                html: `<p class="mb-0">${error.message || 'Unknown error'}</p>
+                       <small class="text-muted">Check console for details</small>`,
+                footer: 'Make sure you are logged in and have proper permissions'
+            });
+        });
+}
+
+// Helper function to format datetime
+function formatDateTime(datetime) {
+    if (!datetime) return '-';
+    const d = new Date(datetime);
+    return d.toLocaleString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
     });
 }
 
@@ -3108,14 +3361,14 @@ $('#createProspectForm').on('submit', function(e) {
                 $('#createProspectModal').modal('hide');
                 Swal.fire({
                     title: 'Success!', 
-                    text: 'Prospect created successfully. You can now add specifications.',
+                    text: 'Successfully created prospect: ' + response.message,
                     icon: 'success',
                     showCancelButton: true,
-                    confirmButtonText: 'Add Specifications',
-                    cancelButtonText: 'View Later'
+                    confirmButtonText: 'View Prospect',
+                    cancelButtonText: 'Close'
                 }).then((result) => {
                     if (result.isConfirmed) {
-                        // Open the quotation to add specifications
+                        // Open the prospect detail
                         viewQuotation(response.data.id_quotation);
                     }
                     

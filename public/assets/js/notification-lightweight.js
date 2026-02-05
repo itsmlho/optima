@@ -480,6 +480,18 @@ class OptimaNotificationLightweight {
         if (divider) {
             divider.insertAdjacentHTML('beforebegin', html);
         }
+        
+        // FORCE TEXT WRAPPING - Apply styles after DOM insertion
+        setTimeout(() => {
+            const notificationItems = this.dropdownMenu.querySelectorAll('.notification-item a.dropdown-item');
+            notificationItems.forEach(item => {
+                // Force block display on all child elements
+                const allDivs = item.querySelectorAll('div');
+                allDivs.forEach(div => {
+                    div.style.cssText = 'display: block !important; white-space: normal !important; word-wrap: break-word !important; word-break: break-word !important; max-width: 100% !important; overflow: visible !important; text-overflow: clip !important;';
+                });
+            });
+        }, 10);
     }
     
     getNotificationUrl(notification) {

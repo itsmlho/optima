@@ -434,7 +434,7 @@ class Marketing extends BaseDataTableController
                 
                 $data[] = [
                     'DT_RowId' => 'row_' . $quotation['id_quotation'],
-                    'DT_RowIndex' => $start + $index,
+                    'DT_RowIndex' => $start + $index + 1,
                     'id_quotation' => $quotation['id_quotation'], // Add this for row click functionality
                     'quotation_number' => $quotation['quotation_number'],
                     'prospect_name' => $quotation['prospect_name'],
@@ -509,14 +509,20 @@ class Marketing extends BaseDataTableController
             $profileStatus = $customerModel->getCustomerProfileStatus($quotation['created_customer_id']);
             $customerLocationComplete = $profileStatus['complete'] && $profileStatus['has_location'];
             
-            // Check if customer has contracts
-            $db = \Config\Database::connect();
-            $contractCount = $db->table('kontrak k')
-                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                ->where('cl.customer_id', $quotation['created_customer_id'])
-                ->where('k.status', 'Aktif')
-                ->countAllResults();
-            $customerContractComplete = $contractCount > 0;
+            // For contract completion, prioritize the direct link in quotation
+            if ($hasContract) {
+                // If quotation is directly linked to a contract, consider it complete
+                $customerContractComplete = true;
+            } else {
+                // Otherwise, check if customer has any available contracts
+                $db = \Config\Database::connect();
+                $contractCount = $db->table('kontrak k')
+                    ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+                    ->where('cl.customer_id', $quotation['created_customer_id'])
+                    ->whereIn('k.status', ['Aktif', 'Draft', 'Pending'])
+                    ->countAllResults();
+                $customerContractComplete = $contractCount > 0;
+            }
         }
         
         // Workflow actions based on current stage
@@ -1278,7 +1284,8 @@ class Marketing extends BaseDataTableController
                 COALESCE(cl_contract.contact_person, cl_primary.contact_person) as pic_name, 
                 COALESCE(cl_contract.phone, cl_primary.phone) as pic_phone,
                 COALESCE(cl_contract.id, cl_primary.id) as customer_location_id,
-                k.no_kontrak as contract_number')
+                k.no_kontrak as contract_number,
+                (SELECT COUNT(*) FROM quotation_specifications WHERE id_quotation = q.id_quotation) as spec_count')
             ->join('customers c', 'c.id = q.created_customer_id', 'left')
             ->join('kontrak k', 'k.id = q.created_contract_id', 'left')
             ->join('customer_locations cl_contract', 'cl_contract.id = k.customer_location_id', 'left')
@@ -1298,6 +1305,330 @@ class Marketing extends BaseDataTableController
             'success' => true,
             'data' => $quotation
         ]);
+    }
+
+    /**
+     * Update quotation data
+     */
+    public function updateQuotation($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        if (!$this->hasPermission('marketing.access')) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'You do not have permission to update quotations'
+            ])->setStatusCode(403);
+        }
+
+        try {
+            // Get existing quotation to check if it can be edited
+            $quotation = $this->quotationModel->find($quotationId);
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Quotation not found'
+                ])->setStatusCode(404);
+            }
+
+            // Prevent editing if already linked to contract
+            if (!empty($quotation['created_contract_id'])) {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Cannot edit quotation that is already linked to a contract'
+                ])->setStatusCode(400);
+            }
+
+            // Prevent editing for expired or lost deals
+            if ($quotation['stage'] === 'EXPIRED') {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Cannot edit expired quotation. Please create a new one.'
+                ])->setStatusCode(400);
+            }
+
+            if ($quotation['workflow_stage'] === 'NOT_DEAL') {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Cannot edit rejected/lost quotation. Please create a new one.'
+                ])->setStatusCode(400);
+            }
+
+            // Store old values for audit trail
+            $oldValues = [
+                'total_amount' => $quotation['total_amount'],
+                'valid_until' => $quotation['valid_until'],
+                'quotation_description' => $quotation['quotation_description'],
+                'notes' => $quotation['notes'] ?? null
+            ];
+
+            // Get data from request
+            $data = [
+                'total_amount' => $this->request->getPost('total_amount'),
+                'valid_until' => $this->request->getPost('valid_until'),
+                'quotation_description' => $this->request->getPost('quotation_description'),
+                'notes' => $this->request->getPost('notes'),
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+
+            // Validate required fields
+            if (empty($data['total_amount']) || empty($data['valid_until']) || empty($data['quotation_description'])) {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Please fill all required fields'
+                ])->setStatusCode(400);
+            }
+
+            // Determine if edit should trigger revision (version increment)
+            $currentVersion = $quotation['version'] ?? 1;
+            $isRevision = false;
+            
+            // Stages that trigger REVISION when edited (customer already involved)
+            $revisionStages = ['SENT', 'FOLLOW_UP', 'NEGOTIATION', 'ACCEPTED'];
+            $revisionWorkflowStages = ['SENT', 'DEAL'];
+            
+            // Check if quotation is in stage that requires revision tracking
+            $stageTriggersRevision = in_array($quotation['stage'], $revisionStages);
+            $workflowTriggersRevision = in_array($quotation['workflow_stage'], $revisionWorkflowStages);
+            
+            // Debug logging
+            log_message('info', "Update Quotation #{$quotationId} - Stage: {$quotation['stage']}, Workflow: {$quotation['workflow_stage']}, Version: {$currentVersion}");
+            
+            // If in any revision-triggering stage, increment version and mark as REVISED
+            if ($stageTriggersRevision || $workflowTriggersRevision) {
+                $data['revision_status'] = 'REVISED';
+                $data['revised_at'] = date('Y-m-d H:i:s');
+                $data['revised_by'] = session()->get('user_id');
+                $data['version'] = $currentVersion + 1;
+                $isRevision = true;
+                
+                log_message('info', "Quotation #{$quotationId} marked as REVISED - Stage: {$quotation['stage']}, New version: " . ($currentVersion + 1));
+            } else {
+                log_message('info', "Quotation #{$quotationId} normal update (no revision) - Stage: {$quotation['stage']}, Version stays: {$currentVersion}");
+            }
+
+            // Update quotation
+            $this->quotationModel->update($quotationId, $data);
+
+            // Log the change to history
+            $changesSummary = $this->buildChangesSummary($oldValues, $data);
+            $this->logQuotationChange(
+                $quotationId,
+                $data['version'] ?? $currentVersion,
+                $isRevision ? 'REVISED' : 'UPDATED',
+                $changesSummary,
+                $oldValues,
+                $data
+            );
+
+            $message = $isRevision 
+                ? 'Quotation updated and marked as REVISED (version ' . ($currentVersion + 1) . ')'
+                : 'Quotation updated successfully';
+
+            return $this->response->setJSON([
+                'status' => 'success',
+                'message' => $message,
+                'is_revision' => $isRevision,
+                'version' => $data['version'] ?? $currentVersion
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::updateQuotation - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Failed to update quotation: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Helper method to build human-readable changes summary
+     */
+    private function buildChangesSummary($oldValues, $newValues)
+    {
+        $changes = [];
+        
+        if ($oldValues['total_amount'] != $newValues['total_amount']) {
+            $changes[] = sprintf(
+                'Total amount changed from Rp %s to Rp %s',
+                number_format($oldValues['total_amount'], 0, ',', '.'),
+                number_format($newValues['total_amount'], 0, ',', '.')
+            );
+        }
+        
+        if ($oldValues['valid_until'] != $newValues['valid_until']) {
+            $changes[] = sprintf(
+                'Valid until changed from %s to %s',
+                $oldValues['valid_until'],
+                $newValues['valid_until']
+            );
+        }
+        
+        if ($oldValues['quotation_description'] != $newValues['quotation_description']) {
+            $changes[] = 'Description updated';
+        }
+        
+        return empty($changes) ? 'Minor updates' : implode('; ', $changes);
+    }
+
+    /**
+     * Log quotation changes to history table
+     */
+    private function logQuotationChange($quotationId, $version, $actionType, $changesSummary, $oldValues, $newValues)
+    {
+        try {
+            $db = \Config\Database::connect();
+            
+            $userId = session()->get('user_id');
+            
+            // Force write to log file regardless of CI4 settings
+            $logMessage = date('Y-m-d H:i:s') . " - logQuotationChange called - QuotationID: $quotationId, Version: $version, Action: $actionType, UserID: $userId\n";
+            file_put_contents(WRITEPATH . 'logs/quotation_debug.log', $logMessage, FILE_APPEND | LOCK_EX);
+            
+            // Debug logging through CI4
+            log_message('info', 'logQuotationChange called - QuotationID: ' . $quotationId . ', Version: ' . $version . ', Action: ' . $actionType . ', UserID: ' . $userId);
+            
+            $data = [
+                'quotation_id' => $quotationId,
+                'version' => $version,
+                'action_type' => $actionType,
+                'changed_by' => $userId ?: 1, // Fallback to user ID 1 if session empty
+                'changed_at' => date('Y-m-d H:i:s'),
+                'changes_summary' => $changesSummary,
+                'old_values' => json_encode($oldValues),
+                'new_values' => json_encode($newValues),
+                'ip_address' => $this->request->getIPAddress(),
+                'user_agent' => $this->request->getUserAgent()->getAgentString()
+            ];
+            
+            $result = $db->table('quotation_history')->insert($data);
+            
+            if ($result) {
+                $insertId = $db->insertID();
+                log_message('info', 'History logged successfully - Insert ID: ' . $insertId);
+                file_put_contents(WRITEPATH . 'logs/quotation_debug.log', "SUCCESS: History logged - Insert ID: $insertId\n", FILE_APPEND | LOCK_EX);
+            } else {
+                log_message('error', 'History insert returned false');
+                file_put_contents(WRITEPATH . 'logs/quotation_debug.log', "ERROR: History insert returned false\n", FILE_APPEND | LOCK_EX);
+            }
+            
+            return $result;
+            
+        } catch (\Exception $e) {
+            // Log error but don't fail the main operation
+            log_message('error', 'Failed to log quotation change: ' . $e->getMessage());
+            log_message('error', 'Stack trace: ' . $e->getTraceAsString());
+            
+            // Force write error to custom log
+            $errorMessage = date('Y-m-d H:i:s') . " - ERROR in logQuotationChange: " . $e->getMessage() . "\nStack: " . $e->getTraceAsString() . "\n\n";
+            file_put_contents(WRITEPATH . 'logs/quotation_debug.log', $errorMessage, FILE_APPEND | LOCK_EX);
+            
+            return false;
+        }
+    }
+
+    /**
+     * Delete quotation
+     */
+    public function deleteQuotation($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        if (!$this->hasPermission('marketing.access')) {
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'You do not have permission to delete quotations'
+            ])->setStatusCode(403);
+        }
+
+        try {
+            // Get existing quotation to check if it can be deleted
+            $quotation = $this->quotationModel->find($quotationId);
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Quotation not found'
+                ])->setStatusCode(404);
+            }
+
+            // Prevent deletion if already linked to contract
+            if (!empty($quotation['created_contract_id'])) {
+                return $this->response->setJSON([
+                    'status' => 'error',
+                    'message' => 'Cannot delete quotation that is already linked to a contract'
+                ])->setStatusCode(400);
+            }
+
+            // Delete specifications first
+            $this->db->table('quotation_specifications')
+                ->where('id_quotation', $quotationId)
+                ->delete();
+
+            // Log deletion before actually deleting
+            $this->logQuotationChange(
+                $quotationId,
+                $quotation['version'] ?? 1,
+                'DELETED',
+                'Quotation deleted by user',
+                [
+                    'quotation_number' => $quotation['quotation_number'],
+                    'total_amount' => $quotation['total_amount'],
+                    'workflow_stage' => $quotation['workflow_stage']
+                ],
+                null
+            );
+
+            // Delete quotation
+            $this->quotationModel->delete($quotationId);
+
+            return $this->response->setJSON([
+                'status' => 'success',
+                'message' => 'Quotation deleted successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::deleteQuotation - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'status' => 'error',
+                'message' => 'Failed to delete quotation: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
+    }
+
+    /**
+     * Get quotation history/audit trail
+     */
+    public function getQuotationHistory($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(403);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get history from view for better formatting
+            $history = $db->table('vw_quotation_history_detail')
+                ->where('quotation_id', $quotationId)
+                ->orderBy('changed_at', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $history
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getQuotationHistory - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error fetching history: ' . $e->getMessage()
+            ])->setStatusCode(500);
+        }
     }
 
     /**
@@ -1953,26 +2284,26 @@ class Marketing extends BaseDataTableController
             'attachment' => null
         ];
 
-        // Get battery info - include both available (7) and in use (8) for the unit
+        // Get battery info - include both available and in use for the unit
         $battery = $this->db->table('inventory_attachment ia')
             ->select('ia.id_inventory_attachment, ia.baterai_id, ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
             ->join('baterai b', 'ia.baterai_id = b.id', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'battery')
-            ->whereIn('ia.status_unit', [7, 8]) // Available or In use for this unit
+            ->whereIn('ia.attachment_status', ['AVAILABLE', 'IN_USE']) // Available or In use for this unit
             ->get()->getRowArray();
 
         if ($battery) {
             $components['battery'] = $battery;
         }
 
-        // Get charger info - include both available (7) and in use (8) for the unit
+        // Get charger info - include both available and in use for the unit
         $charger = $this->db->table('inventory_attachment ia')
             ->select('ia.id_inventory_attachment, ia.charger_id, ia.sn_charger, c.merk_charger, c.tipe_charger')
             ->join('charger c', 'ia.charger_id = c.id_charger', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'charger')
-            ->whereIn('ia.status_unit', [7, 8]) // Available or In use for this unit
+            ->whereIn('ia.attachment_status', ['AVAILABLE', 'IN_USE']) // Available or In use for this unit
             ->get()->getRowArray();
 
         if ($charger) {
@@ -1985,7 +2316,7 @@ class Marketing extends BaseDataTableController
             ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
             ->where('ia.id_inventory_unit', $unitId)
             ->where('ia.tipe_item', 'attachment')
-            ->where('ia.status_unit', 8) // In use
+            ->where('ia.attachment_status', 'IN_USE') // In use
             ->get()->getRowArray();
 
         if ($attachment) {
@@ -2829,7 +3160,18 @@ class Marketing extends BaseDataTableController
 
     public function spkDetail($id)
     {
-    $row = $this->spkModel->find((int)$id);
+        // Check if user is logged in
+        if (!session()->get('isLoggedIn')) {
+            if ($this->request->isAJAX()) {
+                return $this->response->setStatusCode(401)->setJSON([
+                    'success' => false,
+                    'message' => 'Unauthorized: Please login first'
+                ]);
+            }
+            return redirect()->to('/login')->with('error', 'Please login first.');
+        }
+
+        $row = $this->spkModel->find((int)$id);
         if (!$row) {
             return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'SPK tidak ditemukan']);
         }
@@ -7130,6 +7472,52 @@ class Marketing extends BaseDataTableController
                 $customerMessage = 'Customer gagal ditambahkan otomatis, silakan buat manual';
             }
 
+            // Auto-link to existing contract if available
+            $contractMessage = '';
+            if (isset($customerId) && $customerId) {
+                try {
+                    // Check if quotation already has a contract linked
+                    $currentQuotation = $quotationModel->find($quotationId);
+                    
+                    if (!$currentQuotation['created_contract_id']) {
+                        // Find existing contracts for this customer
+                        $existingContracts = $this->db->query("
+                            SELECT k.id, k.no_kontrak, k.status, cl.location_name
+                            FROM kontrak k
+                            JOIN customer_locations cl ON cl.id = k.customer_location_id
+                            WHERE cl.customer_id = ?
+                            AND k.status IN ('Aktif', 'Draft', 'Pending')
+                            ORDER BY 
+                                CASE k.status 
+                                    WHEN 'Aktif' THEN 1
+                                    WHEN 'Draft' THEN 2
+                                    WHEN 'Pending' THEN 3
+                                    ELSE 4
+                                END ASC,
+                                k.id DESC
+                            LIMIT 1
+                        ", [$customerId])->getRowArray();
+                        
+                        if ($existingContracts) {
+                            // Auto-link to best available contract
+                            $quotationModel->update($quotationId, [
+                                'created_contract_id' => $existingContracts['id'],
+                                'customer_contract_complete' => 1
+                            ]);
+                            
+                            $contractMessage = ' Terhubung dengan kontrak: ' . $existingContracts['no_kontrak'] . ' (' . $existingContracts['status'] . ')';
+                            
+                            log_message('info', "Auto-linked quotation {$quotationId} to existing contract {$existingContracts['id']} ({$existingContracts['no_kontrak']})");
+                        } else {
+                            $contractMessage = ' (Kontrak belum ada, perlu dibuat manual)';
+                        }
+                    }
+                } catch (\Exception $contractError) {
+                    log_message('error', 'Auto-link contract failed: ' . $contractError->getMessage());
+                    $contractMessage = ' (Gagal menghubungkan kontrak otomatis)';
+                }
+            }
+
             $db->transComplete();
 
             if ($db->transStatus() === false) {
@@ -7150,9 +7538,10 @@ class Marketing extends BaseDataTableController
 
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Quotation marked as DEAL! ' . $customerMessage,
+                'message' => 'Quotation marked as DEAL! ' . $customerMessage . $contractMessage,
                 'customer_exists' => $customerExists,
                 'customer_message' => $customerMessage,
+                'contract_message' => $contractMessage,
                 'customer_id' => $customerId,
                 'quotation_id' => $quotationId,
                 'needs_profile_completion' => $needsProfileCompletion,
@@ -7372,15 +7761,12 @@ class Marketing extends BaseDataTableController
             // Create contract record with customer_location_id
             $contractData = [
                 'no_kontrak' => $contractNumber,
-                'customer_id' => $quotation['created_customer_id'],
                 'customer_location_id' => $customerLocation['id'],
-                'quotation_id' => $quotationId,
                 'nilai_total' => $quotation['total_amount'],
                 'tanggal_mulai' => date('Y-m-d'),
                 'tanggal_berakhir' => date('Y-m-d', strtotime('+12 months')),
                 'status' => 'Draft',
-                'created_by' => session()->get('user_id'),
-                'created_at' => date('Y-m-d H:i:s')
+                'dibuat_oleh' => session()->get('user_id')
             ];
 
             log_message('info', 'Creating contract with location: ' . json_encode([

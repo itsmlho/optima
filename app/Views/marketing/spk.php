@@ -2168,6 +2168,12 @@ $can_export = $permissions['export'];
         
         fetch(`<?= base_url('marketing/spk/detail/') ?>${id}`)
             .then(r => {
+                // Check for 401 Unauthorized (session expired)
+                if (r.status === 401) {
+                    alert('Session expired. Please login again.');
+                    window.location.href = '<?= base_url('auth/login') ?>';
+                    return Promise.reject('Unauthorized');
+                }
                 if (!r.ok) {
                     throw new Error(`HTTP error! Status: ${r.status}`);
                 }
