@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title><?= lang('Auth.waiting_approval') ?> - OPTIMA | PT Sarana Mitra Luas Tbk</title>
+    <title>Waiting for Admin Approval - OPTIMA | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/optima-favicon.svg') ?>">
@@ -30,12 +30,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
+            padding: 1.5rem;
             position: relative;
             overflow-x: hidden;
         }
         
-        /* Abstract Geometric Background */
         body::before {
             content: '';
             position: fixed;
@@ -54,28 +53,34 @@
         .waiting-container {
             background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(30px) saturate(180%);
-            border-radius: 2rem;
+            border-radius: 1.5rem;
             box-shadow: 
                 0 20px 60px rgba(0, 97, 242, 0.08),
                 0 8px 24px rgba(0, 0, 0, 0.06);
             border: 1px solid rgba(255, 255, 255, 0.8);
-            max-width: 600px;
+            max-width: 1000px;
             width: 100%;
             position: relative;
             z-index: 1;
-            padding: 3rem;
+            padding: 2rem;
+        }
+        
+        .header-section {
             text-align: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 2px solid #f0f0f0;
         }
         
         .waiting-icon {
-            width: 120px;
-            height: 120px;
+            width: 80px;
+            height: 80px;
             background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 2rem;
+            margin: 0 auto 1rem;
             box-shadow: 0 10px 30px rgba(0, 97, 242, 0.3);
             animation: pulse 2s ease-in-out infinite;
         }
@@ -86,67 +91,99 @@
         }
         
         .waiting-icon i {
-            font-size: 4rem;
+            font-size: 2.5rem;
             color: white;
         }
         
         .waiting-title {
-            font-size: 2rem;
+            font-size: 1.75rem;
             font-weight: 700;
             color: #1a202c;
-            margin-bottom: 1rem;
+            margin-bottom: 0.5rem;
         }
         
         .waiting-message {
-            font-size: 1.1rem;
-            color: #64748b;
-            margin-bottom: 2rem;
-            line-height: 1.8;
+            font-size: 0.95rem;
+            color: #6c757d;
+            line-height: 1.5;
         }
         
-        .info-box {
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+            .waiting-container {
+                padding: 1.5rem;
+            }
+        }
+        
+        .info-box, .contact-box {
             background: #f8f9fa;
-            border-left: 4px solid #0061f2;
-            padding: 1.5rem;
-            border-radius: 0.5rem;
-            margin: 2rem 0;
-            text-align: left;
+            padding: 1.25rem;
+            border-radius: 1rem;
+            border: 1px solid #e9ecef;
         }
         
-        .info-box h5 {
-            color: #0061f2;
+        .info-box h5, .contact-box h5 {
+            margin-bottom: 0.75rem;
             font-weight: 600;
-            margin-bottom: 1rem;
+            font-size: 1rem;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
         
         .info-box ul {
+            list-style: none;
+            padding: 0;
             margin: 0;
-            padding-left: 1.5rem;
         }
         
         .info-box li {
-            margin: 0.5rem 0;
-            color: #475569;
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+            font-size: 0.875rem;
+            color: #495057;
+            line-height: 1.5;
+        }
+        
+        .info-box li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #0061f2;
+            font-weight: bold;
         }
         
         .contact-box {
             background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
             color: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            margin: 2rem 0;
         }
         
         .contact-box h5 {
-            margin-bottom: 1rem;
-            font-weight: 600;
+            color: white;
+        }
+        
+        .contact-box p {
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            line-height: 1.5;
         }
         
         .contact-box a {
             color: white;
             text-decoration: none;
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 1rem;
         }
         
         .contact-box a:hover {
@@ -154,16 +191,18 @@
         }
         
         .btn-back {
-            margin-top: 2rem;
+            margin-top: 1.5rem;
             padding: 0.75rem 2rem;
             background: #0061f2;
             color: white;
             border: none;
-            border-radius: 0.5rem;
+            border-radius: 0.75rem;
             font-weight: 600;
             text-decoration: none;
             display: inline-block;
             transition: all 0.3s ease;
+            width: 100%;
+            text-align: center;
         }
         
         .btn-back:hover {
@@ -174,22 +213,107 @@
         }
         
         .alert {
-            border-radius: 0.5rem;
-            margin-bottom: 2rem;
+            border-radius: 0.75rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            padding: 1rem;
+            border: none;
+        }
+        
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .alert-success {
+            background: #d4edda;
+            border-left: 4px solid #28a745;
+        }
+        
+        .alert-danger {
+            background: #f8d7da;
+            border-left: 4px solid #dc3545;
+        }
+        
+        .alert-icon {
+            font-size: 1.75rem;
+            flex-shrink: 0;
+        }
+        
+        .alert-content {
+            flex: 1;
+        }
+        
+        .alert-title {
+            font-weight: 700;
+            font-size: 0.95rem;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+        
+        .alert-text {
+            font-size: 0.85rem;
+            opacity: 0.9;
         }
     </style>
 </head>
 <body>
     <div class="waiting-container">
-        <div class="waiting-icon">
-            <i class="fas fa-clock"></i>
+        <!-- Header Section -->
+        <div class="header-section">
+            <div class="waiting-icon">
+                <i class="fas fa-clock"></i>
+            </div>
+            
+            <h1 class="waiting-title">Waiting for Admin Approval</h1>
+            
+            <p class="waiting-message">
+                Your account has been successfully created, but is still in <strong>Inactive</strong> status and awaiting administrator approval.
+            </p>
         </div>
         
-        <h1 class="waiting-title"><?= lang('Auth.waiting_approval') ?></h1>
-        
-        <p class="waiting-message">
-            <?= lang('Auth.account_pending_approval_message') ?>
-        </p>
+        <!-- Email Verification Status -->
+        <?php if (isset($email) && $email && isset($user_found) && $user_found): ?>
+            <div class="alert <?= isset($email_verified) && $email_verified ? 'alert-success' : 'alert-warning' ?>">
+                <div class="d-flex align-items-start gap-3">
+                    <?php if (isset($email_verified) && $email_verified): ?>
+                        <i class="fas fa-check-circle alert-icon" style="color: #28a745;"></i>
+                        <div class="alert-content">
+                            <span class="alert-title">✅ Email Verified</span>
+                            <div class="alert-text">
+                                <strong><?= esc($email) ?></strong><br>
+                                Your email has been verified successfully. Waiting for admin approval.
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <i class="fas fa-exclamation-triangle alert-icon" style="color: #ffc107;"></i>
+                        <div class="alert-content">
+                            <span class="alert-title">⚠️ Email Not Verified</span>
+                            <div class="alert-text mb-2">
+                                <strong><?= esc($email) ?></strong><br>
+                                Please verify your email first by clicking the link sent to your inbox.
+                            </div>
+                            <a href="<?= base_url('auth/resend-verification?email=' . urlencode($email)) ?>" 
+                               class="btn btn-warning btn-sm">
+                                <i class="fas fa-paper-plane me-1"></i> Resend Verification
+                            </a>
+                        </div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        <?php elseif (isset($email) && $email && (!isset($user_found) || !$user_found)): ?>
+            <div class="alert alert-danger">
+                <div class="d-flex align-items-start gap-3">
+                    <i class="fas fa-times-circle alert-icon" style="color: #dc3545;"></i>
+                    <div class="alert-content">
+                        <span class="alert-title">❌ User Not Found</span>
+                        <div class="alert-text">
+                            The email <strong><?= esc($email) ?></strong> was not found in our system.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
         
         <!-- Flash Messages -->
         <?php if (session()->getFlashdata('success')): ?>
@@ -208,29 +332,34 @@
             </div>
         <?php endif; ?>
         
-        <div class="info-box">
-            <h5><i class="fas fa-info-circle me-2"></i><?= lang('Auth.important_information') ?></h5>
-            <ul>
-                <li><?= lang('Auth.account_activated_after_approval') ?></li>
-                <li><?= lang('Auth.activation_time_estimate') ?></li>
-                <li><?= lang('Auth.after_activation_access') ?></li>
-            </ul>
-        </div>
-        
-        <div class="contact-box">
-            <h5><i class="fas fa-headset me-2"></i><?= lang('Auth.need_help') ?>?</h5>
-            <p><?= lang('Auth.contact_support_message') ?>:</p>
-            <p style="margin-top: 1rem;">
-                <i class="fas fa-envelope me-2"></i>
-                <a href="mailto:<?= esc($support_email) ?>"><?= esc($support_email) ?></a>
-            </p>
-            <p style="margin-top: 0.5rem; font-size: 0.9rem; opacity: 0.9;">
-                <?= lang('Auth.contact_supervisor_message') ?>
-            </p>
+        <!-- 2-Column Grid Layout -->
+        <div class="content-grid">
+            <!-- Left Column: Important Information -->
+            <div class="info-box">
+                <h5><i class="fas fa-info-circle"></i> Important Information</h5>
+                <ul>
+                    <li>Your account will be activated after receiving approval from the administrator</li>
+                    <li>The activation process usually takes 1-2 business days</li>
+                    <li>After your account is activated, you will be able to access the OPTIMA system</li>
+                </ul>
+            </div>
+            
+            <!-- Right Column: Contact Support -->
+            <div class="contact-box">
+                <h5><i class="fas fa-headset"></i> Need Help?</h5>
+                <p style="margin-bottom: 0.75rem;">If you need assistance or want to expedite the activation process, please contact:</p>
+                <p style="margin-top: 0.75rem;">
+                    <i class="fas fa-envelope me-2"></i>
+                    <a href="mailto:<?= esc($support_email) ?>"><?= esc($support_email) ?></a>
+                </p>
+                <p style="margin-top: 0.5rem; font-size: 0.85rem; opacity: 0.95;">
+                    Or confirm with your supervisor to expedite the account activation process.
+                </p>
+            </div>
         </div>
         
         <a href="<?= base_url('auth/login') ?>" class="btn-back">
-            <i class="fas fa-arrow-left me-2"></i><?= lang('Auth.back_to_login_page') ?>
+            <i class="fas fa-arrow-left me-2"></i> Back to Login Page
         </a>
     </div>
     

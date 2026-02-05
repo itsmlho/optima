@@ -7,7 +7,7 @@
 
     <!-- Statistics Cards -->
     <div class="row mt-3 mb-4">
-        <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
             <div class="stat-card bg-info-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
@@ -17,13 +17,47 @@
                         <div class="stat-value" id="stat-usage-total">
                             <?= $stats['usage_total'] ?? 0 ?>
                         </div>
-                        <div class="text-muted"><?= lang('Warehouse.total_usage') ?></div>
+                        <div class="text-muted">Total Usage (All)</div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
+        <!-- NEW: Warehouse Usage -->
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card bg-primary-soft">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-warehouse stat-icon text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-usage-warehouse">
+                            <?= $stats['usage_warehouse'] ?? 0 ?>
+                        </div>
+                        <div class="text-muted">Warehouse Stock</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- NEW: Non-Warehouse Usage -->
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+            <div class="stat-card" style="background-color: #fff3cd;">
+                <div class="d-flex align-items-center">
+                    <div class="me-3">
+                        <i class="fas fa-recycle stat-icon" style="color: #856404;"></i>
+                    </div>
+                    <div>
+                        <div class="stat-value" id="stat-usage-non-warehouse">
+                            <?= $stats['usage_non_warehouse'] ?? 0 ?>
+                        </div>
+                        <div class="text-muted">Bekas/Reuse</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
             <div class="stat-card bg-warning-soft">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
@@ -34,22 +68,6 @@
                             <?= $stats['return_pending'] ?? 0 ?>
                         </div>
                         <div class="text-muted"><?= lang('Warehouse.pending_returns') ?></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-xl-4 col-lg-6 col-md-6 mb-3">
-            <div class="stat-card bg-success-soft">
-                <div class="d-flex align-items-center">
-                    <div class="me-3">
-                        <i class="bi bi-check-circle stat-icon text-success"></i>
-                    </div>
-                    <div>
-                        <div class="stat-value" id="stat-return-confirmed">
-                            <?= $stats['return_confirmed'] ?? 0 ?>
-                        </div>
-                        <div class="text-muted"><?= lang('Warehouse.confirmed_returns') ?></div>
                     </div>
                 </div>
             </div>

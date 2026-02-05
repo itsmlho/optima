@@ -643,14 +643,78 @@ class Auth extends BaseController
             'email' => 'required|valid_email|is_unique[users.email]',
             'phone' => 'permit_empty|max_length[20]',
             'password' => 'required|min_length[8]',
-            'confirm_password' => 'required|matches[password]',
-            'division_id' => 'permit_empty|integer',
-            'position' => 'required|in_list[Head of Divisi,Staff Admin,Mechanic]',
-            'terms' => 'required'
+            'password_confirm' => 'required|matches[password]',
+            'division_id' => 'required|integer',
+            'position' => 'required|max_length[100]',
+            'terms' => 'required|in_list[1]'
+        ];
+        
+        $customMessages = [
+            'first_name' => [
+                'required' => 'Nama depan wajib diisi',
+                'min_length' => 'Nama depan minimal 2 karakter',
+                'max_length' => 'Nama depan maksimal 50 karakter'
+            ],
+            'last_name' => [
+                'required' => 'Nama belakang wajib diisi',
+                'min_length' => 'Nama belakang minimal 2 karakter',
+                'max_length' => 'Nama belakang maksimal 50 karakter'
+            ],
+            'username' => [
+                'required' => 'Username wajib diisi',
+                'min_length' => 'Username minimal 3 karakter',
+                'max_length' => 'Username maksimal 20 karakter',
+                'is_unique' => 'Username sudah terdaftar! Silakan gunakan username lain.'
+            ],
+            'email' => [
+                'required' => 'Email wajib diisi',
+                'valid_email' => 'Format email tidak valid',
+                'is_unique' => 'Email sudah terdaftar! Silakan gunakan email lain atau login jika Anda sudah memiliki akun.'
+            ],
+            'phone' => [
+                'max_length' => 'Nomor telepon maksimal 20 karakter'
+            ],
+            'password' => [
+                'required' => 'Password wajib diisi',
+                'min_length' => 'Password minimal 8 karakter'
+            ],
+            'password_confirm' => [
+                'required' => 'Konfirmasi password wajib diisi',
+                'matches' => 'Password dan konfirmasi password tidak cocok'
+            ],
+            'division_id' => [
+                'required' => 'Divisi wajib dipilih',
+                'integer' => 'Divisi tidak valid'
+            ],
+            'position' => [
+                'required' => 'Role/Position wajib dipilih',
+                'max_length' => 'Role maksimal 100 karakter'
+            ],
+            'terms' => [
+                'required' => 'Anda harus menyetujui Syarat dan Ketentuan',
+                'in_list' => 'Anda harus menyetujui Syarat dan Ketentuan'
+            ]
         ];
 
-        if (!$this->validate($rules)) {
-            return redirect()->back()->withInput()->with('validation', $this->validator);
+        if (!$this->validate($rules, $customMessages)) {
+            // Get validation errors
+            $errors = $this->validator->getErrors();
+            
+            // Format error message - show first error clearly
+            $firstError = reset($errors);
+            $errorMsg = $firstError;
+            
+            // If multiple errors, add count
+            if (count($errors) > 1) {
+                $errorMsg .= ' (dan ' . (count($errors) - 1) . ' error lainnya)';
+            }
+            
+            log_message('error', 'Registration validation failed: ' . implode(', ', $errors));
+            
+            return redirect()->back()
+                ->withInput()
+                ->with('error', $errorMsg)
+                ->with('validation', $this->validator);
         }
 
         $db = \Config\Database::connect();
@@ -738,7 +802,14 @@ class Auth extends BaseController
                 throw new \Exception('Database transaction failed.');
             }
 
-            return redirect()->to('/auth/login')->with('success', 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi akun. Setelah verifikasi, akun Anda akan menunggu persetujuan admin.');
+            // Store email in session for later use
+            session()->set('temp_email', $userData['email']);
+            session()->set('temp_user_name', $userData['first_name']);
+
+            // Redirect to verify email page instead of login
+            return redirect()->to('/auth/verify-email')
+                ->with('email', $userData['email'])
+                ->with('success', 'Registrasi berhasil! Silakan cek email Anda untuk verifikasi.');
         } catch (\Exception $e) {
             $db->transRollback();
             log_message('error', 'Registration error: ' . $e->getMessage());
@@ -748,6 +819,119 @@ class Auth extends BaseController
         }
     }
 
+    /**
+     * Verify email page (after registration)
+     */
+    public function verifyEmailPage()
+    {
+        $data = [
+            'title' => 'Verifikasi Email',
+            'email' => session()->getFlashdata('email') ?? session()->get('temp_email')
+        ];
+        
+        return view('auth/verify_email', $data);
+    }
+    
+    /**
+     * Resend verification email
+     */
+    public function resendVerification()
+    {
+        $email = $this->request->getGet('email') ?? session()->get('temp_email');
+        
+        if (!$email) {
+            return redirect()->to('/auth/login')
+                ->with('error', 'Email tidak ditemukan. Silakan registrasi ulang.');
+        }
+        
+        try {
+            $db = \Config\Database::connect();
+            $user = $db->table('users')
+                ->where('email', $email)
+                ->get()
+                ->getRowArray();
+            
+            if (!$user) {
+                return redirect()->to('/auth/login')
+                    ->with('error', 'User tidak ditemukan.');
+            }
+            
+            // Check if already verified
+            $isVerified = false;
+            if ($db->fieldExists('email_verified_at', 'users') && !empty($user['email_verified_at'])) {
+                $isVerified = true;
+            } elseif ($db->fieldExists('email_verified', 'users') && !empty($user['email_verified'])) {
+                $isVerified = true;
+            }
+            
+            if ($isVerified) {
+                return redirect()->to('/auth/waiting-approval')
+                    ->with('info', 'Email Anda sudah terverifikasi. Menunggu persetujuan admin.');
+            }
+            
+            // Generate new token
+            $verificationToken = bin2hex(random_bytes(32));
+            $verificationExpiry = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            
+            // Store token
+            $hasTokenColumn = $db->fieldExists('email_verification_token', 'users');
+            $hasExpiryColumn = $db->fieldExists('email_verification_expiry', 'users');
+            
+            if ($hasTokenColumn && $hasExpiryColumn) {
+                $db->table('users')
+                    ->where('id', $user['id'])
+                    ->update([
+                        'email_verification_token' => $verificationToken,
+                        'email_verification_expiry' => $verificationExpiry
+                    ]);
+            } else {
+                // Use password_resets table
+                if ($db->tableExists('password_resets')) {
+                    // Delete old tokens
+                    $builder = $db->table('password_resets')
+                        ->where('email', $email);
+                    
+                    if ($db->fieldExists('type', 'password_resets')) {
+                        $builder->where('type', 'email_verification');
+                    }
+                    
+                    $builder->delete();
+                    
+                    // Insert new token
+                    $insertData = [
+                        'email' => $email,
+                        'token' => $verificationToken,
+                        'created_at' => date('Y-m-d H:i:s')
+                    ];
+                    
+                    if ($db->fieldExists('expires_at', 'password_resets')) {
+                        $insertData['expires_at'] = $verificationExpiry;
+                    }
+                    
+                    if ($db->fieldExists('type', 'password_resets')) {
+                        $insertData['type'] = 'email_verification';
+                    }
+                    
+                    $db->table('password_resets')->insert($insertData);
+                }
+            }
+            
+            // Send email
+            $this->sendVerificationEmail($email, $user['first_name'], $verificationToken, $user['id']);
+            
+            // Store email in session for redirect
+            session()->set('temp_email', $email);
+            
+            return redirect()->to('/auth/verify-email')
+                ->with('email', $email)
+                ->with('success', 'Email verifikasi telah dikirim ulang. Silakan cek inbox Anda.');
+        } catch (\Exception $e) {
+            log_message('error', 'Resend verification error: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'Gagal mengirim email verifikasi: ' . $e->getMessage());
+        }
+    }
+    
     /**
      * Send email verification
      */
@@ -893,9 +1077,65 @@ class Auth extends BaseController
      */
     public function waitingApproval()
     {
+        // Try to get email from multiple sources
+        $email = $this->request->getGet('email') 
+            ?? session()->get('temp_email') 
+            ?? session()->getFlashdata('email');
+        
+        $emailVerified = false;
+        $userName = '';
+        $userFound = false;
+        
+        // If no email in session/param, try to get last inactive user (just registered)
+        if (!$email) {
+            try {
+                $db = \Config\Database::connect();
+                $lastUser = $db->table('users')
+                    ->where('is_active', 0)
+                    ->orderBy('created_at', 'DESC')
+                    ->limit(1)
+                    ->get()
+                    ->getRowArray();
+                
+                if ($lastUser) {
+                    $email = $lastUser['email'];
+                }
+            } catch (\Exception $e) {
+                log_message('error', 'Error getting last user: ' . $e->getMessage());
+            }
+        }
+        
+        if ($email) {
+            try {
+                $db = \Config\Database::connect();
+                $user = $db->table('users')
+                    ->where('email', $email)
+                    ->get()
+                    ->getRowArray();
+                
+                if ($user) {
+                    $userFound = true;
+                    $userName = $user['first_name'] ?? '';
+                    
+                    // Check if email is verified
+                    if ($db->fieldExists('email_verified_at', 'users') && !empty($user['email_verified_at'])) {
+                        $emailVerified = true;
+                    } elseif ($db->fieldExists('email_verified', 'users') && !empty($user['email_verified'])) {
+                        $emailVerified = true;
+                    }
+                }
+            } catch (\Exception $e) {
+                log_message('error', 'Error checking email verification status: ' . $e->getMessage());
+            }
+        }
+        
         $data = [
             'title' => 'Menunggu Persetujuan',
-            'support_email' => 'itsupport@sml.co.id'
+            'support_email' => 'itsupport@sml.co.id',
+            'email' => $email,
+            'email_verified' => $emailVerified,
+            'user_name' => $userName,
+            'user_found' => $userFound
         ];
         
         return view('auth/waiting_approval', $data);

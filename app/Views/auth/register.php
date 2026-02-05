@@ -304,16 +304,33 @@
             </div>
             
             <?php if (session()->getFlashdata('error')): ?>
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle me-2"></i>
-                    <?= session()->getFlashdata('error') ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fas fa-exclamation-circle" style="font-size: 1.25rem; margin-top: 2px;"></i>
+                        <div class="flex-grow-1">
+                            <strong>Registrasi Gagal!</strong><br>
+                            <?= session()->getFlashdata('error') ?>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 </div>
             <?php endif; ?>
             
             <?php $validation = \Config\Services::validation(); ?>
             <?php if ($validation->getErrors()): ?>
-                <div class="alert alert-danger">
-                    <?= validation_list_errors() ?>
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <div class="d-flex align-items-start gap-2">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 1.25rem; margin-top: 2px;"></i>
+                        <div class="flex-grow-1">
+                            <strong>Perhatian!</strong>
+                            <ul class="mb-0 mt-2" style="padding-left: 1.25rem;">
+                                <?php foreach ($validation->getErrors() as $error): ?>
+                                    <li><?= esc($error) ?></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
                 </div>
             <?php endif; ?>
             
@@ -466,7 +483,7 @@
                             <label for="division" class="form-label">
                                 <i class="fas fa-building me-1"></i> Divisi <span class="required">*</span>
                             </label>
-                            <select class="form-select" id="division" name="division" required>
+                            <select class="form-select" id="division" name="division_id" required>
                                 <option value="">Pilih Divisi</option>
                                 <?php if (isset($divisions) && !empty($divisions)): ?>
                                     <?php foreach ($divisions as $divisionId => $divisionName): ?>
@@ -483,10 +500,27 @@
                             <label for="role" class="form-label">
                                 <i class="fas fa-user-tag me-1"></i> Role <span class="required">*</span>
                             </label>
-                            <select class="form-select" id="role" name="role" required disabled>
+                            <select class="form-select" id="role" name="position" required disabled>
                                 <option value="">Pilih Divisi Dahulu</option>
                             </select>
                         </div>
+                    </div>
+                </div>
+                
+                <!-- Terms & Conditions -->
+                <div class="form-group">
+                    <div class="form-check">
+                        <input 
+                            type="checkbox" 
+                            class="form-check-input" 
+                            id="terms" 
+                            name="terms" 
+                            value="1"
+                            required
+                        >
+                        <label class="form-check-label" for="terms">
+                            Saya menyetujui <a href="#" onclick="alert('Terms & Conditions content'); return false;">Syarat dan Ketentuan</a> yang berlaku <span class="required">*</span>
+                        </label>
                     </div>
                 </div>
                 
@@ -609,13 +643,17 @@
                         
                         if (data.success && data.positions) {
                             data.positions.forEach(position => {
-                                roleSelect.innerHTML += `<option value="${position.id}">${position.name}</option>`;
+                                roleSelect.innerHTML += `<option value="${position.name}">${position.name}</option>`;
                             });
                             roleSelect.disabled = false;
+                        } else {
+                            roleSelect.innerHTML = '<option value="">Tidak ada role tersedia</option>';
+                            roleSelect.disabled = true;
                         }
                     })
                     .catch(error => {
                         console.error('Error loading positions:', error);
+                        roleSelect.innerHTML = '<option value="">Error loading roles</option>';
                         roleSelect.disabled = true;
                     });
             } else {
@@ -624,20 +662,59 @@
             }
         });
         
-        // Prevent double submission
+        // Form submission handling
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             const submitBtn = document.getElementById('submitBtn');
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('password_confirm').value;
+            const division = document.getElementById('division').value;
+            const role = document.getElementById('role').value;
+            const terms = document.getElementById('terms').checked;
             
+            // Validate password match
             if (password !== confirmPassword) {
                 e.preventDefault();
-                alert('Password dan konfirmasi password tidak cocok!');
+                alert('❌ Password dan konfirmasi password tidak cocok!');
                 return false;
             }
             
+            // Validate password strength
+            if (password.length < 8) {
+                e.preventDefault();
+                alert('❌ Password minimal 8 karakter!');
+                return false;
+            }
+            
+            // Validate division
+            if (!division) {
+                e.preventDefault();
+                alert('❌ Silakan pilih divisi!');
+                return false;
+            }
+            
+            // Validate role
+            if (!role) {
+                e.preventDefault();
+                alert('❌ Silakan pilih role!');
+                return false;
+            }
+            
+            // Validate terms
+            if (!terms) {
+                e.preventDefault();
+                alert('❌ Anda harus menyetujui Syarat dan Ketentuan!');
+                return false;
+            }
+            
+            // Prevent double submission
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Memproses...';
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Memproses Pendaftaran...';
+            
+            // Show loading indicator
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'alert alert-info mt-3';
+            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Sedang memproses registrasi Anda, mohon tunggu...';
+            this.insertBefore(loadingDiv, submitBtn);
         });
     </script>
 </body>

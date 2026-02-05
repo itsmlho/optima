@@ -330,7 +330,15 @@
                                 foreach ($spareparts as $part) {
                                     $rowCount++;
                                     $qtyWithUnit = htmlspecialchars($part['qty']??'') . ' ' . htmlspecialchars($part['satuan']??'pcs');
-                                    echo '<tr><td style="text-align: center;">'.$rowCount.'</td><td>'.htmlspecialchars($part['name']??'').'</td><td>'.htmlspecialchars($part['code']??'').'</td><td style="text-align: center;">'.$qtyWithUnit.'</td><td>'.htmlspecialchars($part['notes']??'').'</td></tr>';
+                                    $sparepartName = htmlspecialchars($part['name']??'');
+                                    
+                                    // ← NEW: Add badge if sparepart is NOT from warehouse
+                                    $isFromWarehouse = isset($part['is_from_warehouse']) ? (int)$part['is_from_warehouse'] : 1;
+                                    if ($isFromWarehouse == 0) {
+                                        $sparepartName .= ' <span style="background-color: #ffc107; color: #000; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold; margin-left: 5px;">NON-WH</span>';
+                                    }
+                                    
+                                    echo '<tr><td style="text-align: center;">'.$rowCount.'</td><td>'.$sparepartName.'</td><td>'.htmlspecialchars($part['code']??'').'</td><td style="text-align: center;">'.$qtyWithUnit.'</td><td>'.htmlspecialchars($part['notes']??'').'</td></tr>';
                                 }
                             }
                             for ($i = $rowCount + 1; $i <= $minimumRows; $i++) {

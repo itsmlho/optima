@@ -58,7 +58,9 @@ $routes->group('auth', static function ($routes) {
     $routes->post('attempt-login', 'Auth::attemptLogin');
     $routes->get('register', 'Auth::register');
     $routes->post('attempt-register', 'Auth::attemptRegister');
+    $routes->get('verify-email', 'Auth::verifyEmailPage');
     $routes->get('verify-email/(:any)', 'Auth::verifyEmail/$1');
+    $routes->get('resend-verification', 'Auth::resendVerification');
     $routes->get('waiting-approval', 'Auth::waitingApproval');
     $routes->get('forgot-password', 'Auth::forgotPassword');
     $routes->post('send-reset-link', 'Auth::sendResetLink');
