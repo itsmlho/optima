@@ -260,7 +260,7 @@ helper('permission_helper');
 <div class="modal fade" id="approveUserModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-success text-white">
+            <div class="modal-header bg-success text-secondary">
                 <h5 class="modal-title">
                     <i class="fas fa-check-circle me-2"></i>Approve User
                 </h5>

@@ -4,7 +4,7 @@ namespace App\Controllers\Warehouse;
 
 use App\Controllers\BaseController;
 use App\Models\WorkOrderSparepartUsageModel;
-use App\Models\WorkOrderSparepartReturnModel;
+use App\Models\WorkOrderSparepartModel;
 use App\Models\WorkOrderAssignmentModel;
 
 class SparepartUsageController extends BaseController
@@ -16,7 +16,7 @@ class SparepartUsageController extends BaseController
     public function __construct()
     {
         $this->usageModel = new WorkOrderSparepartUsageModel();
-        $this->returnModel = new WorkOrderSparepartReturnModel();
+        $this->returnModel = new WorkOrderSparepartModel();
         $this->assignmentModel = new WorkOrderAssignmentModel();
     }
 
@@ -70,6 +70,200 @@ class SparepartUsageController extends BaseController
     }
 
     /**
+     * Get usage list grouped by Work Order (DataTable)
+     */
+    public function getUsageGrouped()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request']);
+        }
+
+        if (!$this->canAccess('warehouse')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Access Denied']);
+        }
+
+        $request = $this->request;
+        $draw = $request->getPost('draw') ?? 1;
+        $start = $request->getPost('start') ?? 0;
+        $length = $request->getPost('length') ?? 10;
+        $search = $request->getPost('search')['value'] ?? '';
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Get work orders that have sparepart usage
+            $builder = $db->table('work_orders wo')
+                ->select('
+                    wo.id as work_order_id,
+                    wo.work_order_number,
+                    wo.report_date,
+                    wo.created_at,
+                    c.customer_name,
+                    iu.no_unit as unit_number,
+                    mu.merk_unit,
+                    mu.model_unit,
+                    COUNT(DISTINCT wosp.id) as total_items,
+                    SUM(CASE WHEN wosp.is_from_warehouse = 1 THEN 1 ELSE 0 END) as warehouse_items,
+                    SUM(CASE WHEN wosp.is_from_warehouse = 0 THEN 1 ELSE 0 END) as nonwarehouse_items
+                ')
+                ->join('work_order_spareparts wosp', 'wosp.work_order_id = wo.id', 'inner')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('kontrak k', 'k.id = iu.kontrak_id', 'left')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->groupBy('wo.id');
+
+            // Apply search
+            if (!empty($search)) {
+                $builder->groupStart()
+                    ->like('wo.work_order_number', $search)
+                    ->orLike('c.customer_name', $search)
+                    ->orLike('iu.no_unit', $search)
+                    ->orLike('mu.merk_unit', $search)
+                ->groupEnd();
+            }
+
+            // Get total records
+            $totalRecords = $builder->countAllResults(false);
+
+            // Apply pagination
+            $builder->limit($length, $start);
+
+            // Apply ordering - default by date desc
+            $builder->orderBy('wo.created_at', 'DESC');
+
+            $results = $builder->get()->getResultArray();
+
+            // Format data
+            $data = [];
+            foreach ($results as $row) {
+                $data[] = [
+                    'work_order_id' => $row['work_order_id'],
+                    'work_order_number' => $row['work_order_number'],
+                    'report_date' => $row['report_date'] ? date('d/m/Y', strtotime($row['report_date'])) : '-',
+                    'created_at' => $row['created_at'] ? date('d/m/Y H:i', strtotime($row['created_at'])) : '-',
+                    'customer_name' => $row['customer_name'] ?? '-',
+                    'unit_number' => $row['unit_number'] ?? '-',
+                    'unit_info' => trim(($row['merk_unit'] ?? '') . ' ' . ($row['model_unit'] ?? '')) ?: '-',
+                    'total_items' => (int)$row['total_items'],
+                    'warehouse_items' => (int)$row['warehouse_items'],
+                    'nonwarehouse_items' => (int)$row['nonwarehouse_items']
+                ];
+            }
+
+            return $this->response->setJSON([
+                'draw' => intval($draw),
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $totalRecords,
+                'data' => $data
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting grouped usage: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'draw' => intval($draw),
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => [],
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get sparepart details for a specific work order
+     */
+    public function getWorkOrderSpareparts($workOrderId)
+    {
+        if (!$this->canAccess('warehouse')) {
+            return $this->response->setJSON([]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            log_message('info', 'Fetching spareparts for WO ID: ' . $workOrderId);
+            
+            // Get all spareparts for this work order (remove quantity_used filter)
+            $query = $db->table('work_order_spareparts')
+                ->where('work_order_id', $workOrderId)
+                ->get();
+            
+            $spareparts = $query->getResultArray();
+            
+            log_message('info', 'Found ' . count($spareparts) . ' spareparts for WO ID: ' . $workOrderId);
+            
+            if (empty($spareparts)) {
+                log_message('warning', 'No spareparts found for WO ID: ' . $workOrderId);
+                return $this->response->setJSON([]);
+            }
+            
+            // Get work order info
+            $woQuery = $db->table('work_orders wo')
+                ->select('
+                    wo.work_order_number,
+                    wo.report_date,
+                    e.staff_name as mechanic_name,
+                    c.customer_name,
+                    iu.no_unit as unit_number,
+                    CONCAT_WS(" ", mu.merk_unit, mu.model_unit) as unit_info
+                ')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
+                ->join('kontrak k', 'k.id = iu.kontrak_id', 'left')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('employees e', 'e.id = wo.mechanic_id', 'left')
+                ->where('wo.id', $workOrderId)
+                ->get();
+                
+            $woInfo = $woQuery->getRowArray();
+            
+            // Get returns
+            $returnsQuery = $db->table('work_order_sparepart_returns')
+                ->where('work_order_id', $workOrderId)
+                ->get();
+            $returns = $returnsQuery->getResultArray();
+            
+            $returnMap = [];
+            foreach ($returns as $ret) {
+                $returnMap[$ret['work_order_sparepart_id']] = $ret['quantity_return'];
+            }
+            
+            // Format data
+            $result = [];
+            foreach ($spareparts as $item) {
+                $result[] = [
+                    'id' => $item['id'],
+                    'sparepart_code' => $item['sparepart_code'],
+                    'sparepart_name' => $item['sparepart_name'],
+                    'item_type' => $item['item_type'] ?? 'sparepart',
+                    'is_from_warehouse' => $item['is_from_warehouse'] ?? 1,
+                    'quantity_brought' => $item['quantity_brought'],
+                    'quantity_used' => $item['quantity_used'] ?? 0,
+                    'quantity_return' => $returnMap[$item['id']] ?? 0,
+                    'usage_notes' => $item['notes'] ?? '-',
+                    'work_order_number' => $woInfo['work_order_number'] ?? '-',
+                    'report_date' => isset($woInfo['report_date']) ? date('d/m/Y', strtotime($woInfo['report_date'])) : '-',
+                    'mechanic_name' => $woInfo['mechanic_name'] ?? '-',
+                    'customer_name' => $woInfo['customer_name'] ?? '-',
+                    'unit_number' => $woInfo['unit_number'] ?? '-',
+                    'unit_info' => $woInfo['unit_info'] ?? '-'
+                ];
+            }
+            
+            log_message('info', 'Returning ' . count($result) . ' formatted items for WO ID: ' . $workOrderId);
+            
+            return $this->response->setJSON($result);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Error getting WO spareparts: ' . $e->getMessage() . ' at line ' . $e->getLine());
+            return $this->response->setJSON([]);
+        }
+    }
+
+    /**
      * Get usage list (DataTable) - Tab Pemakaian
      */
     public function getUsage()
@@ -99,6 +293,8 @@ class SparepartUsageController extends BaseController
                     wosp.work_order_id,
                     wosp.sparepart_code,
                     wosp.sparepart_name,
+                    wosp.item_type,
+                    wosp.is_from_warehouse,
                     wosp.quantity_brought,
                     wosp.quantity_used,
                     COALESCE(wosr.quantity_return, 0) as quantity_returned,
@@ -242,13 +438,16 @@ class SparepartUsageController extends BaseController
                     'work_order_number' => $row['work_order_number'] ?? '-',
                     'sparepart_code' => $row['sparepart_code'] ?? '-',
                     'sparepart_name' => $row['sparepart_name'] ?? '-',
+                    'item_type' => $row['item_type'] ?? 'sparepart',
+                    'is_from_warehouse' => $row['is_from_warehouse'] ?? 1,
                     'customer_name' => $row['customer_name'] ?? '-',
                     'unit_number' => $row['unit_number'] ?? '-',
                     'mechanic_name' => $mechanicHelperNames,
                     'quantity_brought' => (int)($row['quantity_brought'] ?? 0),
                     'quantity_used' => (int)($row['quantity_used'] ?? 0),
-                    'quantity_returned' => (int)($row['quantity_returned'] ?? 0),
+                    'quantity_return' => (int)($row['quantity_returned'] ?? 0),
                     'satuan' => $row['satuan'] ?? 'PCS',
+                    'created_at' => $row['used_at'] ? date('d/m/Y H:i', strtotime($row['used_at'])) : '-',
                     'used_at' => $row['used_at'] ? date('d/m/Y H:i', strtotime($row['used_at'])) : '-',
                     'report_date' => $row['report_date'] ? date('d/m/Y', strtotime($row['report_date'])) : '-',
                     'usage_notes' => $row['usage_notes'] ?? '-'
@@ -547,6 +746,8 @@ class SparepartUsageController extends BaseController
                     wosp.work_order_id,
                     wosp.sparepart_code,
                     wosp.sparepart_name,
+                    wosp.item_type,
+                    wosp.is_from_warehouse,
                     wosp.quantity_brought,
                     wosp.quantity_used,
                     COALESCE(wosr.quantity_return, 0) as quantity_returned,

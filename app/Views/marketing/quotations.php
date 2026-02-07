@@ -4261,7 +4261,7 @@ function saveCustomerLocation(customerId, locationData, quotationId) {
                 
                 Swal.fire({
                     title: 'Location Saved!',
-                    text: 'Customer location saved successfully. Click "Complete Contract" to continue.',
+                    text: 'Customer location saved successfully. You can now create SPK from this quotation.',
                     icon: 'success',
                     timer: 2000,
                     showConfirmButton: false
@@ -4342,7 +4342,7 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
             
             Swal.fire({
                 title: 'Location Selected!', 
-                text: 'Location selected successfully. Click "Complete Contract" to continue.',
+                text: 'Location selected successfully. You can now create SPK from this quotation.',
                 icon: 'success',
                 timer: 2000,
                 showConfirmButton: false
@@ -5048,7 +5048,7 @@ function proceedWithContractCreation(quotationId) {
 }
 
 function createSPK(quotationId) {
-    // Direct call to createSPKFromQuotation with validation
+    // New workflow: Direct SPK creation without contract requirement
     $.get('<?= base_url('marketing/quotations/getQuotation') ?>/' + quotationId)
         .done(function(quotationResponse) {
             if (!quotationResponse.success || !quotationResponse.data || !quotationResponse.data.created_customer_id) {
@@ -5058,17 +5058,7 @@ function createSPK(quotationId) {
             
             const quotation = quotationResponse.data;
             
-            // Check if contract is linked
-            if (!quotation.created_contract_id) {
-                Swal.fire({
-                    title: 'Contract Required',
-                    html: 'Please create contract first using <strong>"Complete Customer Profile"</strong> button.',
-                    icon: 'warning',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-            
+            // CONTRACT NOT REQUIRED - Simplified workflow
             // Proceed to SPK creation modal with specification selection
             createSPKFromQuotation(quotationId);
         })
@@ -5500,22 +5490,13 @@ function createSPKFromQuotation(quotationId) {
             
             const quotation = response.data;
             
-            // Validate quotation has required data
+            // Validate quotation has required data (Customer and Location only)
             if (!quotation.created_customer_id) {
                 Swal.fire('Error', 'Customer must be created first. Please mark as deal.', 'error');
                 return;
             }
             
-            if (!quotation.created_contract_id) {
-                Swal.fire({
-                    title: 'Contract Required',
-                    html: 'Please create contract first using <strong>"Complete Customer Profile"</strong> button.',
-                    icon: 'warning',
-                    confirmButtonText: 'OK'
-                });
-                return;
-            }
-            
+            // CONTRACT NOT REQUIRED - Can be linked later via SPK page
             // Load specifications for this quotation
             loadSpecificationsForSPK(quotation);
         },
@@ -5589,7 +5570,9 @@ function showSPKCreationModal(quotation, specifications) {
         </div>
         <div class="col-md-6">
             <small class="text-muted">Contract Number</small>
-            <div class="fw-bold text-primary">${quotation.contract_number || '-'}</div>
+            <div class="fw-bold ${quotation.contract_number ? 'text-primary' : 'text-warning'}">
+                ${quotation.contract_number || '<span class="badge bg-warning text-dark">Contract Pending</span>'}
+            </div>
         </div>
     `);
     
@@ -5922,14 +5905,14 @@ $('#createSPKForm').on('submit', function(e) {
     console.log('=== SPK Form Data Debug ===');
     console.log('Quotation ID:', formData.quotation_id);
     console.log('Customer ID:', formData.customer_id);
-    console.log('Contract ID:', formData.contract_id);
+    console.log('Contract ID:', formData.contract_id || '(No contract - will be linked later)');
     console.log('Delivery Date:', formData.delivery_date);
     console.log('Specifications:', formData.specifications);
     console.log('===========================');
     
-    // Validate required fields
-    if (!formData.quotation_id || !formData.customer_id || !formData.contract_id) {
-        Swal.fire('Error', 'Missing quotation, customer, or contract ID. Please close and reopen the modal.', 'error');
+    // Validate required fields (CONTRACT NOW OPTIONAL)
+    if (!formData.quotation_id || !formData.customer_id) {
+        Swal.fire('Error', 'Missing quotation or customer ID. Please close and reopen the modal.', 'error');
         submitBtn.prop('disabled', false).html('Create Selected SPK(s)');
         return false;
     }

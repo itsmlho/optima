@@ -64,15 +64,15 @@ $currentLang = service('request')->getLocale();
     <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
     
     <!-- OPTIMA Pro CSS (Enhanced with Centralized Components) -->
-    <link href="<?= base_url('assets/css/optima-pro.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/desktop/optima-pro.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Select2 Custom CSS -->
-    <link href="<?= base_url('assets/css/select2-custom.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/plugins/select2-custom.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Dashboard Modern CSS -->
-    <link href="<?= base_url('assets/css/dashboard-modern.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/desktop/dashboard-modern.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Global Permission CSS -->
-    <link href="<?= base_url('assets/css/global-permission.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/plugins/global-permission.css') ?>?v=<?= time() ?>" rel="stylesheet">
     <!-- Notification Popup CSS -->
-    <link href="<?= base_url('assets/css/notification-popup.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/plugins/notification-popup.css') ?>?v=<?= time() ?>" rel="stylesheet">
     
     <!-- Global Consistent Table Sorting Headers -->
     <style>
@@ -473,9 +473,7 @@ $currentLang = service('request')->getLocale();
                 <div class="dropdown">
                     <button class="header-control-btn" type="button" data-bs-toggle="dropdown" title="Notifikasi">
                         <i class="fas fa-bell"></i>
-                        <span class="notification-badge" id="notificationBadge" style="display: none;">
-                            <span class="notification-count" data-realtime="notification_count">0</span>
-                        </span>
+                        <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
                     </button>
                     <ul id="notificationDropdownMenu" class="dropdown-menu dropdown-menu-end notification-dropdown" style="min-width: 380px !important; max-width: 380px !important; width: 380px !important; overflow-x: hidden !important;">
                         <li><h6 class="dropdown-header d-flex justify-content-between align-items-center">

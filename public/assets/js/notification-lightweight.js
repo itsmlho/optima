@@ -53,22 +53,45 @@ class OptimaNotificationLightweight {
     }
     
     /**
-     * Simplified popup tracking (removed localStorage for performance)
+     * Load popup IDs that have already been shown to user
+     * Uses localStorage to persist across page reloads/logins
      */
     loadShownPopups() {
-        // No localStorage operations for better performance
-        // Reset every session
-        this.shownPopupIds = new Set();
+        try {
+            const stored = localStorage.getItem('optima_shown_notification_popups');
+            if (stored) {
+                const ids = JSON.parse(stored);
+                this.shownPopupIds = new Set(ids);
+                console.log(`✅ Loaded ${this.shownPopupIds.size} shown notification IDs from storage`);
+            } else {
+                this.shownPopupIds = new Set();
+            }
+        } catch (error) {
+            console.warn('⚠️ Failed to load shown popups:', error);
+            this.shownPopupIds = new Set();
+        }
     }
     
     /**
-     * Removed localStorage for performance optimization
+     * Save popup IDs to localStorage
+     * Prevents re-showing alerts on reload/login
      */
     saveShownPopups() {
-        // No localStorage operations for better performance
+        try {
+            const ids = Array.from(this.shownPopupIds);
+            // Keep only last 100 notification IDs to prevent localStorage bloat
+            const recentIds = ids.slice(-100);
+            localStorage.setItem('optima_shown_notification_popups', JSON.stringify(recentIds));
+            this.shownPopupIds = new Set(recentIds);
+        } catch (error) {
+            console.warn('⚠️ Failed to save shown popups:', error);
+        }
     }
     
     init() {
+        // Load shown popup IDs from localStorage
+        this.loadShownPopups();
+        
         // Cache DOM elements
         this.badge = document.getElementById('notificationBadge');
         this.dropdownMenu = document.getElementById('notificationDropdownMenu');
@@ -145,6 +168,9 @@ class OptimaNotificationLightweight {
         
         // Mark this notification as shown (prevent duplicate popup)
         this.shownPopupIds.add(notification.id);
+        
+        // Save to localStorage to persist across page reloads
+        this.saveShownPopups();
         
         // Show notification popup
         await this.showNotificationPopup(notification);
@@ -317,18 +343,24 @@ class OptimaNotificationLightweight {
                 
                 // Process new notifications
                 if (data.notifications.length > 0) {
+                    // Update bell icon count and animate (always, regardless of popup display)
+                    this.updateCount();
+                    this.animateBellIcon();
+                    
                     // Filter out notifications that have already been shown as popup
                     const newNotifications = data.notifications.filter(n => {
                         return !this.shownPopupIds.has(n.id);
                     });
                     
-                    // Add to queue only new notifications
+                    // Add to queue only new notifications (not shown as popup yet)
                     newNotifications.forEach(notification => {
                         this.notificationQueue.push(notification);
                     });
                     
-                    // Process queue
-                    this.processNotificationQueue();
+                    // Process queue (show popups for new notifications only)
+                    if (newNotifications.length > 0) {
+                        this.processNotificationQueue();
+                    }
                     
                     // Update dropdown if open
                     if (this.dropdownMenu && this.dropdownMenu.classList.contains('show')) {

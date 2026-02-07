@@ -139,7 +139,7 @@ $can_export = true;
             </div>
             <div class="table-responsive">
                 <table class="table table-striped table-hover table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
-                    <thead><tr><th>SPK No.</th><th>Type</th><th>Contract/PO</th><th>Company Name</th><th>PIC</th><th>Contact</th><th>Status</th><th>Total Units</th><th data-no-sort>Action</th></tr></thead>
+                    <thead><tr><th>SPK No.</th><th>Type</th><th>Source</th><th>Company Name</th><th>PIC</th><th>Contact</th><th>Status</th><th>Total Units</th><th data-no-sort>Action</th></tr></thead>
                     <tbody></tbody>
                 </table>
             </div>
@@ -352,6 +352,72 @@ $can_export = true;
 
 .select2-results__option--highlighted[aria-selected] {
     background-color: #007bff !important;
+}
+
+/* Component Status Color Coding */
+.component-status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    margin-left: 8px;
+    text-transform: uppercase;
+}
+
+.status-available {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.status-used {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.status-broken {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Select2 option styling for better visual separation */
+.select2-results__option {
+    padding: 8px 12px !important;
+    line-height: 1.6;
+}
+
+.select2-results__option .component-item-text {
+    display: inline-block;
+    max-width: 70%;
+    vertical-align: middle;
+}
+
+/* Icon indicators */
+.component-indicator {
+    margin-right: 6px;
+}
+
+.indicator-available {
+    color: #28a745;
+}
+
+.indicator-used {
+    color: #ffc107;
+}
+
+.indicator-broken {
+    color: #dc3545;
+}
+
+/* Installed unit info */
+.installed-unit-info {
+    font-size: 11px;
+    color: #6c757d;
+    font-style: italic;
+    margin-left: 4px;
 }
 </style>
 <script>
@@ -611,7 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			
 			tr.innerHTML = `<td><a href="#" onclick=\"openDetail(${r.id});return false;\">${r.nomor_spk}</a></td>`+
 			  `<td><span class=\"badge bg-dark\">${r.jenis_spk||'UNIT'}</span></td>`+
-			  `<td>${r.po_kontrak_nomor||'-'}</td>`+
+			  `<td><span style=\"color: ${(r.kontrak_id !== null && r.kontrak_id !== '') ? '#28a745' : '#ffc107'}; font-weight: 500;\">${(r.kontrak_id !== null && r.kontrak_id !== '') ? 'Contract' : (r.quotation_number || 'Quotation')}</span></td>`+
 			  `<td>${r.pelanggan||'-'}</td>`+
 			  `<td>${r.pic||'-'}</td>`+
 			  `<td>${r.kontak||'-'}</td>`+
@@ -1048,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', () => {
 			body.innerHTML = `
 				<div class="row g-2">
 					<div class="col-6"><strong>SPK Type:</strong> ${d.jenis_spk||'-'}</div>
-					<div class="col-6"><strong>Contract/PO:</strong> ${d.po_kontrak_nomor||'-'}</div>
+					<div class="col-6"><strong>Source:</strong> <span style="color: ${(d.kontrak_id !== null && d.kontrak_id !== '') ? '#28a745' : '#ffc107'}; font-weight: 500;">${(d.kontrak_id !== null && d.kontrak_id !== '') ? 'From Contract' : (d.quotation_number || 'From Quotation')}</span></div>
 					<div class="col-6"><strong>Company Name:</strong> ${d.pelanggan||'-'}</div>
 					<div class="col-6"><strong>Location:</strong> ${d.lokasi||'-'}</div>
 					<div class="col-6"><strong>Pic:</strong> ${d.pic||'-'}</div>
@@ -2317,6 +2383,60 @@ document.addEventListener('DOMContentLoaded', () => {
 		}
 	}
 	
+	// Format component options in dropdown with colored status badges
+	function formatComponentOption(option) {
+		if (!option.id) return option.text;
+		
+		const $option = $(option.element);
+		const status = $option.data('status') || '';
+		const name = $option.data('name') || option.text.split(' • ')[0] || '';
+		const serial = $option.data('serial') || '';
+		const installedUnit = $option.data('installed-unit') || '';
+		
+		let statusBadge = '';
+		let statusIcon = '';
+		let installedInfo = '';
+		
+		if (status === 'AVAILABLE') {
+			statusBadge = '<span class="component-status-badge status-available">✓ Available</span>';
+			statusIcon = '<i class="fas fa-check-circle component-indicator indicator-available"></i>';
+		} else if (status === 'USED') {
+			statusBadge = '<span class="component-status-badge status-used">⚠ Used</span>';
+			statusIcon = '<i class="fas fa-exclamation-circle component-indicator indicator-used"></i>';
+			if (installedUnit) {
+				installedInfo = `<span class="installed-unit-info">(Unit ${installedUnit})</span>`;
+			}
+		} else if (status === 'BROKEN') {
+			statusBadge = '<span class="component-status-badge status-broken">✗ Broken</span>';
+			statusIcon = '<i class="fas fa-times-circle component-indicator indicator-broken"></i>';
+		}
+		
+		return $('<span>' + statusIcon + 
+			'<span class="component-item-text">' + name + ' • ' + serial + '</span> ' +
+			statusBadge + installedInfo + '</span>');
+	}
+	
+	// Format selected component in the closed dropdown
+	function formatComponentSelection(option) {
+		if (!option.id) return option.text;
+		
+		const $option = $(option.element);
+		const name = $option.data('name') || option.text.split(' • ')[0] || '';
+		const serial = $option.data('serial') || '';
+		const status = $option.data('status') || '';
+		
+		let statusIcon = '';
+		if (status === 'AVAILABLE') {
+			statusIcon = '<i class="fas fa-check-circle component-indicator indicator-available"></i>';
+		} else if (status === 'USED') {
+			statusIcon = '<i class="fas fa-exclamation-circle component-indicator indicator-used"></i>';
+		} else if (status === 'BROKEN') {
+			statusIcon = '<i class="fas fa-times-circle component-indicator indicator-broken"></i>';
+		}
+		
+		return $('<span>' + statusIcon + ' ' + name + ' • ' + serial + '</span>');
+	}
+	
 	function loadBatteryOptionsIndividual(suffix = '') {
 		const batteryPickId = suffix ? `batteryPick${suffix}` : 'batteryPick';
 		fetch('<?= base_url('warehouse/inventory/available-batteries') ?>')
@@ -2330,22 +2450,22 @@ document.addEventListener('DOMContentLoaded', () => {
 							const serialInfo = item.sn_baterai || 'SN: -';
 							const isUsed = item.attachment_status === 'USED';
 							const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
-							const statusLabel = isUsed ? ` [USED - ${installedUnit}]` : ' [AVAILABLE]';
-							
+						
 							return `<option value="${item.id_inventory_attachment}" 
 									data-status="${item.attachment_status}" 
+									data-name="${name}"
+									data-serial="${serialInfo}"
 									data-installed-unit="${item.installed_unit_no||''}"
 									data-installed-sn="${item.installed_unit_sn||''}"
 									data-installed-merk="${item.installed_unit_merk||''}"
 									data-installed-model="${item.installed_unit_model||''}"
-									style="white-space: normal; line-height: 1.4; padding: 8px;" 
 									class="${isUsed ? 'used-unit-option' : 'available-unit-option'}">
-								${name} • ${serialInfo}${statusLabel}
+								${name} • ${serialInfo}
 							</option>`;
 						}).join('');
 					
-					// Initialize or reinitialize Select2 with search
-					const $batterySelect = $(batterySelect);
+					// Initialize Select2 with custom templates
+					const $batterySelect = $('#' + batteryPickId);
 					if ($batterySelect.hasClass('select2-hidden-accessible')) {
 						$batterySelect.select2('destroy');
 					}
@@ -2359,15 +2479,10 @@ document.addEventListener('DOMContentLoaded', () => {
 						language: {
 							noResults: function() { return 'No battery found'; },
 							searching: function() { return 'Searching...'; }
-						}
-					});
-					
-					// Add change event listener to check for USED items
-					$batterySelect.on('change', function() {
-						const selectedOption = this.options[this.selectedIndex];
-						if (selectedOption && selectedOption.dataset.status === 'USED') {
-							showKanibalAlert(selectedOption, 'Battery', suffix);
-						}
+						},
+						templateResult: formatComponentOption,
+						templateSelection: formatComponentSelection,
+						escapeMarkup: function(markup) { return markup; }
 					});
 					
 					// Update availability indicators after loading options
@@ -2394,28 +2509,25 @@ document.addEventListener('DOMContentLoaded', () => {
 				console.log(`🔌 Charger select element:`, chargerSelect);
 				
 				if (chargerSelect && Array.isArray(data)) {
-					const options = '<option value="">- Select Charger -</option>' + 
+					chargerSelect.innerHTML = '<option value="">- Select Charger -</option>' + 
 						data.map(item => {
 							const name = `${item.merk_charger||'-'} ${item.tipe_charger||''}`.trim();
 							const serialInfo = item.sn_charger || 'SN: -';
 							const isUsed = item.attachment_status === 'USED';
 							const installedUnit = isUsed && item.installed_unit_no ? `Unit ${item.installed_unit_no}` : '';
-							const statusLabel = isUsed ? ` [USED - ${installedUnit}]` : ' [AVAILABLE]';
 							
 							return `<option value="${item.id_inventory_attachment}" 
 									data-status="${item.attachment_status}" 
+									data-name="${name}"
+									data-serial="${serialInfo}"
 									data-installed-unit="${item.installed_unit_no||''}"
 									data-installed-sn="${item.installed_unit_sn||''}"
 									data-installed-merk="${item.installed_unit_merk||''}"
 									data-installed-model="${item.installed_unit_model||''}"
-									style="white-space: normal; line-height: 1.4; padding: 8px;" 
 									class="${isUsed ? 'used-unit-option' : 'available-unit-option'}">
-								${name} • ${serialInfo}${statusLabel}
+								${name} • ${serialInfo}
 							</option>`;
 						}).join('');
-					
-					chargerSelect.innerHTML = options;
-					console.log(`🔌 Charger options loaded: ${data.length} options`);
 					
 					// Initialize or reinitialize Select2 with search
 					const $chargerSelect = $(chargerSelect);
@@ -2432,15 +2544,10 @@ document.addEventListener('DOMContentLoaded', () => {
 						language: {
 							noResults: function() { return 'No charger found'; },
 							searching: function() { return 'Searching...'; }
-						}
-					});
-					
-					// Add change event listener to check for USED items
-					$chargerSelect.on('change', function() {
-						const selectedOption = this.options[this.selectedIndex];
-						if (selectedOption && selectedOption.dataset.status === 'USED') {
-							showKanibalAlert(selectedOption, 'Charger', suffix);
-						}
+						},
+						templateResult: formatComponentOption,
+						templateSelection: formatComponentSelection,
+						escapeMarkup: function(markup) { return markup; }
 					});
 					
 					// Update availability indicators after loading options

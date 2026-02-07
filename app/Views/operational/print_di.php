@@ -396,8 +396,21 @@ if (empty($unit_items)) {
             <div class="info-grid">
                 <div>
                     <div class="info-item">
-                        <span class="info-label">Kontrak/PO:</span>
-                        <span class="info-value"><?= esc($di['po_kontrak_nomor'] ?? $spk['po_kontrak_nomor'] ?? $spk['kontrak_no'] ?? '-') ?></span>
+                        <?php 
+                            // Show quotation number or contract indicator
+                            $hasContract = !empty($di['contract_id']) || !empty($spk['kontrak_id']) || !empty($di['spk_kontrak_id']);
+                            if ($hasContract) {
+                                $infoLabel = 'Source:';
+                                $infoValue = 'Contract-based';
+                            } else {
+                                // Show actual quotation number
+                                $quotationNumber = $di['quotation_number'] ?? $spk['quotation_number'] ?? '-';
+                                $infoLabel = 'No Quotation:';
+                                $infoValue = $quotationNumber;
+                            }
+                        ?>
+                        <span class="info-label"><?= $infoLabel ?></span>
+                        <span class="info-value"><?= $infoValue ?></span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Nama Perusahaan:</span>

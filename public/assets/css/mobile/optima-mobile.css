@@ -1,0 +1,477 @@
+/**
+ * OPTIMA Mobile Master CSS
+ * Central import file for all mobile responsive stylesheets
+ * Include this ONE file in your pages for complete mobile optimization
+ * 
+ * Usage:
+ * <link href="<?= base_url('assets/css/optima-mobile.css') ?>" rel="stylesheet">
+ */
+
+/* ============================================
+   MOBILE CSS IMPORTS
+   ============================================ */
+
+/* Core Mobile Utilities - Base helper classes */
+@import url('mobile-utilities.css');
+
+/* Authentication Pages - Login, register, verify, etc. */
+@import url('auth-mobile.css');
+
+/* Dashboard Pages - KPI cards, charts, stats */
+@import url('dashboard-mobile.css');
+
+/* Data Tables - Responsive card layout for mobile */
+@import url('table-mobile.css');
+
+/* Form Pages - Quotation, DI, PO, invoice forms */
+@import url('form-mobile.css');
+
+/* Navigation - Sidebar, topbar, mobile menu */
+@import url('navigation-mobile.css');
+
+/* ============================================
+   GLOBAL MOBILE RESETS
+   ============================================ */
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+html {
+    font-size: 16px; /* Prevent iOS zoom on inputs */
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: #212529;
+    background: #f8f9fa;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ============================================
+   MOBILE-FIRST RESPONSIVE IMAGES
+   ============================================ */
+
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* ============================================
+   MOBILE-OPTIMIZED BUTTONS
+   ============================================ */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-height: 44px; /* Touch-friendly */
+    min-width: 44px;
+}
+
+.btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #0061f2, #0056b3);
+    color: white;
+    box-shadow: 0 2px 8px rgba(0, 97, 242, 0.3);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #0056b3, #004085);
+    box-shadow: 0 4px 12px rgba(0, 97, 242, 0.4);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #28a745, #218838);
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #218838, #1e7e34);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #c82333, #bd2130);
+}
+
+.btn-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.btn-warning:hover {
+    background: #e0a800;
+}
+
+.btn-info {
+    background: #17a2b8;
+    color: white;
+}
+
+.btn-info:hover {
+    background: #138496;
+}
+
+.btn-light {
+    background: #f8f9fa;
+    color: #212529;
+    border: 2px solid #e9ecef;
+}
+
+.btn-light:hover {
+    background: #e9ecef;
+}
+
+.btn-outline-primary {
+    background: transparent;
+    color: #0061f2;
+    border: 2px solid #0061f2;
+}
+
+.btn-outline-primary:hover {
+    background: #0061f2;
+    color: white;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    min-height: 40px;
+}
+
+.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.125rem;
+    min-height: 52px;
+}
+
+.btn-block {
+    width: 100%;
+    display: flex;
+}
+
+.btn:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* ============================================
+   MOBILE-OPTIMIZED ALERTS
+   ============================================ */
+
+.alert {
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    border-left: 4px solid;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+}
+
+.alert-icon {
+    flex-shrink: 0;
+    font-size: 1.25rem;
+}
+
+.alert-success {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.alert-info {
+    background: #d1ecf1;
+    border-color: #17a2b8;
+    color: #0c5460;
+}
+
+.alert-dismissible {
+    padding-right: 3rem;
+    position: relative;
+}
+
+.alert-close {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.5;
+    min-width: 40px;
+    min-height: 40px;
+}
+
+.alert-close:hover {
+    opacity: 1;
+}
+
+/* ============================================
+   MOBILE-OPTIMIZED BADGES
+   ============================================ */
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    border-radius: 6px;
+    letter-spacing: 0.5px;
+}
+
+.badge-primary { background: #0061f2; color: white; }
+.badge-success { background: #28a745; color: white; }
+.badge-danger { background: #dc3545; color: white; }
+.badge-warning { background: #ffc107; color: #212529; }
+.badge-info { background: #17a2b8; color: white; }
+.badge-secondary { background: #6c757d; color: white; }
+.badge-light { background: #f8f9fa; color: #212529; border: 1px solid #e9ecef; }
+.badge-dark { background: #212529; color: white; }
+
+/* ============================================
+   MOBILE-OPTIMIZED LOADING SPINNER
+   ============================================ */
+
+.spinner {
+    display: inline-block;
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 3px solid rgba(0, 97, 242, 0.2);
+    border-top-color: #0061f2;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.spinner-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 2px;
+}
+
+.spinner-lg {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-width: 4px;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   MOBILE-OPTIMIZED TOOLTIPS
+   ============================================ */
+
+.tooltip-trigger {
+    position: relative;
+    cursor: help;
+}
+
+.tooltip-content {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #212529;
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    margin-bottom: 0.5rem;
+    z-index: 1000;
+}
+
+.tooltip-trigger:hover .tooltip-content,
+.tooltip-trigger:focus .tooltip-content {
+    opacity: 1;
+}
+
+/* ============================================
+   MOBILE RESPONSIVE BREAKPOINTS
+   ============================================ */
+
+@media (max-width: 767px) {
+    /* Mobile-specific button adjustments */
+    .btn {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.875rem;
+    }
+    
+    .btn-lg {
+        padding: 0.875rem 1.75rem;
+        font-size: 1rem;
+    }
+    
+    /* Mobile-specific alert adjustments */
+    .alert {
+        padding: 0.875rem 1rem;
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 375px) {
+    /* Small mobile adjustments */
+    .btn {
+        padding: 0.5rem 1rem;
+    }
+    
+    .alert {
+        padding: 0.75rem 0.875rem;
+    }
+}
+
+/* ============================================
+   REDUCED MOTION SUPPORT
+   ============================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .spinner {
+        animation: none;
+        border-top-color: transparent;
+    }
+}
+
+/* ============================================
+   DARK MODE SUPPORT (Optional)
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg-color: #1a1a1a;
+        --text-color: #e9ecef;
+        --border-color: #343a40;
+    }
+    
+    /* Uncomment to enable dark mode
+    body {
+        background: var(--bg-color);
+        color: var(--text-color);
+    }
+    
+    .card-mobile,
+    .form-container {
+        background: #2d2d2d;
+        border-color: var(--border-color);
+    }
+    */
+}
+
+/* ============================================
+   HIGH CONTRAST MODE
+   ============================================ */
+
+@media (prefers-contrast: high) {
+    .btn,
+    .form-control,
+    .alert {
+        border-width: 2px;
+    }
+    
+    .btn:focus,
+    .form-control:focus {
+        outline: 3px solid currentColor;
+        outline-offset: 3px;
+    }
+}
+
+/* ============================================
+   PRINT OPTIMIZATION
+   ============================================ */
+
+@media print {
+    body {
+        background: white;
+        color: black;
+    }
+    
+    .btn,
+    .alert,
+    .badge {
+        color: black !important;
+        border: 1px solid black !important;
+    }
+    
+    .sidebar,
+    .topbar,
+    .btn,
+    .form-actions {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+    
+    .card-mobile,
+    .form-container {
+        box-shadow: none !important;
+        border: 1px solid black !important;
+    }
+}

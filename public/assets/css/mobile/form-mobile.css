@@ -1,0 +1,488 @@
+/**
+ * OPTIMA Form Pages - Mobile & Tablet Responsive CSS
+ * Optimized for quotation, DI, PO, invoice forms
+ * Touch-friendly input fields and buttons
+ */
+
+/* ============================================
+   FORM CONTAINER
+   ============================================ */
+
+.form-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e9ecef;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+}
+
+.form-header {
+    padding-bottom: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.form-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 0.5rem;
+}
+
+.form-subtitle {
+    font-size: 0.95rem;
+    color: #6c757d;
+}
+
+/* ============================================
+   FORM SECTIONS
+   ============================================ */
+
+.form-section {
+    margin-bottom: 2rem;
+}
+
+.form-section-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #212529;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.form-section-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: #e7f3ff;
+    color: #0061f2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================
+   FORM GROUPS & FIELDS
+   ============================================ */
+
+.form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.form-group {
+    margin-bottom: 1.25rem;
+}
+
+.form-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+    display: block;
+}
+
+.form-label.required::after {
+    content: '*';
+    color: #dc3545;
+    margin-left: 0.25rem;
+}
+
+.form-control {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    transition: all 0.3s ease;
+    width: 100%;
+    min-height: 44px; /* Touch-friendly */
+}
+
+.form-control:focus {
+    border-color: #0061f2;
+    box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.1);
+    outline: none;
+}
+
+.form-control:disabled,
+.form-control[readonly] {
+    background: #f8f9fa;
+    cursor: not-allowed;
+}
+
+.form-select {
+    padding: 0.75rem 2.5rem 0.75rem 1rem;
+    font-size: 0.9rem;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    background-size: 16px 12px;
+    min-height: 44px;
+}
+
+.form-select:focus {
+    border-color: #0061f2;
+    box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.1);
+    outline: none;
+}
+
+textarea.form-control {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-text {
+    font-size: 0.8125rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.form-text.error {
+    color: #dc3545;
+}
+
+/* ============================================
+   INPUT GROUPS
+   ============================================ */
+
+.input-group {
+    display: flex;
+    align-items: stretch;
+}
+
+.input-group .form-control {
+    border-radius: 0;
+}
+
+.input-group .form-control:first-child {
+    border-radius: 10px 0 0 10px;
+}
+
+.input-group .form-control:last-child {
+    border-radius: 0 10px 10px 0;
+}
+
+.input-group-text {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-right: none;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    color: #6c757d;
+    border-radius: 10px 0 0 10px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ============================================
+   FILE UPLOAD
+   ============================================ */
+
+.file-upload {
+    border: 2px dashed #e9ecef;
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    background: #f8f9fa;
+}
+
+.file-upload:hover {
+    border-color: #0061f2;
+    background: #e7f3ff;
+}
+
+.file-upload-icon {
+    font-size: 3rem;
+    color: #dee2e6;
+    margin-bottom: 1rem;
+}
+
+.file-upload-text {
+    font-size: 0.95rem;
+    color: #6c757d;
+    margin-bottom: 0.5rem;
+}
+
+.file-upload-subtext {
+    font-size: 0.8125rem;
+    color: #adb5bd;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.file-preview {
+    margin-top: 1rem;
+    padding: 0.75rem;
+    background: white;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.file-preview-icon {
+    font-size: 1.5rem;
+    color: #0061f2;
+}
+
+.file-preview-name {
+    flex: 1;
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+.file-preview-size {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+.file-preview-remove {
+    background: none;
+    border: none;
+    color: #dc3545;
+    cursor: pointer;
+    padding: 0.5rem;
+    min-width: 40px;
+    min-height: 40px;
+}
+
+/* ============================================
+   FORM ACTIONS
+   ============================================ */
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    padding-top: 1.5rem;
+    margin-top: 1.5rem;
+    border-top: 2px solid #f0f0f0;
+    justify-content: flex-end;
+}
+
+.form-actions .btn {
+    min-width: 120px;
+    min-height: 44px;
+}
+
+/* ============================================
+   TABLET (768px - 1024px)
+   ============================================ */
+
+@media (max-width: 1024px) and (min-width: 768px) {
+    .form-container {
+        padding: 1.75rem;
+    }
+    
+    .form-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .form-title {
+        font-size: 1.375rem;
+    }
+}
+
+/* ============================================
+   MOBILE (max 767px)
+   ============================================ */
+
+@media (max-width: 767px) {
+    .form-container {
+        padding: 1.5rem 1.25rem;
+        border-radius: 12px;
+    }
+    
+    .form-header {
+        padding-bottom: 1.25rem;
+        margin-bottom: 1.25rem;
+    }
+    
+    .form-title {
+        font-size: 1.25rem;
+    }
+    
+    .form-subtitle {
+        font-size: 0.875rem;
+    }
+    
+    /* Form sections */
+    .form-section {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-section-title {
+        font-size: 1rem;
+    }
+    
+    .form-section-icon {
+        width: 28px;
+        height: 28px;
+    }
+    
+    /* Form rows - stack on mobile */
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    /* Form fields */
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .form-label {
+        font-size: 0.875rem;
+    }
+    
+    .form-control,
+    .form-select {
+        padding: 0.625rem 0.875rem;
+        font-size: 16px; /* Prevent iOS zoom */
+    }
+    
+    .form-select {
+        padding-right: 2.25rem;
+        background-position: right 0.75rem center;
+    }
+    
+    textarea.form-control {
+        min-height: 80px;
+    }
+    
+    /* Input groups - stack if too small */
+    .input-group {
+        flex-wrap: wrap;
+    }
+    
+    .input-group .form-control,
+    .input-group-text {
+        flex: 1 1 100%;
+    }
+    
+    .input-group .form-control:first-child,
+    .input-group-text {
+        border-radius: 10px 10px 0 0;
+    }
+    
+    .input-group .form-control:last-child {
+        border-radius: 0 0 10px 10px;
+        border-top: none;
+    }
+    
+    /* File upload */
+    .file-upload {
+        padding: 1.5rem 1rem;
+    }
+    
+    .file-upload-icon {
+        font-size: 2.5rem;
+    }
+    
+    /* Form actions - stack buttons */
+    .form-actions {
+        flex-direction: column-reverse;
+        gap: 0.75rem;
+        padding-top: 1.25rem;
+        margin-top: 1.25rem;
+    }
+    
+    .form-actions .btn {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
+/* ============================================
+   SMALL MOBILE (max 375px)
+   ============================================ */
+
+@media (max-width: 375px) {
+    .form-container {
+        padding: 1.25rem 1rem;
+    }
+    
+    .form-title {
+        font-size: 1.125rem;
+    }
+    
+    .form-section-title {
+        font-size: 0.9375rem;
+    }
+    
+    .form-control,
+    .form-select {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .file-upload {
+        padding: 1.25rem 0.75rem;
+    }
+}
+
+/* ============================================
+   LANDSCAPE MODE
+   ============================================ */
+
+@media (max-height: 500px) and (orientation: landscape) {
+    .form-container {
+        padding: 1rem;
+    }
+    
+    .form-header {
+        margin-bottom: 1rem;
+    }
+    
+    .form-section {
+        margin-bottom: 1rem;
+    }
+    
+    .form-group {
+        margin-bottom: 0.75rem;
+    }
+}
+
+/* ============================================
+   ACCESSIBILITY
+   ============================================ */
+
+.form-control:focus,
+.form-select:focus,
+.btn:focus {
+    outline: 2px solid #0061f2;
+    outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .form-control,
+    .form-select {
+        border-width: 3px;
+    }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .form-control,
+    .form-select,
+    .btn,
+    .file-upload {
+        transition: none;
+    }
+}

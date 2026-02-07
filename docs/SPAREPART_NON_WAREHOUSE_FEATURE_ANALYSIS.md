@@ -491,7 +491,401 @@ Sparepart yang Dibawa:
 
 ---
 
-## 🚀 Alternatif Implementasi (Jika Diperlukan)
+## � REQUIREMENT TAMBAHAN - TOOLS & NOTES COLUMN
+
+### **📌 Requirement 1: Tools Tracking**
+
+**Konteks**: Mekanik juga membawa **tools/perkakas** ke lapangan yang perlu ditrack:
+- **Tools Examples**: Kunci inggris, obeng, multipemeter, jack stand, dll
+- **Behavior**: Mirip sparepart (dibawa, digunakan, dikembalikan)
+- **Difference**: Tools biasanya **tidak habis pakai** (durable goods)
+
+#### **Analisa Opsi Implementasi**
+
+##### **OPSI A: Gabung di `work_order_spareparts` ⭐ RECOMMENDED**
+
+**Strategy**: Rename table concept menjadi "Items" dan tambah `item_type`
+
+**Pros**:
+- ✅ Single source of truth untuk semua items yang dibawa
+- ✅ UI tetap simpel - 1 section "Items Brought"
+- ✅ Reuse existing validation logic
+- ✅ Mudah maintain
+- ✅ Reports bisa filter by item_type
+
+**Cons**:
+- ⚠️ Mixing spareparts dan tools dalam 1 tabel
+- ⚠️ Perlu kolom tambahan untuk distinguish
+
+**Database Migration**:
+```sql
+-- Add item_type column
+ALTER TABLE work_order_spareparts 
+ADD COLUMN item_type ENUM('sparepart', 'tool') DEFAULT 'sparepart'
+COMMENT 'Type: sparepart (consumable) or tool (durable)'
+AFTER sparepart_name;
+
+-- Add index
+CREATE INDEX idx_item_type ON work_order_spareparts(item_type);
+
+-- Update existing records
+UPDATE work_order_spareparts SET item_type = 'sparepart' WHERE item_type IS NULL;
+```
+
+**Form UI Enhancement**:
+```html
+<td>
+    <select class="form-select form-select-sm" name="item_type[]" 
+            onchange="updateItemLabel(this)">
+        <option value="sparepart" selected>
+            <i class="fas fa-cog"></i> Sparepart
+        </option>
+        <option value="tool">
+            <i class="fas fa-tools"></i> Tool/Perkakas
+        </option>
+    </select>
+</td>
+```
+
+**Label Update Based on Type**:
+```javascript
+function updateItemLabel(select) {
+    const row = $(select).closest('tr');
+    const type = $(select).val();
+    
+    if (type === 'tool') {
+        row.find('.item-type-badge').html(
+            '<i class="fas fa-tools text-primary"></i> Tool'
+        );
+        // Tools biasanya tidak habis, hint untuk quantity
+        row.find('input[name="sparepart_quantity[]"]')
+           .attr('title', 'Jumlah tool yang dibawa (untuk tracking)');
+    } else {
+        row.find('.item-type-badge').html(
+            '<i class="fas fa-cog text-success"></i> Sparepart'
+        );
+    }
+}
+```
+
+---
+
+##### **OPSI B: Tabel Terpisah `work_order_tools`**
+
+**Strategy**: Buat tabel baru dengan struktur mirip
+
+**Pros**:
+- ✅ Separation of concerns
+- ✅ Cleaner data model
+- ✅ Tidak mixing domain concepts
+
+**Cons**:
+- ❌ Duplicate code untuk validation logic
+- ❌ 2 queries untuk fetch items
+- ❌ UI lebih kompleks (2 sections)
+- ❌ More maintenance overhead
+
+**Database Schema**:
+```sql
+CREATE TABLE work_order_tools (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    work_order_id INT NOT NULL,
+    tool_name VARCHAR(255) NOT NULL,
+    tool_code VARCHAR(50),
+    quantity_brought INT DEFAULT 1,
+    notes TEXT,
+    is_returned TINYINT(1) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (work_order_id) REFERENCES work_orders(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+**🎯 RECOMMENDATION: OPSI A (Gabung)**
+
+**Reasoning**:
+1. Behavior sangat mirip (brought, used/returned, validated)
+2. UI experience lebih baik - single list
+3. Less code duplication
+4. Flexible - bisa extend ke item types lain (consumables, PPE, etc)
+5. Mudah query dan report
+
+---
+
+### **📌 Requirement 2: Notes/Keterangan Column**
+
+**Current State**: 
+- ✅ Database sudah punya kolom `notes` (TEXT)
+- ❌ UI form **BELUM** ada input untuk notes
+
+**Use Cases untuk Notes**:
+- "Bekas dari unit #12345"
+- "Sisa dari WO minggu lalu"
+- "Pinjam dari tim lain"
+- "Customer provided"
+- "Emergency purchase"
+
+#### **Implementation - Add Notes Column to Form**
+
+**File**: `app/Views/service/work_orders.php`
+
+**Current Table Header** (line 440):
+```html
+<thead>
+    <tr>
+        <th width="40%">Sparepart Name*</th>
+        <th width="15%">Quantity*</th>
+        <th width="15%">Unit*</th>
+        <th width="20%">Source</th>
+        <th width="10%">Action</th>
+    </tr>
+</thead>
+```
+
+**IMPROVED Table Header**:
+```html
+<thead>
+    <tr>
+        <th width="30%">Item Name*</th>
+        <th width="10%">Type*</th>
+        <th width="10%">Qty*</th>
+        <th width="10%">Unit*</th>
+        <th width="15%">Source</th>
+        <th width="20%">Notes/Keterangan</th>
+        <th width="5%">Action</th>
+    </tr>
+</thead>
+```
+
+**Updated Row in `addSparepartRow` function** (line 3340):
+```javascript
+addSparepartRow = function(sparepartData = null) {
+    sparepartRowCount++;
+    
+    const row = `
+        <tr>
+            <td>
+                <select class="form-select form-select-sm" name="sparepart_name[]" 
+                        id="sparepart_${sparepartRowCount}" required>
+                    <option value="">-- Select Item --</option>
+                </select>
+            </td>
+            <td>
+                <!-- NEW: Item Type -->
+                <select class="form-select form-select-sm" name="item_type[]" 
+                        onchange="updateItemTypeLabel(this)">
+                    <option value="sparepart" selected>
+                        <i class="fas fa-cog"></i> Sparepart
+                    </option>
+                    <option value="tool">
+                        <i class="fas fa-tools"></i> Tool
+                    </option>
+                </select>
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm" 
+                       name="sparepart_quantity[]" value="1" min="1" required>
+            </td>
+            <td>
+                <select class="form-select form-select-sm" name="sparepart_unit[]" required>
+                    <option value="PCS">PCS</option>
+                    <option value="UNIT">UNIT</option>
+                    <option value="SET">SET</option>
+                    <!-- ... other units ... -->
+                </select>
+            </td>
+            <td>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" 
+                           name="is_from_warehouse[]" 
+                           id="warehouse_${sparepartRowCount}" 
+                           value="1" checked 
+                           onchange="toggleSourceLabel(this)">
+                    <label class="form-check-label small" for="warehouse_${sparepartRowCount}">
+                        <span class="badge bg-success warehouse-badge">
+                            <i class="fas fa-warehouse"></i> WH
+                        </span>
+                        <span class="badge bg-warning non-warehouse-badge d-none">
+                            <i class="fas fa-recycle"></i> Bekas
+                        </span>
+                    </label>
+                </div>
+            </td>
+            <td>
+                <!-- NEW: Notes/Keterangan -->
+                <input type="text" class="form-control form-control-sm" 
+                       name="sparepart_notes[]" 
+                       placeholder="Optional notes..."
+                       maxlength="255">
+            </td>
+            <td>
+                <button type="button" class="btn btn-danger btn-sm removeSparepartRow">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+    
+    $('#sparepartTableBody').append(row);
+    // ... rest of Select2 initialization ...
+};
+```
+
+**Controller Update** (`WorkOrderController.php` store method):
+```php
+public function store()
+{
+    // ... existing code ...
+    
+    $sparepartNames = $this->request->getPost('sparepart_name');
+    $sparepartQuantities = $this->request->getPost('sparepart_quantity');
+    $sparepartUnits = $this->request->getPost('sparepart_unit');
+    $itemTypes = $this->request->getPost('item_type'); // NEW
+    $isFromWarehouse = $this->request->getPost('is_from_warehouse');
+    $sparepartNotes = $this->request->getPost('sparepart_notes'); // NEW
+    
+    if (!empty($sparepartNames) && is_array($sparepartNames)) {
+        $spareparts = [];
+        foreach ($sparepartNames as $index => $name) {
+            if (!empty($name)) {
+                $spareparts[] = [
+                    'sparepart_name' => $name,
+                    'sparepart_code' => $this->generateSparepartCode($name),
+                    'quantity_brought' => $sparepartQuantities[$index] ?? 1,
+                    'satuan' => $sparepartUnits[$index] ?? 'PCS',
+                    'item_type' => $itemTypes[$index] ?? 'sparepart', // NEW
+                    'is_from_warehouse' => isset($isFromWarehouse[$index]) ? 1 : 0,
+                    'notes' => $sparepartNotes[$index] ?? null // NEW
+                ];
+            }
+        }
+        
+        if (!empty($spareparts)) {
+            $this->sparepartModel->addSpareparts($workOrderId, $spareparts);
+        }
+    }
+}
+```
+
+**Print SPK Update** (`print_work_order.php`):
+```php
+<table class="table table-sm">
+    <thead>
+        <tr>
+            <th width="5%">No</th>
+            <th width="35%">Item Name</th>
+            <th width="10%">Type</th>
+            <th width="15%">Quantity</th>
+            <th width="35%">Notes</th>
+        </tr>
+    </thead>
+    <tbody>
+        <?php $no = 1; ?>
+        <?php foreach ($spareparts as $sp): ?>
+        <tr>
+            <td><?= $no++ ?></td>
+            <td>
+                <?= esc($sp['sparepart_name']) ?>
+                <?php if ($sp['is_from_warehouse'] == 0): ?>
+                    <span class="badge badge-warning badge-sm">NON-WH</span>
+                <?php endif; ?>
+            </td>
+            <td>
+                <?php if ($sp['item_type'] == 'tool'): ?>
+                    <i class="fas fa-tools"></i> Tool
+                <?php else: ?>
+                    <i class="fas fa-cog"></i> Sparepart
+                <?php endif; ?>
+            </td>
+            <td><?= $sp['quantity_brought'] ?> <?= $sp['satuan'] ?></td>
+            <td>
+                <small class="text-muted">
+                    <?= esc($sp['notes'] ?? '-') ?>
+                </small>
+            </td>
+        </tr>
+        <?php endforeach; ?>
+    </tbody>
+</table>
+```
+
+**Sparepart Validation Modal Update**:
+```php
+<!-- Show notes in validation for context -->
+<tr>
+    <td><?= esc($sp['sparepart_name']) ?></td>
+    <td>
+        <?php if (!empty($sp['notes'])): ?>
+            <small class="text-muted d-block">
+                <i class="fas fa-info-circle"></i> <?= esc($sp['notes']) ?>
+            </small>
+        <?php endif; ?>
+    </td>
+    <td><?= $sp['quantity_brought'] ?> <?= $sp['satuan'] ?></td>
+    <td>
+        <input type="number" name="used_quantity[]" 
+               class="form-control form-control-sm" 
+               max="<?= $sp['quantity_brought'] ?>" required>
+    </td>
+</tr>
+```
+
+---
+
+## 📊 FINAL SUMMARY - ALL FEATURES
+
+| **Feature**                    | **Database Column**   | **UI Element**          | **Impact**                |
+|--------------------------------|-----------------------|-------------------------|---------------------------|
+| Non-Warehouse Flag             | `is_from_warehouse`   | Checkbox toggle         | Skip return, filter report|
+| Item Type (Sparepart/Tool)     | `item_type`           | Dropdown select         | Badge in print, filtering |
+| Notes/Keterangan               | `notes`               | Text input              | Context in print/validate |
+
+---
+
+## ✅ COMPLETE TESTING CHECKLIST
+
+### **Database**
+- [ ] Migration adds `item_type` column successfully
+- [ ] Migration adds index on `item_type`
+- [ ] Existing records default to 'sparepart'
+- [ ] `notes` column accepts NULL values
+
+### **Form Input**
+- [ ] Item type dropdown shows Sparepart/Tool options
+- [ ] Quantity input works for both types
+- [ ] Source toggle works (Warehouse/Bekas)
+- [ ] Notes field accepts text up to 255 chars
+- [ ] Add row button creates new row with all fields
+- [ ] Remove row button deletes row
+
+### **Store/Save**
+- [ ] Create WO with sparepart + warehouse → saves correctly
+- [ ] Create WO with tool + bekas → saves correctly
+- [ ] Create WO with notes → notes saved to database
+- [ ] Edit WO preserves item_type and notes
+
+### **Print SPK**
+- [ ] Tools show tool icon and label
+- [ ] Spareparts show sparepart icon
+- [ ] Non-warehouse items show "NON-WH" badge
+- [ ] Notes displayed in notes column
+- [ ] Empty notes show "-"
+
+### **Validation**
+- [ ] Warehouse spareparts create return records
+- [ ] Bekas spareparts skip return creation
+- [ ] Tools can be marked as returned
+- [ ] Notes visible during validation for context
+
+### **Reports**
+- [ ] Sparepart usage report filters by item_type
+- [ ] Warehouse-only filter excludes non-warehouse items
+- [ ] Tool usage can be tracked separately
+- [ ] Notes included in detailed reports
+
+---
+
+## �🚀 Alternatif Implementasi (Jika Diperlukan)
 
 ### **OPSI 2: Dropdown Source Type**
 

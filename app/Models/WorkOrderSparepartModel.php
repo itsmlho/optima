@@ -17,6 +17,7 @@ class WorkOrderSparepartModel extends Model
         'work_order_id',
         'sparepart_code',
         'sparepart_name',
+        'item_type',
         'quantity_brought',
         'satuan',
         'notes',
@@ -35,6 +36,7 @@ class WorkOrderSparepartModel extends Model
         'work_order_id' => 'required|integer',
         'sparepart_code' => 'required|max_length[50]',
         'sparepart_name' => 'required|max_length[255]',
+        'item_type' => 'permit_empty|in_list[sparepart,tool]',
         'quantity_brought' => 'required|integer|greater_than[0]',
         'satuan' => 'required|max_length[50]',
         'is_from_warehouse' => 'permit_empty|in_list[0,1]'
@@ -52,6 +54,9 @@ class WorkOrderSparepartModel extends Model
         'sparepart_name' => [
             'required' => 'Nama Sparepart harus diisi',
             'max_length' => 'Nama Sparepart maksimal 255 karakter'
+        ],
+        'item_type' => [
+            'in_list' => 'Item type harus sparepart atau tool'
         ],
         'quantity_brought' => [
             'required' => 'Quantity harus diisi',
@@ -118,13 +123,23 @@ class WorkOrderSparepartModel extends Model
             wos.*,
             wos.sparepart_code as code,
             wos.sparepart_name as name,
+            wos.item_type,
             wos.quantity_brought as qty,
             wos.satuan,
-            wos.notes
+            wos.notes,
+            wos.is_from_warehouse
         ')
         ->where('wos.work_order_id', $workOrderId)
         ->orderBy('wos.id', 'ASC')
         ->findAll();
+    }
+    
+    /**
+     * Alias for getWorkOrderSpareparts (compatibility)
+     */
+    public function getSparePartsWithUsage($workOrderId)
+    {
+        return $this->getWorkOrderSpareparts($workOrderId);
     }
 
     /**

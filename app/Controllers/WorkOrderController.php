@@ -400,43 +400,45 @@ class WorkOrderController extends Controller
     {
         try {
             // Load optimized model
-            $optimizedModel = new \App\Models\Optimized\OptimizedWorkOrderModel();
+            $optimizedModel = new \App\Models\OptimizedWorkOrderModel();
             
-            // Build parameters for optimized model
-            $params = [
-                'search' => $search,
-                'start' => $start,
-                'length' => max(1, $length),
-                'orderColumn' => 'wo.report_date',
-                'orderDir' => 'DESC',
-                'conditions' => []
-            ];
-
-            // Add tab-specific conditions
-            if ($tab === 'closed') {
-                $params['conditions']['wo.status_id'] = 6; // Closed status ID
-            } elseif ($tab === 'progress') {
-                $params['conditions']['wo.status_id !='] = 6; // Not closed
-            }
-
-            // Add additional filters
+            // Pagination parameters - prevent division by zero
+            $length = max(1, $length);
+            $page = ($start / $length) + 1;
+            
+            // Get filters from request
             $status = $request->getPost('status') ?? $request->getGet('status');
             $priority = $request->getPost('priority') ?? $request->getGet('priority');
             $startDate = $request->getPost('start_date') ?? $request->getGet('start_date');
             $endDate = $request->getPost('end_date') ?? $request->getGet('end_date');
+            $month = $request->getPost('month') ?? $request->getGet('month');
             
-            if (!empty($status)) {
-                $params['conditions']['wo.status_id'] = $status;
+            // Apply tab-specific filtering
+            if ($tab === 'closed') {
+                $status = 'CLOSED'; // Status code for closed tab
+            } elseif ($tab === 'progress') {
+                // For progress tab, exclude closed status
+                if (empty($status)) {
+                    $status = 'exclude_closed';
+                }
             }
-            if (!empty($priority)) {
-                $params['conditions']['wo.priority_id'] = $priority;
-            }
-            if (!empty($startDate)) {
-                $params['conditions']['DATE(wo.report_date)'] = $startDate;
-            }
+            
+            // Get user's division departments for filtering
+            $allowedDepartments = get_user_division_departments();
+            
+            // Build filters array for optimized model
+            $filters = [
+                'search' => $search,
+                'status' => $status,
+                'priority' => $priority,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'month' => $month,
+                'department_ids' => $allowedDepartments
+            ];
 
-            // Get data from optimized model
-            $result = $optimizedModel->getDataTableOptimized($params);
+            // Get data from optimized model - FIXED: Use correct method name
+            $result = $optimizedModel->getOptimizedWorkOrders($filters, $page, $length);
             
             // Format data for DataTable
             $formattedData = [];

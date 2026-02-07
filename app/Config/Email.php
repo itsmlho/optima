@@ -8,7 +8,7 @@ class Email extends BaseConfig
 {
     // From Email Configuration
     public string $fromEmail  = 'itsupport@sml.co.id';
-    public string $fromName   = 'OPTIMA System';
+    public string $fromName   = 'OPTIMA';
     public string $recipients = '';
 
     /**

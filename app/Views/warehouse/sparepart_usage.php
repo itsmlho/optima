@@ -1,7 +1,53 @@
 <?= $this->extend('layouts/base') ?>
 
-
 <?= $this->section('content') ?>
+
+<style>
+    /* Custom styling for sparepart usage table */
+    #usageTable {
+        width: 100% !important;
+    }
+    
+    #usageTable th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border-bottom: 2px solid #dee2e6;
+        white-space: nowrap;
+        vertical-align: middle;
+    }
+    
+    #usageTable td {
+        vertical-align: middle;
+        font-size: 0.875rem;
+    }
+    
+    #usageTable tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    
+    /* Badge styling */
+    .badge {
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+    
+    /* Modal simple styling */
+    .modal-header {
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .bg-info-soft { background-color: #d1ecf1; }
+    .bg-primary-soft { background-color: #cfe2ff; }
+    .bg-warning-soft { background-color: #fff3cd; }
+    .bg-success-soft { background-color: #d1e7dd; }
+    
+    /* Better table responsiveness */
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+</style>
 
 
 
@@ -115,20 +161,16 @@
                     </div>
                     <?php else: ?>
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover" id="usageTable">
-                            <thead>
+                        <table class="table table-hover table-sm" id="usageTable" style="font-size: 0.875rem;">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Work Order</th>
-                                    <th>Sparepart</th>
+                                    <th style="width: 30px;"></th>
+                                    <th style="width: 120px;">Work Order</th>
+                                    <th style="width: 100px;">Date</th>
                                     <th>Customer</th>
                                     <th>Unit</th>
-                                    <th>Mechanic</th>
-                                    <th>Brought</th>
-                                    <th>Used</th>
-                                    <th>Returned</th>
-                                    <th>Notes</th>
-                                    <th>Actions</th>
+                                    <th style="width: 100px; text-align: center;">Items</th>
+                                    <th style="width: 70px; text-align: center;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -167,20 +209,15 @@
 
                     <!-- Returns Table -->
                     <div class="table-responsive">
-                        <table class="table table-striped table-hover" id="returnsTable">
-                            <thead>
+                        <table class="table table-striped table-hover table-sm" id="returnsTable" style="font-size: 0.875rem;">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Date</th>
-                                    <th>Work Order</th>
-                                    <th>Sparepart</th>
-                                    <th>Customer</th>
-                                    <th>Unit</th>
-                                    <th>Mechanic</th>
-                                    <th>Brought</th>
-                                    <th>Used</th>
-                                    <th>Returned</th>
-                                    <th>Status</th>
-                                    <th>Aksi</th>
+                                    <th style="width: 140px;">Work Order</th>
+                                    <th style="min-width: 200px;">Item Details</th>
+                                    <th style="width: 180px;">Customer / Unit</th>
+                                    <th style="width: 120px;">Mechanic</th>
+                                    <th style="width: 150px; text-align: center;">Quantity</th>
+                                    <th style="width: 70px; text-align: center;">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -199,13 +236,13 @@
 <div class="modal fade" id="usageDetailModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header bg-info text-secondary">
-                <h5 class="modal-title">
-                    <i class="fas fa-info-circle me-2"></i><?= lang('App.detail') ?> <?= lang('Warehouse.usage') ?> <?= lang('Warehouse.sparepart') ?>
+            <div class="modal-header bg-white border-bottom">
+                <h5 class="modal-title text-dark fw-semibold" id="usageModalTitle">
+                    <i class="fas fa-info-circle text-primary me-2"></i>Detail Usage
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body" id="usageDetailBody">
+            <div class="modal-body p-4" id="usageDetailBody">
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading...</span>
@@ -283,6 +320,61 @@ $(document).ready(function() {
     }, 300);
     
     <?php if (isset($usage_table_exists) && $usage_table_exists): ?>
+    // Format spareparts detail table
+    function formatSparepartsTable(spareparts) {
+        // Check if response has error
+        if (spareparts && spareparts.error) {
+            console.error('API Error:', spareparts.message);
+            return '<div class="p-3 text-danger">Error: ' + (spareparts.message || 'Unknown error') + '</div>';
+        }
+        
+        // Check if is array
+        if (!Array.isArray(spareparts) || spareparts.length === 0) {
+            return '<div class="p-3 text-muted">No spareparts found</div>';
+        }
+        
+        var html = '<div class="p-3 bg-light"><table class="table table-sm table-bordered mb-0">';
+        html += '<thead class="table-light">';
+        html += '<tr>';
+        html += '<th width="80px">Type</th>';
+        html += '<th width="80px">Source</th>';
+        html += '<th>Item</th>';
+        html += '<th width="70px" class="text-center">Brought</th>';
+        html += '<th width="70px" class="text-center">Used</th>';
+        html += '<th width="70px" class="text-center">Returned</th>';
+        html += '<th>Notes</th>';
+        html += '</tr>';
+        html += '</thead>';
+        html += '<tbody>';
+        
+        spareparts.forEach(function(item) {
+            // Type badge
+            var typeBadge = item.item_type === 'tool' 
+                ? '<span class="badge bg-secondary">🔧 Tool</span>'
+                : '<span class="badge bg-primary">⚙ Part</span>';
+            
+            // Source badge  
+            var sourceBadge = parseInt(item.is_from_warehouse) === 0
+                ? '<span class="badge bg-warning text-dark">♻ Bekas</span>'
+                : '<span class="badge bg-success">🏪 WH</span>';
+            
+            html += '<tr>';
+            html += '<td>' + typeBadge + '</td>';
+            html += '<td>' + sourceBadge + '</td>';
+            html += '<td><strong>' + item.sparepart_name + '</strong><br><small class="text-muted">' + item.sparepart_code + '</small></td>';
+            html += '<td class="text-center"><span class="badge bg-info">' + item.quantity_brought + '</span></td>';
+            html += '<td class="text-center"><span class="badge bg-success">' + item.quantity_used + '</span></td>';
+            html += '<td class="text-center">' + (item.quantity_return > 0 ? '<span class="badge bg-warning text-dark">' + item.quantity_return + '</span>' : '-') + '</td>';
+            html += '<td><small>' + (item.usage_notes || '-') + '</small></td>';
+            html += '</tr>';
+        });
+        
+        html += '</tbody>';
+        html += '</table></div>';
+        
+        return html;
+    }
+    
     function initializeUsageTable() {
         if (usageTableInitialized) {
             console.log('Usage table already initialized');
@@ -305,63 +397,63 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: '<?= base_url('warehouse/sparepart-usage/get-usage') ?>',
+            url: '<?= base_url('warehouse/sparepart-usage/get-usage-grouped') ?>',
             type: 'POST'
         },
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
         columns: [
-            { data: 'used_at', name: 'used_at' },
-            { data: 'work_order_number', name: 'work_order_number' },
-            { 
-                data: 'sparepart_name',
-                render: function(data, type, row) {
-                    return `<strong>${data}</strong><br><small class="text-muted">${row.sparepart_code}</small>`;
-                }
+            {
+                className: 'details-control',
+                orderable: false,
+                data: null,
+                defaultContent: '<i class="fas fa-plus-circle text-muted" style="cursor:pointer;"></i>'
             },
-            { data: 'customer_name', name: 'customer_name' },
-            { data: 'unit_number', name: 'unit_number' },
             { 
-                data: 'mechanic_name',
-                name: 'mechanic_name',
+                data: 'work_order_number',
+                name: 'work_order_number',
                 render: function(data) {
-                    return data && data !== '-' ? `<small>${data}</small>` : '-';
+                    return `<strong class="text-primary">${data}</strong>`;
                 }
             },
             { 
-                data: 'quantity_brought',
+                data: 'report_date',
+                name: 'report_date'
+            },
+            { 
+                data: 'customer_name',
+                name: 'customer_name'
+            },
+            { 
+                data: 'unit_number',
+                name: 'unit_number',
                 render: function(data, type, row) {
-                    return `${data} ${row.satuan}`;
+                    return `<strong>${data}</strong><br><small class="text-muted">${row.unit_info}</small>`;
                 }
             },
             { 
-                data: 'quantity_used',
+                data: 'total_items',
+                name: 'total_items',
+                className: 'text-center',
                 render: function(data, type, row) {
-                    return `<strong class="text-success">${data} ${row.satuan}</strong>`;
-                }
-            },
-            { 
-                data: 'quantity_returned',
-                render: function(data, type, row) {
-                    return data > 0 ? `<span class="text-warning">${data} ${row.satuan}</span>` : '-';
-                }
-            },
-            { 
-                data: 'usage_notes',
-                render: function(data) {
-                    return data && data !== '-' ? data : '-';
+                    let html = `<strong>${data}</strong> items`;
+                    if (row.nonwarehouse_items > 0) {
+                        html += `<br><small class="text-muted">${row.warehouse_items} WH, ${row.nonwarehouse_items} Bekas</small>`;
+                    }
+                    return html;
                 }
             },
             {
-                data: 'id',
+                data: 'work_order_id',
                 orderable: false,
+                className: 'text-center',
                 render: function(data) {
-                    return `<button class="btn btn-sm btn-info" onclick="viewUsageDetail(${data})" title="Detail">
+                    return `<button class="btn btn-sm btn-info" onclick="viewWorkOrderDetail(${data})" title="View Detail">
                         <i class="fas fa-eye"></i>
                     </button>`;
                 }
             }
         ],
-        order: [[0, 'desc']],
+        order: [[1, 'desc']],
         pageLength: 25,
         language: {
             processing: "Processing...",
@@ -378,6 +470,41 @@ $(document).ready(function() {
             }
         }
     });
+        
+        // Expand/collapse row functionality
+        $('#usageTable tbody').on('click', 'td.details-control', function () {
+            var tr = $(this).closest('tr');
+            var row = usageTable.row(tr);
+            var icon = $(this).find('i');
+
+            if (row.child.isShown()) {
+                // Collapse
+                row.child.hide();
+                tr.removeClass('shown');
+                icon.removeClass('fa-minus-circle text-primary').addClass('fa-plus-circle text-muted');
+            } else {
+                // Expand
+                icon.removeClass('fa-plus-circle text-muted').addClass('fa-spinner fa-spin');
+                
+                // Fetch spareparts for this work order
+                $.ajax({
+                    url: '<?= base_url('warehouse/sparepart-usage/get-work-order-spareparts') ?>/' + row.data().work_order_id,
+                    type: 'GET',
+                    dataType: 'json',
+                    success: function(response) {
+                        console.log('Spareparts response:', response);
+                        row.child(formatSparepartsTable(response)).show();
+                        tr.addClass('shown');
+                        icon.removeClass('fa-spinner fa-spin').addClass('fa-minus-circle text-primary');
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('AJAX Error:', xhr.responseText);
+                        alert('Failed to load spareparts: ' + error);
+                        icon.removeClass('fa-spinner fa-spin').addClass('fa-plus-circle text-muted');
+                    }
+                });
+            }
+        });
         
         usageTableInitialized = true;
         console.log('Usage table initialized successfully');
@@ -417,61 +544,78 @@ $(document).ready(function() {
         },
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
         columns: [
-            { data: 'created_at', name: 'created_at' },
-            { data: 'work_order_number', name: 'work_order_number' },
             { 
-                data: 'sparepart_name',
+                data: 'work_order_number',
+                name: 'work_order_number',
                 render: function(data, type, row) {
-                    return `<strong>${data}</strong><br><small class="text-muted">${row.sparepart_code}</small>`;
+                    return `<strong class="text-primary">${data}</strong><br><small class="text-muted">${row.created_at}</small>`;
                 }
             },
-            { data: 'customer_name', name: 'customer_name' },
-            { data: 'unit_number', name: 'unit_number' },
+            { 
+                data: 'sparepart_name',
+                name: 'sparepart_name',
+                render: function(data, type, row) {
+                    // Type badge
+                    let typeBadge = '';
+                    if (row.item_type === 'tool') {
+                        typeBadge = '<span class="badge bg-secondary me-1">🔧 Tool</span>';
+                    } else {
+                        typeBadge = '<span class="badge bg-primary me-1">⚙ Part</span>';
+                    }
+                    
+                    // Source badge
+                    let sourceBadge = '';
+                    if (row.is_from_warehouse !== undefined && parseInt(row.is_from_warehouse) === 0) {
+                        sourceBadge = '<span class="badge bg-warning text-dark">♻ Bekas</span>';
+                    } else {
+                        sourceBadge = '<span class="badge bg-success">🏪 WH</span>';
+                    }
+                    
+                    return `${typeBadge} ${sourceBadge}<br><strong>${data}</strong><br><small class="text-muted">${row.sparepart_code}</small>`;
+                }
+            },
+            { 
+                data: 'customer_name',
+                name: 'customer_name',
+                render: function(data, type, row) {
+                    return `<strong>${data || '-'}</strong><br><small class="text-muted"><i class="fas fa-truck"></i> ${row.unit_number || '-'}</small>`;
+                }
+            },
             { 
                 data: 'mechanic_name',
                 name: 'mechanic_name',
                 render: function(data) {
-                    return data && data !== '-' ? `<small>${data}</small>` : '-';
+                    return data && data !== '-' ? `<small>${data}</small>` : '<small class="text-muted">-</small>';
                 }
             },
             { 
                 data: 'quantity_brought',
+                name: 'quantity_brought',
+                className: 'text-center',
                 render: function(data, type, row) {
-                    return `${data} ${row.satuan}`;
-                }
-            },
-            { 
-                data: 'quantity_used',
-                render: function(data, type, row) {
-                    return `${data} ${row.satuan}`;
-                }
-            },
-            { 
-                data: 'quantity_return',
-                render: function(data, type, row) {
-                    return `<strong class="text-warning">${data} ${row.satuan}</strong>`;
-                }
-            },
-            { 
-                data: 'status',
-                render: function(data) {
-                    const badgeClass = data === 'PENDING' ? 'badge-pending' : 'badge-confirmed';
-                    return `<span class="badge ${badgeClass}">${data}</span>`;
+                    let html = `<small class="text-muted d-block">Brought: <span class="badge bg-info">${data}</span></small>`;
+                    html += `<small class="text-muted d-block">Used: <span class="badge bg-success">${row.quantity_used}</span></small>`;
+                    if (row.quantity_return > 0) {
+                        html += `<small class="text-muted d-block">Return: <span class="badge bg-warning text-dark">${row.quantity_return}</span></small>`;
+                    }
+                    // Add status badge
+                    if (row.status === 'PENDING') {
+                        html += `<small class="d-block mt-1"><span class="badge bg-warning text-dark">Pending</span></small>`;
+                    } else if (row.status === 'CONFIRMED') {
+                        html += `<small class="d-block mt-1"><span class="badge bg-success">Confirmed</span></small>`;
+                    }
+                    return html;
                 }
             },
             {
                 data: 'id',
+                name: 'id',
                 orderable: false,
+                className: 'text-center',
                 render: function(data, type, row) {
-                    let buttons = `<button class="btn btn-sm btn-info" onclick="viewReturnDetail(${data})" title="Detail">
+                    return `<button class="btn btn-sm btn-info" onclick="viewReturnDetail(${data})" title="View Detail">
                         <i class="fas fa-eye"></i>
                     </button>`;
-                    if (row.status === 'PENDING') {
-                        buttons += ` <button class="btn btn-sm btn-success" onclick="confirmReturn(${data})" title="Konfirmasi">
-                            <i class="fas fa-check"></i>
-                        </button>`;
-                    }
-                    return buttons;
                 }
             }
         ],
@@ -509,74 +653,121 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     const data = response.data;
+                    
+                    // Type and Source badges
+                    let typeBadge = '';
+                    if (data.item_type === 'tool') {
+                        typeBadge = '<span class="badge bg-secondary">🔧 Tool</span>';
+                    } else {
+                        typeBadge = '<span class="badge bg-primary">⚙ Sparepart</span>';
+                    }
+                    
+                    let sourceBadge = '';
+                    if (data.is_from_warehouse !== undefined && parseInt(data.is_from_warehouse) === 0) {
+                        sourceBadge = '<span class="badge bg-warning text-dark ms-2">♻ Non-Warehouse</span>';
+                    } else {
+                        sourceBadge = '<span class="badge bg-success ms-2">🏪 Warehouse</span>';
+                    }
+                    
                     let html = `
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <strong>Work Order:</strong><br>
-                                <span class="badge bg-primary">${data.work_order_number || '-'}</span>
-                            </div>
-                            <div class="col-md-6">
-                                <strong>WO Date:</strong><br>
-                                ${data.report_date_formatted || '-'}
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <strong>Sparepart Code:</strong><br>
-                                ${data.sparepart_code || '-'}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Sparepart Name:</strong><br>
-                                <strong>${data.sparepart_name || '-'}</strong>
+                        <!-- Work Order Info -->
+                        <div class="border-bottom pb-3 mb-3">
+                            <div class="row">
+                                <div class="col-6">
+                                    <label class="text-muted small d-block mb-1">Work Order</label>
+                                    <h5 class="mb-0 text-primary fw-semibold">${data.work_order_number || '-'}</h5>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <label class="text-muted small d-block mb-1">Date</label>
+                                    <div class="fw-semibold">${data.report_date_formatted || '-'}</div>
+                                </div>
                             </div>
                         </div>
-                        <hr>
-                        <div class="row mb-3">
-                            <div class="col-md-4">
-                                <strong>Quantity Brought:</strong><br>
-                                <span class="badge bg-info">${data.quantity_brought || 0} ${data.satuan || 'PCS'}</span>
-                            </div>
-                            <div class="col-md-4">
-                                <strong>Quantity Used:</strong><br>
-                                <span class="badge bg-success">${data.quantity_used || 0} ${data.satuan || 'PCS'}</span>
-                            </div>
-                            <div class="col-md-4">
-                                <strong>Quantity Returned:</strong><br>
-                                ${data.quantity_returned > 0 ? `<span class="badge bg-warning">${data.quantity_returned} ${data.satuan || 'PCS'}</span>` : '<span class="badge bg-secondary">0</span>'}
+
+                        <!-- Item Type & Source -->
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-2">Classification</label>
+                            <div>
+                                ${typeBadge}
+                                ${sourceBadge}
                             </div>
                         </div>
-                        <hr>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <strong>Customer:</strong><br>
-                                ${data.customer_name || '-'}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Unit:</strong><br>
-                                ${data.unit_number || '-'}
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <strong>Mechanic:</strong><br>
-                                ${data.mechanic_name || '-'}
-                            </div>
-                            <div class="col-md-6">
-                                <strong>Used Date:</strong><br>
-                                ${data.used_at_formatted || '-'}
+
+                        <!-- Item Details -->
+                        <div class="bg-light p-3 rounded mb-3">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="text-muted small d-block mb-1">Code</label>
+                                    <div class="fw-semibold">${data.sparepart_code || '-'}</div>
+                                </div>
+                                <div class="col-md-8">
+                                    <label class="text-muted small d-block mb-1">Name</label>
+                                    <div class="fw-semibold">${data.sparepart_name || '-'}</div>
+                                </div>
                             </div>
                         </div>
-                        <hr>
-                        <div class="row mb-3">
-                            <div class="col-md-6">
-                                <strong>Return Date:</strong><br>
-                                ${data.returned_at_formatted || 'Not returned yet'}
+
+                        <!-- Quantity -->
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-2">Quantity</label>
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="text-muted small mb-1">Brought</div>
+                                        <h5 class="mb-0 text-info">${data.quantity_brought || 0}</h5>
+                                        <small class="text-muted">${data.satuan || 'PCS'}</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="text-muted small mb-1">Used</div>
+                                        <h5 class="mb-0 text-success">${data.quantity_used || 0}</h5>
+                                        <small class="text-muted">${data.satuan || 'PCS'}</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="border rounded p-3 text-center">
+                                        <div class="text-muted small mb-1">Returned</div>
+                                        <h5 class="mb-0 ${data.quantity_returned > 0 ? 'text-warning' : 'text-secondary'}">${data.quantity_returned > 0 ? data.quantity_returned : '0'}</h5>
+                                        <small class="text-muted">${data.quantity_returned > 0 ? data.satuan || 'PCS' : '-'}</small>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        ${data.usage_notes ? `<hr><div class="mb-3"><strong>Usage Notes:</strong><br>${data.usage_notes}</div>` : ''}
-                        ${data.return_notes ? `<div class="mb-3"><strong>Return Notes:</strong><br>${data.return_notes}</div>` : ''}
+
+                        <!-- Work Order Details -->
+                        <div class="bg-light p-3 rounded mb-3">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="text-muted small d-block mb-1">Customer</label>
+                                    <div class="fw-semibold">${data.customer_name || '-'}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-muted small d-block mb-1">Unit</label>
+                                    <div class="fw-semibold">${data.unit_number || '-'}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-muted small d-block mb-1">Mechanic</label>
+                                    <div class="fw-semibold">${data.mechanic_name || '-'}</div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="text-muted small d-block mb-1">Usage Date</label>
+                                    <div class="fw-semibold">${data.used_at_formatted || '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        ${data.usage_notes && data.usage_notes !== '-' ? `
+                        <div class="border-start border-primary border-3 ps-3 py-2 mb-3">
+                            <label class="text-muted small d-block mb-1"><i class="fas fa-sticky-note me-1"></i>Usage Notes</label>
+                            <div>${data.usage_notes}</div>
+                        </div>` : ''}
+                        
+                        ${data.return_notes && data.return_notes !== '-' ? `
+                        <div class="border-start border-warning border-3 ps-3 py-2">
+                            <label class="text-muted small d-block mb-1"><i class="fas fa-undo me-1"></i>Return Notes</label>
+                            <div>${data.return_notes}</div>
+                        </div>` : ''}
                     `;
                     $('#usageDetailBody').html(html);
                     $('#usageDetailModal').modal('show');
@@ -601,6 +792,22 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.success) {
                     const data = response.data;
+                    
+                    // Type and Source badges
+                    let typeBadge = '';
+                    if (data.item_type === 'tool') {
+                        typeBadge = '<span class="badge bg-secondary">🔧 Tool</span>';
+                    } else {
+                        typeBadge = '<span class="badge bg-primary">⚙ Sparepart</span>';
+                    }
+                    
+                    let sourceBadge = '';
+                    if (data.is_from_warehouse !== undefined && parseInt(data.is_from_warehouse) === 0) {
+                        sourceBadge = '<span class="badge bg-warning text-dark ms-2">♻ Non-Warehouse</span>';
+                    } else {
+                        sourceBadge = '<span class="badge bg-success ms-2">🏪 Warehouse</span>';
+                    }
+                    
                     let html = `
                         <div class="row mb-3">
                             <div class="col-md-6">
@@ -614,12 +821,18 @@ $(document).ready(function() {
                         </div>
                         <hr>
                         <div class="row mb-3">
+                            <div class="col-md-12 mb-2">
+                                <strong>Item Type & Source:</strong><br>
+                                ${typeBadge} ${sourceBadge}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
                             <div class="col-md-6">
-                                <strong>Sparepart Code:</strong><br>
+                                <strong>Item Code:</strong><br>
                                 ${data.sparepart_code}
                             </div>
                             <div class="col-md-6">
-                                <strong>Sparepart Name:</strong><br>
+                                <strong>Item Name:</strong><br>
                                 <strong>${data.sparepart_name}</strong>
                             </div>
                         </div>
@@ -724,6 +937,96 @@ $(document).ready(function() {
             },
             error: function() {
                 alert('An error occurred while confirming');
+            }
+        });
+    };
+    
+    // View work order detail (for Usage tab)
+    window.viewWorkOrderDetail = function(workOrderId) {
+        $.ajax({
+            url: '<?= base_url('warehouse/sparepart-usage/get-work-order-spareparts') ?>/' + workOrderId,
+            type: 'GET',
+            dataType: 'json',
+            success: function(spareparts) {
+                console.log('Modal spareparts:', spareparts);
+                
+                // Check for error response
+                if (spareparts && spareparts.error) {
+                    alert('Error: ' + (spareparts.message || 'Unknown error'));
+                    return;
+                }
+                
+                if (Array.isArray(spareparts) && spareparts.length > 0) {
+                    var html = '<div class="table-responsive">';
+                    html += '<table class="table table-bordered table-sm">';
+                    html += '<thead class="table-light">';
+                    html += '<tr>';
+                    html += '<th width="80px">Type</th>';
+                    html += '<th width="80px">Source</th>';
+                    html += '<th>Item</th>';
+                    html += '<th width="80px" class="text-center">Brought</th>';
+                    html += '<th width="80px" class="text-center">Used</th>';
+                    html += '<th width="80px" class="text-center">Returned</th>';
+                    html += '<th>Notes</th>';
+                    html += '</tr>';
+                    html += '</thead>';
+                    html += '<tbody>';
+                    
+                    spareparts.forEach(function(item) {
+                        var typeBadge = item.item_type === 'tool' 
+                            ? '<span class="badge bg-secondary">🔧 Tool</span>'
+                            : '<span class="badge bg-primary">⚙ Part</span>';
+                        
+                        var sourceBadge = parseInt(item.is_from_warehouse) === 0
+                            ? '<span class="badge bg-warning text-dark">♻ Bekas</span>'
+                            : '<span class="badge bg-success">🏪 WH</span>';
+                        
+                        html += '<tr>';
+                        html += '<td>' + typeBadge + '</td>';
+                        html += '<td>' + sourceBadge + '</td>';
+                        html += '<td><strong>' + item.sparepart_name + '</strong><br><small class="text-muted">' + item.sparepart_code + '</small></td>';
+                        html += '<td class="text-center"><span class="badge bg-info">' + item.quantity_brought + '</span></td>';
+                        html += '<td class="text-center"><span class="badge bg-success">' + item.quantity_used + '</span></td>';
+                        html += '<td class="text-center">' + (item.quantity_return > 0 ? '<span class="badge bg-warning text-dark">' + item.quantity_return + '</span>' : '-') + '</td>';
+                        html += '<td><small>' + (item.usage_notes || '-') + '</small></td>';
+                        html += '</tr>';
+                    });
+                    
+                    html += '</tbody>';
+                    html += '</table>';
+                    html += '</div>';
+                    
+                    // Get work order info from first item
+                    var woInfo = spareparts[0];
+                    $('#usageModalTitle').html('<i class="fas fa-info-circle text-primary me-2"></i>Work Order: ' + woInfo.work_order_number);
+                    $('#usageDetailBody').html(`
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Date:</strong> ${woInfo.report_date || '-'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Mechanic:</strong> ${woInfo.mechanic_name || '-'}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <strong>Customer:</strong> ${woInfo.customer_name || '-'}
+                            </div>
+                            <div class="col-md-6">
+                                <strong>Unit:</strong> ${woInfo.unit_number || '-'} - ${woInfo.unit_info || ''}
+                            </div>
+                        </div>
+                        <hr>
+                        <h6>Spareparts Used:</h6>
+                        ${html}
+                    `);
+                    $('#usageDetailModal').modal('show');
+                } else {
+                    alert('No spareparts found for this work order');
+                }
+            },
+            error: function() {
+                alert('Failed to load work order details');
             }
         });
     };

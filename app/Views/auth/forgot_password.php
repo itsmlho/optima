@@ -2,7 +2,7 @@
 <html lang="<?= service('request')->getLocale() ?>" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="description" content="Reset Password - OPTIMA | PT Sarana Mitra Luas Tbk">
     <meta name="robots" content="noindex, nofollow">
@@ -25,35 +25,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        /* Custom styles for forgot password page */
         body {
-            font-family: 'Metropolis', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             padding: 2rem 1rem;
-        }
-        
-        .auth-container {
-            width: 100%;
-            max-width: 420px;
-        }
-        
-        .auth-card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-            padding: 2rem 1.75rem;
-            border: 1px solid #e9ecef;
-            position: relative;
-            overflow: hidden;
         }
         
         .auth-card::before {
@@ -64,11 +39,6 @@
             right: 0;
             height: 4px;
             background: linear-gradient(90deg, #0061f2, #00ac69);
-        }
-        
-        .auth-header {
-            text-align: center;
-            margin-bottom: 2rem;
         }
         
         .auth-logo {
@@ -90,70 +60,17 @@
             background: linear-gradient(180deg, #0061f2, #00ac69);
         }
         
-        .auth-icon {
-            width: 70px;
-            height: 70px;
-            background: linear-gradient(135deg, #0061f2, #00ac69);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 1.5rem;
+        /* Mobile adjustments */
+        @media (max-width: 576px) {
+            .auth-logo img {
+                height: 28px;
+            }
+            
+            .logo-divider {
+                height: 20px;
+            }
         }
-        
-        .auth-icon i {
-            font-size: 2rem;
-            color: white;
-        }
-        
-        .auth-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-        }
-        
-        .auth-subtitle {
-            color: #6c757d;
-            font-size: 0.95rem;
-            line-height: 1.5;
-        }
-        
-        .form-group {
-            margin-bottom: 1.5rem;
-        }
-        
-        .form-label {
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-        
-        .form-control {
-            padding: 0.75rem 0.875rem;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-        
-        .form-control:focus {
-            border-color: #0061f2;
-            box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.1);
-        }
-        
-        .btn-primary {
-            width: 100%;
-            padding: 0.875rem;
-            font-weight: 600;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #0061f2, #0056b3);
-            border: none;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 97, 242, 0.3);
-        }
+    </style>
         
         .btn-primary:hover {
             background: linear-gradient(135deg, #0056b3, #004085);
@@ -284,18 +201,101 @@
             color: #adb5bd;
         }
         
-        /* Responsive */
-        @media (max-width: 576px) {
-            body {
-                padding: 1rem;
+        /* Touch-friendly elements */
+        .btn, button {
+            min-height: 44px;
+            min-width: 44px;
+        }
+        
+        input.form-control {
+            min-height: 44px;
+            font-size: 16px; /* Prevent zoom on iOS */
+        }
+        
+        /* Tablet Responsive (768px - 991px) */
+        @media (max-width: 991px) {
+            .auth-container {
+                padding: 1.5rem;
             }
             
             .auth-card {
-                padding: 2rem 1.5rem;
+                padding: 2.5rem 2rem;
+            }
+        }
+        
+        /* Mobile Landscape & Small Tablets (577px - 767px) */
+        @media (max-width: 767px) {
+            body {
+                padding: 1.25rem;
+            }
+            
+            .auth-card {
+                padding: 2rem 1.75rem;
             }
             
             .auth-title {
                 font-size: 1.5rem;
+            }
+            
+            .auth-subtitle {
+                font-size: 0.85rem;
+            }
+        }
+        
+        /* Mobile Portrait (max 576px) */
+        @media (max-width: 576px) {
+            body {
+                padding: 0.75rem;
+            }
+            
+            .auth-card {
+                padding: 1.75rem 1.5rem;
+                border-radius: 1rem;
+            }
+            
+            .auth-title {
+                font-size: 1.35rem;
+            }
+            
+            .auth-logo img {
+                height: 28px;
+            }
+            
+            .logo-divider {
+                height: 20px;
+            }
+            
+            .btn-primary {
+                padding: 0.75rem;
+                font-size: 0.95rem;
+            }
+            
+            .alert {
+                padding: 0.875rem;
+                font-size: 0.875rem;
+            }
+        }
+        
+        /* Extra Small Mobile (max 375px) */
+        @media (max-width: 375px) {
+            .auth-card {
+                padding: 1.5rem 1.25rem;
+            }
+            
+            .auth-title {
+                font-size: 1.25rem;
+            }
+            
+            .auth-subtitle {
+                font-size: 0.8rem;
+            }
+            
+            .form-label {
+                font-size: 0.85rem;
+            }
+            
+            .form-control {
+                font-size: 15px;
             }
         }
     </style>

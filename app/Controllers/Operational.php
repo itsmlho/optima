@@ -321,10 +321,14 @@ class Operational extends BaseController
                 spk.pic as spk_pic, 
                 spk.kontak as spk_kontak,
                 spk.nomor_spk,
+                spk.kontrak_id as spk_kontrak_id,
                 jpk.nama as jenis_perintah,
-                tpk.nama as tujuan_perintah
+                tpk.nama as tujuan_perintah,
+                q.quotation_number
             ')
             ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
+            ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
+            ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
             ->join('jenis_perintah_kerja jpk', 'jpk.id = delivery_instructions.jenis_perintah_kerja_id', 'left')
             ->join('tujuan_perintah_kerja tpk', 'tpk.id = delivery_instructions.tujuan_perintah_kerja_id', 'left')
             ->orderBy('delivery_instructions.id','DESC')
@@ -1087,8 +1091,16 @@ class Operational extends BaseController
     public function diPrint($id)
     {
         $id = (int)$id;
-        $di = $this->diModel->find($id);
-        if ($di && !is_array($di)) { $di = (array)$di; }
+        // Get DI with quotation_number via join
+        $di = $this->db->table('delivery_instructions')
+            ->select('delivery_instructions.*, spk.kontrak_id as spk_kontrak_id, q.quotation_number')
+            ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
+            ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
+            ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
+            ->where('delivery_instructions.id', $id)
+            ->get()
+            ->getRowArray();
+        
         if (!$di) {
             return $this->response->setStatusCode(404)->setBody('Delivery Instruction tidak ditemukan');
         }

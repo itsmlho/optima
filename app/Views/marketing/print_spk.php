@@ -450,7 +450,18 @@ $placeholder = ($status === 'SUBMITTED');
         <div class="header-right">
             <div class="document-info">
                 <div class="doc-number">No <?= esc($spk['nomor_spk'] ?? $spk['no_spk'] ?? '-') ?></div>
-                <div class="doc-spk">No PO/Kontrak: <?= esc($spk['po_kontrak_nomor'] ?? $spk['kontrak_no'] ?? '-') ?></div>
+                <?php 
+                    // Show quotation number or contract indicator
+                    $hasContract = !empty($spk['kontrak_id']);
+                    if ($hasContract) {
+                        $sourceDisplay = 'Source: Contract-based';
+                    } else {
+                        // Show actual quotation number
+                        $quotationNumber = $spk['quotation_number'] ?? '-';
+                        $sourceDisplay = 'No Quotation: ' . $quotationNumber;
+                    }
+                ?>
+                <div class="doc-spk"><?= $sourceDisplay ?></div>
                 <div class="doc-date">Tanggal: <?= date('d F Y', strtotime($spk['created_at'] ?? $spk['dibuat_pada'] ?? date('Y-m-d'))) ?></div>
             </div>
             <div class="status-badge">

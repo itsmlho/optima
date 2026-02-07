@@ -23,88 +23,28 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     
     <!-- Font Awesome -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css\" rel=\"stylesheet\">
     
-    <!-- Custom CSS -->
-    <link href="<?= base_url('assets/css/optima-pro.css') ?>" rel="stylesheet">
-    
+    <!-- Custom Styles for OTP Verification -->
     <!-- Custom Styles -->
     <style>
+        /* Custom styles for verify OTP page */
         body {
-            font-family: 'Metropolis', sans-serif;
-            background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 50%, #f8f9fa 100%);
-            background-attachment: fixed;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             padding: 1rem;
-            position: relative;
-            overflow-x: hidden;
-        }
-        
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                radial-gradient(circle at 20% 50%, rgba(0, 97, 242, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(77, 140, 255, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 40% 20%, rgba(0, 97, 242, 0.03) 0%, transparent 50%);
-            background-size: 100% 100%;
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 97, 242, 0.02) 2px, rgba(0, 97, 242, 0.02) 4px);
-            pointer-events: none;
-            z-index: 0;
         }
         
         .otp-container {
-            background: rgba(255, 255, 255, 0.95);
+            background: rgba(255, 255, 255, 0.98);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border-radius: 1.5rem;
-            box-shadow: 
-                0 8px 32px rgba(0, 97, 242, 0.1),
-                0 2px 8px rgba(0, 0, 0, 0.05),
-                inset 0 1px 0 rgba(255, 255, 255, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e9ecef;
             overflow: hidden;
             max-width: 500px;
             width: 100%;
             position: relative;
-            z-index: 1;
-        }
-        
-        .otp-container::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            right: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(0, 97, 242, 0.08) 0%, transparent 70%);
-            animation: pulse 15s ease-in-out infinite;
-            pointer-events: none;
-            z-index: 0;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1) translate(0, 0); opacity: 0.5; }
-            50% { transform: scale(1.1) translate(-5%, -5%); opacity: 0.8; }
         }
         
         .otp-header {
@@ -113,12 +53,6 @@
             padding: 2.5rem 2rem;
             text-align: center;
             position: relative;
-            overflow: hidden;
-        }
-        
-        .otp-header-content {
-            position: relative;
-            z-index: 2;
         }
         
         .otp-icon {
@@ -147,33 +81,20 @@
         
         .otp-body {
             padding: 2.5rem 2rem;
-            position: relative;
-            z-index: 2;
-        }
-        
-        .otp-header {
-            position: relative;
-            z-index: 2;
         }
         
         .otp-info {
-            background: #f8f9fa;
+            background: #e7f3ff;
             border-left: 4px solid #0061f2;
             padding: 1rem;
-            border-radius: 4px;
+            border-radius: 0.75rem;
             margin-bottom: 2rem;
             font-size: 0.9rem;
+            color: #0061f2;
         }
         
         .otp-info strong {
             color: #0061f2;
-        }
-        
-        .otp-input-group {
-            display: flex;
-            gap: 0.5rem;
-            justify-content: center;
-            margin-bottom: 1.5rem;
         }
         
         .otp-input {
@@ -185,20 +106,17 @@
             font-weight: 700;
             letter-spacing: 0.5rem;
             border: 2px solid #e9ecef;
-            border-radius: 0.75rem;
+            border-radius: 10px;
             padding: 1rem;
             transition: all 0.3s ease;
+            margin: 0 auto 1.5rem;
+            display: block;
         }
         
         .otp-input:focus {
             border-color: #0061f2;
-            box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.25);
+            box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.1);
             outline: none;
-        }
-        
-        .otp-input:disabled {
-            background-color: #f8f9fa;
-            cursor: not-allowed;
         }
         
         .btn-verify {
@@ -206,23 +124,19 @@
             padding: 0.875rem;
             font-size: 1rem;
             font-weight: 600;
-            border-radius: 0.5rem;
-            background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
+            border-radius: 10px;
+            background: linear-gradient(135deg, #0061f2, #0056b3);
             border: none;
             color: white;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 97, 242, 0.3);
             margin-bottom: 1rem;
         }
         
         .btn-verify:hover:not(:disabled) {
-            background: linear-gradient(135deg, #0050d0 0%, #0061f2 100%);
+            background: linear-gradient(135deg, #0056b3, #004085);
             transform: translateY(-2px);
-            box-shadow: 0 0.5rem 1rem rgba(0, 97, 242, 0.3);
-        }
-        
-        .btn-verify:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+            box-shadow: 0 6px 20px rgba(0, 97, 242, 0.4);
         }
         
         .resend-section {
@@ -235,21 +149,15 @@
             border: none;
             color: #0061f2;
             font-weight: 600;
-            text-decoration: none;
             cursor: pointer;
             padding: 0.5rem 1rem;
-            border-radius: 0.25rem;
+            border-radius: 0.5rem;
             transition: all 0.3s ease;
         }
         
         .btn-resend:hover:not(:disabled) {
             background-color: #f8f9fa;
-            color: #0050d0;
-        }
-        
-        .btn-resend:disabled {
-            color: #6c757d;
-            cursor: not-allowed;
+            color: #004085;
         }
         
         .back-link {
@@ -267,15 +175,66 @@
             color: #0061f2;
         }
         
-        .alert {
-            border-radius: 0.5rem;
-            font-weight: 500;
-            margin-bottom: 1.5rem;
-        }
-        
         .countdown {
             color: #0061f2;
             font-weight: 600;
+        }
+        
+        /* Mobile adjustments */
+        @media (max-width: 767px) {
+            .otp-header {
+                padding: 2rem 1.5rem;
+            }
+            
+            .otp-body {
+                padding: 2rem 1.5rem;
+            }
+            
+            .otp-icon {
+                width: 70px;
+                height: 70px;
+                font-size: 2rem;
+            }
+            
+            .otp-title {
+                font-size: 1.5rem;
+            }
+            
+            .otp-input {
+                height: 60px;
+                font-size: 1.75rem;
+            }
+        }
+        
+        @media (max-width: 576px) {
+            .otp-header {
+                padding: 1.75rem 1.25rem;
+            }
+            
+            .otp-body {
+                padding: 1.75rem 1.25rem;
+            }
+            
+            .otp-icon {
+                width: 60px;
+                height: 60px;
+                font-size: 1.75rem;
+                margin-bottom: 1rem;
+            }
+            
+            .otp-title {
+                font-size: 1.35rem;
+            }
+            
+            .otp-subtitle {
+                font-size: 0.875rem;
+            }
+            
+            .otp-input {
+                height: 55px;
+                font-size: 1.5rem;
+                letter-spacing: 0.3rem;
+            }
         }
     </style>
 </head>

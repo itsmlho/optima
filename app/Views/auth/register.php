@@ -2,7 +2,7 @@
 <html lang="<?= service('request')->getLocale() ?>" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <meta name="description" content="Register to OPTIMA - PT Sarana Mitra Luas Tbk">
     <meta name="robots" content="noindex, nofollow">
@@ -25,35 +25,15 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        /* Custom styles for register page */
         body {
-            font-family: 'Metropolis', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             padding: 2rem 1rem;
         }
         
-        .auth-container {
-            width: 100%;
-            max-width: 520px;
-        }
-        
         .auth-card {
-            background: white;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-            padding: 2rem 1.75rem;
             border: 1px solid #e9ecef;
-            position: relative;
-            overflow: hidden;
         }
         
         .auth-card::before {
@@ -64,11 +44,6 @@
             right: 0;
             height: 4px;
             background: linear-gradient(90deg, #0061f2, #00ac69);
-        }
-        
-        .auth-header {
-            text-align: center;
-            margin-bottom: 1.5rem;
         }
         
         .auth-logo {
@@ -90,54 +65,6 @@
             background: linear-gradient(180deg, #0061f2, #00ac69);
         }
         
-        .auth-title {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #2c3e50;
-            margin-bottom: 0.5rem;
-        }
-        
-        .auth-subtitle {
-            color: #6c757d;
-            font-size: 0.875rem;
-        }
-        
-        .form-group {
-            margin-bottom: 1rem;
-        }
-        
-        .form-label {
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-        
-        .required {
-            color: #dc3545;
-        }
-        
-        .form-control, .form-select {
-            padding: 0.675rem 0.875rem;
-            border: 2px solid #e9ecef;
-            border-radius: 10px;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-        
-        .form-control:focus, .form-select:focus {
-            border-color: #0061f2;
-            box-shadow: 0 0 0 0.2rem rgba(0, 97, 242, 0.1);
-        }
-        
-        .input-group {
-            position: relative;
-        }
-        
-        .input-group .form-control {
-            padding-right: 3rem;
-        }
-        
         .password-toggle {
             position: absolute;
             right: 1rem;
@@ -147,8 +74,9 @@
             border: none;
             color: #6c757d;
             cursor: pointer;
-            padding: 0;
+            padding: 0.5rem 0.75rem;
             z-index: 10;
+            min-width: 44px;
         }
         
         .password-toggle:hover {
@@ -179,22 +107,8 @@
         .strength-good { background: #17a2b8; }
         .strength-strong { background: #28a745; }
         
-        .btn-primary {
-            width: 100%;
-            padding: 0.875rem;
-            font-weight: 600;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #0061f2, #0056b3);
-            border: none;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 97, 242, 0.3);
-        }
-        
-        .btn-primary:hover {
-            background: linear-gradient(135deg, #0056b3, #004085);
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 97, 242, 0.4);
+        .required {
+            color: #dc3545;
         }
         
         .auth-links {
@@ -214,78 +128,14 @@
             color: #004085;
         }
         
-        .alert {
-            border-radius: 10px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border: none;
-        }
-        
-        .alert-danger {
-            background-color: #ffe5e5;
-            color: #c92a2a;
-        }
-        
-        .form-text {
-            font-size: 0.8rem;
-            color: #6c757d;
-            margin-top: 0.25rem;
-        }
-        
-        .row {
-            margin-left: -0.5rem;
-            margin-right: -0.5rem;
-        }
-        
-        .row > * {
-            padding-left: 0.5rem;
-            padding-right: 0.5rem;
-        }
-        
-        /* Dark mode support */
-        [data-bs-theme="dark"] body {
-            background: linear-gradient(135deg, #1a1d23 0%, #2c3034 100%);
-        }
-        
-        [data-bs-theme="dark"] .auth-card {
-            background: #2c3034;
-            border-color: #343a40;
-        }
-        
-        [data-bs-theme="dark"] .auth-title {
-            color: #e2e8f0;
-        }
-        
-        [data-bs-theme="dark"] .auth-subtitle,
-        [data-bs-theme="dark"] .form-label {
-            color: #adb5bd;
-        }
-        
-        [data-bs-theme="dark"] .form-control,
-        [data-bs-theme="dark"] .form-select {
-            background: #343a40;
-            border-color: #495057;
-            color: #e2e8f0;
-        }
-        
-        [data-bs-theme="dark"] .form-control:focus,
-        [data-bs-theme="dark"] .form-select:focus {
-            background: #343a40;
-            border-color: #0061f2;
-        }
-        
-        /* Responsive */
+        /* Mobile adjustments for logo */
         @media (max-width: 576px) {
-            body {
-                padding: 1rem;
+            .auth-logo img {
+                height: 28px;
             }
             
-            .auth-card {
-                padding: 2rem 1.5rem;
-            }
-            
-            .auth-title {
-                font-size: 1.5rem;
+            .logo-divider {
+                height: 20px;
             }
         }
     </style>

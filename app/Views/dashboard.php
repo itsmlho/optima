@@ -4,147 +4,7 @@
 
 <?= $this->section('css') ?>
 <style>
-    /* Clean Enterprise Dashboard - Soft Professional Colors */
-    :root {
-        --primary-color: #3b82f6;
-        --success-color: #22c55e;
-        --warning-color: #fb923c;
-        --danger-color: #f87171;
-        --info-color: #38bdf8;
-        --secondary-color: #94a3b8;
-        --light-bg: #f8fafc;
-        --border-color: #e2e8f0;
-    }
-    
-    body {
-        background: #f8fafc;
-        font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
-    }
-    
-    /* KPI Cards - Modern Design */
-    .kpi-card {
-        border: none;
-        border-radius: 16px;
-        overflow: hidden;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        background: white;
-        position: relative;
-    }
-    
-    .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-    }
-    
-    .kpi-card-header {
-        background: #f8fafc;
-        padding: 1.25rem;
-        border-bottom: 1px solid var(--border-color);
-    }
-    
-    .kpi-card-body {
-        padding: 1.5rem;
-    }
-    
-    .kpi-icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .kpi-value {
-        font-size: 2.5rem;
-        font-weight: 700;
-        line-height: 1;
-        margin-bottom: 0.5rem;
-    }
-    
-    .kpi-label {
-        font-size: 0.875rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: #64748b;
-    }
-    
-    .kpi-trend {
-        font-size: 0.875rem;
-        font-weight: 600;
-        padding: 0.25rem 0.75rem;
-        border-radius: 20px;
-        display: inline-block;
-        margin-top: 0.5rem;
-    }
-    
-    /* Chart Cards */
-    .chart-card {
-        border: none;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        background: white;
-        height: 100%;
-    }
-    
-    .chart-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid var(--border-color);
-        background: white;
-    }
-    
-    .chart-title {
-        font-size: 1.125rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin: 0;
-    }
-    
-    .chart-body {
-        padding: 1.5rem;
-        height: 300px;
-    }
-    
-    /* Widget Cards */
-    .widget-card {
-        border: none;
-        border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        background: white;
-        transition: all 0.3s ease;
-    }
-    
-    .widget-card:hover {
-        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
-    }
-    
-    .widget-header {
-        padding: 1.25rem 1.5rem;
-        border-bottom: 1px solid rgba(0,0,0,0.05);
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-    
-    .widget-title {
-        font-size: 1rem;
-        font-weight: 700;
-        color: #1e293b;
-        margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .widget-body {
-        padding: 1.5rem;
-    }
-    
-    /* Table Styles */
+    /* Page-specific overrides only */
     .modern-table {
         margin: 0;
     }
@@ -296,60 +156,52 @@
     </div>
 
     <!-- KPI Cards Row -->
-    <div class="row g-3 mb-4">
+    <div class="kpi-grid">
         <!-- Fleet Utilization -->
-        <div class="col-xl-3 col-md-6">
-            <div class="kpi-card">
-                <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background: #3b82f6;">
-                        <i class="fas fa-chart-pie text-white"></i>
-                    </div>
-                    <div class="kpi-value text-primary" id="kpiFleetUtil">--</div>
-                    <div class="kpi-label">Fleet Utilization</div>
-                    <small class="text-muted" id="kpiFleetDetails">Loading...</small>
-                </div>
+        <div class="kpi-card kpi-primary">
+            <div class="kpi-icon">
+                <i class="fas fa-chart-pie"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-value" id="kpiFleetUtil">--</div>
+                <div class="kpi-label">Fleet Utilization</div>
+                <div class="kpi-change" id="kpiFleetDetails">Loading...</div>
             </div>
         </div>
 
         <!-- Breakdown/Service -->
-        <div class="col-xl-3 col-md-6">
-            <div class="kpi-card">
-                <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background: #f87171;">
-                        <i class="fas fa-wrench text-white"></i>
-                    </div>
-                    <div class="kpi-value text-danger" id="kpiBreakdown">--</div>
-                    <div class="kpi-label">Units in Service</div>
-                    <small class="text-muted">Requires Attention</small>
-                </div>
+        <div class="kpi-card kpi-danger">
+            <div class="kpi-icon">
+                <i class="fas fa-wrench"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-value" id="kpiBreakdown">--</div>
+                <div class="kpi-label">Units in Service</div>
+                <div class="kpi-change">Requires Attention</div>
             </div>
         </div>
 
         <!-- Active Contracts -->
-        <div class="col-xl-3 col-md-6">
-            <div class="kpi-card">
-                <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background: #22c55e;">
-                        <i class="fas fa-file-contract text-white"></i>
-                    </div>
-                    <div class="kpi-value text-success" id="kpiContracts">--</div>
-                    <div class="kpi-label">Active Contracts</div>
-                    <small class="text-muted">Total Deals</small>
-                </div>
+        <div class="kpi-card kpi-success">
+            <div class="kpi-icon">
+                <i class="fas fa-file-contract"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-value" id="kpiContracts">--</div>
+                <div class="kpi-label">Active Contracts</div>
+                <div class="kpi-change">Total Deals</div>
             </div>
         </div>
 
         <!-- Pending Delivery -->
-        <div class="col-xl-3 col-md-6">
-            <div class="kpi-card">
-                <div class="kpi-card-body">
-                    <div class="kpi-icon" style="background: #38bdf8;">
-                        <i class="fas fa-truck text-white"></i>
-                    </div>
-                    <div class="kpi-value text-info" id="kpiDelivery">--</div>
-                    <div class="kpi-label">Pending Delivery</div>
-                    <small class="text-muted">Scheduled for today/tmrw</small>
-                </div>
+        <div class="kpi-card kpi-info">
+            <div class="kpi-icon">
+                <i class="fas fa-truck"></i>
+            </div>
+            <div class="kpi-content">
+                <div class="kpi-value" id="kpiDelivery">--</div>
+                <div class="kpi-label">Pending Delivery</div>
+                <div class="kpi-change">Scheduled for today/tmrw</div>
             </div>
         </div>
     </div>
@@ -402,8 +254,8 @@
                         <h6 class="text-primary fw-bold mb-3">
                             <i class="fas fa-building me-2"></i>CENTRAL Workshop
                         </h6>
-                        <div class="table-responsive">
-                            <table class="table modern-table table-sm">
+                        <div class="table-scroll-wrapper">
+                            <table class="table table-mobile-card modern-table table-sm">
                                 <thead>
                                     <tr>
                                         <th>Mechanic</th>
@@ -423,8 +275,8 @@
                         <h6 class="text-success fw-bold mb-3">
                             <i class="fas fa-map-marker-alt me-2"></i>BRANCH Areas
                         </h6>
-                        <div class="table-responsive">
-                            <table class="table modern-table table-sm">
+                        <div class="table-scroll-wrapper">
+                            <table class="table table-mobile-card modern-table table-sm">
                                 <thead>
                                     <tr>
                                         <th>Mechanic</th>
@@ -538,8 +390,8 @@
                     </h5>
                 </div>
                 <div class="widget-body">
-                    <div class="table-responsive">
-                        <table class="table modern-table table-sm">
+                    <div class="table-scroll-wrapper">
+                        <table class="table table-mobile-card modern-table table-sm">
                             <thead>
                                 <tr>
                                     <th>Part Name</th>

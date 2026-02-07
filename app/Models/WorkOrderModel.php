@@ -481,6 +481,24 @@ class WorkOrderModel extends Model
     }
 
     /**
+     * Count work orders by status
+     */
+    public function countByStatus($status)
+    {
+        $builder = $this->db->table($this->table . ' wo');
+        $builder->select('COUNT(*) as count')
+                ->join('work_order_statuses wos', 'wo.status_id = wos.id', 'left')
+                ->where('wo.deleted_at', null)
+                ->groupStart()
+                    ->where('wos.status_name', $status)
+                    ->orWhere('wos.status_code', $status)
+                ->groupEnd();
+        
+        $result = $builder->get()->getRowArray();
+        return $result['count'] ?? 0;
+    }
+
+    /**
      * Get staff by role
      */
     public function getStaff($role)
@@ -776,6 +794,7 @@ class WorkOrderModel extends Model
                 wos.id,
                 wos.sparepart_code as code,
                 wos.sparepart_name as name,
+                wos.item_type,
                 wos.quantity_brought as qty,
                 wos.quantity_used,
                 wos.satuan,
