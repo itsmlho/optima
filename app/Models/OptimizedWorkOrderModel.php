@@ -29,52 +29,59 @@ class OptimizedWorkOrderModel extends Model
         $builder->select([
             'wo.id',
             'wo.work_order_number',
-            'wo.issue_description',
+            'wo.complaint_description as issue_description',
             'wo.report_date',
             'wo.completion_date',
+            'wo.completion_date as closed_date',
             'wo.order_type',
             'wo.created_at',
             'wo.updated_at',
             'iu.no_unit',
-            'iu.merk_unit',
-            'iu.model_unit', 
-            'c.nama_customer as pelanggan',
-            'wc.nama_kategori as category',
-            'wp.nama_prioritas as priority',
-            'wp.warna as priority_color',
-            'ws.nama_status as status',
-            'ws.kode_status as status_code',
-            'ws.warna as status_color'
+            'mu.merk_unit',
+            'mu.model_unit', 
+            'COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan',
+            'woc.category_name as category',
+            'wop.priority_name as priority',
+            'wop.priority_color',
+            'wos.status_name as status',
+            'wos.status_code',
+            'wos.status_color'
         ]);
         
         // Optimized joins with proper indexes
         $builder->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left');
-        $builder->join('customer c', 'c.id = iu.customer_id', 'left');
-        $builder->join('work_order_categories wc', 'wc.id = wo.category_id', 'left');
-        $builder->join('work_order_priorities wp', 'wp.id = wo.priority', 'left');
-        $builder->join('work_order_statuses ws', 'ws.id = wo.status_id', 'left');
+        $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
+        $builder->join('kontrak k', 'iu.kontrak_id = k.id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        $builder->join('work_order_categories woc', 'woc.id = wo.category_id', 'left');
+        $builder->join('work_order_priorities wop', 'wop.id = wo.priority_id', 'left');
+        $builder->join('work_order_statuses wos', 'wos.id = wo.status_id', 'left');
+        
+        // Exclude soft deleted records
+        $builder->where('wo.deleted_at', null);
         
         // Apply filters efficiently
         if (!empty($filters['search'])) {
             $search = $filters['search'];
             $builder->groupStart()
                     ->like('wo.work_order_number', $search)
-                    ->orLike('wo.issue_description', $search)
+                    ->orLike('wo.complaint_description', $search)
                     ->orLike('iu.no_unit', $search)
-                    ->orLike('c.nama_customer', $search)
+                    ->orLike('c.customer_name', $search)
                     ->groupEnd();
         }
         
         if (!empty($filters['status'])) {
             if ($filters['status'] === 'exclude_closed') {
-                $builder->where('ws.kode_status !=', 'CLOSED');
+                $builder->where('wos.status_code !=', 'CLOSED');
             } else {
-                $builder->where('ws.kode_status', $filters['status']);
+                $builder->where('wos.status_code', $filters['status']);
             }
         }
         
         if (!empty($filters['priority'])) {
-            $builder->where('wp.nama_prioritas', $filters['priority']);
+            $builder->where('wop.priority_name', $filters['priority']);
         }
         
         if (!empty($filters['start_date'])) {
@@ -125,13 +132,16 @@ class OptimizedWorkOrderModel extends Model
         $builder = $this->db->table($this->table . ' wo');
         $builder->select([
             'COUNT(*) as total',
-            'SUM(CASE WHEN ws.kode_status = "OPEN" THEN 1 ELSE 0 END) as open',
-            'SUM(CASE WHEN ws.kode_status IN ("ASSIGNED", "IN_PROGRESS") THEN 1 ELSE 0 END) as in_progress',
-            'SUM(CASE WHEN ws.kode_status = "COMPLETED" THEN 1 ELSE 0 END) as completed',
-            'SUM(CASE WHEN ws.kode_status = "CLOSED" THEN 1 ELSE 0 END) as closed'
+            'SUM(CASE WHEN wos.status_code = "OPEN" THEN 1 ELSE 0 END) as open',
+            'SUM(CASE WHEN wos.status_code IN ("ASSIGNED", "IN_PROGRESS") THEN 1 ELSE 0 END) as in_progress',
+            'SUM(CASE WHEN wos.status_code = "COMPLETED" THEN 1 ELSE 0 END) as completed',
+            'SUM(CASE WHEN wos.status_code = "CLOSED" THEN 1 ELSE 0 END) as closed'
         ]);
         
-        $builder->join('work_order_statuses ws', 'ws.id = wo.status_id', 'left');
+        $builder->join('work_order_statuses wos', 'wos.id = wo.status_id', 'left');
+        
+        // Exclude soft deleted records
+        $builder->where('wo.deleted_at', null);
         
         // Apply same filters as main query
         if (!empty($filters['department_ids'])) {

@@ -17,7 +17,7 @@ $can_export = $permissions['export'];
 
 <!-- Statistics Cards -->
   <div class="row mt-3 mb-4">
-      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+      <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
           <div class="stat-card bg-primary-soft filter-card" data-filter="all" style="cursor:pointer;">
               <div class="d-flex align-items-center">
                   <div class="me-3">
@@ -30,7 +30,7 @@ $can_export = $permissions['export'];
               </div>
           </div>
       </div>
-      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+      <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
           <div class="stat-card bg-warning-soft filter-card" data-filter="DIRENCANAKAN" style="cursor:pointer;">
               <div class="d-flex align-items-center">
                   <div class="me-3">
@@ -43,7 +43,7 @@ $can_export = $permissions['export'];
               </div>
           </div>
       </div>
-      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+      <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
           <div class="stat-card bg-info-soft filter-card" data-filter="DALAM_PERJALANAN" style="cursor:pointer;">
               <div class="d-flex align-items-center">
                   <div class="me-3">
@@ -56,7 +56,7 @@ $can_export = $permissions['export'];
               </div>
           </div>
       </div>
-      <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
+      <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
           <div class="stat-card bg-success-soft filter-card" data-filter="SELESAI" style="cursor:pointer;">
               <div class="d-flex align-items-center">
                   <div class="me-3">
@@ -65,6 +65,19 @@ $can_export = $permissions['export'];
                   <div>
                       <div class="stat-value" id="deliveredDI">0</div>
                       <div class="text-muted"><?= lang('Marketing.completed') ?></div>
+                  </div>
+              </div>
+          </div>
+      </div>
+      <div class="col-xl-2 col-lg-4 col-md-6 mb-3">
+          <div class="stat-card bg-danger-soft filter-card" data-filter="AWAITING_CONTRACT" style="cursor:pointer;">
+              <div class="d-flex align-items-center">
+                  <div class="me-3">
+                      <i class="bi bi-file-earmark-lock stat-icon text-danger"></i>
+                  </div>
+                  <div>
+                      <div class="stat-value" id="awaitingContractDI">0</div>
+                      <div class="text-muted">Awaiting Contract</div>
                   </div>
               </div>
           </div>
@@ -94,6 +107,11 @@ $can_export = $permissions['export'];
       </li>
       <li class="nav-item">
         <a class="nav-link filter-tab" href="#" data-filter="DELIVERED"><?= lang('Marketing.delivered') ?></a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link filter-tab text-warning" href="#" data-filter="AWAITING_CONTRACT">
+          <i class="fas fa-exclamation-triangle me-1"></i>Awaiting Contract
+        </a>
       </li>
       <li class="nav-item">
         <a class="nav-link filter-tab" href="#" data-filter="CANCELLED"><?= lang('Marketing.cancelled') ?></a>
@@ -132,6 +150,7 @@ $can_export = $permissions['export'];
               <th>Command Purpose</th>
               <th>Req. Delivery Date</th>
               <th data-no-sort>Status</th>
+              <th data-no-sort>Actions</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -904,10 +923,16 @@ document.addEventListener('DOMContentLoaded', ()=>{
       return status === 'SELESAI' || status === 'SAMPAI_LOKASI';
     }).length;
     
+    const awaitingContract = allDIData.filter(item => {
+      const status = (item.status_di || '').toUpperCase();
+      return status === 'AWAITING_CONTRACT';
+    }).length;
+    
     document.getElementById('totalDI').textContent = total;
     document.getElementById('submittedDI').textContent = direncanakan;
     document.getElementById('inprogressDI').textContent = dalamPerjalanan;
     document.getElementById('deliveredDI').textContent = selesai;
+    document.getElementById('awaitingContractDI').textContent = awaitingContract;
   }
   
   function applyFilters() {
@@ -934,6 +959,11 @@ document.addEventListener('DOMContentLoaded', ()=>{
       filtered = allDIData.filter(item => {
         const status = (item.status_di || '').toUpperCase();
         return status === 'SAMPAI_LOKASI' || status === 'SELESAI';
+      });
+    } else if (currentFilter === 'AWAITING_CONTRACT') {
+      filtered = allDIData.filter(item => {
+        const status = (item.status_di || '').toUpperCase();
+        return status === 'AWAITING_CONTRACT';
       });
     } else if (currentFilter === 'CANCELLED') {
       filtered = allDIData.filter(item => {
@@ -974,7 +1004,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
     dataToShow.forEach(r=>{
       const tr = document.createElement('tr');
       // Display status values with appropriate badge colors
-      const getStatusDisplay = (status) => {
+      const getStatusDisplay = (status, createdDate) => {
         const statusUpper = (status || '').toUpperCase();
         const statusMap = {
           'DIAJUKAN': { text: 'DIAJUKAN', color: 'secondary' },
@@ -984,9 +1014,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
           'DALAM_PERJALANAN': { text: 'DALAM_PERJALANAN', color: 'warning' },
           'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', color: 'success' },
           'SELESAI': { text: 'SELESAI', color: 'success' },
-          'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' }
+          'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' },
+          'AWAITING_CONTRACT': { text: 'AWAITING CONTRACT', color: 'warning' }
         };
         const mapped = statusMap[statusUpper] || { text: status || 'DIAJUKAN', color: 'secondary' };
+        
+        // Calculate days pending for AWAITING_CONTRACT status
+        if (statusUpper === 'AWAITING_CONTRACT' && createdDate) {
+          const created = new Date(createdDate);
+          const now = new Date();
+          const daysPending = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+          const urgencyColor = daysPending > 14 ? 'danger' : (daysPending > 7 ? 'warning' : 'info');
+          return `<span class="badge bg-${mapped.color}">${mapped.text}</span> <span class="badge bg-${urgencyColor}" title="Days waiting for contract">${daysPending}d</span>`;
+        }
+        
         return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
       };
       
@@ -1063,17 +1104,39 @@ document.addEventListener('DOMContentLoaded', ()=>{
         return indicator ? `<span title="${tooltip}">${indicator}</span> ${tujuan}` : tujuan;
       };
       
+      // Check if DI has contract - show Link button if not
+      const hasContract = r.contract_id !== null && r.contract_id !== '';
+      let actionsHtml = '-';
+      
+      if (!hasContract && r.status_di !== 'DIBATALKAN') {
+        // Show Link Contract button for DI without contract
+        actionsHtml = `<button class="btn btn-sm btn-outline-warning link-di-contract" 
+          data-di-id="${r.id}" 
+          data-di-number="${r.nomor_di}" 
+          title="Link to Contract">
+          <i class="fas fa-link"></i> Link
+        </button>`;
+      } else if (hasContract) {
+        actionsHtml = '<span class="badge bg-success"><i class="fas fa-check"></i> Linked</span>';
+      }
+      
+      // Enhanced PO/Contract display with contract status indicator
+      const contractDisplay = hasContract 
+        ? `${r.po_kontrak_nomor || '-'} <span class="badge bg-success-subtle text-success" title="Contract linked"><i class="fas fa-link"></i></span>`
+        : `${r.po_kontrak_nomor ||  '-'} <span class="badge bg-warning text-dark" title="No contract linked - invoice generation disabled">NO CONTRACT</span>`;
+      
       tr.innerHTML = `
         <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
         <td>${r.spk_id || '-'}</td>
-        <td>${r.po_kontrak_nomor||'-'}</td>
+        <td>${contractDisplay}</td>
         <td>${r.pelanggan||'-'}</td>
         <td>${r.lokasi||'-'}</td>
         <td><span class="text-muted small">${formatTotalUnits(r)}</span></td>
         <td>${r.jenis_perintah || '-'}</td>
         <td>${formatTujuanWithIndicator(r.tujuan_perintah)}</td>
         <td>${r.tanggal_kirim||'-'}</td>
-        <td>${getStatusDisplay(r.status_di)}</td>`;
+        <td>${getStatusDisplay(r.status_di, r.dibuat_pada)}</td>
+        <td>${actionsHtml}</td>`;
       tb.appendChild(tr);
     });
     
@@ -1166,6 +1229,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       applyFilters();
     });
+  });
+  
+  // Event delegation untuk tombol Link DI to Contract (dynamically created)
+  document.getElementById('diTable').addEventListener('click', function(e) {
+    const btn = e.target.closest('.link-di-contract');
+    if (btn) {
+      e.preventDefault();
+      const diId = btn.dataset.diId;
+      const diNumber = btn.dataset.diNumber;
+      openLinkDIContractModal(diId, diNumber);
+    }
   });
   
   loadDI();
@@ -1833,6 +1907,129 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const sppu = `<?= base_url('marketing/di/print-withdrawal/') ?>${currentDiId}`;
     window.open(sppu, '_blank');
   };
+  
+  // ============================================================
+  // LINK DI TO CONTRACT FUNCTIONS
+  // ============================================================
+  
+  /**
+   * Open "Link DI to Contract" modal
+   * Loads available contracts from same customer
+   */
+  window.openLinkDIContractModal = async function(diId, diNumber) {
+    const modal = new bootstrap.Modal(document.getElementById('linkDIContractModal'));
+    
+    // Set DI info
+    document.getElementById('linkDiId').value = diId;
+    document.getElementById('linkDiNumber').textContent = diNumber;
+    
+    // Reset form
+    document.getElementById('linkDIContractForm').reset();
+    document.getElementById('linkDiId').value = diId; // Restore after reset
+    
+    // Load available contracts for this DI's customer
+    const contractSelect = document.getElementById('linkContractId');
+    contractSelect.innerHTML = '<option value="">Loading contracts...</option>';
+    
+    try {
+      // Get DI details to find customer
+      const diRes = await fetch(`<?= base_url('marketing/di/detail/') ?>${diId}`);
+      const diData = await diRes.json();
+      
+      if (!diData.success || !diData.data) {
+        throw new Error('Failed to load DI details');
+      }
+      
+      const customerId = diData.data.pelanggan_id;
+      
+      // Load contracts for this customer
+      const contractRes = await fetch(`<?= base_url('marketing/contracts/by-customer/') ?>${customerId}`);
+      const contractData = await contractRes.json();
+      
+      if (!contractData.success) {
+        throw new Error('Failed to load contracts');
+      }
+      
+      const contracts = contractData.data || [];
+      
+      // Populate dropdown with DEAL contracts only
+      contractSelect.innerHTML = '<option value="">- Select Contract -</option>';
+      
+      const dealContracts = contracts.filter(c => c.status_kontrak === 'DEAL');
+      
+      if (dealContracts.length === 0) {
+        contractSelect.innerHTML = '<option value="">No DEAL contracts available for this customer</option>';
+      } else {
+        dealContracts.forEach(contract => {
+          const option = document.createElement('option');
+          option.value = contract.id;
+          option.textContent = `${contract.nomor_kontrak} - ${contract.customer_name || ''} (${contract.tanggal_kontrak || ''})`;
+          contractSelect.appendChild(option);
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error loading contracts:', error);
+      contractSelect.innerHTML = '<option value="">Error loading contracts</option>';
+      alert('Failed to load contracts: ' + error.message);
+    }
+    
+    modal.show();
+  };
+  
+  /**
+   * Handle Link DI to Contract form submission
+   */
+  document.getElementById('linkDIContractForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const submitBtn = this.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Linking...';
+    
+    try {
+      const response = await fetch('<?= base_url('marketing/di/link-to-contract') ?>', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Close modal
+        const modal = bootstrap.Modal.getInstance(document.getElementById('linkDIContractModal'));
+        modal.hide();
+        
+        // Show success message
+        Swal.fire({
+          icon: 'success',
+          title: 'Contract Linked!',
+          html: result.message || 'DI has been successfully linked to contract.<br>Invoice generation is now enabled.',
+          confirmButtonColor: '#28a745'
+        });
+        
+        // Reload DI table
+        loadDI();
+      } else {
+        throw new Error(result.message || 'Failed to link contract');
+      }
+    } catch (error) {
+      console.error('Error linking contract:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Link Failed',
+        text: error.message || 'An error occurred while linking contract',
+        confirmButtonColor: '#dc3545'
+      });
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalText;
+    }
+  });
+  
 });
 </script>
 
@@ -1911,6 +2108,56 @@ document.addEventListener('DOMContentLoaded', ()=>{
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button class="btn btn-primary" type="submit">Update DI</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Link DI to Contract -->
+<div class="modal fade" id="linkDIContractModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h6 class="modal-title">Link DI to Contract</h6>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form id="linkDIContractForm">
+        <input type="hidden" id="linkDiId" name="di_id">
+        <div class="modal-body">
+          <div class="alert alert-info small mb-3">
+            <i class="fas fa-info-circle"></i> 
+            Link <strong id="linkDiNumber"></strong> to a Contract. 
+            This will enable invoice generation for this DI.
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Select Contract <span class="text-danger">*</span></label>
+            <select class="form-select" id="linkContractId" name="contract_id" required>
+              <option value="">- Select Contract -</option>
+              <!-- Dynamic options loaded via JS -->
+            </select>
+            <small class="text-muted">Only DEAL contracts from the same customer will be shown.</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">BAST Date (Optional)</label>
+            <input type="date" class="form-control" id="linkBastDate" name="bast_date" 
+                   max="<?= date('Y-m-d') ?>">
+            <small class="text-muted">Set handover date if already executed.</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Notes (Optional)</label>
+            <textarea class="form-control" id="linkNotes" name="notes" rows="2" 
+                      placeholder="Optional notes about contract linkage"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning">
+            <i class="fas fa-link"></i> Link Contract
+          </button>
         </div>
       </form>
     </div>

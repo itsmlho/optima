@@ -310,16 +310,17 @@
             </div>
 
             <div class="content-panel">
-                <div class="panel-title">SPAREPART DAN DETAIL PERBAIKAN</div>
+                <div class="panel-title">ITEMS BROUGHT (SPAREPARTS & TOOLS)</div>
                 <div class="panel-body">
                     <table class="sparepart-table">
                         <thead>
                             <tr>
                                 <th style="width: 5%;">No</th>
-                                <th style="width: 40%;">Nama Spare Part</th>
+                                <th style="width: 10%;">Type</th>
+                                <th style="width: 30%;">Item Name</th>
                                 <th style="width: 15%;">Code</th>
                                 <th style="width: 10%;">QTY</th>
-                                <th style="width: 40%;">Keterangan</th>
+                                <th style="width: 30%;">Notes</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -330,19 +331,36 @@
                                 foreach ($spareparts as $part) {
                                     $rowCount++;
                                     $qtyWithUnit = htmlspecialchars($part['qty']??'') . ' ' . htmlspecialchars($part['satuan']??'pcs');
-                                    $sparepartName = htmlspecialchars($part['name']??'');
+                                    $itemName = htmlspecialchars($part['name']??'');
                                     
-                                    // ← NEW: Add badge if sparepart is NOT from warehouse
-                                    $isFromWarehouse = isset($part['is_from_warehouse']) ? (int)$part['is_from_warehouse'] : 1;
-                                    if ($isFromWarehouse == 0) {
-                                        $sparepartName .= ' <span style="background-color: #ffc107; color: #000; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold; margin-left: 5px;">NON-WH</span>';
+                                    // Item Type Badge (Tool or Sparepart)
+                                    $itemType = $part['item_type'] ?? 'sparepart';
+                                    if ($itemType === 'tool') {
+                                        $typeBadge = '<span style="background-color: #6c757d; color: #fff; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold;">🔧 TOOL</span>';
+                                    } else {
+                                        $typeBadge = '<span style="background-color: #28a745; color: #fff; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold;">⚙ PART</span>';
                                     }
                                     
-                                    echo '<tr><td style="text-align: center;">'.$rowCount.'</td><td>'.$sparepartName.'</td><td>'.htmlspecialchars($part['code']??'').'</td><td style="text-align: center;">'.$qtyWithUnit.'</td><td>'.htmlspecialchars($part['notes']??'').'</td></tr>';
+                                    // Source Badge (Warehouse or Non-Warehouse)
+                                    $isFromWarehouse = isset($part['is_from_warehouse']) ? (int)$part['is_from_warehouse'] : 1;
+                                    if ($isFromWarehouse == 0) {
+                                        $itemName .= ' <span style="background-color: #ffc107; color: #000; padding: 2px 6px; font-size: 7pt; border-radius: 3px; font-weight: bold; margin-left: 5px;">♻ NON-WH</span>';
+                                    }
+                                    
+                                    $itemNotes = htmlspecialchars($part['notes'] ?? '-');
+                                    
+                                    echo '<tr>
+                                            <td style="text-align: center;">'.$rowCount.'</td>
+                                            <td style="text-align: center;">'.$typeBadge.'</td>
+                                            <td>'.$itemName.'</td>
+                                            <td>'.htmlspecialchars($part['code']??'-').'</td>
+                                            <td style="text-align: center;">'.$qtyWithUnit.'</td>
+                                            <td><small>'.$itemNotes.'</small></td>
+                                          </tr>';
                                 }
                             }
                             for ($i = $rowCount + 1; $i <= $minimumRows; $i++) {
-                                echo '<tr><td style="text-align: center;">'.$i.'</td><td>&nbsp;</td><td></td><td></td><td></td></tr>';
+                                echo '<tr><td style="text-align: center;">'.$i.'</td><td></td><td>&nbsp;</td><td></td><td></td><td></td></tr>';
                             } ?>
                         </tbody>
                     </table>

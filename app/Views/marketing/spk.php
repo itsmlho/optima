@@ -144,6 +144,7 @@ $can_export = $permissions['export'];
                             <th><?= lang('Marketing.spk_number') ?></th>
                             <th><?= lang('Marketing.type') ?></th>
                             <th><?= lang('Marketing.contract_po') ?></th>
+                            <th>Source</th>
                             <th><?= lang('Marketing.company_name') ?></th>
                             <th><?= lang('Marketing.pic') ?></th>
                             <th><?= lang('Marketing.contact') ?></th>
@@ -400,6 +401,55 @@ $can_export = $permissions['export'];
         </div>
     </div>
 
+    <!-- Link SPK to Contract Modal -->
+    <div class="modal fade" id="linkContractModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title">
+                        <i class="fas fa-link me-2"></i>Link SPK to Contract
+                    </h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="linkContractForm" onsubmit="submitLinkContract(event)">
+                    <div class="modal-body">
+                        <input type="hidden" id="link_spk_id" name="spk_id">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">SPK Number</label>
+                            <input type="text" class="form-control" id="link_spk_number" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Select Contract <span class="text-danger">*</span></label>
+                            <select class="form-select" id="link_contract_id" name="contract_id" required>
+                                <option value="">-- Select Contract --</option>
+                            </select>
+                            <small class="text-muted">Choose the contract for this SPK</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">BAST Date (Optional)</label>
+                            <input type="date" class="form-control" id="link_bast_date" name="bast_date">
+                            <small class="text-muted">Berita Acara Serah Terima date</small>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <strong>Note:</strong> Linking this SPK to a contract will automatically update all related Delivery Instructions and unlock them for invoice generation.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-link me-2"></i>Link Contract
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script>
     // Map status to Bootstrap badge classes per entity
     function statusBadge(entity, status){
@@ -596,10 +646,26 @@ $can_export = $permissions['export'];
             const diBtn = (r.status === 'READY')
               ? `<button class="btn btn-sm btn-primary buat-di" data-id="${r.id}" data-spk='${JSON.stringify({id:r.id, nomor_spk:r.nomor_spk, po:r.po_kontrak_nomor, pelanggan:r.pelanggan, lokasi:r.lokasi}).replace(/'/g,"&apos;")}' title="Create DI">Create DI</button>`
               : '';
-            const aksiBtn = diBtn || '<span class="text-muted">-</span>';
+            
+            // Determine source type based on kontrak_id (since source_type column doesn't exist)
+            // If kontrak_id is NULL → created from Quotation without contract → QUOTATION
+            // If kontrak_id has value → created with contract → CONTRACT
+            const sourceType = (r.kontrak_id === null || r.kontrak_id === '') ? 'QUOTATION' : 'CONTRACT';
+            const sourceBadge = sourceType === 'QUOTATION' 
+              ? '<span class="badge bg-warning text-dark"><i class="fas fa-file-lines me-1"></i>QUOTATION</span>'
+              : '<span class="badge bg-success"><i class="fas fa-file-contract me-1"></i>CONTRACT</span>';
+            
+            // Link to Contract button (only for QUOTATION source without contract)
+            const linkBtn = (sourceType === 'QUOTATION' && !r.contract_linked_at)
+              ? `<button class="btn btn-sm btn-outline-warning link-contract" data-spk-id="${r.id}" data-spk-number="${r.nomor_spk}" title="Link to Contract"><i class="fas fa-link"></i> Link</button> `
+              : '';
+            
+            const aksiBtn = linkBtn + (diBtn || '<span class="text-muted">-</span>');
+            
             tr.innerHTML = `<td><a href="#" onclick=\"openDetail(${r.id});return false;\">${r.nomor_spk}</a></td>`+
               `<td><span class=\"badge bg-dark\">${r.jenis_spk||'UNIT'}</span></td>`+
               `<td>${r.po_kontrak_nomor||'-'}</td>`+
+              `<td>${sourceBadge}</td>`+
               `<td>${r.pelanggan||'-'}</td>`+
               `<td>${r.pic||'-'}</td>`+
               `<td>${r.kontak||'-'}</td>`+
@@ -607,6 +673,15 @@ $can_export = $permissions['export'];
               `<td>${r.jumlah_unit||'-'}</td>`+
               `<td>${aksiBtn}</td>`;
             tb.appendChild(tr);
+        });
+        
+        // Wire up Link Contract buttons
+        tb.querySelectorAll('.link-contract').forEach(btn=>{
+            btn.addEventListener('click', (e)=>{
+                const spkId = e.currentTarget.getAttribute('data-spk-id');
+                const spkNumber = e.currentTarget.getAttribute('data-spk-number');
+                showLinkContractModal(spkId, spkNumber);
+            });
         });
         
         // Wire up Buat DI buttons
@@ -2775,6 +2850,76 @@ $can_export = $permissions['export'];
         }
     }, 800); // Wait for page to fully load
     <?php endif; ?>
+    
+    // ==========================================
+    // Link SPK to Contract Functions
+    // ==========================================
+    function showLinkContractModal(spkId, spkNumber) {
+        document.getElementById('link_spk_id').value = spkId;
+        document.getElementById('link_spk_number').value = spkNumber;
+        
+        // Load active contracts
+        fetch('<?= base_url('marketing/kontrak/get-active-contracts') ?>')
+            .then(response => response.json())
+            .then(data => {
+                const select = document.getElementById('link_contract_id');
+                select.innerHTML = '<option value="">-- Select Contract --</option>';
+                
+                if (data.success && data.data) {
+                    data.data.forEach(contract => {
+                        const option = document.createElement('option');
+                        option.value = contract.id;
+                        option.textContent = `${contract.no_kontrak} - ${contract.pelanggan || contract.nama_customer}`;
+                        select.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading contracts:', error);
+                alert('Failed to load contracts. Please try again.');
+            });
+        
+        const modal = new bootstrap.Modal(document.getElementById('linkContractModal'));
+        modal.show();
+    }
+    
+    function submitLinkContract(event) {
+        event.preventDefault();
+        
+        const formData = new FormData(document.getElementById('linkContractForm'));
+        const submitBtn = event.target.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Linking...';
+        
+        fetch('<?= base_url('marketing/spk/link-to-contract') ?>', {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            
+            if (data.success) {
+                alert(`✅ Success! SPK linked to contract.\\n\\n${data.di_count || 0} Delivery Instruction(s) have been updated and unlocked for invoicing.`);
+                bootstrap.Modal.getInstance(document.getElementById('linkContractModal')).hide();
+                loadSPK(); // Reload SPK table
+            } else {
+                alert('❌ Error: ' + (data.message || 'Failed to link contract'));
+            }
+        })
+        .catch(error => {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            console.error('Error:', error);
+            alert('❌ Failed to link contract. Please try again.');
+        });
+    }
     </script>
     
     <style>

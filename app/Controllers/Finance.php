@@ -2,420 +2,705 @@
 
 namespace App\Controllers;
 
-use App\Controllers\BaseController;
-use CodeIgniter\HTTP\ResponseInterface;
+use CodeIgniter\Controller;
+use App\Models\InvoiceModel;
+use App\Models\InvoiceItemModel;
+use App\Models\RecurringBillingScheduleModel;
+use App\Models\DeliveryInstructionModel;
+use App\Models\KontrakModel;
+use App\Models\ContractAmendmentModel;
 
-class Finance extends BaseController
+/**
+ * Finance Controller
+ * 
+ * Manages invoice generation, approval, and recurring billing for rental contracts
+ * Implements strict validation: invoices cannot be created without contract linkage
+ */
+class Finance extends Controller
 {
-    public function index()
-    {
-        // Check permission: User harus punya akses ke accounting module
-        if (!$this->canAccess('accounting')) {
-            return redirect()->to('/dashboard')->with('error', 'Access denied.');
-        }
-        
-        $data = [
-            'title' => 'Financial Management',
-            'page_title' => 'Financial Management',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/finance' => 'Finance'
-            ],
-            'financial_summary' => $this->getFinancialSummary(),
-            'recent_transactions' => $this->getRecentTransactions(),
-            'monthly_revenue' => $this->getMonthlyRevenue(),
-            'loadCharts' => true, // Enable Chart.js loading
-        ];
+    protected $invoiceModel;
+    protected $invoiceItemModel;
+    protected $scheduleModel;
+    protected $diModel;
+    protected $kontrakModel;
+    protected $amendmentModel;
+    protected $db;
 
-        return view('finance/index', $data);
+    public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
+    {
+        parent::initController($request, $response, $logger);
+        
+        $this->invoiceModel = new InvoiceModel();
+        $this->invoiceItemModel = new InvoiceItemModel();
+        $this->scheduleModel = new RecurringBillingScheduleModel();
+        $this->diModel = new DeliveryInstructionModel();
+        $this->kontrakModel = new KontrakModel();
+        $this->amendmentModel = new ContractAmendmentModel();
+        $this->db = \Config\Database::connect();
     }
 
+    /**
+     * Finance dashboard with alerts and KPIs
+     */
+    public function index()
+    {
+        $data = [
+            'title' => 'Finance Dashboard',
+            'unlinked_deliveries' => $this->diModel->getUnlinkedDeliveries(),
+            'upcoming_invoices' => $this->scheduleModel->getUpcomingInvoices(7), // 7 days ahead
+            'overdue_invoices' => $this->invoiceModel->where('status', 'OVERDUE')->findAll(),
+            'draft_invoices' => $this->invoiceModel->where('status', 'DRAFT')->findAll(),
+        ];
+
+        return view('finance/index', $data); // Use index view not dashboard
+    }
+
+    /**
+     * Invoice management view (DataTables)
+     */
     public function invoices()
     {
         $data = [
-            'title' => 'Invoice Management',
-            'page_title' => 'Invoice Management',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/finance' => 'Finance',
-                '/finance/invoices' => 'Invoices'
-            ],
-            'invoices' => $this->getInvoices()
+            'title' => 'Invoice Management'
         ];
 
         return view('finance/invoices', $data);
     }
 
-    public function payments()
+    /**
+     * Get invoices for DataTables
+     */
+    public function getInvoiceDataTable()
     {
-        $data = [
-            'title' => 'Payment Management',
-            'page_title' => 'Payment Management',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/finance' => 'Finance',
-                '/finance/payments' => 'Payments'
-            ],
-            'payments' => $this->getPayments()
-        ];
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
 
-        return view('finance/payments', $data);
-    }
+        try {
+            $builder = $this->db->table('invoices i');
+            $builder->select('i.*, k.no_kontrak, c.nama_customer, c.nama_lokasi');
+            $builder->join('kontrak k', 'k.id = i.contract_id', 'left');
+            $builder->join('customers c', 'c.id_customer = k.customer_location_id', 'left');
 
-    public function expenses()
-    {
-        $data = [
-            'title' => 'Expense Management',
-            'page_title' => 'Expense Management',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/finance' => 'Finance',
-                '/finance/expenses' => 'Expenses'
-            ],
-            'expenses' => $this->getExpenses()
-        ];
+            // Search
+            $search = $this->request->getGet('search')['value'] ?? '';
+            if (!empty($search)) {
+                $builder->groupStart()
+                    ->like('i.invoice_number', $search)
+                    ->orLike('k.no_kontrak', $search)
+                    ->orLike('c.nama_customer', $search)
+                    ->groupEnd();
+            }
 
-        return view('finance/expenses', $data);
-    }
+            // Count
+            $totalRecords = $builder->countAllResults(false);
 
-    public function reports()
-    {
-        $data = [
-            'title' => 'Financial Reports',
-            'page_title' => 'Financial Reports',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/finance' => 'Finance',
-                '/finance/reports' => 'Reports'
-            ],
-            'report_data' => $this->getFinancialReports()
-        ];
+            // Order
+            $orderColumn = $this->request->getGet('order')[0]['column'] ?? 0;
+            $orderDir = $this->request->getGet('order')[0]['dir'] ?? 'desc';
+            $columns = ['i.invoice_number', 'i.invoice_date', 'k.no_kontrak', 'c.nama_customer', 'i.total_amount', 'i.status'];
+            $builder->orderBy($columns[$orderColumn] ?? 'i.id', $orderDir);
 
-        return view('finance/reports', $data);
-    }
+            // Pagination
+            $start = $this->request->getGet('start') ?? 0;
+            $length = $this->request->getGet('length') ?? 10;
+            $builder->limit($length, $start);
 
-    // API Methods
-    public function getInvoiceList()
-    {
-        $invoices = $this->getInvoices();
-        
-        return $this->response->setJSON([
-            'success' => true,
-            'data' => $invoices,
-            'token' => csrf_hash()
-        ]);
-    }
+            $invoices = $builder->get()->getResultArray();
 
-    public function createInvoice()
-    {
-        // Check permission: User harus punya manage permission untuk accounting
-        if (!$this->canManage('accounting')) {
+            return $this->response->setJSON([
+                'draw' => intval($this->request->getGet('draw')),
+                'recordsTotal' => $totalRecords,
+                'recordsFiltered' => $totalRecords,
+                'data' => $invoices
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::getInvoiceDataTable - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Access denied: You do not have permission to create invoice'
-            ])->setStatusCode(403);
-        }
-        
-        try {
-            // Get POST data
-            $invoiceData = $this->request->getPost();
-            
-            // TODO: Actual invoice creation logic here
-            // For now, mock the invoice ID and number
-            $invoiceId = rand(1000, 9999); // In production, this would be the actual DB insert ID
-            $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($invoiceId, 5, '0', STR_PAD_LEFT);
-            
-            // Send notification
-            helper('notification');
-            notify_invoice_created([
-                'id' => $invoiceId,
-                'invoice_number' => $invoiceNumber,
-                'customer_name' => $invoiceData['customer_name'] ?? 'N/A',
-                'amount' => $invoiceData['total_amount'] ?? 0,
-                'due_date' => $invoiceData['due_date'] ?? date('Y-m-d', strtotime('+30 days')),
-                'created_by' => session()->get('user_name') ?? 'System',
-                'url' => base_url('/finance/invoices/' . $invoiceId)
+                'message' => $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Generate invoice from Delivery Instruction (one-time billing)
+     * CRITICAL: Three-layer validation prevents invoice creation without contract
+     */
+    public function generateInvoiceFromDI()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $diId = $this->request->getPost('di_id');
+            $contractId = $this->request->getPost('contract_id');
+            $invoiceDate = $this->request->getPost('invoice_date') ?? date('Y-m-d');
+            $dueDate = $this->request->getPost('due_date');
+            $notes = $this->request->getPost('notes');
+
+            if (empty($diId) || empty($contractId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'DI ID and Contract ID required'
+                ]);
+            }
+
+            // VALIDATION LAYER 1: Model-level validation
+            $validationErrors = $this->diModel->validateBillingReadiness($diId);
             
-            log_message('info', "Invoice created: {$invoiceNumber} - Notification sent");
-            
-            // Mock successful response
+            if (!empty($validationErrors)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'locked' => true,
+                    'message' => 'Invoice cannot be created: Missing requirements',
+                    'errors' => $validationErrors
+                ]);
+            }
+
+            $userId = session()->get('user_id') ?? 1;
+
+            // Create invoice with options
+            $options = [
+                'invoice_date' => $invoiceDate,
+                'due_date' => $dueDate,
+                'notes' => $notes
+            ];
+
+            $result = $this->invoiceModel->createFromDI($diId, $contractId, $userId, $options);
+
+            if (isset($result['locked']) && $result['locked'] === true) {
+                // Invoice creation blocked by validation
+                return $this->response->setJSON([
+                    'success' => false,
+                    'locked' => true,
+                    'message' => $result['message'],
+                    'errors' => $result['errors'] ?? []
+                ]);
+            }
+
+            if ($result['success']) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Invoice created successfully',
+                    'invoice_id' => $result['invoice_id'],
+                    'invoice_number' => $result['invoice_number']
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $result['message']
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::generateInvoiceFromDI - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to generate invoice: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Generate recurring invoice (monthly/quarterly/yearly)
+     * Called by cron job or manual trigger
+     */
+    public function generateRecurringInvoice()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $scheduleId = $this->request->getPost('schedule_id');
+            $userId = session()->get('user_id') ?? 1;
+
+            if (empty($scheduleId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Schedule ID required'
+                ]);
+            }
+
+            $result = $this->invoiceModel->createRecurringInvoice($scheduleId, $userId);
+
+            if ($result['success']) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Recurring invoice created successfully',
+                    'invoice_id' => $result['invoice_id'],
+                    'invoice_number' => $result['invoice_number']
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $result['message']
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::generateRecurringInvoice - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to generate recurring invoice: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Batch generate all due recurring invoices
+     * Typically called by cron job
+     */
+    public function batchGenerateRecurringInvoices()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $userId = session()->get('user_id') ?? 1;
+            $result = $this->scheduleModel->generateDueInvoices();
+
             return $this->response->setJSON([
                 'success' => true,
-                'message' => 'Invoice created successfully',
-                'invoice_id' => $invoiceId,
-                'invoice_number' => $invoiceNumber,
-                'token' => csrf_hash()
+                'message' => "Generated {$result['count']} invoices",
+                'invoices' => $result['invoices'],
+                'errors' => $result['errors']
             ]);
+
         } catch (\Exception $e) {
-            log_message('error', 'Error creating invoice: ' . $e->getMessage());
+            log_message('error', 'Finance::batchGenerateRecurringInvoices - Error: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Failed to create invoice: ' . $e->getMessage(),
-                'token' => csrf_hash()
-            ])->setStatusCode(500);
+                'message' => 'Failed to batch generate invoices: ' . $e->getMessage()
+            ]);
         }
     }
 
-    public function updatePaymentStatus($id)
+    /**
+     * Approve invoice (move from DRAFT to APPROVED)
+     */
+    public function approveInvoice($invoiceId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $userId = session()->get('user_id') ?? 1;
+            
+            $invoice = $this->invoiceModel->find($invoiceId);
+            if (!$invoice) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invoice not found'
+                ]);
+            }
+
+            if ($invoice['status'] !== 'DRAFT') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Only DRAFT invoices can be approved'
+                ]);
+            }
+
+            $updated = $this->invoiceModel->updateStatus($invoiceId, 'APPROVED', $userId);
+
+            if ($updated) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Invoice approved successfully'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to approve invoice'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::approveInvoice - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to approve invoice: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Mark invoice as paid
+     */
+    public function markAsPaid($invoiceId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $userId = session()->get('user_id') ?? 1;
+            $paymentDate = $this->request->getPost('payment_date') ?? date('Y-m-d');
+            $paymentMethod = $this->request->getPost('payment_method');
+            
+            $invoice = $this->invoiceModel->find($invoiceId);
+            if (!$invoice) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invoice not found'
+                ]);
+            }
+
+            // Update invoice status
+            $updated = $this->invoiceModel->update($invoiceId, [
+                'status' => 'PAID',
+                'paid_date' => $paymentDate,
+                'payment_method' => $paymentMethod
+            ]);
+
+            if ($updated) {
+                // Log status change
+                $this->invoiceModel->updateStatus($invoiceId, 'PAID', $userId);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Invoice marked as paid successfully'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to mark invoice as paid'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::markAsPaid - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to mark invoice as paid: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * View invoice details
+     */
+    public function viewInvoice($invoiceId)
     {
         try {
-            // Get POST data
-            $statusData = $this->request->getPost();
+            $invoice = $this->invoiceModel->getInvoiceDetails($invoiceId);
             
-            // TODO: Get existing invoice data and update status
-            // For now, mock the data
-            $oldStatus = 'Pending';
-            $newStatus = $statusData['status'] ?? 'Paid';
-            $invoiceNumber = 'INV-' . date('Y') . '-' . str_pad($id, 5, '0', STR_PAD_LEFT);
-            
-            // Send notification
-            helper('notification');
-            notify_payment_status_updated([
-                'id' => $id,
-                'invoice_number' => $invoiceNumber,
-                'customer_name' => $statusData['customer_name'] ?? 'N/A',
-                'old_status' => $oldStatus,
-                'new_status' => $newStatus,
-                'amount' => $statusData['paid_amount'] ?? 0,
-                'payment_date' => $statusData['payment_date'] ?? date('Y-m-d'),
-                'updated_by' => session()->get('user_name') ?? 'System',
-                'url' => base_url('/finance/invoices/' . $id)
-            ]);
-            
-            log_message('info', "Payment status updated for {$invoiceNumber}: {$oldStatus} → {$newStatus} - Notification sent");
-            
-            // Mock successful response
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Payment status updated successfully',
-                'invoice_number' => $invoiceNumber,
-                'new_status' => $newStatus,
-                'token' => csrf_hash()
-            ]);
+            if (!$invoice) {
+                return redirect()->back()->with('error', 'Invoice not found');
+            }
+
+            $items = $this->invoiceItemModel->getItemsByInvoice($invoiceId);
+            $history = $this->db->table('invoice_status_history')
+                ->select('invoice_status_history.*, users.nama as changed_by_name')
+                ->join('users', 'users.id = invoice_status_history.changed_by', 'left')
+                ->where('invoice_status_history.invoice_id', $invoiceId)
+                ->orderBy('invoice_status_history.changed_at', 'DESC')
+                ->get()
+                ->getResultArray();
+
+            $data = [
+                'title' => 'Invoice Details',
+                'invoice' => $invoice,
+                'items' => $items,
+                'history' => $history
+            ];
+
+            return view('finance/invoice_detail', $data);
+
         } catch (\Exception $e) {
-            log_message('error', 'Error updating payment status: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Failed to update payment status: ' . $e->getMessage(),
-                'token' => csrf_hash()
-            ])->setStatusCode(500);
+            log_message('error', 'Finance::viewInvoice - Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to load invoice: ' . $e->getMessage());
         }
     }
 
-    private function getFinancialSummary()
+    /**
+     * Get invoices by contract (for contract detail view)
+     */
+    public function getInvoicesByContract($contractId)
     {
-        return [
-            'total_revenue' => 2500000000, // 2.5 M
-            'total_expenses' => 1200000000, // 1.2 M
-            'net_profit' => 1300000000,    // 1.3 M
-            'outstanding_invoices' => 350000000, // 350 juta
-            'pending_payments' => 180000000,     // 180 juta
-            'cash_flow' => 850000000            // 850 juta
-        ];
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $invoices = $this->invoiceModel->getInvoicesByContract($contractId);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $invoices
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::getInvoicesByContract - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
     }
 
-    private function getRecentTransactions()
+    /**
+     * Cancel invoice
+     */
+    public function cancelInvoice($invoiceId)
     {
-        return [
-            [
-                'id' => 'TXN-2024-001',
-                'type' => 'Income',
-                'amount' => 50000000,
-                'description' => 'Rental payment - PT. Maju Jaya',
-                'date' => '2024-01-15',
-                'status' => 'Completed'
-            ],
-            [
-                'id' => 'TXN-2024-002',
-                'type' => 'Expense',
-                'amount' => 15000000,
-                'description' => 'Fuel for fleet',
-                'date' => '2024-01-14',
-                'status' => 'Completed'
-            ],
-            [
-                'id' => 'TXN-2024-003',
-                'type' => 'Income',
-                'amount' => 75000000,
-                'description' => 'Rental payment - CV. Sukses Mandiri',
-                'date' => '2024-01-13',
-                'status' => 'Pending'
-            ]
-        ];
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $userId = session()->get('user_id') ?? 1;
+            $reason = $this->request->getPost('reason');
+            
+            $invoice = $this->invoiceModel->find($invoiceId);
+            if (!$invoice) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invoice not found'
+                ]);
+            }
+
+            if (in_array($invoice['status'], ['PAID', 'CANCELLED'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Cannot cancel PAID or already CANCELLED invoice'
+                ]);
+            }
+
+            $updated = $this->invoiceModel->update($invoiceId, [
+                'status' => 'CANCELLED',
+                'cancellation_reason' => $reason
+            ]);
+
+            if ($updated) {
+                $this->invoiceModel->updateStatus($invoiceId, 'CANCELLED', $userId);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Invoice cancelled successfully'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to cancel invoice'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::cancelInvoice - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to cancel invoice: ' . $e->getMessage()
+            ]);
+        }
     }
 
-    private function getMonthlyRevenue()
+    /**
+     * Create recurring billing schedule for contract
+     */
+    public function createBillingSchedule()
     {
-        return [
-            'January' => 250000000,
-            'February' => 280000000,
-            'March' => 320000000,
-            'April' => 290000000,
-            'May' => 310000000,
-            'June' => 340000000,
-            'July' => 360000000,
-            'August' => 380000000,
-            'September' => 350000000,
-            'October' => 390000000,
-            'November' => 410000000,
-            'December' => 450000000
-        ];
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $contractId = $this->request->getPost('contract_id');
+            $frequency = $this->request->getPost('frequency') ?? 'MONTHLY';
+
+            if (empty($contractId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Contract ID required'
+                ]);
+            }
+
+            // Check if schedule already exists
+            $existing = $this->scheduleModel->where('contract_id', $contractId)->first();
+            if ($existing) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Billing schedule already exists for this contract'
+                ]);
+            }
+
+            $scheduleId = $this->scheduleModel->createSchedule($contractId, $frequency);
+
+            if ($scheduleId) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Billing schedule created successfully',
+                    'schedule_id' => $scheduleId
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create billing schedule'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::createBillingSchedule - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create billing schedule: ' . $e->getMessage()
+            ]);
+        }
     }
 
-    private function getInvoices()
+    /**
+     * Pause recurring billing schedule
+     */
+    public function pauseBillingSchedule($scheduleId)
     {
-        return [
-            [
-                'id' => 'INV-2024-001',
-                'customer' => 'PT. Maju Jaya',
-                'amount' => 50000000,
-                'due_date' => '2024-01-20',
-                'status' => 'Paid',
-                'created_at' => '2024-01-01'
-            ],
-            [
-                'id' => 'INV-2024-002',
-                'customer' => 'CV. Sukses Mandiri',
-                'amount' => 75000000,
-                'due_date' => '2024-01-25',
-                'status' => 'Pending',
-                'created_at' => '2024-01-05'
-            ],
-            [
-                'id' => 'INV-2024-003',
-                'customer' => 'PT. Konstruksi Prima',
-                'amount' => 30000000,
-                'due_date' => '2024-01-18',
-                'status' => 'Overdue',
-                'created_at' => '2024-01-03'
-            ]
-        ];
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $reason = $this->request->getPost('reason');
+            $updated = $this->scheduleModel->pauseSchedule($scheduleId, $reason);
+
+            if ($updated) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Billing schedule paused successfully'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to pause billing schedule'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::pauseBillingSchedule - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to pause billing schedule: ' . $e->getMessage()
+            ]);
+        }
     }
 
-    private function getPayments()
+    /**
+     * Resume paused billing schedule
+     */
+    public function resumeBillingSchedule($scheduleId)
     {
-        return [
-            [
-                'id' => 'PAY-2024-001',
-                'invoice_id' => 'INV-2024-001',
-                'customer' => 'PT. Maju Jaya',
-                'amount' => 50000000,
-                'method' => 'Bank Transfer',
-                'date' => '2024-01-15 10:30:00',
-                'status' => 'Completed'
-            ],
-            [
-                'id' => 'PAY-2024-002',
-                'invoice_id' => 'INV-2024-002',
-                'customer' => 'CV. Sukses Mandiri',
-                'amount' => 75000000,
-                'method' => 'Cash',
-                'date' => '2024-01-20 14:15:00',
-                'status' => 'Pending'
-            ],
-            [
-                'id' => 'PAY-2024-003',
-                'invoice_id' => 'INV-2024-003',
-                'customer' => 'PT. Berkah Selalu',
-                'amount' => 35000000,
-                'method' => 'Check',
-                'date' => '2024-01-12 09:15:00',
-                'status' => 'Completed'
-            ],
-            [
-                'id' => 'PAY-2024-004',
-                'invoice_id' => 'INV-2024-004',
-                'customer' => 'CV. Mandiri Jaya',
-                'amount' => 45000000,
-                'method' => 'Credit Card',
-                'date' => '2024-01-11 16:45:00',
-                'status' => 'Failed'
-            ]
-        ];
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $updated = $this->scheduleModel->resumeSchedule($scheduleId);
+
+            if ($updated) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Billing schedule resumed successfully'
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to resume billing schedule'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::resumeBillingSchedule - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to resume billing schedule: ' . $e->getMessage()
+            ]);
+        }
     }
 
-    private function getExpenses()
+    /**
+     * Helper: Check if DI is ready for invoicing
+     */
+    public function checkDIReadiness($diId)
     {
-        return [
-            [
-                'id' => 'EXP-2024-001',
-                'category' => 'Fuel',
-                'amount' => 15000000,
-                'description' => 'Monthly fuel for fleet',
-                'date' => '2024-01-10',
-                'status' => 'Approved',
-                'submitted_by' => 'John Doe'
-            ],
-            [
-                'id' => 'EXP-2024-002',
-                'category' => 'Maintenance',
-                'amount' => 25000000,
-                'description' => 'Forklift maintenance',
-                'date' => '2024-01-12',
-                'status' => 'Pending',
-                'submitted_by' => 'Jane Smith'
-            ],
-            [
-                'id' => 'EXP-2024-003',
-                'category' => 'Equipment',
-                'amount' => 8000000,
-                'description' => 'Spare parts purchase',
-                'date' => '2024-01-14',
-                'status' => 'Approved',
-                'submitted_by' => 'Mike Johnson'
-            ],
-            [
-                'id' => 'EXP-2024-004',
-                'category' => 'Office Supplies',
-                'amount' => 3500000,
-                'description' => 'Monthly office supplies',
-                'date' => '2024-01-08',
-                'status' => 'Approved',
-                'submitted_by' => 'Sarah Wilson'
-            ],
-            [
-                'id' => 'EXP-2024-005',
-                'category' => 'Transportation',
-                'amount' => 12000000,
-                'description' => 'Transportation costs',
-                'date' => '2024-01-16',
-                'status' => 'Rejected',
-                'submitted_by' => 'David Brown'
-            ],
-            [
-                'id' => 'EXP-2024-006',
-                'category' => 'Utilities',
-                'amount' => 18000000,
-                'description' => 'Monthly utility bills',
-                'date' => '2024-01-05',
-                'status' => 'Approved',
-                'submitted_by' => 'Lisa Anderson'
-            ]
-        ];
+        try {
+            $validation = $this->diModel->validateBillingReadiness($diId);
+            $di = $this->diModel->find($diId);
+            
+            if ($di) {
+                // Get contract and customer info
+                $spk = $this->db->table('spk')->where('id', $di['spk_id'])->get()->getRowArray();
+                $contract = $spk && $spk['kontrak_id'] ? $this->db->table('kontrak')->where('id', $spk['kontrak_id'])->get()->getRowArray() : null;
+                
+                $di['customer_name'] = $contract['pelanggan'] ?? 'Unknown';
+                $di['contract_number'] = $contract['no_kontrak'] ?? '-';
+            }
+            
+            return $this->response->setJSON([
+                'locked' => !$validation['ready'],
+                'errors' => $validation['errors'] ?? [],
+                'di' => $di
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'locked' => true,
+                'errors' => ['System error: ' . $e->getMessage()]
+            ]);
+        }
     }
 
-    private function getFinancialReports()
+    /**
+     * Helper: Get list of DIs ready for invoicing
+     */
+    public function getReadyDIs()
     {
-        return [
-            'profit_loss' => [
-                'revenue' => 2500000000,
-                'cost_of_goods' => 800000000,
-                'gross_profit' => 1700000000,
-                'operating_expenses' => 400000000,
-                'net_profit' => 1300000000
-            ],
-            'cash_flow' => [
-                'operating_activities' => 1200000000,
-                'investing_activities' => -200000000,
-                'financing_activities' => -150000000,
-                'net_cash_flow' => 850000000
-            ],
-            'balance_sheet' => [
-                'total_assets' => 5000000000,
-                'total_liabilities' => 1500000000,
-                'equity' => 3500000000
-            ]
-        ];
+        try {
+            $dis = $this->diModel
+                ->select('delivery_instructions.*, spk.nomor_spk, kontrak.no_kontrak as contract_number, kontrak.pelanggan as customer_name')
+                ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
+                ->join('kontrak', 'kontrak.id = delivery_instructions.contract_id', 'left')
+                ->whereIn('delivery_instructions.status', ['DELIVERED', 'COMPLETED'])
+                ->where('delivery_instructions.contract_id IS NOT NULL')
+                ->orderBy('delivery_instructions.dibuat_pada', 'DESC')
+                ->findAll();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $dis
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
     }
-} 
+
+    /**
+     * Helper: Get active billing schedules
+     */
+    public function getActiveSchedules()
+    {
+        try {
+            $schedules = $this->scheduleModel
+                ->select('recurring_billing_schedules.*, kontrak.no_kontrak as contract_number, kontrak.pelanggan as customer_name')
+                ->join('kontrak', 'kontrak.id = recurring_billing_schedules.contract_id', 'left')
+                ->where('recurring_billing_schedules.status', 'ACTIVE')
+                ->orderBy('recurring_billing_schedules.next_billing_date', 'ASC')
+                ->findAll(100);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $schedules
+            ]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+}

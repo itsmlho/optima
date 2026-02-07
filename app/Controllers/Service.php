@@ -473,8 +473,14 @@ class Service extends BaseController
             // Use global helper function for division-based filtering
             $allowedDeptIds = get_user_division_departments();
             
-            // Get all SPK
-            $list = $this->db->table('spk')->orderBy('id','DESC')->get()->getResultArray();
+            // Get all SPK with quotation_number join
+            $list = $this->db->table('spk')
+                ->select('spk.*, qs.id_quotation, q.quotation_number')
+                ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
+                ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left')
+                ->orderBy('spk.id','DESC')
+                ->get()
+                ->getResultArray();
             log_message('debug', 'Total SPK found: ' . count($list) . ', Filter: ' . ($allowedDeptIds ? json_encode($allowedDeptIds) : 'none'));
             
             // Filter berdasarkan departemen_id di JSON spesifikasi

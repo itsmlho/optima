@@ -551,12 +551,12 @@ document.addEventListener('DOMContentLoaded', ()=>{
             </div>
             <div class="row g-3">
               <div class="col-6">
-                <label class="form-label">PO/Contract No.</label>
-                <input type="text" class="form-control-plaintext" readonly value="${di.po_kontrak_nomor || '-'}">
-              </div>
-              <div class="col-6">
                 <label class="form-label">SPK No.</label>
                 <input type="text" class="form-control-plaintext" readonly value="${spk.nomor_spk || '-'}">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Source</label>
+                <input type="text" class="form-control-plaintext" readonly value="${di.contract_id ? 'Contract' : (di.quotation_number || 'Quotation')}" style="color: ${di.contract_id ? '#28a745' : '#ffc107'}; font-weight: 500;">
               </div>
               <div class="col-6">
                 <label class="form-label">Customer</label>
@@ -1021,7 +1021,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               <div class="col-6"><strong>Status:</strong> <span class="badge bg-secondary">${status}</span></div>
               <div class="col-6"><strong>SPK Number:</strong> ${spk && spk.nomor_spk ? spk.nomor_spk : '-'}</div>
               <div class="col-6"><strong>SPK Type:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
-              <div class="col-6"><strong>PO/Contract:</strong> ${d.po_kontrak_nomor||'-'}</div>
+              <div class="col-6"><strong>Source:</strong> <span style="color: ${d.contract_id ? '#28a745' : '#ffc107'}; font-weight: 500;">${d.contract_id ? 'Contract' : (d.quotation_number || 'Quotation')}</span></div>
               <div class="col-6"><strong>Delivery Date:</strong> ${d.tanggal_kirim||'-'}</div>
               <div class="col-6"><strong>Company Name:</strong> ${d.pelanggan||'-'}</div>
               <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>

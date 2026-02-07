@@ -567,9 +567,9 @@ class Marketing extends BaseDataTableController
                 break;
                 
             case 'DEAL':
-                // DEAL stage - NO print button (only for QUOTATION and SENT stages)
+                // DEAL stage - Flexible workflow: Quotation → Contract (optional) → SPK
                 
-                // STRICT SEQUENTIAL WORKFLOW - Use database flags for reliable state
+                // Check database flags for workflow state
                 $customerLocationComplete = !empty($quotation['customer_location_complete']);
                 $customerContractComplete = !empty($quotation['customer_contract_complete']);
                 $spkCreated = !empty($quotation['spk_created']);
@@ -580,21 +580,23 @@ class Marketing extends BaseDataTableController
                     $actions .= '<i class="fas fa-user-edit me-1"></i>Complete Customer Profile';
                     $actions .= '</button>';
                 } 
-                // Step 2: Contract must be completed after location (MANDATORY)
-                else if (!$customerContractComplete) {
-                    $actions .= '<button class="btn btn-sm btn-info" onclick="completeCustomerContract(' . $quotationId . ')" title="Complete customer contract (required before SPK)">';
-                    $actions .= '<i class="fas fa-file-contract me-1"></i>Complete Contract';
-                    $actions .= '</button>';
-                } 
-                // Step 3: Only show SPK if BOTH location AND contract are complete
+                // Step 2: After location complete, show BOTH options (contract optional)
                 else if (!$spkCreated) {
-                    $actions .= '<button class="btn btn-sm btn-success" onclick="createSPK(' . $quotationId . ')" title="Create SPK">';
-                    $actions .= '<i class="fas fa-clipboard-list me-1"></i>Create SPK';
+                    // Option A: Create Contract first (if not yet created)
+                    if (!$customerContractComplete) {
+                        $actions .= '<button class="btn btn-sm btn-info me-1" onclick="completeCustomerContract(' . $quotationId . ')" title="Create contract first (optional - recommended for complete documentation)">';
+                        $actions .= '<i class="fas fa-file-contract me-1"></i>Create Contract';
+                        $actions .= '</button>';
+                    }
+                    
+                    // Option B: Create SPK directly (with or without contract)
+                    $actions .= '<button class="btn btn-sm btn-success" onclick="createSPKFromQuotation(' . $quotationId . ')" title="Create SPK from Quotation (Contract can be linked later)">';
+                    $actions .= '<i class="fas fa-clipboard-check me-1"></i>Create SPK';
                     $actions .= '</button>';
                 }
-                // All steps completed
+                // SPK already created
                 else {
-                    $actions .= '<span class="badge bg-success">SPK Created</span>';
+                    $actions .= '<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>SPK Created</span>';
                 }
                 break;
                 
@@ -2330,7 +2332,13 @@ class Marketing extends BaseDataTableController
     public function spkPrint($id)
     {
         $id = (int)$id;
-        $row = $this->db->table('spk')->where('id', $id)->get()->getRowArray();
+        $row = $this->db->table('spk')
+            ->select('spk.*, qs_lookup.id_quotation, q_lookup.quotation_number')
+            ->join('quotation_specifications qs_lookup', 'qs_lookup.id_specification = spk.quotation_specification_id', 'left')
+            ->join('quotations q_lookup', 'q_lookup.id_quotation = qs_lookup.id_quotation', 'left')
+            ->where('spk.id', $id)
+            ->get()
+            ->getRowArray();
         if (!$row) {
             return $this->response->setStatusCode(404)->setBody('SPK tidak ditemukan');
         }
@@ -3143,15 +3151,20 @@ class Marketing extends BaseDataTableController
     {
         $builder = $this->spkModel->builder();
         
+        // Join with quotation_specifications and quotations to get quotation_number
+        $builder->select('spk.*, qs.id_quotation, q.quotation_number')
+            ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
+            ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left');
+        
         // Apply date filter if provided (supports both GET and POST)
         $hasFilter = $this->hasDateFilter();
         log_message('info', 'SPK List - Date Filter: ' . ($hasFilter ? 'YES (' . $this->getDateFilterParams()['start'] . ' to ' . $this->getDateFilterParams()['end'] . ')' : 'NO'));
         
         if ($hasFilter) {
-            $this->applyDateFilter($builder, 'created_at');
+            $this->applyDateFilter($builder, 'spk.created_at');
         }
         
-        $data = $builder->orderBy('id','DESC')->get()->getResultArray();
+        $data = $builder->orderBy('spk.id','DESC')->get()->getResultArray();
         
         log_message('info', 'SPK List - Returned ' . count($data) . ' records');
         
@@ -4486,10 +4499,10 @@ class Marketing extends BaseDataTableController
             log_message('error', 'createSPKFromQuotation - Specifications count: ' . count($specifications));
             log_message('error', 'createSPKFromQuotation - Specifications type: ' . gettype($specifications));
 
-            // Validation
-            if (!$quotationId || !$customerId || !$contractId) {
-                log_message('error', 'createSPKFromQuotation - Missing data: quotation=' . $quotationId . ', customer=' . $customerId . ', contract=' . $contractId);
-                throw new \Exception('Missing required data: quotation, customer, or contract');
+            // Validation - CONTRACT NOW OPTIONAL (can be linked later)
+            if (!$quotationId || !$customerId) {
+                log_message('error', 'createSPKFromQuotation - Missing data: quotation=' . $quotationId . ', customer=' . $customerId);
+                throw new \Exception('Missing required data: quotation or customer');
             }
 
             if (!$deliveryDate) {
@@ -4500,27 +4513,53 @@ class Marketing extends BaseDataTableController
                 throw new \Exception('Please select at least one specification');
             }
 
-            // Get quotation
+            // Get quotation with customer location data
             $quotation = $this->quotationModel->find($quotationId);
             if (!$quotation) {
                 throw new \Exception('Quotation not found');
             }
 
-            // Get contract with customer location data
-            $contract = $this->db->table('kontrak k')
-                ->select('k.*, c.customer_name as pelanggan, cl.contact_person as pic, cl.phone as kontak, cl.address as lokasi, cl.location_name as nama_lokasi')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
-                ->where('k.id', $contractId)
+            // Get customer and location data for fallback
+            $customerData = $this->db->table('customers c')
+                ->select('c.*, cl.contact_person as pic, cl.phone as kontak, cl.address as lokasi, cl.location_name as nama_lokasi')
+                ->join('customer_locations cl', 'cl.customer_id = c.id', 'left')
+                ->where('c.id', $customerId)
                 ->get()
                 ->getRowArray();
-                
-            if (!$contract) {
-                throw new \Exception('Contract not found');
+
+            // Get contract data if provided (OPTIONAL) - VALIDATE contract exists
+            $contract = null;
+            $validContractId = null;
+            if ($contractId) {
+                $contract = $this->db->table('kontrak k')
+                    ->select('k.*, c.customer_name as pelanggan, cl.contact_person as pic, cl.phone as kontak, cl.address as lokasi, cl.location_name as nama_lokasi')
+                    ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                    ->join('customers c', 'c.id = cl.customer_id', 'left')
+                    ->where('k.id', $contractId)
+                    ->get()
+                    ->getRowArray();
+                    
+                if (!$contract) {
+                    log_message('warning', 'Contract ID provided but not found in database: ' . $contractId . ' - Setting to NULL');
+                    $validContractId = null; // Contract doesn't exist, set to NULL
+                } else {
+                    $validContractId = $contractId; // Contract exists, use it
+                }
             }
+            
+            // Use contract data if available, otherwise fallback to customer/quotation data
+            $customerInfo = [
+                'pelanggan' => $contract['pelanggan'] ?? $customerData['customer_name'] ?? $quotation['prospect_name'],
+                'pic' => $contract['pic'] ?? $customerData['pic'] ?? $quotation['prospect_contact_person'],
+                'kontak' => $contract['kontak'] ?? $customerData['kontak'] ?? $quotation['prospect_phone'],
+                'lokasi' => $contract ? (($contract['nama_lokasi'] ?? '') . ($contract['lokasi'] ? ' - ' . $contract['lokasi'] : '')) 
+                          : (($customerData['nama_lokasi'] ?? '') . ($customerData['lokasi'] ? ' - ' . $customerData['lokasi'] : '') ?: $quotation['prospect_address']),
+                'po_kontrak_nomor' => $contract['no_kontrak'] ?? null
+            ];
 
             $createdSPKs = [];
             $spkNumbers = [];
+            $errorMessages = []; // Track errors
 
             // Create SPK for each selected specification
             foreach ($specifications as $specData) {
@@ -4532,6 +4571,7 @@ class Marketing extends BaseDataTableController
                 log_message('error', "Processing spec {$specId} with quantity {$quantity}");
 
                 if ($quantity <= 0) {
+                    $errorMessages[] = "Specification #{$specId}: Invalid quantity ({$quantity})";
                     log_message('warning', "Spec {$specId} skipped: invalid quantity {$quantity}");
                     continue; // Skip invalid quantities
                 }
@@ -4551,6 +4591,7 @@ class Marketing extends BaseDataTableController
                     ->getRowArray();
 
                 if (!$spec) {
+                    $errorMessages[] = "Specification #{$specId}: Not found in database";
                     log_message('error', "Specification not found: ID {$specId}");
                     continue;
                 }
@@ -4577,6 +4618,7 @@ class Marketing extends BaseDataTableController
                 
                 // Validate: requested quantity vs available
                 if ($availableQty <= 0) {
+                    $errorMessages[] = "Specification #{$specId}: All units already have SPK (Total: {$specTotalQty}, Existing: {$existingUnits})";
                     log_message('error', "SKIPPED: Specification {$specId} has no available units. Total: {$specTotalQty}, Already created: {$existingUnits}");
                     continue; // Skip - all units already have SPKs
                 }
@@ -4616,59 +4658,74 @@ class Marketing extends BaseDataTableController
 
                 log_message('error', "CHECKPOINT 3: SPK number generated: {$nomorSPK}");
 
-                // Prepare SPK payload
+                // Prepare SPK payload - Contract is OPTIONAL (use validContractId)
                 $spkPayload = [
                     'nomor_spk' => $nomorSPK,
                     'jenis_spk' => 'UNIT',
-                    'kontrak_id' => $contractId,
+                    'kontrak_id' => $validContractId, // NULL if contract doesn't exist or not provided
                     'quotation_specification_id' => $specId,
+                    // 'source_type' => $validContractId ? 'CONTRACT' : 'QUOTATION', // Disabled - column doesn't exist yet
                     'jumlah_unit' => $quantity,
-                    'po_kontrak_nomor' => $contract['no_kontrak'] ?? null,
-                    'pelanggan' => $contract['pelanggan'] ?? null,
-                    'pic' => $contract['pic'] ?? null,
-                    'kontak' => $contract['kontak'] ?? null,
-                    'lokasi' => ($contract['nama_lokasi'] ?? '') . ($contract['lokasi'] ? ' - ' . $contract['lokasi'] : ''),
+                    'po_kontrak_nomor' => $customerInfo['po_kontrak_nomor'],
+                    'pelanggan' => $customerInfo['pelanggan'],
+                    'pic' => $customerInfo['pic'],
+                    'kontak' => $customerInfo['kontak'],
+                    'lokasi' => $customerInfo['lokasi'],
                     'delivery_plan' => $deliveryDate,
                     'spesifikasi' => json_encode($spesifikasiData),
-                    'catatan' => "Created from Quotation {$quotation['quotation_number']}",
+                    'catatan' => "Created from Quotation {$quotation['quotation_number']}" . ($validContractId ? "" : " (Contract pending)"),
                     'status' => 'SUBMITTED',
                     'dibuat_oleh' => session('user_id') ?? 1,
                     'dibuat_pada' => date('Y-m-d H:i:s')
                 ];
 
-                log_message('error', "CHECKPOINT 4: About to insert SPK with payload: " . json_encode(['nomor' => $spkPayload['nomor_spk'], 'kontrak_id' => $spkPayload['kontrak_id'], 'spec_id' => $spkPayload['quotation_specification_id']]));
+                log_message('error', "CHECKPOINT 4: About to insert SPK with payload: " . json_encode(['nomor' => $spkPayload['nomor_spk'], 'kontrak_id' => $spkPayload['kontrak_id'], 'spec_id' => $spkPayload['quotation_specification_id'], 'pelanggan' => $spkPayload['pelanggan']]));
 
                 // Insert SPK
-                $insertResult = $this->spkModel->insert($spkPayload);
-                
-                log_message('error', "CHECKPOINT 5: Insert result: " . ($insertResult ? 'SUCCESS' : 'FAILED'));
-                
-                if ($insertResult) {
-                    $spkId = $this->spkModel->getInsertID();
+                try {
+                    $insertResult = $this->spkModel->insert($spkPayload);
                     
-                    if ($spkId) {
-                        $createdSPKs[] = $spkId;
-                        $spkNumbers[] = $nomorSPK;
+                    log_message('error', "CHECKPOINT 5: Insert result: " . ($insertResult ? 'SUCCESS' : 'FAILED'));
+                    
+                    if ($insertResult) {
+                        $spkId = $this->spkModel->getInsertID();
                         
-                        // Send notification for each created SPK
-                        $this->sendSpkNotification($spkId);
-                        
-                        // Log SPK creation
-                        $this->logCreate('spk', $spkId, [
-                            'spk_id' => $spkId,
-                            'nomor_spk' => $nomorSPK,
-                            'quotation_id' => $quotationId,
-                            'specification_id' => $specId,
-                            'jumlah_unit' => $quantity
-                        ]);
-                        
-                        log_message('info', "SPK created from quotation: {$nomorSPK} (ID: {$spkId})");
+                        if ($spkId) {
+                            $createdSPKs[] = $spkId;
+                            $spkNumbers[] = $nomorSPK;
+                            
+                            // Send notification for each created SPK
+                            $this->sendSpkNotification($spkId);
+                            
+                            // Log SPK creation
+                            $this->logCreate('spk', $spkId, [
+                                'spk_id' => $spkId,
+                                'nomor_spk' => $nomorSPK,
+                                'quotation_id' => $quotationId,
+                                'specification_id' => $specId,
+                                'jumlah_unit' => $quantity
+                            ]);
+                            
+                            log_message('info', "SPK created from quotation: {$nomorSPK} (ID: {$spkId})");
+                        } else {
+                            $errorMessages[] = "Specification #{$specId}: Insert succeeded but no ID returned";
+                            log_message('error', "Insert succeeded but getInsertID returned null for spec {$specId}");
+                        }
+                    } else {
+                        $errors = $this->spkModel->errors();
+                        $errorMsg = !empty($errors) ? implode(', ', $errors) : 'Unknown insert failure';
+                        $errorMessages[] = "Specification #{$specId}: {$errorMsg}";
+                        log_message('error', "Insert failed for spec {$specId}: " . json_encode($errors));
                     }
+                } catch (\Exception $insertEx) {
+                    $errorMessages[] = "Specification #{$specId}: " . $insertEx->getMessage();
+                    log_message('error', "Exception during insert for spec {$specId}: " . $insertEx->getMessage());
                 }
             }
 
             if (empty($createdSPKs)) {
-                throw new \Exception('Failed to create any SPK. Please check your selections.');
+                $errorDetail = !empty($errorMessages) ? "\n\nDetails:\n" . implode("\n", $errorMessages) : '';
+                throw new \Exception('Failed to create any SPK. Please check your selections.' . $errorDetail);
             }
 
             // Check if ALL specifications are now fully allocated
@@ -5461,6 +5518,27 @@ class Marketing extends BaseDataTableController
             return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Tujuan Perintah Kerja harus dipilih']);
         }
 
+        // Determine initial status based on SPK contract linkage
+        // AWAITING_CONTRACT if SPK has no contract, SUBMITTED if SPK has contract
+        $initialStatus = 'DIAJUKAN'; // Default for backward compatibility
+        $contractId = null;
+        $contractLinkedAt = null;
+        $contractLinkedBy = null;
+        
+        if ($spkId > 0) {
+            $diModelInstance = new \App\Models\DeliveryInstructionModel();
+            $initialStatus = $diModelInstance->determineInitialStatus($spkId);
+            error_log('DI Create - Determined initial status: ' . $initialStatus);
+            
+            // Inherit contract information from SPK
+            if (isset($spk['kontrak_id']) && $spk['kontrak_id']) {
+                $contractId = $spk['kontrak_id'];
+                $contractLinkedAt = $spk['contract_linked_at'] ?? date('Y-m-d H:i:s');
+                $contractLinkedBy = $spk['contract_linked_by'] ?? session('user_id');
+                error_log('DI Create - Inherited contract from SPK: kontrak_id=' . $contractId);
+            }
+        }
+
         $payload = [
             'nomor_di' => method_exists($this->diModel,'generateNextNumber') ? $this->diModel->generateNextNumber() : $this->generateDiNumber(),
             'spk_id' => $spkId ?: null,
@@ -5468,7 +5546,10 @@ class Marketing extends BaseDataTableController
             'po_kontrak_nomor' => $poNo,
             'pelanggan' => $pelanggan,
             'lokasi' => $lokasi,
-            'status_di' => 'DIAJUKAN',  // Use status_di field to match database column
+            'status_di' => $initialStatus,  // Auto-determined based on SPK contract status
+            'contract_id' => $contractId,   // Inherit from SPK kontrak_id (NULL if SPK has no contract)
+            'contract_linked_at' => $contractLinkedAt,
+            'contract_linked_by' => $contractLinkedBy,
             'jenis_perintah_kerja_id' => $jenisPerintahKerjaId,
             'tujuan_perintah_kerja_id' => $tujuanPerintahKerjaId,
             'status_eksekusi_workflow_id' => 1, // Default status eksekusi (PENDING atau sesuai workflow)
@@ -8056,6 +8137,555 @@ class Marketing extends BaseDataTableController
                 'success' => false,
                 'message' => 'Failed to open specifications: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    // ============================================================================
+    // QUOTATION-BASED WORKFLOW - NEW METHODS
+    // ============================================================================
+
+    /**
+     * Link SPK to Contract (late-linking mechanism)
+     * Called when contract documentation arrives after operational start
+     */
+    public function linkSPKToContract()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $spkId = $this->request->getPost('spk_id');
+            $contractId = $this->request->getPost('contract_id');
+            $bastDate = $this->request->getPost('bast_date'); // Optional
+
+            if (empty($spkId) || empty($contractId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'SPK ID and Contract ID required'
+                ]);
+            }
+
+            $spkModel = new \App\Models\SpkModel();
+            $userId = session()->get('user_id') ?? 1;
+
+            // Link SPK to contract (triggers auto-propagation to DIs)
+            $result = $spkModel->linkToContract($spkId, $contractId, $userId);
+
+            if ($result['success']) {
+                // If BAST date provided, update related DIs
+                if (!empty($bastDate)) {
+                    $diModel = new \App\Models\DeliveryInstructionModel();
+                    $dis = $diModel->where('spk_id', $spkId)->findAll();
+                    
+                    foreach ($dis as $di) {
+                        $diModel->setBillingStartDate($di['id'], $bastDate);
+                    }
+                }
+
+                // Send success notification to Marketing and Finance teams
+                $this->sendLinkingSuccessNotification($spkId, $contractId, $result['di_count']);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => $result['message'],
+                    'di_count' => $result['di_count']
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $result['message']
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::linkSPKToContract - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to link SPK to contract: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Link Delivery Instruction to Contract (Late Binding)
+     * Allows individual DI to be linked to contract independent of SPK
+     * Useful for cases where contract finalized after DI creation
+     */
+    public function linkDIToContract()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $diId = $this->request->getPost('di_id');
+            $contractId = $this->request->getPost('contract_id');
+            $bastDate = $this->request->getPost('bast_date'); // Optional
+
+            if (empty($diId) || empty($contractId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'DI ID and Contract ID required'
+                ]);
+            }
+
+            $diModel = new \App\Models\DeliveryInstructionModel();
+            $kontrakModel = new \App\Models\KontrakModel();
+            $userId = session()->get('user_id') ?? 1;
+
+            // Validate DI exists and not already linked
+            $di = $diModel->find($diId);
+            if (!$di) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Delivery Instruction not found'
+                ]);
+            }
+
+            if ($di['contract_id'] !== null) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'DI already linked to contract'
+                ]);
+            }
+
+            // Validate contract exists
+            $contract = $kontrakModel->find($contractId);
+            if (!$contract) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Contract not found'
+                ]);
+            }
+
+            // Update DI with contract linkage
+            $updateData = [
+                'contract_id' => $contractId,
+                'contract_linked_at' => date('Y-m-d H:i:s'),
+                'contract_linked_by' => $userId,
+                'status_di' => 'SUBMITTED', // Change from AWAITING_CONTRACT to SUBMITTED
+                'diperbarui_pada' => date('Y-m-d H:i:s'),
+            ];
+
+            // If BAST date provided, set billing start date
+            if (!empty($bastDate)) {
+                $updateData['bast_date'] = $bastDate;
+                $updateData['billing_start_date'] = $bastDate;
+            }
+
+            $updated = $diModel->update($diId, $updateData);
+
+            if (!$updated) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Failed to update DI'
+                ]);
+            }
+
+            // Send notification to Finance team
+            $this->sendDILinkingSuccessNotification($diId, $contractId);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => "DI {$di['nomor_di']} linked to contract {$contract['no_kontrak']} successfully. Ready for invoice generation.",
+                'di_number' => $di['nomor_di'],
+                'contract_number' => $contract['no_kontrak']
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::linkDIToContract - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to link DI to contract: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Send notification when DI linked to contract
+     */
+    private function sendDILinkingSuccessNotification($diId, $contractId)
+    {
+        try {
+            $notificationModel = new \App\Models\NotificationModel();
+            $diModel = new \App\Models\DeliveryInstructionModel();
+            $kontrakModel = new \App\Models\KontrakModel();
+
+            $di = $diModel->find($diId);
+            $contract = $kontrakModel->find($contractId);
+
+            if ($di && $contract) {
+                // Notify Finance team (division_id = 4)
+                $notificationModel->createCrossDivisionNotification(
+                    4, // Finance division
+                    "DI {$di['nomor_di']} linked to contract {$contract['no_kontrak']}. Invoice generation now available.",
+                    "/finance/invoices?di_id={$diId}",
+                    'FINANCE',
+                    'high',
+                    session()->get('user_id')
+                );
+            }
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to send DI linking notification: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get contracts by customer ID for DI linking
+     * Returns all DEAL contracts for the specified customer
+     */
+    public function getContractsByCustomer($customerId = null)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        if (!$customerId) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Customer ID is required'
+            ]);
+        }
+
+        try {
+            $db = \Config\Database::connect();
+            
+            // Query contracts for this customer
+            $query = $db->table('kontraks')
+                ->select('kontraks.*, customers.nama_perusahaan as customer_name')
+                ->join('customers', 'customers.id = kontraks.pelanggan_id', 'left')
+                ->where('kontraks.pelanggan_id', $customerId)
+                ->orderBy('kontraks.tanggal_kontrak', 'DESC')
+                ->get();
+            
+            $contracts = $query->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contracts
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getContractsByCustomer - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to get contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get unlinked SPKs for contract linking
+     * Used in contract creation/detail view
+     */
+    public function getSPKsForContractLinking($customerId = null)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $spkModel = new \App\Models\SpkModel();
+            $unlinkedSPKs = $spkModel->getUnlinkedSPKs($customerId);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $unlinkedSPKs
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getSPKsForContractLinking - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to get unlinked SPKs: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Check if SPK has contract (for DI status determination)
+     */
+    public function checkSPKHasContract($spkId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $spkModel = new \App\Models\SpkModel();
+            $hasContract = $spkModel->hasContract($spkId);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'has_contract' => $hasContract
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::checkSPKHasContract - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Renew contract without re-delivery
+     * Creates new contract linked to original via contract_renewals table
+     */
+    public function renewContract($contractId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $kontrakModel = new \App\Models\KontrakModel();
+            $renewalModel = new \App\Models\ContractRenewalModel();
+
+            // Validate eligibility
+            $eligibility = $renewalModel->checkRenewalEligibility($contractId);
+            
+            if (!$eligibility['eligible']) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Contract cannot be renewed: ' . implode(', ', $eligibility['reasons'])
+                ]);
+            }
+
+            // Get original contract
+            $originalContract = $kontrakModel->find($contractId);
+            
+            if (!$originalContract) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Original contract not found'
+                ]);
+            }
+
+            // Get renewal data from request
+            $newStartDate = $this->request->getPost('start_date');
+            $newEndDate = $this->request->getPost('end_date');
+            $newRates = $this->request->getPost('rates'); // Optional rate changes
+            $sameLocation = $this->request->getPost('same_location') ?? true;
+            $notes = $this->request->getPost('notes') ?? '';
+
+            // Generate new contract number
+            // Simple approach: append -R1, -R2, etc.
+            $renewalCount = $renewalModel->where('original_contract_id', $contractId)->countAllResults() + 1;
+            $newContractNumber = $originalContract['no_kontrak'] . '-R' . $renewalCount;
+
+            // Create new contract
+            $newContractData = [
+                'no_kontrak' => $newContractNumber,
+                'customer_location_id' => $originalContract['customer_location_id'],
+                'no_po_marketing' => $this->request->getPost('po_number') ?? $originalContract['no_po_marketing'],
+                'nilai_total' => $newRates ?? $originalContract['nilai_total'],
+                'total_units' => $originalContract['total_units'],
+                'jenis_sewa' => $originalContract['jenis_sewa'],
+                'tanggal_mulai' => $newStartDate,
+                'tanggal_berakhir' => $newEndDate,
+                'status' => 'Aktif',
+                'dibuat_oleh' => session()->get('user_id') ?? 1,
+                'dibuat_pada' => date('Y-m-d H:i:s'),
+                'diperbarui_pada' => date('Y-m-d H:i:s')
+            ];
+
+            if ($kontrakModel->insert($newContractData)) {
+                $newContractId = $kontrakModel->getInsertID();
+
+                // Copy specifications from original contract
+                $kontrakSpesifikasiModel = new \App\Models\KontrakSpesifikasiModel();
+                $originalSpecs = $kontrakSpesifikasiModel->where('kontrak_id', $contractId)->findAll();
+
+                foreach ($originalSpecs as $spec) {
+                    $newSpec = $spec;
+                    unset($newSpec['id']);
+                    $newSpec['kontrak_id'] = $newContractId;
+                    
+                    // Apply new rates if provided
+                    if (!empty($newRates)) {
+                        $newSpec['harga_per_unit_bulanan'] = $newRates;
+                    }
+                    
+                    $kontrakSpesifikasiModel->insert($newSpec);
+                }
+
+                // Create renewal record
+                $renewalData = [
+                    'original_contract_id' => $contractId,
+                    'renewed_contract_id' => $newContractId,
+                    'renewal_date' => date('Y-m-d'),
+                    'same_location' => $sameLocation,
+                    'notes' => $notes,
+                    'created_by' => session()->get('user_id') ?? 1
+                ];
+
+                $renewalModel->createRenewal($contractId, $newContractId, $renewalData);
+
+                // Update billing schedule
+                $scheduleModel = new \App\Models\RecurringBillingScheduleModel();
+                $scheduleModel->createSchedule($newContractId);
+
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Contract renewed successfully',
+                    'new_contract_id' => $newContractId,
+                    'contract_number' => $newContractNumber
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create renewed contract'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::renewContract - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to renew contract: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Create contract amendment for price/term changes
+     */
+    public function createAmendment($contractId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+
+        try {
+            $amendmentModel = new \App\Models\ContractAmendmentModel();
+
+            $amendmentData = [
+                'parent_contract_id' => $contractId,
+                'reason' => $this->request->getPost('reason'),
+                'new_monthly_rate' => $this->request->getPost('new_rate'),
+                'effective_date' => $this->request->getPost('effective_date'),
+                'created_by' => session()->get('user_id') ?? 1
+            ];
+
+            // Validate effective date
+            $validation = $amendmentModel->validateEffectiveDate($contractId, $amendmentData['effective_date']);
+            
+            if (!$validation['valid']) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid effective date',
+                    'errors' => $validation['errors']
+                ]);
+            }
+
+            $amendmentId = $amendmentModel->createAmendment($contractId, $amendmentData);
+
+            if ($amendmentId) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Amendment created successfully',
+                    'amendment_id' => $amendmentId,
+                    'warnings' => $validation['warnings'] ?? []
+                ]);
+            }
+
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create amendment'
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::createAmendment - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create amendment: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    // ============================================================================
+    // NOTIFICATION HELPERS
+    // ============================================================================
+
+    /**
+     * Send success notification when SPK is linked to contract
+     */
+    protected function sendLinkingSuccessNotification($spkId, $contractId, $diCount)
+    {
+        try {
+            $notificationModel = new \App\Models\NotificationModel();
+            $spkModel = new \App\Models\SpkModel();
+            $kontrakModel = new \App\Models\KontrakModel();
+            
+            $spk = $spkModel->find($spkId);
+            $contract = $kontrakModel->find($contractId);
+            
+            if (!$spk || !$contract) {
+                return;
+            }
+
+            // Get Finance team users
+            $financeUsers = $this->getFinanceTeamUsers();
+            
+            // Get the user who performed the linking
+            $linkingUser = session()->get('user_id') ?? 1;
+
+            $title = "✓ SPK Berhasil Link ke Kontrak";
+            $message = "SPK {$spk['nomor_spk']} telah berhasil di-link ke kontrak {$contract['no_kontrak']}. "
+                     . "{$diCount} DI telah di-update dan siap untuk invoicing. "
+                     . "Customer: {$spk['pelanggan']}.";
+
+            $options = [
+                'type' => 'success',
+                'icon' => 'check-circle',
+                'module' => 'spk',
+                'id' => $spkId,
+                'url' => "/marketing/spk/detail/{$spkId}"
+            ];
+
+            // Notify Finance team
+            if (!empty($financeUsers)) {
+                $notificationModel->sendToMultiple($financeUsers, $title, $message, $options);
+            }
+
+            // Also notify the linking user
+            $notificationModel->send($linkingUser, $title, $message, $options);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::sendLinkingSuccessNotification - Error: ' . $e->getMessage());
+            // Don't throw, just log - notification failure shouldn't break the main operation
+        }
+    }
+
+    /**
+     * Get Finance team user IDs
+     */
+    protected function getFinanceTeamUsers()
+    {
+        try {
+            $db = \Config\Database::connect();
+
+            $query = $db->table('users u')
+                ->select('u.id')
+                ->join('divisions d', 'd.id = u.division_id', 'left')
+                ->where('u.is_active', 1)
+                ->groupStart()
+                    ->like('d.name', 'Finance', 'both')
+                    ->orLike('d.name', 'Accounting', 'both')
+                    ->orLike('d.name', 'Keuangan', 'both')
+                ->groupEnd()
+                ->get();
+
+            $users = $query->getResultArray();
+            
+            return array_column($users, 'id');
+
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::getFinanceTeamUsers - Error: ' . $e->getMessage());
+            return [];
         }
     }
 }

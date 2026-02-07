@@ -1,0 +1,359 @@
+<?php
+
+namespace App\Models;
+
+use CodeIgniter\Model;
+
+/**
+ * Invoice Model
+ * Core invoicing system with contract-based billing control
+ * Implements invoice locking mechanism for unlinked deliveries
+ */
+class InvoiceModel extends Model
+{
+    protected $table = 'invoices';
+    protected $primaryKey = 'id';
+    protected $returnType = 'array';
+    protected $useSoftDeletes = false;
+    protected $allowedFields = [
+        'invoice_number',
+        'contract_id',
+        'di_id',
+        'customer_id',
+        'invoice_type',
+        'billing_period_start',
+        'billing_period_end',
+        'issue_date',
+        'due_date',
+        'subtotal',
+        'discount_amount',
+        'tax_percent',
+        'tax_amount',
+        'total_amount',
+        'status',
+        'payment_date',
+        'payment_method',
+        'payment_reference',
+        'notes',
+        'created_by',
+        'approved_by'
+    ];
+    
+    protected $useTimestamps = true;
+    protected $createdField = 'created_at';
+    protected $updatedField = 'updated_at';
+    
+    protected $validationRules = [
+        'invoice_number' => 'required|string|max_length[50]|is_unique[invoices.invoice_number]',
+        'contract_id' => 'required|integer',
+        'customer_id' => 'required|integer',
+        'invoice_type' => 'required|in_list[ONE_TIME,RECURRING_RENTAL,ADDENDUM]',
+        'billing_period_start' => 'required|valid_date',
+        'billing_period_end' => 'required|valid_date',
+        'issue_date' => 'required|valid_date',
+        'due_date' => 'required|valid_date',
+        'status' => 'required|in_list[DRAFT,PENDING_APPROVAL,APPROVED,SENT,PAID,OVERDUE,CANCELLED]',
+        'created_by' => 'required|integer'
+    ];
+    
+    /**
+     * Generate next invoice number with prefix INV/YYYYMM/NNN
+     * Uses stored procedure with database locking
+     * 
+     * @return string Invoice number
+     */
+    public function generateInvoiceNumber(): string
+    {
+        try {
+            // Call stored procedure
+            $query = $this->db->query("CALL sp_generate_invoice_number(@invoice_number)");
+            $result = $this->db->query("SELECT @invoice_number as invoice_number")->getRow();
+            
+            if ($result && !empty($result->invoice_number)) {
+                return $result->invoice_number;
+            }
+        } catch (\Exception $e) {
+            // Fallback to manual generation
+            log_message('warning', 'Failed to use stored procedure for invoice number: ' . $e->getMessage());
+        }
+        
+        // Fallback manual generation
+        $prefix = 'INV/' . date('Ym') . '/';
+        $row = $this->db->table($this->table)
+                        ->like('invoice_number', $prefix)
+                        ->orderBy('id', 'DESC')
+                        ->get()
+                        ->getRowArray();
+        
+        $seq = 1;
+        if ($row && isset($row['invoice_number'])) {
+            $parts = explode('/', $row['invoice_number']);
+            $seq = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
+        }
+        
+        return $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
+    }
+    
+    /**
+     * Create invoice from Delivery Instruction (one-time invoice)
+     * VALIDATION GUARDRAIL: Checks billing readiness before creation
+     * 
+     * @param int $diId Delivery Instruction ID
+     * @param int $contractId Contract ID (should match DI's contract)
+     * @param int $userId User creating invoice
+     * @param array $options Optional parameters (due_days, tax_percent, discount, notes)
+     * @return array Result ['success' => bool, 'invoice_id' => int|null, 'errors' => array]
+     */
+    public function createFromDI(int $diId, int $contractId, int $userId, array $options = []): array
+    {
+        $result = ['success' => false, 'invoice_id' => null, 'errors' => []];
+        
+        // LAYER 1: Validate billing readiness
+        $diModel = new \App\Models\DeliveryInstructionModel();
+        $validationErrors = $diModel->validateBillingReadiness($diId);
+        
+        if (!empty($validationErrors)) {
+            $result['errors'] = $validationErrors;
+            $result['locked'] = true;
+            return $result;
+        }
+        
+        // Get DI details
+        $di = $diModel->select('delivery_instructions.*, kontrak.no_kontrak, '
+                             . 'customer_locations.customer_id, customers.name as customer_name')
+                      ->join('kontrak', 'kontrak.id = delivery_instructions.contract_id', 'left')
+                      ->join('customer_locations', 'customer_locations.id = kontrak.customer_location_id', 'left')
+                      ->join('customers', 'customers.id = customer_locations.customer_id', 'left')
+                      ->find($diId);
+        
+        if (!$di) {
+            $result['errors'][] = 'Delivery Instruction not found';
+            return $result;
+        }
+        
+        // Verify contract match
+        if ($di['contract_id'] != $contractId) {
+            $result['errors'][] = 'Contract ID mismatch';
+            return $result;
+        }
+        
+        // Generate invoice number
+        $invoiceNumber = $this->generateInvoiceNumber();
+        
+        // Calculate billing period from BAST date
+        $billingStart = $di['billing_start_date'] ?? $di['bast_date'];
+        $billingEnd = $billingStart; // For one-time, end = start
+        
+        // Calculate due date
+        $dueDays = $options['due_days'] ?? 30;
+        $issueDate = date('Y-m-d');
+        $dueDate = date('Y-m-d', strtotime($issueDate . " +{$dueDays} days"));
+        
+        // Prepare invoice data
+        $invoiceData = [
+            'invoice_number' => $invoiceNumber,
+            'contract_id' => $contractId,
+            'di_id' => $diId,
+            'customer_id' => $di['customer_id'],
+            'invoice_type' => 'ONE_TIME',
+            'billing_period_start' => $billingStart,
+            'billing_period_end' => $billingEnd,
+            'issue_date' => $issueDate,
+            'due_date' => $dueDate,
+            'subtotal' => 0, // Will be calculated from items
+            'discount_amount' => $options['discount_amount'] ?? 0,
+            'tax_percent' => $options['tax_percent'] ?? 11.00,
+            'tax_amount' => 0, // Will be calculated by trigger
+            'total_amount' => 0, // Will be calculated by trigger
+            'status' => 'DRAFT',
+            'notes' => $options['notes'] ?? 'Invoice generated from Delivery Instruction ' . $di['nomor_di'],
+            'created_by' => $userId
+        ];
+        
+        // Insert invoice
+        if ($this->insert($invoiceData)) {
+            $invoiceId = $this->getInsertID();
+            
+            // Add items from delivery
+            $invoiceItemModel = new \App\Models\InvoiceItemModel();
+            $itemCount = $invoiceItemModel->addItemsFromDI($invoiceId, $diId);
+            
+            $result['success'] = true;
+            $result['invoice_id'] = $invoiceId;
+            $result['message'] = "Invoice {$invoiceNumber} created with {$itemCount} items";
+            
+            return $result;
+        }
+        
+        $result['errors'][] = 'Failed to create invoice';
+        return $result;
+    }
+    
+    /**
+     * Create recurring invoice from billing schedule
+     * Used for monthly/periodic rental billing
+     * 
+     * @param int $scheduleId Billing schedule ID
+     * @param int $userId User creating invoice
+     * @return array Result ['success' => bool, 'invoice_id' => int|null, 'errors' => array]
+     */
+    public function createRecurringInvoice(int $scheduleId, int $userId): array
+    {
+        $result = ['success' => false, 'invoice_id' => null, 'errors' => []];
+        
+        $scheduleModel = new \App\Models\RecurringBillingScheduleModel();
+        $schedule = $scheduleModel->find($scheduleId);
+        
+        if (!$schedule) {
+            $result['errors'][] = 'Billing schedule not found';
+            return $result;
+        }
+        
+        // Get contract
+        $kontrakModel = new \App\Models\KontrakModel();
+        $contract = $kontrakModel->select('kontrak.*, customer_locations.customer_id')
+                                 ->join('customer_locations', 'customer_locations.id = kontrak.customer_location_id')
+                                 ->find($schedule['contract_id']);
+        
+        if (!$contract) {
+            $result['errors'][] = 'Contract not found';
+            return $result;
+        }
+        
+        // Calculate billing period
+        $billingStart = $schedule['next_billing_date'];
+        
+        // Calculate end based on frequency
+        $frequency = $schedule['frequency'];
+        if ($frequency === 'MONTHLY') {
+            $billingEnd = date('Y-m-d', strtotime($billingStart . ' +1 month -1 day'));
+        } elseif ($frequency === 'QUARTERLY') {
+            $billingEnd = date('Y-m-d', strtotime($billingStart . ' +3 months -1 day'));
+        } elseif ($frequency === 'YEARLY') {
+            $billingEnd = date('Y-m-d', strtotime($billingStart . ' +1 year -1 day'));
+        }
+        
+        // Generate invoice number
+        $invoiceNumber = $this->generateInvoiceNumber();
+        
+        // Calculate due date (30 days from issue)
+        $issueDate = date('Y-m-d');
+        $dueDate = date('Y-m-d', strtotime($issueDate . ' +30 days'));
+        
+        // Check for applicable amendments
+        $amendmentModel = new \App\Models\ContractAmendmentModel();
+        $effectiveRate = $amendmentModel->getEffectiveRate($contract['id'], $billingStart);
+        
+        // Prepare invoice data
+        $invoiceData = [
+            'invoice_number' => $invoiceNumber,
+            'contract_id' => $contract['id'],
+            'di_id' => null, // Recurring invoice not tied to specific DI
+            'customer_id' => $contract['customer_id'],
+            'invoice_type' => $effectiveRate ? 'ADDENDUM' : 'RECURRING_RENTAL',
+            'billing_period_start' => $billingStart,
+            'billing_period_end' => $billingEnd,
+            'issue_date' => $issueDate,
+            'due_date' => $dueDate,
+            'subtotal' => 0,
+            'discount_amount' => 0,
+            'tax_percent' => 11.00,
+            'tax_amount' => 0,
+            'total_amount' => 0,
+            'status' => 'DRAFT',
+            'notes' => "Recurring rental invoice for period {$billingStart} to {$billingEnd}",
+            'created_by' => $userId
+        ];
+        
+        // Insert invoice
+        if ($this->insert($invoiceData)) {
+            $invoiceId = $this->getInsertID();
+            
+            // Add items from contract specifications
+            $invoiceItemModel = new \App\Models\InvoiceItemModel();
+            $itemCount = $invoiceItemModel->addItemsFromContract($contract['id'], $effectiveRate);
+            
+            // Update schedule
+            $nextBillingDate = date('Y-m-d', strtotime($billingEnd . ' +1 day'));
+            $scheduleModel->update($scheduleId, [
+                'next_billing_date' => $nextBillingDate,
+                'last_invoice_id' => $invoiceId
+            ]);
+            
+            $result['success'] = true;
+            $result['invoice_id'] = $invoiceId;
+            $result['message'] = "Invoice {$invoiceNumber} created with {$itemCount} items";
+            
+            return $result;
+        }
+        
+        $result['errors'][] = 'Failed to create invoice';
+        return $result;
+    }
+    
+    /**
+     * Update invoice status with audit trail
+     * 
+     * @param int $invoiceId Invoice ID
+     * @param string $newStatus New status
+     * @param int $userId User changing status
+     * @param string|null $notes Optional notes
+     * @return bool Success status
+     */
+    public function updateStatus(int $invoiceId, string $newStatus, int $userId, ?string $notes = null): bool
+    {
+        $invoice = $this->find($invoiceId);
+        
+        if (!$invoice) {
+            return false;
+        }
+        
+        // Validate status transition (optional - add business rules here)
+        
+        // Update invoice
+        $updateData = ['status' => $newStatus];
+        
+        if ($newStatus === 'APPROVED') {
+            $updateData['approved_by'] = $userId;
+        }
+        
+        if ($newStatus === 'PAID' && empty($invoice['payment_date'])) {
+            $updateData['payment_date'] = date('Y-m-d');
+        }
+        
+        return (bool) $this->update($invoiceId, $updateData);
+    }
+    
+    /**
+     * Get all invoices for a contract
+     * 
+     * @param int $contractId Contract ID
+     * @return array List of invoices
+     */
+    public function getInvoicesByContract(int $contractId): array
+    {
+        return $this->where('contract_id', $contractId)
+                    ->orderBy('billing_period_start', 'DESC')
+                    ->findAll();
+    }
+    
+    /**
+     * Get invoice with full details (customer, contract, DI)
+     * 
+     * @param int $invoiceId Invoice ID
+     * @return array|null Invoice with joined data
+     */
+    public function getInvoiceDetails(int $invoiceId): ?array
+    {
+        return $this->select('invoices.*, '
+                           . 'customers.name as customer_name, customers.email as customer_email, '
+                           . 'kontrak.no_kontrak, '
+                           . 'delivery_instructions.nomor_di, '
+                           . 'users.username as created_by_username')
+                    ->join('customers', 'customers.id = invoices.customer_id', 'left')
+                    ->join('kontrak', 'kontrak.id = invoices.contract_id', 'left')
+                    ->join('delivery_instructions', 'delivery_instructions.id = invoices.di_id', 'left')
+                    ->join('users', 'users.id = invoices.created_by', 'left')
+                    ->find($invoiceId);
+    }
+}

@@ -1,0 +1,1 @@
+<?php \n\nnamespace App\Controllers; \nuse CodeIgniter\Controller; \nuse Config\Encryption; \nclass TestEncrypt extends Controller { \n    public function index()\n    {\n        \$e = service('encrypter');\n        \$c = \$e-;\n        \$d = \$e-;\n        echo 'Decrypted value: ' . \$d;\n    }\n}  
