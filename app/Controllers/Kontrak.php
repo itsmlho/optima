@@ -56,7 +56,27 @@ class Kontrak extends BaseController
                 $row = [];
                 $row['id']              = $contract['id'];
                 $row['contract_number'] = '<strong>' . esc($contract['no_kontrak']) . '</strong>';
-                $row['po']              = esc(isset($contract['no_po_marketing']) ? $contract['no_po_marketing'] : '-');
+                $row['po']              = esc(isset($contract['customer_po_number']) ? $contract['customer_po_number'] : '-');
+                
+                // Calculate days until expiry (for renewal button logic)
+                if (!empty($contract['tanggal_berakhir'])) {
+                    $endDate = new \DateTime($contract['tanggal_berakhir']);
+                    $today = new \DateTime();
+                    $interval = $today->diff($endDate);
+                    $row['days_until_expiry'] = $interval->invert ? -$interval->days : $interval->days;
+                } else {
+                    $row['days_until_expiry'] = 999; // No expiry date
+                }
+                
+                // Rental Type Badge
+                $rentalType = $contract['rental_type'] ?? 'CONTRACT';
+                $typeBadgeMap = [
+                    'CONTRACT' => '<span class="badge bg-primary"><i class="fas fa-file-contract me-1"></i>Contract</span>',
+                    'PO_ONLY' => '<span class="badge bg-info"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
+                    'DAILY_SPOT' => '<span class="badge bg-warning"><i class="fas fa-calendar-day me-1"></i>Daily/Spot</span>'
+                ];
+                $row['rental_type']     = $typeBadgeMap[$rentalType] ?? '<span class="badge bg-secondary">Unknown</span>';
+                
                 $row['client_name']     = esc($contract['pelanggan']);
                 $row['jenis_sewa']      = ucfirst($contract['jenis_sewa'] ?? 'BULANAN');
                 $row['period']          = date('d M Y', strtotime($contract['tanggal_mulai'])) . ' - ' . date('d M Y', strtotime($contract['tanggal_berakhir']));
@@ -66,16 +86,20 @@ class Kontrak extends BaseController
                 // Status badge with proper color
                 $statusClass = 'bg-secondary';
                 switch($contract['status']) {
-                    case 'Aktif':
+                    case 'ACTIVE':
+                    case 'Aktif':  // Legacy fallback
                         $statusClass = 'bg-success';
                         break;
-                    case 'Pending':
+                    case 'PENDING':
+                    case 'Pending':  // Legacy fallback
                         $statusClass = 'bg-warning';
                         break;
-                    case 'Berakhir':
+                    case 'EXPIRED':
+                    case 'Berakhir':  // Legacy fallback
                         $statusClass = 'bg-danger';
                         break;
-                    case 'Dibatalkan':
+                    case 'CANCELLED':
+                    case 'Dibatalkan':  // Legacy fallback
                         $statusClass = 'bg-secondary';
                         break;
                 }
@@ -220,16 +244,17 @@ class Kontrak extends BaseController
         
         // Validasi input menggunakan model validation dengan struktur database baru
         $data = [
-            'no_kontrak'        => trim((string)$this->request->getPost('contract_number')),
-            'no_po_marketing'   => $this->request->getPost('po_number'),
-            'customer_location_id' => (int)$this->request->getPost('customer_location_id'),
-            'nilai_total'       => 0, // Akan dihitung otomatis dari spesifikasi
-            'total_units'       => 0, // Akan dihitung otomatis dari spesifikasi
-            'jenis_sewa'        => strtoupper($this->request->getPost('jenis_sewa') ?: 'BULANAN'),
-            'tanggal_mulai'     => $this->request->getPost('start_date'),
-            'tanggal_berakhir'  => $this->request->getPost('end_date'),
-            'status'            => 'Pending', // Set otomatis ke Pending untuk kontrak baru
-            'dibuat_oleh'       => session()->get('user_id') ?? 1, // Default user ID jika session kosong
+            'no_kontrak'           => trim((string)$this->request->getPost('contract_number')),
+            'customer_po_number'   => $this->request->getPost('po_number'),
+            'rental_type'          => $this->request->getPost('rental_type') ?: 'CONTRACT',
+            'customer_location_id' => (int)$this->request->getPost('customer_location_id') ?: (int)$this->request->getPost('location_id'),
+            'nilai_total'          => 0, // Akan dihitung otomatis dari spesifikasi
+            'total_units'          => 0, // Akan dihitung otomatis dari spesifikasi
+            'jenis_sewa'           => strtoupper($this->request->getPost('jenis_sewa') ?: 'BULANAN'),
+            'tanggal_mulai'        => $this->request->getPost('start_date'),
+            'tanggal_berakhir'     => $this->request->getPost('end_date'),
+            'status'               => 'PENDING', // Set otomatis ke PENDING untuk kontrak baru
+            'dibuat_oleh'          => session()->get('user_id') ?? 1, // Default user ID jika session kosong
         ];
 
         // Validate using KontrakModel
@@ -254,7 +279,7 @@ class Kontrak extends BaseController
                 'is_critical' => 0,
                 'relations' => []
             ];
-            $this->logActivity('CREATE_FAILED', 'kontrak', 0, "Gagal membuat kontrak {$data['no_po_marketing']} - Validasi error: " . implode(', ', array_keys($errors)), $options);
+            $this->logActivity('CREATE_FAILED', 'kontrak', 0, "Gagal membuat kontrak {$data['no_kontrak']} (PO: {$data['customer_po_number']}) - Validasi error: " . implode(', ', array_keys($errors)), $options);
 
             return $this->response->setJSON([
                 'success' => false,
@@ -281,7 +306,7 @@ class Kontrak extends BaseController
                 'is_critical' => 1,
                 'relations' => []
             ];
-            $this->logActivity('CREATE_FAILED', 'kontrak', 0, "Gagal menyimpan kontrak {$data['no_po_marketing']} ke database - Error: {$errorMessage}", $options);
+            $this->logActivity('CREATE_FAILED', 'kontrak', 0, "Gagal menyimpan kontrak {$data['no_kontrak']} (PO: {$data['customer_po_number']}) ke database - Error: {$errorMessage}", $options);
             
             return $this->response->setJSON([
                 'success' => false,
@@ -367,7 +392,7 @@ class Kontrak extends BaseController
             'customer_location_id' => 'required|is_natural_no_zero',
             'start_date'      => 'required|valid_date',
             'end_date'        => 'required|valid_date',
-            'status'          => 'required|in_list[Aktif,Pending,Berakhir,Dibatalkan]'
+            'status'          => 'required|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED,Aktif,Pending,Berakhir,Dibatalkan]'
         ];
 
         if (!$this->validate($rules)) {
@@ -427,16 +452,17 @@ class Kontrak extends BaseController
         }
 
         $data = [
-            'no_kontrak'        => $contractNumber,
-            'no_po_marketing'   => $this->request->getPost('po_number'),
+            'no_kontrak'           => $contractNumber,
+            'customer_po_number'   => $this->request->getPost('po_number'),
+            'rental_type'          => $this->request->getPost('rental_type') ?: 'CONTRACT',
             'customer_location_id' => (int)$this->request->getPost('customer_location_id'),
-            'nilai_total'       => $this->request->getPost('contract_value') ?: 0,
-            'total_units'       => $this->request->getPost('total_units') ?: 0,
-            'tanggal_mulai'     => $this->request->getPost('start_date'),
-            'tanggal_berakhir'  => $this->request->getPost('end_date'),
-            'status'            => $this->request->getPost('status'),
-            'jenis_sewa'        => $this->request->getPost('jenis_sewa') ?: 'BULANAN',
-            'catatan'           => $this->request->getPost('catatan'),
+            'nilai_total'          => $this->request->getPost('contract_value') ?: 0,
+            'total_units'          => $this->request->getPost('total_units') ?: 0,
+            'tanggal_mulai'        => $this->request->getPost('start_date'),
+            'tanggal_berakhir'     => $this->request->getPost('end_date'),
+            'status'               => $this->request->getPost('status'),
+            'jenis_sewa'           => $this->request->getPost('jenis_sewa') ?: 'BULANAN',
+            'catatan'              => $this->request->getPost('catatan'),
         ];
 
         // Disable model validation temporarily for update to avoid is_unique conflict
@@ -954,7 +980,7 @@ class Kontrak extends BaseController
             log_message('info', "Updating inventory status for contract {$kontrakId}: {$oldStatus} -> {$newStatus}");
 
             // Contract becomes active - set to RENTAL
-            if ($newStatus === 'Aktif' && $oldStatus !== 'Aktif') {
+            if (in_array($newStatus, ['ACTIVE', 'Aktif']) && !in_array($oldStatus, ['ACTIVE', 'Aktif'])) {
                 $result = $this->inventoryStatusModel->updateStatusForActiveContract($kontrakId);
                 if ($result) {
                     log_message('info', "Successfully updated inventory to RENTAL status for active contract {$kontrakId}");
@@ -964,7 +990,7 @@ class Kontrak extends BaseController
             }
             
             // Contract ends or gets cancelled - set to UNIT PULANG
-            elseif (in_array($newStatus, ['Berakhir', 'Dibatalkan']) && $oldStatus === 'Aktif') {
+            elseif (in_array($newStatus, ['EXPIRED', 'Berakhir', 'CANCELLED', 'Dibatalkan']) && in_array($oldStatus, ['ACTIVE', 'Aktif'])) {
                 $result = $this->inventoryStatusModel->updateStatusForEndedContract($kontrakId);
                 if ($result) {
                     log_message('info', "Successfully updated inventory to UNIT PULANG status for ended contract {$kontrakId}");
@@ -1047,7 +1073,135 @@ class Kontrak extends BaseController
     }
 
     /**
-     * Get customers list for dropdown
+     * Get contract statistics for dashboard cards
+     */
+    public function getStats()
+    {
+        try {
+            $query = "
+                SELECT 
+                    COUNT(*) as total_contracts,
+                    COUNT(CASE WHEN rental_type = 'CONTRACT' THEN 1 END) as total_formal_contracts,
+                    COUNT(CASE WHEN rental_type = 'PO_ONLY' THEN 1 END) as total_po_only,
+                    COUNT(CASE WHEN rental_type = 'DAILY_SPOT' THEN 1 END) as total_daily_spot,
+                    COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as total_active,
+                    COUNT(CASE WHEN status = 'EXPIRED' THEN 1 END) as total_expired,
+                    COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as total_pending,
+                    SUM(total_units) as total_units_rented,
+                    SUM(nilai_total) as total_contract_value
+                FROM kontrak
+            ";
+
+            $stats = $this->db->query($query)->getRowArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $stats
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::getStats - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load statistics'
+            ]);
+        }
+    }
+
+    /**
+     * Export contracts to CSV
+     */
+    public function export()
+    {
+        try {
+            // Get filter parameters
+            $rentalType = $this->request->getGet('rental_type') ?? '';
+            $status = $this->request->getGet('status') ?? '';
+            $customerId = $this->request->getGet('customer_id') ?? '';
+
+            // Build query with filters
+            $builder = $this->db->table('kontrak k');
+            $builder->select('k.*, c.customer_name, c.customer_code, cl.location_name, 
+                             u.staff_name as created_by_name')
+                   ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+                   ->join('customers c', 'cl.customer_id = c.id', 'left')
+                   ->join('users u', 'k.dibuat_oleh = u.id', 'left');
+
+            if (!empty($rentalType)) $builder->where('k.rental_type', $rentalType);
+            if (!empty($status)) $builder->where('k.status', $status);
+            if (!empty($customerId)) $builder->where('c.id', $customerId);
+
+            $builder->orderBy('k.dibuat_pada', 'DESC');
+            $contracts = $builder->get()->getResultArray();
+
+            // Generate CSV
+            $filename = 'contracts_export_' . date('Ymd_His') . '.csv';
+            header('Content-Type: text/csv; charset=utf-8');
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+            $output = fopen('php://output', 'w');
+            
+            // CSV Header
+            fputcsv($output, [
+                'Contract No', 'PO Number', 'Rental Type', 'Customer', 'Location', 
+                'Start Date', 'End Date', 'Total Units', 'Total Value', 'Status', 'Created By'
+            ]);
+
+            // CSV Data
+            foreach ($contracts as $contract) {
+                fputcsv($output, [
+                    $contract['no_kontrak'],
+                    $contract['customer_po_number'] ?? '-',
+                    $contract['rental_type'],
+                    $contract['customer_name'],
+                    $contract['location_name'],
+                    $contract['tanggal_mulai'],
+                    $contract['tanggal_berakhir'],
+                    $contract['total_units'],
+                    $contract['nilai_total'],
+                    $contract['status'],
+                    $contract['created_by_name']
+                ]);
+            }
+
+            fclose($output);
+            exit;
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::export - Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to export: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Get customers dropdown for filters
+     */
+    public function getCustomersDropdown()
+    {
+        try {
+            $customers = $this->db->table('customers')
+                ->select('id, customer_name, customer_code')
+                ->where('is_active', 1)
+                ->orderBy('customer_name', 'ASC')
+                ->get()
+                ->getResultArray();
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $customers
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::getCustomersDropdown - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load customers'
+            ]);
+        }
+    }
+
+    /**
+     * Get customers list for dropdown (legacy compatibility)
      */
     public function getCustomers()
     {
@@ -1101,4 +1255,813 @@ class Kontrak extends BaseController
             ]);
         }
     }
+    
+    /**
+     * Get expiring contracts (for renewal wizard)
+     * Returns contracts expiring within 90 days
+     */
+    public function getExpiringContracts()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $builder = $this->db->table('kontrak k');
+            $builder->select('k.*, c.customer_name, c.customer_code, cl.location_name');
+            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->where('k.status', 'ACTIVE');
+            $builder->where('k.end_date <=', date('Y-m-d', strtotime('+90 days')));
+            $builder->where('k.end_date >=', date('Y-m-d'));
+            $builder->orderBy('k.end_date', 'ASC');
+            
+            $contracts = $builder->get()->getResultArray();
+            
+            // Add unit counts and values
+            foreach ($contracts as &$contract) {
+                $unitsBuilder = $this->db->table('contract_units');
+                $unitsBuilder->where('contract_id', $contract['id']);
+                $contract['total_units'] = $unitsBuilder->countAllResults();
+                
+                $unitsBuilder = $this->db->table('contract_units');
+                $unitsBuilder->selectSum('monthly_rate', 'total_value');
+                $unitsBuilder->where('contract_id', $contract['id']);
+                $result = $unitsBuilder->get()->getRowArray();
+                $contract['contract_value'] = $result['total_value'] ?? 0;
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contracts
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'getExpiringContracts error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load expiring contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Create renewal contract
+     * Implements gap-free transition from old contract to new
+     */
+    public function createRenewal()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        $this->db->transStart();
+        
+        try {
+            $parentContractId = $this->request->getPost('parent_contract_id');
+            $contractNumber = $this->request->getPost('contract_number');
+            $startDate = $this->request->getPost('start_date');
+            $endDate = $this->request->getPost('end_date');
+            $billingMethod = $this->request->getPost('billing_method');
+            $rentalType = $this->request->getPost('rental_type');
+            $poNumber = $this->request->getPost('po_number');
+            $notes = $this->request->getPost('notes');
+            $unitsJson = $this->request->getPost('units');
+            $customerId = $this->request->getPost('customer_id');
+            $locationId = $this->request->getPost('location_id');
+            
+            // Parse units data
+            $units = json_decode($unitsJson, true);
+            
+            if (!$units || count($units) === 0) {
+                throw new \Exception('No units selected for renewal');
+            }
+            
+            // Get parent contract information
+            $parentContract = $this->kontrakModel->find($parentContractId);
+            if (!$parentContract) {
+                throw new \Exception('Parent contract not found');
+            }
+            
+            // Calculate renewal generation
+            $renewalGeneration = ($parentContract['renewal_generation'] ?? 0) + 1;
+            
+            // Calculate total contract value
+            $totalValue = array_sum(array_column($units, 'monthly_rate'));
+            
+            // Create new renewal contract
+            $renewalData = [
+                'no_kontrak' => $contractNumber,
+                'customer_location_id' => $locationId,
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'nilai_kontrak' => $totalValue,
+                'jenis_sewa' => 'BULANAN',
+                'status' => 'DRAFT_RENEWAL',
+                'rental_type' => $rentalType,
+                'po_number' => $poNumber,
+                'catatan' => $notes,
+                'billing_method' => $billingMethod,
+                'parent_contract_id' => $parentContractId,
+                'is_renewal' => 1,
+                'renewal_generation' => $renewalGeneration,
+                'renewal_initiated_at' => date('Y-m-d H:i:s'),
+                'renewal_initiated_by' => session()->get('user_id') ?? 1,
+                'created_by' => session()->get('user_id') ?? 1
+            ];
+            
+            if (!$this->kontrakModel->insert($renewalData)) {
+                throw new \Exception('Failed to create renewal contract: ' . json_encode($this->kontrakModel->errors()));
+            }
+            
+            $renewalContractId = $this->kontrakModel->getInsertID();
+            
+            // Add units to new contract
+            $contractUnitsBuilder = $this->db->table('contract_units');
+            foreach ($units as $unit) {
+                $contractUnitsBuilder->insert([
+                    'contract_id' => $renewalContractId,
+                    'unit_id' => $unit['unit_id'],
+                    'monthly_rate' => $unit['monthly_rate'],
+                    'on_hire_date' => $startDate,
+                    'created_at' => date('Y-m-d H:i:s')
+                ]);
+            }
+            
+            // Create renewal workflow record
+            $workflowBuilder = $this->db->table('contract_renewal_workflow');
+            $workflowBuilder->insert([
+                'parent_contract_id' => $parentContractId,
+                'renewal_contract_id' => $renewalContractId,
+                'status' => 'INITIATED',
+                'initiated_by' => session()->get('user_id') ?? 1,
+                'initiated_at' => date('Y-m-d H:i:s'),
+                'notes' => 'Renewal initiated via wizard'
+            ]);
+            
+            // Create unit mapping records
+            $unitMapBuilder = $this->db->table('contract_renewal_unit_map');
+            foreach ($units as $unit) {
+                $unitMapBuilder->insert([
+                    'parent_contract_id' => $parentContractId,
+                    'renewal_contract_id' => $renewalContractId,
+                    'parent_unit_id' => $unit['unit_id'],
+                    'renewal_unit_id' => $unit['unit_id'], // Same unit by default
+                    'action' => 'CARRY_OVER',
+                    'old_rate' => $unit['monthly_rate'], // Will be updated if rate changed
+                    'new_rate' => $unit['monthly_rate']
+                ]);
+            }
+            
+            // Log activity
+            $this->logActivity(
+                'contract_renewal',
+                $renewalContractId,
+                'create',
+                "Renewal contract {$contractNumber} created from {$parentContract['no_kontrak']}",
+                [
+                    'parent_contract' => $parentContract['no_kontrak'],
+                    'renewal_generation' => $renewalGeneration,
+                    'unit_count' => count($units)
+                ]
+            );
+            
+            $this->db->transComplete();
+            
+            if ($this->db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Renewal contract created successfully',
+                'contract_id' => $renewalContractId,
+                'contract_number' => $contractNumber
+            ]);
+            
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', 'createRenewal error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create renewal: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get active contracts for amendment prorate calculator
+     * Returns contracts with ACTIVE status
+     */
+    public function getActiveContracts()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $builder = $this->db->table('kontrak k');
+            $builder->select('k.*, c.customer_name, c.customer_code, cl.location_name');
+            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->where('k.status', 'ACTIVE');
+            $builder->orderBy('k.end_date', 'DESC');
+            
+            $contracts = $builder->get()->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contracts
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getActiveContracts error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Create prorate amendment for mid-period rate change
+     * Calculates split billing: (days × old_rate) + (days × new_rate)
+     */
+    public function createProrateAmendment()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        $this->db->transStart();
+        
+        try {
+            // Parse POST data
+            $contractId = $this->request->getPost('contract_id');
+            $effectiveDate = $this->request->getPost('effective_date');
+            $reason = $this->request->getPost('reason');
+            $notes = $this->request->getPost('notes');
+            $periodStart = $this->request->getPost('period_start');
+            $periodEnd = $this->request->getPost('period_end');
+            $unitRatesJson = $this->request->getPost('unit_rates');
+            
+            // Validate contract exists
+            $contract = $this->kontrakModel->find($contractId);
+            if (!$contract) {
+                throw new \Exception('Contract not found');
+            }
+            
+            // Parse unit rates
+            $unitRates = json_decode($unitRatesJson, true);
+            if (!$unitRates || count($unitRates) === 0) {
+                throw new \Exception('No unit rates provided');
+            }
+            
+            // Calculate prorate split
+            $effectiveDateObj = new \DateTime($effectiveDate);
+            $periodStartObj = new \DateTime($periodStart);
+            $periodEndObj = new \DateTime($periodEnd);
+            
+            $daysBeforeAmendment = $periodStartObj->diff($effectiveDateObj)->days;
+            $daysAfterAmendment = $effectiveDateObj->diff($periodEndObj)->days + 1;
+            $totalDays = $daysBeforeAmendment + $daysAfterAmendment;
+            
+            // Create contract_amendments record
+            $amendmentData = [
+                'contract_id' => $contractId,
+                'amendment_type' => 'RATE_CHANGE',
+                'effective_date' => $effectiveDate,
+                'reason' => $reason,
+                'notes' => $notes,
+                'status' => 'APPROVED', // Auto-approve for now
+                'created_by' => session()->get('user_id') ?? 1,
+                'created_at' => date('Y-m-d H:i:s'),
+                'prorate_split' => json_encode([
+                    'period_start' => $periodStart,
+                    'period_end' => $periodEnd,
+                    'effective_date' => $effectiveDate,
+                    'days_before' => $daysBeforeAmendment,
+                    'days_after' => $daysAfterAmendment,
+                    'total_days' => $totalDays
+                ])
+            ];
+            
+            $amendmentBuilder = $this->db->table('contract_amendments');
+            $amendmentBuilder->insert($amendmentData);
+            $amendmentId = $this->db->insertID();
+            
+            // Create amendment_unit_rates records
+            $totalOldAmount = 0;
+            $totalNewAmount = 0;
+            
+            foreach ($unitRates as $unitRate) {
+                $unitId = $unitRate['unit_id'];
+                $oldRate = floatval($unitRate['old_rate']);
+                $newRate = floatval($unitRate['new_rate']);
+                
+                // Calculate prorate amounts
+                $oldAmount = ($oldRate / 30) * $daysBeforeAmendment;
+                $newAmount = ($newRate / 30) * $daysAfterAmendment;
+                
+                $totalOldAmount += $oldAmount;
+                $totalNewAmount += $newAmount;
+                
+                // Insert amendment unit rate
+                $unitRateBuilder = $this->db->table('amendment_unit_rates');
+                $unitRateBuilder->insert([
+                    'amendment_id' => $amendmentId,
+                    'unit_id' => $unitId,
+                    'old_rate' => $oldRate,
+                    'new_rate' => $newRate,
+                    'prorate_old_amount' => $oldAmount,
+                    'prorate_new_amount' => $newAmount,
+                    'prorate_days_before' => $daysBeforeAmendment,
+                    'prorate_days_after' => $daysAfterAmendment
+                ]);
+                
+                // Update contract_units with new rate
+                $contractUnitsBuilder = $this->db->table('contract_units');
+                $contractUnitsBuilder->where('contract_id', $contractId);
+                $contractUnitsBuilder->where('unit_id', $unitId);
+                $contractUnitsBuilder->update([
+                    'monthly_rate' => $newRate,
+                    'rate_changed_at' => $effectiveDate
+                ]);
+            }
+            
+            // Update amendment with calculated amounts
+            $amendmentBuilder = $this->db->table('contract_amendments');
+            $amendmentBuilder->where('id', $amendmentId);
+            $amendmentBuilder->update([
+                'old_total_value' => $totalOldAmount,
+                'new_total_value' => $totalNewAmount,
+                'prorate_total' => $totalOldAmount + $totalNewAmount
+            ]);
+            
+            // Log activity
+            $this->logActivity(
+                'contract_amendment',
+                $amendmentId,
+                'create',
+                "Prorate amendment created for contract {$contract['no_kontrak']} effective {$effectiveDate}",
+                [
+                    'contract_number' => $contract['no_kontrak'],
+                    'effective_date' => $effectiveDate,
+                    'reason' => $reason,
+                    'days_before' => $daysBeforeAmendment,
+                    'days_after' => $daysAfterAmendment,
+                    'total_amount' => $totalOldAmount + $totalNewAmount
+                ]
+            );
+            
+            $this->db->transComplete();
+            
+            if ($this->db->transStatus() === false) {
+                throw new \Exception('Transaction failed');
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Amendment created successfully with prorate split',
+                'amendment_id' => $amendmentId,
+                'prorate_total' => $totalOldAmount + $totalNewAmount
+            ]);
+            
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', 'createProrateAmendment error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to create amendment: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get all contracts for dropdown/selection
+     */
+    public function getAllContracts()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $builder = $this->db->table('kontrak k');
+            $builder->select('k.*, c.customer_name, cl.location_name');
+            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->orderBy('k.created_at', 'DESC');
+            
+            $contracts = $builder->get()->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contracts
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getAllContracts error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get contract history with all events (amendments, renewals, unit changes)
+     */
+    public function getContractHistory($contractId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $events = [];
+            
+            // Contract created event
+            $contract = $this->kontrakModel->find($contractId);
+            if ($contract) {
+                $events[] = [
+                    'id' => $contractId,
+                    'type' => 'contract',
+                    'date' => $contract['created_at'],
+                    'contract_number' => $contract['no_kontrak'],
+                    'description' => 'Contract created',
+                    'created_by' => $contract['created_by'] ?? 'System'
+                ];
+            }
+            
+            // Amendments
+            $amendmentsBuilder = $this->db->table('contract_amendments');
+            $amendmentsBuilder->where('contract_id', $contractId);
+            $amendments = $amendmentsBuilder->get()->getResultArray();
+            
+            foreach ($amendments as $amendment) {
+                $prorateData = json_decode($amendment['prorate_split'] ?? '{}', true);
+                
+                $events[] = [
+                    'id' => $amendment['id'],
+                    'type' => 'amendment',
+                    'date' => $amendment['effective_date'],
+                    'contract_number' => $contract['no_kontrak'],
+                    'description' => 'Contract amendment',
+                    'reason' => $amendment['reason'],
+                    'total_value' => $amendment['prorate_total'] ?? 0,
+                    'prorate' => $prorateData,
+                    'created_by' => $amendment['created_by'] ?? 'System'
+                ];
+            }
+            
+            // Renewals (child contracts)
+            $renewalsBuilder = $this->db->table('kontrak');
+            $renewalsBuilder->where('parent_contract_id', $contractId);
+            $renewals = $renewalsBuilder->get()->getResultArray();
+            
+            foreach ($renewals as $renewal) {
+                $events[] = [
+                    'id' => $renewal['id'],
+                    'type' => 'renewal',
+                    'date' => $renewal['created_at'],
+                    'contract_number' => $renewal['no_kontrak'],
+                    'description' => "Renewal contract created (Generation {$renewal['renewal_generation']})",
+                    'total_value' => $renewal['nilai_kontrak'],
+                    'created_by' => $renewal['created_by'] ?? 'System'
+                ];
+            }
+            
+            // Unit changes
+            $unitChangesBuilder = $this->db->table('contract_units cu');
+            $unitChangesBuilder->select('cu.*, u.nomor_unit');
+            $unitChangesBuilder->join('unit u', 'u.id = cu.unit_id', 'left');
+            $unitChangesBuilder->where('cu.contract_id', $contractId);
+            $unitChanges = $unitChangesBuilder->get()->getResultArray();
+            
+            foreach ($unitChanges as $unitChange) {
+                if ($unitChange['off_hire_date']) {
+                    $events[] = [
+                        'id' => $unitChange['id'],
+                        'type' => 'unit',
+                        'date' => $unitChange['off_hire_date'],
+                        'contract_number' => $contract['no_kontrak'],
+                        'description' => "Unit {$unitChange['nomor_unit']} off-hired",
+                        'action' => 'OFF_HIRE'
+                    ];
+                }
+            }
+            
+            // Sort by date descending
+            usort($events, function($a, $b) {
+                return strtotime($b['date']) - strtotime($a['date']);
+            });
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'contract' => $contract,
+                    'events' => $events
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getContractHistory error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load contract history: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get renewal chain (parent and all descendants)
+     */
+    public function getRenewalChain($contractId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $chain = [];
+            
+            // Find root contract (contract with no parent)
+            $rootContract = $this->findRootContract($contractId);
+            
+            // Build chain recursively
+            $this->buildRenewalChain($rootContract['id'], $chain);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'root_contract' => $rootContract,
+                    'chain' => $chain
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getRenewalChain error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load renewal chain: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Helper: Find root contract (no parent)
+     */
+    private function findRootContract($contractId)
+    {
+        $contract = $this->kontrakModel->find($contractId);
+        
+        if (!$contract) {
+            throw new \Exception('Contract not found');
+        }
+        
+        // If has parent, recursively find root
+        if ($contract['parent_contract_id']) {
+            return $this->findRootContract($contract['parent_contract_id']);
+        }
+        
+        return $contract;
+    }
+    
+    /**
+     * Helper: Build renewal chain recursively
+     */
+    private function buildRenewalChain($contractId, &$chain)
+    {
+        $builder = $this->db->table('kontrak k');
+        $builder->select('k.*, c.customer_name');
+        $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        $builder->where('k.id', $contractId);
+        $contract = $builder->get()->getRowArray();
+        
+        if ($contract) {
+            // Get units count
+            $unitsCount = $this->db->table('contract_units')
+                ->where('contract_id', $contractId)
+                ->countAllResults();
+            
+            // Get total value
+            $unitsSum = $this->db->table('contract_units')
+                ->selectSum('monthly_rate', 'total')
+                ->where('contract_id', $contractId)
+                ->get()->getRowArray();
+            
+            $contract['units_count'] = $unitsCount;
+            $contract['total_value'] = $unitsSum['total'] ?? 0;
+            
+            $chain[] = $contract;
+            
+            // Find children
+            $children = $this->db->table('kontrak')
+                ->where('parent_contract_id', $contractId)
+                ->get()->getResultArray();
+            
+            foreach ($children as $child) {
+                $this->buildRenewalChain($child['id'], $chain);
+            }
+        }
+    }
+    
+    /**
+     * Get rate change history for units/contracts
+     */
+    public function getRateHistory($contractId = null)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            // Get contract ID from URL parameter or query string
+            if (!$contractId) {
+                $contractId = $this->request->getGet('contract_id');
+            }
+            
+            $unitId = $this->request->getGet('unit_id');
+            $days = $this->request->getGet('days');
+            
+            $history = [];
+            
+            // Get rate changes from amendments
+            $builder = $this->db->table('amendment_unit_rates aur');
+            $builder->select('aur.*, ca.effective_date as date, ca.reason, k.no_kontrak as contract_number, u.nomor_unit as unit_number');
+            $builder->join('contract_amendments ca', 'ca.id = aur.amendment_id', 'left');
+            $builder->join('contract_units cu', 'cu.unit_id = aur.unit_id', 'left');
+            $builder->join('kontrak k', 'k.id = cu.contract_id', 'left');
+            $builder->join('unit u', 'u.id = aur.unit_id', 'left');
+            
+            if ($contractId) {
+                $builder->where('cu.contract_id', $contractId);
+            }
+            
+            if ($unitId) {
+                $builder->where('aur.unit_id', $unitId);
+            }
+            
+            if ($days && $days !== 'all') {
+                $builder->where('ca.effective_date >=', date('Y-m-d', strtotime("-{$days} days")));
+            }
+            
+            $builder->orderBy('ca.effective_date', 'DESC');
+            $amendments = $builder->get()->getResultArray();
+            
+            foreach ($amendments as $amendment) {
+                $history[] = [
+                    'date' => $amendment['date'],
+                    'event_type' => 'Amendment',
+                    'contract_number' => $amendment['contract_number'],
+                    'unit_number' => $amendment['unit_number'],
+                    'old_rate' => $amendment['old_rate'],
+                    'new_rate' => $amendment['new_rate'],
+                    'reason' => $amendment['reason']
+                ];
+            }
+            
+            // Get rate changes from renewals
+            $renewalsBuilder = $this->db->table('contract_renewal_unit_map rum');
+            $renewalsBuilder->select('rum.*, k1.no_kontrak as parent_contract, k2.no_kontrak as renewal_contract, k2.created_at as date, u.nomor_unit as unit_number');
+            $renewalsBuilder->join('kontrak k1', 'k1.id = rum.parent_contract_id', 'left');
+            $renewalsBuilder->join('kontrak k2', 'k2.id = rum.renewal_contract_id', 'left');
+            $renewalsBuilder->join('unit u', 'u.id = rum.renewal_unit_id', 'left');
+            
+            if ($contractId) {
+                $renewalsBuilder->where('k2.id', $contractId);
+            }
+            
+            if ($unitId) {
+                $renewalsBuilder->where('rum.renewal_unit_id', $unitId);
+            }
+            
+            if ($days && $days !== 'all') {
+                $renewalsBuilder->where('k2.created_at >=', date('Y-m-d', strtotime("-{$days} days")));
+            }
+            
+            $renewalsBuilder->orderBy('k2.created_at', 'DESC');
+            $renewals = $renewalsBuilder->get()->getResultArray();
+            
+            foreach ($renewals as $renewal) {
+                if ($renewal['old_rate'] != $renewal['new_rate']) {
+                    $history[] = [
+                        'date' => $renewal['date'],
+                        'event_type' => 'Renewal',
+                        'contract_number' => $renewal['renewal_contract'],
+                        'unit_number' => $renewal['unit_number'],
+                        'old_rate' => $renewal['old_rate'],
+                        'new_rate' => $renewal['new_rate'],
+                        'reason' => 'Contract renewal'
+                    ];
+                }
+            }
+            
+            // Sort by date
+            usort($history, function($a, $b) {
+                return strtotime($b['date']) - strtotime($a['date']);
+            });
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $history
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getRateHistory error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load rate history: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get unit journey across all contracts
+     */
+    public function getUnitJourney($unitId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            // Get all contracts this unit has been part of
+            $builder = $this->db->table('contract_units cu');
+            $builder->select('cu.*, k.id as contract_id, k.no_kontrak, k.start_date, k.end_date, k.status, c.customer_name, cl.location_name, cu.monthly_rate');
+            $builder->join('kontrak k', 'k.id = cu.contract_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->where('cu.unit_id', $unitId);
+            $builder->orderBy('cu.on_hire_date', 'ASC');
+            
+            $contracts = $builder->get()->getResultArray();
+            
+            // Get amendments for each contract
+            foreach ($contracts as &$contract) {
+                $amendmentsBuilder = $this->db->table('contract_amendments ca');
+                $amendmentsBuilder->select('ca.*, aur.old_rate, aur.new_rate');
+                $amendmentsBuilder->join('amendment_unit_rates aur', 'aur.amendment_id = ca.id', 'left');
+                $amendmentsBuilder->where('ca.contract_id', $contract['contract_id']);
+                $amendmentsBuilder->where('aur.unit_id', $unitId);
+                
+                $contract['amendments'] = $amendmentsBuilder->get()->getResultArray();
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'unit_id' => $unitId,
+                    'contracts' => $contracts
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getUnitJourney error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load unit journey: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get all units for dropdown
+     */
+    public function getAllUnits()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $builder = $this->db->table('unit');
+            $builder->orderBy('nomor_unit', 'ASC');
+            
+            $units = $builder->get()->getResultArray();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $units
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getAllUnits error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load units: ' . $e->getMessage()
+            ]);
+        }
+    }
 }
+

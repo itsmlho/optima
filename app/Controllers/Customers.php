@@ -306,7 +306,7 @@ class Customers extends BaseController
 
         try {
             $customerId = $this->request->getPost('customer_id');
-            $field = $this->request->getPost('field'); // 'no_kontrak' or 'no_po_marketing'
+            $field = $this->request->getPost('field'); // 'no_kontrak' or 'customer_po_number'
             $value = $this->request->getPost('value');
 
             if (!$customerId || !$field || !$value) {

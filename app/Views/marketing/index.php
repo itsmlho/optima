@@ -5,20 +5,27 @@
 <div class="container-fluid">
     <!-- Page Header -->
     <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
+        <h1 class="h3 mb-0 text-dark">
             <i class="fas fa-bullhorn me-2"></i>Marketing Division Dashboard
         </h1>
         <div class="d-sm-flex align-items-center">
             <div class="btn-group" role="group">
-                <button class="btn btn-outline-info btn-sm" onclick="refreshMarketingData()">
-                    <i class="fas fa-sync-alt me-1"></i>Refresh
-                </button>
-                <a href="<?= base_url('marketing/quotations') ?>" class="btn btn-outline-primary btn-sm">
-                    <i class="fas fa-file-contract me-1"></i>Quotations
-                </a>
-                <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-primary btn-sm">
-                    <i class="fas fa-handshake me-1"></i>Contracts
-                </a>
+                <?= ui_button('refresh', 'Refresh', [
+                    'color' => 'outline-info',
+                    'size' => 'sm',
+                    'onclick' => 'refreshMarketingData()'
+                ]) ?>
+                <?= ui_button('view', 'Quotations', [
+                    'href' => base_url('marketing/quotations'),
+                    'color' => 'outline-primary',
+                    'size' => 'sm',
+                    'icon' => 'fas fa-file-contract'
+                ]) ?>
+                <?= ui_button('view', 'Contracts', [
+                    'href' => base_url('marketing/kontrak'),
+                    'size' => 'sm',
+                    'icon' => 'fas fa-handshake'
+                ]) ?>
             </div>
         </div>
     </div>
@@ -26,18 +33,18 @@
     <!-- Marketing Statistics -->
     <div class="row mb-4">
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card border-start border-primary border-4 shadow-sm h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                    <div class="row g-0 align-items-center">
+                        <div class="col me-2">
+                            <div class="small fw-bold text-primary text-uppercase mb-1">
                                 Total Quotations</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <div class="h5 mb-0 fw-bold text-dark">
                                 <?= $marketing_stats['total_quotations'] ?>
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-file-contract fa-2x text-gray-300"></i>
+                            <i class="fas fa-file-contract fa-2x text-muted opacity-25"></i>
                         </div>
                     </div>
                 </div>
@@ -45,18 +52,18 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card border-start border-warning border-4 shadow-sm h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                    <div class="row g-0 align-items-center">
+                        <div class="col me-2">
+                            <div class="small fw-bold text-warning text-uppercase mb-1">
                                 Pending Quotations</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <div class="h5 mb-0 fw-bold text-dark">
                                 <?= $marketing_stats['pending_quotations'] ?>
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                            <i class="fas fa-clock fa-2x text-muted opacity-25"></i>
                         </div>
                     </div>
                 </div>
@@ -64,18 +71,18 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
+            <div class="card border-start border-success border-4 shadow-sm h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                    <div class="row g-0 align-items-center">
+                        <div class="col me-2">
+                            <div class="small fw-bold text-success text-uppercase mb-1">
                                 Active Contracts</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <div class="h5 mb-0 fw-bold text-dark">
                                 <?= $marketing_stats['active_contracts'] ?>
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-handshake fa-2x text-gray-300"></i>
+                            <i class="fas fa-handshake fa-2x text-muted opacity-25"></i>
                         </div>
                     </div>
                 </div>
@@ -83,18 +90,18 @@
         </div>
 
         <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
+            <div class="card border-start border-info border-4 shadow-sm h-100 py-2">
                 <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                    <div class="row g-0 align-items-center">
+                        <div class="col me-2">
+                            <div class="small fw-bold text-info text-uppercase mb-1">
                                 Monthly Revenue</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <div class="h5 mb-0 fw-bold text-dark">
                                 Rp <?= number_format($marketing_stats['monthly_revenue'], 0, ',', '.') ?>
                             </div>
                         </div>
                         <div class="col-auto">
-                            <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                            <i class="fas fa-dollar-sign fa-2x text-muted opacity-25"></i>
                         </div>
                     </div>
                 </div>
@@ -108,7 +115,7 @@
         <div class="col-xl-8 col-lg-7">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Monthly Revenue Trend</h6>
+                    <h6 class="m-0 fw-bold text-primary">Monthly Revenue Trend</h6>
                 </div>
                 <div class="card-body">
                     <div class="chart-area">
@@ -122,7 +129,7 @@
         <div class="col-xl-4 col-lg-5">
             <div class="card shadow mb-4">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Marketing Performance</h6>
+                    <h6 class="m-0 fw-bold text-primary">Marketing Performance</h6>
                 </div>
                 <div class="card-body">
                     <div class="chart-pie pt-4 pb-2">
@@ -139,11 +146,11 @@
                     
                     <hr class="my-4">
                     
-                    <h6 class="font-weight-bold mb-3">Key Metrics</h6>
+                    <h6 class="fw-bold mb-3">Key Metrics</h6>
                     <div class="mb-3">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between mb-1">
                             <span>Conversion Rate</span>
-                            <span class="font-weight-bold text-success"><?= $marketing_stats['conversion_rate'] ?>%</span>
+                            <span class="fw-bold text-success"><?= $marketing_stats['conversion_rate'] ?>%</span>
                         </div>
                         <div class="progress">
                             <div class="progress-bar bg-success" style="width: <?= $marketing_stats['conversion_rate'] ?>%"></div>
@@ -152,7 +159,7 @@
                     <div class="mb-3">
                         <div class="d-flex justify-content-between">
                             <span>Customer Satisfaction</span>
-                            <span class="font-weight-bold text-info"><?= $marketing_stats['customer_satisfaction'] ?>%</span>
+                            <span class="fw-bold text-info"><?= $marketing_stats['customer_satisfaction'] ?>%</span>
                         </div>
                         <div class="progress">
                             <div class="progress-bar bg-info" style="width: <?= $marketing_stats['customer_satisfaction'] ?>%"></div>
@@ -169,33 +176,41 @@
         <div class="col-lg-6 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-primary">Quick Access</h6>
+                    <h6 class="m-0 fw-bold text-primary">Quick Access</h6>
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <a href="<?= base_url('marketing/quotations') ?>" class="btn btn-outline-primary btn-block">
-                                <i class="fas fa-file-contract me-2"></i>
-                                Create Quotation
-                            </a>
+                        <div class="col-md-6 mb-3 d-grid">
+                            <?= ui_button('add', 'Create Quotation', [
+                                'href' => base_url('marketing/quotations'),
+                                'color' => 'outline-primary',
+                                'icon' => 'fas fa-file-contract',
+                                'class' => 'w-100'
+                            ]) ?>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-outline-success btn-block">
-                                <i class="fas fa-handshake me-2"></i>
-                                Manage Contracts
-                            </a>
+                        <div class="col-md-6 mb-3 d-grid">
+                            <?= ui_button('view', 'Manage Contracts', [
+                                'href' => base_url('marketing/kontrak'),
+                                'color' => 'outline-success',
+                                'icon' => 'fas fa-handshake',
+                                'class' => 'w-100'
+                            ]) ?>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <a href="<?= base_url('marketing/list-unit') ?>" class="btn btn-outline-info btn-block">
-                                <i class="fas fa-list me-2"></i>
-                                Unit Catalog
-                            </a>
+                        <div class="col-md-6 mb-3 d-grid">
+                            <?= ui_button('view', 'Unit Catalog', [
+                                'href' => base_url('marketing/list-unit'),
+                                'color' => 'outline-info',
+                                'icon' => 'fas fa-list',
+                                'class' => 'w-100'
+                            ]) ?>
                         </div>
-                        <div class="col-md-6 mb-3">
-                            <a href="<?= base_url('marketing/unit-tersedia') ?>" class="btn btn-outline-warning btn-block">
-                                <i class="fas fa-check-circle me-2"></i>
-                                Available Units
-                            </a>
+                        <div class="col-md-6 mb-3 d-grid">
+                            <?= ui_button('view', 'Available Units', [
+                                'href' => base_url('marketing/unit-tersedia'),
+                                'color' => 'outline-warning',
+                                'icon' => 'fas fa-check-circle',
+                                'class' => 'w-100'
+                            ]) ?>
                         </div>
                     </div>
                     
@@ -203,7 +218,7 @@
                     
                     <div class="row">
                         <div class="col-12">
-                            <h6 class="font-weight-bold mb-3">Marketing Tools</h6>
+                            <h6 class="fw-bold mb-3">Marketing Tools</h6>
                             <div class="list-group list-group-flush">
                                 <a href="#" class="list-group-item list-group-item-action" onclick="showPriceCalculator()">
                                     <i class="fas fa-calculator me-2"></i>
@@ -228,10 +243,11 @@
         <div class="col-lg-6 mb-4">
             <div class="card shadow">
                 <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">Recent Quotations</h6>
-                    <a href="<?= base_url('marketing/quotations') ?>" class="btn btn-sm btn-primary">
-                        View All
-                    </a>
+                    <h6 class="m-0 fw-bold text-primary">Recent Quotations</h6>
+                    <?= ui_button('view', 'View All', [
+                        'href' => base_url('marketing/quotations'),
+                        'size' => 'sm'
+                    ]) ?>
                 </div>
                 <div class="card-body">
                     <?php foreach ($recent_quotations as $quotation): ?>
@@ -241,12 +257,12 @@
                                 <p class="mb-1 text-muted"><?= esc($quotation['project']) ?></p>
                                 <small class="text-muted">Value: Rp <?= number_format($quotation['value'], 0, ',', '.') ?></small>
                             </div>
-                            <div class="text-right">
+                            <div class="text-end">
                                 <?php
                                 $statusClass = $quotation['status'] == 'Approved' ? 'success' : 
-                                              ($quotation['status'] == 'Pending' ? 'warning' : 'secondary');
+                                              ($quotation['status'] == 'PENDING' ? 'warning' : 'secondary');
                                 ?>
-                                <span class="badge badge-<?= $statusClass ?>">
+                                <span class="badge bg-<?= $statusClass ?>">
                                     <?= $quotation['status'] ?>
                                 </span>
                                 <br>
@@ -262,15 +278,16 @@
     <!-- Active Contracts -->
     <div class="card shadow mb-4">
         <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-            <h6 class="m-0 font-weight-bold text-primary">Active Contracts</h6>
-            <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-sm btn-primary">
-                View All Contracts
-            </a>
+            <h6 class="m-0 fw-bold text-primary">Active Contracts</h6>
+            <?= ui_button('view', 'View All Contracts', [
+                'href' => base_url('marketing/kontrak'),
+                'size' => 'sm'
+            ]) ?>
         </div>
         <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-striped table-hover">
-                    <thead>
+                    <thead class="table-light">
                         <tr>
                             <th>Contract Number</th>
                             <th>Client</th>
@@ -285,22 +302,31 @@
                     <tbody>
                         <?php foreach ($active_contracts as $contract): ?>
                             <tr>
-                                <td class="font-weight-bold"><?= esc($contract['contract_number']) ?></td>
+                                <td class="fw-bold"><?= esc($contract['contract_number']) ?></td>
                                 <td><?= esc($contract['client']) ?></td>
                                 <td><?= esc($contract['project']) ?></td>
                                 <td>Rp <?= number_format($contract['value'], 0, ',', '.') ?></td>
                                 <td><?= date('d M Y', strtotime($contract['start_date'])) ?></td>
                                 <td><?= date('d M Y', strtotime($contract['end_date'])) ?></td>
                                 <td>
-                                    <span class="badge badge-success"><?= $contract['status'] ?></span>
+                                    <span class="badge bg-success"><?= $contract['status'] ?></span>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-info" onclick="viewContract('<?= $contract['contract_number'] ?>')" title="View">
-                                        <i class="fas fa-eye"></i>
-                                    </button>
-                                    <button class="btn btn-sm btn-primary" onclick="editContract('<?= $contract['contract_number'] ?>')" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </button>
+                                    <div class="d-flex gap-1">
+                                        <?= ui_button('view', '', [
+                                            'onclick' => "viewContract('" . $contract['contract_number'] . "')",
+                                            'size' => 'sm',
+                                            'color' => 'info',
+                                            'title' => 'View',
+                                            'icon-only' => true
+                                        ]) ?>
+                                        <?= ui_button('edit', '', [
+                                            'onclick' => "editContract('" . $contract['contract_number'] . "')",
+                                            'size' => 'sm',
+                                            'title' => 'Edit',
+                                            'icon-only' => true
+                                        ]) ?>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

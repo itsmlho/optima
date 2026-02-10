@@ -86,13 +86,17 @@ $can_export = $permissions['export'];
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><?= lang('Marketing.spk_list') ?></h6>
                 <?php if ($can_create): ?>
-                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#spkModal">
-                    <i class="fas fa-plus me-1"></i><?= lang('Marketing.create_spk') ?>
-                </button>
+                <?= ui_button('add', lang('Marketing.create_spk'), [
+                    'data-bs-toggle' => 'modal',
+                    'data-bs-target' => '#spkModal',
+                    'size' => 'sm'
+                ]) ?>
                 <?php else: ?>
-                <button class="btn btn-primary btn-sm disabled" title="<?= lang('Marketing.access_denied') ?>">
-                    <i class="fas fa-plus me-1"></i><?= lang('Marketing.create_spk') ?>
-                </button>
+                <?= ui_button('add', lang('Marketing.create_spk'), [
+                    'size' => 'sm',
+                    'disabled' => true,
+                    'title' => lang('Marketing.access_denied')
+                ]) ?>
                 <?php endif; ?>
             </div>
         </div>
@@ -123,7 +127,7 @@ $can_export = $permissions['export'];
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="d-flex align-items-center gap-2">
                     <span><?= lang('Marketing.show') ?></span>
-                    <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
+                    <select class="form-select form-select-sm w-auto" id="entriesPerPage">
                         <option value="10">10</option>
                         <option value="25" selected>25</option>
                         <option value="50">50</option>
@@ -133,13 +137,13 @@ $can_export = $permissions['export'];
                 </div>
                 <div class="d-flex align-items-center gap-2">
                     <span><?= lang('Marketing.search') ?>:</span>
-                    <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="" style="width: 200px;">
+                    <input type="text" class="form-control form-control-sm w-200px" id="spkSearch" placeholder="">
                 </div>
             </div>
             
             <div class="table-responsive">
                 <table class="table table-striped table-hover table-manual-sort <?= !$can_view ? 'table-disabled' : '' ?>" id="spkList">
-                    <thead>
+                    <thead class="table-light">
                         <tr>
                             <th><?= lang('Marketing.spk_number') ?></th>
                             <th><?= lang('Marketing.type') ?></th>
@@ -197,7 +201,7 @@ $can_export = $permissions['export'];
                         </div>
                         
                         <!-- Step 2: Contract Info -->
-                        <div id="kontrakInfoSection" style="display: none;">
+                        <div id="kontrakInfoSection" class="d-none">
                             <div class="card bg-light mb-3">
                                 <div class="card-body">
                                     <h6 class="card-title"><?= lang('Marketing.contract_information') ?></h6>
@@ -239,7 +243,7 @@ $can_export = $permissions['export'];
                         </div>
                         
                         <!-- Target Unit Section (for ATTACHMENT only) - Shows after contract selection -->
-                        <div id="attachmentTargetSection" style="display: none;">
+                        <div id="attachmentTargetSection" class="d-none">
                             <div class="card bg-warning bg-opacity-10 border-warning mb-3">
                                 <div class="card-header bg-warning bg-opacity-25">
                                     <h6 class="mb-0"><i class="fas fa-bullseye me-2"></i>Target Unit</h6>
@@ -264,7 +268,7 @@ $can_export = $permissions['export'];
                         </div>
                         
                         <!-- Step 3: Select Specification -->
-                        <div id="spesifikasiSection" style="display: none;">
+                        <div id="spesifikasiSection" class="d-none">
                             <div class="mb-3">
                                 <label class="form-label"><?= lang('Marketing.select_unit_specification') ?></label>
                                 <select class="form-select" name="kontrak_spesifikasi_id" id="spesifikasiSelect" required>
@@ -274,7 +278,7 @@ $can_export = $permissions['export'];
                             </div>
                             
                             <!-- Specification Detail -->
-                            <div id="spesifikasiDetail" style="display: none;">
+                            <div id="spesifikasiDetail" class="d-none">
                                 <div class="card border-primary mb-3">
                                     <div class="card-header bg-primary text-white9, ">
                                         <h6 class="mb-0">Selected Specification Details</h6>
@@ -308,8 +312,8 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button class="btn btn-secondary" data-bs-dismiss="modal" type="button"><?= lang('App.close') ?></button>
-                        <button class="btn btn-primary" type="submit" id="submitSpkBtn" disabled>Create SPK</button>
+                        <?= ui_button('cancel', lang('App.close'), ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                        <?= ui_button('submit', 'Create SPK', ['type' => 'submit', 'id' => 'submitSpkBtn', 'disabled' => true]) ?>
                     </div>
                 </form>
             </div>
@@ -349,7 +353,7 @@ $can_export = $permissions['export'];
                         </div>
                         
                         <!-- EXCHANGE Workflow Section: PULL units from SPK contract -->
-                        <div id="spkTukarWorkflow" style="display:none;" class="mb-3">
+                        <div id="spkTukarWorkflow" class="d-none mb-3">
                             <div class="alert alert-info">
                                 <i class="fas fa-exchange-alt"></i> 
                                 <strong>EXCHANGE Workflow:</strong> Select units from contract to be pulled for replacement
@@ -363,12 +367,22 @@ $can_export = $permissions['export'];
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-center mb-2">
                                         <div class="small text-muted">Selected: <span id="spkTarikCount">0</span> units</div>
-                                        <div>
-                                            <button class="btn btn-sm btn-outline-warning" type="button" id="spkBtnSelectAllTarik">Select All</button>
-                                            <button class="btn btn-sm btn-outline-secondary" type="button" id="spkBtnClearTarik">Clear</button>
+                                        <div class="d-flex gap-2">
+                                            <?= ui_button('select-all', 'Select All', [
+                                                'color' => 'outline-warning',
+                                                'size' => 'sm',
+                                                'type' => 'button',
+                                                'id' => 'spkBtnSelectAllTarik'
+                                            ]) ?>
+                                            <?= ui_button('clear', 'Clear', [
+                                                'color' => 'outline-secondary',
+                                                'size' => 'sm',
+                                                'type' => 'button',
+                                                'id' => 'spkBtnClearTarik'
+                                            ]) ?>
                                         </div>
                                     </div>
-                                    <div id="spkTarikUnitList" class="unit-list" style="max-height:200px; overflow:auto;">
+                                    <div id="spkTarikUnitList" class="unit-list max-h-200px-scroll">
                                         <div class="text-muted small">Loading units from contract...</div>
                                     </div>
                                     <div class="form-text">Selected units will be removed from contract (for replacement)</div>
@@ -377,7 +391,7 @@ $can_export = $permissions['export'];
                         </div>
                         
                         <div class="mb-2">
-                            <div id="diUnitsPick" class="mt-2" style="display:none">
+                            <div id="diUnitsPick" class="mt-2 d-none">
                                 <div class="d-flex justify-content-between align-items-center mb-2">
                                     <strong id="diPickLabel">Select Units to be Delivered</strong>
                                     <div class="btn-group btn-group-sm">
@@ -385,7 +399,7 @@ $can_export = $permissions['export'];
                                         <button type="button" class="btn btn-outline-secondary" id="btnClearUnits">Clear</button>
                                     </div>
                                 </div>
-                                <div id="diUnitsList" class="border rounded p-2" style="max-height:200px; overflow:auto"></div>
+                                <div id="diUnitsList" class="border rounded p-2 max-h-200px-scroll"></div>
                                 <div class="form-text" id="diPickHelp">Check the units you want to include in this DI.</div>
                             </div>
                         </div>
@@ -395,7 +409,10 @@ $can_export = $permissions['export'];
                         </div>
                         <div class="mt-2"><label class="form-label">Notes</label><textarea class="form-control" name="catatan" rows="3" placeholder="Delivery instructions (optional)"></textarea></div>
                     </div>
-                    <div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Cancel</button><button class="btn btn-primary" type="submit">Create DI</button></div>
+                    <div class="modal-footer">
+                        <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                        <?= ui_button('submit', 'Create DI', ['type' => 'submit']) ?>
+                    </div>
                 </form>
             </div>
         </div>
@@ -440,10 +457,8 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-link me-2"></i>Link Contract
-                        </button>
+                        <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                        <?= ui_button('submit', 'Link Contract', ['type' => 'submit', 'icon' => 'fas fa-link']) ?>
                     </div>
                 </form>
             </div>
@@ -451,6 +466,23 @@ $can_export = $permissions['export'];
     </div>
 
     <script>
+    // UI Badge Helper - Generate consistent badge colors based on type
+    function uiBadge(type, text, options = {}) {
+        const badgeMap = {
+            'active': 'success', 'approved': 'success', 'completed': 'success', 'delivered': 'success',
+            'pending': 'warning', 'ready': 'warning', 'in_progress': 'info', 'processing': 'info',
+            'rejected': 'danger', 'cancelled': 'danger', 'failed': 'danger', 'deleted': 'danger',
+            'draft': 'secondary', 'new': 'primary', 'info': 'info', 'warning': 'warning',
+            'created': 'success', 'updated': 'info', 'submitted': 'secondary', 'success': 'success',
+            'primary': 'primary', 'secondary': 'secondary', 'danger': 'danger', 
+            'quotation': 'warning', 'contract': 'success'
+        };
+        const color = options.color || badgeMap[type.toLowerCase()] || 'secondary';
+        const className = options.class || '';
+        const icon = options.icon ? `<i class="${options.icon} me-1"></i>` : '';
+        return `<span class="badge bg-${color} ${className}">${icon}${text}</span>`;
+    }
+
     // Map status to Bootstrap badge classes per entity
     function statusBadge(entity, status){
         const s = (status||'').toUpperCase();
@@ -652,8 +684,8 @@ $can_export = $permissions['export'];
             // If kontrak_id has value → created with contract → CONTRACT
             const sourceType = (r.kontrak_id === null || r.kontrak_id === '') ? 'QUOTATION' : 'CONTRACT';
             const sourceBadge = sourceType === 'QUOTATION' 
-              ? '<span class="badge bg-warning text-dark"><i class="fas fa-file-lines me-1"></i>QUOTATION</span>'
-              : '<span class="badge bg-success"><i class="fas fa-file-contract me-1"></i>CONTRACT</span>';
+              ? uiBadge('quotation', 'QUOTATION', {icon: 'fas fa-file-lines'})
+              : uiBadge('contract', 'CONTRACT', {icon: 'fas fa-file-contract'});
             
             // Link to Contract button (only for QUOTATION source without contract)
             const linkBtn = (sourceType === 'QUOTATION' && !r.contract_linked_at)
@@ -800,7 +832,7 @@ $can_export = $permissions['export'];
                             const activeDI = it.active_di_info || null;
                             const disabled = isInActiveDI ? 'disabled' : '';
                             const checked = isInActiveDI ? '' : 'checked';
-                            const warningText = isInActiveDI && activeDI ? ` <span class="badge bg-warning text-dark">Already in ${activeDI.nomor_di}</span>` : '';
+                            const warningText = isInActiveDI && activeDI ? ` ${uiBadge('warning', `Already in ${activeDI.nomor_di}`)}` : '';
                             return `<div class=\"form-check\"><input class=\"form-check-input di-unit-check\" type=\"checkbox\" value=\"${it.unit_id}\" id=\"di_unit_${it.unit_id}\" ${checked} ${disabled}><label class=\"form-check-label\" for=\"di_unit_${it.unit_id}\">${idx+1}. ${label}${sn}${warningText}</label></div>`;
                         }).join('');
                         // Summary
@@ -858,7 +890,7 @@ $can_export = $permissions['export'];
         if(q) url.searchParams.set('q', q);
         const jenisSpkElement = document.querySelector('select[name="jenis_spk"]');
         const jenis = jenisSpkElement ? jenisSpkElement.value : 'UNIT';
-        const kontrakStatus = (jenis === 'TUKAR') ? 'Aktif' : 'Pending';
+        const kontrakStatus = (jenis === 'TUKAR') ? 'ACTIVE' : 'PENDING';
         url.searchParams.set('status', kontrakStatus);
         fetch(url).then(r=>r.json()).then(j=>{
             const dl = document.getElementById('kontrakOptions');
@@ -866,7 +898,7 @@ $can_export = $permissions['export'];
             dl.innerHTML = '';
             (j.data||[]).forEach(opt=>{
                 const o = document.createElement('option');
-                o.value = opt.no_po_marketing || opt.no_kontrak || '';
+                o.value = opt.customer_po_number || opt.no_kontrak || '';
                 o.label = opt.label;
                 dl.appendChild(o);
             });
@@ -882,15 +914,15 @@ $can_export = $permissions['export'];
                 const fmt = (v)=> v==null?0:v;
                 tr.innerHTML = `
                     <td>${r.no_kontrak||'-'}</td>
-                    <td>${r.no_po_marketing||'-'}</td>
+                    <td>${r.customer_po_number||'-'}</td>
                     <td>${r.pelanggan||'-'}</td>
                     <td>${r.lokasi||'-'}</td>
-                    <td><span class="badge bg-dark">${fmt(r.total_spk)}</span></td>
-                    <td><span class="badge bg-secondary">${fmt(r.submitted)}</span></td>
-                    <td><span class="badge bg-info">${fmt(r.in_progress)}</span></td>
-                    <td><span class="badge bg-warning">${fmt(r.ready)}</span></td>
-                    <td><span class="badge bg-success">${fmt(r.delivered)}</span></td>
-                    <td><span class="badge bg-danger">${fmt(r.cancelled)}</span></td>
+                    <td>${uiBadge('dark', fmt(r.total_spk))}</td>
+                    <td>${uiBadge('submitted', fmt(r.submitted))}</td>
+                    <td>${uiBadge('in_progress', fmt(r.in_progress))}</td>
+                    <td>${uiBadge('ready', fmt(r.ready))}</td>
+                    <td>${uiBadge('delivered', fmt(r.delivered))}</td>
+                    <td>${uiBadge('cancelled', fmt(r.cancelled))}</td>
                     <td>${r.last_update||'-'}</td>`;
                 tb.appendChild(tr);
             });
@@ -1012,11 +1044,11 @@ $can_export = $permissions['export'];
             if (v) url.searchParams.set('q', v);
             const spkJenisSelect = document.querySelector('select[name="jenis_spk"]');
             const jenis = spkJenisSelect ? spkJenisSelect.value : 'UNIT';
-            url.searchParams.set('status', (jenis === 'TUKAR') ? 'Aktif' : 'Pending');
+            url.searchParams.set('status', (jenis === 'TUKAR') ? 'ACTIVE' : 'PENDING');
             fetch(url).then(r=>r.json()).then(j=>{
                 const rows = j.data||[];
-                // Try exact match by no_po_marketing or no_kontrak
-                const exact = rows.find(x => x.no_po_marketing === v || x.no_kontrak === v);
+                // Try exact match by customer_po_number or no_kontrak
+                const exact = rows.find(x => x.customer_po_number === v || x.no_kontrak === v);
                 if (exact) {
                     if (exact.pelanggan) pelangganInput.value = exact.pelanggan;
                     if (exact.lokasi) lokasiInput.value = exact.lokasi;
@@ -1441,7 +1473,7 @@ $can_export = $permissions['export'];
                             <strong>Harga/Unit (Harian):</strong> Rp ${formatCurrency(spek.daily_price)}
                         </div>
                         <div class="col-md-6">
-                            <strong>Status:</strong> <span class="badge bg-info">${available > 0 ? 'Tersedia' : 'Proses Pengadaan'}</span>
+                            <strong>Status:</strong> ${uiBadge('info', available > 0 ? 'Tersedia' : 'Proses Pengadaan')}
                         </div>
                         ${spek.catatan_spek ? `<div class="col-12"><strong>Catatan:</strong> ${spek.catatan_spek}</div>` : ''}
                     </div>
@@ -1590,7 +1622,7 @@ $can_export = $permissions['export'];
                                     <td>${att.merk || '-'}</td>
                                     <td>${att.model || '-'}</td>
                                     <td>${att.lokasi_penyimpanan || '-'}</td>
-                                    <td><span class="badge bg-success">Tersedia</span></td>
+                                    <td>${uiBadge('success', 'Tersedia')}</td>
                                 </tr>
                             `;
                         });
@@ -2217,14 +2249,10 @@ $can_export = $permissions['export'];
                     <div id="spkDetailBody"><p class="text-muted">Loading...</p></div>
                 </div>
                 <div class="modal-footer">
-                    <a class="btn btn-primary" id="btnPrintPdf" href="#" target="_blank" rel="noopener">Print PDF</a>
-                    <button class="btn btn-warning" id="btnEditSpk" onclick="editSpk()">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button class="btn btn-danger" id="btnDeleteSpk" onclick="deleteSpk()">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                    <button class="btn btn-secondary" data-bs-dismiss="modal">Tutup</button>
+                    <?= ui_button('print', 'Print PDF', ['id' => 'btnPrintPdf', 'href' => '#', 'target' => '_blank', 'rel' => 'noopener']) ?>
+                    <?= ui_button('edit', 'Edit', ['id' => 'btnEditSpk', 'onclick' => 'editSpk()']) ?>
+                    <?= ui_button('delete', 'Delete', ['id' => 'btnDeleteSpk', 'onclick' => 'deleteSpk()']) ?>
+                    <?= ui_button('cancel', 'Tutup', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
                 </div>
             </div>
         </div>
@@ -2360,7 +2388,7 @@ $can_export = $permissions['export'];
                                 }).length;
                                 
                                 workflowHtml += `<div class="col-12 mb-3">
-                                    <div class="progress" style="height:16px">
+                                    <div class="progress h-16px">
                                         <div class="progress-bar" role="progressbar" style="width:${Math.min(100, Math.round((completedUnits/totalUnits)*100))}%">
                                             ${completedUnits}/${totalUnits} units completed
                                         </div>
@@ -2996,8 +3024,8 @@ $can_export = $permissions['export'];
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                        <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                        <?= ui_button('save', 'Save Changes', ['type' => 'submit']) ?>
                     </div>
                 </form>
             </div>

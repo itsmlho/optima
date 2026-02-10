@@ -80,18 +80,22 @@
             <p class="text-muted small mb-0"><?= lang('Marketing.manage_prospects') ?></p>
         </div>
         <div>
-            <a href="<?= base_url('marketing/quotations/export') ?>" class="btn btn-outline-success me-2">
-                <i class="fas fa-file-excel me-1"></i><?= lang('App.export') ?>
-            </a>
-            <button type="button" class="btn btn-primary" onclick="openCreateProspectModal()">
-                <i class="bi bi-plus-circle me-2"></i><?= lang('Marketing.add_prospect') ?>
-            </button>
+            <?= ui_button('export', lang('App.export'), [
+                'href' => base_url('marketing/quotations/export'),
+                'color' => 'outline-success',
+                'size' => 'sm',
+                'class' => 'me-2'
+            ]) ?>
+            <?= ui_button('add', lang('Marketing.add_prospect'), [
+                'onclick' => 'openCreateProspectModal()',
+                'size' => 'sm'
+            ]) ?>
         </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">
             <table id="quotationsTable" class="table table-striped table-hover">
-                <thead class="table-dark">
+                <thead class="table-light">
                     <tr>
                         <th><?= lang('Marketing.no') ?></th>
                         <th><?= lang('Marketing.quotation_number') ?></th>
@@ -237,12 +241,8 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Create Prospect
-                    </button>
+                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal']) ?>
+                    <?= ui_button('submit', 'Create Prospect', ['type' => 'submit']) ?>
                 </div>
             </form>
         </div>
@@ -293,12 +293,16 @@
                                     <h6 class="mb-2 mb-md-0"><strong>Specifications for SPK</strong></h6>
                                 </div>
                                 <div class="col-md-6 text-md-end">
-                                    <button class="btn btn-primary btn-sm me-2" onclick="openAddSpecificationModal()" type="button">
-                                        <i class="fas fa-plus me-1"></i><?= lang('App.unit') ?>
-                                    </button>
-                                    <button class="btn btn-success btn-sm" onclick="openAddAttachmentModal()" type="button">
-                                        <i class="fas fa-plus me-1"></i><?= lang('Marketing.attachment_only') ?>
-                                    </button>
+                                    <?= ui_button('add', lang('App.unit'), [
+                                        'onclick' => 'openAddSpecificationModal()',
+                                        'size' => 'sm',
+                                        'class' => 'me-2'
+                                    ]) ?>
+                                    <?= ui_button('add', lang('Marketing.attachment_only'), [
+                                        'onclick' => 'openAddAttachmentModal()',
+                                        'size' => 'sm',
+                                        'color' => 'success'
+                                    ]) ?>
                                 </div>
                             </div>
                         </div>                        <!-- SPK Creation Info Alert - only visible when quotation is DEAL status -->
@@ -317,7 +321,7 @@
                 <div id="quotationActions">
                     <!-- Action buttons will be populated dynamically -->
                 </div>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <?= ui_button('cancel', 'Close', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
             </div>
         </div>
     </div>
@@ -555,12 +559,11 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-success" id="submitSpecificationBtn">
-                        <i class="fas fa-save me-1"></i><span id="submitBtnText">Save Specification</span>
-                    </button>
+                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal']) ?>
+                    <?= ui_button('save', '<span id="submitBtnText">Save Specification</span>', [
+                        'type' => 'submit',
+                        'id' => 'submitSpecificationBtn'
+                    ]) ?>
                 </div>
             </form>
         </div>
@@ -623,12 +626,11 @@
                     </div>
                 </div>
                 <div class="modal-footer bg-light border-top-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                        <i class="fas fa-times me-1"></i>Cancel
-                    </button>
-                    <button type="submit" class="btn btn-info" id="submitAttachmentBtn">
-                        <i class="fas fa-save me-1"></i>Save Attachment
-                    </button>
+                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal']) ?>
+                    <?= ui_button('save', 'Save Attachment', [
+                        'type' => 'submit',
+                        'id' => 'submitAttachmentBtn'
+                    ]) ?>
                 </div>
             </form>
         </div>
@@ -784,10 +786,11 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-primary" id="continueWithLocationBtn">
-                    <i class="fas fa-arrow-right"></i> Continue
-                </button>
+                <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                <?= ui_button('submit', 'Continue', [
+                    'id' => 'continueWithLocationBtn',
+                    'icon' => 'fas fa-arrow-right'
+                ]) ?>
             </div>
         </div>
     </div>
@@ -827,7 +830,7 @@
                                     &#43; Add New Contract
                                 </option>
                             </select>
-                            <small class="form-text text-muted">Search by Contract Number or PO Number, or select "+ Add New Contract"</small>
+                            <small class="form-text text-muted">Search by Contract Number or Customer PO Number, or select "+ Add New Contract"</small>
                         </div>
                     </div>
                     
@@ -846,8 +849,18 @@
                                 </div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label class="form-label">Client PO Number</label>
-                                <input type="text" class="form-control" name="po_number" id="po_number_input">
+                                <label class="form-label">Customer PO Number</label>
+                                <input type="text" class="form-control" name="po_number" id="po_number_input" placeholder="Customer's Purchase Order Number">
+                                <small class="text-muted">External PO from customer (if any)</small>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Rental Classification</label>
+                                <select class="form-select" name="rental_type" id="contract_rental_type">
+                                    <option value="CONTRACT" selected>Formal Contract</option>
+                                    <option value="PO_ONLY">PO-Based Only</option>
+                                    <option value="DAILY_SPOT">Daily/Spot Rental</option>
+                                </select>
+                                <small class="text-muted">How is this rental documented?</small>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Customer <span class="text-danger">*</span></label>
@@ -857,24 +870,68 @@
                                 <label class="form-label">Location <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control bg-light" id="locationNameDisplay" readonly>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">Start Date <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" name="start_date" id="contract_start_date" required>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-4 mb-3">
                                 <label class="form-label">End Date <span class="text-danger">*</span></label>
                                 <input type="date" class="form-control" name="end_date" id="contract_end_date" required>
                             </div>
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Rental Type</label>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Billing Period</label>
                                 <select class="form-select" name="jenis_sewa" id="contract_jenis_sewa">
-                                    <option value="BULANAN" selected>Monthly</option>
-                                    <option value="HARIAN">Daily</option>
+                                    <option value="BULANAN" selected>Monthly Rate</option>
+                                    <option value="HARIAN">Daily Rate</option>
                                 </select>
                             </div>
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Billing Method <i class="fas fa-info-circle text-info" title="How billing cycles are calculated"></i></label>
+                                <select class="form-select" name="billing_method" id="contract_billing_method">
+                                    <option value="CYCLE" selected>30-Day Rolling Cycle</option>
+                                    <option value="PRORATE">Prorate to Month-End</option>
+                                    <option value="MONTHLY_FIXED">Fixed Monthly Date</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3" id="billing_start_date_section" style="display:none;">
+                                <label class="form-label">Fixed Billing Date</label>
+                                <select class="form-select" name="billing_start_date" id="contract_billing_start_date">
+                                    <option value="1">1st of Month</option>
+                                    <option value="5">5th of Month</option>
+                                    <option value="10">10th of Month</option>
+                                    <option value="15">15th of Month</option>
+                                    <option value="20">20th of Month</option>
+                                    <option value="25">25th of Month</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Billing Preview Card -->
+                        <div class="card border-primary mb-3" id="billing_preview_card" style="display:none;">
+                            <div class="card-header bg-primary bg-opacity-10">
+                                <h6 class="mb-0 text-primary">
+                                    <i class="fas fa-calendar-alt me-2"></i>Billing Preview
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="billing_preview_content">
+                                    <!-- Dynamic content loaded via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
                             <div class="col-md-6"></div>
                             <div class="col-12 mb-3">
-                                <label class="form-label">Notes</label>
+                                <label class="form-label">Billing Notes</label>
+                                <textarea class="form-control" name="billing_notes" id="contract_billing_notes" rows="2" placeholder="Special billing instructions (optional)"></textarea>
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6"></div>
+                            <div class="col-12 mb-3">
+                                <label class="form-label">Contract Notes</label>
                                 <textarea class="form-control" name="catatan" id="contract_catatan" rows="3" placeholder="Additional notes (optional)"></textarea>
                             </div>
                         </div>
@@ -888,10 +945,8 @@
                     <input type="hidden" id="selectedContractId">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-2"></i>Save Contract
-                    </button>
+                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('save', 'Save Contract', ['type' => 'submit']) ?>
                 </div>
             </form>
         </div>
@@ -960,10 +1015,12 @@
                     <input type="hidden" id="spk_contract_id" name="contract_id">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="submitSPKBtn">
-                        <i class="fas fa-check me-2"></i>Create Selected SPK(s)
-                    </button>
+                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('submit', 'Create Selected SPK(s)', [
+                        'type' => 'submit',
+                        'id' => 'submitSPKBtn',
+                        'icon' => 'fas fa-check'
+                    ]) ?>
                 </div>
             </form>
         </div>
@@ -974,6 +1031,45 @@
 
 <?= $this->section('javascript') ?>
 <script>
+/**
+ * UI Helper Functions - Mirror server-side ui_helper.php behavior
+ */
+function uiBadge(type, text, options = {}) {
+    const badgeMap = {
+        // Status badges
+        'active': 'success',
+        'inactive': 'secondary',
+        'pending': 'warning',
+        'approved': 'success',
+        'rejected': 'danger',
+        'completed': 'success',
+        'cancelled': 'danger',
+        'draft': 'secondary',
+        'sent': 'info',
+        'accepted': 'success',
+        'deal': 'success',
+        'expired': 'danger',
+        // Action badges
+        'created': 'success',
+        'updated': 'info',
+        'revised': 'warning',
+        'deleted': 'danger',
+        'primary': 'primary',
+        // Priority badges
+        'high': 'danger',
+        'medium': 'warning',
+        'low': 'info',
+        'normal': 'secondary'
+    };
+    
+    const color = options.color || badgeMap[type.toLowerCase()] || 'secondary';
+    const classes = options.class || '';
+    const icon = options.icon || '';
+    
+    const iconHtml = icon ? `<i class="${icon} me-1"></i>` : '';
+    return `<span class="badge bg-${color} ${classes}">${iconHtml}${text}</span>`;
+}
+
 // Global variable for DataTable
 var quotationsTable;
 
@@ -1276,7 +1372,7 @@ $(document).ready(function() {
     $('#contract_number_input, #po_number_input').on('input', function() {
         clearTimeout(contractLoadTimeout);
         const isContractNumber = $(this).attr('id') === 'contract_number_input';
-        const field = isContractNumber ? 'no_kontrak' : 'no_po_marketing';
+        const field = isContractNumber ? 'no_kontrak' : 'customer_po_number';
         const value = $(this).val().trim();
         
         if (value.length >= 3) {
@@ -1308,7 +1404,7 @@ $(document).ready(function() {
             
             // Validate required fields for new contract
             if (!contractNumber && !poNumber) {
-                Swal.fire('Error', 'Please fill Contract Number OR PO Number', 'error');
+                Swal.fire('Error', 'Please fill Contract Number OR Customer PO Number', 'error');
                 return false;
             }
             
@@ -1353,7 +1449,170 @@ $(document).ready(function() {
         $('#customerNameDisplay').val('');
         $('#locationNameDisplay').val('');
         $('#selectedContractId').val('');
+        
+        // Hide daily rate calculator
+        $('#daily_rate_calculator').hide();
     });
+
+    // Daily Rate Calculator - Show/Hide based on billing period
+    $('#contract_jenis_sewa').on('change', function() {
+        const jenisSewaValue = $(this).val();
+        if (jenisSewaValue === 'HARIAN') {
+            $('#daily_rate_calculator').show();
+            calculateDailyRateTotal(); // Calculate on show
+        } else {
+            $('#daily_rate_calculator').hide();
+        }
+    });
+
+    // Daily Rate Calculator - Auto-calculate when inputs change
+    $('#contract_start_date, #contract_end_date, #calc_daily_rate').on('change keyup', function() {
+        if ($('#contract_jenis_sewa').val() === 'HARIAN') {
+            calculateDailyRateTotal();
+        }
+    });
+    
+    // Daily Rate Calculator Function
+    function calculateDailyRateTotal() {
+        const startDate = $('#contract_start_date').val();
+        const endDate = $('#contract_end_date').val();
+        const dailyRate = parseFloat($('#calc_daily_rate').val()) || 0;
+        
+        // Get number of units from quotation (will be set when modal opened)
+        const totalUnits = parseInt($('#calc_total_units').val()) || 0;
+        
+        // Calculate duration in days
+        if (startDate && endDate) {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end day
+            
+            $('#calc_duration_days').val(diffDays);
+            
+            // Calculate total value: Days × Units × Daily Rate
+            const totalValue = diffDays * totalUnits * dailyRate;
+            $('#calc_total_value').val(formatRupiah(totalValue));
+        } else {
+            $('#calc_duration_days').val('');
+            $('#calc_total_value').val('');
+        }
+    }
+    
+    // Billing Method Handler - Show/Hide billing start date and preview
+    $('#contract_billing_method').on('change', function() {
+        const billingMethod = $(this).val();
+        
+        // Show/hide billing start date field (only for MONTHLY_FIXED)
+        if (billingMethod === 'MONTHLY_FIXED') {
+            $('#billing_start_date_section').show();
+        } else {
+            $('#billing_start_date_section').hide();
+        }
+        
+        // Update billing preview
+        updateBillingPreview();
+    });
+    
+    // Update billing preview when relevant fields change
+    $('#contract_start_date, #contract_end_date, #contract_billing_start_date').on('change', function() {
+        updateBillingPreview();
+    });
+    
+    // Billing Preview Function
+    function updateBillingPreview() {
+        const billingMethod = $('#contract_billing_method').val();
+        const startDate = $('#contract_start_date').val();
+        const endDate = $('#contract_end_date').val();
+        
+        if (!startDate || !endDate) {
+            $('#billing_preview_card').hide();
+            return;
+        }
+        
+        const start = new Date(startDate);
+        let previewHTML = '';
+        
+        switch (billingMethod) {
+            case 'CYCLE':
+                previewHTML = `
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p class="mb-2"><strong>30-Day Rolling Cycle</strong></p>
+                            <ul class="mb-0">
+                                <li>Billing starts from: <strong>${formatDate(start)}</strong></li>
+                                <li>Next billing: <strong>${formatDate(addDays(start, 30))}</strong></li>
+                                <li>Subsequent billings every 30 days</li>
+                                <li>Example: Jan 15 → Feb 14 → Mar 16 → Apr 15</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                break;
+                
+            case 'PRORATE':
+                const endOfFirstMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+                const daysInFirstMonth = Math.ceil((endOfFirstMonth - start) / (1000 * 60 * 60 * 24)) + 1;
+                const totalDaysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+                const proratePercent = ((daysInFirstMonth / totalDaysInMonth) * 100).toFixed(1);
+                
+                previewHTML = `
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p class="mb-2"><strong>Prorate to Month-End</strong></p>
+                            <ul class="mb-0">
+                                <li>First billing (prorated): <strong>${formatDate(start)}</strong> to <strong>${formatDate(endOfFirstMonth)}</strong> (${daysInFirstMonth} days = ${proratePercent}%)</li>
+                                <li>Subsequent billings: <strong>1st of each month</strong> (full month)</li>
+                                <li>Example: Feb 15-28 (prorated 50%) → Mar 1-31 (100%) → Apr 1-30 (100%)</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                break;
+                
+            case 'MONTHLY_FIXED':
+                const billingDay = parseInt($('#contract_billing_start_date').val()) || 1;
+                const firstBillingDate = new Date(start.getFullYear(), start.getMonth(), billingDay);
+                if (firstBillingDate < start) {
+                    firstBillingDate.setMonth(firstBillingDate.getMonth() + 1);
+                }
+                
+                previewHTML = `
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p class="mb-2"><strong>Fixed Monthly Date (${billingDay}th)</strong></p>
+                            <ul class="mb-0">
+                                <li>First billing: <strong>${formatDate(start)}</strong> to <strong>${formatDate(firstBillingDate)}</strong> (prorated)</li>
+                                <li>Subsequent billings: <strong>${billingDay}th of each month</strong></li>
+                                <li>Example: Jan 20 → Feb ${billingDay} → Mar ${billingDay} → Apr ${billingDay}</li>
+                            </ul>
+                        </div>
+                    </div>
+                `;
+                break;
+        }
+        
+        $('#billing_preview_content').html(previewHTML);
+        $('#billing_preview_card').show();
+    }
+    
+    // Helper function to add days to a date
+    function addDays(date, days) {
+        const result = new Date(date);
+        result.setDate(result.getDate() + days);
+        return result;
+    }
+    
+    // Helper function to format date
+    function formatDate(date) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    }
+    
+    // Format number as Rupiah (without Rp symbol)
+    function formatRupiah(number) {
+        return new Intl.NumberFormat('id-ID').format(Math.round(number));
+    }
 
     // === CUSTOMER SEARCH INITIALIZATION (moved from third ready block) ===
     initCustomerSearch();
@@ -1434,8 +1693,8 @@ function viewQuotation(id) {
                 <div class="col-md-6">
                     <strong>Quotation Number:</strong><br>
                     ${data.quotation_number || 'undefined'}
-                    <span class="badge bg-info ms-2">v${data.version || 1}</span>
-                    ${data.revision_status === 'REVISED' ? '<span class="badge bg-warning text-dark ms-1"><i class="fas fa-exclamation-triangle me-1"></i>REVISED</span>' : ''}
+                    ${uiBadge('info', 'v' + (data.version || 1), {class: 'ms-2'})}
+                    ${data.revision_status === 'REVISED' ? uiBadge('revised', 'REVISED', {class: 'ms-1', icon: 'fas fa-exclamation-triangle'}) : ''}
                     <br><br>
                     <strong>Customer:</strong><br>
                     ${data.customer_name || data.prospect_name || 'undefined'}<br><br>
@@ -1501,7 +1760,7 @@ function viewQuotation(id) {
         }
         
         // Show history button
-        actionButtons += `<button class="btn btn-secondary" onclick="viewQuotationHistory(${data.id_quotation})" title="View change history">
+        actionButtons += `<button class="btn btn-secondary me-2" onclick="viewQuotationHistory(${data.id_quotation})" title="View change history">
             <i class="fas fa-history me-1"></i>History
         </button>`;
         
@@ -1777,18 +2036,10 @@ function viewQuotationHistory(id) {
                     historyHtml += '</thead><tbody>';
                     
                     result.data.forEach(h => {
-                        let actionBadge = '';
-                        switch(h.action_type) {
-                            case 'CREATED': actionBadge = '<span class="badge bg-success">Created</span>'; break;
-                            case 'UPDATED': actionBadge = '<span class="badge bg-info">Updated</span>'; break;
-                            case 'REVISED': actionBadge = '<span class="badge bg-warning">Revised</span>'; break;
-                            case 'DELETED': actionBadge = '<span class="badge bg-danger">Deleted</span>'; break;
-                            case 'SENT': actionBadge = '<span class="badge bg-primary">Sent</span>'; break;
-                            default: actionBadge = `<span class="badge bg-secondary">${h.action_type}</span>`;
-                        }
+                        const actionBadge = uiBadge(h.action_type.toLowerCase(), h.action_type);
                         
                         historyHtml += `<tr>
-                            <td><span class="badge bg-dark">v${h.version}</span></td>
+                            <td>${uiBadge('primary', 'v' + (h.version || 1))}</td>
                             <td>${actionBadge}</td>
                             <td><small>${h.changed_by_name || h.changed_by_username || '-'}</small></td>
                             <td><small>${formatDateTime(h.changed_at)}</small></td>
@@ -2099,7 +2350,7 @@ function displayQuotationSpecifications(specifications) {
         if (spec.unit_accessories && spec.unit_accessories.trim() !== '') {
             const accessories = spec.unit_accessories.split(',').map(a => a.trim());
             accessoriesBadges = accessories.map(acc => 
-                `<span class="badge bg-info me-1"><i class="fas fa-plus-circle me-1"></i>${acc}</span>`
+                `${uiBadge('info', `<i class="fas fa-plus-circle me-1"></i>${acc}`, {class: 'me-1'})}`
             ).join('');
         }
         
@@ -4483,6 +4734,11 @@ function loadCustomersForContract(customerId) {
                     console.log('✅ Customer name set:', customerName, '| Field value:', $('#customerNameDisplay').val());
                 }, 100);
                 
+                // Set total units for daily rate calculator
+                const totalUnits = quotation.total_units || quotation.total_quantity || 0;
+                $('#calc_total_units').val(totalUnits);
+                console.log('✅ Total units set for calculator:', totalUnits);
+                
                 // Set location name if available
                 if (quotation.location_name) {
                     setTimeout(function() {
@@ -4583,7 +4839,7 @@ function loadExistingContracts(customerId) {
                 console.log('Removed "Add New" option temporarily');
                 
                 response.contracts.forEach((contract, index) => {
-                    const displayText = `${contract.no_kontrak || contract.no_po_marketing || 'N/A'} - ${contract.tanggal_mulai || ''} s/d ${contract.tanggal_berakhir || ''}`;
+                    const displayText = `${contract.no_kontrak || contract.customer_po_number || 'N/A'} - ${contract.tanggal_mulai || ''} s/d ${contract.tanggal_berakhir || ''}`;
                     console.log(`Adding contract ${index + 1}:`, displayText);
                     
                     const option = $('<option></option>')
@@ -4652,7 +4908,7 @@ function populateContractForm(contractData) {
     
     // Basic contract fields
     $('#contract_number_input').val(contractData.no_kontrak || '');
-    $('#po_number_input').val(contractData.no_po_marketing || '');
+    $('#po_number_input').val(contractData.customer_po_number || '');
     $('#contract_start_date').val(contractData.tanggal_mulai || '');
     $('#contract_end_date').val(contractData.tanggal_berakhir || '');
     $('#contract_jenis_sewa').val(contractData.jenis_sewa || '');
@@ -5571,7 +5827,7 @@ function showSPKCreationModal(quotation, specifications) {
         <div class="col-md-6">
             <small class="text-muted">Contract Number</small>
             <div class="fw-bold ${quotation.contract_number ? 'text-primary' : 'text-warning'}">
-                ${quotation.contract_number || '<span class="badge bg-warning text-dark">Contract Pending</span>'}
+                ${quotation.contract_number || uiBadge('pending', 'Contract Pending')}
             </div>
         </div>
     `);
@@ -5712,7 +5968,7 @@ function showSPKCreationModal(quotation, specifications) {
                     ${spec.unit_accessories && spec.unit_accessories.trim() !== '' ? `
                     <div class="mt-2 small">
                         <strong>Accessories:</strong> 
-                        ${spec.unit_accessories.split(',').map(acc => `<span class="badge bg-info text-dark me-1">${acc.trim()}</span>`).join('')}
+                        ${spec.unit_accessories.split(',').map(acc => uiBadge('info', acc.trim(), {class: 'me-1'})).join('')}
                     </div>
                     ` : ''}
                     

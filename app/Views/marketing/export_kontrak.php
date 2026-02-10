@@ -96,7 +96,7 @@ try {
         echo '<tr>';
         echo '<td class="text-center">' . $no++ . '</td>';
         echo '<td><b>' . htmlspecialchars($row->no_kontrak ?? '-') . '</b></td>';
-        echo '<td>' . htmlspecialchars($row->no_po_marketing ?? '-') . '</td>';
+        echo '<td>' . htmlspecialchars($row->customer_po_number ?? '-') . '</td>';
         echo '<td>' . htmlspecialchars($row->customer_name ?? '-') . '</td>';
         echo '<td>' . htmlspecialchars($row->location_name ?? '-') . '</td>';
         echo '<td>' . htmlspecialchars($row->city ?? '-') . '</td>';

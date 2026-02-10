@@ -74,50 +74,8 @@ $currentLang = service('request')->getLocale();
     <!-- Notification Popup CSS -->
     <link href="<?= base_url('assets/css/plugins/notification-popup.css') ?>?v=<?= time() ?>" rel="stylesheet">
     
-    <!-- Global Consistent Table Sorting Headers -->
-    <style>
-    /* Consistent DataTables-like sorting headers for all manual tables */
-    .table-manual-sort thead th {
-        position: relative;
-        cursor: pointer;
-        user-select: none;
-        padding-right: 20px !important;
-    }
-
-    .table-manual-sort thead th:hover {
-        background-color: #f8f9fa;
-    }
-
-    .table-manual-sort thead th::after {
-        content: "\2195"; /* Up-down arrow */
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        opacity: 0.3;
-        font-size: 10px;
-        color: #6c757d;
-    }
-
-    .table-manual-sort thead th.sortable-asc::after {
-        content: "\2191"; /* Up arrow */
-        opacity: 1;
-        color: #0d6efd;
-        font-weight: bold;
-    }
-
-    .table-manual-sort thead th.sortable-desc::after {
-        content: "\2193"; /* Down arrow */
-        opacity: 1;
-        color: #0d6efd;
-        font-weight: bold;
-    }
-
-    .table-manual-sort thead th:last-child::after,
-    .table-manual-sort thead th[data-no-sort]::after {
-        display: none; /* Hide sort arrow on actions column or no-sort columns */
-    }
-    </style>
+    <!-- OPTIMA DataTable CSS - Centralized Table Styling System -->
+    <link href="<?= base_url('assets/css/desktop/optima-datatable.css') ?>?v=<?= time() ?>" rel="stylesheet">
     
     <!-- Sidebar Scroll Management -->
     <script src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= time() ?>"></script>
@@ -756,7 +714,8 @@ $currentLang = service('request')->getLocale();
     <!-- Global Permission System -->
     <script src="<?= base_url('assets/js/global-permission.js') ?>?v=<?= time() ?>"></script>
     
-    
+    <!-- UI Helpers (Select2, Toasts, Button States, Validation) -->
+    <script src="<?= base_url('assets/js/ui_helpers.js') ?>?v=<?= time() ?>"></script>
     
     <!-- Global JavaScript Variables -->
     <script>
@@ -1207,5 +1166,8 @@ $currentLang = service('request')->getLocale();
             }
         }
     </script>
+    
+    <!-- OPTIMA DataTable Configuration - Centralized Table Behavior -->
+    <script src="<?= base_url('assets/js/optima-datatable-config.js') ?>?v=<?= time() ?>"></script>
 </body>
 </html>

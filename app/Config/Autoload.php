@@ -99,5 +99,10 @@ class Autoload extends AutoloadConfig
         'date', // Load date helper globally
         'notification', // Load notification helper for sending notifications
         'cache', // Load cache helper for queue system
+        
+        // Design System Helpers (Added: 2026-02-09)
+        'ui_helper',              // UI component helper (buttons, badges, alerts)
+        'datatable_helper',       // DataTable configuration helper
+        'form_field_helper',      // Form field generation helper (text, select, textarea, etc.)
     ];
 }

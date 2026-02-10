@@ -14,14 +14,23 @@ class KontrakModel extends Model
     protected $protectFields = true;
     protected $allowedFields = [
         'no_kontrak',
-        'no_po_marketing', 
+        'customer_po_number',  // Renamed from no_po_marketing
+        'rental_type',         // New: CONTRACT, PO_ONLY, DAILY_SPOT
         'customer_location_id',
         'nilai_total',
         'total_units',
         'jenis_sewa',
+        'billing_method',      // NEW: CYCLE, PRORATE, MONTHLY_FIXED
+        'billing_notes',       // NEW: Special billing instructions
+        'billing_start_date',  // NEW: Override billing start date
         'tanggal_mulai',
         'tanggal_berakhir',
         'status',
+        'parent_contract_id',  // NEW: For renewal chain
+        'is_renewal',          // NEW: Is this a renewed contract
+        'renewal_generation',  // NEW: Generation number
+        'renewal_initiated_at', // NEW: When renewal started
+        'renewal_initiated_by', // NEW: Who initiated renewal
         'dibuat_oleh'
     ];
 
@@ -38,7 +47,8 @@ class KontrakModel extends Model
         'customer_location_id' => 'required|is_natural_no_zero',
         'tanggal_mulai' => 'required|valid_date',
         'tanggal_berakhir' => 'required|valid_date',
-        'status' => 'permit_empty|in_list[Aktif,Berakhir,Pending,Dibatalkan]'
+        'status' => 'permit_empty|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]',
+        'rental_type' => 'permit_empty|in_list[CONTRACT,PO_ONLY,DAILY_SPOT]'
     ];
 
     protected $validationMessages = [
@@ -126,7 +136,7 @@ class KontrakModel extends Model
         $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
         
         // Explicitly select all columns we need with dynamic calculations and user name from new structure
-        $builder->select('k.id, k.no_kontrak, k.no_po_marketing, 
+        $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type,
                          c.customer_name as pelanggan, 
                          cl.contact_person as pic, 
                          cl.phone as kontak, 
@@ -136,9 +146,6 @@ class KontrakModel extends Model
                          (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as total_units,
                          k.tanggal_mulai, k.tanggal_berakhir, k.status, k.dibuat_pada, k.diperbarui_pada,
                          CONCAT(u.first_name, " ", u.last_name) as dibuat_oleh_nama');
-        
-        // Join with users table
-        $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
         
         // Filter out invalid IDs (0 or null)
         $builder->where('k.id >', 0);
@@ -252,18 +259,18 @@ class KontrakModel extends Model
         $total = $this->db->table($this->table)->countAllResults();
 
         $active = $this->db->table($this->table)
-            ->where('status', 'Aktif')
+            ->where('status', 'ACTIVE')
             ->countAllResults();
 
         $expiring = $this->db->table($this->table)
-            ->where('status', 'Aktif')
+            ->where('status', 'ACTIVE')
             ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
             ->where('tanggal_berakhir >=', date('Y-m-d'))
             ->countAllResults();
 
         $expired = $this->db->table($this->table)
             ->groupStart()
-                ->where('status', 'Berakhir')
+                ->where('status', 'EXPIRED')
                 ->orWhere('tanggal_berakhir <', date('Y-m-d'))
             ->groupEnd()
             ->countAllResults();

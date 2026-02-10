@@ -46,6 +46,34 @@
         </div>
     </div>
 
+    <!-- Back-Billing Alert Widget -->
+    <div class="card border-warning border-start border-4 shadow-sm mb-4" id="backBillingAlert" style="display:none;">
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h5 class="card-title text-warning mb-2">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <span id="backBillingCount">0</span> Missing Invoices Detected
+                    </h5>
+                    <p class="card-text mb-0">
+                        <strong id="backBillingContracts">0</strong> contracts have overdue billing periods. 
+                        Total estimated amount: <strong class="text-success">Rp <span id="backBillingAmount">0</span></strong>
+                        <br>
+                        <small class="text-muted">Oldest overdue: <span id="backBillingOldest">0</span> days</small>
+                    </p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-warning" onclick="showBackBillingModal()">
+                        <i class="fas fa-eye me-2"></i>View Details
+                    </button>
+                    <button class="btn btn-primary" onclick="autoGenerateBackBilling()">
+                        <i class="fas fa-magic me-2"></i>Auto-Generate
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Filters -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-body">
@@ -344,7 +372,166 @@ $(document).ready(function() {
                 }
             });
     });
+    
+    // Load back-billing stats on page load
+    loadBackBillingStats();
 });
+
+function reloadTable() {
+    invoicesTable.ajax.reload();
+}
+
+// Back-Billing Functions
+function loadBackBillingStats() {
+    fetch('<?= base_url('finance/getBackBillingStats') ?>', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.data) {
+            const stats = data.data;
+            
+            // Show alert only if there are missing invoices
+            if (stats.total_missing > 0) {
+                $('#backBillingAlert').show();
+                $('#backBillingCount').text(stats.total_missing);
+                $('#backBillingContracts').text(stats.total_contracts_affected);
+                $('#backBillingAmount').text(new Intl.NumberFormat('id-ID').format(stats.total_estimated_amount));
+                $('#backBillingOldest').text(stats.oldest_overdue_days);
+            } else {
+                $('#backBillingAlert').hide();
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Failed to load back-billing stats:', error);
+    });
+}
+
+function showBackBillingModal() {
+    // Load detailed missing invoices
+    fetch('<?= base_url('finance/detectBackBilling') ?>', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.data) {
+            let html = '<div class="table-responsive"><table class="table table-sm table-striped">';
+            html += '<thead><tr><th>Contract</th><th>Unit</th><th>Period</th><th>Days Overdue</th><th>Amount</th><th>Action</th></tr></thead><tbody>';
+            
+            data.data.forEach(invoice => {
+                html += `<tr>
+                    <td>${invoice.contract_number}<br><small class="text-muted">${invoice.customer_name}</small></td>
+                    <td>${invoice.unit_number}</td>
+                    <td>${invoice.period_start} to ${invoice.period_end}</td>
+                    <td><span class="badge bg-danger">${invoice.days_overdue} days</span></td>
+                    <td>Rp ${new Intl.NumberFormat('id-ID').format(invoice.estimated_amount)}</td>
+                    <td><button class="btn btn-sm btn-primary" onclick="generateSingleBackBilling(${invoice.contract_id})">Generate</button></td>
+                </tr>`;
+            });
+            
+            html += '</tbody></table></div>';
+            
+            // Create modal dynamically
+            const modalHtml = `
+                <div class="modal fade" id="backBillingModal" tabindex="-1">
+                    <div class="modal-dialog modal-xl">
+                        <div class="modal-content">
+                            <div class="modal-header bg-warning text-white">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>Missing Invoices Details
+                                </h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                ${html}
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                               <button type="button" class="btn btn-primary" onclick="autoGenerateBackBilling()">
+                                    <i class="fas fa-magic me-2"></i>Generate All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Remove existing modal if any
+            $('#backBillingModal').remove();
+            
+            // Append and show
+            $('body').append(modalHtml);
+            new bootstrap.Modal(document.getElementById('backBillingModal')).show();
+        }
+    });
+}
+
+function autoGenerateBackBilling() {
+    if (!confirm('This will generate ALL missing invoices. Continue?')) return;
+    
+    // Get all unique contract IDs from missing invoices
+    fetch('<?= base_url('finance/detectBackBilling') ?>', {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success && data.data) {
+            const contractIds = [...new Set(data.data.map(inv => inv.contract_id))];
+            
+            // Show loading
+            const loadingAlert = `
+                <div class="alert alert-info" id="backBillingProgress">
+                    <i class="fas fa-spinner fa-spin me-2"></i>Generating back-billing invoices... <span id="progressText">0/${contractIds.length}</span>
+                </div>
+            `;
+            $('body').append(loadingAlert);
+            
+            // Generate for each contract
+            let completed = 0;
+            const promises = contractIds.map(contractId => {
+                return generateSingleBackBilling(contractId, false)
+                    .then(() => {
+                        completed++;
+                        $('#progressText').text(`${completed}/${contractIds.length}`);
+                    });
+            });
+            
+            Promise.all(promises).then(() => {
+                $('#backBillingProgress').remove();
+                alert('Back-billing generation completed!');
+                loadBackBillingStats();
+                invoicesTable.ajax.reload();
+                $('#backBillingModal').modal('hide');
+            });
+        }
+    });
+}
+
+function generateSingleBackBilling(contractId, showAlert = true) {
+    const formData = new FormData();
+    formData.append('contract_id', contractId);
+    formData.append('auto_approve', 'false');
+    
+    return fetch('<?= base_url('finance/generateBackBilling') ?>', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (showAlert) {
+            if (data.success) {
+                alert(`Generated ${data.count} invoice(s) for total Rp ${new Intl.NumberFormat('id-ID').format(data.total_amount)}`);
+                loadBackBillingStats();
+                invoicesTable.ajax.reload();
+            } else {
+                alert('Error: ' + (data.message || 'Failed to generate back-billing'));
+}
+        }
+        return data;
+    });
+}
 
 function reloadTable() {
     invoicesTable.ajax.reload();

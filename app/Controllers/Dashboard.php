@@ -172,7 +172,7 @@ class Dashboard extends BaseController
                     cl.location_name as customer_location
                 FROM kontrak k
                 LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
-                WHERE k.status = 'Aktif'
+                WHERE k.status = 'ACTIVE'
                 AND k.tanggal_berakhir BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
                 ORDER BY k.tanggal_berakhir ASC
                 LIMIT 10
@@ -188,6 +188,100 @@ class Dashboard extends BaseController
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error fetching expiring contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get rental type analytics - breakdown by CONTRACT/PO_ONLY/DAILY_SPOT
+     */
+    public function getRentalTypeAnalytics()
+    {
+        if (!session()->get('isLoggedIn')) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Unauthorized']);
+        }
+
+        $db = \Config\Database::connect();
+
+        try {
+            // Get overall breakdown by rental type
+            $breakdown = $db->query("
+                SELECT 
+                    rental_type,
+                    COUNT(*) as total_contracts,
+                    COUNT(CASE WHEN status = 'ACTIVE' THEN 1 END) as active_contracts,
+                    COUNT(CASE WHEN status = 'PENDING' THEN 1 END) as pending_contracts,
+                    COUNT(CASE WHEN status = 'EXPIRED' THEN 1 END) as expired_contracts,
+                    COUNT(CASE WHEN status = 'CANCELLED' THEN 1 END) as cancelled_contracts,
+                    SUM(nilai_total) as total_value,
+                    SUM(CASE WHEN status = 'ACTIVE' THEN nilai_total ELSE 0 END) as active_value,
+                    SUM(total_units) as total_units,
+                    SUM(CASE WHEN status = 'ACTIVE' THEN total_units ELSE 0 END) as active_units
+                FROM kontrak
+                GROUP BY rental_type
+                ORDER BY total_contracts DESC
+            ")->getResultArray();
+
+            // Get monthly trend (last 6 months)
+            $trend = $db->query("
+                SELECT 
+                    DATE_FORMAT(dibuat_pada, '%Y-%m') as month,
+                    rental_type,
+                    COUNT(*) as contracts_created,
+                    SUM(nilai_total) as total_value
+                FROM kontrak
+                WHERE dibuat_pada >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
+                GROUP BY DATE_FORMAT(dibuat_pada, '%Y-%m'), rental_type
+                ORDER BY month ASC, rental_type
+            ")->getResultArray();
+
+            // Get contracts with PO vs without PO
+            $poStats = $db->query("
+                SELECT 
+                    rental_type,
+                    COUNT(CASE WHEN customer_po_number IS NOT NULL AND customer_po_number != '' THEN 1 END) as with_po,
+                    COUNT(CASE WHEN customer_po_number IS NULL OR customer_po_number = '' THEN 1 END) as without_po
+                FROM kontrak
+                WHERE status IN ('ACTIVE', 'PENDING')
+                GROUP BY rental_type
+            ")->getResultArray();
+
+            // Calculate totals
+            $totals = [
+                'total_contracts' => 0,
+                'active_contracts' => 0,
+                'pending_contracts' => 0,
+                'total_value' => 0,
+                'active_value' => 0,
+                'total_units' => 0,
+                'active_units' => 0
+            ];
+
+            foreach ($breakdown as $item) {
+                $totals['total_contracts'] += $item['total_contracts'];
+                $totals['active_contracts'] += $item['active_contracts'];
+                $totals['pending_contracts'] += $item['pending_contracts'];
+                $totals['total_value'] += $item['total_value'];
+                $totals['active_value'] += $item['active_value'];
+                $totals['total_units'] += $item['total_units'];
+                $totals['active_units'] += $item['active_units'];
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'breakdown' => $breakdown,
+                    'trend' => $trend,
+                    'po_stats' => $poStats,
+                    'totals' => $totals
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '[Dashboard] getRentalTypeAnalytics error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error fetching rental type analytics: ' . $e->getMessage()
             ]);
         }
     }
@@ -241,7 +335,7 @@ class Dashboard extends BaseController
             }
 
             // Get active contracts
-            $queryContracts = "SELECT COUNT(*) as total FROM kontrak WHERE status = 'Aktif'";
+            $queryContracts = "SELECT COUNT(*) as total FROM kontrak WHERE status = 'ACTIVE'";
             $activeContracts = $db->query($queryContracts)->getRow()->total ?? 0;
 
             // Get pending delivery (today and tomorrow) - use tanggal_kirim
@@ -619,9 +713,9 @@ class Dashboard extends BaseController
         }
 
         // 2. MARKETING: Active Contracts
-        // Schema: 'kontrak' table, 'status' (Enum: Aktif/...)
+        // Schema: 'kontrak' table, 'status' (Enum: ACTIVE/EXPIRED/PENDING/CANCELLED)
         try {
-             $activeContracts = $db->table('kontrak')->where('status', 'Aktif')->countAllResults();
+             $activeContracts = $db->table('kontrak')->where('status', 'ACTIVE')->countAllResults();
         } catch (\Throwable $e) { $activeContracts = 0; }
 
         // 3. OPERATIONAL: Pending Logistics
@@ -674,7 +768,7 @@ class Dashboard extends BaseController
                                             ->join('customer_locations', 'customer_locations.id = kontrak.customer_location_id', 'left')
                                             ->join('customers', 'customers.id = customer_locations.customer_id', 'left') // Assumption on customers.id
                                             ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
-                                            ->where('status', 'Aktif')
+                                            ->where('status', 'ACTIVE')
                                             ->limit(5)
                                             ->get()->getResultArray();
             // Map to View keys
