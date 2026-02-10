@@ -35,7 +35,7 @@ try {
             cl.phone as pic_phone,
             
             k.no_kontrak,
-            k.no_po_marketing,
+            k.customer_po_number,
             k.jenis_sewa,
             k.tanggal_mulai,
             k.tanggal_berakhir,
@@ -128,7 +128,7 @@ try {
         
         // Contract Info
         echo '<td>' . htmlspecialchars($row->no_kontrak ?? '-') . '</td>';
-        echo '<td>' . htmlspecialchars($row->no_po_marketing ?? '-') . '</td>';
+        echo '<td>' . htmlspecialchars($row->customer_po_number ?? '-') . '</td>';
         echo '<td>' . htmlspecialchars($row->jenis_sewa ?? '-') . '</td>';
         echo '<td>' . htmlspecialchars($row->kontrak_status ?? '-') . '</td>';
         echo '<td class="text-right">' . ($row->nilai_total ? number_format($row->nilai_total, 0) : '-') . '</td>';

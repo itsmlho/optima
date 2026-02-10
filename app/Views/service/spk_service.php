@@ -37,7 +37,7 @@ $can_export = true;
     <!-- Statistics Cards -->
     <div class="row mt-3 mb-4">
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-            <div class="stat-card bg-primary-soft filter-card" data-filter="all" style="cursor: pointer;">
+            <div class="stat-card bg-primary-soft filter-card cursor-pointer" data-filter="all">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
                         <i class="bi bi-list-task stat-icon text-primary"></i>
@@ -50,7 +50,7 @@ $can_export = true;
             </div>
         </div>
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-            <div class="stat-card bg-info-soft filter-card" data-filter="IN_PROGRESS" style="cursor: pointer;">
+            <div class="stat-card bg-info-soft filter-card cursor-pointer" data-filter="IN_PROGRESS">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
                         <i class="bi bi-arrow-repeat stat-icon text-info"></i>
@@ -63,7 +63,7 @@ $can_export = true;
             </div>
         </div>
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-            <div class="stat-card bg-success-soft filter-card" data-filter="READY" style="cursor: pointer;">
+            <div class="stat-card bg-success-soft filter-card cursor-pointer" data-filter="READY">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
                         <i class="bi bi-check-circle stat-icon text-success"></i>
@@ -76,7 +76,7 @@ $can_export = true;
             </div>
         </div>
         <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-            <div class="stat-card bg-warning-soft filter-card" data-filter="COMPLETED" style="cursor: pointer;">
+            <div class="stat-card bg-warning-soft filter-card cursor-pointer" data-filter="COMPLETED">
                 <div class="d-flex align-items-center">
                     <div class="me-3">
                         <i class="bi bi-flag stat-icon text-warning"></i>
@@ -95,7 +95,7 @@ $can_export = true;
             <div class="d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><?= lang('App.work_orders_spk') ?> <?= lang('App.show') ?></h6>
                 <div>
-                    <input type="text" class="form-control form-control-sm" id="spkSearch" placeholder="<?= lang('App.search') ?> SPK..." style="width: 250px;">
+                    <input type="text" class="form-control form-control-sm w-250px" id="spkSearch" placeholder="<?= lang('App.search') ?> SPK...">
                 </div>
             </div>
         </div>
@@ -127,7 +127,7 @@ $can_export = true;
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <label class="me-2">Show</label>
-                        <select class="form-select form-select-sm d-inline-block" id="entriesPerPage" style="width: auto;">
+                        <select class="form-select form-select-sm d-inline-block w-auto" id="entriesPerPage">
                             <option value="10">10</option>
                             <option value="25">25</option>
                             <option value="50">50</option>
@@ -160,7 +160,7 @@ $can_export = true;
 	</div>
 
 	<!-- Assign Items Modal (Unit + Attachment) -->
-	<div class="modal fade" id="assignItemsModal" tabindex="-1" style="z-index: 9999;">
+	<div class="modal fade" id="assignItemsModal" tabindex="-1">
 		<div class="modal-dialog modal-lg modal-dialog-centered">
 			<div class="modal-content">
 				<div class="modal-header"><h6 class="modal-title">Select Unit & Attachment</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
@@ -197,7 +197,7 @@ $can_export = true;
 				<form id="approvalStageForm">
 					<div class="modal-body">
 						<!-- Multi-mechanic selection -->
-						<div id="mechanicSelectionContainer" class="mb-3" style="min-height: 60px; border: 1px dashed #ddd; padding: 10px; background: #f8f9fa;">
+						<div id="mechanicSelectionContainer" class="mb-3 min-h-60px border-dashed bg-f8f9fa p-2">
 							<!-- Multi-select dropdown will be initialized here -->
 							<div class="text-muted">Loading mechanic selection...</div>
 						</div>
@@ -277,7 +277,7 @@ $can_export = true;
 						<div class="form-text">Alasan ini akan dicatat dalam audit trail untuk keperluan dokumentasi.</div>
 					</div>
 					
-					<div id="unitChangeSection" style="display: none;">
+					<div id="unitChangeSection" class="d-none">
 						<div class="mb-3">
 							<label class="form-label">Pilih Unit yang Akan Diubah <span class="text-danger">*</span></label>
 							<select class="form-select mb-3" id="rollbackUnitIndexSelect" name="unit_index">
@@ -1156,7 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							}).length;
 							
 							workflowHtml += `<div class="col-12 mb-3">
-								<div class="progress" style="height:16px">
+								<div class="progress h-16px">
 									<div class="progress-bar" role="progressbar" style="width:${Math.min(100, Math.round((completedUnits/totalUnits)*100))}%">
 										${completedUnits}/${totalUnits} units completed
 									</div>
@@ -1500,7 +1500,7 @@ document.addEventListener('DOMContentLoaded', () => {
 						</select>
 						<div class="form-text">Select an area for this unit. The area determines the assignment of foreman and mechanic for the work order.</div>
 					</div>
-					<div id="electricFields${suffix}" class="mb-3" style="display: none;">
+					<div id="electricFields${suffix}" class="mb-3 d-none">
 						<!-- Smart Component Management will inject content here -->
 						<div id="electricFieldsContent${suffix}">
 							<!-- Legacy fallback if smart detection fails -->
@@ -1523,7 +1523,7 @@ document.addEventListener('DOMContentLoaded', () => {
 							</div>
 						</div>
 					</div>
-					<div id="fabrikasiFields${suffix}" class="mb-3" style="display: none;">
+					<div id="fabrikasiFields${suffix}" class="mb-3 d-none">
 						<!-- Smart Attachment Management untuk Fabrikasi akan inject content di sini -->
 						<div id="fabrikasiFieldsContent${suffix}">
 							<!-- Legacy fallback if smart detection fails -->

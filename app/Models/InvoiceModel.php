@@ -220,10 +220,11 @@ class InvoiceModel extends Model
             return $result;
         }
         
-        // Calculate billing period
+        // Calculate billing period using BillingCalculator
+        $billingCalculator = new \App\Libraries\BillingCalculator();
         $billingStart = $schedule['next_billing_date'];
         
-        // Calculate end based on frequency
+        // Calculate end based on frequency (backward compatible)
         $frequency = $schedule['frequency'];
         if ($frequency === 'MONTHLY') {
             $billingEnd = date('Y-m-d', strtotime($billingStart . ' +1 month -1 day'));
@@ -231,6 +232,20 @@ class InvoiceModel extends Model
             $billingEnd = date('Y-m-d', strtotime($billingStart . ' +3 months -1 day'));
         } elseif ($frequency === 'YEARLY') {
             $billingEnd = date('Y-m-d', strtotime($billingStart . ' +1 year -1 day'));
+        }
+        
+        // Use BillingCalculator to get accurate billing amount
+        try {
+            $billingResult = $billingCalculator->calculate($contract['id'], $billingStart, $billingEnd);
+            $calculatedAmount = $billingResult['amount'];
+            $billingMethod = $billingResult['method'];
+            $billingDays = $billingResult['days'];
+        } catch (\Exception $e) {
+            log_message('error', 'InvoiceModel::createRecurringInvoice - BillingCalculator error: ' . $e->getMessage());
+            // Fallback: will calculate from items
+            $calculatedAmount = 0;
+            $billingMethod = 'LEGACY';
+            $billingDays = 0;
         }
         
         // Generate invoice number
@@ -255,13 +270,13 @@ class InvoiceModel extends Model
             'billing_period_end' => $billingEnd,
             'issue_date' => $issueDate,
             'due_date' => $dueDate,
-            'subtotal' => 0,
+            'subtotal' => $calculatedAmount > 0 ? $calculatedAmount : 0,
             'discount_amount' => 0,
             'tax_percent' => 11.00,
-            'tax_amount' => 0,
-            'total_amount' => 0,
+            'tax_amount' => $calculatedAmount > 0 ? ($calculatedAmount * 0.11) : 0,
+            'total_amount' => $calculatedAmount > 0 ? ($calculatedAmount * 1.11) : 0,
             'status' => 'DRAFT',
-            'notes' => "Recurring rental invoice for period {$billingStart} to {$billingEnd}",
+            'notes' => "Recurring rental invoice for period {$billingStart} to {$billingEnd} ({$billingDays} days, {$billingMethod})",
             'created_by' => $userId
         ];
         
@@ -273,6 +288,11 @@ class InvoiceModel extends Model
             $invoiceItemModel = new \App\Models\InvoiceItemModel();
             $itemCount = $invoiceItemModel->addItemsFromContract($contract['id'], $effectiveRate);
             
+            // If BillingCalculator didn't provide amount, recalculate from items
+            if ($calculatedAmount === 0) {
+                $this->recalculateInvoiceTotals($invoiceId);
+            }
+            
             // Update schedule
             $nextBillingDate = date('Y-m-d', strtotime($billingEnd . ' +1 day'));
             $scheduleModel->update($scheduleId, [
@@ -282,13 +302,37 @@ class InvoiceModel extends Model
             
             $result['success'] = true;
             $result['invoice_id'] = $invoiceId;
-            $result['message'] = "Invoice {$invoiceNumber} created with {$itemCount} items";
+            $result['invoice_number'] = $invoiceNumber;
+            $result['message'] = "Invoice {$invoiceNumber} created with {$itemCount} items (Method: {$billingMethod})";
             
             return $result;
         }
         
         $result['errors'][] = 'Failed to create invoice';
         return $result;
+    }
+    
+    /**
+     * Recalculate invoice totals from items
+     * Used when BillingCalculator fails or for legacy invoices
+     * 
+     * @param int $invoiceId Invoice ID
+     * @return bool Success status
+     */
+    protected function recalculateInvoiceTotals(int $invoiceId): bool
+    {
+        $invoiceItemModel = new \App\Models\InvoiceItemModel();
+        $items = $invoiceItemModel->where('invoice_id', $invoiceId)->findAll();
+        
+        $subtotal = array_sum(array_column($items, 'subtotal'));
+        $taxAmount = $subtotal * 0.11;
+        $totalAmount = $subtotal + $taxAmount;
+        
+        return $this->update($invoiceId, [
+            'subtotal' => $subtotal,
+            'tax_amount' => $taxAmount,
+            'total_amount' => $totalAmount
+        ]);
     }
     
     /**

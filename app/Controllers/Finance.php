@@ -703,4 +703,115 @@ class Finance extends Controller
             ]);
         }
     }
+    
+    /**
+     * Detect missing invoices (back-billing detection)
+     * Returns list of overdue billing periods with estimated amounts
+     */
+    public function detectBackBilling()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $contractId = $this->request->getGet('contract_id');
+            
+            $backBillingService = new \App\Services\BackBillingService();
+            $missingInvoices = $backBillingService->detectMissingInvoices($contractId);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $missingInvoices,
+                'count' => count($missingInvoices),
+                'total_estimated' => array_sum(array_column($missingInvoices, 'estimated_amount'))
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::detectBackBilling - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to detect back-billing: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Generate back-billing invoices for a contract
+     * Auto-creates all missing invoices based on detection
+     */
+    public function generateBackBilling()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $contractId = $this->request->getPost('contract_id');
+            $autoApprove = $this->request->getPost('auto_approve') === 'true';
+            $userId = session()->get('user_id') ?? 1;
+            
+            if (empty($contractId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Contract ID required'
+                ]);
+            }
+            
+            $backBillingService = new \App\Services\BackBillingService();
+            $result = $backBillingService->generateBackBilling($contractId, $userId, [
+                'auto_approve' => $autoApprove,
+                'tax_percent' => 11.00
+            ]);
+            
+            if ($result['success']) {
+                return $this->response->setJSON([
+                    'success' => true,
+                    'message' => 'Back-billing generated successfully',
+                    'invoices' => $result['created_invoices'],
+                    'total_amount' => $result['total_amount'],
+                    'count' => count($result['created_invoices'])
+                ]);
+            }
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to generate back-billing',
+                'errors' => $result['errors']
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::generateBackBilling - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to generate back-billing: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get back-billing statistics for dashboard widget
+     * Returns count and total amount of missing invoices
+     */
+    public function getBackBillingStats()
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            $backBillingService = new \App\Services\BackBillingService();
+            $stats = $backBillingService->getStatistics();
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $stats
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Finance::getBackBillingStats - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to get back-billing statistics: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

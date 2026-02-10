@@ -281,7 +281,7 @@ class KontrakSpesifikasiModel extends Model
                 ->update($updateData);
 
             // Log the unit assignment
-            log_message('info', 'Unit Assignment: Unit ID ' . $unitId . ' assigned to contract ' . ($kontrak['no_po_marketing'] ?? 'N/A') . ' for customer ' . ($kontrak['pelanggan'] ?? 'N/A') . ' at price ' . $finalHargaBulanan);
+            log_message('info', 'Unit Assignment: Unit ID ' . $unitId . ' assigned to contract ' . ($kontrak['customer_po_number'] ?? $kontrak['no_kontrak'] ?? 'N/A') . ' for customer ' . ($kontrak['pelanggan'] ?? 'N/A') . ' at price ' . $finalHargaBulanan);
         }
 
         // Update spesifikasi jumlah_tersedia

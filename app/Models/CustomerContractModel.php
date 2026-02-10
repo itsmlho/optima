@@ -78,7 +78,7 @@ class CustomerContractModel extends Model
                    ->join('kontrak', 'kontrak.id = customer_contracts.kontrak_id')
                    ->where('customer_contracts.customer_id', $customerId)
                    ->where('customer_contracts.is_active', 1)
-                   ->where('kontrak.status', 'Aktif')
+                   ->where('kontrak.status', 'ACTIVE')
                    ->orderBy('kontrak.tanggal_mulai', 'DESC')
                    ->findAll();
     }

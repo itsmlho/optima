@@ -206,10 +206,39 @@
         </div>
     </div>
 
+    <!-- Unlinked Deliveries Alert Widget -->
+    <div class="row mb-4" id="unlinkedDeliveriesWidget" style="display:none;">
+        <div class="col-12">
+            <div class="alert alert-warning border-warning border-start border-4 shadow-sm mb-0" role="alert">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="me-3">
+                            <i class="fas fa-exclamation-triangle fa-2x text-warning"></i>
+                        </div>
+                        <div>
+                            <h5 class="alert-heading mb-1">
+                                <strong id="urgentDeliveriesCount">0</strong> Urgent Deliveries Pending Contract Link
+                            </h5>
+                            <p class="mb-0">
+                                <span id="totalUnlinkedCount">0</span> total unlinked deliveries | 
+                                Oldest pending: <strong id="oldestPendingDays">0</strong> days
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <a href="<?= base_url('marketing/di') ?>" class="btn btn-warning">
+                            <i class="fas fa-link me-2"></i>View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Charts Row -->
     <div class="row g-3 mb-4">
         <!-- Fleet Composition Donut Chart -->
-        <div class="col-lg-6">
+        <div class="col-lg-4">
             <div class="chart-card">
                 <div class="chart-header">
                     <h5 class="chart-title">
@@ -222,8 +251,22 @@
             </div>
         </div>
 
+        <!-- Rental Type Breakdown Chart -->
+        <div class="col-lg-4">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h5 class="chart-title">
+                        <i class="fas fa-file-contract me-2 text-info"></i>Rental Type Breakdown
+                    </h5>
+                </div>
+                <div class="chart-body">
+                    <canvas id="rentalTypeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
         <!-- Delivery Performance Bar Chart -->
-        <div class="col-lg-6">
+        <div class="col-lg-4">
             <div class="chart-card">
                 <div class="chart-header">
                     <h5 class="chart-title">
@@ -453,7 +496,7 @@
 
 <script>
 // Modern Dashboard JavaScript
-let fleetChart, deliveryChart;
+let fleetChart, deliveryChart, rentalTypeChart;
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function() {
@@ -504,6 +547,48 @@ function initializeCharts() {
         }
     });
 
+    // Rental Type Breakdown Donut Chart
+    const rentalTypeCtx = document.getElementById('rentalTypeChart').getContext('2d');
+    rentalTypeChart = new Chart(rentalTypeCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Formal Contract', 'PO Only', 'Daily/Spot'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: [
+                    '#3b82f6',  // Blue for CONTRACT
+                    '#38bdf8',  // Light blue for PO_ONLY
+                    '#fb923c'   // Orange for DAILY_SPOT
+                ],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        font: { size: 12, weight: '600' }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return label + ': ' + value + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
     // Delivery Performance Bar Chart (will be populated by API)
     const deliveryCtx = document.getElementById('deliveryChart').getContext('2d');
     deliveryChart = new Chart(deliveryCtx, {
@@ -542,6 +627,8 @@ function loadAllData() {
     loadTopSpareParts();
     loadExpiringContracts();
     loadRecentActivities();
+    loadRentalTypeAnalytics();
+    loadUnlinkedDeliveriesWidget();
 }
 
 // Load KPI Data and Fleet Chart
@@ -861,6 +948,73 @@ function loadRecentActivities() {
             }
         })
         .catch(error => console.error('Error loading activities:', error));
+}
+
+// Load Rental Type Analytics
+function loadRentalTypeAnalytics() {
+    fetch('<?= base_url('dashboard/rental-type-analytics') ?>')
+        .then(response => response.json())
+        .then(result => {
+            console.log('Rental Type Analytics:', result);
+            if (result.success && result.data) {
+                const data = result.data.breakdown;
+                
+                // Update chart
+                if (rentalTypeChart && data.length > 0) {
+                    // Map rental types to chart data
+                    const rentalTypeMap = {
+                        'CONTRACT': 0,
+                        'PO_ONLY': 0,
+                        'DAILY_SPOT': 0
+                    };
+                    
+                    data.forEach(item => {
+                        if (rentalTypeMap.hasOwnProperty(item.rental_type)) {
+                            rentalTypeMap[item.rental_type] = parseInt(item.active_contracts) || 0;
+                        }
+                    });
+                    
+                    rentalTypeChart.data.datasets[0].data = [
+                        rentalTypeMap['CONTRACT'],
+                        rentalTypeMap['PO_ONLY'],
+                        rentalTypeMap['DAILY_SPOT']
+                    ];
+                    rentalTypeChart.update();
+                }
+            }
+        })
+        .catch(error => console.error('Error loading rental type analytics:', error));
+}
+
+// Load Unlinked Deliveries Widget
+async function loadUnlinkedDeliveriesWidget() {
+    try {
+        const response = await fetch('<?= base_url('customer-management/getUnlinkedDeliveriesWidget') ?>');
+        if (!response.ok) throw new Error('Failed to load unlinked deliveries data');
+        
+        const result = await response.json();
+        console.log('Unlinked Deliveries Widget:', result);
+        
+        if (result.success && result.data) {
+            const data = result.data;
+            
+            // Update widget display
+            document.getElementById('urgentDeliveriesCount').textContent = data.urgent_count || 0;
+            document.getElementById('totalUnlinkedCount').textContent = data.total_unlinked || 0;
+            document.getElementById('oldestPendingDays').textContent = data.oldest_pending || 0;
+            
+            // Show widget only if there are urgent deliveries
+            if (data.urgent_count > 0) {
+                document.getElementById('unlinkedDeliveriesWidget').style.display = 'block';
+            } else {
+                document.getElementById('unlinkedDeliveriesWidget').style.display = 'none';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading unlinked deliveries widget:', error);
+        // Hide widget on error
+        document.getElementById('unlinkedDeliveriesWidget').style.display = 'none';
+    }
 }
 </script>
 <?= $this->endSection() ?>

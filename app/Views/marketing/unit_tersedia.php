@@ -19,9 +19,20 @@ $can_export = $permissions['export'];
 ?>
 
 <?php if (can_export('marketing')): ?>
-                        <button id="btnExport" class="btn btn-sm btn-success" title="Export CSV"><i class="fas fa-file-export"></i> Export</button>
+                        <?= ui_button('export', 'Export', [
+                            'color' => 'success',
+                            'size' => 'sm',
+                            'id' => 'btnExport',
+                            'title' => 'Export CSV'
+                        ]) ?>
                         <?php else: ?>
-                        <button id="btnExport" class="btn btn-sm btn-success disabled" onclick="return false;" title="Access Denied"><i class="fas fa-file-export"></i> Export</button>
+                        <?= ui_button('export', 'Export', [
+                            'color' => 'success',
+                            'size' => 'sm',
+                            'id' => 'btnExport',
+                            'disabled' => true,
+                            'title' => 'Access Denied'
+                        ]) ?>
                         <?php endif; ?>
                 </div>
         </div>
@@ -37,8 +48,20 @@ $can_export = $permissions['export'];
                                         <input type="text" id="lokasiFilter" class="form-control form-control-sm" placeholder="POS 1">
                                 </div>
                                 <div class="col-md-4 col-sm-12 d-flex gap-2">
-                                        <button type="submit" class="btn btn-sm btn-success flex-grow-1"><i class="fas fa-check me-1"></i>Terapkan</button>
-                                        <button type="button" id="mktResetFilter" class="btn btn-sm btn-outline-secondary" title="Reset"><i class="fas fa-undo"></i></button>
+                                        <?= ui_button('save', 'Terapkan', [
+                                            'type' => 'submit',
+                                            'size' => 'sm',
+                                            'color' => 'success',
+                                            'class' => 'flex-grow-1'
+                                        ]) ?>
+                                        <?= ui_button('reset', '', [
+                                            'type' => 'button',
+                                            'size' => 'sm',
+                                            'color' => 'outline-secondary',
+                                            'id' => 'mktResetFilter',
+                                            'title' => 'Reset',
+                                            'icon-only' => true
+                                        ]) ?>
                                 </div>
                         </form>
                 </div>
@@ -52,7 +75,7 @@ $can_export = $permissions['export'];
         <?php endif; ?>
         <div class="card-body pt-2">
             <table id="marketing-units-table" class="table table-sm table-hover w-100 <?= !$can_view ? 'table-disabled' : '' ?>">
-                    <thead>
+                    <thead class="table-light">
                             <tr>
                                     <th>No. Unit</th>
                                     <th>Serial</th>
@@ -80,15 +103,20 @@ $can_export = $permissions['export'];
             </div>
             <div class="modal-body" id="detailBody"><div class="text-muted text-center py-5">Memuat...</div></div>
             <div class="modal-footer">
-                <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Tutup</button>
-                <button class="btn btn-primary btn-sm" id="btnDetailQuote">Buat Penawaran</button>
+                <?= ui_button('cancel', 'Tutup', [
+                    'color' => 'secondary',
+                    'size' => 'sm',
+                    'data-bs-dismiss' => 'modal'
+                ]) ?>
+                <?= ui_button('add', 'Buat Penawaran', [
+                    'size' => 'sm',
+                    'id' => 'btnDetailQuote'
+                ]) ?>
             </div>
         </div>
     </div>
 </div>
 
-    <?php endif; ?>
-</div>
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>

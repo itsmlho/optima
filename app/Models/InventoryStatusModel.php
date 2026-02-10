@@ -319,7 +319,7 @@ class InventoryStatusModel extends Model
             }
 
             // Only update if contract is active
-            if ($kontrak['status'] === 'Aktif') {
+            if ($kontrak['status'] === 'ACTIVE') {
                 return $this->updateStatusForActiveContract($kontrakId);
             }
 

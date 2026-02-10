@@ -87,23 +87,49 @@ $can_export = $permissions['export'];
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><?= lang('Marketing.customer_management') ?></h5>
         <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-primary" onclick="openAddCustomerModal()">
-                <i class="fas fa-plus"></i> <?= lang('Marketing.add_customer') ?>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="refreshData()">
-                <i class="fas fa-sync-alt"></i> <?= lang('App.refresh') ?>
-            </button>
-            <?php if ($can_export): ?>
-            <a href="<?= base_url('marketing/export_customer') ?>" class="btn btn-sm btn-outline-success">
-                <i class="fas fa-file-excel"></i> <?= lang('App.export') ?>
-            </a>
-            <?php endif; ?>
+            <?= ui_button('add', lang('Marketing.add_customer'), [
+                'onclick' => 'openAddCustomerModal()',
+                'size' => 'sm'
+            ]) ?>
+            
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                        data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="fas fa-ellipsis-v me-1"></i>Actions
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                        <a class="dropdown-item" href="<?= base_url('marketing/kontrak') ?>" target="_blank">
+                            <i class="fas fa-file-contract text-primary me-2"></i>View All Contracts
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="<?= base_url('marketing/quotations') ?>" target="_blank">
+                            <i class="fas fa-file-invoice text-info me-2"></i>Quotations
+                        </a>
+                    </li>
+                    <li><hr class="dropdown-divider"></li>
+                    <?php if ($can_export): ?>
+                    <li>
+                        <a class="dropdown-item" href="<?= base_url('marketing/export_customer') ?>">
+                            <i class="fas fa-file-excel text-success me-2"></i>Export Data
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                </ul>
+            </div>
+            
+            <?= ui_button('refresh', lang('App.refresh'), [
+                'onclick' => 'refreshData()',
+                'size' => 'sm',
+                'color' => 'outline-secondary'
+            ]) ?>
         </div>
     </div>
     <div class="card-body">
         <div class="table-responsive">
             <table id="customerTable" class="table table-striped table-hover">
-                <thead>
+                <thead class="table-light">
                     <tr>
                         <th>Customer Code</th>
                         <th>Customer Name</th>
@@ -125,7 +151,7 @@ $can_export = $permissions['export'];
 
 <!-- Customer Detail Modal -->
 <div class="modal fade" id="customerDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -135,9 +161,11 @@ $can_export = $permissions['export'];
                     <small class="text-muted" id="customerCode"></small>
                 </div>
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-primary btn-sm text-white" id="printCustomerPDF" title="Print PDF Report">
-                        <i class="bi bi-file-earmark-pdf me-1"></i>Print PDF
-                    </button>
+                    <?= ui_button('print', 'Print PDF', [
+                        'id' => 'printCustomerPDF',
+                        'size' => 'sm',
+                        'title' => 'Print PDF Report'
+                    ]) ?>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
             </div>
@@ -156,35 +184,36 @@ $can_export = $permissions['export'];
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="contracts-tab" data-bs-toggle="tab" data-bs-target="#contracts-content" type="button">
-                            <i class="fas fa-file-contract me-1"></i>Contracts (<span id="contractCount">0</span>)
+                            <i class="fas fa-file-contract me-1"></i>Contracts & PO (<span id="contractCount">0</span>)
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="activity-tab" data-bs-toggle="tab" data-bs-target="#activity-content" type="button">
+                            <i class="fas fa-history me-1"></i>Activity Log
                         </button>
                     </li>
                 </ul>
 
                 <!-- Tab Content -->
                 <div class="tab-content" id="customerDetailTabContent">
-                    <!-- Company Info Tab -->
+                    <!-- Company Info Tab - FLATTENED STRUCTURE -->
                     <div class="tab-pane fade show active" id="company-content" role="tabpanel">
-                        <div class="row">
+                        <div class="row g-4">
                             <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><strong>Company Information</strong></h6>
-                                    </div>
-                                    <div class="card-body" id="companyInfo">
-                                        <div class="text-center text-muted">Loading...</div>
-                                    </div>
-                                </div>
+                                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-building me-2"></i>Company Information
+                                </h6>
+                                <dl class="row" id="companyInfo">
+                                    <div class="text-center text-muted">Loading...</div>
+                                </dl>
                             </div>
                             <div class="col-md-6">
-                                <div class="card">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><strong>Statistics</strong></h6>
-                                    </div>
-                                    <div class="card-body" id="customerStats">
-                                        <div class="text-center text-muted">Loading...</div>
-                                    </div>
-                                </div>
+                                <h6 class="fw-bold text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-chart-bar me-2"></i>Statistics
+                                </h6>
+                                <dl class="row" id="customerStats">
+                                    <div class="text-center text-muted">Loading...</div>
+                                </dl>
                             </div>
                         </div>
                     </div>
@@ -193,44 +222,72 @@ $can_export = $permissions['export'];
                     <div class="tab-pane fade" id="locations-content" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0"><strong>Customer Locations</strong></h6>
-                            <button class="btn btn-sm btn-primary" onclick="openAddLocationModal()">
-                                <i class="fas fa-plus me-1"></i>Add Location
-                            </button>
+                            <?= ui_button('add', 'Add Location', [
+                                'onclick' => 'openAddLocationModal()',
+                                'size' => 'sm'
+                            ]) ?>
                         </div>
                         <div class="row" id="locationsList">
                             <div class="text-center text-muted">Loading locations...</div>
                         </div>
                     </div>
 
-                    <!-- Contracts Tab -->
-                    <div class="tab-pane fade" id="contracts-content" role="tabpanel">
+                    <!-- Contracts & PO Tab - LIMIT 5 + VIEW ALL BUTTON -->
+                    <div class="tab-pane fade contracts-tab-pane" id="contracts-content" role="tabpanel">
                         <div class="d-flex justify-content-between align-items-center mb-3">
-                            <h6 class="mb-0"><strong>Customer Contracts</strong></h6>
+                            <h6 class="mb-0"><strong>Recent Contracts & PO</strong> <small class="text-muted">(Latest 5)</small></h6>
                             <div>
-                                <a href="<?= base_url('marketing/export_kontrak') ?>" class="btn btn-sm btn-outline-success me-1" title="Export All Contracts">
-                                    <i class="fas fa-file-excel me-1"></i>Export All
-                                </a>
-                                <button class="btn btn-sm btn-primary" onclick="openAddContractModal()">
-                                    <i class="fas fa-plus me-1"></i>Add Contract
-                                </button>
+                                <?= ui_button('add', 'Add Contract', [
+                                    'onclick' => 'openAddContractModal()',
+                                    'size' => 'sm'
+                                ]) ?>
                             </div>
                         </div>
+                        <div class="alert alert-info alert-sm mb-3">
+                            <i class="fas fa-info-circle me-2"></i>Showing latest 5 contracts for quick access. <a href="#" onclick="event.preventDefault(); viewCustomerContracts()" class="alert-link">View all for this customer →</a>
+                        </div>
                         <div class="table-responsive">
-                            <table class="table table-striped table-hover" id="contractsTable">
-                                <thead class="bg-light">
+                            <table class="table table-hover align-middle mb-0" id="contractsTable">
+                                <thead class="table-light">
                                     <tr>
-                                        <th>No. Kontrak</th>
-                                        <th>No. PO</th>
-                                        <th>Location</th>
-                                        <th>Periode</th>
-                                        <th>Total Units</th>
-                                        <th>Status</th>
+                                        <th class="col-type">Type</th>
+                                        <th class="col-contract">Contract/PO Number</th>
+                                        <th class="col-location">Location</th>
+                                        <th class="col-period">Period</th>
+                                        <th class="col-units text-center">Units</th>
+                                        <th class="col-status">Status</th>
+                                        <th class="col-actions text-center">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- Contracts loaded dynamically -->
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-4">
+                                            <i class="fas fa-spinner fa-spin me-2"></i>Loading contracts...
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+
+                    <!-- Activity Log Tab - NEW -->
+                    <div class="tab-pane fade" id="activity-content" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0"><strong>Customer Activity History</strong></h6>
+                            <div class="d-flex gap-2">
+                                <select class="form-select form-select-sm form-select-auto-width" id="activityFilter">
+                                    <option value="all">All Activities</option>
+                                    <option value="contract">Contracts</option>
+                                    <option value="quotation">Quotations</option>
+                                    <option value="delivery">Deliveries</option>
+                                    <option value="location">Locations</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="activityTimeline">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-spinner fa-spin me-2"></i>Loading activity log...
+                            </div>
                         </div>
                     </div>
 
@@ -426,6 +483,16 @@ $can_export = $permissions['export'];
                     </div>
                     
                     <div class="form-group">
+                        <label for="default_billing_method">Default Billing Method <i class="fas fa-info-circle text-info" title="Default billing calculation method for all contracts with this customer"></i></label>
+                        <select class="form-control" id="default_billing_method" name="default_billing_method">
+                            <option value="CYCLE" selected>30-Day Rolling Cycle</option>
+                            <option value="PRORATE">Prorate to Month-End</option>
+                            <option value="MONTHLY_FIXED">Fixed Monthly Date</option>
+                        </select>
+                        <small class="form-text text-muted">This will be used as the default when creating new contracts for this customer</small>
+                    </div>
+                    
+                    <div class="form-group">
                         <label for="notes">Description</label>
                         <textarea class="form-control" id="notes" name="notes" rows="2"></textarea>
                     </div>
@@ -436,8 +503,8 @@ $can_export = $permissions['export'];
                     <input type="hidden" name="pic_position" value="">
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Customer</button>
+                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('save', 'Save Customer', ['type' => 'submit']) ?>
                 </div>
             </form>
         </div>
@@ -486,7 +553,7 @@ $can_export = $permissions['export'];
                         <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.client_po_number') ?></label><input type="text" class="form-control" name="po_number"></div>
                         <div class="col-md-6 mb-3">
                             <label class="form-label"><?= lang('Marketing.customer') ?>*</label>
-                            <input type="text" class="form-control" id="customerDisplay" readonly style="display:none;">
+                            <input type="text" class="form-control hidden-input" id="customerDisplay" readonly>
                             <select class="form-select" id="customerSelect" required>
                                 <option value="">-- Pilih Customer --</option>
                             </select>
@@ -501,20 +568,29 @@ $can_export = $permissions['export'];
                         </div>
                         <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.start_date') ?>*</label><input type="date" class="form-control" name="start_date" required></div>
                         <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.end_date') ?>*</label><input type="date" class="form-control" name="end_date" required></div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rental Classification</label>
+                            <select class="form-select" name="rental_type">
+                                <option value="CONTRACT" selected>Formal Contract</option>
+                                <option value="PO_ONLY">PO-Based Only</option>
+                                <option value="DAILY_SPOT">Daily/Spot Rental</option>
+                            </select>
+                            <small class="text-muted">How is this rental documented?</small>
+                        </div>
                         <div class="col-md-6 mb-3"><label class="form-label"><?= lang('Marketing.rental_type') ?></label>
                             <select class="form-select" name="jenis_sewa">
                                 <option value="BULANAN" selected><?= lang('Marketing.monthly') ?></option>
                                 <option value="HARIAN"><?= lang('Marketing.daily') ?></option>
                             </select>
+                            <small class="text-muted">Billing period</small>
                         </div>
-                        <div class="col-md-6"></div> <!-- Empty space for alignment -->
                         <div class="col-12 mb-3"><label class="form-label"><?= lang('Marketing.notes') ?></label><textarea class="form-control" name="catatan" rows="3" placeholder="<?= lang('Marketing.additional_notes_optional') ?>"></textarea></div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <input type="hidden" name="submit_action" id="submitAction" value="save_and_spec">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" id="btnSaveOnly" class="btn btn-primary">Simpan Kontrak</button>
+                    <?= ui_button('cancel', 'Batal', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('save', 'Simpan Kontrak', ['id' => 'btnSaveOnly']) ?>
                 </div>
             </form>
         </div>
@@ -626,8 +702,79 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Location</button>
+                    <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('save', 'Save Location', ['type' => 'submit']) ?>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Contract Modal (Inline Edit) -->
+<div class="modal fade" id="editContractModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h6 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Edit Contract
+                </h6>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="editContractForm">
+                <div class="modal-body">
+                    <input type="hidden" id="editContractId" name="id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Contract Number <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="editContractNumber" name="no_kontrak" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rental Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editRentalType" name="rental_type" required>
+                                <option value="FORMAL_CONTRACT">Formal Contract</option>
+                                <option value="PO_ONLY">PO Only</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Start Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="editStartDate" name="tanggal_mulai" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">End Date <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="editEndDate" name="tanggal_selesai" required>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Rental Rate <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="editRentalRate" name="harga_sewa" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Status <span class="text-danger">*</span></label>
+                            <select class="form-select" id="editStatus" name="status" required>
+                                <option value="ACTIVE">Active</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="EXPIRED">Expired</option>
+                                <option value="CANCELLED">Cancelled</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <input type="hidden" id="editCustomerId" name="customer_id">
+                    <input type="hidden" id="editLocationId" name="location_id">
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Save Changes
+                    </button>
                 </div>
             </form>
         </div>
@@ -655,7 +802,7 @@ $can_export = $permissions['export'];
                     </div>
                     
                     <!-- Target Unit Section (hanya untuk ATTACHMENT) -->
-                    <div id="attachmentTargetSection" style="display: none;">
+                    <div id="attachmentTargetSection" class="section-hidden">
                         <div class="mb-3">
                             <label class="form-label"><?= lang('Marketing.target_unit') ?> <span class="text-danger">*</span></label>
                             <select class="form-control" name="target_unit_id" id="spkTargetUnitId">
@@ -702,8 +849,8 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" data-bs-dismiss="modal" type="button">Batal</button>
-                    <button class="btn btn-primary" type="submit">Buat SPK</button>
+                    <?= ui_button('cancel', 'Batal', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+                    <?= ui_button('submit', 'Buat SPK', ['type' => 'submit']) ?>
                 </div>
             </form>
         </div>
@@ -714,6 +861,21 @@ $can_export = $permissions['export'];
 
 <?= $this->section('javascript') ?>
 <script>
+// UI Badge Helper - Generate consistent badge colors based on type
+function uiBadge(type, text, options = {}) {
+    const badgeMap = {
+        'active': 'success', 'approved': 'success', 'completed': 'success', 'delivered': 'success',
+        'pending': 'warning', 'ready': 'warning', 'in_progress': 'info', 'processing': 'info',
+        'rejected': 'danger', 'cancelled': 'danger', 'failed': 'danger', 'deleted': 'danger',
+        'draft': 'secondary', 'new': 'primary', 'info': 'info', 'warning': 'warning',
+        'created': 'success', 'updated': 'info', 'submitted': 'secondary', 'success': 'success',
+        'primary': 'primary', 'secondary': 'secondary', 'danger': 'danger'
+    };
+    const color = options.color || badgeMap[type.toLowerCase()] || 'secondary';
+    const className = options.class || '';
+    return `<span class="badge bg-${color} ${className}">${text}</span>`;
+}
+
 let customerTable;
 let currentCustomerId = null;
 let currentCustomerName = null;
@@ -743,164 +905,119 @@ $(document).ready(function() {
     setupTabHandlers();
 });
 
-// Initialize DataTable with MAXIMUM PERFORMANCE optimization
+// Initialize DataTable using OptimaDataTable centralized system
 function initializeCustomerTable() {
-    // Destroy existing table if exists
-    if ($.fn.DataTable.isDataTable('#customerTable')) {
-        $('#customerTable').DataTable().destroy();
-    }
-    
-    console.log('🔄 Initializing Customer DataTable with date filter helper...');
+    console.log('🔄 Initializing Customer DataTable...');
     
     try {
-        // DataTable configuration
-        var customerConfig = {
-            processing: true,
-            serverSide: true,
-            deferRender: false,
-            pageLength: 15,
-            lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]],
-            stateSave: false,
-            search: {
-                smart: false,
-                caseInsensitive: true
-            },
-            searchDelay: 600,
+        // Initialize using OptimaDataTable with minimal config
+        customerTable = OptimaDataTable.init('#customerTable', {
             ajax: {
                 url: '<?= base_url('marketing/customer-management/getCustomers') ?>',
                 type: 'POST',
-                timeout: 15000,
                 error: function(xhr, error, code) {
                     console.error('DataTable AJAX Error:', error);
-                    $('#customerTable_processing').hide();
                     showNotification('Failed to load customer data. Please refresh the page.', 'error');
                 }
             },
+            pageLength: 15,
+            lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]],
+            order: [[1, 'asc']],
             columns: [
-            { 
-                data: 'customer_code', 
-                name: 'customer_code',
-                render: function(data, type, row) {
-                    return data || '-';
+                { 
+                    data: 'customer_code',
+                    render: (data) => data || '-'
+                },
+                { data: 'customer_name' },
+                { 
+                    data: 'area_name',
+                    render: function(data) {
+                        if (!data) return '-';
+                        const areas = data.split(', ');
+                        return areas.length > 2 ? areas[0] + ' +' + (areas.length - 1) : data;
+                    }
+                },
+                { 
+                    data: 'locations_count',
+                    className: 'text-center',
+                    orderable: false,
+                    render: (data) => data || 0
+                },
+                { 
+                    data: 'contracts_count',
+                    className: 'text-center',
+                    orderable: false,
+                    render: (data) => data || 0
+                },
+                { 
+                    data: 'total_units',
+                    className: 'text-center',
+                    orderable: false,
+                    render: (data) => data || 0
+                },
+                { 
+                    data: 'is_active',
+                    className: 'text-center',
+                    render: (data) => data == 1 ? 'ACTIVE' : 'INACTIVE'
+                },
+                { 
+                    data: 'created_at',
+                    render: (data) => data ? new Date(data).toLocaleDateString('id-ID') : '-'
                 }
+            ],
+            rowCallback: function(row, data) {
+                row.style.cursor = 'pointer';
+                row.onclick = () => openCustomerDetail(data.id);
             },
-            { 
-                data: 'customer_name', 
-                name: 'customer_name'
+            initComplete: function(settings, json) {
+                console.log('✅ Customer DataTable initialized');
+                console.log('📊 Total records:', json.recordsTotal);
+                
+                // Calculate and update statistics
+                updateStatistics(json.data || []);
             },
-            { 
-                data: 'area_name', 
-                name: 'area_name',
-                render: function(data, type, row) {
-                    if (!data) return '-';
-                    const areas = data.split(', ');
-                    return areas.length > 2 ? areas[0] + ' +' + (areas.length - 1) : data;
-                }
-            },
-            { 
-                data: 'locations_count', 
-                name: 'locations_count',
-                className: 'text-center',
-                orderable: false,
-                render: function(data, type, row) {
-                    return data || 0;
-                }
-            },
-            { 
-                data: 'contracts_count', 
-                name: 'contracts_count',
-                className: 'text-center',
-                orderable: false,
-                render: function(data, type, row) {
-                    return data || 0;
-                }
-            },
-            { 
-                data: 'total_units', 
-                name: 'total_units',
-                className: 'text-center',
-                orderable: false,
-                render: function(data, type, row) {
-                    return data || 0;
-                }
-            },
-            { 
-                data: 'is_active', 
-                name: 'is_active',
-                className: 'text-center',
-                render: function(data, type, row) {
-                    return data == 1 ? 'ACTIVE' : 'INACTIVE';
-                }
-            },
-            { 
-                data: 'created_at', 
-                name: 'created_at',
-                render: function(data, type, row) {
-                    return data ? new Date(data).toLocaleDateString('id-ID') : '-';
+            drawCallback: function() {
+                // Update statistics on every redraw (filter/search)
+                const table = OptimaDataTable.get('#customerTable');
+                if (table) {
+                    const data = table.rows({search: 'applied'}).data().toArray();
+                    updateStatistics(data);
                 }
             }
-        ],
-        dom: '<"row"<"col-sm-6"l><"col-sm-6"f>>t<"row"<"col-sm-6"i><"col-sm-6"p>>', // Simplified DOM
-        language: {
-            processing: "Loading customer data...",
-            search: "Search:",
-            lengthMenu: "Show _MENU_ entries",
-            info: "Showing _START_ to _END_ of _TOTAL_ entries",
-            paginate: { "first": "First", "last": "Last", "next": "Next", "previous": "Previous" }
-        },
-        order: [[1, 'asc']],
-        rowCallback: function(row, data) {
-            // Minimal row callback for better performance
-            row.style.cursor = 'pointer';
-            row.onclick = function() { openCustomerDetail(data.id); };
-        },
-        initComplete: function(settings, json) {
-            console.log('✅ DataTable initialized successfully');
-            console.log('📊 Loaded', json.recordsTotal, 'total records');
-        },
-        drawCallback: function(settings) {
-            // Use DataTable API to get record count
-            const api = new $.fn.dataTable.Api(settings);
-            const recordsDisplay = api.page.info().recordsDisplay;
-            console.log('🎨 DataTable drawn with', recordsDisplay, 'visible records');
+        });
+        
+        // Initialize date range filter using OptimaDataTable filter
+        const dateInputs = $('#customerDateRangePicker').find('input[type="date"]');
+        if (dateInputs.length === 2) {
+            OptimaDataTable.filters.initDateRangeFilter(
+                '#customerTable',
+                dateInputs.eq(0).attr('id') ? '#' + dateInputs.eq(0).attr('id') : dateInputs.eq(0),
+                dateInputs.eq(1).attr('id') ? '#' + dateInputs.eq(1).attr('id') : dateInputs.eq(1),
+                7 // created_at column index
+            );
         }
-    };
-    
-    // Initialize DataTable with date filter using new helper
-    customerTable = initDataTableWithDateFilter({
-        pickerId: 'customerDateRangePicker',
-        tableId: 'customerTable',
-        tableConfig: customerConfig,
-        autoCalculateStats: true, // Enable auto-calculate dari data table
-        statsConfig: {
-            total: '#stat-total-customers', // Count semua rows
-            active: {
-                selector: '#stat-active-customers',
-                filter: row => row.is_active == 1
-            },
-            contracts: {
-                selector: '#stat-total-contracts',
-                calculate: function(data) {
-                    return data.reduce((sum, row) => sum + (parseInt(row.contracts_count) || 0), 0);
-                }
-            },
-            units: {
-                selector: '#stat-total-units',
-                calculate: function(data) {
-                    return data.reduce((sum, row) => sum + (parseInt(row.total_units) || 0), 0);
-                }
-            }
-        },
-        onTableReady: function(table) {
-            console.log('✅ Customer table ready with auto-calculated stats');
-        },
-        debug: true
-    });
-    
+        
+        console.log('✅ Customer table ready with centralized config');
+        
     } catch (error) {
         console.error('❌ DataTable initialization failed:', error);
         showNotification('Failed to initialize customer table. Please refresh the page.', 'error');
     }
+}
+
+// Update statistics from table data
+function updateStatistics(data) {
+    if (!Array.isArray(data)) return;
+    
+    const total = data.length;
+    const active = data.filter(row => row.is_active == 1).length;
+    const totalContracts = data.reduce((sum, row) => sum + (parseInt(row.contracts_count) || 0), 0);
+    const totalUnits = data.reduce((sum, row) => sum + (parseInt(row.total_units) || 0), 0);
+    
+    $('#stat-total-customers').text(total.toLocaleString('id-ID'));
+    $('#stat-active-customers').text(active.toLocaleString('id-ID'));
+    $('#stat-total-contracts').text(totalContracts.toLocaleString('id-ID'));
+    $('#stat-total-units').text(totalUnits.toLocaleString('id-ID'));
 }
 
 // Load statistics with optional date filter
@@ -986,29 +1103,42 @@ function displayCustomerDetail(data) {
     $('#company-tab').addClass('active');
     $('#company-content').addClass('show active').show();
     
-    // Company Info (Area dihapus karena tidak relevan - setiap lokasi punya area sendiri)
+    // Company Info - USING DESCRIPTION LIST FORMAT
     const companyHtml = `
-        <table class="table table-sm table-borderless">
-            <tr><td><strong>Customer Code:</strong></td><td>${customer.customer_code || 'N/A'}</td></tr>
-            <tr><td><strong>Customer Name:</strong></td><td>${customer.customer_name || 'N/A'}</td></tr>
-            <tr><td><strong>Created:</strong></td><td>${customer.created_at ? new Date(customer.created_at).toLocaleDateString('id-ID') : 'N/A'}</td></tr>
-            <tr><td><strong>Last Updated:</strong></td><td>${customer.updated_at ? new Date(customer.updated_at).toLocaleDateString('id-ID') : 'N/A'}</td></tr>
-            <tr><td><strong>Status:</strong></td><td>
-                <span class="badge bg-${customer.is_active == 1 ? 'success' : 'secondary'}">
-                    ${customer.is_active == 1 ? 'ACTIVE' : 'INACTIVE'}
-                </span>
-            </td></tr>
-        </table>
+        <dt class="col-sm-5 text-muted">Customer Code</dt>
+        <dd class="col-sm-7 fw-bold">${customer.customer_code || 'N/A'}</dd>
+        
+        <dt class="col-sm-5 text-muted">Customer Name</dt>
+        <dd class="col-sm-7">${customer.customer_name || 'N/A'}</dd>
+        
+        <dt class="col-sm-5 text-muted">Created</dt>
+        <dd class="col-sm-7">${customer.created_at ? new Date(customer.created_at).toLocaleDateString('id-ID') : 'N/A'}</dd>
+        
+        <dt class="col-sm-5 text-muted">Last Updated</dt>
+        <dd class="col-sm-7">${customer.updated_at ? new Date(customer.updated_at).toLocaleDateString('id-ID') : 'N/A'}</dd>
+        
+        <dt class="col-sm-5 text-muted">Status</dt>
+        <dd class="col-sm-7">
+            <span class="badge bg-${customer.is_active == 1 ? 'success' : 'secondary'}">
+                ${customer.is_active == 1 ? 'ACTIVE' : 'INACTIVE'}
+            </span>
+        </dd>
     `;
     $('#companyInfo').html(companyHtml);
     
-    // Customer Stats
+    // Customer Stats - USING DESCRIPTION LIST FORMAT
     const statsHtml = `
-        <table class="table table-sm table-borderless">
-            <tr><td><strong>Total Locations:</strong></td><td><span class="badge bg-info">${stats.total_locations || 0}</span></td></tr>
-            <tr><td><strong>Total Contracts:</strong></td><td><span class="badge bg-success">${stats.total_contracts || 0}</span></td></tr>
-            <tr><td><strong>Total POs:</strong></td><td><span class="badge bg-warning text-dark">${contracts.filter(c => c.no_po_marketing).length || 0}</span></td></tr>
-        </table>
+        <dt class="col-sm-6 text-muted">Total Locations</dt>
+        <dd class="col-sm-6">${uiBadge('info', stats.total_locations || 0)}</dd>
+        
+        <dt class="col-sm-6 text-muted">Total Contracts</dt>
+        <dd class="col-sm-6">${uiBadge('success', stats.total_contracts || 0)}</dd>
+        
+        <dt class="col-sm-6 text-muted">Total PO Only</dt>
+        <dd class="col-sm-6">${uiBadge('warning', stats.total_po_only || 0)}</dd>
+        
+        <dt class="col-sm-6 text-muted">Active Units</dt>
+        <dd class="col-sm-6">${uiBadge('primary', stats.total_units || 0)}</dd>
     `;
     $('#customerStats').html(statsHtml);
     
@@ -1019,15 +1149,15 @@ function displayCustomerDetail(data) {
     // Load contracts when tab is clicked (will be loaded when tab is shown)
 }
 
-// Load customer contracts
+// Load customer contracts - LIMIT 5 RECENT
 function loadCustomerContracts(customerId) {
     $.ajax({
-        url: `<?= base_url('marketing/customer-management/getCustomerContracts') ?>/${customerId}`,
+        url: `<?= base_url('marketing/customer-management/getCustomerContracts') ?>/${customerId}?limit=5`,
         type: 'GET',
         success: function(response) {
             if (response.success) {
                 displayContracts(response.data);
-                $('#contractCount').text(response.data.length);
+                $('#contractCount').text(response.total || response.data.length);
             } else {
                 $('#contractsTable tbody').html('<tr><td colspan="6" class="text-center text-muted">No contracts found</td></tr>');
             }
@@ -1038,25 +1168,214 @@ function loadCustomerContracts(customerId) {
     });
 }
 
-// Display contracts
+// Display contracts with rental type badges
 function displayContracts(contracts) {
+    if (!contracts || contracts.length === 0) {
+        $('#contractsTable tbody').html(
+            '<tr><td colspan="7" class="text-center text-muted py-4">' +
+            '<i class="fas fa-folder-open fa-2x mb-2 d-block"></i>' +
+            'No contracts found for this customer' +
+            '</td></tr>'
+        );
+        return;
+    }
+    
     let html = '';
     
     contracts.forEach(contract => {
         const statusBadge = getStatusBadge(contract.status);
+        const rentalTypeBadge = getRentalTypeBadge(contract.rental_type);
+        const contractNo = contract.rental_type === 'PO_ONLY' 
+            ? contract.customer_po_number || contract.no_kontrak
+            : contract.no_kontrak;
+        
+        // Check if contract is expiring soon (within 30 days)
+        const endDate = new Date(contract.tanggal_selesai);
+        const today = new Date();
+        const daysLeft = Math.ceil((endDate - today) / (1000 * 60 * 60 * 24));
+        const isExpiringSoon = daysLeft > 0 && daysLeft <= 30;
+        const isExpired = daysLeft <= 0;
+        
+        // Expiry badge
+        let expiryBadge = '';
+        if (isExpired) {
+            expiryBadge = '<span class="badge bg-danger ms-2">Expired</span>';
+        } else if (isExpiringSoon) {
+            expiryBadge = `<span class="badge bg-warning text-dark ms-2">${daysLeft} days left</span>`;
+        }
+        
+        // Show renewal option for ACTIVE, expiring, or expired contracts
+        const showRenew = (contract.status === 'ACTIVE' || isExpiringSoon || isExpired);
+        const showAmend = (contract.status === 'ACTIVE');
+        
         html += `
-            <tr style="cursor: pointer;" onclick="openContractDetail(${contract.id})">
-                <td><strong>${contract.no_kontrak}</strong></td>
-                <td>${contract.no_po_marketing || '-'}</td>
-                <td>${contract.lokasi || '-'}</td>
-                <td>${contract.tanggal_mulai} - ${contract.tanggal_selesai}</td>
-                <td class="text-center"><span class="badge bg-primary">${contract.total_units || 0}</span></td>
+            <tr class="contract-row">
+                <td>${rentalTypeBadge}</td>
+                <td>
+                    <div class="fw-semibold text-dark">${contractNo}</div>
+                    ${expiryBadge}
+                </td>
+                <td><small>${contract.lokasi || '-'}</small></td>
+                <td><small>${contract.tanggal_mulai} ~ ${contract.tanggal_selesai}</small></td>
+                <td class="text-center">
+                    <span class="badge bg-primary rounded-pill">${contract.total_units || 0}</span>
+                </td>
                 <td>${statusBadge}</td>
+                <td class="text-center">
+                    <button type="button" 
+                            class="btn btn-sm btn-light contract-actions-btn" 
+                            onclick="showContractActions(event, ${contract.id}, '${contractNo}', ${showRenew}, ${showAmend})"
+                            title="Actions">
+                        <i class="fas fa-ellipsis-v"></i>
+                    </button>
+                </td>
             </tr>
         `;
     });
     
-    $('#contractsTable tbody').html(html || '<tr><td colspan="6" class="text-center text-muted">No contracts found</td></tr>');
+    $('#contractsTable tbody').html(html);
+}
+
+// Get rental type badge
+function getRentalTypeBadge(type) {
+    const badges = {
+        'CONTRACT': '<span class="badge bg-primary"><i class="fas fa-file-contract me-1"></i>Contract</span>',
+        'PO_ONLY': '<span class="badge bg-info"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
+        'DAILY_SPOT': '<span class="badge bg-warning"><i class="fas fa-calendar-day me-1"></i>Daily/Spot</span>'
+    };
+    return badges[type] || '<span class="badge bg-secondary">Unknown</span>';
+}
+
+// Load customer activity log
+function loadCustomerActivity(customerId, filter = 'all') {
+    $('#activityTimeline').html('<div class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Loading activity log...</div>');
+    
+    $.ajax({
+        url: `<?= base_url('marketing/customer-management/getCustomerActivity') ?>/${customerId}?filter=${filter}`,
+        type: 'GET',
+        success: function(response) {
+            if (response.success && response.data.length > 0) {
+                displayActivityTimeline(response.data);
+            } else {
+                $('#activityTimeline').html('<div class="alert alert-info"><i class="fas fa-info-circle me-2"></i>No activity records found.</div>');
+            }
+        },
+        error: function() {
+            $('#activityTimeline').html('<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>Error loading activity log.</div>');
+        }
+    });
+}
+
+// Display activity timeline
+function displayActivityTimeline(activities) {
+    let html = '<div class="timeline">';
+    
+    activities.forEach((activity, index) => {
+        const iconMap = {
+            'contract': 'fa-file-contract',
+            'quotation': 'fa-file-invoice-dollar',
+            'delivery': 'fa-truck',
+            'location': 'fa-map-marker-alt',
+            'customer': 'fa-building'
+        };
+        
+        const colorMap = {
+            'contract': 'primary',
+            'quotation': 'info',
+            'delivery': 'success',
+            'location': 'warning',
+            'customer': 'secondary'
+        };
+        
+        const icon = iconMap[activity.type] || 'fa-circle';
+        const color = colorMap[activity.type] || 'secondary';
+        const date = new Date(activity.created_at).toLocaleString('id-ID');
+        
+        html += `
+            <div class="timeline-item">
+                <div class="timeline-marker bg-${color}">
+                    <i class="fas ${icon}"></i>
+                </div>
+                <div class="timeline-content">
+                    <div class="d-flex justify-content-between">
+                        <strong>${activity.title}</strong>
+                        <small class="text-muted">${date}</small>
+                    </div>
+                    <p class="mb-0 text-muted">${activity.description}</p>
+                    ${activity.user ? `<small class="text-muted"><i class="fas fa-user me-1"></i>${activity.user}</small>` : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    $('#activityTimeline').html(html);
+}
+
+// Custom Contract Actions Menu - Rendered at body level to avoid modal clipping
+function showContractActions(event, contractId, contractNo, showRenew, showAmend) {
+    event.stopPropagation();
+    
+    // Remove any existing menu
+    $('.contract-actions-menu').remove();
+    
+    // Get button position
+    const button = event.currentTarget;
+    const rect = button.getBoundingClientRect();
+    
+    // Build menu HTML
+    let menuHTML = `
+        <div class="contract-actions-menu" style="position: fixed; top: ${rect.bottom + 5}px; left: ${rect.left - 140}px; z-index: 10500;">
+            <div class="list-group shadow">
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); openContractDetail(${contractId}); $('.contract-actions-menu').remove();">
+                    <i class="fas fa-eye text-primary me-2"></i>View Detail
+                </a>`;
+    
+    if (showRenew) {
+        menuHTML += `
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); renewContract(${contractId}); $('.contract-actions-menu').remove();">
+                    <i class="fas fa-sync-alt text-success me-2"></i>Renew
+                </a>`;
+    }
+    
+    if (showAmend) {
+        menuHTML += `
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); openAmendmentModal(${contractId}); $('.contract-actions-menu').remove();">
+                    <i class="fas fa-calculator text-warning me-2"></i>Change Rate
+                </a>`;
+    }
+    
+    menuHTML += `
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); openHistoryModal(${contractId}); $('.contract-actions-menu').remove();">
+                    <i class="fas fa-history text-info me-2"></i>History
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); editContract(${contractId}); $('.contract-actions-menu').remove();">
+                    <i class="fas fa-edit text-secondary me-2"></i>Edit
+                </a>
+                <a href="#" class="list-group-item list-group-item-action text-danger" onclick="event.preventDefault(); deleteContract(${contractId}, '${contractNo}'); $('.contract-actions-menu').remove();">
+                    <i class="fas fa-trash me-2"></i>Delete
+                </a>
+            </div>
+        </div>`;
+    
+    // Append to body
+    $('body').append(menuHTML);
+    
+    // Close menu when clicking outside
+    setTimeout(() => {
+        $(document).one('click', function() {
+            $('.contract-actions-menu').remove();
+        });
+    }, 100);
+}
+
+// View all contracts for current customer (filtered)
+function viewCustomerContracts() {
+    if (currentCustomerId) {
+        window.open(`<?= base_url('marketing/kontrak') ?>?customer_id=${currentCustomerId}`, '_blank');
+    } else {
+        window.open(`<?= base_url('marketing/kontrak') ?>`, '_blank');
+    }
 }
 
 // Open contract detail
@@ -1084,7 +1403,7 @@ function displayContractDetail(contract) {
             <div class="col-md-6">
                 <table class="table table-sm table-borderless">
                     <tr><td><strong>No. Kontrak:</strong></td><td>${contract.no_kontrak || '-'}</td></tr>
-                    <tr><td><strong>No. PO Marketing:</strong></td><td>${contract.no_po_marketing || '-'}</td></tr>
+                    <tr><td><strong>No. PO Customer:</strong></td><td>${contract.customer_po_number || '-'}</td></tr>
                     <tr><td><strong>Customer:</strong></td><td>${contract.customer_name || '-'}</td></tr>
                     <tr><td><strong>Lokasi:</strong></td><td>${contract.location_name || '-'}</td></tr>
                     <tr><td><strong>PIC:</strong></td><td>${contract.contact_person || '-'}</td></tr>
@@ -1094,8 +1413,8 @@ function displayContractDetail(contract) {
             </div>
             <div class="col-md-6">
                 <table class="table table-sm table-borderless">
-                    
-                    <tr><td><strong>Jenis Sewa:</strong></td><td><span class="badge bg-info">${contract.jenis_sewa || 'BULANAN'}</span></td></tr>
+                    <tr><td><strong>Classification:</strong></td><td>${getRentalTypeBadge(contract.rental_type)}</td></tr>
+                    <tr><td><strong>Jenis Sewa:</strong></td><td>${uiBadge('info', contract.jenis_sewa || 'BULANAN')}</td></tr>
                     <tr><td><strong>Status:</strong></td><td>${getStatusBadge(contract.status)}</td></tr>
                     <tr><td><strong>Tanggal Mulai:</strong></td><td>${contract.tanggal_mulai || '-'}</td></tr>
                     <tr><td><strong>Tanggal Berakhir:</strong></td><td>${contract.tanggal_berakhir || '-'}</td></tr>
@@ -1189,7 +1508,7 @@ function displayUnitsAccordion(units) {
                         <div>
                             <strong>${locationData.locationName}</strong>
                         </div>
-                        <span class="badge bg-primary ms-auto">${locationUnits.length} Unit${locationUnits.length > 1 ? 's' : ''}</span>
+                        ${uiBadge('primary', `${locationUnits.length} Unit${locationUnits.length > 1 ? 's' : ''}`, {class: 'ms-auto'})}
                     </button>
                 </h2>
                 <div id="collapse${index}" class="accordion-collapse collapse ${index === 0 ? 'show' : ''}" 
@@ -1223,7 +1542,7 @@ function displayUnitsAccordion(units) {
             const statusColor = getStatusColor(status, statusId);
             
             html += `
-                <tr style="cursor: pointer;" onclick="showUnitDetail(${unitId})" 
+                <tr class="cursor-pointer" onclick="showUnitDetail(${unitId})" 
                     onmouseover="this.style.backgroundColor='#f8f9fa'" 
                     onmouseout="this.style.backgroundColor=''">
                     <td><strong>${unit.no_unit || '-'}</strong></td>
@@ -1231,7 +1550,7 @@ function displayUnitsAccordion(units) {
                     <td>${tipe}</td>
                     <td>${merkModel}</td>
                     <td>${kapasitas}</td>
-                    <td><span class="text-${statusColor}"><i class="fas fa-circle me-1" style="font-size: 0.6rem;"></i>${status}</span></td>
+                    <td><span class="text-${statusColor}"><i class="fas fa-circle me-1 icon-xs"></i>${status}</span></td>
                 </tr>
             `;
         });
@@ -1457,15 +1776,15 @@ function displayUnitDetail(unit) {
     // Helper function untuk baris tabel agar code lebih rapi
     const row = (label, val) => `
         <tr>
-            <td class="text-muted pe-3" style="width: 140px; font-size: 0.9em;">${label}</td>
-            <td class="fw-medium text-dark" style="font-size: 0.95em;">${val || '-'}</td>
+            <td class="text-muted pe-3 table-label-cell">${label}</td>
+            <td class="fw-medium text-dark table-value-cell">${val || '-'}</td>
         </tr>`;
 
     // Helper untuk section header kecil
     const sectionHeader = (title, icon) => `
         <tr>
             <td colspan="2" class="pt-3 pb-1">
-                <h6 class="text-primary border-bottom pb-1 mb-0" style="font-size: 0.85rem; letter-spacing: 0.5px;">
+                <h6 class="text-primary border-bottom pb-1 mb-0 text-sm-custom">
                     <i class="${icon} me-2"></i>${title.toUpperCase()}
                 </h6>
             </td>
@@ -1473,7 +1792,7 @@ function displayUnitDetail(unit) {
 
     // Set subtitle modal
     $('#unitSubtitle').html(`
-        <span class="badge bg-secondary me-2">${unit.merk_unit || 'N/A'}</span>
+        ${uiBadge('secondary', unit.merk_unit || 'N/A', {class: 'me-2'})}
         <span class="text-muted">${unit.model_unit || ''}</span>
     `);
 
@@ -1481,13 +1800,13 @@ function displayUnitDetail(unit) {
         <div class="container-fluid px-0">
             <div class="d-flex align-items-center justify-content-between bg-light p-3 rounded mb-3 border">
                 <div>
-                    <div class="text-muted small text-uppercase" style="font-size: 0.75rem;">Nomor Unit</div>
+                    <div class="text-muted small text-uppercase text-xs">Nomor Unit</div>
                     <h4 class="mb-0 fw-bold text-dark">${unit.no_unit || '-'}</h4>
                 </div>
                 <div class="text-end">
-                    <div class="text-muted small text-uppercase" style="font-size: 0.75rem;">Status</div>
+                    <div class="text-muted small text-uppercase text-xs">Status</div>
                     <div class="d-flex align-items-center justify-content-end text-${getStatusColor(unit.status_unit_name)}">
-                        <i class="fas fa-circle me-2" style="font-size: 0.6rem;"></i>
+                        <i class="fas fa-circle me-2 icon-xs"></i>
                         <span class="fw-bold small">${unit.status_unit_name || '-'}</span>
                     </div>
                 </div>
@@ -1569,7 +1888,7 @@ function displayUnitDetail(unit) {
                 <div class="list-group-item bg-light py-2 px-3">
                     <div class="d-flex justify-content-between align-items-center">
                         <span class="fw-medium small">${att.name || 'Attachment'}</span>
-                        <span class="badge bg-secondary text-light fw-normal" style="font-size:0.7em">${att.serial_number || 'No SN'}</span>
+                        ${uiBadge('secondary', att.serial_number || 'No SN', {class: 'text-light fw-normal', style: 'font-size:0.7em'})}
                     </div>
                 </div>`;
         });
@@ -1617,6 +1936,141 @@ function displayUnitDetail(unit) {
     $('#unitDetailContent').html(detailHtml);
 }
 
+// Contract Action Functions
+function editContract(contractId) {
+    // Load contract data and show inline edit modal
+    $.ajax({
+        url: `<?= base_url('marketing/kontrak/detail') ?>/${contractId}`,
+        type: 'GET',
+        success: function(response) {
+            if (response.success && response.data) {
+                const contract = response.data;
+                
+                // Populate edit form
+                $('#editContractId').val(contract.id);
+                $('#editContractNumber').val(contract.no_kontrak);
+                $('#editCustomerId').val(contract.customer_id);
+                $('#editLocationId').val(contract.location_id);
+                $('#editRentalType').val(contract.rental_type);
+                $('#editStartDate').val(contract.tanggal_mulai);
+                $('#editEndDate').val(contract.tanggal_selesai);
+                $('#editRentalRate').val(contract.harga_sewa);
+                $('#editStatus').val(contract.status);
+                
+                // Show edit modal
+                $('#editContractModal').modal('show');
+            } else {
+                showNotification('Error loading contract data', 'error');
+            }
+        },
+        error: function() {
+            showNotification('Error loading contract data', 'error');
+        }
+    });
+}
+
+function deleteContract(contractId) {
+    Swal.fire({
+        title: 'Hapus Kontrak?',
+        html: 'Apakah Anda yakin ingin menghapus kontrak ini?<br><small class="text-danger">Tindakan ini tidak dapat dibatalkan!</small>',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-trash me-2"></i>Ya, Hapus!',
+        cancelButtonText: '<i class="fas fa-times me-2"></i>Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading
+            Swal.fire({
+                title: 'Menghapus...',
+                html: 'Mohon tunggu, sedang menghapus kontrak...',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                }
+            });
+            
+            $.ajax({
+                url: `<?= base_url('marketing/kontrak/delete') ?>/${contractId}`,
+                type: 'POST',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil!',
+                            text: response.message || 'Kontrak berhasil dihapus',
+                            timer: 2000,
+                            showConfirmButton: false
+                        }).then(() => {
+                            // Refresh contracts tab
+                            loadCustomerContracts(currentCustomerId);
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal!',
+                            text: response.message || 'Gagal menghapus kontrak'
+                        });
+                    }
+                },
+                error: function(xhr) {
+                    console.error('Delete error:', xhr);
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error!',
+                        text: 'Terjadi kesalahan saat menghapus kontrak'
+                    });
+                }
+            });
+        }
+    });
+}
+
+function renewContract(contractId) {
+    // Load contract data
+    $.ajax({
+        url: '<?= base_url('marketing/kontrak/detail') ?>/' + contractId,
+        type: 'GET',
+        success: function(response) {
+            if (response.success && response.data) {
+                const contract = response.data;
+                
+                // Populate renewal wizard with contract data
+                $('#renewalParentContractId').val(contractId);
+                $('#renewalOldContractNumber').text(contract.no_kontrak);
+                $('#renewalCustomerName').text(contract.customer_name || 'N/A');
+                $('#renewalOldStartDate').text(contract.tanggal_mulai || 'N/A');
+                $('#renewalOldEndDate').text(contract.tanggal_berakhir || 'N/A');
+                
+                // Calculate suggested dates (gap-free)
+                if (contract.tanggal_berakhir) {
+                    const oldEndDate = new Date(contract.tanggal_berakhir);
+                    const newStartDate = new Date(oldEndDate);
+                    newStartDate.setDate(newStartDate.getDate() + 1);
+                    
+                    const newEndDate = new Date(newStartDate);
+                    newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+                    newEndDate.setDate(newEndDate.getDate() - 1);
+                    
+                    $('#renewalStartDate').val(newStartDate.toISOString().split('T')[0]);
+                    $('#renewalEndDate').val(newEndDate.toISOString().split('T')[0]);
+                }
+                
+                // Show renewal wizard modal
+                $('#renewalWizardModal').modal('show');
+            } else {
+                showNotification('Failed to load contract data', 'error');
+            }
+        },
+        error: function() {
+            showNotification('Error loading contract data', 'error');
+        }
+    });
+}
+
 // Helper functions
 function formatNumber(num) {
     try {
@@ -1629,16 +2083,30 @@ function formatNumber(num) {
 
 function getStatusBadge(status) {
     const statusMap = {
-        'Aktif': 'success',
-        'Active': 'success',
-        'Expired': 'danger',
-        'Berakhir': 'danger',
-        'Expiring': 'warning',
+        'ACTIVE': 'success',
+        'Aktif': 'success',   // Legacy fallback
+        'PENDING': 'warning',
+        'Pending': 'warning',  // Legacy fallback
+        'EXPIRED': 'danger',
+        'Berakhir': 'danger',  // Legacy fallback
+        'CANCELLED': 'secondary',
+        'Dibatalkan': 'secondary',  // Legacy fallback
         'Draft': 'secondary'
     };
     
     const badgeClass = statusMap[status] || 'secondary';
     return `<span class="badge bg-${badgeClass}">${status || 'Unknown'}</span>`;
+}
+
+function getRentalTypeBadge(rentalType) {
+    const typeMap = {
+        'CONTRACT': { color: 'primary', label: 'Contract' },
+        'PO_ONLY': { color: 'info', label: 'PO Only' },
+        'DAILY_SPOT': { color: 'warning', label: 'Daily/Spot' }
+    };
+    
+    const type = typeMap[rentalType] || { color: 'secondary', label: rentalType || 'N/A' };
+    return `<span class="badge bg-${type.color}">${type.label}</span>`;
 }
 
 function getStatusBadgeClass(status) {
@@ -1698,23 +2166,12 @@ function refreshData() {
     console.log('🔄 Refreshing customer data...');
     
     try {
-        // Check if DataTable exists and is initialized
-        if (customerTable && $.fn.DataTable.isDataTable('#customerTable')) {
-            customerTable.ajax.reload(function(json) {
-                console.log('✅ DataTable reloaded successfully');
-                // Statistics auto-calculated by helper on draw
-                showNotification('Data refreshed successfully', 'success');
-            }, false); // false = don't reset paging
-        } else {
-            console.warn('⚠️ DataTable not initialized, reinitializing...');
-            // Reinitialize table if it doesn't exist
-            initializeCustomerTable();
-            // Statistics auto-calculated by helper
-            showNotification('Table reinitialized', 'info');
-        }
+        // Use OptimaDataTable.reload() with centralized API
+        OptimaDataTable.reload('#customerTable', false); // false = don't reset paging
+        showNotification('Data refreshed successfully', 'success');
     } catch (error) {
         console.error('❌ Error refreshing data:', error);
-        // Fallback: reload the page
+        showNotification('Failed to refresh data', 'error');
         showNotification('Reloading page to fix display issue...', 'warning');
         setTimeout(function() {
             location.reload();
@@ -1779,7 +2236,7 @@ function displayLocations(locations) {
         html = '<div class="col-12 text-center text-muted">No locations found</div>';
     } else {
         locations.forEach(location => {
-            const isPrimary = location.is_primary ? '<span class="badge bg-primary ms-2">Primary</span>' : '';
+            const isPrimary = location.is_primary ? uiBadge('primary', 'Primary', {class: 'ms-2'}) : '';
             html += `
                 <div class="col-md-6 mb-3">
                             <div class="card h-100">
@@ -1798,7 +2255,7 @@ function displayLocations(locations) {
                             <div class="row g-2">
                                 <div class="col-12">
                                     <strong><i class="fas fa-map-marked-alt me-1"></i> Area:</strong><br>
-                                    <span class="badge bg-info">${location.area_name || 'N/A'}</span>
+                                    ${uiBadge('info', location.area_name || 'N/A')}
                                 </div>
                                 <div class="col-12">
                                     <strong><i class="fas fa-map-marker me-1"></i> Alamat:</strong><br>
@@ -1883,6 +2340,32 @@ function setupTabHandlers() {
         // Load contracts data
         if (currentCustomerId) {
             loadCustomerContracts(currentCustomerId);
+        }
+    });
+    
+    // Handle Activity Log tab - NEW
+    $('#activity-tab').on('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Remove active class from modal tabs only and hide all modal content
+        $('#customerDetailTabs .nav-link').removeClass('active');
+        $('#customerDetailTabContent .tab-pane').removeClass('show active').hide();
+        
+        // Add active class to activity tab and show content
+        $(this).addClass('active');
+        $('#activity-content').addClass('show active').show();
+        
+        // Load activity data
+        if (currentCustomerId) {
+            loadCustomerActivity(currentCustomerId);
+        }
+    });
+    
+    // Activity filter change handler
+    $('#activityFilter').on('change', function() {
+        if (currentCustomerId) {
+            loadCustomerActivity(currentCustomerId, $(this).val());
         }
     });
     
@@ -2090,6 +2573,72 @@ $(document).on('submit', '#addCustomerForm', function(e) {
         },
         error: function() {
             showNotification('Terjadi kesalahan pada sistem', 'error');
+        }
+    });
+});
+
+// Handle edit contract form submission
+$(document).on('submit', '#editContractForm', function(e) {
+    e.preventDefault();
+    
+    const contractId = $('#editContractId').val();
+    const formData = $(this).serialize();
+    
+    // Show loading
+    Swal.fire({
+        title: 'Updating...',
+        html: 'Please wait while updating contract...',
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    $.ajax({
+        url: `<?= base_url('marketing/kontrak/update') ?>/${contractId}`,
+        method: 'POST',
+        data: formData,
+        success: function(response) {
+            if (response.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Success!',
+                    text: response.message || 'Contract updated successfully',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                
+                // Close edit modal
+                $('#editContractModal').modal('hide');
+                
+                // Refresh contracts list if in customer detail
+                if (currentCustomerId) {
+                    loadContractsForCustomer(currentCustomerId);
+                }
+                
+                // Reload customer table
+                if (customerTable) {
+                    customerTable.ajax.reload(null, false);
+                }
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error!',
+                    text: response.message || 'Failed to update contract'
+                });
+            }
+        },
+        error: function(xhr) {
+            let errorMsg = 'An error occurred while updating contract';
+            if (xhr.responseJSON && xhr.responseJSON.message) {
+                errorMsg = xhr.responseJSON.message;
+            }
+            Swal.fire({
+                icon: 'error',
+                title: 'Error!',
+                text: errorMsg
+            });
         }
     });
 });
@@ -2602,8 +3151,187 @@ $(window).on('focus', function() {
 $(document).ready(function() {
     window.lastTableRefresh = new Date().getTime();
 });
+
+// ============================================================================
+// SPRINT 1-3: BILLING ENHANCEMENT MODAL OPENERS
+// ============================================================================
+
+/**
+ * Sprint 3: Open Amendment/Prorate Modal
+ * Shows rate change calculator with prorate split
+ */
+function openAmendmentModal(contractId) {
+    // Load contract data first
+    $.ajax({
+        url: '<?= base_url('marketing/kontrak/detail') ?>/' + contractId,
+        type: 'GET',
+        success: function(response) {
+            if (response.success && response.data) {
+                const contract = response.data;
+                
+                // Populate amendment modal with contract data
+                $('#prorateContractId').val(contractId);
+                $('#prorateContractNumber').text(contract.no_kontrak || 'N/A');
+                $('#prorateCustomerName').text(contract.customer_name || 'N/A');
+                $('#prorateCurrentRate').val(contract.harga_sewa || 0);
+                $('#prorateStartDate').val(contract.tanggal_mulai || '');
+                $('#prorateEndDate').val(contract.tanggal_selesai || '');
+                
+                // Show modal
+                $('#addendumProrateModal').modal('show');
+            } else {
+                showNotification('Error loading contract data', 'error');
+            }
+        },
+        error: function() {
+            showNotification('Error loading contract data', 'error');
+        }
+    });
+}
+
+/**
+ * Sprint 3: Open Asset History Modal
+ * Shows complete contract timeline with amendments and renewals
+ */
+function openHistoryModal(contractId) {
+    // Show modal immediately
+    $('#assetHistoryModal').modal('show');
+    
+    // Show loading state
+    $('#contractTimelineContent').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><br><small class="text-muted mt-2 d-block">Loading contract history...</small></div>');
+    $('#rateHistoryContent').html('<div class="text-center py-4"><i class="fas fa-spinner fa-spin"></i></div>');
+    
+    // Load contract history
+    $.ajax({
+        url: '<?= base_url('marketing/billing/contract-history') ?>/' + contractId,
+        type: 'GET',
+        success: function(response) {
+            if (response.success && response.data) {
+                renderContractTimeline(response.data);
+            } else {
+                $('#contractTimelineContent').html(
+                    '<div class="alert alert-warning">' +
+                    '<i class="fas fa-exclamation-triangle me-2"></i>' +
+                    'No history data available for this contract.' +
+                    '</div>'
+                );
+            }
+        },
+        error: function() {
+            $('#contractTimelineContent').html(
+                '<div class="alert alert-danger">' +
+                '<i class="fas fa-times me-2"></i>' +
+                'Error loading contract history.' +
+                '</div>'
+            );
+        }
+    });
+    
+    // Load rate history
+    $.ajax({
+        url: '<?= base_url('kontrak/getRateHistory') ?>/' + contractId,
+        type: 'GET',
+        success: function(response) {
+            if (response.success && response.data && response.data.length > 0) {
+                renderRateHistory(response.data);
+            } else {
+                $('#rateHistoryContent').html(
+                    '<p class="text-muted text-center py-3">No rate changes recorded</p>'
+                );
+            }
+        },
+        error: function() {
+            $('#rateHistoryContent').html(
+                '<p class="text-danger text-center py-3">Error loading rate history</p>'
+            );
+        }
+    });
+}
+
+/**
+ * Render contract timeline in history modal
+ */
+function renderContractTimeline(events) {
+    if (!events || events.length === 0) {
+        $('#contractTimelineContent').html('<p class="text-muted text-center py-3">No events found</p>');
+        return;
+    }
+    
+    let html = '<div class="timeline">';
+    
+    events.forEach(event => {
+        const iconMap = {
+            'contract': 'fa-file-contract text-primary',
+            'amendment': 'fa-edit text-warning',
+            'renewal': 'fa-sync-alt text-success'
+        };
+        
+        const icon = iconMap[event.type] || 'fa-circle text-secondary';
+        
+        html += '<div class="timeline-item">' +
+                '<div class="timeline-marker"><i class="fas ' + icon + '"></i></div>' +
+                '<div class="timeline-content">' +
+                '<div class="timeline-time">' + event.date + '</div>' +
+                '<h6>' + event.description + '</h6>';
+        
+        if (event.reason) {
+            html += '<p class="text-muted mb-0">' + event.reason + '</p>';
+        }
+        
+        if (event.total_value) {
+            html += '<p class="mb-0"><strong>Value:</strong> Rp ' + 
+                    parseFloat(event.total_value).toLocaleString('id-ID') + '</p>';
+        }
+        
+        html += '</div></div>';
+    });
+    
+    html += '</div>';
+    
+    $('#contractTimelineContent').html(html);
+}
+
+/**
+ * Render rate history chart
+ */
+function renderRateHistory(rates) {
+    if (!rates || rates.length === 0) {
+        $('#rateHistoryContent').html('<p class="text-muted text-center py-3">No rate changes found</p>');
+        return;
+    }
+    
+    let html = '<div class="table-responsive">' +
+               '<table class="table table-sm table-hover">' +
+               '<thead class="table-light"><tr>' +
+               '<th>Date</th><th>Unit</th><th>Old Rate</th><th>New Rate</th><th>Change</th>' +
+               '</tr></thead><tbody>';
+    
+    rates.forEach(rate => {
+        const change = rate.new_rate - rate.old_rate;
+        const changeClass = change > 0 ? 'text-success' : 'text-danger';
+        const changeIcon = change > 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+        
+        html += '<tr>' +
+                '<td><small>' + rate.date + '</small></td>' +
+                '<td><strong>' + rate.unit_no + '</strong></td>' +
+                '<td>Rp ' + parseFloat(rate.old_rate).toLocaleString('id-ID') + '</td>' +
+                '<td>Rp ' + parseFloat(rate.new_rate).toLocaleString('id-ID') + '</td>' +
+                '<td class="' + changeClass + '">' +
+                '<i class="fas ' + changeIcon + ' me-1"></i>' +
+                'Rp ' + Math.abs(change).toLocaleString('id-ID') +
+                '</td></tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    
+    $('#rateHistoryContent').html(html);
+}
+
 </script>
 
+<!-- Sprint 1-3: Billing Enhancement Components -->
+<?= $this->include('components/renewal_wizard') ?>
+<?= $this->include('components/addendum_prorate') ?>
+<?= $this->include('components/asset_history') ?>
+
 <?= $this->endSection() ?>
-
-

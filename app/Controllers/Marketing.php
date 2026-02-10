@@ -3524,25 +3524,25 @@ class Marketing extends BaseDataTableController
         }
     }
 
-    // Provide kontrak options (Pending) for searchable dropdown
+    // Provide kontrak options (ACTIVE/PENDING) for searchable dropdown
     public function kontrakOptions()
     {
         $q = trim($this->request->getGet('q') ?? '');
-        $status = trim($this->request->getGet('status') ?? 'Pending');
+        $status = trim($this->request->getGet('status') ?? 'PENDING');
         
         // Use database query builder with proper JOINs - updated to use quotation_specifications
         $builder = $this->db->table('kontrak k');
         $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
         $builder->join('customers c', 'cl.customer_id = c.id', 'left');
         $builder->join('quotation_specifications qs', 'qs.kontrak_id = k.id', 'inner');
-        $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name as pelanggan, cl.location_name as lokasi');
-        $builder->whereIn('k.status', ['Aktif', 'Pending']);
-        $builder->groupBy('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name, cl.location_name');
+        $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan, cl.location_name as lokasi');
+        $builder->whereIn('k.status', ['ACTIVE', 'PENDING']);
+        $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name, cl.location_name');
         
         if ($q !== '') {
             $builder->groupStart()
                 ->like('k.no_kontrak', $q)
-                ->orLike('k.no_po_marketing', $q)
+                ->orLike('k.customer_po_number', $q)
                 ->orLike('c.customer_name', $q)
             ->groupEnd();
         }
@@ -3550,11 +3550,12 @@ class Marketing extends BaseDataTableController
         
         // map to simple text for display if needed
         $options = array_map(function($r){
-            $label = trim(($r['no_kontrak'] ?: '') . ' ' . ($r['no_po_marketing'] ? '(' . $r['no_po_marketing'] . ')' : '') . ' - ' . ($r['pelanggan'] ?: '-'));
+            $label = trim(($r['no_kontrak'] ?: '') . ' ' . ($r['customer_po_number'] ? '(' . $r['customer_po_number'] . ')' : '') . ' - ' . ($r['pelanggan'] ?: '-'));
             return [
                 'id' => (int)$r['id'],
                 'no_kontrak' => $r['no_kontrak'],
-                'no_po_marketing' => $r['no_po_marketing'],
+                'customer_po_number' => $r['customer_po_number'],
+                'rental_type' => $r['rental_type'],
                 'pelanggan' => $r['pelanggan'],
                 'lokasi' => $r['lokasi'],
                 'label' => $label
@@ -3576,10 +3577,10 @@ class Marketing extends BaseDataTableController
             $builder->join('quotation_specifications qs', 'qs.kontrak_id = k.id', 'inner');
             
             // Use safe column selection - only select columns that exist
-            $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name as pelanggan, cl.location_name as lokasi');
+            $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan, cl.location_name as lokasi');
             
-            $builder->whereIn('k.status', ['Aktif', 'Pending']);
-            $builder->groupBy('k.id, k.no_kontrak, k.no_po_marketing, c.customer_name, cl.location_name');
+            $builder->whereIn('k.status', ['ACTIVE', 'PENDING']);
+            $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name, cl.location_name');
             $rows = $builder->orderBy('k.dibuat_pada', 'DESC')->get()->getResultArray();
             
             log_message('info', 'getActiveContracts found ' . count($rows) . ' contracts');
@@ -3589,7 +3590,8 @@ class Marketing extends BaseDataTableController
                 return [
                     'id' => (int)$r['id'],
                     'no_kontrak' => $r['no_kontrak'] ?? '',
-                    'no_po_marketing' => $r['no_po_marketing'] ?? '',
+                    'customer_po_number' => $r['customer_po_number'] ?? '',
+                    'rental_type' => $r['rental_type'] ?? 'CONTRACT',
                     'pelanggan' => $r['pelanggan'] ?? '',
                     'lokasi' => $r['lokasi'] ?? '',
                     'label' => $label,
@@ -3624,7 +3626,7 @@ class Marketing extends BaseDataTableController
             $builder->join('customers c', 'cl.customer_id = c.id', 'left');
             
             // Include customer_id for loading customer locations
-            $builder->select('k.id, k.no_kontrak, k.no_po_marketing, c.id as customer_id, c.customer_name as pelanggan, cl.location_name as lokasi');
+            $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.id as customer_id, c.customer_name as pelanggan, cl.location_name as lokasi');
             $builder->where('k.id', $id);
             $row = $builder->get()->getRowArray();
             
@@ -3640,7 +3642,8 @@ class Marketing extends BaseDataTableController
                 'data' => [
                     'id' => (int)$row['id'],
                     'no_kontrak' => $row['no_kontrak'],
-                    'no_po_marketing' => $row['no_po_marketing'],
+                    'customer_po_number' => $row['customer_po_number'],
+                    'rental_type' => $row['rental_type'],
                     'customer_id' => (int)$row['customer_id'],
                     'pelanggan' => $row['pelanggan'],
                     'lokasi' => $row['lokasi']

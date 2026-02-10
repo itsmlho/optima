@@ -5,7 +5,7 @@
 <!-- Statistics Cards -->
   <div class="row mt-3 mb-4">
       <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-          <div class="stat-card bg-primary-soft" data-filter="all" style="cursor:pointer;">
+          <div class="stat-card bg-primary-soft cursor-pointer" data-filter="all">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-truck stat-icon text-primary"></i>
@@ -18,7 +18,7 @@
           </div>
       </div>
       <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-          <div class="stat-card bg-warning-soft" data-filter="SUBMITTED" style="cursor:pointer;">
+          <div class="stat-card bg-warning-soft cursor-pointer" data-filter="SUBMITTED">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-clock stat-icon text-warning"></i>
@@ -31,7 +31,7 @@
           </div>
       </div>
       <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-          <div class="stat-card bg-info-soft" data-filter="INPROGRESS" style="cursor:pointer;">
+          <div class="stat-card bg-info-soft cursor-pointer" data-filter="INPROGRESS">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-arrow-repeat stat-icon text-info"></i>
@@ -44,7 +44,7 @@
           </div>
       </div>
       <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
-          <div class="stat-card bg-success-soft" data-filter="DELIVERED" style="cursor:pointer;">
+          <div class="stat-card bg-success-soft cursor-pointer" data-filter="DELIVERED">
               <div class="d-flex align-items-center">
                   <div class="me-3">
                       <i class="bi bi-check-circle stat-icon text-success"></i>
@@ -89,7 +89,7 @@
       <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
           <span><?= lang('App.show') ?></span>
-          <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
+          <select class="form-select form-select-sm w-auto" id="entriesPerPage">
             <option value="10">10</option>
             <option value="25">25</option>
             <option value="50">50</option>
@@ -99,7 +99,7 @@
         </div>
         <div class="d-flex align-items-center gap-2">
           <span>Search:</span>
-          <input type="text" class="form-control form-control-sm" id="diSearch" placeholder="" style="width: 200px;">
+          <input type="text" class="form-control form-control-sm w-200px" id="diSearch" placeholder="">
         </div>
       </div>
 
@@ -107,14 +107,14 @@
         <table class="table table-striped table-hover table-manual-sort table-sm" id="diTable">
           <thead>
             <tr>
-              <th style="width: 110px;">DI Number</th>
-              <th style="width: 120px;">Customer</th>
-              <th style="width: 60px;">Items</th>
-              <th style="width: 70px;">Type</th>
-              <th style="width: 85px;">Delivery</th>
-              <th style="width: 80px;">Status</th>
-              <th style="width: 80px;">Driver</th>
-              <th style="width: 160px;" data-no-sort>Actions</th>
+              <th class="w-110px">DI Number</th>
+              <th class="w-120px">Customer</th>
+              <th class="w-60px">Items</th>
+              <th class="w-70px">Type</th>
+              <th class="w-85px">Delivery</th>
+              <th class="w-80px">Status</th>
+              <th class="w-80px">Driver</th>
+              <th class="w-160px" data-no-sort>Actions</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (isLong) {
           const preview = lokasi.substring(0, maxPreviewLength) + '...';
           // Use title attribute for native browser tooltip
-          return `<span title="${lokasi.replace(/"/g, '&quot;')}" style="cursor: help; border-bottom: 1px dotted #999;">${preview}</span>`;
+          return `<span title="${lokasi.replace(/"/g, '&quot;')}" class="cursor-help border-bottom-dotted">${preview}</span>`;
         } else {
           return lokasi;
         }
@@ -564,7 +564,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               </div>
               <div class="col-6">
                 <label class="form-label">Shipping Location</label>
-                <textarea class="form-control-plaintext readonly-textarea" readonly rows="3" style="resize: none;">${di.lokasi || '-'}</textarea>
+                <textarea class="form-control-plaintext readonly-textarea resize-none" readonly rows="3">${di.lokasi || '-'}</textarea>
               </div>
               <div class="col-12"><hr></div>
               <div class="col-12"><h6 class="text-primary">Operational Delivery Data</h6></div>
@@ -1027,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
               <div class="col-6"><strong>PIC:</strong> ${spk.pic||'-'}</div>
               <div class="col-6"><strong>Contact:</strong> ${spk.kontak||'-'}</div>
               <div class="col-12"><strong>Delivery Location:</strong><br>
-                <div class="bg-light p-2 rounded border mt-1" style="word-wrap: break-word; max-height: 100px; overflow-y: auto;">${d.lokasi||'-'}</div>
+                <div class="bg-light p-2 rounded border mt-1 word-wrap-break max-h-100px-scroll">${d.lokasi||'-'}</div>
               </div>
             </div>
           </div>

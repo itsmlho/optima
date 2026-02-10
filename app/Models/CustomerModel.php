@@ -16,7 +16,8 @@ class CustomerModel extends Model
     protected $allowedFields = [
         'customer_code',
         'customer_name',
-        'is_active'
+        'is_active',
+        'default_billing_method'
     ];
     
     protected $useTimestamps = true;
@@ -28,7 +29,8 @@ class CustomerModel extends Model
     protected $validationRules = [
         'customer_code' => 'required|max_length[20]|is_unique[customers.customer_code,id,{id}]',
         'customer_name' => 'required|max_length[255]',
-        'is_active' => 'permit_empty|in_list[0,1]'
+        'is_active' => 'permit_empty|in_list[0,1]',
+        'default_billing_method' => 'permit_empty|in_list[CYCLE,PRORATE,MONTHLY_FIXED]'
     ];
     
     protected $validationMessages = [

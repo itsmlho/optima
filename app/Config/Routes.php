@@ -104,6 +104,7 @@ $routes->group('dashboard', static function ($routes) {
     $routes->get('recent-activities', 'Dashboard::getRecentActivities');
     $routes->get('activity-analytics', 'Dashboard::getActivityAnalytics');
     $routes->get('expiring-contracts', 'Dashboard::getExpiringContracts');
+    $routes->get('rental-type-analytics', 'Dashboard::getRentalTypeAnalytics');
 }); 
 
 // System routes for topbar functionality
@@ -169,7 +170,10 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('get/(:num)', 'Kontrak::get/$1');
         $routes->get('units/(:num)', 'Kontrak::getContractUnits/$1');
         $routes->get('customers', 'Kontrak::getCustomers');
+        $routes->get('customers-dropdown', 'Kontrak::getCustomersDropdown');
         $routes->get('locations/(:num)', 'Kontrak::getLocationsByCustomer/$1');
+        $routes->get('stats', 'Kontrak::getStats');
+        $routes->get('export', 'Kontrak::export');
         
         // Spesifikasi management
         $routes->get('spesifikasi/(:num)', 'Kontrak::spesifikasi/$1');
@@ -335,6 +339,7 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('getBan', 'CustomerManagementController::getBan');
         $routes->get('getRoda', 'CustomerManagementController::getRoda');
         $routes->get('getCustomerContracts/(:num)', 'CustomerManagementController::getCustomerContracts/$1');
+        $routes->get('getCustomerActivity/(:num)', 'CustomerManagementController::getCustomerActivity/$1');
         $routes->get('getCustomerLocations/(:num)', 'CustomerManagementController::getCustomerLocations/$1');
         $routes->get('showCustomer/(:num)', 'CustomerManagementController::showCustomer/$1');
         $routes->get('getCustomerDetail/(:num)', 'CustomerManagementController::getCustomerDetail/$1');
@@ -371,6 +376,9 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('getStats', 'CustomerManagementController::getStats');
         $routes->get('getCustomersDropdown', 'CustomerManagementController::getCustomersDropdown');
         $routes->get('getAreasDropdown', 'CustomerManagementController::getAreasDropdown');
+        
+        // Dashboard Widget
+        $routes->get('getUnlinkedDeliveriesWidget', 'CustomerManagementController::getUnlinkedDeliveriesWidget');
     });
 
     // Routes removed - functionality moved to CustomerManagementController
@@ -815,6 +823,11 @@ $routes->group('finance', static function ($routes) {
     $routes->get('reports', 'Finance::reports');
     $routes->post('invoices/create', 'Finance::createInvoice');
     $routes->post('payments/update/(:num)', 'Finance::updatePaymentStatus/$1');
+    
+    // Back-Billing Routes
+    $routes->get('detectBackBilling', 'Finance::detectBackBilling');
+    $routes->post('generateBackBilling', 'Finance::generateBackBilling');
+    $routes->get('getBackBillingStats', 'Finance::getBackBillingStats');
 });
 
 // Perizinan Management Routes
@@ -1163,6 +1176,25 @@ $routes->post('kontrak/update/(:num)', 'Kontrak::update/$1');
 $routes->post('kontrak/delete/(:num)', 'Kontrak::delete/$1');
 
 // ======================================================================
+// SPRINT 1-3: BILLING ENHANCEMENTS & WORKFLOW ROUTES
+// ======================================================================
+
+// Sprint 1: Renewal Workflow
+$routes->get('kontrak/getExpiringContracts', 'Kontrak::getExpiringContracts');
+$routes->post('kontrak/createRenewal', 'Kontrak::createRenewal');
+
+// Sprint 3: Contract Amendments (Prorate)
+$routes->get('kontrak/getActiveContracts', 'Kontrak::getActiveContracts');
+$routes->post('kontrak/createProrateAmendment', 'Kontrak::createProrateAmendment');
+$routes->get('kontrak/getContractHistory/(:num)', 'Kontrak::getContractHistory/$1');
+$routes->get('kontrak/getRateHistory/(:num)', 'Kontrak::getRateHistory/$1');
+
+// Additional Contract APIs
+$routes->get('kontrak/getAllContracts', 'Kontrak::getAllContracts');
+$routes->get('kontrak/getAllUnits', 'Kontrak::getAllUnits');
+$routes->get('kontrak/getStats', 'Kontrak::getStats');
+
+// ======================================================================
 // DELIVERY WORKFLOW ROUTES
 // ======================================================================
 
@@ -1228,4 +1260,21 @@ $routes->group('queue', function($routes) {
     $routes->post('test-notification', 'QueueController::testNotification');
     $routes->get('auto-process', 'QueueController::autoProcess'); // For cron jobs
 });
+
+// ============================================================================
+// CONTRACT NOTIFICATIONS - Auto-expiry alerts
+// ============================================================================
+$routes->group('contracts', static function ($routes) {
+    $routes->get('notifications/check/(:num)', 'ContractNotifications::checkExpiringContracts/$1');
+    $routes->get('notifications/check', 'ContractNotifications::checkExpiringContracts');
+    $routes->get('notifications/stats', 'ContractNotifications::getNotificationStats');
+    $routes->get('notifications/test', 'ContractNotifications::testNotifications');
+    
+    // Batch operations
+    $routes->get('batch/update-expired', 'BatchContractOperations::updateExpiredContracts');
+    $routes->get('batch/stats', 'BatchContractOperations::getBatchStats');
+    $routes->get('batch/test', 'BatchContractOperations::testBatchUpdate');
+});
+
+
 

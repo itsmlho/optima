@@ -151,7 +151,7 @@ class CustomerManagementController extends BaseController
             // Get contracts through customer_locations (updated for optimized database structure)
             $kontrakBuilder = $this->db->table('kontrak k');
             $kontrakBuilder->select('COUNT(DISTINCT k.id) as contract_count, 
-                          COUNT(CASE WHEN k.no_po_marketing != "" AND k.no_po_marketing IS NOT NULL THEN 1 END) as po_count,
+                          COUNT(CASE WHEN k.customer_po_number != "" AND k.customer_po_number IS NOT NULL THEN 1 END) as po_count,
                           COUNT(CASE WHEN ku.is_temporary != 1 THEN 1 END) as total_units')
                           ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
                           ->join('kontrak_unit ku', 'ku.kontrak_id = k.id', 'left')
@@ -334,6 +334,7 @@ class CustomerManagementController extends BaseController
                 'primary_locations' => count(array_filter($locations, function($loc) { return $loc['is_primary'] == 1; })),
                 'total_contracts' => count($contracts),
                 'active_contracts' => count(array_filter($contracts, function($c) { return $c['status'] == 'Aktif'; })),
+                'total_po_only' => count(array_filter($contracts, function($c) { return isset($c['rental_type']) && $c['rental_type'] == 'PO_ONLY'; })),
                 'total_units' => count($units),
                 'active_units' => count(array_filter($units, function($u) { return in_array($u['status_unit'], ['DISEWA', 'BEROPERASI']); })),
                 'total_contract_value' => array_sum(array_column($contracts, 'nilai_total')),
@@ -1418,6 +1419,10 @@ class CustomerManagementController extends BaseController
                 ]);
             }
 
+            // Get limit parameter from query string (default: no limit)
+            $limit = $this->request->getGet('limit');
+            $limit = $limit ? (int)$limit : null;
+
             // Get customer name first
             $customer = $this->db->table('customers')
                 ->where('id', $customerId)
@@ -1431,12 +1436,26 @@ class CustomerManagementController extends BaseController
                 ]);
             }
 
-            // Get contracts for this customer using same query as kontrak.php
+            // Get total count for all contracts/PO
+            $totalQuery = "
+                SELECT COUNT(*) as total,
+                       COUNT(CASE WHEN k.rental_type = 'CONTRACT' THEN 1 END) as total_contracts,
+                       COUNT(CASE WHEN k.rental_type = 'PO_ONLY' THEN 1 END) as total_po_only,
+                       COUNT(CASE WHEN k.rental_type = 'DAILY_SPOT' THEN 1 END) as total_daily_spot
+                FROM kontrak k
+                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+                LEFT JOIN customers c ON cl.customer_id = c.id
+                WHERE c.id = ?
+            ";
+            $totalResult = $this->db->query($totalQuery, [$customerId])->getRowArray();
+
+            // Get contracts for this customer (with optional limit)
             $query = "
                 SELECT 
                     k.id,
                     k.no_kontrak,
-                    k.no_po_marketing,
+                    k.customer_po_number,
+                    k.rental_type,
                     c.customer_name as pelanggan,
                     cl.location_name as lokasi,
                     k.tanggal_mulai,
@@ -1450,15 +1469,25 @@ class CustomerManagementController extends BaseController
                 LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
                 LEFT JOIN customers c ON cl.customer_id = c.id
                 WHERE c.id = ?
-                ORDER BY k.id DESC
+                ORDER BY k.dibuat_pada DESC
             ";
+            
+            if ($limit) {
+                $query .= " LIMIT " . $limit;
+            }
             
             $result = $this->db->query($query, [$customerId]);
             $contracts = $result->getResultArray();
 
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $contracts
+                'data' => $contracts,
+                'total' => $totalResult['total'],
+                'stats' => [
+                    'total_contracts' => $totalResult['total_contracts'],
+                    'total_po_only' => $totalResult['total_po_only'],
+                    'total_daily_spot' => $totalResult['total_daily_spot']
+                ]
             ]);
 
         } catch (\Exception $e) {
@@ -1466,6 +1495,138 @@ class CustomerManagementController extends BaseController
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Failed to load contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get customer activity log for Activity tab
+     */
+    public function getCustomerActivity($customerId)
+    {
+        try {
+            $customerId = (int)$customerId;
+            
+            if (!$customerId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Invalid customer ID'
+                ]);
+            }
+
+            // Get filter parameter (all, contract, quotation, delivery, location)
+            $filter = $this->request->getGet('filter') ?? 'all';
+
+            $activities = [];
+
+            // Get contract activities
+            if ($filter === 'all' || $filter === 'contract') {
+                $contractQuery = "
+                    SELECT 
+                        k.id,
+                        'contract' as type,
+                        CONCAT('Contract ', k.rental_type, ' - ', k.no_kontrak) as title,
+                        CONCAT('Created ', CASE WHEN k.rental_type='CONTRACT' THEN 'formal contract' 
+                                                WHEN k.rental_type='PO_ONLY' THEN 'PO-only agreement' 
+                                                ELSE 'daily/spot rental' END, 
+                               ' at ', cl.location_name) as description,
+                        u.staff_name as user,
+                        k.dibuat_pada as created_at
+                    FROM kontrak k
+                    LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+                    LEFT JOIN customers c ON cl.customer_id = c.id
+                    LEFT JOIN users u ON k.dibuat_oleh = u.id
+                    WHERE c.id = ?
+                    ORDER BY k.dibuat_pada DESC
+                    LIMIT 20
+                ";
+                $contractActivities = $this->db->query($contractQuery, [$customerId])->getResultArray();
+                $activities = array_merge($activities, $contractActivities);
+            }
+
+            // Get quotation activities
+            if ($filter === 'all' || $filter === 'quotation') {
+                $quotationQuery = "
+                    SELECT 
+                        q.id,
+                        'quotation' as type,
+                        CONCAT('Quotation #', q.id, ' - ', q.status) as title,
+                        CONCAT('Quotation for ', COALESCE(q.project_name, 'customer project')) as description,
+                        u.staff_name as user,
+                        q.created_at
+                    FROM quotations q
+                    LEFT JOIN customers c ON q.customer_id = c.id
+                    LEFT JOIN users u ON q.created_by = u.id
+                    WHERE c.id = ?
+                    ORDER BY q.created_at DESC
+                    LIMIT 20
+                ";
+                $quotationActivities = $this->db->query($quotationQuery, [$customerId])->getResultArray();
+                $activities = array_merge($activities, $quotationActivities);
+            }
+
+            // Get delivery activities
+            if ($filter === 'all' || $filter === 'delivery') {
+                $deliveryQuery = "
+                    SELECT 
+                        di.id,
+                        'delivery' as type,
+                        CONCAT('Delivery ', di.nomor_di, ' - ', di.status_di) as title,
+                        CONCAT('Delivery to ', cl.location_name, ' on ', DATE_FORMAT(di.tanggal_kirim, '%d %b %Y')) as description,
+                        u.staff_name as user,
+                        di.dibuat_pada as created_at
+                    FROM delivery_instructions di
+                    LEFT JOIN spk s ON di.spk_id = s.id
+                    LEFT JOIN kontrak k ON s.kontrak_id = k.id
+                    LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+                    LEFT JOIN customers c ON cl.customer_id = c.id
+                    LEFT JOIN users u ON di.dibuat_oleh_user_id = u.id
+                    WHERE c.id = ?
+                    ORDER BY di.dibuat_pada DESC
+                    LIMIT 20
+                ";
+                $deliveryActivities = $this->db->query($deliveryQuery, [$customerId])->getResultArray();
+                $activities = array_merge($activities, $deliveryActivities);
+            }
+
+            // Get location activities
+            if ($filter === 'all' || $filter === 'location') {
+                $locationQuery = "
+                    SELECT 
+                        cl.id,
+                        'location' as type,
+                        CONCAT('Location ', CASE WHEN cl.is_primary=1 THEN '(Primary) ' ELSE '' END, '- ', cl.location_name) as title,
+                        CONCAT('Added location in ', a.area_name) as description,
+                        NULL as user,
+                        cl.created_at
+                    FROM customer_locations cl
+                    LEFT JOIN areas a ON cl.area_id = a.id
+                    WHERE cl.customer_id = ?
+                    ORDER BY cl.created_at DESC
+                    LIMIT 20
+                ";
+                $locationActivities = $this->db->query($locationQuery, [$customerId])->getResultArray();
+                $activities = array_merge($activities, $locationActivities);
+            }
+
+            // Sort all activities by date
+            usort($activities, function($a, $b) {
+                return strtotime($b['created_at']) - strtotime($a['created_at']);
+            });
+
+            // Limit to 30 most recent
+            $activities = array_slice($activities, 0, 30);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $activities
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'CustomerManagementController::getCustomerActivity - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load activity log: ' . $e->getMessage()
             ]);
         }
     }
@@ -1873,6 +2034,55 @@ class CustomerManagementController extends BaseController
         } catch (\Exception $e) {
             log_message('error', 'generatePDFDirectly error: ' . $e->getMessage());
             return $this->response->setJSON(['success' => false, 'message' => 'Failed to generate PDF: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get unlinked deliveries alert widget data
+     * Shows "Hutang Dokumen" for DIs pending contract > 14 days
+     * Used in dashboard for alerting marketing team
+     */
+    public function getUnlinkedDeliveriesWidget()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Invalid request'
+            ]);
+        }
+
+        try {
+            $diModel = new \App\Models\DeliveryInstructionModel();
+            $unlinked = $diModel->getUnlinkedDeliveries();
+            
+            // Filter: > 14 days (urgent)
+            $urgent = array_filter($unlinked, function($di) {
+                return isset($di['days_pending']) && $di['days_pending'] > 14;
+            });
+            
+            // Get oldest pending days
+            $oldestPending = 0;
+            if (!empty($unlinked)) {
+                $daysPendingArray = array_column($unlinked, 'days_pending');
+                $oldestPending = !empty($daysPendingArray) ? max($daysPendingArray) : 0;
+            }
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => [
+                    'total_unlinked' => count($unlinked),
+                    'urgent_count' => count($urgent),
+                    'oldest_pending' => $oldestPending,
+                    'list' => array_values($urgent)
+                ]
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getUnlinkedDeliveriesWidget error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error loading widget data: ' . $e->getMessage()
+            ]);
         }
     }
 

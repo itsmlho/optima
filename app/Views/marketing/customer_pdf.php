@@ -597,7 +597,7 @@ $units     = $unitsData ?? [];
                     <span class="summary-label">Total Locations</span>
                 </div>
                 <div class="summary-card">
-                    <span class="summary-value"><?= count(array_filter($contracts, fn($c) => $c['status'] == 'Aktif')) ?></span>
+                    <span class="summary-value"><?= count(array_filter($contracts, fn($c) => $c['status'] == 'ACTIVE')) ?></span>
                     <span class="summary-label">Active Contracts</span>
                 </div>
                 <div class="summary-card">

@@ -88,9 +88,11 @@ $can_export = $permissions['export'];
     <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between">
       <h5 class="h5 mb-0 text-gray-800"><?= lang('App.delivery_instructions_di') ?> <?= lang('App.show') ?></h5>
       <div class="d-flex gap-2 align-items-center">
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#diCreateModal">
-          <i class="fas fa-plus"></i> <?= lang('Marketing.create') ?> DI
-        </button>
+        <?= ui_button('add', 'Create DI', [
+            'data-bs-toggle' => 'modal',
+            'data-bs-target' => '#diCreateModal',
+            'size' => 'sm'
+        ]) ?>
       </div>
     </div>
     
@@ -138,7 +140,7 @@ $can_export = $permissions['export'];
 
       <div class="table-responsive">
         <table class="table table-striped table-hover table-manual-sort" id="diTable">
-          <thead>
+          <thead class="table-light">
             <tr>
               <th>No. DI</th>
               <th>No. SPK</th>
@@ -190,9 +192,19 @@ $can_export = $permissions['export'];
               <label class="form-label" id="itemSelectionLabel"><?= lang('Marketing.select_items_to_ship') ?></label>
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <div class="small text-muted"><?= lang('App.selected') ?>: <span id="selCount">0</span> <span id="itemTypeLabel"><?= lang('App.items') ?></span></div>
-                <div>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnSelectAll"><?= lang('App.select_all') ?></button>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearAll"><?= lang('App.clear') ?></button>
+                <div class="d-flex gap-2">
+                  <?= ui_button('select-all', lang('App.select_all'), [
+                      'color' => 'outline-secondary',
+                      'size' => 'sm',
+                      'type' => 'button',
+                      'id' => 'btnSelectAll'
+                  ]) ?>
+                  <?= ui_button('clear', lang('App.clear'), [
+                      'color' => 'outline-secondary',
+                      'size' => 'sm',
+                      'type' => 'button',
+                      'id' => 'btnClearAll'
+                  ]) ?>
                 </div>
               </div>
               <div id="diUnitList" class="unit-list"><div class="text-muted small"><?= lang('Marketing.loading_items_from_spk') ?></div></div>
@@ -236,9 +248,19 @@ $can_export = $permissions['export'];
               <label class="form-label"><?= lang('Marketing.select_units_to_pull') ?></label>
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <div class="small text-muted"><?= lang('App.selected') ?>: <span id="tarikOnlyCount">0</span> <?= lang('App.unit') ?></div>
-                <div>
-                  <button class="btn btn-sm btn-outline-warning" type="button" id="btnSelectAllTarikOnly">Select All</button>
-                  <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearTarikOnly">Clear</button>
+                <div class="d-flex gap-2">
+                  <?= ui_button('select-all', 'Select All', [
+                      'color' => 'outline-warning',
+                      'size' => 'sm',
+                      'type' => 'button',
+                      'id' => 'btnSelectAllTarikOnly'
+                  ]) ?>
+                  <?= ui_button('clear', 'Clear', [
+                      'color' => 'outline-secondary',
+                      'size' => 'sm',
+                      'type' => 'button',
+                      'id' => 'btnClearTarikOnly'
+                  ]) ?>
                 </div>
               </div>
               <div id="diTarikOnlyList" class="unit-list">
@@ -262,9 +284,19 @@ $can_export = $permissions['export'];
                 <div class="card-body">
                   <div class="d-flex justify-content-between align-items-center mb-2">
                     <div class="small text-muted">Selected: <span id="tarikCount">0</span> unit</div>
-                    <div>
-                      <button class="btn btn-sm btn-outline-warning" type="button" id="btnSelectAllTarik">Select All</button>
-                      <button class="btn btn-sm btn-outline-secondary" type="button" id="btnClearTarik">Clear</button>
+                    <div class="d-flex gap-2">
+                      <?= ui_button('select-all', 'Select All', [
+                          'color' => 'outline-warning',
+                          'size' => 'sm',
+                          'type' => 'button',
+                          'id' => 'btnSelectAllTarik'
+                      ]) ?>
+                      <?= ui_button('clear', 'Clear', [
+                          'color' => 'outline-secondary',
+                          'size' => 'sm',
+                          'type' => 'button',
+                          'id' => 'btnClearTarik'
+                      ]) ?>
                     </div>
                   </div>
                   <div id="diTarikUnitList" class="unit-list">
@@ -286,8 +318,8 @@ $can_export = $permissions['export'];
             </div>
           </div>
           <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?= lang('App.cancel') ?></button>
-            <button class="btn btn-primary" type="submit">Create DI</button>
+            <?= ui_button('cancel', lang('App.cancel'), ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+            <?= ui_button('submit', 'Create DI', ['type' => 'submit']) ?>
           </div>
         </form>
       </div>
@@ -296,6 +328,23 @@ $can_export = $permissions['export'];
 </div>
 
 <script>
+// UI Badge Helper - Generate consistent badge colors based on type
+function uiBadge(type, text, options = {}) {
+    const badgeMap = {
+        'active': 'success', 'approved': 'success', 'completed': 'success', 'delivered': 'success', 'linked': 'success',
+        'pending': 'warning', 'ready': 'warning', 'in_progress': 'info', 'processing': 'info',
+        'rejected': 'danger', 'cancelled': 'danger', 'failed': 'danger', 'deleted': 'danger',
+        'draft': 'secondary', 'new': 'primary', 'info': 'info', 'warning': 'warning',
+        'created': 'success', 'updated': 'info', 'submitted': 'secondary', 'success': 'success',
+        'primary': 'primary', 'secondary': 'secondary', 'danger': 'danger'
+    };
+    const color = options.color || badgeMap[type.toLowerCase()] || 'secondary';
+    const className = options.class || '';
+    const icon = options.icon ? `<i class="${options.icon}"></i> ` : '';
+    const title = options.title ? ` title="${options.title}"` : '';
+    return `<span class="badge bg-${color} ${className}"${title}>${icon}${text}</span>`;
+}
+
 // Global variables
 let allDIData = [];
 let filteredDIData = [];
@@ -1015,17 +1064,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
           'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', color: 'success' },
           'SELESAI': { text: 'SELESAI', color: 'success' },
           'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' },
-          'AWAITING_CONTRACT': { text: 'AWAITING CONTRACT', color: 'warning' }
+          'AWAITING_CONTRACT': { text: 'On-Hire (Pending PO)', color: 'warning' }
         };
         const mapped = statusMap[statusUpper] || { text: status || 'DIAJUKAN', color: 'secondary' };
         
-        // Calculate days pending for AWAITING_CONTRACT status
+        // Calculate days pending for AWAITING_CONTRACT status (On-Hire Pending PO)
         if (statusUpper === 'AWAITING_CONTRACT' && createdDate) {
           const created = new Date(createdDate);
           const now = new Date();
           const daysPending = Math.floor((now - created) / (1000 * 60 * 60 * 24));
           const urgencyColor = daysPending > 14 ? 'danger' : (daysPending > 7 ? 'warning' : 'info');
-          return `<span class="badge bg-${mapped.color}">${mapped.text}</span> <span class="badge bg-${urgencyColor}" title="Days waiting for contract">${daysPending}d</span>`;
+          return `<span class="badge bg-${mapped.color}"><i class="fas fa-clock me-1"></i>${mapped.text}</span> <span class="badge bg-${urgencyColor}" title="Days waiting for contract">${daysPending}d</span>`;
         }
         
         return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
@@ -1043,25 +1092,25 @@ document.addEventListener('DOMContentLoaded', ()=>{
         if (jenisSpk === 'ATTACHMENT') {
           // For ATTACHMENT SPK, prioritize attachments count
           if (totalAttachments > 0) {
-            unitsDisplay = `<span class="badge bg-warning">${totalAttachments} Attachment</span>`;
+            unitsDisplay = uiBadge('warning', `${totalAttachments} Attachment`);
           } else {
-            unitsDisplay = '<span class="badge bg-secondary">No attachments</span>';
+            unitsDisplay = uiBadge('secondary', 'No attachments');
           }
         } else {
           // For UNIT SPK, prioritize units count
           if (totalUnits > 0) {
-            unitsDisplay = `<span class="badge bg-primary">${totalUnits} Unit</span>`;
+            unitsDisplay = uiBadge('primary', `${totalUnits} Unit`);
           } else if (totalAttachments > 0) {
             // Fallback to attachments if no units but has attachments
-            unitsDisplay = `<span class="badge bg-warning">${totalAttachments} Attachment</span>`;
+            unitsDisplay = uiBadge('warning', `${totalAttachments} Attachment`);
           } else {
-            unitsDisplay = '<span class="badge bg-secondary">0</span>';
+            unitsDisplay = uiBadge('secondary', '0');
           }
         }
         
         // Add temporary indicator badge if has temporary units
         if (hasTemporary) {
-          unitsDisplay += ' <span class="badge bg-warning-subtle text-warning border border-warning" title="Contains temporary units (TUKAR_MAINTENANCE)">🔄 TEMP</span>';
+          unitsDisplay += ' ' + uiBadge('warning', '🔄 TEMP', {class: 'bg-warning-subtle text-warning border border-warning', title: 'Contains temporary units (TUKAR_MAINTENANCE)'});
         }
         
         return unitsDisplay;
@@ -1117,13 +1166,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
           <i class="fas fa-link"></i> Link
         </button>`;
       } else if (hasContract) {
-        actionsHtml = '<span class="badge bg-success"><i class="fas fa-check"></i> Linked</span>';
+        actionsHtml = uiBadge('linked', 'Linked', {icon: 'fas fa-check'});
       }
       
       // Enhanced PO/Contract display with contract status indicator
       const contractDisplay = hasContract 
-        ? `${r.po_kontrak_nomor || '-'} <span class="badge bg-success-subtle text-success" title="Contract linked"><i class="fas fa-link"></i></span>`
-        : `${r.po_kontrak_nomor ||  '-'} <span class="badge bg-warning text-dark" title="No contract linked - invoice generation disabled">NO CONTRACT</span>`;
+        ? `${r.po_kontrak_nomor || '-'} ${uiBadge('success', '', {class: 'bg-success-subtle text-success', icon: 'fas fa-link', title: 'Contract linked'})}`
+        : `${r.po_kontrak_nomor ||  '-'} ${uiBadge('warning', 'NO CONTRACT', {title: 'No contract linked - invoice generation disabled'})}`;
       
       tr.innerHTML = `
         <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
@@ -1415,7 +1464,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
             </h6>
             <div class="row g-2">
               <div class="col-6"><strong>DI Number:</strong> ${d.nomor_di}</div>
-              <div class="col-6"><strong>Status:</strong> <span class="badge bg-primary">${d.status}</span></div>
+              <div class="col-6"><strong>Status:</strong> ${uiBadge('primary', d.status)}</div>
               <div class="col-6"><strong>SPK Number:</strong> ${spk.nomor_spk||'-'}</div>
               <div class="col-6"><strong>SPK Type:</strong> <span class="badge ${isAttachmentSpk ? 'bg-warning' : 'bg-info'}">${spkType}</span></div>
               <div class="col-6"><strong>PO/Contract:</strong> ${d.po_kontrak_nomor||'-'}</div>
@@ -1603,7 +1652,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
           const activeDI = it.active_di_info || null;
           const disabled = isInActiveDI ? 'disabled' : '';
           const checked = isInActiveDI ? '' : 'checked';
-          const warningBadge = isInActiveDI && activeDI ? ` <span class="badge bg-warning text-dark">Already in ${activeDI.nomor_di}</span>` : '';
+          const warningBadge = isInActiveDI && activeDI ? ` ${uiBadge('warning', `Already in ${activeDI.nomor_di}`)}` : '';
           
           wrap.innerHTML = `
             <input class="form-check-input unit-check" type="checkbox" id="${idSafe}" name="unit_ids[]" value="${unitId}" ${checked} ${disabled}>
@@ -2040,19 +2089,17 @@ document.addEventListener('DOMContentLoaded', ()=>{
       <div class="modal-header"><h6 class="modal-title"><?= lang('App.detail') ?> Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
       <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Loading...</p></div></div>
       <div class="modal-footer">
-        <button class="btn btn-success" id="btnPrintSppu" onclick="printWithdrawalLetter()" style="display:none;">
-          <i class="fas fa-file-contract"></i> Print SPPU
-        </button>
-        <button class="btn btn-primary" id="btnPrintDi" onclick="printDiFromDetail()">
-          <i class="fas fa-print"></i> Print DI
-        </button>
-        <button class="btn btn-warning" id="btnEditDi" onclick="editDiFromDetail()">
-          <i class="fas fa-edit"></i> Edit
-        </button>
-        <button class="btn btn-danger" id="btnDeleteDi" onclick="deleteDiFromDetail()">
-          <i class="fas fa-trash"></i> Delete
-        </button>
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <?= ui_button('print', 'Print SPPU', [
+            'id' => 'btnPrintSppu',
+            'onclick' => 'printWithdrawalLetter()',
+            'style' => 'display:none;',
+            'color' => 'success',
+            'icon' => 'fas fa-file-contract'
+        ]) ?>
+        <?= ui_button('print', 'Print DI', ['id' => 'btnPrintDi', 'onclick' => 'printDiFromDetail()']) ?>
+        <?= ui_button('edit', 'Edit', ['id' => 'btnEditDi', 'onclick' => 'editDiFromDetail()']) ?>
+        <?= ui_button('delete', 'Delete', ['id' => 'btnDeleteDi', 'onclick' => 'deleteDiFromDetail()']) ?>
+        <?= ui_button('cancel', 'Close', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
       </div>
     </div>
   </div>
@@ -2088,7 +2135,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
             <label class="form-label"><?= lang('Marketing.execution_status') ?></label>
             <div class="card bg-light">
               <div class="card-body py-2">
-                <span id="editStatusEksekusiDisplay" class="badge bg-primary">READY</span>
+                ${uiBadge('primary', 'READY', {id: 'editStatusEksekusiDisplay'})}
                 <small class="text-muted ms-2"><?= lang('Marketing.status_managed_by_system') ?></small>
               </div>
             </div>
@@ -2106,8 +2153,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button class="btn btn-primary" type="submit">Update DI</button>
+          <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+          <?= ui_button('save', 'Update DI', ['type' => 'submit']) ?>
         </div>
       </form>
     </div>
@@ -2154,10 +2201,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-warning">
-            <i class="fas fa-link"></i> Link Contract
-          </button>
+          <?= ui_button('cancel', 'Cancel', ['data-bs-dismiss' => 'modal', 'color' => 'secondary']) ?>
+          <?= ui_button('submit', 'Link Contract', ['type' => 'submit', 'color' => 'warning', 'icon' => 'fas fa-link']) ?>
         </div>
       </form>
     </div>
