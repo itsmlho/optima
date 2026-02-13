@@ -14,7 +14,7 @@
 
 <!-- Asset History Modal -->
 <div class="modal fade" id="assetHistoryModal" tabindex="-1" aria-labelledby="assetHistoryModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-gradient-primary text-white">
                 <h5 class="modal-title" id="assetHistoryModalLabel">

@@ -87,9 +87,10 @@ $can_export = $permissions['export'];
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><?= lang('Marketing.customer_management') ?></h5>
         <div class="d-flex gap-2">
-            <?= ui_button('add', lang('Marketing.add_customer'), [
-                'onclick' => 'openAddCustomerModal()',
-                'size' => 'sm'
+            <?= ui_button('refresh', lang('App.refresh'), [
+                'onclick' => 'refreshData()',
+                'size' => 'sm',
+                'color' => 'outline-secondary'
             ]) ?>
             
             <div class="btn-group" role="group">
@@ -119,10 +120,10 @@ $can_export = $permissions['export'];
                 </ul>
             </div>
             
-            <?= ui_button('refresh', lang('App.refresh'), [
-                'onclick' => 'refreshData()',
-                'size' => 'sm',
-                'color' => 'outline-secondary'
+            
+            <?= ui_button('add', lang('Marketing.add_customer'), [
+                'onclick' => 'openAddCustomerModal()',
+                'size' => 'sm'
             ]) ?>
         </div>
     </div>
@@ -303,7 +304,7 @@ $can_export = $permissions['export'];
 
 <!-- Contract Detail Modal -->
 <div class="modal fade" id="contractDetailModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -346,7 +347,7 @@ $can_export = $permissions['export'];
 
 <!-- Unit Detail Modal -->
 <div class="modal fade" id="unitDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -369,7 +370,7 @@ $can_export = $permissions['export'];
 
 <!-- Add Customer Modal -->
 <div class="modal fade" id="addCustomerModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" role="document">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Marketing.add_customer') ?></h5>
@@ -513,7 +514,7 @@ $can_export = $permissions['export'];
 
 <!-- Add Contract Modal -->
 <div class="modal fade" id="addContractModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -599,7 +600,7 @@ $can_export = $permissions['export'];
 
 <!-- Add Location Modal -->
 <div class="modal fade" id="addLocationModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Marketing.add_location') ?></h5>
@@ -712,7 +713,7 @@ $can_export = $permissions['export'];
 
 <!-- Edit Contract Modal (Inline Edit) -->
 <div class="modal fade" id="editContractModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h6 class="modal-title">
@@ -783,7 +784,7 @@ $can_export = $permissions['export'];
 
 <!-- Modal SPK dari Kontrak -->
 <div class="modal fade" id="spkFromKontrakModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h6 class="modal-title"><?= lang('Marketing.create_spk') ?></h6>

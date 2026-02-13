@@ -511,13 +511,11 @@ $placeholder = ($status === 'SUBMITTED');
                     <div class="mt-2">
                         <div>- Total Unit</div>
                         <div>- Merk & Jenis Unit</div>
-                        <div>- Baterai & Charger</div>
                         <div>- Departemen</div>
                         <div>- Kapasitas</div>
                         <div>- Attachment</div>
-                        <div>- Roda & Ban</div>
-                        <div>- Mast</div>
-                        <div>- Valve</div>
+                        <div>- Ban (Tire)</div>
+                        <div>- Mast (Tinggi Angkat)</div>
                     </div>
                 </td>
                 <td class="align-top">
@@ -531,16 +529,13 @@ $placeholder = ($status === 'SUBMITTED');
                         $kapasitasName = $k['kontrak_kapasitas_name'] ?? $k['kapasitas_name'] ?? '';
                         $departemenName = $k['kontrak_departemen_name'] ?? $k['departemen_name'] ?? '';
                         $mastName = $k['kontrak_mast_name'] ?? $k['mast_name'] ?? '';
-                        $rodaName = $k['kontrak_roda_name'] ?? $k['roda_name'] ?? '';
                         $banName = $k['kontrak_ban_name'] ?? $k['ban_name'] ?? '';
-                        $valveName = $k['kontrak_valve_name'] ?? $k['valve_name'] ?? '';
                         
                         // Attachment dari quotation_specifications (bukan dari spesifikasi SPK)
                         $attachmentType = $k['attachment_tipe'] ?? $k['attachment_name'] ?? '';
                         
-                        // Battery dan Charger dari quotation_specifications
-                        $batteryType = $k['jenis_baterai'] ?? $k['baterai_type'] ?? '';
-                        $chargerType = $k['kontrak_charger_model'] ?? $k['charger_model'] ?? '';
+                        // Notes untuk custom requirements (Battery, Charger, Valve custom, dll)
+                        $customNotes = $k['notes'] ?? '';
                     ?>
                     <div class="mt-2">
                         <br />
@@ -557,23 +552,21 @@ $placeholder = ($status === 'SUBMITTED');
                             echo !empty($brandTypeInfo) ? esc(implode(' ', $brandTypeInfo)) : '..............................';
                             ?>
                         </div>
-                        <div class="val"><?php
-                            // Combine battery and charger info from kontrak
-                            $combinedInfo = [];
-                            if (!empty($batteryType)) $combinedInfo[] = $batteryType;
-                            if (!empty($chargerType)) $combinedInfo[] = $chargerType;
-                            
-                            echo !empty($combinedInfo) ? esc(implode(' & ', $combinedInfo)) : '..............................';
-                        ?></div>
                         <div class="val"><?= esc($departemenName ?: '..............................') ?></div>
                         <div class="val"><?= esc($kapasitasName ?: '..............................') ?></div>
                         <div class="val"><?= esc($attachmentType ?: '..............................') ?></div>
-                        <div class="val"><?= esc(($rodaName && $banName) ? $rodaName . ' & ' . $banName : ($rodaName ?: ($banName ?: '..............................'))) ?></div>
+                        <div class="val"><?= esc($banName ?: '..............................') ?></div>
                         <div class="val"><?= esc($mastName ?: '..............................') ?></div>
-                        <div class="val"><?= esc($valveName ?: '..............................') ?></div>
                     </div>
                 </td>
             </tr>
+            <?php if (!empty($customNotes)): ?>
+            <tr>
+                <td class="text-center align-top" style="background-color: #fff3cd;"></td>
+                <td class="align-top" style="background-color: #fff3cd;"><strong>Custom Requirements :</strong></td>
+                <td class="align-top" style="background-color: #fff3cd; white-space: pre-line; font-size: 8.5px;"><?= nl2br(esc($customNotes)) ?></td>
+            </tr>
+            <?php endif; ?>
             <tr>
                 <td class="text-center align-middle">3.</td>
                 <td class="align-middle"><strong>Aksesoris</strong></td>

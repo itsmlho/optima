@@ -341,7 +341,7 @@ $can_export = $permissions['export'];
 
 <!-- Modal Verifikasi Attachment -->
 <div class="modal fade" id="modalAttachmentVerification" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalAttachmentVerificationLabel">
@@ -367,7 +367,7 @@ $can_export = $permissions['export'];
 
 <!-- View PO Unit Modal -->
 <div class="modal fade" id="viewPOUnitModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i><?= lang('App.detail') ?></h5>
@@ -383,7 +383,7 @@ $can_export = $permissions['export'];
 
 <!-- View PO Sparepart Modal -->
 <div class="modal fade" id="viewPOSparepartModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i><?= lang('App.detail') ?></h5>

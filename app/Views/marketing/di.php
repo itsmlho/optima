@@ -121,36 +121,18 @@ $can_export = $permissions['export'];
     </ul>
     
     <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex align-items-center gap-2">
-          <span>Show</span>
-          <select class="form-select form-select-sm" id="entriesPerPage" style="width: auto;">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
-          <span>entries</span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <span>Search:</span>
-          <input type="text" class="form-control form-control-sm" id="diSearch" placeholder="" style="width: 200px;">
-        </div>
-      </div>
-
+      <!-- DataTables will handle pagination and search -->
       <div class="table-responsive">
         <table class="table table-striped table-hover table-manual-sort" id="diTable">
           <thead class="table-light">
             <tr>
               <th>No. DI</th>
-              <th>No. SPK</th>
-              <th>PO/Contract</th>
+              <th class="d-none d-xl-table-cell">PO/Contract</th>
               <th>Customer</th>
-              <th>Location</th>
+              <th class="d-none d-xxl-table-cell">Location</th>
               <th>Total Items</th>
-              <th>Command Type</th>
-              <th>Command Purpose</th>
-              <th>Req. Delivery Date</th>
+              <th class="d-none d-lg-table-cell">Command</th>
+              <th class="d-none d-xl-table-cell">Req. Delivery Date</th>
               <th data-no-sort>Status</th>
               <th data-no-sort>Actions</th>
             </tr>
@@ -158,20 +140,13 @@ $can_export = $permissions['export'];
           <tbody></tbody>
         </table>
       </div>
-
-      <!-- Pagination and Info -->
-      <div class="d-flex justify-content-between align-items-center mt-3">
-        <div id="diTableInfo">Showing 0 to 0 of 0 entries</div>
-        <nav>
-          <ul class="pagination pagination-sm mb-0" id="diPagination"></ul>
-        </nav>
-      </div>
+      <!-- DataTables will add pagination and info here -->
     </div>
   </div>
 
   <!-- Enhanced DI Modal with correct TUKAR workflow support -->
   <div class="modal fade" id="diCreateModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h6 class="modal-title"><?= lang('Marketing.create') ?> DI</h6>
@@ -346,11 +321,8 @@ function uiBadge(type, text, options = {}) {
 }
 
 // Global variables
-let allDIData = [];
-let filteredDIData = [];
+let diTable; // DataTable instance
 let currentFilter = 'all';
-let currentPage = 1;
-let entriesPerPage = 10;
 let currentDiId = null; // Store current DI ID for edit/delete operations
 
 // Global function for TARIK workflow unit count (must be global for onchange access)
@@ -931,368 +903,219 @@ document.addEventListener('DOMContentLoaded', ()=>{
   // END WORKFLOW BARU
   // =====================================================
   
-  function loadDI(startDate = null, endDate = null){
-    let url = '<?= base_url('marketing/di/list') ?>';
-    if (startDate && endDate) {
-      url += `?start_date=${startDate}&end_date=${endDate}`;
-    }
-    fetch(url).then(r=>r.json()).then(j=>{
-      allDIData = j.data || [];
-      updateStatistics();
-      applyFilters();
-    }).catch(error => {
-      console.error('Error loading DI data:', error);
-    });
-  }
-  
-  // Load initial data
-  loadDI();
-  
-  function updateStatistics() {
-    const total = allDIData.length;
-    
-    // Update statistik menggunakan status_di
-    const direncanakan = allDIData.filter(item => {
-      const status = (item.status_di || '').toUpperCase();
-      return status === 'DIAJUKAN';
-    }).length;
-    
-    const persiapanUnit = allDIData.filter(item => {
-      const status = (item.status_di || '').toUpperCase();
-      return status === 'DISETUJUI' || status === 'PERSIAPAN_UNIT' || status === 'SIAP_KIRIM';
-    }).length;
-    
-    const dalamPerjalanan = allDIData.filter(item => {
-      const status = (item.status_di || '').toUpperCase();
-      return status === 'DALAM_PERJALANAN';
-    }).length;
-    
-    const selesai = allDIData.filter(item => {
-      const status = (item.status_di || '').toUpperCase();
-      return status === 'SELESAI' || status === 'SAMPAI_LOKASI';
-    }).length;
-    
-    const awaitingContract = allDIData.filter(item => {
-      const status = (item.status_di || '').toUpperCase();
-      return status === 'AWAITING_CONTRACT';
-    }).length;
-    
-    document.getElementById('totalDI').textContent = total;
-    document.getElementById('submittedDI').textContent = direncanakan;
-    document.getElementById('inprogressDI').textContent = dalamPerjalanan;
-    document.getElementById('deliveredDI').textContent = selesai;
-    document.getElementById('awaitingContractDI').textContent = awaitingContract;
-  }
-  
-  function applyFilters() {
-    const searchTerm = document.getElementById('diSearch').value.toLowerCase();
-    
-    // Filter berdasarkan status_di - map between English and Indonesian status terms
-    let filtered;
-    if (currentFilter === 'all') {
-      filtered = [...allDIData];
-    } else if (currentFilter === 'SUBMITTED') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return status === 'DIAJUKAN';
-      });
-    } else if (currentFilter === 'INPROGRESS') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return status === 'DISETUJUI' || 
-               status === 'PERSIAPAN_UNIT' ||
-               status === 'SIAP_KIRIM' ||
-               status === 'DALAM_PERJALANAN';
-      });
-    } else if (currentFilter === 'DELIVERED') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return status === 'SAMPAI_LOKASI' || status === 'SELESAI';
-      });
-    } else if (currentFilter === 'AWAITING_CONTRACT') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return status === 'AWAITING_CONTRACT';
-      });
-    } else if (currentFilter === 'CANCELLED') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return status === 'DIBATALKAN';
-      });
-    } else {
-      // Exact match untuk filter status spesifik
-      filtered = allDIData.filter(item => (item.status_di || '').toUpperCase() === currentFilter);
-    }
-    
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(item => {
-        return (item.nomor_di || '').toLowerCase().includes(searchTerm) ||
-               (item.spk_id || '').toLowerCase().includes(searchTerm) ||
-               (item.po_kontrak_nomor || '').toLowerCase().includes(searchTerm) ||
-               (item.pelanggan || '').toLowerCase().includes(searchTerm) ||
-               (item.jenis_perintah || '').toLowerCase().includes(searchTerm) ||
-               (item.tujuan_perintah || '').toLowerCase().includes(searchTerm) ||
-               (item.spk_pic || '').toLowerCase().includes(searchTerm) ||
-               (item.lokasi || '').toLowerCase().includes(searchTerm);
-      });
-    }
-    
-    filteredDIData = filtered;
-    currentPage = 1; // Reset to first page
-    renderDITable();
-    updatePagination();
-  }
-  
-  function renderDITable() {
-    const startIndex = (currentPage - 1) * entriesPerPage;
-    const endIndex = startIndex + entriesPerPage;
-    const dataToShow = filteredDIData.slice(startIndex, endIndex);
-    
-    tb.innerHTML = '';
-    dataToShow.forEach(r=>{
-      const tr = document.createElement('tr');
-      // Display status values with appropriate badge colors
-      const getStatusDisplay = (status, createdDate) => {
-        const statusUpper = (status || '').toUpperCase();
-        const statusMap = {
-          'DIAJUKAN': { text: 'DIAJUKAN', color: 'secondary' },
-          'DISETUJUI': { text: 'DISETUJUI', color: 'info' },
-          'PERSIAPAN_UNIT': { text: 'PERSIAPAN_UNIT', color: 'warning' },
-          'SIAP_KIRIM': { text: 'SIAP_KIRIM', color: 'primary' },
-          'DALAM_PERJALANAN': { text: 'DALAM_PERJALANAN', color: 'warning' },
-          'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', color: 'success' },
-          'SELESAI': { text: 'SELESAI', color: 'success' },
-          'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' },
-          'AWAITING_CONTRACT': { text: 'On-Hire (Pending PO)', color: 'warning' }
-        };
-        const mapped = statusMap[statusUpper] || { text: status || 'DIAJUKAN', color: 'secondary' };
-        
-        // Calculate days pending for AWAITING_CONTRACT status (On-Hire Pending PO)
-        if (statusUpper === 'AWAITING_CONTRACT' && createdDate) {
-          const created = new Date(createdDate);
-          const now = new Date();
-          const daysPending = Math.floor((now - created) / (1000 * 60 * 60 * 24));
-          const urgencyColor = daysPending > 14 ? 'danger' : (daysPending > 7 ? 'warning' : 'info');
-          return `<span class="badge bg-${mapped.color}"><i class="fas fa-clock me-1"></i>${mapped.text}</span> <span class="badge bg-${urgencyColor}" title="Days waiting for contract">${daysPending}d</span>`;
-        }
-        
-        return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
-      };
-      
-      // Function to format total units display
-      const formatTotalUnits = (r) => {
-        const totalUnits = r.total_units || 0;
-        const totalAttachments = r.total_attachments || 0;
-        const jenisSpk = r.jenis_spk || 'UNIT'; // Use jenis_spk from delivery_instructions
-        const hasTemporary = r.has_temporary_units || false;
-        
-        let unitsDisplay = '';
-        
-        if (jenisSpk === 'ATTACHMENT') {
-          // For ATTACHMENT SPK, prioritize attachments count
-          if (totalAttachments > 0) {
-            unitsDisplay = uiBadge('warning', `${totalAttachments} Attachment`);
-          } else {
-            unitsDisplay = uiBadge('secondary', 'No attachments');
-          }
-        } else {
-          // For UNIT SPK, prioritize units count
-          if (totalUnits > 0) {
-            unitsDisplay = uiBadge('primary', `${totalUnits} Unit`);
-          } else if (totalAttachments > 0) {
-            // Fallback to attachments if no units but has attachments
-            unitsDisplay = uiBadge('warning', `${totalAttachments} Attachment`);
-          } else {
-            unitsDisplay = uiBadge('secondary', '0');
-          }
-        }
-        
-        // Add temporary indicator badge if has temporary units
-        if (hasTemporary) {
-          unitsDisplay += ' ' + uiBadge('warning', '🔄 TEMP', {class: 'bg-warning-subtle text-warning border border-warning', title: 'Contains temporary units (TUKAR_MAINTENANCE)'});
-        }
-        
-        return unitsDisplay;
-      };
-      
-      // Function to add workflow indicators to tujuan
-      const formatTujuanWithIndicator = (tujuan) => {
-        if (!tujuan) return '-';
-        
-        let indicator = '';
-        let tooltip = '';
-        
-        if (tujuan.includes('HABIS_KONTRAK') || tujuan.includes('Habis Kontrak')) {
-          indicator = '🔴';
-          tooltip = 'PERMANENT: Unit disconnected from customer';
-        } else if (tujuan.includes('MAINTENANCE') || tujuan.includes('Maintenance')) {
-          if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
-            indicator = '🟡';
-            tooltip = 'TEMPORARY REPLACEMENT: Original unit returns after maintenance';
-          } else {
-            indicator = '🔵';
-            tooltip = 'TEMPORARY: Unit returns after service';
-          }
-        } else if (tujuan.includes('RUSAK') || tujuan.includes('Rusak')) {
-          if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
-            indicator = '🔴';
-            tooltip = 'PERMANENT: Unit replaced';
-          } else {
-            indicator = '🔵';
-            tooltip = 'TEMPORARY: Unit returns after repair';
-          }
-        } else if (tujuan.includes('PINDAH_LOKASI') || tujuan.includes('Pindah')) {
-          indicator = '🟢';
-          tooltip = 'RELOCATION: Same customer, different location';
-        } else if (tujuan.includes('UPGRADE') || tujuan.includes('DOWNGRADE')) {
-          indicator = '🔴';
-          tooltip = 'PERMANENT: Unit replaced';
-        }
-        
-        return indicator ? `<span title="${tooltip}">${indicator}</span> ${tujuan}` : tujuan;
-      };
-      
-      // Check if DI has contract - show Link button if not
-      const hasContract = r.contract_id !== null && r.contract_id !== '';
-      let actionsHtml = '-';
-      
-      if (!hasContract && r.status_di !== 'DIBATALKAN') {
-        // Show Link Contract button for DI without contract
-        actionsHtml = `<button class="btn btn-sm btn-outline-warning link-di-contract" 
-          data-di-id="${r.id}" 
-          data-di-number="${r.nomor_di}" 
-          title="Link to Contract">
-          <i class="fas fa-link"></i> Link
-        </button>`;
-      } else if (hasContract) {
-        actionsHtml = uiBadge('linked', 'Linked', {icon: 'fas fa-check'});
+  /**
+   * Load DI statistics from server
+   */
+  function loadDIStatistics() {
+    $.ajax({
+      url: '<?= base_url('marketing/di/stats') ?>',
+      type: 'POST',
+      data: { status_filter: currentFilter },
+      success: function(data) {
+        document.getElementById('totalDI').textContent = data.total || 0;
+        document.getElementById('submittedDI').textContent = data.submitted || 0;
+        document.getElementById('inprogressDI').textContent = data.inprogress || 0;
+        document.getElementById('deliveredDI').textContent = data.delivered || 0;
+        document.getElementById('awaitingContractDI').textContent = data.awaiting_contract || 0;
+      },
+      error: function(xhr) {
+        console.error('Failed to load DI statistics:', xhr.responseText);
       }
-      
-      // Enhanced PO/Contract display with contract status indicator
-      const contractDisplay = hasContract 
-        ? `${r.po_kontrak_nomor || '-'} ${uiBadge('success', '', {class: 'bg-success-subtle text-success', icon: 'fas fa-link', title: 'Contract linked'})}`
-        : `${r.po_kontrak_nomor ||  '-'} ${uiBadge('warning', 'NO CONTRACT', {title: 'No contract linked - invoice generation disabled'})}`;
-      
-      tr.innerHTML = `
-        <td><a href="#" onclick="openDiDetail(${r.id});return false;">${r.nomor_di}</a></td>
-        <td>${r.spk_id || '-'}</td>
-        <td>${contractDisplay}</td>
-        <td>${r.pelanggan||'-'}</td>
-        <td>${r.lokasi||'-'}</td>
-        <td><span class="text-muted small">${formatTotalUnits(r)}</span></td>
-        <td>${r.jenis_perintah || '-'}</td>
-        <td>${formatTujuanWithIndicator(r.tujuan_perintah)}</td>
-        <td>${r.tanggal_kirim||'-'}</td>
-        <td>${getStatusDisplay(r.status_di, r.dibuat_pada)}</td>
-        <td>${actionsHtml}</td>`;
-      tb.appendChild(tr);
     });
-    
-    // Update table info
-    const totalEntries = filteredDIData.length;
-    const start = totalEntries === 0 ? 0 : startIndex + 1;
-    const end = Math.min(endIndex, totalEntries);
-    document.getElementById('diTableInfo').textContent = 
-      `Showing ${start} to ${end} of ${totalEntries} entries`;
   }
   
-  function updatePagination() {
-    const totalPages = Math.ceil(filteredDIData.length / entriesPerPage);
-    const pagination = document.getElementById('diPagination');
-    pagination.innerHTML = '';
+  /**
+   * Filter DI table by status
+   */
+  function filterDIData(filter) {
+    currentFilter = filter;
     
-    // Previous button
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + (currentPage - 1) + ')">Previous</a>';
-    pagination.appendChild(prevLi);
+    // Update active filter card/tab
+    document.querySelectorAll('.filter-card, .filter-tab').forEach(el => el.classList.remove('active'));
+    document.querySelector(`.filter-card[data-filter="${filter}"], .filter-tab[data-filter="${filter}"]`)?.classList.add('active');
     
-    // Page numbers
-    for (let i = 1; i <= totalPages; i++) {
-      const li = document.createElement('li');
-      li.className = `page-item ${currentPage === i ? 'active' : ''}`;
-      li.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + i + ')">' + i + '</a>';
-      pagination.appendChild(li);
-    }
-    
-    // Next button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`;
-    nextLi.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + (currentPage + 1) + ')">Next</a>';
-    pagination.appendChild(nextLi);
-  }
-  
-  window.changePage = function(page) {
-    const totalPages = Math.ceil(filteredDIData.length / entriesPerPage);
-    if (page >= 1 && page <= totalPages) {
-      currentPage = page;
-      renderDITable();
-      updatePagination();
+    // Reload DataTable with new filter (server handles it)
+    if (diTable && diTable.ajax) {
+      diTable.ajax.reload();
     }
   }
   
-  // Event listeners
-  document.getElementById('entriesPerPage').addEventListener('change', function() {
-    entriesPerPage = parseInt(this.value);
-    currentPage = 1;
-    renderDITable();
-    updatePagination();
-  });
-  
-  document.getElementById('diSearch').addEventListener('input', function() {
-    applyFilters();
-  });
-  
-  // Filter card click listeners
-  document.querySelectorAll('.filter-card').forEach(card => {
-    card.addEventListener('click', function() {
-      const filter = this.dataset.filter;
-      currentFilter = filter;
-      
-      // Update active card
-      document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
-      this.classList.add('active');
-      
-      applyFilters();
-    });
-  });
-  
-  // Add filter tab click listeners
-  document.querySelectorAll('.filter-tab').forEach(tab => {
-    tab.addEventListener('click', function(e) {
-      e.preventDefault();
-      const filter = this.dataset.filter;
-      currentFilter = filter;
-      
-      // Update active tab
-      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
-      this.classList.add('active');
-      
-      // Update active card
-      document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
-      const correspondingCard = document.querySelector(`[data-filter="${filter}"]`);
-      if (correspondingCard) {
-        correspondingCard.classList.add('active');
+  /**
+   * Initialize DataTable for DI table
+   */
+  try {
+    diTable = OptimaDataTable.init('#diTable', {
+      ajax: {
+        url: '<?= base_url('marketing/di/data') ?>',
+        type: 'POST',
+        data: function(d) {
+          d.status_filter = currentFilter;
+          return d;
+        },
+        error: function(xhr) {
+          console.error('❌ DI DataTable error:', xhr.responseText);
+        }
+      },
+      serverSide: true,
+      pageLength: 25,
+      lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+      order: [[0, 'desc']],
+      columns: [
+        { 
+          data: 'nomor_di',
+          render: function(data, type, row) {
+            return `<a href="#" onclick="openDiDetail(${row.id});return false;">${data}</a>`;
+          }
+        },
+        { 
+          data: 'po_kontrak_nomor',
+          className: 'd-none d-xl-table-cell',
+          responsivePriority: 4,
+          render: function(data, type, row) {
+            const hasContract = row.contract_id !== null && row.contract_id !== '';
+            if (hasContract) {
+              return `${data || '-'} ${uiBadge('success', '', {class: 'bg-success-subtle text-success', icon: 'fas fa-link', title: 'Contract linked'})}`;
+            } else {
+              return `${data || '-'} ${uiBadge('warning', 'NO CONTRACT', {title: 'No contract linked'})}`;
+            }
+          }
+        },
+        { 
+          data: 'pelanggan', 
+          defaultContent: '-'
+        },
+        { 
+          data: 'lokasi', 
+          defaultContent: '-',
+          className: 'd-none d-xxl-table-cell',
+          responsivePriority: 6
+        },
+        { 
+          data: null,
+          render: function(data, type, row) {
+            const totalUnits = row.total_units || 0;
+            const totalAttachments = row.total_attachments || 0;
+            const jenisSpk = row.jenis_spk || 'UNIT';
+            
+            if (jenisSpk === 'ATTACHMENT') {
+              return totalAttachments > 0 
+                ? uiBadge('warning', `${totalAttachments} Attachment`)
+                : uiBadge('secondary', 'No attachments');
+            } else {
+              return totalUnits > 0
+                ? uiBadge('primary', `${totalUnits} Unit`)
+                : uiBadge('secondary', 'No units');
+            }
+          }
+        },
+        { 
+          data: null,
+          className: 'd-none d-lg-table-cell',
+          responsivePriority: 6,
+          render: function(data, type, row) {
+            const jenis = row.jenis_perintah || '-';
+            const tujuan = row.tujuan_perintah || '';
+            
+            if (!tujuan) return jenis;
+            
+            let indicator = '';
+            if (tujuan.includes('HABIS_KONTRAK')) indicator = '🔴';
+            else if (tujuan.includes('MAINTENANCE') && tujuan.includes('TUKAR')) indicator = '🟡';
+            else if (tujuan.includes('MAINTENANCE')) indicator = '🔵';
+            else if (tujuan.includes('RUSAK') && tujuan.includes('TUKAR')) indicator = '🔴';
+            else if (tujuan.includes('RUSAK')) indicator = '🔵';
+            else if (tujuan.includes('PINDAH_LOKASI')) indicator = '🟢';
+            else if (tujuan.includes('UPGRADE') || tujuan.includes('DOWNGRADE')) indicator = '🔴';
+            
+            return indicator ? `${indicator} ${jenis} - ${tujuan}` : `${jenis} - ${tujuan}`;
+          }
+        },
+        { 
+          data: 'requested_delivery_date', 
+          defaultContent: '-',
+          className: 'd-none d-xl-table-cell',
+          responsivePriority: 5
+        },
+        { 
+          data: 'status_di',
+          render: function(data, type, row) {
+            const statusUpper = (data || '').toUpperCase();
+            const statusMap = {
+              'DIAJUKAN': { text: 'DIAJUKAN', color: 'secondary' },
+              'DISETUJUI': { text: 'DISETUJUI', color: 'info' },
+              'PERSIAPAN_UNIT': { text: 'PERSIAPAN_UNIT', color: 'warning' },
+              'SIAP_KIRIM': { text: 'SIAP_KIRIM', color: 'primary' },
+              'DALAM_PERJALANAN': { text: 'DALAM_PERJALANAN', color: 'warning' },
+              'SAMPAI_LOKASI': { text: 'SAMPAI_LOKASI', color: 'success' },
+              'SELESAI': { text: 'SELESAI', color: 'success' },
+              'DIBATALKAN': { text: 'DIBATALKAN', color: 'danger' },
+              'AWAITING_CONTRACT': { text: 'On-Hire (Pending PO)', color: 'warning' }
+            };
+            const mapped = statusMap[statusUpper] || { text: data || 'DIAJUKAN', color: 'secondary' };
+            
+            if (statusUpper === 'AWAITING_CONTRACT' && row.dibuat_pada) {
+              const created = new Date(row.dibuat_pada);
+              const now = new Date();
+              const daysPending = Math.floor((now - created) / (1000 * 60 * 60 * 24));
+              const urgencyColor = daysPending > 14 ? 'danger' : (daysPending > 7 ? 'warning' : 'info');
+              return `<span class="badge bg-${mapped.color}"><i class="fas fa-clock me-1"></i>${mapped.text}</span> <span class="badge bg-${urgencyColor}" title="Days waiting">${daysPending}d</span>`;
+            }
+            
+            return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+          }
+        },
+        { 
+          data: null,
+          orderable: false,
+         searchable: false,
+          render: function(data, type, row) {
+            const hasContract = row.contract_id !== null && row.contract_id !== '';
+            
+            if (!hasContract && row.status_di !== 'DIBATALKAN') {
+              return `<button class="btn btn-sm btn-outline-warning link-di-contract" 
+                data-di-id="${row.id}" 
+                data-di-number="${row.nomor_di}" 
+                title="Link to Contract">
+                <i class="fas fa-link"></i> Link
+              </button>`;
+            } else if (hasContract) {
+              return uiBadge('linked', 'Linked', {icon: 'fas fa-check'});
+            }
+            return '-';
+          }
+        }
+      ],
+      drawCallback: function(settings, json) {
+        console.log('✅ DI DataTable drawn');
+        
+        // Load server-side statistics
+        loadDIStatistics();
+        
+        // Wire up Link Contract buttons
+        $('#diTable tbody').off('click', '.link-di-contract').on('click', '.link-di-contract', function() {
+          const diId = $(this).data('di-id');
+          const diNumber = $(this).data('di-number');
+          openLinkDIContractModal(diId, diNumber);
+        });
       }
-      
-      applyFilters();
+    });
+    
+    console.log('✅ Marketing DI DataTable initialized successfully');
+    
+  } catch(error) {
+    console.error('❌ Failed to initialize DI DataTable:', error);
+  }
+  
+  // Filter tab/card click listeners
+  document.querySelectorAll('.filter-tab, .filter-card').forEach(el => {
+    el.addEventListener('click', function(e) {
+      e.preventDefault();
+      filterDIData(this.dataset.filter);
     });
   });
   
-  // Event delegation untuk tombol Link DI to Contract (dynamically created)
-  document.getElementById('diTable').addEventListener('click', function(e) {
-    const btn = e.target.closest('.link-di-contract');
-    if (btn) {
-      e.preventDefault();
-      const diId = btn.dataset.diId;
-      const diNumber = btn.dataset.diNumber;
-      openLinkDIContractModal(diId, diNumber);
-    }
-  });
+  // OLD MANUAL RENDERING CODE REMOVED - Migrated to OptimaDataTable server-side pagination
   
-  loadDI();
-
   let currentDiJenis = ''; // Store jenis_perintah for SPPU
   
   window.openDiDetail = (id) => {

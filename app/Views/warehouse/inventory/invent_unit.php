@@ -165,13 +165,13 @@ $can_export = $permissions['export'];
 
 <!-- Modal View Unit Detail - Enhanced Modern Design -->
 <div class="modal fade" id="viewUnitModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-light border-bottom">
                 <h5 class="modal-title fw-bold"><i class="fas fa-cube me-2 text-secondary"></i><?= lang('App.detailed_unit_information') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body p-0">
+            <div class="modal-body p-0" style="max-height: 70vh; overflow-y: auto;">
                 <div id="unitDetailContent">
                     <!-- Content will be loaded here -->
                 </div>
@@ -192,7 +192,7 @@ $can_export = $permissions['export'];
 
 <!-- Modal Edit Stok Unit -->
 <div class="modal fade" id="editUnitModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Common.edit') ?> <?= lang('App.stock_unit') ?></h5>

@@ -304,6 +304,160 @@ class Operational extends BaseController
 
     }
 
+    /**
+     * Server-side DataTables endpoint for delivery table
+     */
+    public function deliveryData()
+    {
+        $request = $this->request;
+        $draw = $request->getPost('draw') ?? 1;
+        $start = $request->getPost('start') ?? 0;
+        $length = $request->getPost('length') ?? 25;
+        $search = $request->getPost('search')['value'] ?? '';
+        $statusFilter = $request->getPost('status_filter') ?? 'all';
+        
+        // Start with base query
+        $builder = $this->diModel->builder();
+        $builder->select('
+            delivery_instructions.*, 
+            spk.pic as spk_pic, 
+            spk.kontak as spk_kontak,
+            spk.nomor_spk,
+            jpk.nama as jenis_perintah,
+            tpk.nama as tujuan_perintah,
+            delivery_instructions.perencanaan_tanggal_approve,
+            delivery_instructions.berangkat_tanggal_approve,
+            delivery_instructions.sampai_tanggal_approve
+        ')
+        ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
+        ->join('jenis_perintah_kerja jpk', 'jpk.id = delivery_instructions.jenis_perintah_kerja_id', 'left')
+        ->join('tujuan_perintah_kerja tpk', 'tpk.id = delivery_instructions.tujuan_perintah_kerja_id', 'left');
+        
+        // Apply status filter
+        if ($statusFilter !== 'all') {
+            if ($statusFilter === 'SUBMITTED') {
+                $builder->groupStart()
+                    ->where('delivery_instructions.status_di IS NULL')
+                    ->orWhere('delivery_instructions.status_di', 'DIAJUKAN')
+                    ->groupEnd();
+            } elseif ($statusFilter === 'INPROGRESS') {
+                $builder->whereIn('delivery_instructions.status_di', [
+                    'DISETUJUI', 'PERSIAPAN_UNIT', 'SIAP_KIRIM', 'DALAM_PERJALANAN'
+                ]);
+            } elseif ($statusFilter === 'DELIVERED') {
+                $builder->whereIn('delivery_instructions.status_di', ['SAMPAI_LOKASI', 'SELESAI']);
+            } elseif ($statusFilter === 'CANCELLED') {
+                $builder->where('delivery_instructions.status_di', 'DIBATALKAN');
+            }
+        }
+        
+        // Apply search
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('delivery_instructions.nomor_di', $search)
+                ->orLike('delivery_instructions.pelanggan', $search)
+                ->orLike('delivery_instructions.nama_supir', $search)
+                ->orLike('spk.nomor_spk', $search)
+                ->groupEnd();
+        }
+        
+        // Get total filtered count
+        $totalFiltered = $builder->countAllResults(false);
+        
+        // Sorting
+        $orderColumnIndex = $request->getPost('order')[0]['column'] ?? 0;
+        $orderDir = $request->getPost('order')[0]['dir'] ?? 'desc';
+        $columns = ['nomor_di', 'pelanggan', 'total_items', 'jenis_perintah', 'requested_delivery_date', 'status_di', 'nama_supir'];
+        
+        if (isset($columns[$orderColumnIndex])) {
+            if ($orderColumnIndex <= 1 || $orderColumnIndex >= 5) {
+                // Direct DI columns
+                $builder->orderBy('delivery_instructions.' . $columns[$orderColumnIndex], $orderDir);
+            } else {
+                // Joined columns
+                $builder->orderBy($columns[$orderColumnIndex], $orderDir);
+            }
+        } else {
+            $builder->orderBy('delivery_instructions.id', 'DESC');
+        }
+        
+        // Pagination
+        $data = $builder->limit($length, $start)->get()->getResultArray();
+        
+        // Add items information for each DI
+        foreach ($data as &$row) {
+            $items = $this->diItemModel
+                ->where('di_id', $row['id'])
+                ->countAllResults();
+            $row['total_items'] = $items;
+            
+            // Get total units and attachments
+            $itemDetails = $this->diItemModel
+                ->where('di_id', $row['id'])
+                ->findAll();
+            
+            $unitCount = 0;
+            $attachmentCount = 0;
+            foreach ($itemDetails as $item) {
+                if ($item['item_type'] === 'UNIT') {
+                    $unitCount++;
+                } elseif ($item['item_type'] === 'ATTACHMENT') {
+                    $attachmentCount++;
+                }
+            }
+            $row['total_units'] = $unitCount;
+            $row['total_attachments'] = $attachmentCount;
+        }
+        
+        return $this->response->setJSON([
+            'draw' => intval($draw),
+            'recordsTotal' => $this->diModel->countAll(),
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
+    }
+
+    /**
+     * Statistics endpoint for delivery dashboard
+     */
+    public function deliveryStats()
+    {
+        $statusFilter = $this->request->getPost('status_filter') ?? 'all';
+        
+        $builder = $this->diModel->builder();
+        
+        // Total count
+        $total = $builder->countAllResults(false);
+        
+        // Submitted count
+        $submittedBuilder = clone $builder;
+        $submitted = $submittedBuilder
+            ->groupStart()
+            ->where('status_di IS NULL')
+            ->orWhere('status_di', 'DIAJUKAN')
+            ->groupEnd()
+            ->countAllResults(false);
+        
+        // In Progress count
+        $inprogressBuilder = clone $builder;
+        $inprogress = $inprogressBuilder
+            ->whereIn('status_di', ['DISETUJUI', 'PERSIAPAN_UNIT', 'SIAP_KIRIM', 'DALAM_PERJALANAN'])
+            ->countAllResults(false);
+        
+        // Delivered count
+        $deliveredBuilder = clone $builder;
+        $delivered = $deliveredBuilder
+            ->whereIn('status_di', ['SAMPAI_LOKASI', 'SELESAI'])
+            ->countAllResults();
+        
+        return $this->response->setJSON([
+            'total' => $total,
+            'submitted' => $submitted,
+            'inprogress' => $inprogress,
+            'delivered' => $delivered
+        ]);
+    }
+
     public function tracking()
     {
         return view('operational/tracking', [
@@ -383,22 +537,30 @@ class Operational extends BaseController
 
     public function diUpdateStatus($id)
     {
+        log_message('info', "=== diUpdateStatus called for DI {$id} ===");
+        
         // Check permission for updating DI status
         if (!$this->hasPermission('operational.delivery_instructions.edit')) {
+            log_message('warning', "Permission denied for user attempting to update DI {$id}");
             return $this->response->setJSON(['success' => false, 'message' => 'Access denied: You do not have permission to update DI status'])->setStatusCode(403);
         }
         
         if (!$this->request->isAJAX()) {
+            log_message('warning', "Non-AJAX request to diUpdateStatus for DI {$id}");
             return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
         }
         
         $action = $this->request->getPost('action');
+        log_message('info', "Action requested: {$action}");
         
         try {
             $di = $this->diModel->find((int)$id);
             if (!$di) {
+                log_message('error', "DI {$id} not found in database");
                 return $this->response->setJSON(['success'=>false,'message'=>'DI tidak ditemukan']);
             }
+            
+            log_message('info', "Current DI status: " . ($di['status_di'] ?? 'NULL'));
             
             $updateData = [];
             
@@ -410,6 +572,7 @@ class Operational extends BaseController
                     $updateData['kendaraan'] = $this->request->getPost('kendaraan');
                     $updateData['no_polisi_kendaraan'] = $this->request->getPost('no_polisi_kendaraan');
                     $updateData['status_di'] = 'SIAP_KIRIM';
+                    log_message('info', "Setting status_di to SIAP_KIRIM for assign_driver action");
                     break;
                     
                 case 'approve_departure':
@@ -466,9 +629,15 @@ class Operational extends BaseController
             // Update will trigger the sync_di_status_temp_on_update trigger
             $oldDi = $this->diModel->find((int)$id);
             if ($oldDi && !is_array($oldDi)) { $oldDi = (array)$oldDi; }
+            
+            log_message('info', "Updating DI {$id} with data: " . json_encode($updateData));
             $updated = $this->diModel->update((int)$id, $updateData);
             
             if ($updated) {
+                // Verify the update
+                $verifyDi = $this->diModel->find((int)$id);
+                log_message('info', "✅ DI {$id} updated successfully. New status: " . ($verifyDi['status_di'] ?? 'NULL'));
+                
                 // Log DI status update using trait
                 $this->logUpdate('delivery_instruction', $id, $oldDi, $updateData, [
                     'di_id' => $id,
@@ -477,12 +646,16 @@ class Operational extends BaseController
                     'new_status' => $updateData['status_di'] ?? null
                 ]);
                 
+                log_message('info', "=== diUpdateStatus completed successfully for DI {$id} ===");
                 return $this->response->setJSON([
                     'success' => true, 
                     'message' => 'Status DI berhasil diperbarui',
+                    'old_status' => $di['status_di'] ?? null,
+                    'new_status' => $verifyDi['status_di'] ?? null,
                     'csrf_hash' => csrf_hash()
                 ]);
             } else {
+                log_message('error', "❌ Failed to update DI {$id} - Model update() returned false");
                 return $this->response->setJSON(['success'=>false,'message'=>'Gagal memperbarui status DI']);
             }
             
@@ -798,12 +971,16 @@ class Operational extends BaseController
 
     public function diApproveStage($id)
     {
+        log_message('info', 'diApproveStage called for DI ' . $id);
+        
         if (!$this->request->isAJAX()) {
             return $this->response->setStatusCode(400)->setJSON(['success'=>false,'message'=>'Bad request']);
         }
 
         $stage = $this->request->getPost('stage');
         $tanggalApprove = date('Y-m-d'); // Use today's date automatically
+        
+        log_message('info', 'Stage: ' . $stage . ', Date: ' . $tanggalApprove);
 
         if (empty($stage)) {
             return $this->response->setStatusCode(422)->setJSON(['success'=>false,'message'=>'Stage wajib diisi']);
@@ -815,13 +992,15 @@ class Operational extends BaseController
         }
 
         // Find the DI
-    $di = $this->diModel->find((int)$id);
-    if ($di && !is_array($di)) { $di = (array)$di; }
+        $di = $this->diModel->find((int)$id);
+        if ($di && !is_array($di)) { $di = (array)$di; }
         if (!$di) {
             return $this->response->setStatusCode(404)->setJSON(['success'=>false,'message'=>'DI tidak ditemukan']);
         }
+        
+        log_message('info', 'DI found: ' . $di['nomor_di']);
 
-    // Prepare update data based on stage
+        // Prepare update data based on stage
         $updateData = [
             $stage . '_tanggal_approve' => $tanggalApprove,
             'diperbarui_pada' => date('Y-m-d H:i:s')
@@ -862,15 +1041,20 @@ class Operational extends BaseController
             
             // After sampai approval, update status_di to SAMPAI_LOKASI
             $updateData['status_di'] = 'SAMPAI_LOKASI';
+            
+            log_message('info', 'Stage sampai - updating status to SAMPAI_LOKASI');
         }
 
         // Update the DI
         try {
+            log_message('info', 'Attempting to update DI ' . $id . ' with data: ' . json_encode($updateData));
             
             $oldDi = $this->diModel->find((int)$id);
             if ($oldDi && !is_array($oldDi)) { $oldDi = (array)$oldDi; }
             
             $this->diModel->update((int)$id, $updateData);
+            
+            log_message('info', 'DI ' . $id . ' updated successfully');
             
             // Log DI stage approval using trait
             $this->logUpdate('delivery_instruction', $id, $oldDi, $updateData, [
@@ -878,6 +1062,8 @@ class Operational extends BaseController
                 'stage' => $stage,
                 'tanggal_approve' => $tanggalApprove
             ]);
+            
+            log_message('info', 'Activity log recorded for DI ' . $id);
             
         } catch (\Exception $e) {
             log_message('error', 'Failed to update DI ' . $id . ': ' . $e->getMessage());
@@ -887,61 +1073,73 @@ class Operational extends BaseController
             ]);
         }
 
-    // Check if all units in SPK have been delivered before marking as COMPLETED
-    if ($stage === 'sampai' && !empty($di['spk_id'])) {
-            $spkId = $di['spk_id'];
-            
-            // Get total prepared units from SPK
-            $totalUnitsInSpk = $this->db->table('spk_unit_stages')
-                ->where('spk_id', $spkId)
-                ->where('stage_name', 'persiapan_unit')
-                ->where('tanggal_approve IS NOT NULL')
-                ->countAllResults();
-            
-            // Get total units that have been delivered (all DI with SAMPAI_LOKASI or SELESAI)
-            $deliveredUnits = $this->db->query("
-                SELECT COUNT(DISTINCT di_items.unit_id) as total
-                FROM delivery_items di_items
-                INNER JOIN delivery_instructions di ON di.id = di_items.di_id
-                WHERE di.spk_id = ?
-                AND di.status_di IN ('SAMPAI_LOKASI', 'SELESAI')
-                AND di_items.item_type = 'UNIT'
-                AND di_items.unit_id IS NOT NULL
-            ", [$spkId])->getRowArray();
-            
-            $totalDelivered = $deliveredUnits['total'] ?? 0;
-            
-            // Only mark SPK as COMPLETED if all units are delivered
-            if ($totalDelivered >= $totalUnitsInSpk && $totalUnitsInSpk > 0) {
-                $this->db->table('spk')->where('id', $spkId)->update([
-                    'status' => 'COMPLETED',
-                    'diperbarui_pada' => date('Y-m-d H:i:s')
-                ]);
+        // Check if all units in SPK have been delivered before marking as COMPLETED
+        if ($stage === 'sampai' && !empty($di['spk_id'])) {
+            try {
+                $spkId = $di['spk_id'];
                 
-                // Log status history
-                try {
-                    $this->db->table('spk_status_history')->insert([
-                        'spk_id' => $spkId,
-                        'status_from' => 'IN_PROGRESS',
-                        'status_to' => 'COMPLETED',
-                        'changed_by' => session('user_id') ?: 1,
-                        'note' => 'All units delivered: ' . $di['nomor_di'] . " ($totalDelivered/$totalUnitsInSpk units)",
-                        'created_at' => date('Y-m-d H:i:s')
+                // Get total prepared units from SPK
+                $totalUnitsInSpk = $this->db->table('spk_unit_stages')
+                    ->where('spk_id', $spkId)
+                    ->where('stage_name', 'persiapan_unit')
+                    ->where('tanggal_approve IS NOT NULL')
+                    ->countAllResults();
+                
+                // Get total units that have been delivered (all DI with SAMPAI_LOKASI or SELESAI)
+                $deliveredUnits = $this->db->query("
+                    SELECT COUNT(DISTINCT di_items.unit_id) as total
+                    FROM delivery_items di_items
+                    INNER JOIN delivery_instructions di ON di.id = di_items.di_id
+                    WHERE di.spk_id = ?
+                    AND di.status_di IN ('SAMPAI_LOKASI', 'SELESAI')
+                    AND di_items.item_type = 'UNIT'
+                    AND di_items.unit_id IS NOT NULL
+                ", [$spkId])->getRowArray();
+                
+                $totalDelivered = $deliveredUnits['total'] ?? 0;
+                
+                // Only mark SPK as COMPLETED if all units are delivered
+                if ($totalDelivered >= $totalUnitsInSpk && $totalUnitsInSpk > 0) {
+                    $this->db->table('spk')->where('id', $spkId)->update([
+                        'status' => 'COMPLETED',
+                        'diperbarui_pada' => date('Y-m-d H:i:s')
                     ]);
-                } catch (\Exception $e) {
-                    log_message('error', 'Failed to log SPK status history: ' . $e->getMessage());
+                    
+                    // Log status history
+                    try {
+                        $this->db->table('spk_status_history')->insert([
+                            'spk_id' => $spkId,
+                            'status_from' => 'IN_PROGRESS',
+                            'status_to' => 'COMPLETED',
+                            'changed_by' => session('user_id') ?: 1,
+                            'note' => 'All units delivered: ' . $di['nomor_di'] . " ($totalDelivered/$totalUnitsInSpk units)",
+                            'created_at' => date('Y-m-d H:i:s')
+                        ]);
+                    } catch (\Exception $e) {
+                        log_message('error', 'Failed to log SPK status history: ' . $e->getMessage());
+                    }
                 }
+            } catch (\Exception $e) {
+                log_message('error', 'Failed to check/update SPK completion for DI ' . $id . ': ' . $e->getMessage());
+                // Continue execution - not critical
             }
         }
 
-    // If status becomes DELIVERED, activate associated kontrak
-    if ($stage === 'sampai' && !empty($di['po_kontrak_nomor'])) {
-            $this->db->table('kontrak')
-                ->groupStart()
-                    ->where('no_kontrak', $di['po_kontrak_nomor'])
-                    ->orWhere('no_po_marketing', $di['po_kontrak_nomor'])
-                ->groupEnd()
-                ->update(['status'=>'Aktif','diperbarui_pada'=>date('Y-m-d H:i:s')]);
+        // If status becomes DELIVERED, activate associated kontrak
+        if ($stage === 'sampai' && !empty($di['po_kontrak_nomor'])) {
+            try {
+                $this->db->table('kontrak')
+                    ->groupStart()
+                        ->where('no_kontrak', $di['po_kontrak_nomor'])
+                        ->orWhere('no_po_marketing', $di['po_kontrak_nomor'])
+                    ->groupEnd()
+                    ->update(['status'=>'Aktif','diperbarui_pada'=>date('Y-m-d H:i:s')]);
+                    
+                log_message('info', 'Activated kontrak for DI ' . $id);
+            } catch (\Exception $e) {
+                log_message('error', 'Failed to activate kontrak for DI ' . $id . ': ' . $e->getMessage());
+                // Continue execution - not critical
+            }
         }
 
         // CRITICAL FIX: Update inventory_unit and inventory_attachment with kontrak and DI relationships
@@ -1080,6 +1278,8 @@ class Operational extends BaseController
             'berangkat' => 'Berangkat',
             'sampai' => 'Sampai'
         ];
+        
+        log_message('info', 'diApproveStage completed successfully for DI ' . $id . ', stage: ' . $stage);
 
         return $this->response->setJSON([
             'success'=>true,

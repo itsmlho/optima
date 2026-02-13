@@ -97,7 +97,7 @@
 
 <!-- Modal View Attachment Detail -->
 <div class="modal fade" id="viewAttachmentModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-info text-muted">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Attachment</h5>
@@ -153,12 +153,13 @@
                         <input type="text" class="form-control" id="edit_sn_charger" readonly>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_status_unit" class="form-label">Status</label>
-                        <select class="form-select" id="edit_status_unit" name="status_unit" required>
-                            <option value="7">STOCK ASSET</option>
-                            <option value="3">RENT</option>
-                            <option value="9">SELL</option>
-                            <option value="2">DAMAGED</option>
+                        <label for="edit_attachment_status" class="form-label">Status</label>
+                        <select class="form-select" id="edit_attachment_status" name="attachment_status" required>
+                            <option value="AVAILABLE">AVAILABLE</option>
+                            <option value="USED">USED</option>
+                            <option value="IN_USE">IN USE</option>
+                            <option value="MAINTENANCE">MAINTENANCE</option>
+                            <option value="DAMAGED">DAMAGED</option>
                         </select>
                     </div>
                     <div class="mb-3">
@@ -366,7 +367,7 @@
 
 <!-- Add Item Modal -->
 <div class="modal fade" id="addItemModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -1077,7 +1078,7 @@
                     $('#edit_id').val(data.id_inventory_attachment);
                     $('#edit_sn_attachment').val(data.sn_attachment);
                     $('#edit_sn_charger').val(data.sn_charger);
-                    $('#edit_status_unit').val(data.status_unit);
+                    $('#edit_attachment_status').val(data.attachment_status);
                     $('#edit_lokasi').val(data.lokasi_penyimpanan);
                     $('#edit_kondisi').val(data.kondisi_fisik);
                     $('#edit_kelengkapan').val(data.kelengkapan);

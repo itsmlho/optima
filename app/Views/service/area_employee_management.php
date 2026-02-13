@@ -496,7 +496,7 @@
 
 <!-- Placeholder Modals (Edit/View) -->
 <div class="modal fade" id="viewAreaModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg" role="document">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Area Details</h5>
@@ -513,7 +513,7 @@
 </div>
 
 <div class="modal fade" id="viewEmployeeModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg" role="document">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Employee Details</h5>
@@ -698,7 +698,7 @@
 
 <!-- Employee Detail Modal -->
 <div class="modal fade" id="employeeDetailModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg" role="document">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Detail Employee</h5>
@@ -776,7 +776,7 @@
 
 <!-- Area Detail Modal -->
 <div class="modal fade" id="areaDetailModal" tabindex="-1" role="dialog">
-  <div class="modal-dialog modal-lg" role="document">
+  <div class="modal-dialog modal-lg modal-dialog-centered" role="document">
     <div class="modal-content">
       <div class="modal-header">
         <h5 class="modal-title">Detail Area</h5>

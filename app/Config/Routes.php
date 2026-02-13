@@ -197,10 +197,16 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('get-active-contracts', 'Marketing::getActiveContracts');
         $routes->get('get-kontrak/(:num)', 'Marketing::getKontrak/$1');
         $routes->get('find-by-spesifikasi/(:num)', 'Marketing::findBySpesifikasi/$1');
+        
+        // For SPK creation from Quotations (Quotation-based workflow)
+        $routes->get('get-active-quotations-for-spk', 'Kontrak::getActiveQuotationsForSPK');
+        $routes->get('get-quotation-specifications-for-spk/(:num)', 'Kontrak::getQuotationSpecificationsForSPK/$1');
     });
     // SPK Marketing
     $routes->get('spk', 'Marketing::spk');
     $routes->match(['get', 'post'], 'spk/list', 'Marketing::spkList'); // Support both GET and POST for date filtering
+    $routes->post('spk/data', 'Marketing::spkData'); // DataTables endpoint (server-side)
+    $routes->post('spk/stats', 'Marketing::spkStats'); // Statistics endpoint
     $routes->get('spk/kontrak-options', 'Marketing::kontrakOptions');
     $routes->get('spk/spec-options', 'Marketing::specOptions');
     $routes->get('spk/monitoring', 'Marketing::spkMonitoring');
@@ -219,7 +225,9 @@ $routes->group('marketing',  static function ($routes) {
     // Marketing DI page & APIs
     $routes->get('di', 'Marketing::di');
     $routes->get('di/getData', 'Marketing::getDIData');
-    $routes->get('di/list', 'Marketing::diList');
+    $routes->get('di/list', 'Marketing::diList'); // Existing (kept for backward compatibility)
+    $routes->post('di/data', 'Marketing::diData'); // DataTables endpoint
+    $routes->post('di/stats', 'Marketing::diStats'); // Statistics endpoint
     $routes->get('di/detail/(:num)', 'Marketing::diDetail/$1');
     $routes->get('di/print-withdrawal/(:num)', 'Marketing::printWithdrawalLetter/$1'); // SPPU - Surat Perintah Penarikan Unit
     $routes->get('spk/ready-options', 'Marketing::spkReadyOptions');
@@ -539,6 +547,8 @@ $routes->group('service', static function ($routes) {
 $routes->group('operational', static function ($routes) {
     $routes->get('delivery', 'Operational::delivery');
     $routes->get('delivery/list', 'Operational::diList');
+    $routes->post('delivery/data', 'Operational::deliveryData');       // DataTables server-side endpoint
+    $routes->post('delivery/stats', 'Operational::deliveryStats');     // Statistics endpoint
     $routes->get('delivery/detail/(:num)', 'Operational::diDetail/$1');
     $routes->get('delivery/print/(:num)', 'Operational::diPrint/$1');
     $routes->get('delivery/print-multi/(:num)', 'Operational::diPrintMulti/$1');
@@ -1136,6 +1146,10 @@ $routes->get('service/spk/pdf/(:num)', 'Service::spkPdf/$1');
 // SPK Print (HTML) routes (top-level)
 $routes->get('marketing/spk/print/(:num)', 'Marketing::spkPrint/$1');
 $routes->get('service/spk/print/(:num)', 'Service::spkPrint/$1');
+
+// SPK DataTables and Stats routes (top-level)
+$routes->post('service/spk/data', 'Service::spkData'); // DataTables endpoint (server-side)
+$routes->match(['get', 'post'], 'service/spk/stats', 'Service::spkStats'); // Statistics endpoint
 
 $routes->group('warehouse/inventory', static function($r){
     $r->get('available-attachments', 'Warehouse\InventoryApi::availableAttachments');

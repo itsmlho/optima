@@ -214,7 +214,7 @@
 
 <!-- Add Sparepart Modal -->
 <div class="modal fade" id="addSparepartModal" tabindex="-1" aria-labelledby="addSparepartModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="addSparepartModalLabel"><?= lang('Warehouse.add_sparepart') ?></h5>

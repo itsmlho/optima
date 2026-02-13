@@ -547,6 +547,199 @@ class Service extends BaseController
         }
     }
 
+    /**
+     * DataTables server-side processing endpoint for Service SPK
+     */
+    public function spkData()
+    {
+        $request = $this->request;
+        $draw = $request->getPost('draw') ?? 1;
+        $start = $request->getPost('start') ?? 0;
+        $length = $request->getPost('length') ?? 25;
+        $search = $request->getPost('search')['value'] ?? '';
+        $statusFilter = $request->getPost('status_filter') ?? 'all';
+        
+        // Get division-based department filtering
+        $allowedDeptIds = get_user_division_departments();
+        
+        $builder = $this->spkModel->builder();
+        
+        // Join with quotations for quotation_number
+        $builder->select('spk.*, qs.id_quotation, q.quotation_number')
+            ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
+            ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left');
+        
+        // Apply status filter (tab filtering)
+        if ($statusFilter !== 'all') {
+            if ($statusFilter === 'COMPLETED') {
+                $builder->whereIn('spk.status', ['COMPLETED', 'DELIVERED']);
+            } else {
+                $builder->where('spk.status', $statusFilter);
+            }
+        }
+        
+        // Apply search filter
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('spk.nomor_spk', $search)
+                ->orLike('spk.pelanggan', $search)
+                ->orLike('spk.po_kontrak_nomor', $search)
+                ->orLike('spk.pic', $search)
+                ->orLike('spk.kontak', $search)
+                ->orLike('spk.jenis_spk', $search)
+                ->groupEnd();
+        }
+        
+        // Get all results before filtering by department (for division filter)
+        $allResults = $builder->get()->getResultArray();
+        
+        // Filter by department_id in JSON spesifikasi
+        $filteredData = [];
+        foreach ($allResults as $spk) {
+            try {
+                // Add stage status
+                try {
+                    $stageStatus = $this->getSpkStageStatusData($spk['id']);
+                    if ($stageStatus) {
+                        $spk['stage_status'] = $stageStatus;
+                    }
+                } catch (\Exception $e) {
+                    log_message('debug', 'Error getting stage status for SPK ' . $spk['id'] . ': ' . $e->getMessage());
+                }
+                
+                // Apply department filter
+                if ($allowedDeptIds !== null && is_array($allowedDeptIds)) {
+                    $spesifikasi = [];
+                    if (!empty($spk['spesifikasi'])) {
+                        $decoded = json_decode($spk['spesifikasi'], true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                            $spesifikasi = $decoded;
+                        }
+                    }
+                    
+                    $spkDeptId = null;
+                    if (isset($spesifikasi['departemen_id'])) {
+                        $deptId = $spesifikasi['departemen_id'];
+                        $spkDeptId = is_numeric($deptId) ? (int)$deptId : null;
+                    }
+                    
+                    if ($spkDeptId && in_array($spkDeptId, $allowedDeptIds)) {
+                        $filteredData[] = $spk;
+                    }
+                } else {
+                    $filteredData[] = $spk;
+                }
+            } catch (\Exception $e) {
+                log_message('error', 'Error processing SPK ' . ($spk['id'] ?? 'unknown') . ': ' . $e->getMessage());
+                continue;
+            }
+        }
+        
+        // Get total filtered count
+        $totalFiltered = count($filteredData);
+        
+        // Sort filtered data
+        $orderColumnIndex = $request->getPost('order')[0]['column'] ?? 0;
+        $orderDir = $request->getPost('order')[0]['dir'] ?? 'desc';
+        $columns = ['nomor_spk', 'jenis_spk', 'po_kontrak_nomor', 'kontrak_id', 'pelanggan', 'pic', 'kontak', 'status', 'jumlah_unit'];
+        
+        if (isset($columns[$orderColumnIndex])) {
+            $sortColumn = $columns[$orderColumnIndex];
+            usort($filteredData, function($a, $b) use ($sortColumn, $orderDir) {
+                $valA = $a[$sortColumn] ?? '';
+                $valB = $b[$sortColumn] ?? '';
+                if ($orderDir === 'asc') {
+                    return $valA <=> $valB;
+                } else {
+                    return $valB <=> $valA;
+                }
+            });
+        } else {
+            // Default sort by ID desc
+            usort($filteredData, function($a, $b) {
+                return ($b['id'] ?? 0) <=> ($a['id'] ?? 0);
+            });
+        }
+        
+        // Apply pagination
+        $paginatedData = array_slice($filteredData, $start, $length);
+        
+        // Get total count (before any filters) - approximate since we need to count all with dept filter
+        $totalRecords = $totalFiltered;
+        
+        log_message('info', 'Service SPK DataTables - Draw: ' . $draw . ', Total: ' . $totalRecords . ', Filtered: ' . $totalFiltered . ', Returned: ' . count($paginatedData));
+        
+        return $this->response->setJSON([
+            'draw' => intval($draw),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $paginatedData
+        ]);
+    }
+
+    /**
+     * Statistics endpoint for Service SPK
+     */
+    public function spkStats()
+    {
+        $statusFilter = $this->request->getPost('status_filter') ?? 'all';
+        
+        // Get division-based department filtering
+        $allowedDeptIds = get_user_division_departments();
+        
+        // Get all SPK with department filtering
+        $builder = $this->spkModel->builder();
+        $allSpk = $builder->get()->getResultArray();
+        
+        // Filter by department
+        $filteredSpk = [];
+        foreach ($allSpk as $spk) {
+            if ($allowedDeptIds !== null && is_array($allowedDeptIds)) {
+                $spesifikasi = [];
+                if (!empty($spk['spesifikasi'])) {
+                    $decoded = json_decode($spk['spesifikasi'], true);
+                    if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                        $spesifikasi = $decoded;
+                    }
+                }
+                
+                $spkDeptId = null;
+                if (isset($spesifikasi['departemen_id'])) {
+                    $deptId = $spesifikasi['departemen_id'];
+                    $spkDeptId = is_numeric($deptId) ? (int)$deptId : null;
+                }
+                
+                if ($spkDeptId && in_array($spkDeptId, $allowedDeptIds)) {
+                    $filteredSpk[] = $spk;
+                }
+            } else {
+                $filteredSpk[] = $spk;
+            }
+        }
+        
+        // Count by status
+        $total = count($filteredSpk);
+        $inProgress = count(array_filter($filteredSpk, function($spk) {
+            return ($spk['status'] ?? '') === 'IN_PROGRESS';
+        }));
+        $ready = count(array_filter($filteredSpk, function($spk) {
+            return ($spk['status'] ?? '') === 'READY';
+        }));
+        $completed = count(array_filter($filteredSpk, function($spk) {
+            return in_array($spk['status'] ?? '', ['COMPLETED', 'DELIVERED']);
+        }));
+        
+        return $this->response->setJSON([
+            'success' => true,
+            'stats' => [
+                'total' => $total,
+                'in_progress' => $inProgress,
+                'ready' => $ready,
+                'completed' => $completed
+            ]
+        ]);
+    }
+
     public function spkDetail($id)
     {
         // Check permission: Service punya service.access (module permission)
@@ -1489,19 +1682,45 @@ class Service extends BaseController
             
         if ($spkData && $spkData['jenis_spk'] === 'ATTACHMENT') {
             // For ATTACHMENT SPK, get target_unit_id from spesifikasi field
+            log_message('info', "🔍 ATTACHMENT SPK #{$stageData['spk_id']} PDI - DEBUG START");
+            log_message('info', "📦 SPK Data: " . json_encode($spkData));
+            
             if (isset($spkData['spesifikasi'])) {
+                log_message('info', "📄 Raw spesifikasi field: " . $spkData['spesifikasi']);
                 $spesifikasi = json_decode($spkData['spesifikasi'], true);
+                log_message('info', "🔓 Decoded spesifikasi: " . json_encode($spesifikasi));
+                
                 if (isset($spesifikasi['target_unit_id'])) {
                     $stageData['unit_id'] = $spesifikasi['target_unit_id'];
-                    log_message('info', "ATTACHMENT SPK #{$stageData['spk_id']} PDI - Target unit: {$stageData['unit_id']}");
+                    log_message('info', "✅ ATTACHMENT SPK #{$stageData['spk_id']} PDI - Target unit: {$stageData['unit_id']}");
                 } elseif (isset($spesifikasi['unit_id'])) {
                     // Fallback for old data
                     $stageData['unit_id'] = $spesifikasi['unit_id'];
-                    log_message('info', "ATTACHMENT SPK #{$stageData['spk_id']} PDI - Using fallback unit_id: {$stageData['unit_id']}");
+                    log_message('info', "⚠️ ATTACHMENT SPK #{$stageData['spk_id']} PDI - Using fallback unit_id: {$stageData['unit_id']}");
                 } else {
-                    throw new \Exception('Target Unit ID tidak ditemukan untuk SPK ATTACHMENT');
+                    log_message('error', "❌ PDI: Missing target_unit_id in spesifikasi. Available keys: " . implode(', ', array_keys($spesifikasi)));
+                    
+                    // FALLBACK for OLD SPK: Get any unit from contract
+                    if ($spkData['kontrak_id']) {
+                        $contractUnit = $this->db->table('inventory_unit')
+                            ->select('id_inventory_unit')
+                            ->where('kontrak_id', $spkData['kontrak_id'])
+                            ->limit(1)
+                            ->get()
+                            ->getRowArray();
+                        
+                        if ($contractUnit) {
+                            $stageData['unit_id'] = $contractUnit['id_inventory_unit'];
+                            log_message('warning', "⚠️ PDI OLD SPK FALLBACK: Using first unit from contract - unit_id: {$stageData['unit_id']}");
+                        } else {
+                            throw new \Exception('Target Unit ID tidak ditemukan untuk SPK ATTACHMENT PDI');
+                        }
+                    } else {
+                        throw new \Exception('Target Unit ID tidak ditemukan untuk SPK ATTACHMENT PDI');
+                    }
                 }
             } else {
+                log_message('error', "❌ PDI: Field spesifikasi tidak ada di SPK data");
                 throw new \Exception('Data spesifikasi tidak ditemukan untuk SPK ATTACHMENT');
             }
         } else {
@@ -1567,9 +1786,30 @@ class Service extends BaseController
             }
         }
         
-        $this->db->table('inventory_unit')
-            ->where('id_inventory_unit', $unit_id)
-            ->update($updateData);
+        // DEFENSIVE: Whitelist only allowed fields for inventory_unit
+        $allowedFields = ['area_id', 'status_unit_id', 'updated_at', 'no_unit'];
+        $filteredData = [];
+        foreach ($updateData as $key => $value) {
+            if (in_array($key, $allowedFields)) {
+                $filteredData[$key] = $value;
+            } else {
+                log_message('warning', "🚫 Blocked disallowed field '{$key}' from inventory_unit update");
+            }
+        }
+        
+        // DEBUG: Log exact data being updated
+        log_message('info', "🔧 Updating inventory_unit #{$unit_id} with data: " . json_encode($filteredData));
+        
+        // Use Model instead of Query Builder for better protection
+        $inventoryUnitModel = new \App\Models\InventoryUnitModel();
+        $result = $inventoryUnitModel->update($unit_id, $filteredData);
+        
+        if ($result) {
+            log_message('info', "✅ inventory_unit #{$unit_id} updated successfully via Model");
+        } else {
+            log_message('error', "❌ Failed to update inventory_unit #{$unit_id}");
+            throw new \Exception('Failed to update inventory unit');
+        }
     }
 
     /**
@@ -1629,54 +1869,71 @@ class Service extends BaseController
     {
         $old_unit_id = null;
         
-        // If action is 'replace', detach old component first
-        if ($componentData['action'] === 'replace' && !empty($componentData['existing_model_id'])) {
-            // Get old unit_id before detaching for audit log
-            $oldAttachment = $this->db->table('inventory_attachment')
-                ->where('id_inventory_attachment', $componentData['existing_model_id'])
-                ->get()->getRowArray();
-            
-            $old_unit_id = $oldAttachment['id_inventory_unit'] ?? null;
-            
-            $this->db->table('inventory_attachment')
-                ->where('id_inventory_attachment', $componentData['existing_model_id'])
-                ->update([
+        try {
+            // If action is 'replace', detach old component first
+            if ($componentData['action'] === 'replace' && !empty($componentData['existing_model_id'])) {
+                // Get old unit_id before detaching for audit log
+                $oldAttachment = $this->db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $componentData['existing_model_id'])
+                    ->get()->getRowArray();
+                
+                $old_unit_id = $oldAttachment['id_inventory_unit'] ?? null;
+                
+                // Defensive: Explicitly set only allowed fields
+                $updateData = [
                     'id_inventory_unit' => null,
                     'attachment_status' => 'AVAILABLE',
                     'updated_at' => date('Y-m-d H:i:s')
-                ]);
+                ];
+                
+                log_message('info', "🔧 Detaching component {$type} ID {$componentData['existing_model_id']} - Data: " . json_encode($updateData));
+                
+                $this->db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $componentData['existing_model_id'])
+                    ->update($updateData);
+                
+                log_message('info', "Component {$type} ID {$componentData['existing_model_id']} detached from unit {$old_unit_id}");
+            }
             
-            log_message('info', "Component {$type} ID {$componentData['existing_model_id']} detached from unit {$old_unit_id}");
-        }
-        
-        // Attach new component
-        if (!empty($componentData['new_inventory_attachment_id'])) {
-            $this->db->table('inventory_attachment')
-                ->where('id_inventory_attachment', $componentData['new_inventory_attachment_id'])
-                ->update([
+            // Attach new component
+            if (!empty($componentData['new_inventory_attachment_id'])) {
+                // Defensive: Explicitly set only allowed fields
+                $updateData = [
                     'id_inventory_unit' => $unit_id,
                     'attachment_status' => 'USED',
                     'updated_at' => date('Y-m-d H:i:s')
+                ];
+                
+                log_message('info', "🔧 Attaching component {$type} ID {$componentData['new_inventory_attachment_id']} - Data: " . json_encode($updateData));
+                
+                $this->db->table('inventory_attachment')
+                    ->where('id_inventory_attachment', $componentData['new_inventory_attachment_id'])
+                    ->update($updateData);
+                
+                // Log to audit table
+                $transferType = ($componentData['action'] === 'replace' && $old_unit_id) ? 'TRANSFER' : 'NEW_ASSIGNMENT';
+                $triggeredBy = $transferType === 'TRANSFER' ? 'KANIBAL_PERSIAPAN_UNIT' : 'PERSIAPAN_UNIT';
+                
+                $this->db->table('attachment_transfer_log')->insert([
+                    'attachment_id' => $componentData['new_inventory_attachment_id'],
+                    'from_unit_id' => $old_unit_id,
+                    'to_unit_id' => $unit_id,
+                    'transfer_type' => $transferType,
+                    'triggered_by' => $triggeredBy,
+                    'spk_id' => $spk_id,
+                    'stage_name' => $stage_name,
+                    'notes' => ucfirst($type) . ' ' . ($transferType === 'TRANSFER' ? 'transferred' : 'assigned'),
+                    'created_by' => session('user_id') ?? 1,
+                    'created_at' => date('Y-m-d H:i:s')
                 ]);
-            
-            // Log to audit table
-            $transferType = ($componentData['action'] === 'replace' && $old_unit_id) ? 'TRANSFER' : 'NEW_ASSIGNMENT';
-            $triggeredBy = $transferType === 'TRANSFER' ? 'KANIBAL_PERSIAPAN_UNIT' : 'PERSIAPAN_UNIT';
-            
-            $this->db->table('attachment_transfer_log')->insert([
-                'attachment_id' => $componentData['new_inventory_attachment_id'],
-                'from_unit_id' => $old_unit_id,
-                'to_unit_id' => $unit_id,
-                'transfer_type' => $transferType,
-                'triggered_by' => $triggeredBy,
-                'spk_id' => $spk_id,
-                'stage_name' => $stage_name,
-                'notes' => ucfirst($type) . ' ' . ($transferType === 'TRANSFER' ? 'transferred' : 'assigned'),
-                'created_by' => session('user_id') ?? 1,
-                'created_at' => date('Y-m-d H:i:s')
-            ]);
-            
-            log_message('info', "Component {$type} ID {$componentData['new_inventory_attachment_id']} {$transferType} to unit {$unit_id}");
+                
+                log_message('info', "Component {$type} ID {$componentData['new_inventory_attachment_id']} {$transferType} to unit {$unit_id}");
+            }
+        } catch (\Exception $e) {
+            log_message('error', "❌ ERROR in handleComponentReplacement({$type}): " . $e->getMessage());
+            log_message('error', "📍 Error location: " . $e->getFile() . ':' . $e->getLine());
+            log_message('error', "📦 Component data: " . json_encode($componentData));
+            throw $e; // Re-throw untuk tetap menampilkan error ke user
         }
     }
 
@@ -1685,15 +1942,21 @@ class Service extends BaseController
      */
     private function processLegacyComponentData($unit_id, $battery_id, $charger_id, $spk_id = null, $stage_name = 'persiapan_unit')
     {
-        // Update battery attachment
-        if ($battery_id) {
+        try {
+            log_message('info', "🔧 LEGACY: Processing battery={$battery_id}, charger={$charger_id}, unit={$unit_id}");
+            
+            // Update battery attachment
+            if ($battery_id) {
+            // Defensive: Explicitly set only allowed fields
+            $updateData = [
+                'id_inventory_unit' => $unit_id, 
+                'attachment_status' => 'USED', 
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
             $this->db->table('inventory_attachment')
                 ->where('id_inventory_attachment', $battery_id)
-                ->update([
-                    'id_inventory_unit' => $unit_id, 
-                    'attachment_status' => 'USED', 
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
+                ->update($updateData);
             
             // Log to audit table
             $this->db->table('attachment_transfer_log')->insert([
@@ -1712,13 +1975,16 @@ class Service extends BaseController
         
         // Update charger attachment
         if ($charger_id) {
+            // Defensive: Explicitly set only allowed fields
+            $updateData = [
+                'id_inventory_unit' => $unit_id, 
+                'attachment_status' => 'USED', 
+                'updated_at' => date('Y-m-d H:i:s')
+            ];
+            
             $this->db->table('inventory_attachment')
                 ->where('id_inventory_attachment', $charger_id)
-                ->update([
-                    'id_inventory_unit' => $unit_id, 
-                    'attachment_status' => 'USED', 
-                    'updated_at' => date('Y-m-d H:i:s')
-                ]);
+                ->update($updateData);
             
             // Log to audit table
             $this->db->table('attachment_transfer_log')->insert([
@@ -1733,6 +1999,12 @@ class Service extends BaseController
                 'created_by' => session('user_id') ?? 1,
                 'created_at' => date('Y-m-d H:i:s')
             ]);
+        }
+        } catch (\Exception $e) {
+            log_message('error', "❌ ERROR in processLegacyComponentData: " . $e->getMessage());
+            log_message('error', "📍 Error location: " . $e->getFile() . ':' . $e->getLine());
+            log_message('error', "📦 Data: battery_id={$battery_id}, charger_id={$charger_id}, unit_id={$unit_id}");
+            throw $e;
         }
     }
 
@@ -1892,19 +2164,45 @@ class Service extends BaseController
             
         if ($spkData && $spkData['jenis_spk'] === 'ATTACHMENT') {
             // For ATTACHMENT SPK, get target_unit_id from spesifikasi field
+            log_message('info', "🔍 ATTACHMENT SPK #{$stageData['spk_id']} - DEBUG START");
+            log_message('info', "📦 SPK Data: " . json_encode($spkData));
+            
             if (isset($spkData['spesifikasi'])) {
+                log_message('info', "📄 Raw spesifikasi field: " . $spkData['spesifikasi']);
                 $spesifikasi = json_decode($spkData['spesifikasi'], true);
+                log_message('info', "🔓 Decoded spesifikasi: " . json_encode($spesifikasi));
+                
                 if (isset($spesifikasi['target_unit_id'])) {
                     $stageData['unit_id'] = $spesifikasi['target_unit_id'];
-                    log_message('info', "ATTACHMENT SPK #{$stageData['spk_id']} - Target unit: {$stageData['unit_id']} ({$spesifikasi['target_unit_sn']})");
+                    log_message('info', "✅ ATTACHMENT SPK #{$stageData['spk_id']} - Target unit: {$stageData['unit_id']} ({$spesifikasi['target_unit_sn']})");
                 } elseif (isset($spesifikasi['unit_id'])) {
                     // Fallback for old data
                     $stageData['unit_id'] = $spesifikasi['unit_id'];
-                    log_message('info', "ATTACHMENT SPK #{$stageData['spk_id']} - Using fallback unit_id: {$stageData['unit_id']}");
+                    log_message('info', "⚠️ ATTACHMENT SPK #{$stageData['spk_id']} - Using fallback unit_id: {$stageData['unit_id']}");
                 } else {
-                    throw new \Exception('Target Unit ID tidak ditemukan untuk SPK ATTACHMENT. Pastikan unit tujuan sudah dipilih saat pembuatan SPK.');
+                    log_message('error', "❌ Missing target_unit_id in spesifikasi. Available keys: " . implode(', ', array_keys($spesifikasi)));
+                    
+                    // FALLBACK for OLD SPK: Get any unit from contract
+                    if ($spkData['kontrak_id']) {
+                        $contractUnit = $this->db->table('inventory_unit')
+                            ->select('id_inventory_unit')
+                            ->where('kontrak_id', $spkData['kontrak_id'])
+                            ->limit(1)
+                            ->get()
+                            ->getRowArray();
+                        
+                        if ($contractUnit) {
+                            $stageData['unit_id'] = $contractUnit['id_inventory_unit'];
+                            log_message('warning', "⚠️ OLD SPK FALLBACK: Using first unit from contract - unit_id: {$stageData['unit_id']}");
+                        } else {
+                            throw new \Exception('Target Unit ID tidak ditemukan untuk SPK ATTACHMENT. Pastikan unit tujuan sudah ditentukan saat pembuatan SPK atau sudah ada unit yang terdaftar di kontrak.');
+                        }
+                    } else {
+                        throw new \Exception('Target Unit ID tidak ditemukan untuk SPK ATTACHMENT. SPK ini dibuat sebelum fitur Target Unit ditambahkan. Silakan buat SPK baru atau hubungi Admin untuk update manual.');
+                    }
                 }
             } else {
+                log_message('error', "❌ Field spesifikasi tidak ada di SPK data");
                 throw new \Exception('Data spesifikasi tidak ditemukan untuk SPK ATTACHMENT');
             }
         } else {
@@ -2765,7 +3063,6 @@ EOF;
                 'tipe_item' => $type,
                 'kondisi_fisik' => $kondisiFisik ?: 'Baik',
                 'kelengkapan' => $kelengkapan ?: 'Lengkap',
-                'status_unit' => 7, // AVAILABLE_STOCK
                 'attachment_status' => 'AVAILABLE',
                 'po_id' => 1, // default PO, you might want to make this dynamic
                 'created_at' => date('Y-m-d H:i:s'),
