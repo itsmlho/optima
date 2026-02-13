@@ -8,7 +8,7 @@
 
 <!-- Addendum Prorate Split Modal -->
 <div class="modal fade" id="addendumProrateModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-gradient-primary text-white">
                 <div>

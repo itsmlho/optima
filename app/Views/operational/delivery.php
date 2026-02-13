@@ -86,48 +86,26 @@
     </ul>
     
     <div class="card-body">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <div class="d-flex align-items-center gap-2">
-          <span><?= lang('App.show') ?></span>
-          <select class="form-select form-select-sm w-auto" id="entriesPerPage">
-            <option value="10">10</option>
-            <option value="25">25</option>
-            <option value="50">50</option>
-            <option value="100">100</option>
-          </select>
-          <span>entries</span>
-        </div>
-        <div class="d-flex align-items-center gap-2">
-          <span>Search:</span>
-          <input type="text" class="form-control form-control-sm w-200px" id="diSearch" placeholder="">
-        </div>
-      </div>
+      <!-- DataTables will handle pagination and search controls -->
 
       <div class="table-responsive">
-        <table class="table table-striped table-hover table-manual-sort table-sm" id="diTable">
-          <thead>
+        <table class="table table-striped table-hover table-manual-sort" id="diTable">
+          <thead class="table-light">
             <tr>
-              <th class="w-110px">DI Number</th>
-              <th class="w-120px">Customer</th>
-              <th class="w-60px">Items</th>
-              <th class="w-70px">Type</th>
-              <th class="w-85px">Delivery</th>
-              <th class="w-80px">Status</th>
-              <th class="w-80px">Driver</th>
-              <th class="w-160px" data-no-sort>Actions</th>
+              <th>DI Number</th>
+              <th>Customer</th>
+              <th>Items</th>
+              <th class="d-none d-lg-table-cell">Type</th>
+              <th class="d-none d-xl-table-cell">Delivery</th>
+              <th>Status</th>
+              <th class="d-none d-lg-table-cell">Driver</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
       </div>
-
-      <!-- Pagination and Info -->
-      <div class="d-flex justify-content-between align-items-center mt-3">
-        <div id="diTableInfo">Showing 0 to 0 of 0 entries</div>
-        <nav>
-          <ul class="pagination pagination-sm mb-0" id="diPagination"></ul>
-        </nav>
-      </div>
+      <!-- DataTables will add pagination and info here automatically -->
     </div>
   </div>
 </div>
@@ -136,363 +114,200 @@
 let currentApprovalStage = '';
 let currentDiId = null;
 
-// Global variables for filtering and pagination
-let allDIData = [];
-let filteredDIData = [];
+// Global variable for filtering
 let currentFilter = 'all';
-let currentPage = 1;
-let entriesPerPage = 10;
+let diTable; // DataTable instance
 
 document.addEventListener('DOMContentLoaded', ()=>{
-  const tb = document.querySelector('#diTable tbody');
   
-  function load(startDate = null, endDate = null){
-    let url = '<?= base_url('operational/delivery/list') ?>';
-    if (startDate && endDate) {
-      url += `?start_date=${startDate}&end_date=${endDate}`;
-    }
-    fetch(url).then(r=>r.json()).then(j=>{
-      allDIData = j.data || [];
-      updateStatistics();
-      applyFilters();
-    });
-  }
-  
-  // Load initial data
-  load();
-  
-  function updateStatistics() {
-    const total = allDIData.length;
-    // Count by status_di
-    const submitted = allDIData.filter(item => {
-      const status = (item.status_di || '').toUpperCase();
-      return !item.status_di || status === 'DIAJUKAN';
-    }).length;
-    const inprogress = allDIData.filter(item => {
-      const status = (item.status_di || '').toUpperCase();
-      return status === 'DISETUJUI' || 
-             status === 'PERSIAPAN_UNIT' ||
-             status === 'SIAP_KIRIM' ||
-             status === 'DALAM_PERJALANAN';
-    }).length;
-    const delivered = allDIData.filter(item => {
-      const status = (item.status_di || '').toUpperCase();
-      return status === 'SAMPAI_LOKASI' || status === 'SELESAI';
-    }).length;
+  // Helper render functions for DataTables columns
+  const formatTotalItems = (data, type, row) => {
+    const totalUnits = row.total_units || 0;
+    const totalAttachments = row.total_attachments || 0;
+    const jenisSpk = row.jenis_spk || 'UNIT';
     
-    document.getElementById('totalDI').textContent = total;
-    document.getElementById('submittedDI').textContent = submitted;
-    document.getElementById('inprogressDI').textContent = inprogress;
-    document.getElementById('deliveredDI').textContent = delivered;
-  }
-  
-  function applyFilters() {
-    const searchTerm = document.getElementById('diSearch').value.toLowerCase();
-    
-    // Filter by status_di - map between Indonesian and English status terms
-    let filtered;
-    if (currentFilter === 'all') {
-      filtered = [...allDIData];
-    } else if (currentFilter === 'SUBMITTED') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return !item.status_di || status === 'DIAJUKAN';
-      });
-    } else if (currentFilter === 'INPROGRESS') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return status === 'DISETUJUI' || 
-               status === 'PERSIAPAN_UNIT' ||
-               status === 'SIAP_KIRIM' ||
-               status === 'DALAM_PERJALANAN';
-      });
-    } else if (currentFilter === 'DELIVERED') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return status === 'SAMPAI_LOKASI' || status === 'SELESAI';
-      });
-    } else if (currentFilter === 'CANCELLED') {
-      filtered = allDIData.filter(item => {
-        const status = (item.status_di || '').toUpperCase();
-        return status === 'DIBATALKAN';
-      });
+    if (jenisSpk === 'ATTACHMENT') {
+      if (totalAttachments > 0) {
+        const text = totalAttachments === 1 ? 'attachment' : 'attachments';
+        return `<span class="badge bg-warning">${totalAttachments} ${text}</span>`;
+      }
+      return '<span class="text-muted">No attachments</span>';
     } else {
-      // Legacy filter - exact match
-      filtered = allDIData.filter(item => (item.status_di || '').toUpperCase() === currentFilter);
+      if (totalUnits > 0) {
+        const text = totalUnits === 1 ? 'unit' : 'units';
+        return `<span class="badge bg-info">${totalUnits} ${text}</span>`;
+      } else if (totalAttachments > 0) {
+        const text = totalAttachments === 1 ? 'attachment' : 'attachments';
+        return `<span class="badge bg-warning">${totalAttachments} ${text}</span>`;
+      }
+      return '<span class="text-muted">-</span>';
     }
-    
-    // Filter by search term
-    if (searchTerm) {
-      filtered = filtered.filter(item => {
-        return (item.nomor_di || '').toLowerCase().includes(searchTerm) ||
-               (item.po_kontrak_nomor || '').toLowerCase().includes(searchTerm) ||
-               (item.pelanggan || '').toLowerCase().includes(searchTerm) ||
-               (item.lokasi || '').toLowerCase().includes(searchTerm) ||
-               (item.items_label || '').toLowerCase().includes(searchTerm);
-      });
-    }
-    
-    filteredDIData = filtered;
-    currentPage = 1; // Reset to first page
-    renderDITable();
-    updatePagination();
-  }
+  };
   
-  function renderDITable() {
-    const startIndex = (currentPage - 1) * entriesPerPage;
-    const endIndex = startIndex + entriesPerPage;
-    const dataToShow = filteredDIData.slice(startIndex, endIndex);
+  const formatDriverCompact = (data, type, row) => {
+    const driver = row.nama_supir || '-';
+    const vehicle = row.no_polisi_kendaraan || '';
+    if (driver === '-') return '-';
+    return `<div class="small">${driver}${vehicle ? '<br><small class="text-muted">' + vehicle + '</small>' : ''}</div>`;
+  };
+  
+  const getStatusDisplay = (data, type, row) => {
+    const statusUpper = (row.status_di || '').toUpperCase();
+    const statusMap = {
+      'DIAJUKAN': { text: 'SUBMITTED', color: 'secondary' },
+      'DISETUJUI': { text: 'APPROVED', color: 'info' },
+      'PERSIAPAN_UNIT': { text: 'UNIT_PREPARATION', color: 'warning' },
+      'SIAP_KIRIM': { text: 'READY_TO_SHIP', color: 'primary' },
+      'DALAM_PERJALANAN': { text: 'IN_TRANSIT', color: 'warning' },
+      'SAMPAI_LOKASI': { text: 'ARRIVED_AT_LOCATION', color: 'success' },
+      'SELESAI': { text: 'COMPLETED', color: 'success' },
+      'DIBATALKAN': { text: 'CANCELLED', color: 'danger' }
+    };
+    const mapped = statusMap[statusUpper] || { text: row.status_di || 'SUBMITTED', color: 'secondary' };
+    return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
+  };
+  
+  const formatActions = (data, type, row) => {
+    const statusUpper = (row.status_di || '').toUpperCase();
     
-    tb.innerHTML = '';
-    dataToShow.forEach(r=>{
-      const tr = document.createElement('tr');
+    if (!row.status_di || statusUpper === 'DIAJUKAN') {
+      return `<button class="btn btn-sm btn-success" onclick="prosesDI(${row.id})"><i class="fas fa-play"></i> Proses DI</button>`;
+    }
+    
+    if (['SIAP_KIRIM', 'DISETUJUI', 'PERSIAPAN_UNIT', 'DALAM_PERJALANAN'].includes(statusUpper)) {
+      const perencanaanDone = row.perencanaan_tanggal_approve ? true : false;
+      const berangkatDone = row.berangkat_tanggal_approve ? true : false;
+      const sampaiDone = row.sampai_tanggal_approve ? true : false;
       
-      // Helper function for compact driver display
-      const formatCompactDriver = (r) => {
-        const driver = r.nama_supir || '-';
-        const vehicle = r.no_polisi_kendaraan || '';
-        if (driver === '-') return '-';
-        return `<div class="small">${driver}${vehicle ? '<br><small class="text-muted">' + vehicle + '</small>' : ''}</div>`;
-      };
-      
-      // Conditional action button based on status - approval workflow style
-      let aksiBtn = '';
-      const statusDi = (r.status_di || '').toUpperCase();
-      if (!r.status_di || statusDi === 'DIAJUKAN') {
-        aksiBtn = '<span class="text-muted">Menunggu diproses</span>';
-      } else if (statusDi === 'SIAP_KIRIM' || statusDi === 'DISETUJUI' || statusDi === 'PERSIAPAN_UNIT' || statusDi === 'DALAM_PERJALANAN') {
-        // Show approval stage buttons directly in table
-        const perencanaanDone = r.perencanaan_tanggal_approve ? true : false;
-        const berangkatDone = r.berangkat_tanggal_approve ? true : false;
-        const sampaiDone = r.sampai_tanggal_approve ? true : false;
-        
-        let approvalButtons = [];
-        
-        // Add active button for current stage
-        if (!perencanaanDone) {
-          approvalButtons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${r.id})">Plan</button>`);
-        } else if (!berangkatDone) {
-          approvalButtons.push(`<button class="btn btn-sm btn-primary" onclick="openApprovalModal('berangkat', 'Depart', ${r.id})">Depart</button>`);
-        } else if (!sampaiDone) {
-          approvalButtons.push(`<button class="btn btn-sm btn-success" onclick="openApprovalModal('sampai', 'Arrive', ${r.id})">Arrive</button>`);
-        } else {
-          // All approvals done - should be ARRIVED status already
-          approvalButtons.push('<span class="text-success small">Completed</span>');
-        }
-        
-        // Add small completed badges
-        const completedBadges = [];
-        if (perencanaanDone) completedBadges.push('<span class="badge bg-success">✓</span>');
-        if (berangkatDone) completedBadges.push('<span class="badge bg-success">✓</span>');
-        if (sampaiDone) completedBadges.push('<span class="badge bg-success">✓</span>');
-        
-        aksiBtn = `<div class="stage-buttons">${approvalButtons.join(' ')}</div>`;
-        if (completedBadges.length > 0) {
-          aksiBtn += `<div class="stage-badges mt-1">${completedBadges.join('')}</div>`;
-        }
-      } else if (statusDi === 'SAMPAI_LOKASI' || statusDi === 'SELESAI') {
-        aksiBtn = '<span class="text-success">Completed</span>';
+      let buttons = [];
+      if (!perencanaanDone) {
+        buttons.push(`<button class="btn btn-sm btn-warning" onclick="openApprovalModal('perencanaan', 'Plan Shipping', ${row.id})">Plan</button>`);
+      } else if (!berangkatDone) {
+        buttons.push(`<button class="btn btn-sm btn-primary" onclick="openApprovalModal('berangkat', 'Depart', ${row.id})">Depart</button>`);
+      } else if (!sampaiDone) {
+        buttons.push(`<button class="btn btn-sm btn-success" onclick="openApprovalModal('sampai', 'Arrive', ${row.id})">Arrive</button>`);
       } else {
-        aksiBtn = '<span class="text-muted">-</span>';
+        buttons.push('<span class="text-success small">Completed</span>');
       }
       
-      // Function to format total units display for operational
-      const formatTotalUnits = (r) => {
-        const totalUnits = r.total_units || 0;
-        const totalAttachments = r.total_attachments || 0;
-        const jenisSpk = r.jenis_spk || 'UNIT'; // Use jenis_spk from delivery_instructions
-        
-        if (jenisSpk === 'ATTACHMENT') {
-          // For ATTACHMENT SPK, prioritize attachments count
-          if (totalAttachments > 0) {
-            const attachmentText = totalAttachments === 1 ? 'attachment' : 'attachments';
-            return `<span class="badge bg-warning">${totalAttachments} ${attachmentText}</span>`;
-          } else {
-            return '<span class="text-muted">No attachments</span>';
-          }
-        } else {
-          // For UNIT SPK, prioritize units count
-          if (totalUnits > 0) {
-            const unitText = totalUnits === 1 ? 'unit' : 'units';
-            return `<span class="badge bg-info">${totalUnits} ${unitText}</span>`;
-          } else if (totalAttachments > 0) {
-            // Fallback to attachments if no units but has attachments
-            const attachmentText = totalAttachments === 1 ? 'attachment' : 'attachments';
-            return `<span class="badge bg-warning">${totalAttachments} ${attachmentText}</span>`;
-          } else {
-            return '<span class="text-muted">-</span>';
-          }
-        }
-      };
-
-      // Function to format location column with smart truncation and tooltip
-      const formatLokasiColumn = (lokasi) => {
-        if (!lokasi || lokasi === '-') {
-          return '<span class="text-muted">-</span>';
-        }
-        
-        // Limit preview to reasonable length
-        const maxPreviewLength = 40;
-        const isLong = lokasi.length > maxPreviewLength;
-        
-        if (isLong) {
-          const preview = lokasi.substring(0, maxPreviewLength) + '...';
-          // Use title attribute for native browser tooltip
-          return `<span title="${lokasi.replace(/"/g, '&quot;')}" class="cursor-help border-bottom-dotted">${preview}</span>`;
-        } else {
-          return lokasi;
-        }
-      };
+      const badges = [];
+      if (perencanaanDone) badges.push('<span class="badge bg-success">✓</span>');
+      if (berangkatDone) badges.push('<span class="badge bg-success">✓</span>');
+      if (sampaiDone) badges.push('<span class="badge bg-success">✓</span>');
       
-      // Format driver/vehicle info
-      const formatDriverVehicle = (r) => {
-        const driver = r.nama_supir || '-';
-        const vehicle = r.kendaraan && r.no_polisi_kendaraan ? 
-          `${r.kendaraan} (${r.no_polisi_kendaraan})` : 
-          (r.kendaraan || r.no_polisi_kendaraan || '-');
-        
-        if (driver === '-' && vehicle === '-') return '-';
-        return `<div class="small"><strong>Driver:</strong> ${driver}<br><strong>Vehicle:</strong> ${vehicle}</div>`;
-      };
-      
-      // Operational status display
-      const getOperationalStatusDisplay = (r) => {
-        const status = r.status_di;
-        const statusUpper = (status || '').toUpperCase();
-        const statusMap = {
-          'DIAJUKAN': { text: 'SUBMITTED', color: 'secondary' },
-          'DISETUJUI': { text: 'APPROVED', color: 'info' },
-          'PERSIAPAN_UNIT': { text: 'UNIT_PREPARATION', color: 'warning' },
-          'SIAP_KIRIM': { text: 'READY_TO_SHIP', color: 'primary' },
-          'DALAM_PERJALANAN': { text: 'IN_TRANSIT', color: 'warning' },
-          'SAMPAI_LOKASI': { text: 'ARRIVED_AT_LOCATION', color: 'success' },
-          'SELESAI': { text: 'COMPLETED', color: 'success' },
-          'DIBATALKAN': { text: 'CANCELLED', color: 'danger' }
-        };
-        const mapped = statusMap[statusUpper] || { text: status || 'SUBMITTED', color: 'secondary' };
-        return `<span class="badge bg-${mapped.color}">${mapped.text}</span>`;
-      };
-      
-      // Function to add workflow indicators to tujuan
-      window.formatTujuanWithIndicator = (tujuan) => {
-        if (!tujuan) return '-';
-        
-        let indicator = '';
-        let tooltip = '';
-        
-        if (tujuan.includes('HABIS_KONTRAK') || tujuan.includes('Habis Kontrak')) {
-          indicator = '🔴';
-          tooltip = 'PERMANENT: Unit disconnected from customer';
-        } else if (tujuan.includes('MAINTENANCE') || tujuan.includes('Maintenance')) {
-          if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
-            indicator = '🟡';
-            tooltip = 'TEMPORARY REPLACEMENT: Original unit returns after maintenance';
-          } else {
-            indicator = '🔵';
-            tooltip = 'TEMPORARY: Unit returns after service';
-          }
-        } else if (tujuan.includes('RUSAK') || tujuan.includes('Rusak')) {
-          if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
-            indicator = '🔴';
-            tooltip = 'PERMANENT: Unit replaced';
-          } else {
-            indicator = '🔵';
-            tooltip = 'TEMPORARY: Unit returns after repair';
-          }
-        } else if (tujuan.includes('PINDAH_LOKASI') || tujuan.includes('Pindah')) {
-          indicator = '🟢';
-          tooltip = 'RELOCATION: Same customer, different location';
-        } else if (tujuan.includes('UPGRADE') || tujuan.includes('DOWNGRADE')) {
-          indicator = '🔴';
-          tooltip = 'PERMANENT: Unit replaced';
-        }
-        
-        return indicator ? `<span title="${tooltip}">${indicator}</span> ${tujuan}` : tujuan;
-      };
-      
-      tr.innerHTML = `
-        <td><a href="#" onclick="openDiDetail(${r.id});return false;" class="fw-medium">${r.nomor_di}</a></td>
-        <td class="small">${(r.pelanggan||'-').length > 15 ? (r.pelanggan||'-').substring(0, 15) + '...' : (r.pelanggan||'-')}</td>
-        <td class="text-center">${formatTotalUnits(r)}</td>
-        <td class="small">${r.jenis_perintah || '-'}</td>
-        <td class="small">${r.tanggal_kirim||'-'}</td>
-        <td>${getOperationalStatusDisplay(r)}</td>
-        <td class="small">${formatCompactDriver(r)}</td>
-        <td>${aksiBtn}</td>`;
-
-      tb.appendChild(tr);
-    });
-    
-    // Update table info
-    const totalEntries = filteredDIData.length;
-    const start = totalEntries === 0 ? 0 : ((currentPage - 1) * entriesPerPage) + 1;
-    const end = Math.min(currentPage * entriesPerPage, totalEntries);
-    document.getElementById('diTableInfo').textContent = 
-      `Showing ${start} to ${end} of ${totalEntries} entries`;
-  }
-  
-  function updatePagination() {
-    const totalPages = Math.ceil(filteredDIData.length / entriesPerPage);
-    const pagination = document.getElementById('diPagination');
-    pagination.innerHTML = '';
-    
-    // Previous button
-    const prevLi = document.createElement('li');
-    prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
-    prevLi.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + (currentPage - 1) + ')">Previous</a>';
-    pagination.appendChild(prevLi);
-    
-    // Page numbers
-    for (let i = 1; i <= totalPages; i++) {
-      const li = document.createElement('li');
-      li.className = `page-item ${currentPage === i ? 'active' : ''}`;
-      li.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + i + ')">' + i + '</a>';
-      pagination.appendChild(li);
+      let html = `<div class="stage-buttons">${buttons.join(' ')}</div>`;
+      if (badges.length > 0) {
+        html += `<div class="stage-badges mt-1">${badges.join('')}</div>`;
+      }
+      return html;
     }
     
-    // Next button
-    const nextLi = document.createElement('li');
-    nextLi.className = `page-item ${currentPage === totalPages || totalPages === 0 ? 'disabled' : ''}`;
-    nextLi.innerHTML = '<a class="page-link" href="#" onclick="changePage(' + (currentPage + 1) + ')">Next</a>';
-    pagination.appendChild(nextLi);
-  }
-  
-  window.changePage = function(page) {
-    const totalPages = Math.ceil(filteredDIData.length / entriesPerPage);
-    if (page >= 1 && page <= totalPages) {
-      currentPage = page;
-      renderDITable();
-      updatePagination();
+    if (['SAMPAI_LOKASI', 'SELESAI'].includes(statusUpper)) {
+      return '<span class="text-success">Completed</span>';
     }
+    
+    return '<span class="text-muted">-</span>';
+  };
+  
+  // Initialize DataTable
+  try {
+    diTable = OptimaDataTable.init('#diTable', {
+      ajax: {
+        url: '<?= base_url('operational/delivery/data') ?>',
+        type: 'POST',
+        data: function(d) {
+          d.status_filter = currentFilter;
+          return d;
+        }
+      },
+      serverSide: true,
+      pageLength: 25,
+      lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
+      order: [[0, 'desc']],
+      columns: [
+        { 
+          data: 'nomor_di',
+          responsivePriority: 1,
+          render: function(data, type, row) {
+            return `<a href="#" onclick="openDiDetail(${row.id});return false;" class="fw-medium">${data}</a>`;
+          }
+        },
+        { 
+          data: 'pelanggan',
+          responsivePriority: 2,
+          render: function(data, type, row) {
+            const pelanggan = data || '-';
+            return pelanggan.length > 15 ? 
+              `<span class="small">${pelanggan.substring(0, 15)}...</span>` : 
+              `<span class="small">${pelanggan}</span>`;
+          }
+        },
+        { 
+          data: null,
+          responsivePriority: 3,
+          className: 'text-center',
+          render: formatTotalItems,
+          orderable: false
+        },
+        { 
+          data: 'jenis_perintah',
+          className: 'd-none d-lg-table-cell small',
+          responsivePriority: 6,
+          defaultContent: '-'
+        },
+        { 
+          data: 'requested_delivery_date',
+          className: 'd-none d-xl-table-cell small',
+          responsivePriority: 7,
+          defaultContent: '-'
+        },
+        { 
+          data: 'status_di',
+          responsivePriority: 4,
+          render: getStatusDisplay
+        },
+        { 
+          data: null,
+          className: 'd-none d-lg-table-cell small',
+          responsivePriority: 8,
+          render: formatDriverCompact,
+          orderable: false
+        },
+        { 
+          data: null,
+          responsivePriority: 5,
+          render: formatActions,
+          orderable: false
+        }
+      ]
+    });
+    
+    console.log('✅ Operational Delivery DataTable initialized');
+  } catch(error) {
+    console.error('❌ Failed to initialize DataTable:', error);
   }
   
-  // Event listeners
-  document.getElementById('entriesPerPage').addEventListener('change', function() {
-    entriesPerPage = parseInt(this.value);
-    currentPage = 1;
-    renderDITable();
-    updatePagination();
-  });
+  // Load statistics - make it global so prosesDI can call it
+  window.loadStatistics = function() {
+    fetch('<?= base_url('operational/delivery/stats') ?>', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status_filter: currentFilter })
+    })
+    .then(r => r.json())
+    .then(stats => {
+      document.getElementById('totalDI').textContent = stats.total || 0;
+      document.getElementById('submittedDI').textContent = stats.submitted || 0;
+      document.getElementById('inprogressDI').textContent = stats.inprogress || 0;
+      document.getElementById('deliveredDI').textContent = stats.delivered || 0;
+    })
+    .catch(err => console.error('Failed to load statistics:', err));
+  }
   
-  document.getElementById('diSearch').addEventListener('input', function() {
-    applyFilters();
-  });
+  // Initial stats load
+  loadStatistics();
   
-  // Filter card click listeners
-  document.querySelectorAll('.filter-card').forEach(card => {
-    card.addEventListener('click', function() {
-      const filter = this.dataset.filter;
-      currentFilter = filter;
-      
-      // Update active card
-      document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
-      this.classList.add('active');
-      
-      applyFilters();
-    });
-  });
-  
-  // Add filter tab click listeners
+  // Filter handling
   document.querySelectorAll('.filter-tab').forEach(tab => {
     tab.addEventListener('click', function(e) {
       e.preventDefault();
@@ -505,17 +320,113 @@ document.addEventListener('DOMContentLoaded', ()=>{
       
       // Update active card
       document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
-      const correspondingCard = document.querySelector(`[data-filter="${filter}"]`);
-      if (correspondingCard) {
-        correspondingCard.classList.add('active');
-      }
+      const card = document.querySelector(`.filter-card[data-filter="${filter}"]`);
+      if (card) card.classList.add('active');
       
-      applyFilters();
+      // Reload table with new filter
+      if (diTable) {
+        diTable.ajax.reload();
+      }
     });
   });
   
-  load();
-  // Approval Stage Modal Functions (similar to SPK workflow)
+  // Filter card click listeners
+  document.querySelectorAll('.filter-card').forEach(card => {
+    card.addEventListener('click', function() {
+      const filter = this.dataset.filter;
+      currentFilter = filter;
+      
+      // Update active card
+      document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      
+      // Update active tab
+      document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+      const tab = document.querySelector(`.filter-tab[data-filter="${filter}"]`);
+      if (tab) tab.classList.add('active');
+      
+      // Reload table with new filter
+      if (diTable) {
+        diTable.ajax.reload();
+      }
+    });
+  });
+  
+  // Add form submission handler for approval stage (must be inside DOMContentLoaded)
+  const approvalForm = document.getElementById('approvalStageForm');
+  if (approvalForm) {
+    approvalForm.addEventListener('submit', function(e){
+      e.preventDefault();
+      
+      // Debug log
+      console.log('Form submitted. Current variables:', { currentApprovalStage, currentDiId });
+      
+      // Check if currentApprovalStage is defined
+      if (!currentApprovalStage) {
+        console.error('currentApprovalStage is not defined!');
+        notify('Error: Stage approval tidak terdefinisi', 'error');
+        return;
+      }
+      
+      const fd = new FormData(this);
+      fd.append('stage', currentApprovalStage);
+      
+      // Debug: Log all form data
+      console.log('Form data being sent:');
+      for (let [key, value] of fd.entries()) {
+        console.log(key, value);
+      }
+      
+      fetch(`<?= base_url('operational/delivery/approve-stage/') ?>${currentDiId}`, {
+        method: 'POST',
+        headers: {'X-Requested-With': 'XMLHttpRequest'},
+        body: fd
+      }).then(r=>{
+        if (!r.ok) {
+          throw new Error(`HTTP Error: ${r.status} ${r.statusText}`);
+        }
+        return r.json();
+      }).then(j=>{
+        console.log('Server response:', j); // Debug log
+        if (j && j.success) {
+          bootstrap.Modal.getInstance(document.getElementById('approvalStageModal')).hide();
+          
+          // Check if we need to switch filter based on stage completion
+          // After 'sampai' approval, status becomes SAMPAI_LOKASI (DELIVERED filter)
+          if (currentApprovalStage === 'sampai' && currentFilter === 'INPROGRESS') {
+            console.log('🔀 Stage sampai completed - switching to DELIVERED filter');
+            currentFilter = 'DELIVERED';
+            
+            // Update active tab
+            document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+            const deliveredTab = document.querySelector('.filter-tab[data-filter="DELIVERED"]');
+            if (deliveredTab) deliveredTab.classList.add('active');
+            
+            // Update active card
+            document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+            const deliveredCard = document.querySelector('.filter-card[data-filter="DELIVERED"]');
+            if (deliveredCard) deliveredCard.classList.add('active');
+          }
+          
+          // Reload table to update buttons
+          if (diTable) diTable.ajax.reload(null, false);
+          
+          // Reload statistics
+          loadStatistics();
+          
+          notify(j.message || 'Approval saved successfully', 'success');
+        } else {
+          console.error('Server error:', j); // Debug log
+          notify(j.message || 'Failed to save approval', 'error');
+        }
+      }).catch(error=>{
+        console.error('Error:', error);
+        notify('System error occurred: ' + error.message, 'error');
+      });
+    });
+  }
+  
+});
   
   window.openApprovalModal = (stage, stageTitle, diId) => {
     currentApprovalStage = stage;
@@ -652,60 +563,137 @@ document.addEventListener('DOMContentLoaded', ()=>{
     }
   }
   
-  // Add form submission handler for approval stage
-  document.getElementById('approvalStageForm').addEventListener('submit', function(e){
-    e.preventDefault();
-    
-    // Debug log
-    console.log('Form submitted. Current variables:', { currentApprovalStage, currentDiId });
-    
-    // Check if currentApprovalStage is defined
-    if (!currentApprovalStage) {
-      console.error('currentApprovalStage is not defined!');
-      notify('Error: Stage approval tidak terdefinisi', 'error');
-      return;
-    }
-    
-    const fd = new FormData(this);
-    fd.append('stage', currentApprovalStage);
-    
-    // Debug: Log all form data
-    console.log('Form data being sent:');
-    for (let [key, value] of fd.entries()) {
-      console.log(key, value);
-    }
-    
-    fetch(`<?= base_url('operational/delivery/approve-stage/') ?>${currentDiId}`, {
-      method: 'POST',
-      headers: {'X-Requested-With': 'XMLHttpRequest'},
-      body: fd
-    }).then(r=>{
-      if (!r.ok) {
-        throw new Error(`HTTP Error: ${r.status} ${r.statusText}`);
-      }
-      return r.json();
-    }).then(j=>{
-      console.log('Server response:', j); // Debug log
-      if (j && j.success) {
-        bootstrap.Modal.getInstance(document.getElementById('approvalStageModal')).hide();
-        // Reload table to update buttons
-        load();
-        notify(j.message || 'Approval saved successfully', 'success');
-      } else {
-        console.error('Server error:', j); // Debug log
-        notify(j.message || 'Failed to save approval', 'error');
-      }
-    }).catch(error=>{
-      console.error('Error:', error);
-      notify('System error occurred: ' + error.message, 'error');
-    });
-  });
-  
   // Unified notifier (fallbacks)
   window.notify = function(msg, type='success'){
     if (window.OptimaPro && typeof OptimaPro.showNotification==='function') return OptimaPro.showNotification(msg, type);
     if (typeof showNotification==='function') return showNotification(msg, type);
     alert(msg);
+  }
+  
+  // Workflow indicator formatter
+  // Proses DI function - can be called from table or modal
+  window.prosesDI = function(id) {
+    if (!confirm('Proses DI ini? Status akan berubah ke SIAP KIRIM dan masuk workflow operasional.')) {
+      return;
+    }
+    
+    console.log('🚀 prosesDI called for DI:', id);
+    
+    const formData = new FormData();
+    formData.append('action', 'assign_driver');
+    formData.append('nama_supir', '');
+    formData.append('no_hp_supir', '-');
+    formData.append('no_sim_supir', '-');
+    formData.append('kendaraan', '');
+    formData.append('no_polisi_kendaraan', '-');
+    
+    console.log('📤 Sending request to:', `<?= base_url('operational/delivery/update-status/') ?>${id}`);
+    
+    fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {
+      method: 'POST',
+      headers: {'X-Requested-With': 'XMLHttpRequest'},
+      body: formData
+    })
+    .then(r => {
+      console.log('📥 Response status:', r.status, r.statusText);
+      if (!r.ok) {
+        throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+      }
+      return r.json();
+    })
+    .then(result => {
+      console.log('✅ Server response:', result);
+      console.log('🔍 Current filter value:', currentFilter);
+      
+      if (result && result.success) {
+        notify('DI berhasil diproses. Silakan lanjutkan ke tahap Perencanaan untuk mengisi detail operasional.', 'success');
+        console.log('🔄 Reloading table...');
+        
+        // CRITICAL: Switch to INPROGRESS filter so user can see the updated DI
+        // When status changes from DIAJUKAN → SIAP_KIRIM, it no longer matches SUBMITTED filter
+        console.log('🔍 Checking filter switch condition: currentFilter === "SUBMITTED"?', currentFilter === 'SUBMITTED');
+        
+        if (currentFilter === 'SUBMITTED') {
+          console.log('🔀 Switching from SUBMITTED to INPROGRESS filter');
+          currentFilter = 'INPROGRESS';
+          
+          // Update active tab
+          document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+          const inprogressTab = document.querySelector('.filter-tab[data-filter="INPROGRESS"]');
+          if (inprogressTab) {
+            inprogressTab.classList.add('active');
+            console.log('✅ INPROGRESS tab activated');
+          } else {
+            console.warn('⚠️ INPROGRESS tab not found');
+          }
+          
+          // Update active card
+          document.querySelectorAll('.filter-card').forEach(c => c.classList.remove('active'));
+          const inprogressCard = document.querySelector('.filter-card[data-filter="INPROGRESS"]');
+          if (inprogressCard) {
+            inprogressCard.classList.add('active');
+            console.log('✅ INPROGRESS card activated');
+          } else {
+            console.warn('⚠️ INPROGRESS card not found');
+          }
+        } else {
+          console.log('⚠️ Filter switch skipped - not on SUBMITTED filter');
+        }
+        
+        if (typeof diTable !== 'undefined' && diTable) {
+          diTable.ajax.reload(null, false); // false = stay on current page
+          console.log('✅ Table reloaded');
+        } else {
+          console.error('❌ diTable is not defined!');
+        }
+        
+        // Reload statistics to update counts
+        loadStatistics();
+      } else {
+        console.error('❌ Server returned failure:', result);
+        notify(result.message || 'Gagal memproses DI', 'error');
+      }
+    })
+    .catch(err => {
+      console.error('❌ Error in prosesDI:', err);
+      notify('Terjadi kesalahan saat memproses DI: ' + err.message, 'error');
+    });
+  };
+  
+  window.formatTujuanWithIndicator = function(tujuan) {
+    if (!tujuan) return '-';
+    
+    let indicator = '';
+    let tooltip = '';
+    
+    if (tujuan.includes('HABIS_KONTRAK') || tujuan.includes('Habis Kontrak')) {
+      indicator = '🔴';
+      tooltip = 'PERMANENT: Unit disconnected from customer';
+    } else if (tujuan.includes('MAINTENANCE') || tujuan.includes('Maintenance')) {
+      if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
+        indicator = '🟡';
+        tooltip = 'TEMPORARY REPLACEMENT: Original unit returns after maintenance';
+      } else {
+        indicator = '🔵';
+        tooltip = 'TEMPORARY: Unit returns after service';
+      }
+    } else if (tujuan.includes('RUSAK') || tujuan.includes('Rusak')) {
+      if (tujuan.includes('TUKAR') || tujuan.includes('Ganti')) {
+        indicator = '🔴';
+        tooltip = 'PERMANENT: Unit replaced';
+      } else {
+        indicator = '🔵';
+        tooltip = 'TEMPORARY: Unit returns after repair';
+      }
+    } else if (tujuan.includes('PINDAH_LOKASI') || tujuan.includes('Pindah')) {
+      indicator = '🟢';
+      tooltip = 'RELOCATION: Same customer, different location';
+    } else if (tujuan.includes('UPGRADE') || tujuan.includes('DOWNGRADE')) {
+      indicator = '🔴';
+      tooltip = 'PERMANENT: Unit replaced';
+    }
+    
+    return indicator ? `<span title="${tooltip}">${indicator}</span> ${tujuan}` : tujuan;
   }
   
   window.openDiDetail = (id) => {
@@ -956,7 +944,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         // Only show Proses DI button for initial statuses
         actionButtons = '<button class="btn btn-success btn-sm" id="btnProsesDI">Process DI</button>';
         console.log('✅ Showing Process DI button for status:', status);
-      } else if (status === 'PROCESSED' || status === 'SIAP KIRIM') {
+      } else if (status === 'SIAP_KIRIM' || status === 'DISETUJUI' || status === 'PERSIAPAN_UNIT' || status === 'DALAM_PERJALANAN') {
         // Show approval stage buttons for processed statuses
         let approvalButtons = [];
         
@@ -965,13 +953,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
         const berangkatDone = d.berangkat_tanggal_approve ? true : false;
         const sampaiDone = d.sampai_tanggal_approve ? true : false;
         
-        // Add buttons for incomplete stages
+        // Add buttons for incomplete stages - MUST pass id parameter!
         if (!perencanaanDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'perencanaan\', \'Perencanaan Pengiriman\')">Plan</button>');
+          approvalButtons.push(`<button class="btn btn-warning btn-sm" onclick="openApprovalModal('perencanaan', 'Perencanaan Pengiriman', ${id})">Plan</button>`);
         } else if (!berangkatDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'berangkat\', \'Berangkat\')">Depart</button>');
+          approvalButtons.push(`<button class="btn btn-warning btn-sm" onclick="openApprovalModal('berangkat', 'Berangkat', ${id})">Depart</button>`);
         } else if (!sampaiDone) {
-          approvalButtons.push('<button class="btn btn-warning btn-sm" onclick="openApprovalModal(\'sampai\', \'Sampai\')">Arrive</button>');
+          approvalButtons.push(`<button class="btn btn-warning btn-sm" onclick="openApprovalModal('sampai', 'Sampai', ${id})">Arrive</button>`);
         }
         
         // Show completed stages with checkmarks
@@ -1116,39 +1104,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
       // Set action buttons
       actionDiv.innerHTML = actionButtons;
       
-      // Add event listener for Proses DI button
+      // Add event listener for Proses DI button in modal
       setTimeout(() => {
         const prosesDIBtn = document.getElementById('btnProsesDI');
         if (prosesDIBtn) {
           prosesDIBtn.addEventListener('click', () => {
-            // Simple confirmation dialog
-            if (confirm('Are you sure you want to process this DI? The status will change to PROCESSED and the DI will enter the operational workflow stage.')) {
-              const formData = new FormData();
-              formData.append('action', 'assign_driver');
-              // Send minimal data - actual driver info will be filled during Perencanaan stage
-              formData.append('nama_supir', '');
-              formData.append('no_hp_supir', '-');
-              formData.append('no_sim_supir', '-');
-              formData.append('kendaraan', '');
-              formData.append('no_polisi_kendaraan', '-');
-              
-              fetch(`<?= base_url('operational/delivery/update-status/') ?>${id}`, {
-                method: 'POST',
-                headers: {'X-Requested-With': 'XMLHttpRequest'},
-                body: formData
-              }).then(r=>r.json()).then(result=>{
-                if (result && result.success) {
-                  notify('DI has been processed. Please proceed to the Delivery Planning stage to fill in the operational details.', 'success');
-                  bootstrap.Modal.getInstance(document.getElementById('diDetailModal')).hide();
-                  load(); // Reload table
-                } else {
-                  notify(result.message || 'Failed to process DI', 'error');
-                }
-              }).catch(err => {
-                notify('An error occurred while processing the DI', 'error');
-                console.error(err);
-              });
-            }
+            // Close modal first
+            bootstrap.Modal.getInstance(document.getElementById('diDetailModal')).hide();
+            // Call global function
+            prosesDI(id);
           });
         }
       }, 100);
@@ -1159,22 +1123,19 @@ document.addEventListener('DOMContentLoaded', ()=>{
   window.upd = (id, st) => {
     const fd = new FormData(); fd.append('status', st);
     fetch('<?= base_url('operational/delivery/update-status/') ?>'+id, {method:'POST', headers:{'X-Requested-With':'XMLHttpRequest'}, body:fd})
-      .then(r=>r.json()).then(()=>load());
+      .then(r=>r.json()).then(()=>{ if (diTable) diTable.ajax.reload(); });
   }
-  
-  load();
-});
 </script>
 <!-- Approval Stage Modal -->
 <div class="modal fade" id="approvalStageModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h6 class="modal-title">Approval Confirmation - <span id="approvalStageTitle"></span></h6>
         <button class="btn-close" data-bs-dismiss="modal"></button>
       </div>
       <form id="approvalStageForm">
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
           <!-- Stage-specific content -->
           <div id="stageSpecificContent"></div>
 
@@ -1193,13 +1154,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 <!-- DI Detail Modal -->
 <div class="modal fade" id="diDetailModal" tabindex="-1">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
         <h6 class="modal-title">Detail Delivery Instruction</h6>
         <button class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <div class="modal-body"><div id="diDetailBody"><p class="text-muted">Loading...</p></div></div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        <div id="diDetailBody"><p class="text-muted">Loading...</p></div>
+      </div>
       <div class="modal-footer">
         <div id="modalActionButtons">
           <!-- Buttons will be populated based on status -->

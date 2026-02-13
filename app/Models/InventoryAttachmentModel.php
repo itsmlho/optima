@@ -87,6 +87,46 @@ class InventoryAttachmentModel extends Model
     protected $skipValidation = false;
     protected $cleanValidationRules = true;
 
+    // Callbacks
+    protected $allowCallbacks = true;
+    protected $beforeInsert = ['cleanData'];
+    protected $beforeUpdate = ['cleanData'];
+
+    /**
+     * Clean data before insert/update - remove invalid fields
+     */
+    protected function cleanData(array $data)
+    {
+        if (!isset($data['data'])) {
+            return $data;
+        }
+
+        $originalData = $data['data'];
+        $cleaned = [];
+
+        // Only keep allowed fields
+        foreach ($this->allowedFields as $field) {
+            if (array_key_exists($field, $originalData)) {
+                $cleaned[$field] = $originalData[$field];
+            }
+        }
+
+        // Check if status_unit exists (OLD FIELD - should not be present)
+        if (array_key_exists('status_unit', $originalData)) {
+            log_message('error', '🚨 FOUND status_unit in data! Stack trace: ' . json_encode(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5)));
+            log_message('error', '📦 Original data: ' . json_encode($originalData));
+            log_message('error', '✅ Cleaned data: ' . json_encode($cleaned));
+            
+            // Remove it from data
+            unset($cleaned['status_unit']);
+        }
+
+        // Update data array with cleaned version
+        $data['data'] = $cleaned;
+        
+        return $data;
+    }
+
     /**
      * Get full attachment details with JOIN to related tables based on tipe_item.
      * Returns complete data including merk, model, type for notifications.
@@ -202,17 +242,6 @@ class InventoryAttachmentModel extends Model
             'updated_at' => date('Y-m-d H:i:s'),
         ]);
     }
-
-    // Callbacks
-    protected $allowCallbacks = true;
-    protected $beforeInsert = [];
-    protected $afterInsert = [];
-    protected $beforeUpdate = [];
-    protected $afterUpdate = [];
-    protected $beforeFind = [];
-    protected $afterFind = [];
-    protected $beforeDelete = [];
-    protected $afterDelete = [];
 
     /**
      * Check if tables exist in database

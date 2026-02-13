@@ -70,6 +70,49 @@ class InventoryUnitModel extends Model
     protected $skipValidation     = false;
     protected $cleanValidationRules = true;
 
+    // Callbacks untuk auto-clean data
+    protected $allowCallbacks = true;
+    protected $beforeInsert   = ['cleanUpdateData'];
+    protected $beforeUpdate   = ['cleanUpdateData'];
+
+    /**
+     * Clean data before insert/update - remove any invalid fields
+     * Defense against 'status_unit' (old field) accidentally being sent
+     */
+    protected function cleanUpdateData(array $data)
+    {
+        if (!isset($data['data'])) {
+            return $data;
+        }
+
+        $originalData = $data['data'];
+        $cleaned = [];
+
+        // Only keep allowed fields
+        foreach ($this->allowedFields as $field) {
+            if (array_key_exists($field, $originalData)) {
+                $cleaned[$field] = $originalData[$field];
+            }
+        }
+
+        // Check if 'status_unit' exists (OLD FIELD - should not be present)
+        if (array_key_exists('status_unit', $originalData)) {
+            log_message('error', '🚨 InventoryUnitModel: FOUND status_unit in data!');
+            log_message('error', '📦 Original data: ' . json_encode($originalData));
+            log_message('error', '📍 Stack trace: ' . json_encode(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 5)));
+            
+            // Remove it
+            unset($cleaned['status_unit']);
+        }
+
+        // Update data array with cleaned version
+        $data['data'] = $cleaned;
+        
+        log_message('info', '✅ InventoryUnitModel: Data cleaned, fields=' . implode(',', array_keys($cleaned)));
+        
+        return $data;
+    }
+
     /**
      * Apply status filter (supports single or multiple comma-separated values)
      */

@@ -3171,6 +3171,113 @@ class Marketing extends BaseDataTableController
         return $this->response->setJSON(['data'=>$data,'csrf_hash'=>csrf_hash()]);
     }
 
+    /**
+     * DataTables endpoint for Marketing SPK (server-side processing)
+     */
+    public function spkData()
+    {
+        $request = $this->request;
+        $draw = $request->getPost('draw') ?? 1;
+        $start = $request->getPost('start') ?? 0;
+        $length = $request->getPost('length') ?? 25;
+        $search = $request->getPost('search')['value'] ?? '';
+        $statusFilter = $request->getPost('status_filter') ?? 'all';
+        
+        $builder = $this->spkModel->builder();
+        
+        // Join with quotations for quotation_number
+        $builder->select('spk.*, qs.id_quotation, q.quotation_number')
+            ->join('quotation_specifications qs', 'qs.id_specification = spk.quotation_specification_id', 'left')
+            ->join('quotations q', 'q.id_quotation = qs.id_quotation', 'left');
+        
+        // Apply status filter (tab filtering)
+        if ($statusFilter !== 'all') {
+            if ($statusFilter === 'COMPLETED') {
+                $builder->whereIn('spk.status', ['COMPLETED', 'DELIVERED']);
+            } else {
+                $builder->where('spk.status', $statusFilter);
+            }
+        }
+        
+        // Apply search filter
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('spk.nomor_spk', $search)
+                ->orLike('spk.pelanggan', $search)
+                ->orLike('spk.po_kontrak_nomor', $search)
+                ->orLike('spk.pic', $search)
+                ->orLike('spk.kontak', $search)
+                ->orLike('spk.jenis_spk', $search)
+                ->groupEnd();
+        }
+        
+        // Get total filtered count before pagination
+        $totalFiltered = $builder->countAllResults(false);
+        
+        // Apply sorting (default: latest first)
+        $orderColumnIndex = $request->getPost('order')[0]['column'] ?? 0;
+        $orderDir = $request->getPost('order')[0]['dir'] ?? 'desc';
+        $columns = ['spk.nomor_spk', 'spk.jenis_spk', 'spk.po_kontrak_nomor', 'spk.kontrak_id', 'spk.pelanggan', 'spk.pic', 'spk.kontak', 'spk.status', 'spk.jumlah_unit'];
+        
+        if (isset($columns[$orderColumnIndex])) {
+            $builder->orderBy($columns[$orderColumnIndex], $orderDir);
+        } else {
+            $builder->orderBy('spk.id', 'DESC');
+        }
+        
+        // Apply pagination
+        $data = $builder->limit($length, $start)->get()->getResultArray();
+        
+        // Get total count (before any filters)
+        $totalRecords = $this->spkModel->countAll();
+        
+        log_message('info', 'SPK DataTables - Draw: ' . $draw . ', Total: ' . $totalRecords . ', Filtered: ' . $totalFiltered . ', Returned: ' . count($data));
+        
+        return $this->response->setJSON([
+            'draw' => intval($draw),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
+    }
+
+    /**
+     * Statistics endpoint for Marketing SPK
+     */
+    public function spkStats()
+    {
+        $statusFilter = $this->request->getPost('status_filter') ?? 'all';
+        
+        $builder = $this->spkModel->builder();
+        
+        // Apply same status filter as table for consistency
+        $statsBuilder = clone $builder;
+        
+        // Total count (with current filter)
+        if ($statusFilter !== 'all') {
+            if ($statusFilter === 'COMPLETED') {
+                $statsBuilder->whereIn('status', ['COMPLETED', 'DELIVERED']);
+            } else {
+                $statsBuilder->where('status', $statusFilter);
+            }
+            $total = $statsBuilder->countAllResults();
+        } else {
+            $total = $this->spkModel->countAll();
+        }
+        
+        // Individual status counts (always from full dataset)
+        $inProgress = $this->spkModel->where('status', 'IN_PROGRESS')->countAllResults(false);
+        $ready = $this->spkModel->where('status', 'READY')->countAllResults(false);
+        $completed = $this->spkModel->whereIn('status', ['COMPLETED', 'DELIVERED'])->countAllResults();
+        
+        return $this->response->setJSON([
+            'total' => $total,
+            'in_progress' => $inProgress,
+            'ready' => $ready,
+            'completed' => $completed
+        ]);
+    }
+
     public function spkDetail($id)
     {
         // Check if user is logged in
@@ -3661,26 +3768,34 @@ class Marketing extends BaseDataTableController
     // Monitoring: Kontrak → SPK status (simple aggregation)
     public function spkMonitoring()
     {
-        $sql = "SELECT k.id, k.no_kontrak, k.no_po_marketing, 
-                       c.customer_name as pelanggan, 
-                       cl.location_name as lokasi,
-                   COUNT(s.id) AS total_spk,
-                   SUM(CASE WHEN s.status = 'SUBMITTED' THEN 1 ELSE 0 END) AS submitted,
-                   SUM(CASE WHEN s.status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress,
-                   SUM(CASE WHEN s.status = 'READY' THEN 1 ELSE 0 END) AS ready,
-                   SUM(CASE WHEN s.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed,
-                   SUM(CASE WHEN s.status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered,
-                   SUM(CASE WHEN s.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
-                   MAX(s.diperbarui_pada) AS last_update
-            FROM kontrak k
-            LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-            LEFT JOIN customers c ON cl.customer_id = c.id
-            LEFT JOIN spk s ON (s.po_kontrak_nomor = k.no_kontrak OR s.po_kontrak_nomor = k.no_po_marketing)
-            GROUP BY k.id, k.no_kontrak, k.no_po_marketing, c.customer_name, cl.location_name
-            ORDER BY k.id DESC
-            LIMIT 100";
-        $rows = $this->db->query($sql)->getResultArray();
-        return $this->response->setJSON(['data'=>$rows, 'csrf_hash'=>csrf_hash()]);
+        try {
+            // Updated query to handle SPKs from both contracts and quotations
+            $sql = "SELECT k.id, k.no_kontrak, k.no_po_marketing, 
+                           c.customer_name as pelanggan, 
+                           cl.location_name as lokasi,
+                       COUNT(s.id) AS total_spk,
+                       SUM(CASE WHEN s.status = 'SUBMITTED' THEN 1 ELSE 0 END) AS submitted,
+                       SUM(CASE WHEN s.status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress,
+                       SUM(CASE WHEN s.status = 'READY' THEN 1 ELSE 0 END) AS ready,
+                       SUM(CASE WHEN s.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed,
+                       SUM(CASE WHEN s.status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered,
+                       SUM(CASE WHEN s.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
+                       MAX(s.updated_at) AS last_update
+                FROM kontrak k
+                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+                LEFT JOIN customers c ON cl.customer_id = c.id
+                LEFT JOIN spk s ON (s.kontrak_id = k.id OR s.po_kontrak_nomor = k.no_kontrak OR s.po_kontrak_nomor = k.no_po_marketing)
+                GROUP BY k.id
+                ORDER BY k.id DESC
+                LIMIT 100";
+            $rows = $this->db->query($sql)->getResultArray();
+            
+            return $this->response->setJSON(['success' => true, 'data'=>$rows, 'csrf_hash'=>csrf_hash()]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'spkMonitoring error: ' . $e->getMessage());
+            return $this->response->setJSON(['success' => false, 'data' => [], 'message' => 'Failed to load monitoring data', 'csrf_hash'=>csrf_hash()]);
+        }
     }
 
     // List DIs for marketing page
@@ -3756,6 +3871,173 @@ class Marketing extends BaseDataTableController
         }
         
         return $this->response->setJSON(['data'=>$rows,'csrf_hash'=>csrf_hash()]);
+    }
+
+    /**
+     * DataTables endpoint for Marketing DI (server-side processing)
+     */
+    public function diData()
+    {
+        $request = $this->request;
+        $draw = $request->getPost('draw') ?? 1;
+        $start = $request->getPost('start') ?? 0;
+        $length = $request->getPost('length') ?? 25;
+        $search = $request->getPost('search')['value'] ?? '';
+        $statusFilter = $request->getPost('status_filter') ?? 'all';
+        
+        $builder = $this->diModel->builder();
+        
+        // Join with related tables
+        $builder->select('
+            delivery_instructions.*, 
+            spk.pic as spk_pic, 
+            spk.kontak as spk_kontak,
+            spk.nomor_spk,
+            spk.po_kontrak_nomor,
+            jpk.nama as jenis_perintah,
+            jpk.kode as jenis_perintah_kode,
+            tpk.nama as tujuan_perintah,
+            tpk.kode as tujuan_perintah_kode
+        ')
+        ->join('spk', 'spk.id = delivery_instructions.spk_id', 'left')
+        ->join('jenis_perintah_kerja jpk', 'jpk.id = delivery_instructions.jenis_perintah_kerja_id', 'left')
+        ->join('tujuan_perintah_kerja tpk', 'tpk.id = delivery_instructions.tujuan_perintah_kerja_id', 'left');
+        
+        // Apply status filter
+        if ($statusFilter !== 'all') {
+            if ($statusFilter === 'SUBMITTED') {
+                $builder->whereIn('delivery_instructions.status_di', ['DIAJUKAN', '']);
+            } else if ($statusFilter === 'INPROGRESS') {
+                $builder->whereIn('delivery_instructions.status_di', ['DISETUJUI', 'PERSIAPAN_UNIT', 'SIAP_KIRIM', 'DALAM_PERJALANAN']);
+            } else if ($statusFilter === 'DELIVERED') {
+                $builder->whereIn('delivery_instructions.status_di', ['SAMPAI_LOKASI', 'SELESAI']);
+            } else if ($statusFilter === 'CANCELLED') {
+                $builder->where('delivery_instructions.status_di', 'DIBATALKAN');
+            } else if ($statusFilter === 'AWAITING_CONTRACT') {
+                $builder->where('delivery_instructions.status_di', 'AWAITING_CONTRACT');
+            } else {
+                $builder->where('delivery_instructions.status_di', $statusFilter);
+            }
+        }
+        
+        // Apply search filter
+        if (!empty($search)) {
+            $builder->groupStart()
+                ->like('delivery_instructions.nomor_di', $search)
+                ->orLike('spk.nomor_spk', $search)
+                ->orLike('spk.po_kontrak_nomor', $search)
+                ->orLike('delivery_instructions.pelanggan', $search)
+                ->orLike('delivery_instructions.lokasi', $search)
+                ->groupEnd();
+        }
+        
+        // Get total filtered count
+        $totalFiltered = $builder->countAllResults(false);
+        
+        // Apply sorting
+        $orderColumnIndex = $request->getPost('order')[0]['column'] ?? 0;
+        $orderDir = $request->getPost('order')[0]['dir'] ?? 'desc';
+        $columns = ['delivery_instructions.nomor_di', 'spk.nomor_spk', 'spk.po_kontrak_nomor', 'delivery_instructions.pelanggan', 'delivery_instructions.lokasi', 'delivery_instructions.total_items', 'jpk.nama', 'tpk.nama', 'delivery_instructions.requested_delivery_date', 'delivery_instructions.status_di'];
+        
+        if (isset($columns[$orderColumnIndex])) {
+            $builder->orderBy($columns[$orderColumnIndex], $orderDir);
+        } else {
+            $builder->orderBy('delivery_instructions.id', 'DESC');
+        }
+        
+        // Apply pagination
+        $data = $builder->limit($length, $start)->get()->getResultArray();
+        
+        // Add items information for each DI
+        foreach ($data as &$row) {
+            $items = $this->diItemModel
+                ->select('
+                    delivery_items.*, 
+                    iu.no_unit, 
+                    mu.merk_unit, 
+                    mu.model_unit,
+                    a.tipe as att_tipe, 
+                    a.merk as att_merk, 
+                    a.model as att_model
+                ')
+                ->join('inventory_unit iu','iu.id_inventory_unit = delivery_items.unit_id','left')
+                ->join('model_unit mu','mu.id_model_unit = iu.model_unit_id','left')
+                ->join('attachment a', 'a.id_attachment = delivery_items.attachment_id', 'left')
+                ->where('delivery_items.di_id', $row['id'])
+                ->findAll();
+                
+            $itemLabels = [];
+            $unitCount = 0;
+            $attachmentCount = 0;
+            
+            foreach ($items as $item) {
+                if ($item['item_type'] === 'UNIT') {
+                    $label = trim(($item['no_unit'] ?: 'Unit') . ' - ' . ($item['merk_unit'] ?: '') . ' ' . ($item['model_unit'] ?: ''));
+                    $itemLabels[] = ['unit_label' => $label, 'type' => 'unit'];
+                    $unitCount++;
+                } elseif ($item['item_type'] === 'ATTACHMENT') {
+                    $label = trim(($item['att_tipe'] ?: 'Attachment') . ' ' . ($item['att_merk'] ?: '') . ' ' . ($item['att_model'] ?: ''));
+                    $itemLabels[] = ['attachment_label' => $label, 'type' => 'attachment'];
+                    $attachmentCount++;
+                }
+            }
+            
+            $row['items'] = $itemLabels;
+            $row['total_units'] = $unitCount;
+            $row['total_attachments'] = $attachmentCount;
+        }
+        
+        // Get total count
+        $totalRecords = $this->diModel->countAll();
+        
+        log_message('info', 'DI DataTables - Draw: ' . $draw . ', Total: ' . $totalRecords . ', Filtered: ' . $totalFiltered . ', Returned: ' . count($data));
+        
+        return $this->response->setJSON([
+            'draw' => intval($draw),
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalFiltered,
+            'data' => $data
+        ]);
+    }
+
+    /**
+     * Statistics endpoint for Marketing DI
+     */
+    public function diStats()
+    {
+        $statusFilter = $this->request->getPost('status_filter') ?? 'all';
+        
+        $builder = $this->diModel->builder();
+        
+        // Total count with current filter
+        if ($statusFilter !== 'all') {
+            if ($statusFilter === 'SUBMITTED') {
+                $builder->whereIn('status_di', ['DIAJUKAN', '']);
+            } else if ($statusFilter === 'INPROGRESS') {
+                $builder->whereIn('status_di', ['DISETUJUI', 'PERSIAPAN_UNIT', 'SIAP_KIRIM', 'DALAM_PERJALANAN']);
+            } else if ($statusFilter === 'DELIVERED') {
+                $builder->whereIn('status_di', ['SAMPAI_LOKASI', 'SELESAI']);
+            } else {
+                $builder->where('status_di', $statusFilter);
+            }
+            $total = $builder->countAllResults();
+        } else {
+            $total = $this->diModel->countAll();
+        }
+        
+        // Individual status counts (always from full dataset)
+        $submitted = $this->diModel->where('status_di', 'DIAJUKAN')->countAllResults(false);
+        $inProgress = $this->diModel->whereIn('status_di', ['DISETUJUI', 'PERSIAPAN_UNIT', 'SIAP_KIRIM', 'DALAM_PERJALANAN'])->countAllResults(false);
+        $delivered = $this->diModel->whereIn('status_di', ['SAMPAI_LOKASI', 'SELESAI'])->countAllResults(false);
+        $awaitingContract = $this->diModel->where('status_di', 'AWAITING_CONTRACT')->countAllResults();
+        
+        return $this->response->setJSON([
+            'total' => $total,
+            'submitted' => $submitted,
+            'inprogress' => $inProgress,
+            'delivered' => $delivered,
+            'awaiting_contract' => $awaitingContract
+        ]);
     }
 
     // Detailed DI info (for Marketing view)
@@ -4086,6 +4368,11 @@ class Marketing extends BaseDataTableController
                 // For ATTACHMENT SPK, add target unit info to spec
                 if ($jenis === 'ATTACHMENT') {
                     $targetUnitId = $this->request->getPost('target_unit_id');
+                    
+                    // DEBUG: Log all POST data to see what was sent
+                    log_message('info', '🔍 ATTACHMENT SPK - All POST data: ' . json_encode($this->request->getPost()));
+                    log_message('info', '📋 ATTACHMENT SPK - target_unit_id from POST: ' . ($targetUnitId ?: 'NULL/EMPTY'));
+                    
                     if (!$targetUnitId) {
                         throw new \Exception('Unit tujuan wajib dipilih untuk SPK ATTACHMENT');
                     }
@@ -5074,9 +5361,9 @@ class Marketing extends BaseDataTableController
                 throw new \Exception('Hanya quotation dengan status DEAL yang dapat dibuat SPK');
             }
 
-            if (!$quotation['created_contract_id']) {
-                throw new \Exception('Quotation belum memiliki kontrak yang dibuat');
-            }
+            // CONTRACT NOW OPTIONAL - Can be NULL, will be linked later
+            // No need to enforce contract requirement here
+            $contractId = $quotation['created_contract_id'] ?? null;
 
             // Get all specifications from quotation
             $specifications = $this->quotationSpecificationModel->where('id_quotation', $quotationId)
@@ -5118,7 +5405,7 @@ class Marketing extends BaseDataTableController
                 $spkData = [
                     'nomor_spk' => method_exists($this->spkModel, 'generateNextNumber') ? $this->spkModel->generateNextNumber() : $this->generateSpkNumber(),
                     'jenis_spk' => $jenis_spk,
-                    'kontrak_id' => $quotation['created_contract_id'],
+                    'kontrak_id' => $contractId, // Can be NULL - contract is optional
                     'quotation_specification_id' => $spec['id_specification'], // New field to link to quotation_specifications
                     'jumlah_unit' => $spec['quantity'],
                     'po_kontrak_nomor' => $quotation['quotation_number'],

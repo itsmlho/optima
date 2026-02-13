@@ -1167,9 +1167,9 @@ class Warehouse extends BaseController
 
             // Get update data
             $updateData = [
-                'status_unit' => $this->request->getPost('status_unit'),
-                'lokasi_unit' => $this->request->getPost('lokasi_unit'),
-                'kondisi_unit' => $this->request->getPost('kondisi_unit')
+                'attachment_status' => $this->request->getPost('attachment_status'),
+                'lokasi_penyimpanan' => $this->request->getPost('lokasi_penyimpanan'),
+                'kondisi_fisik' => $this->request->getPost('kondisi_fisik')
             ];
 
             // Remove empty values
@@ -1188,8 +1188,8 @@ class Warehouse extends BaseController
                         'id' => $id,
                         'attachment_type' => $attachment['tipe'] ?? 'Attachment',
                         'serial_number' => $attachment['sn_attachment'] ?? '',
-                        'new_status' => $updateData['status_unit'] ?? '',
-                        'new_location' => $updateData['lokasi_unit'] ?? '',
+                        'new_status' => $updateData['attachment_status'] ?? '',
+                        'new_location' => $updateData['lokasi_penyimpanan'] ?? '',
                         'updated_by' => session('username') ?? session('user_id'),
                         'url' => base_url('/warehouse/attachments')
                     ]);
@@ -2151,7 +2151,6 @@ class Warehouse extends BaseController
                 'attachment_status' => 'AVAILABLE', // Default status for new items
                 'id_inventory_unit' => null, // Not attached to any unit yet
                 'catatan_inventory' => $this->request->getPost('catatan'),
-                'status_unit' => 7, // Default status STOCK ASET (AVAILABLE)
                 'tanggal_masuk' => date('Y-m-d H:i:s')
             ];
             

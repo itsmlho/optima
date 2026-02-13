@@ -117,7 +117,7 @@
 
 <!-- Create Prospect Modal -->
 <div class="modal fade" id="createProspectModal" tabindex="-1" aria-labelledby="createProspectModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title fw-600" id="createProspectModalLabel">
@@ -251,7 +251,7 @@
 
 <!-- Detail Modal -->
 <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered" style="max-width: 1200px; width: 95%;">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -296,12 +296,13 @@
                                     <?= ui_button('add', lang('App.unit'), [
                                         'onclick' => 'openAddSpecificationModal()',
                                         'size' => 'sm',
+                                        'color' => 'success',
                                         'class' => 'me-2'
                                     ]) ?>
                                     <?= ui_button('add', lang('Marketing.attachment_only'), [
                                         'onclick' => 'openAddAttachmentModal()',
                                         'size' => 'sm',
-                                        'color' => 'success'
+                                        'color' => 'info'
                                     ]) ?>
                                 </div>
                             </div>
@@ -329,7 +330,7 @@
 
 <!-- Unified Specification Modal (Add & Edit) -->
 <div class="modal fade" id="addSpecificationModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success text-muted" id="specModalHeader">
                 <h6 class="modal-title fw-600" id="specModalTitle">
@@ -338,10 +339,16 @@
                 <button class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <form id="addSpecificationForm" method="post" action="javascript:void(0)">
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <input type="hidden" name="id_quotation" id="specQuotationId">
                     <input type="hidden" name="id_specification" id="specId">
                     <input type="hidden" name="specification_type" id="specType" value="UNIT">
+                    
+                    <!-- Info Box -->
+                    <div class="alert alert-info mb-3">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Panduan Pengisian:</strong> Isi field utama yang customer tanyakan. Jika ada kebutuhan teknis khusus (Battery Type, Charger, Valve khusus), tulis di <strong>Notes</strong> di bagian bawah.
+                    </div>
                     
                     <div class="row g-3">
                         <div class="col-md-6">
@@ -384,44 +391,33 @@
                                 <option value=""><?= lang('Marketing.select_capacity') ?></option>
                             </select>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label"><?= lang('Marketing.unit_brand') ?></label>
                             <select class="form-select" name="brand_id" id="specMerkUnit">
                                 <option value=""><?= lang('Marketing.select_brand') ?></option>
                             </select>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label"><?= lang('Marketing.battery_type') ?></label>
-                            <select class="form-select" name="battery_id" id="specJenisBaterai">
-                                <option value=""><?= lang('Marketing.select_battery') ?></option>
-                            </select>
-                            <small class="text-muted"><?= lang('Marketing.available_electric_only') ?></small>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label"><?= lang('Marketing.charger') ?></label>
-                            <select class="form-select" name="charger_id" id="specCharger"></select>
-                            <small class="text-muted"><?= lang('Marketing.available_electric_only') ?></small>
-                        </div>
                         <div class="col-md-6">
                             <label class="form-label"><?= lang('Marketing.attachment_type') ?></label>
-                            <select class="form-select" name="attachment_id" id="specAttachmentTipe"></select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label"><?= lang('Marketing.valve') ?></label>
-                            <select class="form-select" name="valve_id" id="specValve"></select>
+                            <select class="form-select" name="attachment_id" id="specAttachmentTipe">
+                                <option value="">Pilih Attachment (Opsional)</option>
+                            </select>
+                            <small class="text-muted">Untuk attachment custom, tulis di Notes</small>
                         </div>
                         
-                        <div class="col-md-4">
-                            <label class="form-label"><?= lang('Marketing.mast') ?></label>
-                            <select class="form-select" name="mast_id" id="specMast"></select>
+                        <div class="col-md-6">
+                            <label class="form-label"><?= lang('Marketing.mast') ?> (Tinggi Angkat)</label>
+                            <select class="form-select" name="mast_id" id="specMast">
+                                <option value="">Pilih Mast (Opsional)</option>
+                            </select>
+                            <small class="text-muted">Untuk mast custom, tulis di Notes</small>
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label"><?= lang('Marketing.tire') ?></label>
-                            <select class="form-select" name="ban_id" id="specBan"></select>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label"><?= lang('Marketing.wheel') ?></label>
-                            <select class="form-select" name="roda_id" id="specRoda"></select>
+                        <div class="col-md-6">
+                            <label class="form-label"><?= lang('Marketing.tire') ?> (Ban)</label>
+                            <select class="form-select" name="ban_id" id="specBan">
+                                <option value="">Pilih Tire (Opsional)</option>
+                            </select>
+                            <small class="text-muted">Solid atau Pneumatic</small>
                         </div>
                         
                         <!-- Accessories Section -->
@@ -429,132 +425,159 @@
                         <div class="col-12">
                             <div class="row g-2">
                                 <!-- Row 1 -->
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="LAMPU UTAMA" id="acc_lampu_utama">
-                                        <label class="form-check-label" for="acc_lampu_utama"><?= lang('Marketing.main_light') ?></label>
-                                        <small class="text-muted"><?= lang('Marketing.main_reverse_signal_stop') ?></small>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="main_light" id="acc_main_light">
+                                        <label class="form-check-label" for="acc_main_light">Main Light (Main, Reverse, Signal, Stop)</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="blue_spot" id="acc_blue_spot">
+                                        <label class="form-check-label" for="acc_blue_spot">Blue Spot</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="red_line" id="acc_red_line">
+                                        <label class="form-check-label" for="acc_red_line">Red Line</label>
                                     </div>
                                 </div>
                                 
                                 <!-- Row 2 -->
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BLUE SPOT" id="acc_blue_spot">
-                                        <label class="form-check-label" for="acc_blue_spot"><?= lang('Marketing.blue_spot') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="work_light" id="acc_work_light">
+                                        <label class="form-check-label" for="acc_work_light">Work Light (Lampu Sorot)</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="RED LINE" id="acc_red_line">
-                                        <label class="form-check-label" for="acc_red_line"><?= lang('Marketing.red_line') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="rotary_lamp" id="acc_rotary_lamp">
+                                        <label class="form-check-label" for="acc_rotary_lamp">Rotary Lamp</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="WORK LIGHT" id="acc_work_light">
-                                        <label class="form-check-label" for="acc_work_light"><?= lang('Marketing.work_light') ?></label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="ROTARY LAMP" id="acc_rotary_lamp">
-                                        <label class="form-check-label" for="acc_rotary_lamp"><?= lang('Marketing.rotary_lamp') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="back_buzzer" id="acc_back_buzzer">
+                                        <label class="form-check-label" for="acc_back_buzzer">Back Buzzer</label>
                                     </div>
                                 </div>
                                 
                                 <!-- Row 3 -->
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BACK BUZZER" id="acc_back_buzzer">
-                                        <label class="form-check-label" for="acc_back_buzzer"><?= lang('Marketing.back_buzzer') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="camera_ai" id="acc_camera_ai">
+                                        <label class="form-check-label" for="acc_camera_ai">Camera AI</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="CAMERA AI" id="acc_camera_ai">
-                                        <label class="form-check-label" for="acc_camera_ai"><?= lang('Marketing.camera_ai') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="camera" id="acc_camera">
+                                        <label class="form-check-label" for="acc_camera">Camera</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="CAMERA" id="acc_camera">
-                                        <label class="form-check-label" for="acc_camera"><?= lang('Marketing.camera') ?></label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SENSOR PARKING" id="acc_sensor_parking">
-                                        <label class="form-check-label" for="acc_sensor_parking"><?= lang('Marketing.sensor_parking') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="sensor_parking" id="acc_sensor_parking">
+                                        <label class="form-check-label" for="acc_sensor_parking">Sensor Parking</label>
                                     </div>
                                 </div>
                                 
                                 <!-- Row 4 -->
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SPEED LIMITER" id="acc_speed_limiter">
-                                        <label class="form-check-label" for="acc_speed_limiter"><?= lang('Marketing.speed_limiter') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="speed_limiter" id="acc_speed_limiter">
+                                        <label class="form-check-label" for="acc_speed_limiter">Speed Limiter</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="LASER FORK" id="acc_laser_fork">
-                                        <label class="form-check-label" for="acc_laser_fork"><?= lang('Marketing.laser_fork') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="laser_fork" id="acc_laser_fork">
+                                        <label class="form-check-label" for="acc_laser_fork">Laser Fork</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="VOICE ANNOUNCER" id="acc_voice_announcer">
-                                        <label class="form-check-label" for="acc_voice_announcer"><?= lang('Marketing.voice_announcer') ?></label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="HORN SPEAKER" id="acc_horn_speaker">
-                                        <label class="form-check-label" for="acc_horn_speaker"><?= lang('Marketing.horn_speaker') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="voice_announcer" id="acc_voice_announcer">
+                                        <label class="form-check-label" for="acc_voice_announcer">Voice Announcer</label>
                                     </div>
                                 </div>
                                 
                                 <!-- Row 5 -->
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="HORN KLASON" id="acc_horn_klason">
-                                        <label class="form-check-label" for="acc_horn_klason"><?= lang('Marketing.horn_klason') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="horn_speaker" id="acc_horn_speaker">
+                                        <label class="form-check-label" for="acc_horn_speaker">Horn Speaker</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="BIO METRIC" id="acc_bio_metric">
-                                        <label class="form-check-label" for="acc_bio_metric"><?= lang('Marketing.bio_metric') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="horn_klason" id="acc_horn_klason">
+                                        <label class="form-check-label" for="acc_horn_klason">Horn Klason</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="ACRYLIC" id="acc_acrylic">
-                                        <label class="form-check-label" for="acc_acrylic"><?= lang('Marketing.acrylic') ?></label>
-                                    </div>
-                                </div>
-                                <div class="col-md-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="P3K" id="acc_p3k">
-                                        <label class="form-check-label" for="acc_p3k"><?= lang('Marketing.first_aid_kit') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="bio_metric" id="acc_bio_metric">
+                                        <label class="form-check-label" for="acc_bio_metric">Bio Metric</label>
                                     </div>
                                 </div>
                                 
                                 <!-- Row 6 -->
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SAFETY BELT INTERLOC" id="acc_safety_belt">
-                                        <label class="form-check-label" for="acc_safety_belt"><?= lang('Marketing.safety_belt_interlock') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="acrylic" id="acc_acrylic">
+                                        <label class="form-check-label" for="acc_acrylic">Acrylic</label>
                                     </div>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-4">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="SPARS ARRESTOR" id="acc_spars_arrestor">
-                                        <label class="form-check-label" for="acc_spars_arrestor"><?= lang('Marketing.spark_arrestor') ?></label>
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="first_aid_kit" id="acc_first_aid_kit">
+                                        <label class="form-check-label" for="acc_first_aid_kit">First Aid Kit</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="safety_belt" id="acc_safety_belt">
+                                        <label class="form-check-label" for="acc_safety_belt">Safety Belt Standar</label>
+                                    </div>
+                                </div>
+                                
+                                <!-- Row 7 -->
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="safety_belt_interlock" id="acc_safety_belt_interlock">
+                                        <label class="form-check-label" for="acc_safety_belt_interlock">Safety Belt Interlock</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="spark_arrestor" id="acc_spark_arrestor">
+                                        <label class="form-check-label" for="acc_spark_arrestor">Spark Arrestor</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="aksesoris[]" value="mirror" id="acc_mirror">
+                                        <label class="form-check-label" for="acc_mirror">Mirror (Spion)</label>
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                        
+                        <!-- Notes Section -->
+                        <div class="col-12"><hr><h6><i class="fas fa-sticky-note me-2"></i>Catatan & Custom Requirements</h6></div>
+                        <div class="col-12">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" name="notes" id="specNotes" rows="7" placeholder="Contoh:
+- Battery Type: Lithium-ion 80V/500Ah
+- Charger: Merk ABC Tipe XYZ
+- Valve: Butuh 4 valve untuk Paper Roll Clamp
+- Mast custom: 6 meter dengan side shifter
+- Attachment custom
+- Permintaan khusus lainnya dari customer"></textarea>
+                            <small class="text-muted"><i class="fas fa-lightbulb text-warning me-1"></i>Gunakan field ini untuk mencatat kebutuhan teknis khusus atau permintaan custom dari customer</small>
                         </div>
                     </div>
                 </div>
@@ -572,7 +595,7 @@
 
 <!-- Add Attachment Modal -->
 <div class="modal fade" id="addAttachmentModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-info text-muted">
                 <h6 class="modal-title fw-600">
@@ -581,7 +604,7 @@
                 <button class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <form id="addAttachmentForm" method="post" action="javascript:void(0)">
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <input type="hidden" name="id_quotation" id="attachmentQuotationId">
                     <input type="hidden" name="specification_type" id="attachmentSpecType" value="ATTACHMENT">
                     <input type="hidden" name="category" value="ATTACHMENT">
@@ -639,7 +662,7 @@
 
 <!-- Unified Customer Location Modal (Select or Add) -->
 <div class="modal fade" id="selectCustomerLocationModal" tabindex="-1" aria-labelledby="selectLocationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-md">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -798,7 +821,7 @@
 
 <!-- Add Contract Modal -->
 <div class="modal fade" id="addContractModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -955,7 +978,7 @@
 
 <!-- Create SPK Selection Modal -->
 <div class="modal fade" id="createSPKModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <div>
@@ -965,7 +988,7 @@
                 <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
             <form id="createSPKForm">
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <div class="alert alert-info mb-4">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Instructions:</strong> Select specifications and quantities to create SPK. 
@@ -1074,99 +1097,106 @@ function uiBadge(type, text, options = {}) {
 var quotationsTable;
 
 $(document).ready(function() {
-    // DataTable configuration
-    var quotationsConfig = {
-        processing: true,
-        serverSide: true,
-        ajax: {
-            url: '<?= base_url('marketing/quotations/data') ?>',
-            type: 'POST',
-            error: function(xhr, error, code) {
-                console.error('DataTable AJAX error:', xhr.responseText);
-                Swal.fire('Error', 'Failed to load data: ' + xhr.responseText, 'error');
-            }
-        },
-        columns: [
-            { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
-            { data: 'quotation_number' },
-            { data: 'prospect_name' },
-            { data: 'quotation_title' },
-            { 
-                data: 'total_amount',
-                render: function(data) {
-                    return data || 'Rp 0';
-                }
-            },
-            { 
-                data: 'workflow_stage',
-                orderable: false
-            },
-            { data: 'quotation_date' },
-            { data: 'actions', orderable: false, searchable: false }
-        ],
-        order: [[7, 'desc']],
-        responsive: true,
-        language: {
-            processing: "<?= lang('App.loading') ?>...",
-            lengthMenu: "<?= lang('App.show') ?> _MENU_ <?= lang('App.entries') ?>",
-            zeroRecords: "<?= lang('Marketing.no_quotations_found') ?>",
-            info: "<?= lang('App.showing') ?> _START_ <?= lang('App.to') ?> _END_ <?= lang('App.of') ?> _TOTAL_ <?= lang('App.entries') ?>",
-            infoEmpty: "<?= lang('App.no_entries_available') ?>",
-            infoFiltered: "(<?= lang('App.filtered_from') ?> _MAX_ <?= lang('App.total_entries') ?>)"
-        },
-        rowCallback: function(row, data) {
-            // Add pointer cursor and click functionality
-            $(row).css('cursor', 'pointer');
-            $(row).attr('title', 'Click to view details');
-        }
-    };
+    console.log('🔄 Initializing Quotations DataTable...');
     
-    // Initialize DataTable with date filter using new helper
-    quotationsTable = initDataTableWithDateFilter({
-        pickerId: 'quotationDateRangePicker',
-        tableId: 'quotationsTable',
-        tableConfig: quotationsConfig,
-        autoCalculateStats: true, // Enable auto-calculate dari data table
-        statsConfig: {
-            total: '#stat-total-quotations', // Count semua rows
-            pending: { 
-                selector: '#stat-pending',
-                filter: row => {
-                    const stage = (row.workflow_stage || '').toUpperCase();
-                    return stage.includes('PENDING') || stage.includes('DRAFT') || stage.includes('SENT');
+    try {
+        // Initialize using OptimaDataTable with minimal config
+        quotationsTable = OptimaDataTable.init('#quotationsTable', {
+            ajax: {
+                url: '<?= base_url('marketing/quotations/data') ?>',
+                type: 'POST',
+                error: function(xhr, error, code) {
+                    console.error('DataTable AJAX error:', xhr.responseText);
+                    Swal.fire('Error', 'Failed to load data: ' + xhr.responseText, 'error');
                 }
             },
-            approved: {
-                selector: '#stat-approved',
-                filter: row => {
-                    const stage = (row.workflow_stage || '').toUpperCase();
-                    return stage.includes('ACCEPTED') || stage.includes('APPROVED') || stage.includes('WON');
-                }
-            },
-            rejected: {
-                selector: '#stat-rejected',
-                filter: row => {
-                    const stage = (row.workflow_stage || '').toUpperCase();
-                    return stage.includes('REJECT') || stage.includes('LOST') || stage.includes('CANCEL');
-                }
-            }
-        },
-        onTableReady: function(table) {
-            // Table initialization complete
-            
-            // Add row click functionality
-            $('#quotationsTable tbody').on('click', 'tr', function(e) {
-                // Don't trigger row click if user clicked on action buttons
-                if (!$(e.target).closest('.btn, .dropdown').length) {
-                    var data = table.row(this).data();
-                    if (data && data.id_quotation) {
-                        viewQuotation(data.id_quotation);
+            pageLength: 15,
+            lengthMenu: [[10, 15, 25, 50], [10, 15, 25, 50]],
+            order: [[6, 'desc']], // Sort by date (column 7) descending
+            columns: [
+                { data: 'DT_RowIndex', name: 'DT_RowIndex', orderable: false, searchable: false },
+                { data: 'quotation_number' },
+                { data: 'prospect_name' },
+                { data: 'quotation_title' },
+                { 
+                    data: 'total_amount',
+                    render: function(data) {
+                        return data || 'Rp 0';
                     }
-                }
-            });
-        },
-        debug: true
-    });
+                },
+                { 
+                    data: 'workflow_stage',
+                    orderable: false
+                },
+                { data: 'quotation_date' },
+                { data: 'actions', orderable: false, searchable: false }
+            ],
+            rowCallback: function(row, data) {
+                // Add pointer cursor and click functionality
+                $(row).css('cursor', 'pointer');
+                $(row).attr('title', 'Click to view details');
+            },
+            initComplete: function(settings, json) {
+                console.log('✅ Quotations DataTable initialized successfully');
+                
+                // Add row click functionality
+                $('#quotationsTable tbody').on('click', 'tr', function(e) {
+                    // Don't trigger row click if user clicked on action buttons
+                    if (!$(e.target).closest('.btn, .dropdown').length) {
+                        var data = quotationsTable.row(this).data();
+                        if (data && data.id_quotation) {
+                            viewQuotation(data.id_quotation);
+                        }
+                    }
+                });
+                
+                // Load statistics after table is ready
+                loadStatistics();
+            }
+        });
+        
+        console.log('✅ Quotations table setup complete');
+        
+    } catch(error) {
+        console.error('❌ Failed to initialize Quotations DataTable:', error);
+        showNotification('Failed to initialize quotations table. Please refresh the page.', 'error');
+    }
+    
+    // Setup date range filter integration
+    const dateRangePicker = document.getElementById('quotationDateRangePicker');
+    if (dateRangePicker) {
+        // Listen for date range changes
+        $(dateRangePicker).on('apply.daterangepicker', function(ev, picker) {
+            const startDate = picker.startDate.format('YYYY-MM-DD');
+            const endDate = picker.endDate.format('YYYY-MM-DD');
+            
+            console.log('📅 Date range changed:', startDate, 'to', endDate);
+            
+            // Reload table with new date range
+            if (quotationsTable && quotationsTable.ajax) {
+                quotationsTable.ajax.url(
+                    '<?= base_url('marketing/quotations/data') ?>?start_date=' + startDate + '&end_date=' + endDate
+                ).load();
+            }
+            
+            // Reload statistics with new date range
+            loadStatistics(startDate, endDate);
+        });
+        
+        // Handle reset/clear
+        $(dateRangePicker).on('cancel.daterangepicker', function() {
+            console.log('📅 Date range cleared');
+            
+            // Reload table without date filter
+            if (quotationsTable && quotationsTable.ajax) {
+                quotationsTable.ajax.url('<?= base_url('marketing/quotations/data') ?>').load();
+            }
+            
+            // Reload statistics without date filter
+            loadStatistics();
+        });
+    }
+
 
     // Form submission
     $('#quotationForm').on('submit', function(e) {
@@ -1644,7 +1674,7 @@ function loadStatistics(startDate = null, endDate = null) {
     
     $.ajax({
         url: '<?= base_url('marketing/quotations/stats') ?>',
-        type: 'POST',
+        type: 'GET',
         data: params,
         success: function(data) {
             $('#stat-total-quotations').text(data.total || 0);
@@ -2394,6 +2424,15 @@ function displayQuotationSpecifications(specifications) {
                     <div class="mt-3">
                         <small class="text-muted d-block mb-1">Description:</small>
                         <div class="text-muted">${spec.specification_description}</div>
+                    </div>
+                    ` : ''}
+                    
+                    ${spec.notes && spec.notes.trim() !== '' ? `
+                    <div class="mt-3">
+                        <div class="alert alert-info mb-0">
+                            <small class="text-muted d-block mb-1"><i class="fas fa-sticky-note me-2"></i><strong>Custom Requirements / Notes:</strong></small>
+                            <div style="white-space: pre-line;">${spec.notes}</div>
+                        </div>
                     </div>
                     ` : ''}
                 </div>
@@ -3802,7 +3841,7 @@ function openPrintSpecModal(quotationId) {
                 // Build modal content
                 let modalContent = `
                     <div class="modal fade" id="printSpecModal" tabindex="-1">
-                        <div class="modal-dialog modal-lg">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title">Select Specifications to Print</h5>
@@ -5732,49 +5771,62 @@ function createContractForQuotation(quotationId) {
 
 // Function to create SPK from quotation specifications
 function createSPKFromQuotation(quotationId) {
-    console.log('Opening SPK creation modal for quotation:', quotationId);
+    console.log('🚀 [SPK-QUOTATION] Opening SPK creation modal for quotation:', quotationId);
     
     // Get quotation data with specifications
     $.ajax({
         url: `<?= base_url('marketing/quotations/getQuotation/') ?>${quotationId}`,
         method: 'GET',
         success: function(response) {
+            console.log('✅ [SPK-QUOTATION] Quotation data loaded:', response);
+            
             if (!response.success || !response.data) {
+                console.error('❌ [SPK-QUOTATION] Invalid response format:', response);
                 Swal.fire('Error', 'Failed to load quotation data', 'error');
                 return;
             }
             
             const quotation = response.data;
+            console.log('📋 [SPK-QUOTATION] Quotation object:', quotation);
             
             // Validate quotation has required data (Customer and Location only)
             if (!quotation.created_customer_id) {
+                console.warn('⚠️ [SPK-QUOTATION] No customer created for this quotation');
                 Swal.fire('Error', 'Customer must be created first. Please mark as deal.', 'error');
                 return;
             }
+            
+            console.log('✅ [SPK-QUOTATION] Validation passed, contract status:', quotation.created_contract_id ? `Contract ID: ${quotation.created_contract_id}` : '⏳ No contract (optional)');
             
             // CONTRACT NOT REQUIRED - Can be linked later via SPK page
             // Load specifications for this quotation
             loadSpecificationsForSPK(quotation);
         },
-        error: function(xhr) {
-            console.error('Error loading quotation:', xhr);
-            Swal.fire('Error', 'Failed to load quotation details', 'error');
+        error: function(xhr, status, error) {
+            console.error('❌ [SPK-QUOTATION] AJAX Error:', {xhr, status, error, responseText: xhr.responseText});
+            Swal.fire('Error', 'Failed to load quotation details: ' + error, 'error');
         }
     });
 }
 
 // Function to load specifications for SPK creation
 function loadSpecificationsForSPK(quotation) {
+    console.log('🔄 [SPK-QUOTATION] Loading specifications for quotation:', quotation.id_quotation);
+    
     $.ajax({
         url: `<?= base_url('marketing/quotations/getSpecifications/') ?>${quotation.id_quotation}`,
         method: 'GET',
         success: function(response) {
+            console.log('✅ [SPK-QUOTATION] Specifications loaded:', response);
+            
             if (!response.success) {
+                console.error('❌ [SPK-QUOTATION] Failed to load specifications');
                 Swal.fire('Error', 'Failed to load specifications', 'error');
                 return;
             }
             
             const specifications = response.data || [];
+            console.log('📦 [SPK-QUOTATION] Total specifications:', specifications.length);
             
             if (specifications.length === 0) {
                 Swal.fire({
@@ -5791,18 +5843,20 @@ function loadSpecificationsForSPK(quotation) {
             }
             
             // Populate SPK modal with data
+            console.log('✅ [SPK-QUOTATION] Calling showSPKCreationModal...');
             showSPKCreationModal(quotation, specifications);
         },
-        error: function(xhr) {
-            console.error('Error loading specifications:', xhr);
-            Swal.fire('Error', 'Failed to load specifications', 'error');
+        error: function(xhr, status, error) {
+            console.error('❌ [SPK-QUOTATION] Specifications AJAX Error:', {xhr, status, error, responseText: xhr.responseText});
+            Swal.fire('Error', 'Failed to load specifications: ' + error, 'error');
         }
     });
 }
 
 // Function to show SPK creation modal
 function showSPKCreationModal(quotation, specifications) {
-    console.log('Showing SPK modal with specifications:', specifications);
+    console.log('🎯 [SPK-QUOTATION] Showing SPK modal with specifications:', specifications.length + ' specs');
+    console.log('📋 [SPK-QUOTATION] Modal data:', {quotation, specifications});
     
     // Set modal title info
     $('#spkModalQuotationInfo').html(`
@@ -6030,7 +6084,9 @@ function showSPKCreationModal(quotation, specifications) {
     });
     
     // Show modal
+    console.log('🎭 [SPK-QUOTATION] All data populated, opening Bootstrap modal...');
     $('#createSPKModal').modal('show');
+    console.log('✅ [SPK-QUOTATION] Modal show() called successfully');
 }
 
 // Helper function to build specification description

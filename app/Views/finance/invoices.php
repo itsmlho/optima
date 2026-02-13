@@ -140,7 +140,7 @@
 
 <!-- Generate Invoice Modal -->
 <div class="modal fade" id="generateInvoiceModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">
@@ -435,7 +435,7 @@ function showBackBillingModal() {
             // Create modal dynamically
             const modalHtml = `
                 <div class="modal fade" id="backBillingModal" tabindex="-1">
-                    <div class="modal-dialog modal-xl">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
                         <div class="modal-content">
                             <div class="modal-header bg-warning text-white">
                                 <h5 class="modal-title">

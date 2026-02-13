@@ -10,7 +10,7 @@ class DeliveryInstructionModel extends Model
     protected $primaryKey = 'id';
     protected $returnType = 'array';
     protected $allowedFields = [
-        'spk_id','jenis_spk','nomor_di','po_kontrak_nomor','pelanggan','lokasi','tanggal_kirim','status','catatan','dibuat_oleh','dibuat_pada','diperbarui_pada',
+        'spk_id','jenis_spk','nomor_di','po_kontrak_nomor','pelanggan','lokasi','tanggal_kirim','status','status_di','catatan','dibuat_oleh','dibuat_pada','diperbarui_pada',
         'contract_id','bast_date','billing_start_date','contract_linked_at','contract_linked_by',
         'jenis_perintah_kerja_id','tujuan_perintah_kerja_id','status_eksekusi_workflow_id',
         'perencanaan_tanggal_approve','estimasi_sampai','nama_supir','no_hp_supir','no_sim_supir','kendaraan','no_polisi_kendaraan',

@@ -1453,25 +1453,196 @@ class Kontrak extends BaseController
      * Get active contracts for amendment prorate calculator
      * Returns contracts with ACTIVE status
      */
-    public function getActiveContracts()
+    /**
+     * Get DEAL quotations for SPK creation (with or without contract)
+     * This is the correct approach - SPK can be created from quotation directly
+     * Contract is optional and can be linked later
+     */
+    public function getActiveQuotationsForSPK()
     {
         if (!$this->request->isAJAX()) {
             return redirect()->back();
         }
         
         try {
-            $builder = $this->db->table('kontrak k');
-            $builder->select('k.*, c.customer_name, c.customer_code, cl.location_name');
-            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
-            $builder->where('k.status', 'ACTIVE');
-            $builder->orderBy('k.end_date', 'DESC');
+            // Load DEAL quotations (customer created, has specifications)
+            $builder = $this->db->table('quotations q');
+            $builder->select('q.id_quotation, q.quotation_number, q.prospect_name, q.is_deal, q.deal_date');
+            $builder->select('q.created_customer_id, q.created_contract_id');
+            $builder->select('c.customer_name');
+            $builder->select('k.id as contract_id, k.no_kontrak, k.status as contract_status');
             
-            $contracts = $builder->get()->getResultArray();
+            // Count UNITS (not specs) - one spec can have multiple units
+            $builder->select('(SELECT SUM(qs.quantity) 
+                              FROM quotation_specifications qs 
+                              WHERE qs.id_quotation = q.id_quotation) as total_units');
+            $builder->select('(SELECT SUM(qs.quantity - COALESCE((SELECT SUM(s.jumlah_unit) 
+                                   FROM spk s 
+                                   WHERE s.quotation_specification_id = qs.id_specification), 0))
+                              FROM quotation_specifications qs 
+                              WHERE qs.id_quotation = q.id_quotation) as available_units');
+            $builder->select('(SELECT COUNT(*) FROM quotation_specifications qs WHERE qs.id_quotation = q.id_quotation) as total_specs');
+            
+            // Join customer info
+            $builder->join('customers c', 'c.id = q.created_customer_id', 'left');
+            
+            // Join contract info (OPTIONAL - may be NULL)
+            $builder->join('kontrak k', 'k.id = q.created_contract_id', 'left');
+            
+            // Filters
+            $builder->where('q.is_deal', 1); // Must be DEAL
+            $builder->where('q.created_customer_id IS NOT NULL'); // Must have customer
+            $builder->having('total_units >', 0); // Must have units
+            $builder->having('available_units >', 0); // Must have available units
+            
+            $builder->groupBy('q.id_quotation');
+            $builder->orderBy('q.deal_date', 'DESC');
+            
+            // DEBUG: Log the SQL query
+            $sql = $builder->getCompiledSelect(false); // false = don't reset the query
+            log_message('info', 'getActiveQuotationsForSPK SQL: ' . $sql);
+            
+            $quotations = $builder->get()->getResultArray();
+            
+            log_message('info', 'getActiveQuotationsForSPK: Found ' . count($quotations) . ' DEAL quotations with available specs');
+            
+            // DEBUG: Log first quotation details if exists
+            if (!empty($quotations)) {
+                log_message('info', 'First quotation: ' . json_encode($quotations[0]));
+            }
             
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $contracts
+                'data' => $quotations,
+                'message' => count($quotations) === 0 ? 'No DEAL quotations with specifications found' : null
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getActiveQuotationsForSPK error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load quotations: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get specifications from quotation for SPK creation
+     * Contract link is optional - SPK can be created without contract
+     */
+    public function getQuotationSpecificationsForSPK($quotationId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            // Get quotation info
+            $builder = $this->db->table('quotations q');
+            $builder->select('q.*, c.customer_name');
+            $builder->select('k.no_kontrak, k.customer_po_number, k.status as contract_status');
+            $builder->join('customers c', 'c.id = q.created_customer_id', 'left');
+            $builder->join('kontrak k', 'k.id = q.created_contract_id', 'left');
+            $builder->where('q.id_quotation', $quotationId);
+            $quotation = $builder->get()->getRowArray();
+            
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+            
+            // Get specifications - using same field mapping as QuotationSpecificationModel
+            $specBuilder = $this->db->table('quotation_specifications qs');
+            $specBuilder->select('qs.*');
+            $specBuilder->select('d.nama_departemen');
+            $specBuilder->select('tu.tipe as nama_tipe_unit, tu.jenis as jenis_tipe_unit');
+            $specBuilder->select('k.kapasitas_unit as nama_kapasitas');
+            $specBuilder->select('mu.merk_unit, mu.model_unit');
+            $specBuilder->select('b.jenis_baterai');
+            $specBuilder->select('c.merk_charger, c.tipe_charger');
+            $specBuilder->select('a.tipe as attachment_tipe, a.merk as attachment_merk');
+            $specBuilder->select('v.jumlah_valve as valve_name');
+            $specBuilder->select('m.tipe_mast as mast_name');
+            $specBuilder->select('tb.tipe_ban as tire_name');
+            $specBuilder->select('jr.tipe_roda as wheel_name');
+            $specBuilder->select('(SELECT COUNT(*) FROM spk WHERE spk.quotation_specification_id = qs.id_specification) as existing_spk_count');
+            $specBuilder->select('(qs.quantity - COALESCE((SELECT SUM(jumlah_unit) FROM spk WHERE spk.quotation_specification_id = qs.id_specification), 0)) as available_units');
+            
+            $specBuilder->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left');
+            $specBuilder->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left');
+            $specBuilder->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left');
+            $specBuilder->join('model_unit mu', 'mu.id_model_unit = qs.brand_id', 'left');
+            $specBuilder->join('baterai b', 'b.id = qs.battery_id', 'left');
+            $specBuilder->join('charger c', 'c.id_charger = qs.charger_id', 'left');
+            $specBuilder->join('attachment a', 'a.id_attachment = qs.attachment_id', 'left');
+            $specBuilder->join('valve v', 'v.id_valve = qs.valve_id', 'left');
+            $specBuilder->join('tipe_mast m', 'm.id_mast = qs.mast_id', 'left');
+            $specBuilder->join('tipe_ban tb', 'tb.id_ban = qs.ban_id', 'left');
+            $specBuilder->join('jenis_roda jr', 'jr.id_roda = qs.roda_id', 'left');
+            
+            $specBuilder->where('qs.id_quotation', $quotationId);
+            $specBuilder->orderBy('qs.id_specification', 'ASC');
+            
+            $specifications = $specBuilder->get()->getResultArray();
+            
+            log_message('info', 'getQuotationSpecificationsForSPK: Quotation ' . $quotationId . ' has ' . count($specifications) . ' specs');
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $specifications,
+                'quotation' => $quotation
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getQuotationSpecificationsForSPK error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load specifications: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * OLD METHOD - Keep for backward compatibility with contracts
+     * Get DEAL quotations for SPK creation (with or without contract)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            // NEW APPROACH: Load contracts with quotation specifications
+            // This aligns with quotation → SPK workflow
+            $builder = $this->db->table('kontrak k');
+            $builder->select('k.id, k.no_kontrak, k.kontrak_number, k.po_number, k.customer_location_id, k.start_date, k.end_date, k.status');
+            $builder->select('c.customer_name, c.customer_code, cl.location_name, cl.pic_name, cl.pic_phone');
+            $builder->select('q.id_quotation, q.quotation_number, q.prospect_name');
+            $builder->select('(SELECT COUNT(*) FROM quotation_specifications qs WHERE qs.quotation_id = q.id_quotation) as total_specs');
+            $builder->select('(SELECT COUNT(*) FROM quotation_specifications qs 
+                              LEFT JOIN spk s ON s.kontrak_spesifikasi_id = qs.id_specification 
+                              WHERE qs.quotation_id = q.id_quotation AND s.id_spk IS NULL) as available_specs');
+            
+            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('quotations q', 'q.created_contract_id = k.id', 'left'); // Link via created_contract_id
+            
+            $builder->where('k.status', 'ACTIVE');
+            $builder->where('q.id_quotation IS NOT NULL'); // Only contracts with quotations
+            $builder->groupBy('k.id');
+            $builder->orderBy('k.created_at', 'DESC');
+            
+            $contracts = $builder->get()->getResultArray();
+            
+            log_message('info', 'getActiveContracts: Found ' . count($contracts) . ' contracts with quotation specs');
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $contracts,
+                'message' => count($contracts) === 0 ? 'No contracts with quotation specifications found' : null
             ]);
             
         } catch (\Exception $e) {
@@ -1480,6 +1651,72 @@ class Kontrak extends BaseController
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Failed to load contracts: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    /**
+     * Get specifications from quotation for a given contract
+     * This replaces the old contract-based specification loading
+     */
+    public function getQuotationSpecificationsForContract($contractId)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            // Get quotation linked to this contract
+            $builder = $this->db->table('quotations q');
+            $builder->select('q.id_quotation, q.quotation_number');
+            $builder->where('q.created_contract_id', $contractId);
+            $builder->where('q.is_deal', 1);
+            $quotation = $builder->get()->getRowArray();
+            
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'No quotation found for this contract'
+                ]);
+            }
+            
+            // Get specifications from quotation
+            $specBuilder = $this->db->table('quotation_specifications qs');
+            $specBuilder->select('qs.*');
+            $specBuilder->select('d.nama_departemen, tu.jenis_tipe_unit, tu.nama_tipe_unit');
+            $specBuilder->select('k.nama_kapasitas, att.tipe_attachment, att.merk_attachment');
+            $specBuilder->select('v.valve_name, m.mast_name, t.tire_name, w.wheel_name');
+            $specBuilder->select('(SELECT COUNT(*) FROM spk WHERE spk.kontrak_spesifikasi_id = qs.id_specification) as existing_spk_count');
+            $specBuilder->select('(qs.quantity - COALESCE((SELECT SUM(jumlah_unit) FROM spk WHERE spk.kontrak_spesifikasi_id = qs.id_specification), 0)) as available_units');
+            
+            $specBuilder->join('departemen d', 'd.id_departemen = qs.departemen_id', 'left');
+            $specBuilder->join('tipe_unit tu', 'tu.id_tipe_unit = qs.tipe_unit_id', 'left');
+            $specBuilder->join('kapasitas k', 'k.id_kapasitas = qs.kapasitas_id', 'left');
+            $specBuilder->join('attachment att', 'att.id_attachment = qs.attachment_id', 'left');
+            $specBuilder->join('valve v', 'v.id_valve = qs.valve_id', 'left');
+            $specBuilder->join('mast m', 'm.id_mast = qs.mast_id', 'left');
+            $specBuilder->join('tire t', 't.id_tire = qs.tire_id', 'left');
+            $specBuilder->join('wheel w', 'w.id_wheel = qs.wheel_id', 'left');
+            
+            $specBuilder->where('qs.quotation_id', $quotation['id_quotation']);
+            $specBuilder->orderBy('qs.id_specification', 'ASC');
+            
+            $specifications = $specBuilder->get()->getResultArray();
+            
+            log_message('info', 'getQuotationSpecificationsForContract: Contract ' . $contractId . ' has ' . count($specifications) . ' specs from quotation ' . $quotation['id_quotation']);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $specifications,
+                'quotation' => $quotation
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'getQuotationSpecificationsForContract error: ' . $e->getMessage());
+            
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to load specifications: ' . $e->getMessage()
             ]);
         }
     }

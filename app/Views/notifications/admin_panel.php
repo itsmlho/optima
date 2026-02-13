@@ -159,7 +159,7 @@
 
 <!-- Create/Edit Rule Modal -->
 <div class="modal fade" id="ruleModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="ruleModalTitle">Create Notification Rule</h5>
@@ -330,7 +330,7 @@
 
 <!-- View Rule Detail Modal -->
 <div class="modal fade" id="viewRuleModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Notification Rule Details</h5>

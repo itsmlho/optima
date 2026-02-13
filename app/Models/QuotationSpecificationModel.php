@@ -22,6 +22,7 @@ class QuotationSpecificationModel extends Model
         'battery_id',
         'attachment_id',
         'unit_accessories',
+        'notes', // For custom requirements and technical details
         'is_active',
         'departemen_id',
         'tipe_unit_id',
