@@ -148,8 +148,14 @@
 
     <!-- Spareparts Table -->
     <div class="card shadow mb-4">
-        <div class="card-header py-3">
-            <h6 class="m-0 font-weight-bold text-primary">Sparepart Inventory</h6>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-tools me-2 text-primary"></i>
+                    Sparepart Inventory Management
+                </h5>
+                <p class="text-muted small mb-0">Manage and track all spare parts stock, pricing, and supplier information</p>
+            </div>
         </div>
         <div class="card-body">
             <div class="table-responsive">

@@ -2,6 +2,15 @@
 
 <?= $this->section('content') ?>
 
+<!-- Page Header -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">
+        <i class="bi bi-building me-2 text-primary"></i>
+        Supplier Management
+    </h4>
+    <p class="text-muted mb-0">Manage supplier profiles, verify credentials, and track purchase order history</p>
+</div>
+
 <!-- Stats Cards -->
 
 <div class="row mt-3 mb-4">

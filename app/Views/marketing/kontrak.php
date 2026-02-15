@@ -9,6 +9,15 @@ $can_export = can_export('marketing');
 
 <?= $this->section('content') ?>
 
+<!-- Page Header -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">
+        <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+        Contracts & Purchase Orders Management
+    </h4>
+    <p class="text-muted mb-0">Manage formal rental contracts, PO-only agreements, and track contract renewals</p>
+</div>
+
 <!-- Statistics Cards -->
 <div class="row mt-3 mb-4">
     <div class="col-xl-3 col-lg-6 col-md-6 mb-3">

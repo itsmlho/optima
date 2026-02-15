@@ -368,19 +368,11 @@
   font-weight: 600;
 }
 
-/* Loading State */
+/* Loading State - Using global loading styles from optima-pro.css */
 .loading-spinner {
   display: inline-block; 
   width: 20px; 
   height: 20px;
-  border: 3px solid rgba(0,123,255,.3);
-  border-radius: 50%; 
-  border-top-color: #007bff;
-  animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Responsive */

@@ -15,6 +15,15 @@ $can_export = $permissions['export'];
 
 <?= $this->section('content') ?>
 
+<!-- Page Header -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">
+        <i class="bi bi-cart-check me-2 text-primary"></i>
+        Purchase Orders Management
+    </h4>
+    <p class="text-muted mb-0">Create and track purchase orders for units and spare parts from suppliers</p>
+</div>
+
 <!-- Success/Error Messages -->
 <?php if (session()->getFlashdata('success')): ?>
     <div class="alert alert-success alert-dismissible fade show" role="alert">
@@ -1148,7 +1157,7 @@ function initUnitAttachmentPOTable() {
         autoWidth: false,
         scrollX: false,
         language: {
-            processing: '<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>'
+            processing: '<span>Memuat data...</span>'
         },
         drawCallback: function(settings) {
             // Update progress tab badge count based on filtered records
@@ -1336,7 +1345,7 @@ function initPODeliveryTable() {
         autoWidth: false,
         scrollX: false,
         language: {
-            processing: '<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>'
+            processing: '<span>Memuat data...</span>'
         },
         drawCallback: function(settings) {
             // Update delivery count
@@ -1585,7 +1594,7 @@ function initUnitAttachmentPOCompletedTable() {
         autoWidth: false,
         scrollX: false,
         language: {
-            processing: '<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>'
+            processing: '<span>Memuat data...</span>'
         },
         drawCallback: function(settings) {
             // Ensure table is properly displayed after drawing

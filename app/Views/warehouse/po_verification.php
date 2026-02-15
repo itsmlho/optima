@@ -53,6 +53,15 @@ $can_export = $permissions['export'];
 
 <?= $this->section('content') ?>
 
+    <!-- Page Header -->
+    <div class="mb-3">
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-check2-square me-2 text-primary"></i>
+            Purchase Order Verification
+        </h4>
+        <p class="text-muted mb-0">Verify and validate incoming units and spareparts from purchase orders</p>
+    </div>
+
     <!-- Statistics Cards -->
     <div class="row g-4 mb-4">
         <div class="col-xl-3 col-md-6">

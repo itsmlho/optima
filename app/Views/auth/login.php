@@ -249,6 +249,151 @@
             position: relative;
         }
         
+        /* Login Loading Modal */
+        .login-loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .login-loading-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        
+        .login-loading-modal {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+            border-radius: 1rem;
+            padding: 2.5rem 3rem;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 97, 242, 0.25);
+            border: 1px solid rgba(0, 97, 242, 0.1);
+            min-width: 320px;
+            max-width: 400px;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        
+        .login-loading-overlay.show .login-loading-modal {
+            transform: scale(1);
+        }
+        
+        .login-loading-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1.25rem;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .login-loading-logo::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid #e8e8e8;
+            z-index: 1;
+        }
+        
+        .login-loading-logo::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: #0061f2;
+            border-right-color: #4d8cff;
+            animation: spin-login 0.8s linear infinite;
+            z-index: 1;
+        }
+        
+        .login-loading-logo img {
+            width: 48px;
+            height: 48px;
+            object-fit: contain;
+            border-radius: 50%;
+            background: white;
+            padding: 6px;
+            box-shadow: 0 4px 15px rgba(0, 97, 242, 0.3);
+            animation: pulse-login 1.5s ease-in-out infinite;
+            z-index: 2;
+            position: relative;
+        }
+        
+        .login-loading-text {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #0061f2;
+            margin-bottom: 0.75rem;
+            letter-spacing: 0.02em;
+        }
+        
+        .login-loading-subtitle {
+            font-size: 0.875rem;
+            color: #69707a;
+            margin-bottom: 1.25rem;
+        }
+        
+        .login-loading-bars {
+            display: flex;
+            gap: 6px;
+            margin: 0 auto;
+            justify-content: center;
+            height: 24px;
+            align-items: flex-end;
+        }
+        
+        .login-loading-bar {
+            width: 4px;
+            background: linear-gradient(180deg, #0061f2, #4d8cff);
+            border-radius: 2px;
+            animation: bar-bounce-login 1.2s ease-in-out infinite;
+        }
+        
+        .login-loading-bar:nth-child(1) { animation-delay: 0s; }
+        .login-loading-bar:nth-child(2) { animation-delay: 0.15s; }
+        .login-loading-bar:nth-child(3) { animation-delay: 0.3s; }
+        .login-loading-bar:nth-child(4) { animation-delay: 0.45s; }
+        .login-loading-bar:nth-child(5) { animation-delay: 0.6s; }
+        
+        @keyframes spin-login {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulse-login {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+        
+        @keyframes bar-bounce-login {
+            0%, 100% { 
+                height: 8px;
+                opacity: 0.4; 
+            }
+            50% { 
+                height: 20px;
+                opacity: 1; 
+            }
+        }
+        
         .auth-divider::before {
             content: '';
             position: absolute;
@@ -429,6 +574,24 @@
         </div>
     </div>
     
+    <!-- Login Loading Modal -->
+    <div class="login-loading-overlay" id="loginLoadingModal">
+        <div class="login-loading-modal">
+            <div class="login-loading-logo">
+                <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA">
+            </div>
+            <div class="login-loading-text">Sedang Login...</div>
+            <div class="login-loading-subtitle">Memeriksa akun Anda dalam keadaan siap.</div>
+            <div class="login-loading-bars">
+                <span class="login-loading-bar"></span>
+                <span class="login-loading-bar"></span>
+                <span class="login-loading-bar"></span>
+                <span class="login-loading-bar"></span>
+                <span class="login-loading-bar"></span>
+            </div>
+        </div>
+    </div>
+    
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
@@ -448,11 +611,18 @@
             }
         }
         
-        // Prevent double submission
+        // Prevent double submission and show loading modal
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             const submitBtn = this.querySelector('button[type="submit"]');
+            const loadingModal = document.getElementById('loginLoadingModal');
+            
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Memproses...';
+            
+            // Show loading modal after short delay
+            setTimeout(() => {
+                loadingModal.classList.add('show');
+            }, 100);
         });
     </script>
 </body>

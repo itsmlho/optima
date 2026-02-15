@@ -4,6 +4,18 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
+/**
+ * InventoryAttachmentModel
+ * 
+ * Model untuk mengelola inventory attachment, battery, dan charger
+ * 
+ * Virtual Column:
+ * - no_item: Auto-generated format berdasarkan tipe_item
+ *   - Battery: B-0001, B-0002, dst
+ *   - Charger: C-0001, C-0002, dst
+ *   - Attachment: ATT-0001, ATT-0002, dst
+ * Format ini di-generate di query SELECT, tidak disimpan di database
+ */
 class InventoryAttachmentModel extends Model
 {
     protected $table = 'inventory_attachment';
@@ -301,7 +313,13 @@ class InventoryAttachmentModel extends Model
             b.tipe_baterai,
             b.jenis_baterai,
             c.merk_charger,
-            c.tipe_charger
+            c.tipe_charger,
+            CASE 
+                WHEN ia.tipe_item = "battery" THEN CONCAT("B-", LPAD(ia.id_inventory_attachment, 4, "0"))
+                WHEN ia.tipe_item = "charger" THEN CONCAT("C-", LPAD(ia.id_inventory_attachment, 4, "0"))
+                WHEN ia.tipe_item = "attachment" THEN CONCAT("ATT-", LPAD(ia.id_inventory_attachment, 4, "0"))
+                ELSE CONCAT("ITM-", LPAD(ia.id_inventory_attachment, 4, "0"))
+            END as no_item
         ');
 
         // Add unit number if linked to a unit
@@ -313,9 +331,9 @@ class InventoryAttachmentModel extends Model
         $builder->join('charger c', 'ia.charger_id = c.id_charger', 'left');
         $builder->join('baterai b', 'ia.baterai_id = b.id', 'left');
 
-        // Filter by tipe_item if provided
+        // Filter by tipe_item if provided (case-insensitive)
         if (!empty($request['tipe_item'])) {
-            $builder->where('ia.tipe_item', $request['tipe_item']);
+            $builder->where('LOWER(ia.tipe_item)', strtolower($request['tipe_item']));
         }
 
         // Filter by attachment_status if provided (for tab filter)
@@ -323,21 +341,42 @@ class InventoryAttachmentModel extends Model
             $builder->where('ia.attachment_status', $request['status_filter']);
         }
 
+        // Filter by model if provided (for battery/charger)
+        // TEMPORARY DISABLED - Skip model filter for battery until data structure is clarified
+        if (!empty($request['model_filter'])) {
+            $modelFilter = $request['model_filter'];
+            
+            // For charger, filter by voltage in tipe_charger
+            if (!empty($request['tipe_item']) && strtolower($request['tipe_item']) === 'charger') {
+                $builder->like('c.tipe_charger', $modelFilter);
+            }
+            
+            // Battery filter temporarily disabled - returns all battery records
+            // TODO: Fix battery model filter once data structure is confirmed
+        }
+
         // Search functionality
         if (!empty($request['search']['value'])) {
             $searchValue = $request['search']['value'];
             $builder->groupStart();
-            $builder->like('ia.sn_attachment', $searchValue);
+            $builder->like('ia.id_inventory_attachment', $searchValue);
+            $builder->orLike('ia.sn_attachment', $searchValue);
+            $builder->orLike('ia.sn_baterai', $searchValue);
             $builder->orLike('ia.sn_charger', $searchValue);
             $builder->orLike('ia.kondisi_fisik', $searchValue);
             $builder->orLike('ia.kelengkapan', $searchValue);
             $builder->orLike('ia.lokasi_penyimpanan', $searchValue);
             $builder->orLike('ia.catatan_inventory', $searchValue);
-            
-            if ($tablesExist['status_unit']) {
-                $builder->orLike('su.status_unit', $searchValue);
-            }
-            
+            $builder->orLike('ia.attachment_status', $searchValue);
+            // Search in joined tables
+            $builder->orLike('a.merk', $searchValue);
+            $builder->orLike('a.tipe', $searchValue);
+            $builder->orLike('a.model', $searchValue);
+            $builder->orLike('b.merk_baterai', $searchValue);
+            $builder->orLike('b.tipe_baterai', $searchValue);
+            $builder->orLike('b.jenis_baterai', $searchValue);
+            $builder->orLike('c.merk_charger', $searchValue);
+            $builder->orLike('c.tipe_charger', $searchValue);
             $builder->groupEnd();
         }
 
@@ -386,6 +425,8 @@ class InventoryAttachmentModel extends Model
      */
     public function countFiltered($request)
     {
+        $tablesExist = $this->checkTablesExist();
+        
         $builder = $this->db->table($this->table . ' ia');
 
         // Search functionality
@@ -432,6 +473,44 @@ class InventoryAttachmentModel extends Model
         ];
 
         return $stats;
+    }
+
+    /**
+     * Get detailed statistics by type and status
+     */
+    public function getDetailedStats()
+    {
+        $db = $this->db;
+        
+        // Count by type
+        $attachmentCount = $db->table($this->table)->where('tipe_item', 'attachment')->countAllResults();
+        $batteryCount = $db->table($this->table)->where('tipe_item', 'battery')->countAllResults();
+        $chargerCount = $db->table($this->table)->where('tipe_item', 'charger')->countAllResults();
+        
+        // Count by status
+        $allCount = $db->table($this->table)->countAllResults();
+        $availableCount = $db->table($this->table)->where('attachment_status', 'AVAILABLE')->countAllResults();
+        $inUseCount = $db->table($this->table)->where('attachment_status', 'IN_USE')->countAllResults();
+        $usedCount = $db->table($this->table)->where('attachment_status', 'USED')->countAllResults();
+        $maintenanceCount = $db->table($this->table)->where('attachment_status', 'MAINTENANCE')->countAllResults();
+        $brokenCount = $db->table($this->table)->where('attachment_status', 'BROKEN')->countAllResults();
+        
+        return [
+            'by_type' => [
+                'attachment' => $attachmentCount,
+                'battery' => $batteryCount,
+                'charger' => $chargerCount,
+                'total' => $allCount
+            ],
+            'by_status' => [
+                'all' => $allCount,
+                'available' => $availableCount,
+                'in_use' => $inUseCount,
+                'used' => $usedCount,
+                'maintenance' => $maintenanceCount,
+                'broken' => $brokenCount
+            ]
+        ];
     }
 
     /**

@@ -85,7 +85,13 @@ $can_export = $permissions['export'];
 <!-- Customer Table Card -->
 <div class="card table-card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><?= lang('Marketing.customer_management') ?></h5>
+        <div>
+            <h5 class="card-title mb-0">
+                <i class="bi bi-people me-2 text-primary"></i>
+                Customer Management
+            </h5>
+            <p class="text-muted small mb-0">Manage customer profiles, contracts, and track unit deployments</p>
+        </div>
         <div class="d-flex gap-2">
             <?= ui_button('refresh', lang('App.refresh'), [
                 'onclick' => 'refreshData()',
@@ -916,9 +922,31 @@ function initializeCustomerTable() {
             ajax: {
                 url: '<?= base_url('marketing/customer-management/getCustomers') ?>',
                 type: 'POST',
+                timeout: 30000,  // 30 seconds timeout
                 error: function(xhr, error, code) {
-                    console.error('DataTable AJAX Error:', error);
-                    showNotification('Failed to load customer data. Please refresh the page.', 'error');
+                    console.error('❌ Customer DataTable AJAX Error:', {
+                        status: xhr.status,
+                        error: error,
+                        code: code,
+                        responseText: xhr.responseText
+                    });
+                    
+                    // Force hide processing indicator
+                    $('.dataTables_processing').hide();
+                    
+                    // Show specific error message
+                    let errorMsg = 'Gagal memuat data customer. ';
+                    if (xhr.status === 0) {
+                        errorMsg += 'Koneksi terputus atau timeout.';
+                    } else if (xhr.status === 404) {
+                        errorMsg += 'URL endpoint tidak ditemukan.';
+                    } else if (xhr.status === 500) {
+                        errorMsg += 'Server error.';
+                    } else {
+                        errorMsg += 'Silakan refresh halaman.';
+                    }
+                    
+                    showNotification(errorMsg, 'error');
                 }
             },
             pageLength: 15,
@@ -972,10 +1000,18 @@ function initializeCustomerTable() {
             },
             initComplete: function(settings, json) {
                 console.log('✅ Customer DataTable initialized');
-                console.log('📊 Total records:', json.recordsTotal);
+                console.log('📊 Total records:', json ? json.recordsTotal : 0);
+                
+                // Force hide any stuck processing indicator
+                $('.dataTables_processing').hide();
                 
                 // Calculate and update statistics
-                updateStatistics(json.data || []);
+                if (json && json.data) {
+                    updateStatistics(json.data);
+                } else {
+                    console.warn('⚠️ No data returned from server');
+                    updateStatistics([]);
+                }
             },
             drawCallback: function() {
                 // Update statistics on every redraw (filter/search)
@@ -2135,33 +2171,18 @@ function showNotification(message, type) {
     }
 }
 
-// Auto-check DataTable visibility and reinitialize if needed
+// Auto-check DataTable visibility - DISABLED to prevent infinite loops
+// This was causing reinitialize loops and stuck loading
 function checkDataTableVisibility() {
-    setTimeout(function() {
-        // Check if table wrapper is visible but no rows showing
-        const tableWrapper = $('.dataTables_wrapper');
-        const tableRows = $('#customerTable tbody tr');
-        const isProcessing = $('.dataTables_processing').is(':visible');
-        
-        if (tableWrapper.length > 0 && tableRows.length === 0 && !isProcessing) {
-            console.warn('⚠️ DataTable appears empty, checking status...');
-            
-            // Check if it's just "No data" or actually broken
-            const noDataMessage = $('#customerTable tbody tr td').text();
-            if (noDataMessage.includes('No data') || noDataMessage.includes('No matches')) {
-                console.log('📄 Table is empty (no data)');
-            } else {
-                console.warn('🔄 Table seems broken, reinitializing...');
-                refreshData();
-            }
-        }
-    }, 2000); // Check after 2 seconds
+    // Disabled - table will show "no data" message if empty
+    // No need to reinitialize automatically
+    return;
 }
 
-// Call visibility check after initialization
-$(document).ready(function() {
-    checkDataTableVisibility();
-});
+// DO NOT call visibility check - it causes infinite loops
+// $(document).ready(function() {
+//     checkDataTableVisibility();
+// });
 
 function refreshData() {
     console.log('🔄 Refreshing customer data...');

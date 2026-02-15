@@ -395,42 +395,59 @@ function clearFormValidation(formSelector) {
 /**
  * Show loading overlay on element
  * 
+/**
+ * Show loading overlay on an element
+ * Note: For page-level loading, use #pageLoading in base.php
+ * This is ONLY for component-specific loading (cards, modals, etc.)
+ * 
  * @param {string} selector - Element selector
  * @param {string} message - Loading message (default: 'Loading...')
  * 
  * @example
- * showLoadingOverlay('#dataTable', 'Loading data...');
+ * showLoadingOverlay('#dataCard', 'Loading data...');
  * 
  * // Later:
- * hideLoadingOverlay('#dataTable');
+ * hideLoadingOverlay('#dataCard');
  */
 function showLoadingOverlay(selector, message = 'Loading...') {
     const $el = $(selector);
     
-    if ($el.find('.loading-overlay').length === 0) {
+    // Skip if element is body or html (use page loading instead)
+    if ($el.is('body, html')) {
+        console.warn('showLoadingOverlay: Use #pageLoading for page-level loading');
+        return;
+    }
+    
+    if ($el.find('.component-loading-overlay').length === 0) {
         const overlay = $(`
-            <div class="loading-overlay" style="
+            <div class="component-loading-overlay" style="
                 position: absolute;
                 top: 0;
                 left: 0;
                 right: 0;
                 bottom: 0;
-                background: rgba(255,255,255,0.8);
+                background: rgba(255,255,255,0.9);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                z-index: 9999;
+                z-index: 1050;
+                border-radius: inherit;
             ">
                 <div class="text-center">
                     <div class="spinner-border text-primary mb-2" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <div>${message}</div>
+                    <div class="small text-muted">${message}</div>
                 </div>
             </div>
         `);
         
-        $el.css('position', 'relative');
+        // Set parent position to relative if not already positioned
+        const currentPosition = $el.css('position');
+        if (currentPosition === 'static') {
+            $el.css('position', 'relative');
+        }
+        
         $el.append(overlay);
     }
 }
@@ -441,7 +458,7 @@ function showLoadingOverlay(selector, message = 'Loading...') {
  * @param {string} selector - Element selector
  */
 function hideLoadingOverlay(selector) {
-    $(selector).find('.loading-overlay').remove();
+    $(selector).find('.component-loading-overlay').remove();
 }
 
 /**

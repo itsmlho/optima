@@ -49,10 +49,22 @@ class AssetHistoryManager {
     }
     
     async loadInitialData() {
-        await Promise.all([
-            this.loadContracts(),
-            this.loadUnits()
-        ]);
+        // Only load data if the asset history dropdowns exist on this page
+        const hasContractDropdown = $('#historyContractId').length > 0 || 
+                                   $('#rateHistoryContractId').length > 0 || 
+                                   $('#renewalChainId').length > 0;
+        const hasUnitDropdown = $('#historyUnitId').length > 0 || $('#rateHistoryUnitId').length > 0;
+        
+        if (!hasContractDropdown && !hasUnitDropdown) {
+            console.log('Asset history dropdowns not found on this page, skipping data load');
+            return;
+        }
+        
+        const promises = [];
+        if (hasContractDropdown) promises.push(this.loadContracts());
+        if (hasUnitDropdown) promises.push(this.loadUnits());
+        
+        await Promise.all(promises);
     }
     
     async loadContracts() {

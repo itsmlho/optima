@@ -42,6 +42,35 @@ window.OptimaDataTable = (function() {
         // Server-side Processing (recommended for large datasets)
         serverSide: true,
         
+        // AJAX Timeout Configuration (30 seconds)
+        ajax: {
+            timeout: 30000,  // 30 seconds timeout for AJAX requests
+            error: function(xhr, error, thrown) {
+                console.error('❌ DataTables AJAX Error:', {
+                    status: xhr.status,
+                    statusText: xhr.statusText,
+                    error: error,
+                    thrown: thrown
+                });
+                
+                // Force hide processing indicator
+                $('.dataTables_processing').hide();
+                
+                // Show user-friendly error message
+                const errorMsg = xhr.status === 0 ? 
+                    'Koneksi terputus. Silakan cek koneksi internet Anda.' :
+                    xhr.status === 404 ? 
+                    'URL tidak ditemukan. Silakan hubungi administrator.' :
+                    xhr.status === 500 ? 
+                    'Server error. Silakan coba lagi atau hubungi administrator.' :
+                    'Gagal memuat data. Silakan refresh halaman.';
+                
+                if (typeof showNotification === 'function') {
+                    showNotification(errorMsg, 'error');
+                }
+            }
+        },
+        
         // Language Configuration (Bahasa Indonesia)
         language: {
             decimal: ",",
@@ -53,8 +82,18 @@ window.OptimaDataTable = (function() {
             infoEmpty: "Tidak ada data",
             infoFiltered: "(dari total _MAX_ data)",
             infoPostFix: "",
-            loadingRecords: "Memuat data...",
-            processing: '<div class="spinner-border text-primary" role="status"><span class="sr-only">Loading...</span></div>',
+            loadingRecords: "Sedang menyiapkan data...",
+            processing: function() {
+                // Get BASE_URL dynamically at runtime
+                const baseUrl = (typeof window.BASE_URL !== 'undefined' && window.BASE_URL) ? window.BASE_URL : (window.location.origin + '/optima/public/');
+                return `
+                    <div class="loading-logo">
+                        <img src="${baseUrl}assets/images/logo-optima.png" alt="OPTIMA">
+                    </div>
+                    <div class="loading-text">Sedang menyiapkan data...</div>
+                    <div class="loading-subtitle">Mohon tunggu sebentar</div>
+                `;
+            }(),
             zeroRecords: "Tidak ada data yang sesuai dengan pencarian Anda",
             emptyTable: "Tidak ada data tersedia",
             paginate: {
@@ -96,11 +135,37 @@ window.OptimaDataTable = (function() {
             if (typeof $ !== 'undefined' && $.fn.tooltip) {
                 $('[data-bs-toggle="tooltip"]').tooltip();
             }
+            
+            // Ensure processing indicator is hidden after draw
+            $(settings.nTableWrapper).find('.dataTables_processing').hide();
+        },
+        
+        preDrawCallback: function(settings) {
+            // Safety timeout - force hide processing after 35 seconds
+            const $processing = $(settings.nTableWrapper).find('.dataTables_processing');
+            
+            if (settings._processingTimeout) {
+                clearTimeout(settings._processingTimeout);
+            }
+            
+            settings._processingTimeout = setTimeout(function() {
+                console.warn('⚠️ DataTables processing timeout reached - force hiding');
+                $processing.hide();
+                
+                if (typeof showNotification === 'function') {
+                    showNotification('Gagal memuat data - timeout. Silakan refresh halaman.', 'warning');
+                }
+            }, 35000); // 35 seconds safety timeout
         },
         
         initComplete: function(settings, json) {
             // Add custom classes after initialization
             $(this).addClass('table-initialized');
+            
+            // Clear processing timeout on completion
+            if (settings._processingTimeout) {
+                clearTimeout(settings._processingTimeout);
+            }
         }
     };
 

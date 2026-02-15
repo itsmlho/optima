@@ -2,6 +2,15 @@
 
 <?= $this->section('content') ?>
 
+<!-- Page Header -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">
+        <i class="bi bi-arrow-left-right me-2 text-primary"></i>
+        Sparepart Usage & Returns Management
+    </h4>
+    <p class="text-muted mb-0">Track sparepart usage from warehouse to service and manage returns</p>
+</div>
+
 <style>
     /* Custom styling for sparepart usage table */
     #usageTable {

@@ -4,13 +4,16 @@
 
 <div class="container-fluid">
     <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-gray-800">History Rolling Unit</h1>
-            <p class="text-muted">Riwayat aktivitas dan operasi unit forklift</p>
-        </div>
-        <div>
-            <button class="btn btn-success" onclick="exportHistory()">
+    <div class="mb-3">
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-clock-history me-2 text-primary"></i>
+            Unit Operation History
+        </h4>
+        <p class="text-muted mb-0">Track and review detailed history of unit activities, maintenance, and operations</p>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12 text-end">
+            <button class="btn btn-success btn-sm" onclick="exportHistory()">
                 <i class="fas fa-download"></i> Export History
             </button>
         </div>

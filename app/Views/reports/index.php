@@ -4,11 +4,16 @@
 
 <div class="container-fluid">
     <!-- Page Header -->
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-chart-bar me-2"></i>Reports Dashboard
-        </h1>
-        <div class="d-sm-flex align-items-center">
+    <div class="mb-3">
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-graph-up me-2 text-primary"></i>
+            Reports Dashboard
+        </h4>
+        <p class="text-muted mb-0">Access, generate, and export various reports for business insights and analysis</p>
+    </div>
+    <!-- Old header section removed for consistency -->
+    <div class="row mt-3">
+        <div class="col-md-12 text-end mb-3">
             <div class="btn-group" role="group">
                 <button class="btn btn-outline-info btn-sm" onclick="refreshReports()">
                     <i class="fas fa-sync-alt me-1"></i>Refresh

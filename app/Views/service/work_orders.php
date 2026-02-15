@@ -19,6 +19,15 @@ $assetService = new \App\Services\AssetMinificationService();
 
 <?= $this->section('content') ?>
 
+<!-- Page Header -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">
+        <i class="bi bi-wrench me-2 text-primary"></i>
+        Work Orders Management
+    </h4>
+    <p class="text-muted mb-0">Monitor and manage service work orders from open to completion</p>
+</div>
+
 <!-- Alert Container -->
 <div id="alertContainer" class="mb-3"></div>
 
