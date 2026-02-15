@@ -1074,8 +1074,12 @@ class Warehouse extends BaseController
                     'order' => $this->request->getPost('order'),
                     'status_unit' => $this->request->getPost('status_unit'),
                     'tipe_item' => $this->request->getPost('tipe_item'),
-                    'status_filter' => $this->request->getPost('status_filter')
+                    'status_filter' => $this->request->getPost('status_filter'),
+                    'model_filter' => $this->request->getPost('model_filter')
                 ];
+
+                // Debug logging
+                log_message('debug', '[Warehouse::inventAttachment] Request: ' . json_encode($request));
 
                 $result = $attachmentModel->getDataTable($request);
                 
@@ -1109,7 +1113,8 @@ class Warehouse extends BaseController
                 '/' => 'Dashboard',
                 '/warehouse/inventory/invent_attachment' => 'Inventory Attachment'
             ],
-            'stats' => $attachmentModel->getStats()
+            'stats' => $attachmentModel->getStats(),
+            'detailed_stats' => $attachmentModel->getDetailedStats()
         ];
 
         return view('warehouse/inventory/invent_attachment', $data);

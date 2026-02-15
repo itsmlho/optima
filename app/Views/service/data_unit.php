@@ -2,6 +2,15 @@
 
 <?= $this->section('content') ?>
 
+<!-- Page Header -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">
+        <i class="bi bi-box-seam me-2 text-primary"></i>
+        Service Units Database
+    </h4>
+    <p class="text-muted mb-0">Complete list of units available for service operations and maintenance</p>
+</div>
+
 <!-- Header & Status Tabs / Controls -->
 <div class="card shadow-business mb-3">
         <div class="card-body p-lg">

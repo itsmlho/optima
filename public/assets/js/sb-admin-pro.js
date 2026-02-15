@@ -117,6 +117,9 @@
   }
 
   // Initialize DataTables with SB Admin Pro styling
+  // DISABLED: Use OptimaDataTable.init() or manual initialization instead
+  // This prevents duplicate initialization and conflicts
+  /*
   if ($.fn.DataTable) {
     $('.dataTable').each(function() {
       if (!$.fn.DataTable.isDataTable(this)) {
@@ -147,6 +150,8 @@
       }
     });
   }
+  */
+
 
   // Bootstrap modal enhancements
   $('.modal').on('shown.bs.modal', function () {

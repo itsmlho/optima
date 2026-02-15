@@ -353,16 +353,22 @@ $currentLang = service('request')->getLocale();
         window.showToast = window.createOptimaToast; // Alias untuk kompatibilitas
         window.OptimaPro = window.OptimaPro || {};
         window.OptimaPro.showNotification = (msg,type='info') => createOptimaToast({type:type==='error'?'error':type, title:type.toUpperCase(), message:msg});
+        
+        // Track page start time BEFORE load event
+        window.pageStartTime = performance.now();
+        
+        // Define BASE_URL globally for all JavaScript files
+        const BASE_URL = '<?= rtrim(base_url(), '/') ?>/';
+        window.BASE_URL = BASE_URL;
     </script>
     <!-- Page Loading -->
-    <div class="page-loading" id="pageLoading">
+    <div class="loading-overlay" id="pageLoading">
         <div class="loading-content">
             <div class="loading-logo">
-                <i class="fas fa-truck"></i>
+                <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA">
             </div>
             <div class="loading-text">OPTIMA</div>
             <div class="loading-subtitle">PT Sarana Mitra Luas Tbk</div>
-            <div class="loading-spinner"></div>
         </div>
     </div>
 
@@ -743,13 +749,63 @@ $currentLang = service('request')->getLocale();
         // Hide loading screen when page is fully loaded
         window.addEventListener('load', function() {
             const loading = document.getElementById('pageLoading');
-            if (loading) {
+            if (!loading) return;
+            
+            // Minimum delay to ensure animation is visible and professional (1.5 seconds)
+            const minLoadTime = 1500;
+            const elapsed = performance.now() - (window.pageStartTime || 0);
+            const remainingTime = Math.max(0, minLoadTime - elapsed);
+            
+            setTimeout(() => {
                 loading.classList.add('fade-out');
                 setTimeout(() => {
                     loading.style.display = 'none';
-                }, 300);
-            }
+                    loading.remove(); // Clean up DOM
+                }, 400); // Smooth fade-out transition
+            }, remainingTime);
         });
+        
+        // Global DataTables Processing Safety Monitor
+        // Prevents stuck loading indicators across all DataTables
+        (function() {
+            let processingStartTimes = new Map();
+            const MAX_PROCESSING_TIME = 35000; // 35 seconds max
+            
+            // Monitor visible processing indicators every 5 seconds
+            setInterval(function() {
+                $('.dataTables_processing:visible').each(function() {
+                    const $processing = $(this);
+                    const id = $processing.closest('.dataTables_wrapper').attr('id') || 'unknown';
+                    
+                    // Track when processing started
+                    if (!processingStartTimes.has(id)) {
+                        processingStartTimes.set(id, Date.now());
+                        console.log('🔄 DataTables processing started:', id);
+                    } else {
+                        const elapsed = Date.now() - processingStartTimes.get(id);
+                        
+                        // Force hide if stuck for too long
+                        if (elapsed > MAX_PROCESSING_TIME) {
+                            console.warn('⚠️ Force hiding stuck DataTables processing:', id, 'elapsed:', elapsed + 'ms');
+                            $processing.hide();
+                            processingStartTimes.delete(id);
+                            
+                            if (typeof showNotification === 'function') {
+                                showNotification('Loading terlalu lama dan dihentikan. Silakan refresh halaman.', 'warning');
+                            }
+                        }
+                    }
+                });
+                
+                // Clean up hidden processing indicators from tracking
+                $('.dataTables_processing:hidden').each(function() {
+                    const id = $(this).closest('.dataTables_wrapper').attr('id');
+                    if (id && processingStartTimes.has(id)) {
+                        processingStartTimes.delete(id);
+                    }
+                });
+            }, 5000); // Check every 5 seconds
+        })();
         
         // Global fetch wrapper to auto-attach CSRF token and X-Requested-With for same-origin non-GET requests
         (function(){

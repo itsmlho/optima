@@ -11,6 +11,15 @@ $can_export = true;
 
 <?= $this->section('content') ?>
 
+    <!-- Page Header -->
+    <div class="mb-3">
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-file-earmark-text me-2 text-primary"></i>
+            SPK (Surat Perintah Kerja) Management
+        </h4>
+        <p class="text-muted mb-0">Create, track, and manage work order letters for service operations</p>
+    </div>
+
     <?php if (!$can_view): ?>
     <div class="alert alert-warning">
         <i class="fas fa-lock me-2"></i>

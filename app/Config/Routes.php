@@ -42,6 +42,7 @@ $routes->group('health', static function ($routes) {
 
 // Test Routes (Development Only)
 $routes->get('test/quotations', 'TestQuotations::testDataTables');
+$routes->get('debug/battery-data', 'DebugBattery::checkBatteryData');
 
 // Customer AJAX Endpoints - MUST be before other routes to avoid conflicts
 $routes->get('customers/get/(:num)', 'Customers::get/$1');
@@ -622,7 +623,9 @@ $routes->group('warehouse', static function ($routes) {
     $routes->group('sparepart-usage', static function ($routes) {
         $routes->get('/', 'Warehouse\SparepartUsageController::index');
         $routes->post('get-usage', 'Warehouse\SparepartUsageController::getUsage');
+        $routes->post('get-usage-grouped', 'Warehouse\SparepartUsageController::getUsageGrouped');
         $routes->get('get-usage-detail/(:num)', 'Warehouse\SparepartUsageController::getUsageDetail/$1');
+        $routes->get('get-work-order-spareparts/(:num)', 'Warehouse\SparepartUsageController::getWorkOrderSpareparts/$1');
         $routes->post('get-returns', 'Warehouse\SparepartUsageController::getReturns');
         $routes->get('get-return-detail/(:num)', 'Warehouse\SparepartUsageController::getReturnDetail/$1');
         $routes->post('confirm-return/(:num)', 'Warehouse\SparepartUsageController::confirmReturn/$1');

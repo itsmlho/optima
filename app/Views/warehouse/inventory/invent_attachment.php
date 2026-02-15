@@ -2,6 +2,15 @@
 
 <?= $this->section('content') ?>
 
+<!-- Page Header -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">
+        <i class="bi bi-puzzle me-2 text-primary"></i>
+        Attachment, Battery & Charger Inventory
+    </h4>
+    <p class="text-muted mb-0">Manage forklift attachments, batteries, and chargers with status tracking and maintenance records</p>
+</div>
+
     <!-- Inventory Table -->
     <div class="card table-card">
         <div class="card-header">
@@ -34,18 +43,21 @@
                     <button class="nav-link active" id="attachment-tab" data-bs-toggle="tab" data-bs-target="#attachment" type="button" role="tab" onclick="applyTypeFilter('attachment')">
                         <i class="fas fa-puzzle-piece me-1"></i>
                         <strong>Attachment</strong>
+                        <span class="badge bg-primary ms-1" id="count-attachment"><?= $detailed_stats['by_type']['attachment'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="battery-tab" data-bs-toggle="tab" data-bs-target="#battery" type="button" role="tab" onclick="applyTypeFilter('battery')">
                         <i class="fas fa-battery-half me-1"></i>
                         <strong>Battery</strong>
+                        <span class="badge bg-success ms-1" id="count-battery"><?= $detailed_stats['by_type']['battery'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="charger-tab" data-bs-toggle="tab" data-bs-target="#charger" type="button" role="tab" onclick="applyTypeFilter('charger')">
                         <i class="fas fa-plug me-1"></i>
                         <strong>Charger</strong>
+                        <span class="badge bg-warning ms-1" id="count-charger"><?= $detailed_stats['by_type']['charger'] ?? 0 ?></span>
                     </button>
                 </li>
             </ul>
@@ -56,33 +68,50 @@
                     <button class="nav-link active btn-sm" id="all-status-tab" type="button" onclick="applyStatusFilter('all')">
                         <i class="fas fa-list me-1"></i>
                         All
+                        <span class="badge bg-secondary ms-1" id="count-all"><?= $detailed_stats['by_status']['all'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link btn-sm" id="available-status-tab" type="button" onclick="applyStatusFilter('AVAILABLE')">
                         <i class="fas fa-check-circle me-1"></i>
                         Available
+                        <span class="badge bg-success ms-1" id="count-available"><?= $detailed_stats['by_status']['available'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link btn-sm" id="inuse-status-tab" type="button" onclick="applyStatusFilter('IN_USE')">
-                        <i class="fas fa-user me-1"></i>
-                        In Use
+                    <button class="nav-link btn-sm" id="used-status-tab" type="button" onclick="applyStatusFilter('USED')">
+                        <i class="fas fa-link me-1"></i>
+                        Used
+                        <span class="badge bg-info ms-1" id="count-used"><?= $detailed_stats['by_status']['used'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link btn-sm" id="maintenance-status-tab" type="button" onclick="applyStatusFilter('MAINTENANCE')">
                         <i class="fas fa-tools me-1"></i>
                         Maintenance
+                        <span class="badge bg-warning ms-1" id="count-maintenance"><?= $detailed_stats['by_status']['maintenance'] ?? 0 ?></span>
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
                     <button class="nav-link btn-sm" id="broken-status-tab" type="button" onclick="applyStatusFilter('BROKEN')">
                         <i class="fas fa-exclamation-triangle me-1"></i>
                         Broken
+                        <span class="badge bg-danger ms-1" id="count-broken"><?= $detailed_stats['by_status']['broken'] ?? 0 ?></span>
                     </button>
                 </li>
             </ul>
+            
+            <!-- Additional Filters (shown based on active tab) -->
+            <div class="border-top pt-3 mt-3" id="additionalFilters" style="display: none;">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge bg-light text-dark border" style="font-size: 0.7rem;">
+                        <i class="fas fa-sliders-h me-1"></i>Models
+                    </span>
+                    <div class="btn-group btn-group-sm" role="group" id="modelFilterGroup">
+                        <!-- Dynamic model buttons will be inserted here -->
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="card-body">
             <table id="inventory-attachment-table" class="table table-striped table-hover">
@@ -525,13 +554,17 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11?v=<?= time() ?>"></script>
 <script>
     // Inventory Attachment & Battery Management - Updated <?= date('Y-m-d H:i:s') ?>
-    let currentTypeFilter = '';
-    let currentStatusFilter = 'all';
-    let currentAttachmentId = null;
-    let attachmentTable;
+    // Global variables - Initialize with default values
+    var currentTypeFilter = 'attachment';
+    var currentStatusFilter = 'all';
+    var currentModelFilter = '';
+    var currentAttachmentId = null;
+    var attachmentTable = null;
 
     $(document).ready(function() {
         console.log('🔧 Inventory Attachment JavaScript loaded');
+        console.log('Initial type filter:', currentTypeFilter);
+        console.log('Initial status filter:', currentStatusFilter);
 
         // Initialize DataTable and other code
         setupDataTable();
@@ -550,7 +583,7 @@
         let headerHtml = '<tr>';
         
         // Common columns for all types
-        headerHtml += '<th>ID</th>';
+        headerHtml += '<th>No Item</th>';
         headerHtml += '<th>Type</th>';
         
         // Type-specific columns
@@ -580,9 +613,9 @@
 
     function getDynamicColumns(type) {
         let columns = [
-            // ID column (always first)
+            // No Item column (always first) - Use no_item from database
             { 
-                data: 'id_inventory_attachment',
+                data: 'no_item',
                 render: function(data, type, row) {
                     return data || '-';
                 }
@@ -719,6 +752,7 @@
                     const statusMap = {
                         'AVAILABLE': '<span class="badge bg-success">Available</span>',
                         'IN_USE': '<span class="badge bg-primary">In Use</span>',
+                        'USED': '<span class="badge bg-info">Used</span>',
                         'MAINTENANCE': '<span class="badge bg-warning">Maintenance</span>',
                         'BROKEN': '<span class="badge bg-danger">Broken</span>'
                     };
@@ -739,11 +773,10 @@
     }
 
     function setupDataTable() {
-        // Set default filter to attachment
-        currentTypeFilter = 'attachment';
-        
-        // Create dynamic header
+        // Create dynamic header based on current filter
         createDynamicHeader(currentTypeFilter);
+        
+        console.log('Setting up DataTable with type:', currentTypeFilter);
         
         attachmentTable = $('#inventory-attachment-table').DataTable({
             processing: true,
@@ -754,6 +787,7 @@
                 data: function(d) {
                     d.tipe_item = currentTypeFilter;
                     d.status_filter = currentStatusFilter;
+                    d.model_filter = currentModelFilter;
                     d['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
                     console.log('Sending data to server:', d);
                 },
@@ -830,12 +864,21 @@
         // Update current filter
         currentTypeFilter = type;
         currentStatusFilter = 'all'; // Reset status filter when type changes
+        currentModelFilter = ''; // Reset model filter
         console.log('Current type filter set to:', currentTypeFilter);
         console.log('Status filter reset to:', currentStatusFilter);
         
         // Reset status tabs to 'All'
         $('#statusFilterTab .nav-link').removeClass('active');
         $('#all-status-tab').addClass('active');
+        
+        // Show/hide model filter based on type
+        if (type === 'battery' || type === 'charger') {
+            $('#additionalFilters').show();
+            populateModelFilter(type);
+        } else {
+            $('#additionalFilters').hide();
+        }
         
         // Destroy existing table
         if (attachmentTable) {
@@ -859,6 +902,7 @@
                 data: function(d) {
                     d.tipe_item = currentTypeFilter;
                     d.status_filter = currentStatusFilter;
+                    d.model_filter = currentModelFilter;
                     d['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
                     console.log('Sending data to server:', d);
                     return d;
@@ -898,8 +942,8 @@
             $('#all-status-tab').addClass('active');
         } else if (status === 'AVAILABLE') {
             $('#available-status-tab').addClass('active');
-        } else if (status === 'IN_USE') {
-            $('#inuse-status-tab').addClass('active');
+        } else if (status === 'USED') {
+            $('#used-status-tab').addClass('active');
         } else if (status === 'MAINTENANCE') {
             $('#maintenance-status-tab').addClass('active');
         } else if (status === 'BROKEN') {
@@ -911,6 +955,55 @@
         console.log('Current status filter set to:', currentStatusFilter);
         
         // Reload table with new filters
+        if (attachmentTable) {
+            attachmentTable.ajax.reload();
+        }
+    }
+
+    // Populate Model Filter based on type
+    function populateModelFilter(type) {
+        const $modelFilterGroup = $('#modelFilterGroup');
+        $modelFilterGroup.empty();
+        
+        // Add "All" button
+        $modelFilterGroup.append(`
+            <button type="button" class="btn btn-sm btn-outline-secondary active" data-model="" onclick="applyModelFilter('')">
+                All Models
+            </button>
+        `);
+        
+        if (type === 'battery') {
+            // Battery model filter disabled - no additional buttons needed
+            // Filter will show all battery records
+        } else if (type === 'charger') {
+            $modelFilterGroup.append(`
+                <button type="button" class="btn btn-sm btn-outline-warning" data-model="24V" onclick="applyModelFilter('24V')">
+                    24V
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning" data-model="48V" onclick="applyModelFilter('48V')">
+                    48V
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-warning" data-model="80V" onclick="applyModelFilter('80V')">
+                    80V
+                </button>
+            `);
+        }
+    }
+
+    // Apply Model Filter
+    window.applyModelFilter = function(model) {
+        console.log('Model filter clicked:', model);
+        currentModelFilter = model;
+        
+        // Update button states
+        $('#modelFilterGroup button').removeClass('active');
+        if (model === '') {
+            $('#modelFilterGroup button[data-model=""]').addClass('active');
+        } else {
+            $('#modelFilterGroup button[data-model="' + model + '"]').addClass('active');
+        }
+        
+        // Reload table
         if (attachmentTable) {
             attachmentTable.ajax.reload();
         }

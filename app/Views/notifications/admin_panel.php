@@ -4,14 +4,19 @@
 
 <div class="container-fluid py-4">
     <!-- Page Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h2 class="mb-1"><i class="fas fa-bell me-2"></i>Notification Management</h2>
-            <p class="text-muted mb-0">Manage notification rules and settings</p>
+    <div class="mb-3">
+        <h4 class="fw-bold mb-1">
+            <i class="bi bi-bell me-2 text-primary"></i>
+            Notification Rules Management
+        </h4>
+        <p class="text-muted mb-0">Configure and manage automated notification rules for system events and alerts</p>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12 text-end">
+            <button class="btn btn-primary btn-sm" onclick="showCreateRuleModal()">
+                <i class="fas fa-plus me-2"></i>Create Notification Rule
+            </button>
         </div>
-        <button class="btn btn-primary" onclick="showCreateRuleModal()">
-            <i class="fas fa-plus me-2"></i>Create Notification Rule
-        </button>
     </div>
 
     <!-- Statistics Cards -->

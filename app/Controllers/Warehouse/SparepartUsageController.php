@@ -61,8 +61,9 @@ class SparepartUsageController extends BaseController
                     ->where('is_from_warehouse', 0)
                     ->countAllResults() : 0,
                 
-                'return_pending' => $returnTableExists ? $this->returnModel->where('status', 'PENDING')->countAllResults(false) : 0,
-                'return_confirmed' => $returnTableExists ? $this->returnModel->where('status', 'CONFIRMED')->countAllResults(false) : 0
+                // Return stats - check if status column exists first
+                'return_pending' => 0, // Disabled until work_order_sparepart_returns table is properly created
+                'return_confirmed' => 0 // Disabled until work_order_sparepart_returns table is properly created
             ]
         ];
 
@@ -496,6 +497,21 @@ class SparepartUsageController extends BaseController
         try {
             $db = \Config\Database::connect();
             
+            // Check if table and status column exist
+            if (!$db->tableExists('work_order_sparepart_returns')) {
+                return $this->response->setJSON([
+                    'draw' => $draw,
+                    'recordsTotal' => 0,
+                    'recordsFiltered' => 0,
+                    'data' => [],
+                    'error' => 'Table work_order_sparepart_returns does not exist'
+                ]);
+            }
+            
+            // Check if status column exists
+            $fields = $db->getFieldNames('work_order_sparepart_returns');
+            $hasStatusColumn = in_array('status', $fields);
+            
             // Build query
             $builder = $db->table('work_order_sparepart_returns wosr')
                 ->select('
@@ -523,7 +539,8 @@ class SparepartUsageController extends BaseController
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
                 ->join('users u', 'u.id = wosr.confirmed_by', 'left');
             
-            if ($status !== 'ALL') {
+            // Only filter by status if column exists
+            if ($hasStatusColumn && $status !== 'ALL') {
                 $builder->where('wosr.status', $status);
             }
 
@@ -648,7 +665,7 @@ class SparepartUsageController extends BaseController
                     'quantity_used' => $row['quantity_used'],
                     'quantity_return' => $row['quantity_return'],
                     'satuan' => $row['satuan'],
-                    'status' => $row['status'],
+                    'status' => $row['status'] ?? 'N/A',
                     'created_at' => $row['created_at'] ? date('d/m/Y H:i', strtotime($row['created_at'])) : '-',
                     'confirmed_at' => $row['confirmed_at'] ? date('d/m/Y H:i', strtotime($row['confirmed_at'])) : '-',
                     'confirmed_by_name' => $row['confirmed_by_name'] ?? '-',
@@ -885,11 +902,17 @@ class SparepartUsageController extends BaseController
                 ]);
             }
 
-            if ($return['status'] !== 'PENDING') {
+            // Check if status exists and is PENDING
+            if (isset($return['status']) && $return['status'] !== 'PENDING') {
                 return $this->response->setJSON([
                     'success' => false,
                     'message' => 'Return sudah dikonfirmasi atau dibatalkan'
                 ]);
+            }
+            
+            // If status column doesn't exist, skip status check
+            if (!isset($return['status'])) {
+                log_message('warning', 'Status column does not exist in work_order_sparepart_returns table');
             }
 
             $confirmed = $this->returnModel->confirmReturn($id, $userId, $notes);
@@ -899,7 +922,8 @@ class SparepartUsageController extends BaseController
                 helper('notification');
                 if (function_exists('notify_sparepart_returned')) {
                     $returnDetails = $this->returnModel->find($id);
-                    $sparepart = $this->db->table('sparepart')->where('id', $returnDetails['sparepart_id'] ?? 0)->get()->getRowArray();
+                    $db = \Config\Database::connect();
+                    $sparepart = $db->table('sparepart')->where('id', $returnDetails['sparepart_id'] ?? 0)->get()->getRowArray();
                     
                     notify_sparepart_returned([
                         'return_id' => $id,

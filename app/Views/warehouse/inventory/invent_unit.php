@@ -17,6 +17,15 @@ $can_export = $permissions['export'];
 
     <!-- Inventory Table dengan Tab Terintegrasi - Professional Standard -->
     <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-box-seam me-2 text-primary"></i>
+                    Unit Inventory Management
+                </h5>
+                <p class="text-muted small mb-0">Track and manage all equipment units across different statuses and locations</p>
+            </div>
+        </div>
         <!-- Tab Filter untuk Status Unit -->
         <div class="card-body p-0">
             <ul class="nav nav-tabs mb-0" id="unitStatusTabs" role="tablist">

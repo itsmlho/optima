@@ -2,6 +2,15 @@
 
 <?= $this->section('content') ?>
 
+<!-- Page Header -->
+<div class="mb-3">
+    <h4 class="fw-bold mb-1">
+        <i class="bi bi-truck me-2 text-primary"></i>
+        Delivery Instructions Processing
+    </h4>
+    <p class="text-muted mb-0">Process and manage delivery instructions from marketing for unit distribution</p>
+</div>
+
 <!-- Statistics Cards -->
   <div class="row mt-3 mb-4">
       <div class="col-xl-3 col-lg-6 col-md-6 mb-3">
