@@ -66,10 +66,10 @@
                     '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
                 },
                 dataType: "JSON",
-                beforeSend: () => Swal.showLoading(),
+                beforeSend: () => OptimaPro.showLoading('Verifying sparepart...'),
                 success: function(response) {
                     window._verifyingSparepart = false;
-                    Swal.close();
+                    OptimaPro.hideLoading();
                     if (response.success) {
                         Swal.fire('Berhasil!', 'Verifikasi berhasil disimpan!', 'success');
                         

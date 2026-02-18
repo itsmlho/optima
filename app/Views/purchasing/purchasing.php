@@ -360,10 +360,8 @@ $can_export = $permissions['export'];
             <div class="modal-body" id="poDetailsContent" style="padding: 0;">
                 <!-- Loading State -->
                 <div class="text-center p-5" id="poLoadingState">
-                    <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <h5 class="mt-3 text-muted">Loading PO...</h5>
+                    <i class="fas fa-circle-notch fa-spin text-primary" style="font-size: 3rem;"></i>
+                    <h5 class="mt-3 text-muted">Loading PO details...</h5>
                 </div>
                 
                 <!-- PO Content (hidden initially) -->
@@ -2425,9 +2423,7 @@ function loadDeliveryDetailsForSN(deliveryId) {
     // Reset modal content
     $('#snAssignmentContent').html(`
         <div class="text-center py-4">
-            <div class="spinner-border text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+            <i class="fas fa-circle-notch fa-spin text-primary fs-2"></i>
             <p class="mt-2">Loading delivery details...</p>
         </div>
     `);
@@ -2899,9 +2895,7 @@ function createDelivery(poId, event) {
 function loadDeliveryItems(poId) {
     $('#deliveryItemsList').html(`
         <div class="text-center py-3">
-            <div class="spinner-border spinner-border-sm text-primary" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
+            <i class="fas fa-circle-notch fa-spin text-primary"></i>
             <p class="mt-2 mb-0 text-muted small">Loading items...</p>
         </div>
     `);

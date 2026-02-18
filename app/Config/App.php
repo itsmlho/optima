@@ -22,7 +22,9 @@ class App extends BaseConfig
      * E.g., http://example.com/
      */
     // public string $baseURL = 'http://localhost/ci4/public/';
-    public string $baseURL = 'http://localhost/optima/';
+    // Development: http://localhost/optima/
+    // Production: https://optima.sml.co.id/
+    public string $baseURL = '';
     
     /**
      * Allowed Hostnames in the Site URL other than the hostname in the baseURL.

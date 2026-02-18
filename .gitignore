@@ -6,3 +6,4 @@ app/Config/Database.php
 vendor/
 .env
 node_modules
+_archived/

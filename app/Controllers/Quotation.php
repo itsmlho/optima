@@ -651,6 +651,7 @@ class Quotation extends BaseController
                 'specification_name' => $this->request->getPost('specification_name'),
                 'specification_type' => $this->request->getPost('specification_type') ?: 'UNIT',
                 'quantity' => (int)$this->request->getPost('quantity'),
+                'is_spare_unit' => (int)$this->request->getPost('is_spare_unit') ?: 0,
                 'monthly_price' => (float)$this->request->getPost('unit_price'),
                 'daily_price' => (float)$this->request->getPost('harga_per_unit_harian'),
                 'departemen_id' => $this->request->getPost('departemen_id') ?: null,
@@ -667,6 +668,12 @@ class Quotation extends BaseController
                 'is_active' => 1
             ];
             
+            // If spare unit, set prices to 0 (no billing)
+            if ($data['is_spare_unit'] == 1) {
+                $data['monthly_price'] = 0;
+                $data['daily_price'] = 0;
+            }
+            
             // Handle accessories array - store in dedicated column
             $aksesoris = $this->request->getPost('aksesoris');
             if ($aksesoris && is_array($aksesoris)) {
@@ -676,6 +683,7 @@ class Quotation extends BaseController
             }
             
             // Calculate total price with NEW formula: (quantity * monthly_price) + daily_price
+            // Spare units will have 0 total price
             $data['total_price'] = ($data['quantity'] * $data['monthly_price']) + $data['daily_price'];
 
             $specId = $this->quotationSpecificationModel->insert($data);
@@ -781,7 +789,16 @@ class Quotation extends BaseController
                 unset($data['attachment_tipe']);
             }
 
+            // Handle spare unit flag - if spare, set prices to 0
+            $isSpareUnit = isset($data['is_spare_unit']) ? (int)$data['is_spare_unit'] : $specification['is_spare_unit'];
+            
+            if ($isSpareUnit == 1) {
+                $data['monthly_price'] = 0;
+                $data['daily_price'] = 0;
+            }
+
             // Calculate total price with NEW formula: (quantity * monthly_price) + daily_price
+            // Spare units will have 0 total price
             if (isset($data['quantity']) || isset($data['monthly_price']) || isset($data['daily_price'])) {
                 $qty = $data['quantity'] ?? $specification['quantity'];
                 $monthlyPrice = $data['monthly_price'] ?? $specification['monthly_price'];

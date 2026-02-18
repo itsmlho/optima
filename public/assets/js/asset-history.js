@@ -69,7 +69,7 @@ class AssetHistoryManager {
     
     async loadContracts() {
         try {
-            const response = await fetch(`${BASE_URL}marketing/kontrak/getAllContracts`, {
+            const response = await fetch(`${BASE_URL}kontrak/getAllContracts`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await response.json();
@@ -97,7 +97,7 @@ class AssetHistoryManager {
     
     async loadUnits() {
         try {
-            const response = await fetch(`${BASE_URL}unit/getAllUnits`, {
+            const response = await fetch(`${BASE_URL}kontrak/getAllUnits`, {
                 headers: { 'X-Requested-With': 'XMLHttpRequest' }
             });
             const data = await response.json();
@@ -725,11 +725,20 @@ class AssetHistoryManager {
     }
 }
 
-// Initialize
+// Initialize when jQuery and DOM are ready
 let assetHistory;
-$(document).ready(function() {
-    assetHistory = new AssetHistoryManager();
-});
+if (typeof jQuery !== 'undefined') {
+    $(document).ready(function() {
+        assetHistory = new AssetHistoryManager();
+    });
+} else {
+    // Fallback if jQuery not loaded yet
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof jQuery !== 'undefined') {
+            assetHistory = new AssetHistoryManager();
+        }
+    });
+}
 
 // Function to open modal
 function openAssetHistory(contractId = null, unitId = null) {

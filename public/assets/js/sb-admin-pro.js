@@ -266,15 +266,19 @@
 
   // Global error handler for AJAX requests
   $(document).ajaxError(function(event, xhr, settings, thrownError) {
-    if (xhr.status === 419) {
+    if (xhr.status === 403) {
+      // CSRF token validation failed - reload page to get new token
+      console.error('CSRF validation failed. Page will reload to get fresh token.');
+      setTimeout(function() {
+        window.location.reload();
+      }, 2000);
+    } else if (xhr.status === 419) {
       // CSRF token expired
       OptimaNotifications.error('Session expired. Please refresh the page.');
     } else if (xhr.status === 500) {
       OptimaNotifications.error('Server error occurred. Please try again.');
     } else if (xhr.status === 404) {
       OptimaNotifications.error('Resource not found.');
-    } else {
-      OptimaNotifications.error('An error occurred. Please try again.');
     }
   });
 
@@ -527,7 +531,7 @@
     $(window).on('load', function() {
       setTimeout(function() {
         const perfData = performance.getEntriesByType('navigation')[0];
-        // Page Load Performance: {
+        console.log('Page Load Performance:', {
           'Total Load Time': Math.round(perfData.loadEventEnd - perfData.fetchStart) + 'ms',
           'DOM Content Loaded': Math.round(perfData.domContentLoadedEventEnd - perfData.fetchStart) + 'ms',
           'Time to Interactive': Math.round(perfData.domInteractive - perfData.fetchStart) + 'ms'
@@ -540,6 +544,49 @@
 
 // Global utility functions
 window.OptimaPro = {
+  // Loading Animation (Optima branded)
+  showLoading: function(message = 'Loading...') {
+    const loadingEl = document.getElementById('pageLoading');
+    if (!loadingEl) {
+      console.warn('OptimaPro.showLoading: #pageLoading element not found');
+      return;
+    }
+    
+    // Update or add loading message
+    let messageEl = loadingEl.querySelector('.loading-message');
+    if (!messageEl) {
+      messageEl = document.createElement('div');
+      messageEl.className = 'loading-message';
+      const contentEl = loadingEl.querySelector('.loading-content');
+      if (contentEl) {
+        contentEl.appendChild(messageEl);
+      }
+    }
+    messageEl.textContent = message;
+    
+    // Show with fade-in animation
+    loadingEl.style.display = 'flex';
+    loadingEl.classList.add('active');
+    
+    // Smooth fade-in
+    setTimeout(() => {
+      loadingEl.style.opacity = '1';
+    }, 10);
+  },
+  
+  hideLoading: function() {
+    const loadingEl = document.getElementById('pageLoading');
+    if (!loadingEl) return;
+    
+    // Quick fade-out for responsiveness (reduced from 300ms to 150ms)
+    loadingEl.style.opacity = '0';
+    
+    setTimeout(() => {
+      loadingEl.style.display = 'none';
+      loadingEl.classList.remove('active');
+    }, 150);
+  },
+  
   // Legacy support for existing notification calls
   showNotification: function(message, type = 'info', duration = 5000) {
     if (window.OptimaNotifications) {

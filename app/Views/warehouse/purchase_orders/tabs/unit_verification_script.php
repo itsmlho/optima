@@ -1194,12 +1194,12 @@
                     discrepancies_count: discrepancies.length,
                     discrepancies: discrepancies
                 });
-                Swal.showLoading();
+                OptimaPro.showLoading('Verifying unit...');
             },
             success: function(r) {
                 window._verifyingUnit = false;
                 $('#btn-submit-verification-inline, #btn-submit-unit-verification').prop('disabled', false);
-                Swal.close();
+                OptimaPro.hideLoading();
                 
                 if (r.statusCode == 200) {
                     $('#modalUpdateSN').modal('hide');

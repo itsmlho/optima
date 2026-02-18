@@ -981,11 +981,11 @@
                 ...snData
             },
             dataType: "JSON",
-            beforeSend: () => Swal.showLoading(),
+            beforeSend: () => OptimaPro.showLoading('Verifying attachment...'),
             success: function(response) {
                 window._verifyingAttachment = false;
                 $('#btn-submit-attachment-verification-inline, #btn-submit-attachment-verification').prop('disabled', false);
-                Swal.close();
+                OptimaPro.hideLoading();
                 if (response.success) {
                     $('#modalAttachmentVerification').modal('hide');
                     Swal.fire('Success!', 'Verification successful!', 'success');

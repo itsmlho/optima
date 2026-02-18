@@ -78,9 +78,10 @@ class Finance extends Controller
 
         try {
             $builder = $this->db->table('invoices i');
-            $builder->select('i.*, k.no_kontrak, c.nama_customer, c.nama_lokasi');
+            $builder->select('i.*, k.no_kontrak, c.customer_name, cl.location_name');
             $builder->join('kontrak k', 'k.id = i.contract_id', 'left');
-            $builder->join('customers c', 'c.id_customer = k.customer_location_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
 
             // Search
             $search = $this->request->getGet('search')['value'] ?? '';
@@ -88,7 +89,7 @@ class Finance extends Controller
                 $builder->groupStart()
                     ->like('i.invoice_number', $search)
                     ->orLike('k.no_kontrak', $search)
-                    ->orLike('c.nama_customer', $search)
+                    ->orLike('c.customer_name', $search)
                     ->groupEnd();
             }
 
@@ -98,7 +99,7 @@ class Finance extends Controller
             // Order
             $orderColumn = $this->request->getGet('order')[0]['column'] ?? 0;
             $orderDir = $this->request->getGet('order')[0]['dir'] ?? 'desc';
-            $columns = ['i.invoice_number', 'i.invoice_date', 'k.no_kontrak', 'c.nama_customer', 'i.total_amount', 'i.status'];
+            $columns = ['i.invoice_number', 'i.invoice_date', 'k.no_kontrak', 'c.customer_name', 'i.total_amount', 'i.status'];
             $builder->orderBy($columns[$orderColumn] ?? 'i.id', $orderDir);
 
             // Pagination

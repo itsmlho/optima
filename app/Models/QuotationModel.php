@@ -76,10 +76,12 @@ class QuotationModel extends Model
         // Reset builder for actual data query
         $builder = $this->db->table($this->table . ' q');
         
-        // Select all needed columns
+        // Select all needed columns + marketing name from users
         $builder->select('q.id_quotation, q.quotation_number, q.prospect_name, q.prospect_contact_person, 
                          q.quotation_title, q.quotation_date, q.valid_until, q.stage, q.total_amount, 
-                         q.is_deal, q.created_at, q.updated_at');
+                         q.is_deal, q.created_at, q.updated_at, q.created_by, 
+                         CONCAT(u.first_name, " ", u.last_name) as marketing_name')
+                ->join('users u', 'q.created_by = u.id', 'left');
         
         // Filter out invalid IDs
         $builder->where('q.id_quotation >', 0);

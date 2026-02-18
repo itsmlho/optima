@@ -34,7 +34,7 @@
                   </div>
                   <div>
                       <div class="stat-value" id="submittedDI">0</div>
-                      <div class="text-muted"><?= lang('App.pending') ?></div>
+                      <div class="text-muted"><?= lang('Common.pending') ?></div>
                   </div>
               </div>
           </div>
@@ -60,7 +60,7 @@
                   </div>
                   <div>
                       <div class="stat-value" id="deliveredDI">0</div>
-                      <div class="text-muted"><?= lang('App.completed') ?></div>
+                      <div class="text-muted"><?= lang('Common.completed') ?></div>
                   </div>
               </div>
           </div>

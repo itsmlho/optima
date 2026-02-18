@@ -581,7 +581,7 @@
                 <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA">
             </div>
             <div class="login-loading-text">Sedang Login...</div>
-            <div class="login-loading-subtitle">Memeriksa akun Anda dalam keadaan siap.</div>
+            <div class="login-loading-subtitle">Memeriksa akun Anda.</div>
             <div class="login-loading-bars">
                 <span class="login-loading-bar"></span>
                 <span class="login-loading-bar"></span>

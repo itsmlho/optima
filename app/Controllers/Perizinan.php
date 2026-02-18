@@ -594,30 +594,30 @@ class Perizinan extends BaseController
             
             // Ensure base directory exists and is writable
             if (!is_dir($baseUploadPath)) {
-                if (!mkdir($baseUploadPath, 0777, true)) {
+                if (!mkdir($baseUploadPath, 0755, true)) {
                     log_message('error', 'Upload File: Gagal membuat base direktori - ' . $baseUploadPath);
                     return $this->response->setJSON([
                         'success' => false,
                         'message' => 'Gagal membuat direktori upload'
                     ])->setStatusCode(500);
                 }
-                @chmod($baseUploadPath, 0777);
+                @chmod($baseUploadPath, 0755);
             } else {
-                @chmod($baseUploadPath, 0777);
+                @chmod($baseUploadPath, 0755);
             }
             
             // Create type-specific directory
             if (!is_dir($uploadPath)) {
-                if (!mkdir($uploadPath, 0777, true)) {
+                if (!mkdir($uploadPath, 0755, true)) {
                     log_message('error', 'Upload File: Gagal membuat direktori - ' . $uploadPath);
                     return $this->response->setJSON([
                         'success' => false,
                         'message' => 'Gagal membuat direktori upload'
                     ])->setStatusCode(500);
                 }
-                @chmod($uploadPath, 0777);
+                @chmod($uploadPath, 0755);
             } else {
-                @chmod($uploadPath, 0777);
+                @chmod($uploadPath, 0755);
             }
 
             // Final check if directory is writable

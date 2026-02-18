@@ -328,9 +328,8 @@
             </div>
             <div class="modal-body" id="systemInfoBody">
                 <div class="text-center">
-                    <div class="spinner-border" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
+                    <i class="fas fa-circle-notch fa-spin text-primary fs-2"></i>
+                    <p class="mt-2 text-muted">Loading settings...</p>
                 </div>
             </div>
             <div class="modal-footer">
