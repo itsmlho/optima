@@ -919,7 +919,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
     $.ajax({
       url: '<?= base_url('marketing/di/stats') ?>',
       type: 'POST',
-      data: { status_filter: currentFilter },
+      data: { 
+        status_filter: currentFilter,
+        csrf_test_name: window.csrfToken || ''
+      },
+      beforeSend: function(xhr) {
+        if (window.csrfToken) {
+          xhr.setRequestHeader('X-CSRFToken', window.csrfToken);
+        }
+      },
       success: function(data) {
         document.getElementById('totalDI').textContent = data.total || 0;
         document.getElementById('submittedDI').textContent = data.submitted || 0;
@@ -1869,7 +1877,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const originalText = submitBtn.innerHTML;
     
     submitBtn.disabled = true;
-    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Linking...';
+    submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin me-1"></i> Linking...';
+    OptimaPro.showLoading('Linking DI to contract...');
     
     try {
       const response = await fetch('<?= base_url('marketing/di/link-to-contract') ?>', {
@@ -1906,6 +1915,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
         confirmButtonColor: '#dc3545'
       });
     } finally {
+      OptimaPro.hideLoading();
       submitBtn.disabled = false;
       submitBtn.innerHTML = originalText;
     }

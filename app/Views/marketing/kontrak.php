@@ -226,7 +226,18 @@ function initializeContractsTable() {
         ajax: {
             url: '<?= base_url('marketing/kontrak/getDataTable') ?>',
             type: 'POST',
+            beforeSend: function(xhr) {
+                // Add CSRF token to header
+                if (window.csrfToken) {
+                    xhr.setRequestHeader('X-CSRFToken', window.csrfToken);
+                }
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            },
             data: function(d) {
+                // Add CSRF token to POST data
+                if (window.csrfToken) {
+                    d.csrf_test_name = window.csrfToken;
+                }
                 // Add custom filters
                 d.rental_type = $('#filter_rental_type').val();
                 d.status = $('#filter_status').val();

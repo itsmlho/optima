@@ -42,7 +42,7 @@ class Security extends BaseConfig
      *
      * Header name for Cross Site Request Forgery protection.
      */
-    public string $headerName = 'X-CSRF-TOKEN';
+    public string $headerName = 'X-CSRFToken';
 
     /**
      * --------------------------------------------------------------------------
@@ -70,8 +70,11 @@ class Security extends BaseConfig
      * --------------------------------------------------------------------------
      *
      * Regenerate CSRF Token on every submission.
+     * 
+     * IMPORTANT: Set to FALSE for AJAX-heavy applications.
+     * If TRUE, token changes after each request causing subsequent AJAX calls to fail.
      */
-    public bool $regenerate = true;
+    public bool $regenerate = false;
 
     /**
      * --------------------------------------------------------------------------
@@ -83,4 +86,16 @@ class Security extends BaseConfig
      * @see https://codeigniter4.github.io/userguide/libraries/security.html#redirection-on-failure
      */
     public bool $redirect = (ENVIRONMENT === 'production');
+
+    /**
+     * --------------------------------------------------------------------------
+     * CSRF Exclude URIs
+     * --------------------------------------------------------------------------
+     *
+     * List of URIs that should be excluded from CSRF protection.
+     * Leave empty to protect all POST requests.
+     *
+     * @var array<int, string>
+     */
+    public array $csrfExclude = [];
 }

@@ -402,11 +402,11 @@
                 },
                 dataType: "JSON",
                 beforeSend: () => {
-                    Swal.showLoading();
+                    OptimaPro.showLoading('Verifying unit...');
                 },
                 success: function(r) {
                     window._verifying = false; $('#btn-submit-verification').prop('disabled', false);
-                    Swal.close();
+                    OptimaPro.hideLoading();
                     if (r.statusCode == 200) {
                         $('#modalUpdateSN').modal('hide');
                         let jumlah = document.querySelectorAll(`.child-po-${poId}`).length;

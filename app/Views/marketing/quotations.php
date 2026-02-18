@@ -49,7 +49,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-approved">0</div>
-                    <div class="text-muted"><?= lang('App.approved') ?></div>
+                    <div class="text-muted"><?= lang('Common.approved') ?></div>
                 </div>
             </div>
         </div>
@@ -62,7 +62,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-rejected">0</div>
-                    <div class="text-muted"><?= lang('App.rejected') ?></div>
+                    <div class="text-muted"><?= lang('Common.rejected') ?></div>
                 </div>
             </div>
         </div>
@@ -359,6 +359,19 @@
                             <label class="form-label"><?= lang('Marketing.specification_name') ?></label>
                             <input type="text" class="form-control" name="specification_name" placeholder="<?= lang('App.optional') ?>">
                             <small class="text-muted"><?= lang('Marketing.enter_description_spec1') ?></small>
+                        </div>
+                        
+                        <!-- Spare Unit Checkbox -->
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="is_spare_unit" id="isSpareUnit" value="1">
+                                <label class="form-check-label fw-bold text-warning" for="isSpareUnit">
+                                    <i class="fas fa-box-open me-1"></i> Unit Cadangan (Spare Unit - Tidak Ditagih)
+                                </label>
+                                <small class="text-muted d-block ms-4">
+                                    Unit backup/cadangan untuk customer, tidak dihitung dalam tagihan bulanan
+                                </small>
+                            </div>
                         </div>
                         
                         <div class="col-md-6">
@@ -1235,6 +1248,41 @@ $(document).ready(function() {
         $('#quotationId').val('');
         $('#quotationModalLabel').text('Add New Quotation');
     });
+    
+    // Spare Unit toggle functionality
+    $(document).on('change', '#isSpareUnit', function() {
+        const isChecked = $(this).is(':checked');
+        const monthlyPriceField = $('#monthlyPrice');
+        const dailyPriceField = $('#dailyPrice');
+        
+        if (isChecked) {
+            // Spare unit selected - disable and clear price fields
+            monthlyPriceField.val('0').prop('disabled', true).addClass('bg-light');
+            dailyPriceField.val('0').prop('disabled', true).addClass('bg-light');
+            
+            // Remove required indicators
+            $('#monthlyPriceRequired, #dailyPriceRequired').hide();
+            
+            // Show info message
+            if (!$('#spareUnitInfo').length) {
+                monthlyPriceField.closest('.col-md-6').append(
+                    '<small id="spareUnitInfo" class="text-success d-block mt-1">' +
+                    '<i class="fas fa-check-circle"></i> Spare unit - tidak akan ditagih' +
+                    '</small>'
+                );
+            }
+        } else {
+            // Normal unit - enable price fields
+            monthlyPriceField.val('').prop('disabled', false).removeClass('bg-light');
+            dailyPriceField.val('').prop('disabled', false).removeClass('bg-light');
+            
+            // Show required indicators
+            $('#monthlyPriceRequired, #dailyPriceRequired').show();
+            
+            // Remove info message
+            $('#spareUnitInfo').remove();
+        }
+    });
 
     // === UNIFIED LOCATION MODAL EVENT HANDLERS ===
     // Cleanup: Remove any existing handlers first to prevent duplicates
@@ -1932,14 +1980,7 @@ function saveQuotation(id) {
     var formData = new FormData(form);
     
     // Show loading
-    Swal.fire({
-        title: 'Saving...',
-        text: 'Please wait while we save your changes',
-        allowOutsideClick: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    OptimaPro.showLoading('Saving quotation...');
     
     // Send AJAX request
     $.ajax({
@@ -1951,7 +1992,7 @@ function saveQuotation(id) {
         dataType: 'json',
         success: function(response) {
             console.log('Update response:', response); // Debug
-            Swal.close();
+            OptimaPro.hideLoading();
             if (response.status === 'success') {
                 // Show appropriate message based on revision status
                 let message = response.message || 'Quotation updated successfully';
@@ -1986,7 +2027,7 @@ function saveQuotation(id) {
             }
         },
         error: function(xhr) {
-            Swal.close();
+            OptimaPro.hideLoading();
             var errorMsg = 'Failed to update quotation';
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMsg = xhr.responseJSON.message;
@@ -2038,11 +2079,9 @@ function viewQuotationHistory(id) {
         title: '<i class="fas fa-spinner fa-spin"></i> Loading History...',
         text: 'Fetching change history',
         allowOutsideClick: false,
-        showConfirmButton: false,
-        willOpen: () => {
-            Swal.showLoading();
-        }
+        showConfirmButton: false
     });
+    OptimaPro.showLoading('Loading history...');
 
     fetch(`<?= base_url('marketing/quotations/history/') ?>${id}`, {
             headers: {
@@ -2056,6 +2095,7 @@ function viewQuotationHistory(id) {
             return response.json();
         })
         .then(result => {
+            OptimaPro.hideLoading();
             if (result.success) {
                 let historyHtml = '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
                 
@@ -2103,6 +2143,7 @@ function viewQuotationHistory(id) {
             }
         })
         .catch(error => {
+            OptimaPro.hideLoading();
             console.error('History fetch error:', error);
             console.error('Error details:', error.message);
             Swal.fire({
@@ -2308,23 +2349,33 @@ function displayQuotationSpecifications(specifications) {
             details.push(`<div class="col-md-3"><small class="text-muted">Capacity</small><div class="fw-bold">${spec.nama_kapasitas}</div></div>`);
         }
         
-        // Quantity
-        details.push(`<div class="col-md-3"><small class="text-muted">Quantity</small><div class="fw-bold text-primary">${spec.quantity || 0} unit(s)</div></div>`);
+        // Quantity and Spare Unit Badge
+        const quantityBadge = spec.is_spare_unit == 1 
+            ? `<div class="col-md-4"><small class="text-muted">Quantity</small><div class="fw-bold text-primary">${spec.quantity || 0} unit(s) <span class="badge bg-warning text-dark ms-2"><i class="fas fa-box-open"></i> SPARE UNIT</span></div></div>`
+            : `<div class="col-md-3"><small class="text-muted">Quantity</small><div class="fw-bold text-primary">${spec.quantity || 0} unit(s)</div></div>`;
         
-        // Pricing
+        details.push(quantityBadge);
+        
+        // Pricing (skip for spare units)
         const monthlyPrice = spec.monthly_price || spec.unit_price || spec.harga_per_unit || 0;
         const dailyPrice = spec.daily_price || spec.harga_per_unit_harian || 0;
         const totalPrice = spec.total_price || (monthlyPrice * (spec.quantity || 0));
         
-        if (monthlyPrice > 0) {
-            details.push(`<div class="col-md-3"><small class="text-muted">Monthly Price/Unit</small><div class="fw-bold text-success">Rp ${formatNumber(monthlyPrice)}</div></div>`);
+        if (spec.is_spare_unit != 1) {
+            // Only show prices for non-spare units
+            if (monthlyPrice > 0) {
+                details.push(`<div class="col-md-3"><small class="text-muted">Monthly Price/Unit</small><div class="fw-bold text-success">Rp ${formatNumber(monthlyPrice)}</div></div>`);
+            }
+            
+            if (dailyPrice > 0) {
+                details.push(`<div class="col-md-3"><small class="text-muted">Daily Price/Unit</small><div class="fw-bold text-info">Rp ${formatNumber(dailyPrice)}</div></div>`);
+            }
+            
+            details.push(`<div class="col-md-3"><small class="text-muted">Total Price</small><div class="fw-bold text-primary">Rp ${formatNumber(totalPrice)}</div></div>`);
+        } else {
+            // Spare unit - show NO CHARGE indicator
+            details.push(`<div class="col-md-6"><small class="text-muted">Billing Status</small><div class="fw-bold text-warning"><i class="fas fa-gift me-1"></i>TIDAK DITAGIH (No Charge)</div></div>`);
         }
-        
-        if (dailyPrice > 0) {
-            details.push(`<div class="col-md-3"><small class="text-muted">Daily Price/Unit</small><div class="fw-bold text-info">Rp ${formatNumber(dailyPrice)}</div></div>`);
-        }
-        
-        details.push(`<div class="col-md-3"><small class="text-muted">Total Price</small><div class="fw-bold text-primary">Rp ${formatNumber(totalPrice)}</div></div>`);
         
         // Brand and Model
         if (spec.merk_unit) {
@@ -2501,6 +2552,9 @@ function proceedWithSpecificationModal() {
     $('#specQuotationId').val(currentQuotationId);
     $('#specId').val(''); // Clear spec ID for add mode
     $('#specType').val('UNIT'); // Set specification type to UNIT
+    
+    // Reset spare unit checkbox and enable price fields
+    $('#isSpareUnit').prop('checked', false).trigger('change');
     
     // Reset modal to Add mode
     $('#specModalHeader').removeClass('bg-primary').addClass('bg-success');
@@ -2878,6 +2932,9 @@ $('#addSpecificationForm').on('submit', function(e) {
     
     console.log('Form mode:', isEditMode ? 'EDIT' : 'ADD', 'Spec ID:', specId);
     
+    // Check if spare unit is selected
+    const isSpareUnit = $('#isSpareUnit').is(':checked');
+    
     // Enhanced validation
     const quantity = parseInt($('#addSpecificationForm [name="quantity"]').val());
     const monthlyPrice = parseFloat($('#monthlyPrice').val()) || 0;
@@ -2891,8 +2948,8 @@ $('#addSpecificationForm').on('submit', function(e) {
         return;
     }
     
-    // Validate: at least one price (monthly or daily) must be filled
-    if (monthlyPrice === 0 && dailyPrice === 0) {
+    // Validate: at least one price (monthly or daily) must be filled (SKIP for spare units)
+    if (!isSpareUnit && monthlyPrice === 0 && dailyPrice === 0) {
         Swal.fire('Validation Error', 'Please fill in at least one price field (Monthly Rental Price or Daily Rental Price)', 'warning');
         $('#monthlyPrice').focus();
         return;
@@ -2911,6 +2968,12 @@ $('#addSpecificationForm').on('submit', function(e) {
     }
     
     const formData = new FormData(this);
+    
+    // Ensure spare unit value is sent (checkbox may not be in FormData if unchecked)
+    if (!isSpareUnit) {
+        formData.append('is_spare_unit', '0');
+    }
+    
     const submitBtn = $('#submitSpecificationBtn');
     
     // Determine endpoint based on mode
@@ -5733,20 +5796,13 @@ $(document).on('hidden.bs.modal', '#detailModal', function () {
 // Function to create contract for quotation
 function createContractForQuotation(quotationId) {
     // Show loading
-    Swal.fire({
-        title: 'Creating Contract',
-        text: 'Please wait...',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    OptimaPro.showLoading('Creating contract...');
     
     $.ajax({
         url: `<?= base_url('marketing/quotations/createContract/') ?>${quotationId}`,
         method: 'POST',
         success: function(response) {
+            OptimaPro.hideLoading();
             if (response.success) {
                 Swal.fire({
                     title: 'Success!',
@@ -5762,6 +5818,7 @@ function createContractForQuotation(quotationId) {
             }
         },
         error: function(xhr) {
+            OptimaPro.hideLoading();
             console.error('Error creating contract:', xhr);
             const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to create contract';
             Swal.fire('Error', errorMsg, 'error');

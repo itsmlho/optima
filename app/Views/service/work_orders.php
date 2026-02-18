@@ -129,7 +129,7 @@ $assetService = new \App\Services\AssetMinificationService();
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="closed-tab" data-bs-toggle="tab" data-bs-target="#closed-pane" type="button" role="tab" aria-controls="closed-pane" aria-selected="false">
                             <i class="fas fa-check-circle"></i>
-                            <span><?= lang('App.closed') ?></span>
+                            <span><?= lang('Common.closed') ?></span>
                         </button>
                     </li>
                 </ul>

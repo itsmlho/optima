@@ -657,7 +657,7 @@ $(document).ready(function() {
             url: '<?= base_url('warehouse/sparepart-usage/get-usage-detail') ?>/' + id,
             type: 'GET',
             beforeSend: function() {
-                $('#usageDetailBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
+                $('#usageDetailBody').html('<div class="text-center py-5"><i class="fas fa-circle-notch fa-spin text-primary fs-2"></i><p class="mt-2 text-muted">Loading usage details...</p></div>');
             },
             success: function(response) {
                 if (response.success) {
@@ -796,7 +796,7 @@ $(document).ready(function() {
             url: '<?= base_url('warehouse/sparepart-usage/get-return-detail') ?>/' + id,
             type: 'GET',
             beforeSend: function() {
-                $('#returnDetailBody').html('<div class="text-center py-5"><div class="spinner-border text-primary"></div></div>');
+                $('#returnDetailBody').html('<div class="text-center py-5"><i class="fas fa-circle-notch fa-spin text-primary fs-2"></i><p class="mt-2 text-muted">Loading return details...</p></div>');
             },
             success: function(response) {
                 if (response.success) {

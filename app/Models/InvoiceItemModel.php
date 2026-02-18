@@ -116,29 +116,35 @@ class InvoiceItemModel extends Model
         
         $invoiceId = $invoice['id'];
         
-        $kontrakSpesifikasiModel = new \App\Models\KontrakSpesifikasiModel();
-        $specs = $kontrakSpesifikasiModel->where('kontrak_id', $contractId)->findAll();
+        // Use quotation_specifications table directly (kontrak_spesifikasi is legacy)
+        $db = \Config\Database::connect();
+        $builder = $db->table('quotation_specifications');
+        
+        // Get specs for this contract, EXCLUDING spare units (is_spare_unit = 1)
+        $specs = $builder->where('kontrak_id', $contractId)
+                         ->where('is_spare_unit !=', 1)  // Skip spare units
+                         ->where('is_active', 1)
+                         ->get()
+                         ->getResultArray();
         
         $itemCount = 0;
         
         foreach ($specs as $spec) {
-            $description = "Rental - {$spec['spek_kode']}: " 
-                         . ($spec['tipe_jenis'] ?? '') . " "
-                         . ($spec['merk_unit'] ?? '') . " "
-                         . ($spec['model_unit'] ?? '');
+            // Build description from specification fields
+            $description = "Rental - {$spec['specification_name']}";
             
             // Use amended rate if provided, otherwise use contract spec rate
-            $unitPrice = $amendedRate ?? $spec['harga_per_unit_bulanan'] ?? 0;
+            $unitPrice = $amendedRate ?? $spec['monthly_price'] ?? 0;
             
             $itemData = [
                 'invoice_id' => $invoiceId,
                 'item_type' => 'UNIT_RENTAL',
                 'description' => $description,
                 'unit_id' => null, // Recurring invoice not tied to specific units
-                'quantity' => $spec['jumlah_dibutuhkan'] ?? 1,
+                'quantity' => $spec['quantity'] ?? 1,
                 'unit_price' => $unitPrice,
-                'reference_contract_spec_id' => $spec['id'],
-                'notes' => $spec['catatan_spek'] ?? null
+                'reference_contract_spec_id' => $spec['id_specification'],
+                'notes' => null
             ];
             
             if ($this->insert($itemData)) {

@@ -19,6 +19,37 @@
 window.OptimaDataTable = (function() {
     'use strict';
 
+    console.log('🔧 [OPTIMA] optima-datatable-config.js loaded at', new Date().toLocaleTimeString());
+
+    // ============================================
+    // CSRF HELPER FUNCTION
+    // ============================================
+    
+    /**
+     * Get CSRF token from cookie
+     * @returns {string|null} CSRF token value or null if not found
+     */
+    function getCsrfToken() {
+        console.log('🍪 [CSRF] getCsrfToken() called');
+        const name = 'csrf_cookie_name=';
+        const decodedCookie = decodeURIComponent(document.cookie);
+        const ca = decodedCookie.split(';');
+        for (let i = 0; i < ca.length; i++) {
+            let c = ca[i];
+            while (c.charAt(0) === ' ') {
+                c = c.substring(1);
+            }
+            if (c.indexOf(name) === 0) {
+                const token = c.substring(name.length, c.length);
+                console.log('✅ [CSRF] Token found in cookie:', token.substring(0, 10) + '...');
+                return token;
+            }
+        }
+        console.warn('⚠️ [CSRF] Token not found in cookie');
+        console.log('🍪 [CSRF] All cookies:', document.cookie);
+        return null;
+    }
+
     // ============================================
     // DEFAULT CONFIGURATION
     // ============================================
@@ -45,6 +76,31 @@ window.OptimaDataTable = (function() {
         // AJAX Timeout Configuration (30 seconds)
         ajax: {
             timeout: 30000,  // 30 seconds timeout for AJAX requests
+            beforeSend: function(xhr) {
+                console.log('🔐 [CSRF] beforeSend called');
+                console.log('🔑 [CSRF] window.csrfToken:', window.csrfToken ? window.csrfToken.substring(0, 10) + '...' : 'UNDEFINED');
+                // Add CSRF token to request header
+                if (window.csrfToken) {
+                    xhr.setRequestHeader('X-CSRFToken', window.csrfToken);
+                    console.log('✅ [CSRF] X-CSRFToken header set');
+                } else {
+                    console.error('❌ [CSRF] window.csrfToken is undefined!');
+                }
+                xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            },
+            data: function(d) {
+                console.log('🔐 [CSRF] data function called');
+                // Add CSRF token to POST data
+                // Try window.csrfToken first (always available), fallback to cookie
+                const csrfToken = window.csrfToken || getCsrfToken();
+                if (csrfToken) {
+                    d.csrf_test_name = csrfToken;
+                    console.log('✅ [CSRF] csrf_test_name added to POST data:', csrfToken.substring(0, 10) + '...');
+                } else {
+                    console.error('❌ [CSRF] No token available (window.csrfToken and cookie both missing)');
+                }
+                return d;
+            },
             error: function(xhr, error, thrown) {
                 console.error('❌ DataTables AJAX Error:', {
                     status: xhr.status,
@@ -59,6 +115,8 @@ window.OptimaDataTable = (function() {
                 // Show user-friendly error message
                 const errorMsg = xhr.status === 0 ? 
                     'Koneksi terputus. Silakan cek koneksi internet Anda.' :
+                    xhr.status === 403 ?
+                    'Akses ditolak. Silakan refresh halaman dan coba lagi.' :
                     xhr.status === 404 ? 
                     'URL tidak ditemukan. Silakan hubungi administrator.' :
                     xhr.status === 500 ? 
@@ -493,8 +551,47 @@ window.OptimaDataTable = (function() {
                 return null;
             }
             
-            // Merge configs (deep merge)
+            // Save default CSRF functions BEFORE merge (critical!)
+            const defaultBeforeSend = defaultConfig.ajax.beforeSend;
+            const defaultDataFn = defaultConfig.ajax.data;
+            const customBeforeSend = customConfig.ajax && customConfig.ajax.beforeSend;
+            const customDataFn = customConfig.ajax && customConfig.ajax.data;
+            
+            // Merge configs (deep merge) - this might overwrite our functions!
             const config = $.extend(true, {}, defaultConfig, customConfig);
+            
+            // CRITICAL FIX: Force CSRF functions back after merge
+            if (config.ajax) {
+                // Always combine beforeSend - CSRF must run first
+                if (customBeforeSend && typeof customBeforeSend === 'function') {
+                    config.ajax.beforeSend = function(xhr) {
+                        // CSRF token (always runs first)
+                        if (defaultBeforeSend) {
+                            defaultBeforeSend.call(this, xhr);
+                        }
+                        // Then custom logic
+                        return customBeforeSend.call(this, xhr);
+                    };
+                } else {
+                    // No custom beforeSend - force default CSRF
+                    config.ajax.beforeSend = defaultBeforeSend;
+                }
+                
+                // Always combine data function - CSRF must be included
+                if (customDataFn && typeof customDataFn === 'function') {
+                    config.ajax.data = function(d) {
+                        // CSRF token in data (always runs first)
+                        if (defaultDataFn) {
+                            d = defaultDataFn(d) || d;
+                        }
+                        // Then custom data processing
+                        return customDataFn(d);
+                    };
+                } else {
+                    // No custom data function - force default CSRF
+                    config.ajax.data = defaultDataFn;
+                }
+            }
             
             // Initialize DataTable
             try {
@@ -861,3 +958,4 @@ console.log('Total:', counts.total, 'Filtered:', counts.filtered);
 // OptimaDataTable will automatically initialize on document ready!
 
 */
+"" 

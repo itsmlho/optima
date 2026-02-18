@@ -1,0 +1,1 @@
+SELECT customer_id, location_name, COUNT(*) FROM customer_locations GROUP BY customer_id, location_name HAVING COUNT(*)  LIMIT 5; 

@@ -16,6 +16,7 @@ class CustomerModel extends Model
     protected $allowedFields = [
         'customer_code',
         'customer_name',
+        'marketing_name',
         'is_active',
         'default_billing_method'
     ];

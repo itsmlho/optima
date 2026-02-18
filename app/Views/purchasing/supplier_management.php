@@ -36,7 +36,7 @@
                 </div>
                 <div>
                     <div class="stat-value" id="stat-active-supplier"><?= $supplierStats['active'] ?? 0 ?></div>
-                    <div class="text-muted"><?= lang('App.active') ?></div>
+                    <div class="text-muted"><?= lang('Common.active') ?></div>
                 </div>
             </div>
         </div>

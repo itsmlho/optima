@@ -469,9 +469,9 @@ $can_export = $permissions['export'];
                         '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
                     },
                     dataType: 'JSON',
-                    beforeSend: () => Swal.showLoading(),
+                    beforeSend: () => OptimaPro.showLoading('Resetting unit status...'),
                     success: function(r) {
-                        Swal.close();
+                        OptimaPro.hideLoading();
                         if (r.statusCode == 200) {
                             Swal.fire({
                                 icon: 'success',
@@ -483,6 +483,7 @@ $can_export = $permissions['export'];
                                 location.reload();
                             });
                         } else {
+                            OptimaPro.hideLoading();
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
@@ -491,7 +492,7 @@ $can_export = $permissions['export'];
                         }
                     },
                     error: function(xhr) {
-                        Swal.close();
+                        OptimaPro.hideLoading();
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
@@ -524,9 +525,9 @@ $can_export = $permissions['export'];
                         '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
                     },
                     dataType: 'JSON',
-                    beforeSend: () => Swal.showLoading(),
+                    beforeSend: () => OptimaPro.showLoading('Resetting attachment status...'),
                     success: function(r) {
-                        Swal.close();
+                        OptimaPro.hideLoading();
                         if (r.statusCode == 200) {
                             Swal.fire({
                                 icon: 'success',
@@ -538,6 +539,7 @@ $can_export = $permissions['export'];
                                 location.reload();
                             });
                         } else {
+                            OptimaPro.hideLoading();
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
@@ -546,7 +548,7 @@ $can_export = $permissions['export'];
                         }
                     },
                     error: function(xhr) {
-                        Swal.close();
+                        OptimaPro.hideLoading();
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',
@@ -579,9 +581,9 @@ $can_export = $permissions['export'];
                         '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
                     },
                     dataType: 'JSON',
-                    beforeSend: () => Swal.showLoading(),
+                    beforeSend: () => OptimaPro.showLoading('Resetting sparepart status...'),
                     success: function(r) {
-                        Swal.close();
+                        OptimaPro.hideLoading();
                         if (r.statusCode == 200) {
                             Swal.fire({
                                 icon: 'success',
@@ -593,6 +595,7 @@ $can_export = $permissions['export'];
                                 location.reload();
                             });
                         } else {
+                            OptimaPro.hideLoading();
                             Swal.fire({
                                 icon: 'error',
                                 title: 'Error',
@@ -601,7 +604,7 @@ $can_export = $permissions['export'];
                         }
                     },
                     error: function(xhr) {
-                        Swal.close();
+                        OptimaPro.hideLoading();
                         Swal.fire({
                             icon: 'error',
                             title: 'Error',

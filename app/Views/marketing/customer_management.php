@@ -158,8 +158,8 @@ $can_export = $permissions['export'];
 
 <!-- Customer Detail Modal -->
 <div class="modal fade" id="customerDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" style="max-width: 85vw !important; width: 85vw !important; min-width: 85vw !important; margin: 1.75rem auto !important;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title">
@@ -310,8 +310,8 @@ $can_export = $permissions['export'];
 
 <!-- Contract Detail Modal -->
 <div class="modal fade" id="contractDetailModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" style="max-width: 85vw !important; width: 85vw !important;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title">
@@ -353,8 +353,8 @@ $can_export = $permissions['export'];
 
 <!-- Unit Detail Modal -->
 <div class="modal fade" id="unitDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" style="max-width: 85vw !important; width: 85vw !important;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title">
@@ -376,8 +376,8 @@ $can_export = $permissions['export'];
 
 <!-- Add Customer Modal -->
 <div class="modal fade" id="addCustomerModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" role="document">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" role="document" style="max-width: 85vw !important; width: 85vw !important;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Marketing.add_customer') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -520,8 +520,8 @@ $can_export = $permissions['export'];
 
 <!-- Add Contract Modal -->
 <div class="modal fade" id="addContractModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" style="max-width: 85vw !important; width: 85vw !important;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title"><?= lang('Marketing.add_contract') ?></h5>
@@ -606,8 +606,8 @@ $can_export = $permissions['export'];
 
 <!-- Add Location Modal -->
 <div class="modal fade" id="addLocationModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Marketing.add_location') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -719,8 +719,8 @@ $can_export = $permissions['export'];
 
 <!-- Edit Contract Modal (Inline Edit) -->
 <div class="modal fade" id="editContractModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header bg-primary text-white">
                 <h6 class="modal-title">
                     <i class="fas fa-edit me-2"></i>Edit Contract
@@ -790,8 +790,8 @@ $can_export = $permissions['export'];
 
 <!-- Modal SPK dari Kontrak -->
 <div class="modal fade" id="spkFromKontrakModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
+    <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
+        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header">
                 <h6 class="modal-title"><?= lang('Marketing.create_spk') ?></h6>
                 <button class="btn-close" data-bs-dismiss="modal"></button>
@@ -1005,20 +1005,13 @@ function initializeCustomerTable() {
                 // Force hide any stuck processing indicator
                 $('.dataTables_processing').hide();
                 
-                // Calculate and update statistics
-                if (json && json.data) {
-                    updateStatistics(json.data);
-                } else {
-                    console.warn('⚠️ No data returned from server');
-                    updateStatistics([]);
-                }
+                // Load real statistics from server (all data, not just current page)
+                loadStatistics();
             },
             drawCallback: function() {
-                // Update statistics on every redraw (filter/search)
-                const table = OptimaDataTable.get('#customerTable');
-                if (table) {
-                    const data = table.rows({search: 'applied'}).data().toArray();
-                    updateStatistics(data);
+                // Re-initialize tooltips and other UI elements after table redraw
+                if (typeof initializeTooltips === 'function') {
+                    initializeTooltips();
                 }
             }
         });
@@ -1066,10 +1059,19 @@ function loadStatistics(startDate, endDate) {
     } else {
         console.log('📊 Loading customer statistics WITHOUT filter (all data)');
     }
+    
+    // Add CSRF token
+    if (window.csrfToken) {
+        data.csrf_test_name = window.csrfToken;
+    }
+    
     $.ajax({
         url: '<?= base_url('marketing/customer-management/getCustomerStats') ?>',
         type: 'POST',
         data: data,
+        headers: {
+            'X-CSRFToken': window.csrfToken || ''
+        },
         success: function(response) {
             if (response.success) {
                 const stats = response.data;
@@ -1094,8 +1096,11 @@ function openCustomerDetail(customerId) {
     currentCustomerId = customerId;
     
     // Show modal immediately with loading state
+    if (typeof OptimaPro !== 'undefined' && OptimaPro.showLoading) {
+        OptimaPro.showLoading('Loading customer details...');
+    }
     $('#customerDetailModal').modal('show');
-    $('#customerDetailContent').html('<div class="text-center p-4"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Loading customer details...</p></div>');
+    $('#customerDetailContent').html('<div class="text-center p-4"><i class="fas fa-spin fa-circle-notch text-primary fs-2"></i><p class="mt-3 text-muted">Fetching customer data...</p></div>');
     
     // Lazy load customer data
     setTimeout(function() {
@@ -1104,6 +1109,9 @@ function openCustomerDetail(customerId) {
             type: 'GET',
             timeout: 5000,
             success: function(response) {
+                if (typeof OptimaPro !== 'undefined' && OptimaPro.hideLoading) {
+                    OptimaPro.hideLoading();
+                }
                 if (response.success) {
                     displayCustomerDetail(response.data);
                 } else {
@@ -1111,6 +1119,7 @@ function openCustomerDetail(customerId) {
                 }
             },
             error: function() {
+                OptimaPro.hideLoading();
                 $('#customerDetailContent').html('<div class="alert alert-danger">Error loading customer details</div>');
             }
         });
@@ -2025,7 +2034,7 @@ function deleteContract(contractId) {
                 allowOutsideClick: false,
                 allowEscapeKey: false,
                 didOpen: () => {
-                    Swal.showLoading();
+                    OptimaPro.showLoading('Deleting customer...');
                 }
             });
             
@@ -2605,23 +2614,16 @@ $(document).on('submit', '#editContractForm', function(e) {
     
     const contractId = $('#editContractId').val();
     const formData = $(this).serialize();
-    
+   
     // Show loading
-    Swal.fire({
-        title: 'Updating...',
-        html: 'Please wait while updating contract...',
-        allowOutsideClick: false,
-        allowEscapeKey: false,
-        didOpen: () => {
-            Swal.showLoading();
-        }
-    });
+    OptimaPro.showLoading('Updating contract...');
     
     $.ajax({
         url: `<?= base_url('marketing/kontrak/update') ?>/${contractId}`,
         method: 'POST',
         data: formData,
         success: function(response) {
+            OptimaPro.hideLoading();
             if (response.success) {
                 Swal.fire({
                     icon: 'success',
@@ -2644,6 +2646,7 @@ $(document).on('submit', '#editContractForm', function(e) {
                     customerTable.ajax.reload(null, false);
                 }
             } else {
+                OptimaPro.hideLoading();
                 Swal.fire({
                     icon: 'error',
                     title: 'Error!',
@@ -2652,6 +2655,7 @@ $(document).on('submit', '#editContractForm', function(e) {
             }
         },
         error: function(xhr) {
+            OptimaPro.hideLoading();
             let errorMsg = 'An error occurred while updating contract';
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMsg = xhr.responseJSON.message;
@@ -3163,6 +3167,14 @@ $(window).on('focus', function() {
         const now = new Date().getTime();
         if (!window.lastTableRefresh || (now - window.lastTableRefresh) > 10000) {
             console.log('🔄 Auto-refreshing data on window focus...');
+            
+            // Refresh CSRF token from DOM before reload (prevents 403 from browser tracking prevention)
+            const metaToken = document.querySelector('meta[name="csrf-token"]');
+            if (metaToken && metaToken.content) {
+                window.csrfToken = metaToken.content;
+                console.log('🔄 CSRF token refreshed from meta tag');
+            }
+            
             customerTable.ajax.reload(null, false); // Don't reset paging
             window.lastTableRefresh = now;
         }

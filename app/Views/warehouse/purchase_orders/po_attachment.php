@@ -268,10 +268,10 @@
                     ...snData
                 },
                 dataType: "JSON",
-                beforeSend: () => Swal.showLoading(),
+                beforeSend: () => OptimaPro.showLoading('Verifying attachment...'),
                 success: function(response) {
                     window._verifyingAttachment = false; $('#btn-submit-verification').prop('disabled', false);
-                    Swal.close();
+                    OptimaPro.hideLoading();
                     if (response.success) {
                         $('#modalVerification').modal('hide');
                         if (window.OptimaNotify) { OptimaNotify.success('Verifikasi berhasil!'); } else if (window.createOptimaToast) { createOptimaToast({type:'success', title:'Berhasil', message:'Verifikasi berhasil!'}); }

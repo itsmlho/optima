@@ -2742,7 +2742,7 @@ h6, .h6 { font-size: 1rem; }
     z-index: 99999 !important;
     opacity: 1;
     visibility: visible;
-    transition: opacity 0.4s ease, visibility 0.4s ease;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
     margin: 0 !important;
     padding: 0 !important;
     transform: none !important;
@@ -2829,6 +2829,15 @@ h6, .h6 { font-size: 1rem; }
     color: #69707a;
     margin-bottom: 0;
     font-weight: 500;
+}
+
+.loading-message {
+    font-size: 0.875rem;
+    color: #0061f2;
+    margin-top: 1rem;
+    font-weight: 500;
+    animation: fadeIn 0.3s ease-in;
+    transition: opacity 0.2s ease;
 }
 
 /* Keyframe Animations */

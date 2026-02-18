@@ -167,10 +167,10 @@
                     catatan_verifikasi: note
                 },
                 dataType: "JSON",
-                beforeSend: () => Swal.showLoading(),
+                beforeSend: () => OptimaPro.showLoading('Verifying sparepart...'),
                 success: function(response) {
                     window._verifyingSparepart = false;
-                    Swal.close();
+                    OptimaPro.hideLoading();
                     if (response.success) {
                         if (window.OptimaNotify) { OptimaNotify.success('Verifikasi berhasil disimpan!'); }
                         else if (window.createOptimaToast) { createOptimaToast({type:'success', title:'Berhasil', message:'Verifikasi berhasil disimpan!'}); }

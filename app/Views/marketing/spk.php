@@ -544,7 +544,15 @@ $can_export = $permissions['export'];
         $.ajax({
             url: '<?= base_url('marketing/spk/stats') ?>',
             type: 'POST',
-            data: { status_filter: currentFilter },
+            data: { 
+                status_filter: currentFilter,
+                csrf_test_name: window.csrfToken || ''
+            },
+            beforeSend: function(xhr) {
+                if (window.csrfToken) {
+                    xhr.setRequestHeader('X-CSRFToken', window.csrfToken);
+                }
+            },
             success: function(data) {
                 $('#stat-total-spk').text(data.total || 0);
                 $('#stat-in-progress').text(data.in_progress || 0);

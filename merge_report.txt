@@ -1,0 +1,42 @@
+OPTIMA ERP - MARKETING & ACCOUNTING DATA MERGE REPORT
+================================================================================
+Generated: 2026-02-18 22:15:10
+
+SUMMARY
+--------------------------------------------------------------------------------
+Base from marketing_fix.csv:     1939 units
+Base from data_from_acc.csv:     1411 units
+Overlap (enriched):              1099 units
+Added from accounting only:      239 units
+Total units processed:           2178
+Skipped (errors):                0
+
+ENRICHMENT STATS
+--------------------------------------------------------------------------------
+Fields enriched from accounting: 1079
+New locations created:           35
+New contracts created:           6
+Units to be reset (DB overlap):  1099
+Data conflicts logged:           315
+Missing customer mappings:       0
+
+MERGE STRATEGY
+--------------------------------------------------------------------------------
+1. Start with marketing_fix.csv as BASE (has cust_id & Area)
+2. For overlap units: ENRICH with data_from_acc (better data)
+   - Lokasi: Use accounting (more detailed)
+   - Harga: Use accounting (more current)
+   - PO: Use accounting (from official records)
+3. Add units only in data_from_acc (match customer by name)
+4. Final output: ~2,100 units with best data from both sources
+
+EXPECTED FINAL STATE
+--------------------------------------------------------------------------------
+Total assigned units:  2178 (~42% of inventory)
+Unassigned units:      ~2811 (~58% spare/stock)
+
+DATA CONFLICTS RESOLVED
+--------------------------------------------------------------------------------
+315 conflicts found and resolved (accounting data used).
+See data_conflicts_report.csv for details.
+

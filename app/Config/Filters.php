@@ -78,7 +78,7 @@ class Filters extends BaseFilters
             'language', // Set language from session preference
             'auth', // Protect all routes - public paths handled in filter itself
             // 'honeypot',
-            // 'csrf',
+            'csrf',
             // 'invalidchars',
             // Optionally enable secure headers early (CSP configured in ContentSecurityPolicy)
             // 'secureheaders',

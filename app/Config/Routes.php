@@ -333,7 +333,7 @@ $routes->group('marketing',  static function ($routes) {
         // Customers
         $routes->post('getCustomers', 'CustomerManagementController::getCustomers');
         $routes->post('searchCustomers', 'CustomerManagementController::searchCustomers');
-        $routes->get('getCustomerStats', 'CustomerManagementController::getCustomerStats');
+        $routes->post('getCustomerStats', 'CustomerManagementController::getCustomerStats'); // Changed to POST for CSRF
         $routes->get('getAreas', 'CustomerManagementController::getAreas');
         // Dropdown data for spesifikasi
         $routes->get('getDepartemen', 'CustomerManagementController::getDepartemen');
@@ -388,6 +388,20 @@ $routes->group('marketing',  static function ($routes) {
         
         // Dashboard Widget
         $routes->get('getUnlinkedDeliveriesWidget', 'CustomerManagementController::getUnlinkedDeliveriesWidget');
+    });
+
+    // Operator Management Routes
+    $routes->group('operators', static function ($routes) {
+        $routes->get('/', 'OperatorController::index');
+        $routes->post('getOperators', 'OperatorController::getOperators');
+        $routes->get('getOperator/(:num)', 'OperatorController::getOperator/$1');
+        $routes->post('create', 'OperatorController::create');
+        $routes->post('update/(:num)', 'OperatorController::update/$1');
+        $routes->delete('delete/(:num)', 'OperatorController::delete/$1');
+        $routes->post('delete/(:num)', 'OperatorController::delete/$1'); // Fallback for POST method
+        $routes->get('available', 'OperatorController::getAvailableOperators');
+        $routes->get('expiring', 'OperatorController::getExpiringCertifications');
+        $routes->get('getStats', 'OperatorController::getStats');
     });
 
     // Routes removed - functionality moved to CustomerManagementController
