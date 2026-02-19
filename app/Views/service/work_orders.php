@@ -293,8 +293,8 @@ $assetService = new \App\Services\AssetMinificationService();
 <!-- Modals Section -->
 
 <!-- Modal Add/Edit Work Order -->
-<div class="modal fade" id="workOrderModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="workOrderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="workOrderFormTitle"><i class="fas fa-plus-circle me-2"></i>Add New Work Order</h5>

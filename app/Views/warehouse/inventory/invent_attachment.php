@@ -125,16 +125,45 @@
 </div>
 
 <!-- Modal View Attachment Detail -->
-<div class="modal fade" id="viewAttachmentModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="viewAttachmentModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-info text-muted">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i>Detail Attachment</h5>
                 <button type="button" class="btn-close btn-close-muted" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <div id="attachmentDetailContent">
-                    <!-- Content will be loaded here -->
+            <div class="modal-body p-0">
+                <!-- Tabs -->
+                <ul class="nav nav-tabs px-3 pt-2" id="attachmentModalTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="att-detail-tab" data-bs-toggle="tab"
+                            data-bs-target="#att-detail-pane" type="button" role="tab">
+                            <i class="fas fa-info-circle me-1"></i>Detail
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="att-history-tab" data-bs-toggle="tab"
+                            data-bs-target="#att-history-pane" type="button" role="tab"
+                            onclick="loadAttachmentHistory(currentAttachmentId)">
+                            <i class="fas fa-history me-1"></i>History
+                            <span class="badge bg-secondary ms-1" id="attHistoryBadge" style="display:none;"></span>
+                        </button>
+                    </li>
+                </ul>
+                <div class="tab-content">
+                    <div class="tab-pane fade show active p-3" id="att-detail-pane" role="tabpanel">
+                        <div id="attachmentDetailContent">
+                            <!-- Content will be loaded here -->
+                        </div>
+                    </div>
+                    <div class="tab-pane fade" id="att-history-pane" role="tabpanel">
+                        <div id="attachmentHistoryContent">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-history fa-2x mb-2 d-block"></i>
+                                <p class="mb-0">Klik tab ini untuk memuat history.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer">
@@ -161,6 +190,7 @@
         </div>
     </div>
 </div>
+
 
 <!-- Modal Edit Stok Attachment -->
 <div class="modal fade" id="editAttachmentModal" tabindex="-1">
@@ -561,6 +591,7 @@
     var currentAttachmentId = null;
     var attachmentTable = null;
 
+
     $(document).ready(function() {
         console.log('🔧 Inventory Attachment JavaScript loaded');
         console.log('Initial type filter:', currentTypeFilter);
@@ -568,7 +599,21 @@
 
         // Initialize DataTable and other code
         setupDataTable();
-        
+
+        // Reset attachment history state when modal closes
+        $('#viewAttachmentModal').on('hidden.bs.modal', function() {
+            currentAttachmentId = null;
+            attachmentHistoryLoaded = null;
+            $('#attHistoryBadge').hide().text('');
+            $('#att-detail-tab').tab('show');
+            $('#attachmentHistoryContent').html(`
+                <div class="text-center text-muted py-4">
+                    <i class="fas fa-history fa-2x mb-2 d-block"></i>
+                    <p class="mb-0">Klik tab ini untuk memuat history.</p>
+                </div>
+            `);
+        });
+
         // Handle add item button click
         $('#btnTambahItem').on('click', function() {
             const type = currentTypeFilter || 'attachment'; // Use current filter
@@ -814,6 +859,7 @@
         $('#inventory-attachment-table tbody').on('click', 'tr', function() {
             const data = attachmentTable.row(this).data();
             if (data && data.id_inventory_attachment) {
+                currentAttachmentId = data.id_inventory_attachment;
                 viewAttachment(data.id_inventory_attachment);
             }
         });
@@ -1012,6 +1058,8 @@
     window.viewAttachment = function(id) {
         console.log('viewAttachment called for ID:', id);
         currentAttachmentId = id; // Store current ID for edit/delete actions
+        attachmentHistoryLoaded = false; // Reset so each attachment loads its own history
+        currentHistoryAttachmentId = id; // Store for history tab click
         
         $.ajax({
             url: `<?= base_url('warehouse/inventory/get-attachment-detail/') ?>${id}`,
@@ -1091,6 +1139,27 @@
         console.log('Creating detail HTML for data:', data);
         
         return `
+
+    <!-- ===== TAB NAVIGATION ===== -->
+    <ul class="nav nav-tabs mb-3" id="attachmentDetailTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="att-detail-tab" data-bs-toggle="tab"
+                data-bs-target="#att-detail-pane" type="button" role="tab">
+                <i class="fas fa-info-circle me-1"></i>Detail
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="att-history-tab" data-bs-toggle="tab"
+                data-bs-target="#att-history-pane" type="button" role="tab"
+                onclick="loadAttachmentHistory(currentHistoryAttachmentId)">
+                <i class="fas fa-history me-1"></i>History
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="attachmentDetailTabsContent">
+        <!-- Detail Tab -->
+        <div class="tab-pane fade show active" id="att-detail-pane" role="tabpanel">
             <div class="row">
                 <!-- Basic Attachment Information -->
                 <div class="col-md-6 mb-4">
@@ -1157,8 +1226,119 @@
                     </div>
                 </div>
             </div>
-        `;
+        </div>
+
+        <!-- History Tab -->
+        <div class="tab-pane fade" id="att-history-pane" role="tabpanel">
+            <div id="attachmentHistoryContent">
+                <div class="text-center p-4 text-muted">
+                    <i class="fas fa-history fa-2x mb-2"></i>
+                    <p>Click the <strong>History</strong> tab to load the timeline.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    `;
     }
+
+    // ===== ATTACHMENT HISTORY =====
+    var attachmentHistoryLoaded = false;
+    var currentHistoryAttachmentId = null;
+
+    window.loadAttachmentHistory = function(id) {
+        if (attachmentHistoryLoaded) return; // Hanya load sekali per buka modal
+        attachmentHistoryLoaded = true;
+
+        $('#attachmentHistoryContent').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br><br>Loading history...</div>');
+
+        $.ajax({
+            url: `<?= base_url('warehouse/inventory/get-attachment-history/') ?>${id}`,
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (!response.success) {
+                    $('#attachmentHistoryContent').html(`<div class="alert alert-danger">${response.message}</div>`);
+                    return;
+                }
+
+                const timeline = response.timeline;
+                if (!timeline || timeline.length === 0) {
+                    $('#attachmentHistoryContent').html(`
+                        <div class="text-center p-4 text-muted">
+                            <i class="fas fa-inbox fa-2x mb-2"></i>
+                            <p>No history found for this item.</p>
+                        </div>
+                    `);
+                    return;
+                }
+
+                const colorMap = {
+                    entry:        'success',
+                    unit_install: 'primary',
+                    workorder:    'warning',
+                    purchase:     'info',
+                };
+
+                const iconMap = {
+                    entry:        'fas fa-plus-circle',
+                    unit_install: 'fas fa-link',
+                    workorder:    'fas fa-wrench',
+                    purchase:     'fas fa-file-invoice',
+                };
+
+                let html = `
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="fw-bold mb-0"><i class="fas fa-history me-2 text-primary"></i>Activity Timeline</h6>
+                        <span class="badge bg-secondary">${timeline.length} event(s)</span>
+                    </div>
+                    <div class="timeline-container">
+                `;
+
+                timeline.forEach(function(item) {
+                    const color  = item.color  || colorMap[item.type]  || 'secondary';
+                    const icon   = item.icon   || iconMap[item.type]   || 'fas fa-circle';
+                    let dateStr = '-';
+                    if (item.date) {
+                        const d = new Date(item.date);
+                        if (!isNaN(d.getTime())) {
+                            dateStr = d.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
+                        }
+                    }
+
+                    html += `
+                        <div class="d-flex mb-3">
+                            <div class="me-3 text-center" style="min-width:40px;">
+                                <div class="rounded-circle bg-${color} text-white d-flex align-items-center justify-content-center mx-auto" style="width:36px;height:36px;">
+                                    <i class="${icon}" style="font-size:0.8rem;"></i>
+                                </div>
+                                <div class="border-start border-2 mx-auto mt-1" style="height:100%;min-height:20px;width:2px;border-color:var(--bs-${color})!important;"></div>
+                            </div>
+                            <div class="flex-grow-1 pb-3">
+                                <div class="card border-${color} border-start border-3 shadow-sm">
+                                    <div class="card-body py-2 px-3">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <strong class="text-${color === 'warning' ? 'dark' : color}">${item.title}</strong>
+                                            <small class="text-muted ms-2 text-nowrap">${dateStr}</small>
+                                        </div>
+                                        <p class="mb-0 text-muted small mt-1">${item.description || '-'}</p>
+                                        ${item.ref_number ? `<span class="badge bg-light text-dark border mt-1" style="font-size:0.7rem;">${item.ref_number}</span>` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += `</div>`;
+                $('#attachmentHistoryContent').html(html);
+            },
+            error: function(xhr) {
+                $('#attachmentHistoryContent').html(`<div class="alert alert-danger">Error ${xhr.status}: Could not load history.</div>`);
+            }
+        });
+    }
+
+
 
     function editAttachment(id) {
         $.ajax({
@@ -1761,5 +1941,120 @@
             }
         });
     });
+
+    // ── Attachment History ──────────────────────────────────────────────
+    let attachmentHistoryLoaded = null;
+
+    function loadAttachmentHistory(attachmentId) {
+        if (!attachmentId) return;
+        if (attachmentHistoryLoaded === attachmentId) return; // already loaded
+
+        $('#attachmentHistoryContent').html(`
+            <div class="text-center py-5">
+                <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                <p class="mt-2 text-muted">Memuat history...</p>
+            </div>
+        `);
+
+        $.ajax({
+            url: `<?= base_url('warehouse/inventory/get-attachment-history/') ?>${attachmentId}`,
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    attachmentHistoryLoaded = attachmentId;
+                    const total = response.total || 0;
+                    if (total > 0) {
+                        $('#attHistoryBadge').text(total).show();
+                    }
+                    $('#attachmentHistoryContent').html(renderAttachmentTimeline(response.timeline || []));
+                } else {
+                    $('#attachmentHistoryContent').html(`
+                        <div class="alert alert-danger m-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>${response.message || 'Gagal memuat history.'}
+                        </div>
+                    `);
+                }
+            },
+            error: function(xhr) {
+                $('#attachmentHistoryContent').html(`
+                    <div class="alert alert-danger m-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Terjadi kesalahan saat memuat history.
+                        <br><small class="text-muted">${xhr.statusText}</small>
+                    </div>
+                `);
+            }
+        });
+    }
+
+    function renderAttachmentTimeline(timeline) {
+        if (!timeline || timeline.length === 0) {
+            return `
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
+                    <h6>Belum Ada Aktivitas</h6>
+                    <p class="small">Attachment ini belum memiliki history tercatat.</p>
+                </div>
+            `;
+        }
+
+        const colorHexMap = {
+            primary: '#0d6efd', success: '#198754', warning: '#ffc107',
+            info: '#0dcaf0', secondary: '#6c757d', dark: '#212529', danger: '#dc3545'
+        };
+        const formatDate = (d) => {
+            if (!d) return '-';
+            try { return new Date(d).toLocaleDateString('id-ID', {day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+            catch(e){ return d; }
+        };
+        const h = (s) => {
+            if (s === null || s === undefined) return '-';
+            return String(s).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        };
+
+        let html = `<div class="p-3">
+            <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                <i class="fas fa-history text-primary me-2"></i>
+                <span class="fw-semibold">Timeline Attachment</span>
+                <span class="badge bg-primary ms-2">${timeline.length} event</span>
+            </div>
+            <div style="position:relative; padding-left:2.5rem;">
+                <div style="position:absolute;left:1rem;top:0;bottom:0;width:2px;background:#dee2e6;border-radius:2px;"></div>`;
+
+        timeline.forEach(item => {
+            const color    = item.color || 'secondary';
+            const hex      = colorHexMap[color] || '#6c757d';
+            const icon     = item.icon || 'fas fa-circle';
+            const title    = item.title || '';
+            const desc     = item.description || '';
+            const user     = item.user || null;
+            const ref      = item.ref_number || null;
+            const src      = item.source || 'log';
+            const srcBadge = src === 'seed' ? `<span class="badge bg-light text-muted border ms-1" style="font-size:0.6rem;">legacy</span>` : '';
+            const userHtml = user ? `<div class="text-muted" style="font-size:0.75rem;margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>` : '';
+            const refHtml  = ref ? `<span class="badge bg-light text-secondary border ms-1" style="font-size:0.65rem;"><i class="fas fa-hashtag me-1"></i>${h(ref)}</span>` : '';
+
+            html += `<div class="timeline-item mb-3" style="position:relative;">
+                <div style="position:absolute;left:-2.15rem;top:0.25rem;width:1.25rem;height:1.25rem;border-radius:50%;
+                    background:${hex};display:flex;align-items:center;justify-content:center;z-index:1;box-shadow:0 0 0 3px #fff;">
+                    <i class="${h(icon)} text-white" style="font-size:0.55rem;"></i>
+                </div>
+                <div class="card border-0 shadow-sm" style="border-left:3px solid ${hex} !important;">
+                    <div class="card-body py-2 px-3">
+                        <div class="d-flex align-items-start justify-content-between flex-wrap gap-1">
+                            <div><span class="fw-semibold small">${h(title)}</span>${srcBadge}${refHtml}</div>
+                            <small class="text-muted text-nowrap"><i class="fas fa-calendar-alt me-1"></i>${h(formatDate(item.date))}</small>
+                        </div>
+                        ${desc ? `<div class="text-muted small mt-1">${h(desc)}</div>` : ''}
+                        ${userHtml}
+                    </div>
+                </div>
+            </div>`;
+        });
+
+        html += `</div></div>`;
+        return html;
+    }
 </script>
 <?= $this->endSection() ?>

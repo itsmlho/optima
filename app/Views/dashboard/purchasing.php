@@ -235,8 +235,8 @@
 </div>
 
 <!-- Enhanced Create/Edit Modal -->
-<div class="modal fade" id="unitAssetModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+<div class="modal fade modal-wide" id="unitAssetModal" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title fw-bold" id="modalTitle">

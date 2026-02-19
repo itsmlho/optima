@@ -4,8 +4,8 @@
      ======================================================================== -->
 
 <!-- Renewal Wizard Modal -->
-<div class="modal fade" id="renewalWizardModal" tabindex="-1" aria-labelledby="renewalWizardLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="renewalWizardModal" tabindex="-1" aria-labelledby="renewalWizardLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <div>

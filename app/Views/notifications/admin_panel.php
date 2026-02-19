@@ -308,7 +308,7 @@
 
 <!-- Variables Info Modal -->
 <div class="modal fade" id="variablesModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-l">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title"><i class="fas fa-code me-2"></i>Available Variables</h5>

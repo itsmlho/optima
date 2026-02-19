@@ -2,6 +2,15 @@
 
 <?= $this->section('content') ?>
 
+<!-- Force browser to reload (Cache Buster) -->
+<script>
+// Force modal sizes on page load
+window.addEventListener('DOMContentLoaded', function() {
+    // Add timestamp to force cache invalidation
+    console.log('🔄 Page loaded at:', new Date().toLocaleTimeString(), '- Modals set to 98vw');
+});
+</script>
+
 <!-- Date Range Filter - Top Right -->
 <div class="row mt-3">
     <div class="col-md-12 text-end">
@@ -116,8 +125,8 @@
 </div>
 
 <!-- Create Prospect Modal -->
-<div class="modal fade" id="createProspectModal" tabindex="-1" aria-labelledby="createProspectModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="createProspectModal" tabindex="-1" aria-labelledby="createProspectModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title fw-600" id="createProspectModalLabel">
@@ -250,8 +259,8 @@
 </div>
 
 <!-- Detail Modal -->
-<div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered" style="max-width: 1200px; width: 95%;">
+<div class="modal fade modal-wider" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -329,8 +338,8 @@
 </div>
 
 <!-- Unified Specification Modal (Add & Edit) -->
-<div class="modal fade" id="addSpecificationModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="addSpecificationModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success text-muted" id="specModalHeader">
                 <h6 class="modal-title fw-600" id="specModalTitle">
@@ -371,6 +380,44 @@
                                 <small class="text-muted d-block ms-4">
                                     Unit backup/cadangan untuk customer, tidak dihitung dalam tagihan bulanan
                                 </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Include Operator Checkbox -->
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="include_operator" id="includeOperator" value="1">
+                                <label class="form-check-label fw-bold text-info" for="includeOperator">
+                                    <i class="fas fa-user-tie me-1"></i> Termasuk Operator
+                                </label>
+                                <small class="text-muted d-block ms-4">
+                                    Kontrak termasuk penyediaan operator untuk unit
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Operator Details (shown when checkbox is checked) - HORIZONTAL LAYOUT -->
+                        <div class="col-12" id="operatorDetailsContainer" style="display: none;">
+                            <hr class="my-2">
+                            <h6 class="text-info mb-3"><i class="fas fa-user-tie me-2"></i>Detail Operator</h6>
+                            <div class="row g-3" id="operatorDetails">
+                                <div class="col-md-4">
+                                    <label class="form-label">Jumlah Operator <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="operator_quantity" id="operatorQuantity" min="1" value="1" placeholder="Jumlah operator">
+                                    <small class="text-muted">Per unit berapa operator</small>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label">Harga per Operator (Monthly) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" name="operator_price_monthly" id="operatorPriceMonthly" step="0.01" placeholder="Rp per operator per bulan">
+                                    <small class="text-muted">Harga bulanan per operator</small>
+                                </div>
+                                
+                                <div class="col-md-4">
+                                    <label class="form-label">Harga per Operator (Daily)</label>
+                                    <input type="number" class="form-control" name="operator_price_daily" id="operatorPriceDaily" step="0.01" placeholder="Rp per operator per hari">
+                                    <small class="text-muted">Opsional - harga harian</small>
+                                </div>
                             </div>
                         </div>
                         
@@ -608,7 +655,7 @@
 
 <!-- Add Attachment Modal -->
 <div class="modal fade" id="addAttachmentModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-info text-muted">
                 <h6 class="modal-title fw-600">
@@ -674,8 +721,8 @@
 </div>
 
 <!-- Unified Customer Location Modal (Select or Add) -->
-<div class="modal fade" id="selectCustomerLocationModal" tabindex="-1" aria-labelledby="selectLocationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="selectCustomerLocationModal" tabindex="-1" aria-labelledby="selectLocationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -833,8 +880,8 @@
 </div>
 
 <!-- Add Contract Modal -->
-<div class="modal fade" id="addContractModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="addContractModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -990,8 +1037,8 @@
 </div>
 
 <!-- Create SPK Selection Modal -->
-<div class="modal fade" id="createSPKModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="createSPKModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <div>
@@ -1247,6 +1294,30 @@ $(document).ready(function() {
         $('#quotationForm')[0].reset();
         $('#quotationId').val('');
         $('#quotationModalLabel').text('Add New Quotation');
+    });
+    
+    // === MODAL SIZE ARCHITECTURE ===
+    // ✅ Modal sizes now controlled by CSS classes (see optima-pro.css):
+    // - detailModal uses .modal-wider (70vw) for comfortable detail viewing
+    // - Other modals use Bootstrap classes (modal-xl, modal-lg) based on content complexity
+    // No JavaScript forcing needed - CSS architecture handles all sizing properly
+    
+    // Include Operator toggle functionality
+    $(document).on('change', '#includeOperator', function() {
+        const isChecked = $(this).is(':checked');
+        const operatorDetailsContainer = $('#operatorDetailsContainer');
+        
+        if (isChecked) {
+            operatorDetailsContainer.slideDown(300);
+            // Make operator fields required
+            $('#operatorQuantity, #operatorPriceMonthly').prop('required', true);
+        } else {
+            operatorDetailsContainer.slideUp(300);
+            // Remove required and clear values
+            $('#operatorQuantity, #operatorPriceMonthly, #operatorPriceDaily')
+                .prop('required', false)
+                .val('');
+        }
     });
     
     // Spare Unit toggle functionality
@@ -1811,6 +1882,20 @@ function viewQuotation(id) {
         const quotationStage = data.stage || '';
         const hasSpecs = parseInt(data.spec_count || 0) > 0; // Check if has specifications
         
+        // Show "Convert to Customer" button for DEAL quotations without customer conversion
+        if (workflowStage === 'DEAL' && quotationStage === 'ACCEPTED' && !data.created_customer_id) {
+            actionButtons += `<button class="btn btn-success me-2" onclick="convertProspectToCustomer(${data.id_quotation})" title="Convert prospect to permanent customer">
+                <i class="fas fa-user-check me-1"></i>Convert to Customer
+            </button>`;
+        }
+        
+        // Show info if already converted
+        if (data.created_customer_id) {
+            actionButtons += `<span class="badge bg-success me-2" title="Converted to customer on ${data.customer_converted_at || 'N/A'}">
+                <i class="fas fa-check-circle me-1"></i>Customer Created
+            </span>`;
+        }
+        
         // Always show edit button for quotations that haven't been converted to contract
         // Allow editing even for DEAL stage to accommodate price/spec changes
         if (!data.contract_id) {
@@ -2051,6 +2136,9 @@ function deleteQuotation(id) {
             $.ajax({
                 url: '<?= base_url('marketing/quotations/delete/') ?>' + id,
                 type: 'DELETE',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
                 success: function(response) {
                     if (response.status === 'success') {
                         Swal.fire('Deleted!', response.message, 'success');
@@ -2070,6 +2158,126 @@ function deleteQuotation(id) {
                 }
             });
         }
+    });
+}
+
+// Convert prospect to permanent customer
+function convertProspectToCustomer(quotationId) {
+    // Show loading indicator while fetching quotation details
+    Swal.fire({
+        title: 'Loading...',
+        text: 'Fetching quotation details',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        willOpen: () => {
+            Swal.showLoading();
+        }
+    });
+    
+    // Fetch quotation details first
+    $.get('<?= base_url('marketing/quotations/getQuotation/') ?>' + quotationId, function(response) {
+        const data = response.data || response;
+        
+        // Show confirmation dialog with prospect details
+        Swal.fire({
+            title: 'Convert Prospect to Customer?',
+            html: `
+                <div class="text-start">
+                    <p class="mb-3">This will create a permanent customer record from the following prospect:</p>
+                    <div class="card">
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Prospect Name:</strong><br>${data.prospect_name || 'N/A'}</p>
+                            <p class="mb-2"><strong>Contact Person:</strong><br>${data.contact_person || 'N/A'}</p>
+                            <p class="mb-2"><strong>Phone:</strong><br>${data.phone || 'N/A'}</p>
+                            <p class="mb-0"><strong>Quotation:</strong><br>${data.quotation_number || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3 mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>A customer code will be auto-generated and the prospect will become a permanent customer in the system.</small>
+                    </div>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#28a745',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="fas fa-user-check me-1"></i> Yes, Convert to Customer',
+            cancelButtonText: 'Cancel',
+            width: '600px',
+            customClass: {
+                popup: 'swal-wide'
+            }
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // Show processing indicator
+                Swal.fire({
+                    title: 'Processing...',
+                    text: 'Creating customer record',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    willOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+                
+                // Send conversion request
+                $.ajax({
+                    url: '<?= base_url('marketing/convertProspectToCustomer/') ?>' + quotationId,
+                    type: 'POST',
+                    data: {
+                        csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                    },
+                    success: function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Customer Created!',
+                                html: `
+                                    <p class="mb-2">${response.message}</p>
+                                    ${response.customer_code ? `<p class="mb-0"><strong>Customer Code:</strong> <code>${response.customer_code}</code></p>` : ''}
+                                `,
+                                timer: 3000,
+                                timerProgressBar: true
+                            });
+                            
+                            // Reload quotations table and refresh current quotation detail
+                            quotationsTable.ajax.reload();
+                            loadStatistics();
+                            
+                            // Refresh detail modal if it's open
+                            if ($('#detailModal').hasClass('show') && currentQuotationId == quotationId) {
+                                viewQuotation(quotationId);
+                            }
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Conversion Failed',
+                                text: response.message || 'Failed to convert prospect to customer'
+                            });
+                        }
+                    },
+                    error: function(xhr) {
+                        let errorMsg = 'Failed to convert prospect to customer';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            errorMsg = xhr.responseJSON.message;
+                        }
+                        
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: errorMsg
+                        });
+                    }
+                });
+            }
+        });
+    }).fail(function(xhr) {
+        Swal.fire({
+            icon: 'error',
+            title: 'Error',
+            text: 'Failed to load quotation details'
+        });
     });
 }
 
@@ -2562,6 +2770,10 @@ function proceedWithSpecificationModal() {
     $('#submitBtnText').text('Save Specification');
     $('#submitSpecificationBtn').removeClass('btn-primary').addClass('btn-success');
     
+    // NUCLEAR OPTION: Force modal size to 1800px (HARDCODED)
+    // ✅ Modal size controlled by CSS (modal-xl = 1140px)
+    // No JavaScript forcing needed
+    
     // Load dropdown data
     loadDepartemenForSpecification();
     loadTipeUnitForSpecification(); // This will load data but not populate options until dept is selected
@@ -2969,6 +3181,9 @@ $('#addSpecificationForm').on('submit', function(e) {
     
     const formData = new FormData(this);
     
+    // Add CSRF token
+    formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
+    
     // Ensure spare unit value is sent (checkbox may not be in FormData if unchecked)
     if (!isSpareUnit) {
         formData.append('is_spare_unit', '0');
@@ -3070,6 +3285,10 @@ $('#addAttachmentForm').on('submit', function(e) {
     }
     
     const formData = new FormData(this);
+    
+    // Add CSRF token
+    formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
+    
     const submitBtn = $('#submitAttachmentBtn');
     
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');
@@ -3540,7 +3759,7 @@ $(document).on('submit', '#editSpecificationForm', function(e) {
     e.preventDefault();
     
     const specId = $('#edit_spec_id').val();
-    const formData = $(this).serialize();
+    const formData = $(this).serialize() + '&csrf_test_name=' + encodeURIComponent(window.csrfToken || '<?= csrf_hash() ?>');
     
     $.ajax({
         url: `<?= base_url('marketing/quotations/update-specification/') ?>${specId}`,
@@ -3591,6 +3810,9 @@ function deleteSpecification(specId) {
             $.ajax({
                 url: `<?= base_url('marketing/quotations/delete-specification/') ?>${specId}`,
                 type: 'DELETE',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
                 success: function(response) {
                     if (response.success) {
                         Swal.fire('Deleted!', response.message, 'success');
@@ -3788,7 +4010,9 @@ function convertToQuotation(quotationId) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/convert-to-quotation') ?>/' + quotationId)
+            $.post('<?= base_url('marketing/quotations/convert-to-quotation') ?>/' + quotationId, {
+                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+            })
                 .done(function(response) {
                     if (response.success) {
                         Swal.fire({
@@ -4091,7 +4315,9 @@ function sendQuotation(quotationId) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/send-quotation') ?>/' + quotationId)
+            $.post('<?= base_url('marketing/quotations/send-quotation') ?>/' + quotationId, {
+                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+            })
                 .done(function(response) {
                     if (response.success) {
                         Swal.fire('Success!', 'Quotation sent successfully', 'success');
@@ -4208,7 +4434,9 @@ function proceedMarkAsDeal(quotationId, skipValidation = false) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/markAsDeal') ?>/' + quotationId)
+            $.post('<?= base_url('marketing/quotations/markAsDeal') ?>/' + quotationId, {
+                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+            })
                 .done(function(response) {
                     if (response.success) {
                         // Show location modal and DO NOT update table yet
@@ -4316,7 +4544,9 @@ function markAsNotDeal(quotationId) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/markAsNotDeal') ?>/' + quotationId)
+            $.post('<?= base_url('marketing/quotations/markAsNotDeal') ?>/' + quotationId, {
+                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+            })
                 .done(function(response) {
                     if (response.success) {
                         Swal.fire('Success!', response.message, 'success');
@@ -4589,6 +4819,7 @@ function saveCustomerLocation(customerId, locationData, quotationId) {
     locationData.location_type = 'HEAD_OFFICE';
     locationData.quotation_id = quotationId; // CRITICAL: Pass quotation ID for workflow tracking
     locationData.workflow_completed = true; // Flag to indicate modal workflow is complete
+    locationData.csrf_test_name = window.csrfToken || '<?= csrf_hash() ?>'; // CSRF protection
     
     console.log('Saving customer location with quotation ID:', locationData);
     
@@ -4673,7 +4904,8 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
         customer_id: customerId,
         location_id: locationId,
         quotation_id: quotationId, // CRITICAL: Pass quotation ID for workflow tracking
-        workflow_completed: true // Flag to indicate modal workflow is complete
+        workflow_completed: true, // Flag to indicate modal workflow is complete
+        csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>' // Add CSRF token
     };
     
     // Store location globally for contract creation
@@ -5253,7 +5485,9 @@ function createCustomerFromDeal(quotationId) {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/createCustomerFromDeal') ?>/' + quotationId)
+            $.post('<?= base_url('marketing/quotations/createCustomerFromDeal') ?>/' + quotationId, {
+                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+            })
                 .done(function(response) {
                     if (response.success) {
                         Swal.fire({
@@ -5356,7 +5590,9 @@ function createContract(quotationId) {
 }
 
 function proceedWithContractCreation(quotationId) {
-    $.post('<?= base_url('marketing/quotations/createContract') ?>/' + quotationId)
+    $.post('<?= base_url('marketing/quotations/createContract') ?>/' + quotationId, {
+        csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+    })
         .done(function(response) {
             if (response.success) {
                 Swal.fire({
@@ -5432,8 +5668,14 @@ function proceedWithSPKCreation(quotationId) {
 
 function addSpecifications(quotationId) {
     // Open the specifications modal directly
-    $.post('<?= base_url('marketing/quotations/addSpecifications') ?>/' + quotationId)
-        .done(function(response) {
+    $.ajax({
+        url: '<?= base_url('marketing/quotations/addSpecifications') ?>/' + quotationId,
+        type: 'POST',
+        data: {
+            csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+        },
+        dataType: 'json',
+        success: function(response) {
             if (response.success && response.open_specifications) {
                 // Open the quotation detail modal and switch to specifications tab
                 viewQuotation(quotationId);
@@ -5453,10 +5695,11 @@ function addSpecifications(quotationId) {
             } else {
                 Swal.fire('Error', response.message || 'Failed to open specifications', 'error');
             }
-        })
-        .fail(function() {
+        },
+        error: function() {
             Swal.fire('Error', 'Failed to open specifications', 'error');
-        });
+        }
+    });
 }
 
 // Legacy function for backward compatibility
@@ -5678,7 +5921,10 @@ function searchCustomers() {
     $.ajax({
         url: '<?= base_url('marketing/customer-management/searchCustomers') ?>',
         method: 'POST',
-        data: { search: searchTerm },
+        data: { 
+            search: searchTerm,
+            csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+        },
         success: function(response) {
             if (response.success && response.data.length > 0) {
                 let html = '<div class="list-group mt-2">';
@@ -6289,6 +6535,9 @@ $('#createSPKForm').on('submit', function(e) {
     // Disable submit button
     const submitBtn = $('#submitSPKBtn');
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
+    
+    // Add CSRF token to formData
+    formData.csrf_test_name = window.csrfToken || '<?= csrf_hash() ?>';
     
     // Submit to backend
     $.ajax({

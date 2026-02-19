@@ -94,8 +94,8 @@
 </div>
 
 <!-- Modal Verifikasi -->
-<div class="modal fade" id="modalVerification" tabindex="-1" aria-labelledby="modalVerificationLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="modalVerification" tabindex="-1" aria-labelledby="modalVerificationLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title text-light" id="modalVerificationLabel"><i class="fas fa-clipboard-check me-2"></i>Formulir Inspeksi Item</h5>

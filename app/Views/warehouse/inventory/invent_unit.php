@@ -173,16 +173,48 @@ $can_export = $permissions['export'];
     </div>
 
 <!-- Modal View Unit Detail - Enhanced Modern Design -->
-<div class="modal fade" id="viewUnitModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="viewUnitModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-light border-bottom">
-                <h5 class="modal-title fw-bold"><i class="fas fa-cube me-2 text-secondary"></i><?= lang('App.detailed_unit_information') ?></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            <div class="modal-header bg-light border-bottom pb-0">
+                <div class="w-100">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <h5 class="modal-title fw-bold mb-0"><i class="fas fa-cube me-2 text-secondary"></i><?= lang('App.detailed_unit_information') ?></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <!-- Tab Navigation -->
+                    <ul class="nav nav-tabs border-bottom-0" id="unitDetailTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="tab-unit-info-btn" data-bs-toggle="tab" data-bs-target="#tab-unit-info" type="button" role="tab">
+                                <i class="fas fa-info-circle me-1"></i>Informasi Unit
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="tab-history-btn" data-bs-toggle="tab" data-bs-target="#tab-history" type="button" role="tab">
+                                <i class="fas fa-history me-1"></i>Unit History
+                                <span class="badge bg-secondary ms-1" id="historyBadge" style="display:none;"></span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
             </div>
             <div class="modal-body p-0" style="max-height: 70vh; overflow-y: auto;">
-                <div id="unitDetailContent">
-                    <!-- Content will be loaded here -->
+                <div class="tab-content">
+                    <!-- Tab 1: Unit Info (existing) -->
+                    <div class="tab-pane fade show active" id="tab-unit-info" role="tabpanel">
+                        <div id="unitDetailContent">
+                            <!-- Content will be loaded here -->
+                        </div>
+                    </div>
+                    <!-- Tab 2: Unit History -->
+                    <div class="tab-pane fade" id="tab-history" role="tabpanel">
+                        <div id="unitHistoryContent" class="p-3">
+                            <div class="text-center text-muted py-4">
+                                <i class="fas fa-history fa-2x mb-2"></i>
+                                <p>Klik tab ini untuk memuat history unit.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer bg-light d-flex justify-content-between">
@@ -198,6 +230,7 @@ $can_export = $permissions['export'];
         </div>
     </div>
 </div>
+
 
 <!-- Modal Edit Stok Unit -->
 <div class="modal fade" id="editUnitModal" tabindex="-1">
@@ -1063,6 +1096,174 @@ $can_export = $permissions['export'];
         // Close detail modal and call delete function
         $('#viewUnitModal').modal('hide');
         deleteUnit(currentUnitData.id_inventory_unit);
+    }
+
+    // =====================================================
+    // UNIT HISTORY / TIMELINE TAB
+    // =====================================================
+    let historyLoadedForUnit = null; // Track which unit's history is loaded
+
+    // Lazy-load history only when tab is clicked
+    $(document).on('shown.bs.tab', '#tab-history-btn', function() {
+        const unitId = currentUnitData ? currentUnitData.id_inventory_unit : null;
+        if (!unitId) return;
+        // Don't reload if already loaded for this unit
+        if (historyLoadedForUnit === unitId) return;
+        loadUnitHistory(unitId);
+    });
+
+    // Reset history loaded flag when modal opens a new unit
+    $(document).on('shown.bs.modal', '#viewUnitModal', function() {
+        // Reset tab to first tab
+        const firstTab = document.getElementById('tab-unit-info-btn');
+        if (firstTab) {
+            const tab = new bootstrap.Tab(firstTab);
+            tab.show();
+        }
+        $('#historyBadge').hide();
+        historyLoadedForUnit = null;
+        $('#unitHistoryContent').html(`
+            <div class="text-center text-muted py-4">
+                <i class="fas fa-history fa-2x mb-2 d-block"></i>
+                <p class="mb-0">Klik tab ini untuk memuat history unit.</p>
+            </div>
+        `);
+    });
+
+    function loadUnitHistory(unitId) {
+        $('#unitHistoryContent').html(`
+            <div class="text-center py-5">
+                <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
+                <p class="mt-2 text-muted">Memuat history unit...</p>
+            </div>
+        `);
+        $.ajax({
+            url: `<?= base_url('warehouse/inventory/get-unit-history/') ?>${unitId}`,
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    historyLoadedForUnit = unitId;
+                    const total = response.total || 0;
+                    if (total > 0) {
+                        $('#historyBadge').text(total).show();
+                    }
+                    const html = renderUnitTimeline(response.timeline || []);
+                    $('#unitHistoryContent').html(html);
+                } else {
+                    $('#unitHistoryContent').html(`
+                        <div class="alert alert-danger m-3">
+                            <i class="fas fa-exclamation-triangle me-2"></i>${response.message || 'Gagal memuat history.'}
+                        </div>
+                    `);
+                }
+            },
+            error: function(xhr) {
+                $('#unitHistoryContent').html(`
+                    <div class="alert alert-danger m-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Terjadi kesalahan saat memuat history unit.
+                        <br><small class="text-muted">${xhr.statusText}</small>
+                    </div>
+                `);
+            }
+        });
+    }
+
+    function renderUnitTimeline(timeline) {
+        if (!timeline || timeline.length === 0) {
+            return `
+                <div class="text-center text-muted py-5">
+                    <i class="fas fa-inbox fa-3x mb-3 d-block opacity-50"></i>
+                    <h6>Belum Ada Aktivitas</h6>
+                    <p class="small">Unit ini belum memiliki history tercatat.</p>
+                </div>
+            `;
+        }
+
+        const colorHexMap = {
+            primary:   '#0d6efd',
+            success:   '#198754',
+            warning:   '#ffc107',
+            info:      '#0dcaf0',
+            secondary: '#6c757d',
+            dark:      '#212529',
+            danger:    '#dc3545'
+        };
+
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '-';
+            try {
+                return new Date(dateStr).toLocaleDateString('id-ID', {
+                    day: 'numeric', month: 'short', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } catch(e) { return dateStr; }
+        };
+
+        const h = (str) => {
+            if (str === null || str === undefined) return '-';
+            return String(str).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        };
+
+        let html = `
+            <div class="p-3">
+                <div class="d-flex align-items-center mb-3 pb-2 border-bottom">
+                    <i class="fas fa-history text-primary me-2"></i>
+                    <span class="fw-semibold">Timeline Aktivitas Unit</span>
+                    <span class="badge bg-primary ms-2">${timeline.length} event</span>
+                </div>
+                <div class="timeline-container" style="position:relative; padding-left: 2.5rem;">
+                    <div style="position:absolute; left:1rem; top:0; bottom:0; width:2px; background:#dee2e6; border-radius:2px;"></div>
+        `;
+
+        timeline.forEach((item) => {
+            const color    = item.color || 'secondary';
+            const hexColor = colorHexMap[color] || '#6c757d';
+            const icon     = item.icon  || 'fas fa-circle';
+            const title    = item.title  || '';
+            const desc     = item.description || '';
+            const user     = item.user   || null;
+            const refNum   = item.ref_number || null;
+            const src      = item.source || 'log';
+            const formattedDate = formatDate(item.date);
+
+            const sourceBadge = src === 'seed'
+                ? `<span class="badge bg-light text-muted border ms-1" style="font-size:0.6rem;">legacy</span>`
+                : '';
+            const userHtml = user
+                ? `<div class="text-muted" style="font-size:0.75rem; margin-top:2px;"><i class="fas fa-user me-1"></i>${h(user)}</div>`
+                : '';
+            const refHtml = refNum
+                ? `<span class="badge bg-light text-secondary border ms-1" style="font-size:0.65rem;"><i class="fas fa-hashtag me-1"></i>${h(refNum)}</span>`
+                : '';
+
+            html += `
+                <div class="timeline-item mb-3" style="position:relative;">
+                    <div style="position:absolute; left:-2.15rem; top:0.25rem; width:1.25rem; height:1.25rem; border-radius:50%;
+                                background:${hexColor}; display:flex; align-items:center; justify-content:center; z-index:1; box-shadow: 0 0 0 3px #fff;">
+                        <i class="${h(icon)} text-white" style="font-size:0.55rem;"></i>
+                    </div>
+                    <div class="card border-0 shadow-sm" style="border-left: 3px solid ${hexColor} !important;">
+                        <div class="card-body py-2 px-3">
+                            <div class="d-flex align-items-start justify-content-between flex-wrap gap-1">
+                                <div>
+                                    <span class="fw-semibold small">${h(title)}</span>${sourceBadge}${refHtml}
+                                </div>
+                                <small class="text-muted text-nowrap">
+                                    <i class="fas fa-calendar-alt me-1"></i>${h(formattedDate)}
+                                </small>
+                            </div>
+                            ${desc ? `<div class="text-muted small mt-1">${h(desc)}</div>` : ''}
+                            ${userHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `</div></div>`;
+        return html;
     }
 </script>
 <?= $this->endSection() ?>

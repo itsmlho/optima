@@ -53,11 +53,6 @@ helper('permission_helper');
                         <i class="fas fa-users"></i> <?= lang('Marketing.customer_management') ?>
                     </a>
                     <?php endif; ?>
-                    <?php if (canNavigateTo('marketing', 'operator')): ?>
-                    <a href="<?= base_url('/marketing/operators') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'marketing/operators') !== false) ? 'active' : '' ?>">
-                        <i class="fas fa-user-tie"></i> Operators
-                    </a>
-                    <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'quotation')): ?>
                     <a href="<?= base_url('/marketing/kontrak') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'marketing/kontrak') !== false) ? 'active' : '' ?>">
                         <i class="fas fa-file-invoice"></i> Contracts & PO

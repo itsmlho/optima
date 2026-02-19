@@ -14,7 +14,7 @@ class QuotationModel extends Model
         'quotation_title', 'quotation_description', 'quotation_date', 'valid_until', 
         'currency', 'subtotal', 'discount_percent', 'discount_amount', 'tax_percent', 'tax_amount', 'total_amount',
         'payment_terms', 'delivery_terms', 'warranty_terms', 'stage', 'workflow_stage', 'probability_percent', 'expected_close_date',
-        'is_deal', 'deal_date', 'created_customer_id', 'created_contract_id', 'created_by', 'assigned_to'
+        'is_deal', 'deal_date', 'created_customer_id', 'customer_converted_at', 'created_contract_id', 'created_by', 'assigned_to'
     ];
     protected $useTimestamps = true;
     protected $createdField = 'created_at';

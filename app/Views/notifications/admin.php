@@ -116,7 +116,7 @@
 
 <!-- Rule Actions Modal -->
 <div class="modal" id="ruleActionsModal" style="display: none;">
-    <div class="modal-content" style="max-width: 400px;">
+    <div class="modal-content modal-content-sm">
         <div class="modal-header">
             <h5 class="modal-title" id="actionsModalTitle">Rule Actions</h5>
             <button class="modal-close" onclick="closeActionsModal()">&times;</button>
@@ -146,7 +146,7 @@
 
 <!-- View Rule Details Modal -->
 <div class="modal" id="viewRuleModal">
-    <div class="modal-content" style="max-width: 700px;">
+    <div class="modal-content modal-content-md">
         <div class="modal-header">
             <h5 class="modal-title">Rule Details</h5>
             <button class="modal-close" onclick="closeViewModal()">&times;</button>

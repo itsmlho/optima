@@ -157,9 +157,9 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Customer Detail Modal -->
-<div class="modal fade" id="customerDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" style="max-width: 85vw !important; width: 85vw !important; min-width: 85vw !important; margin: 1.75rem auto !important;">
-        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
+<div class="modal fade modal-wide" id="customerDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title">
@@ -244,10 +244,9 @@ $can_export = $permissions['export'];
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0"><strong>Recent Contracts & PO</strong> <small class="text-muted">(Latest 5)</small></h6>
                             <div>
-                                <?= ui_button('add', 'Add Contract', [
-                                    'onclick' => 'openAddContractModal()',
-                                    'size' => 'sm'
-                                ]) ?>
+                                <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-primary btn-sm" id="btnManageContracts" target="_blank">
+                                    <i class="fas fa-external-link-alt me-1"></i>Manage Contracts
+                                </a>
                             </div>
                         </div>
                         <div class="alert alert-info alert-sm mb-3">
@@ -309,9 +308,9 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Contract Detail Modal -->
-<div class="modal fade" id="contractDetailModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" style="max-width: 85vw !important; width: 85vw !important;">
-        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
+<div class="modal fade modal-wide" id="contractDetailModal" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title">
@@ -352,9 +351,9 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Unit Detail Modal -->
-<div class="modal fade" id="unitDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" style="max-width: 85vw !important; width: 85vw !important;">
-        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
+<div class="modal fade modal-wide" id="unitDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title">
@@ -375,9 +374,9 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Add Customer Modal -->
-<div class="modal fade" id="addCustomerModal" tabindex="-1" role="dialog">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" role="document" style="max-width: 85vw !important; width: 85vw !important;">
-        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
+<div class="modal fade modal-wide" id="addCustomerModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered" role="document">
+        <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Marketing.add_customer') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -519,9 +518,9 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Add Contract Modal -->
-<div class="modal fade" id="addContractModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered" style="max-width: 85vw !important; width: 85vw !important;">
-        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
+<div class="modal fade modal-wide" id="addContractModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title"><?= lang('Marketing.add_contract') ?></h5>
@@ -605,9 +604,9 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Add Location Modal -->
-<div class="modal fade" id="addLocationModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
-        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
+<div class="modal fade modal-wide" id="addLocationModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><?= lang('Marketing.add_location') ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -718,9 +717,9 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Edit Contract Modal (Inline Edit) -->
-<div class="modal fade" id="editContractModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
-        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
+<div class="modal fade modal-wide" id="editContractModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h6 class="modal-title">
                     <i class="fas fa-edit me-2"></i>Edit Contract
@@ -789,9 +788,9 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Modal SPK dari Kontrak -->
-<div class="modal fade" id="spkFromKontrakModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
-        <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
+<div class="modal fade modal-wide" id="spkFromKontrakModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
             <div class="modal-header">
                 <h6 class="modal-title"><?= lang('Marketing.create_spk') ?></h6>
                 <button class="btn-close" data-bs-dismiss="modal"></button>
@@ -1095,6 +1094,9 @@ function loadStatistics(startDate, endDate) {
 function openCustomerDetail(customerId) {
     currentCustomerId = customerId;
     
+    // Update Manage Contracts link to filter by this customer
+    $('#btnManageContracts').attr('href', '<?= base_url('marketing/kontrak?customer=') ?>' + customerId);
+    
     // Show modal immediately with loading state
     if (typeof OptimaPro !== 'undefined' && OptimaPro.showLoading) {
         OptimaPro.showLoading('Loading customer details...');
@@ -1369,37 +1371,15 @@ function showContractActions(event, contractId, contractNo, showRenew, showAmend
     const button = event.currentTarget;
     const rect = button.getBoundingClientRect();
     
-    // Build menu HTML
+    // Build simplified menu HTML - View only + Manage in Kontrak page
     let menuHTML = `
         <div class="contract-actions-menu" style="position: fixed; top: ${rect.bottom + 5}px; left: ${rect.left - 140}px; z-index: 10500;">
             <div class="list-group shadow">
                 <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); openContractDetail(${contractId}); $('.contract-actions-menu').remove();">
-                    <i class="fas fa-eye text-primary me-2"></i>View Detail
-                </a>`;
-    
-    if (showRenew) {
-        menuHTML += `
-                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); renewContract(${contractId}); $('.contract-actions-menu').remove();">
-                    <i class="fas fa-sync-alt text-success me-2"></i>Renew
-                </a>`;
-    }
-    
-    if (showAmend) {
-        menuHTML += `
-                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); openAmendmentModal(${contractId}); $('.contract-actions-menu').remove();">
-                    <i class="fas fa-calculator text-warning me-2"></i>Change Rate
-                </a>`;
-    }
-    
-    menuHTML += `
-                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); openHistoryModal(${contractId}); $('.contract-actions-menu').remove();">
-                    <i class="fas fa-history text-info me-2"></i>History
+                    <i class="fas fa-eye text-primary me-2"></i>View Detail (Read-Only)
                 </a>
-                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); editContract(${contractId}); $('.contract-actions-menu').remove();">
-                    <i class="fas fa-edit text-secondary me-2"></i>Edit
-                </a>
-                <a href="#" class="list-group-item list-group-item-action text-danger" onclick="event.preventDefault(); deleteContract(${contractId}, '${contractNo}'); $('.contract-actions-menu').remove();">
-                    <i class="fas fa-trash me-2"></i>Delete
+                <a href="<?= base_url('marketing/kontrak?contract=') ?>${contractId}" target="_blank" class="list-group-item list-group-item-action" onclick="$('.contract-actions-menu').remove();">
+                    <i class="fas fa-external-link-alt text-success me-2"></i>Manage in Kontrak Page
                 </a>
             </div>
         </div>`;

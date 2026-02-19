@@ -843,6 +843,7 @@ class Kontrak extends BaseController
                 
                 $formattedUnits[] = [
                     'id' => $unit['id_inventory_unit'],
+                    // Original fields
                     'no_unit' => $unit['no_unit'] ?: '-',
                     'serial_number' => $unit['serial_number'] ?: '-',
                     'merk' => $unit['merk'],
@@ -854,7 +855,14 @@ class Kontrak extends BaseController
                     'status_unit_id' => $unit['status_unit_id'],
                     'lokasi' => $unit['lokasi'],
                     'harga_per_unit_bulanan' => $hargaBulanan,
-                    'harga_per_unit_harian' => $hargaHarian
+                    'harga_per_unit_harian' => $hargaHarian,
+                    // Frontend expected fields (for contract detail modal)
+                    'location_name' => $unit['lokasi'],
+                    'unit_no' => $unit['no_unit'] ?: 'N/A',
+                    'unit_type' => $unit['jenis_unit'],
+                    'brand_model' => trim($unit['merk'] . ' ' . $unit['model']),
+                    'capacity' => $unit['kapasitas'],
+                    'rate_monthly' => $hargaBulanan
                 ];
             }
             

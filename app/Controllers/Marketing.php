@@ -8473,13 +8473,53 @@ class Marketing extends BaseDataTableController
                     }
                 }
 
+                // Check for late-linking scenario and trigger instant invoice generation
+                $lateInvoicesGenerated = 0;
+                $db = \Config\Database::connect();
+                $builder = $db->table('delivery_instructions');
+                $dis = $builder->where('spk_id', $spkId)
+                    ->where('status_di', 'SELESAI')
+                    ->whereNotNull('sampai_tanggal_approve')
+                    ->get()
+                    ->getResultArray();
+                
+                if (!empty($dis)) {
+                    $invoiceJob = new \App\Jobs\InvoiceAutomationJob();
+                    
+                    foreach ($dis as $di) {
+                        // Check if DI completed more than 30 days ago
+                        if (!empty($di['sampai_tanggal_approve'])) {
+                            $completedDate = strtotime($di['sampai_tanggal_approve']);
+                            $daysPassed = floor((time() - $completedDate) / (60 * 60 * 24));
+                            
+                            if ($daysPassed >= 30 && empty($di['invoice_generated'])) {
+                                try {
+                                    $invoiceGenerated = $invoiceJob->handleLateLinkedDI($di['id']);
+                                    if ($invoiceGenerated) {
+                                        $lateInvoicesGenerated++;
+                                    }
+                                } catch (\Exception $e) {
+                                    log_message('error', 'Marketing::linkSPKToContract - Late invoice generation failed for DI #' . $di['id'] . ': ' . $e->getMessage());
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Send success notification to Marketing and Finance teams
                 $this->sendLinkingSuccessNotification($spkId, $contractId, $result['di_count']);
+                
+                // Prepare success message with invoice info if any were generated
+                $message = $result['message'];
+                if ($lateInvoicesGenerated > 0) {
+                    $message .= " Note: {$lateInvoicesGenerated} invoice(s) were automatically generated due to late-linking (>30 days after delivery completion).";
+                }
 
                 return $this->response->setJSON([
                     'success' => true,
-                    'message' => $result['message'],
-                    'di_count' => $result['di_count']
+                    'message' => $message,
+                    'di_count' => $result['di_count'],
+                    'late_invoices_generated' => $lateInvoicesGenerated
                 ]);
             }
 
@@ -8978,4 +9018,139 @@ class Marketing extends BaseDataTableController
             return [];
         }
     }
-}
+    
+    /**
+     * Convert prospect to permanent customer
+     * Called when DEAL quotation needs customer record creation
+     * 
+     * @param int $quotationId
+     * @return \CodeIgniter\HTTP\ResponseInterface
+     */
+    public function convertProspectToCustomer($quotationId = null)
+    {
+        if (!$this->request->isAJAX()) {
+            return redirect()->back();
+        }
+        
+        try {
+            if (empty($quotationId)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation ID required'
+                ]);
+            }
+            
+            $quotationModel = new \App\Models\QuotationModel();
+            $quotation = $quotationModel->find($quotationId);
+            
+            if (!$quotation) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Quotation not found'
+                ]);
+            }
+            
+            // Validate quotation is DEAL stage and not already converted
+            if ($quotation['workflow_stage'] !== 'DEAL') {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Only DEAL quotations can be converted to customers'
+                ]);
+            }
+            
+            if (!empty($quotation['created_customer_id'])) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'This quotation has already been converted to a customer'
+                ]);
+            }
+            
+            // Generate customer code
+            $customerModel = new \App\Models\CustomerModel();
+            $customerCode = $customerModel->generateCustomerCode();
+            
+            // Prepare customer data from quotation
+            $customerData = [
+                'customer_code' => $customerCode,
+                'customer_name' => $quotation['prospect_name'],
+                'customer_type' => 'RENTAL', // Default type, can be changed later
+                'industry' => null,
+                'company_npwp' => null,
+                'address' => $quotation['prospect_address'] ?? null,
+                'city' => null,
+                'postal_code' => null,
+                'phone' => $quotation['phone'] ?? null,
+                'email' => $quotation['email'] ?? null,
+                'contact_person' => $quotation['contact_person'] ?? null,
+                'status' => 'ACTIVE',
+                'notes' => "Converted from quotation #{$quotation['quotation_number']}",
+                'created_by' => session()->get('user_id'),
+                'created_at' => date('Y-m-d H:i:s')
+            ];
+            
+            // Insert customer record
+            $customerId = $customerModel->insert($customerData);
+            
+            if (!$customerId) {
+                throw new \Exception('Failed to create customer record');
+            }
+            
+            // Create primary location if address available
+            if (!empty($quotation['prospect_address'])) {
+                $locationModel = new \App\Models\CustomerLocationModel();
+                $locationData = [
+                    'customer_id' => $customerId,
+                    'location_name' => 'Primary Location',
+                    'address' => $quotation['prospect_address'],
+                    'city' => null,
+                    'postal_code' => null,
+                    'pic_name' => $quotation['contact_person'] ?? null,
+                    'pic_phone' => $quotation['phone'] ?? null,
+                    'pic_email' => $quotation['email'] ?? null,
+                    'is_primary' => 1,
+                    'is_active' => 1,
+                    'created_by' => session()->get('user_id'),
+                    'created_at' => date('Y-m-d H:i:s')
+                ];
+                
+                $locationModel->insert($locationData);
+            }
+            
+            // Update quotation with customer reference
+            $quotationModel->update($quotationId, [
+                'created_customer_id' => $customerId,
+                'customer_converted_at' => date('Y-m-d H:i:s')
+            ]);
+            
+            // Log activity
+            log_message('info', "Marketing::convertProspectToCustomer - Converted quotation #{$quotationId} to customer #{$customerId} ({$customerCode})");
+            
+            // Send notification to user
+            $notificationModel = new \App\Models\NotificationModel();
+            $userId = session()->get('user_id');
+            
+            $notificationModel->createNotification([
+                'user_id' => $userId,
+                'title' => 'Customer Created from Quotation',
+                'message' => "Prospect '{$quotation['prospect_name']}' has been successfully converted to customer {$customerCode}.",
+                'type' => 'success',
+                'category' => 'customer',
+                'url' => "/marketing/customer-management?id={$customerId}",
+                'is_system_generated' => 0
+            ]);
+            
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => "Prospect successfully converted to customer!",
+                'customer_id' => $customerId,
+                'customer_code' => $customerCode
+            ]);
+            
+        } catch (\Exception $e) {
+            log_message('error', 'Marketing::convertProspectToCustomer - Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Failed to convert prospect: ' . $e->getMessage()
+            ]);
+        }
+    }

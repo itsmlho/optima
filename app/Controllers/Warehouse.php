@@ -920,6 +920,216 @@ class Warehouse extends BaseController
     }
 
     /**
+     * Mengambil history/timeline lengkap unit dari semua sumber data
+     * SPK Persiapan, DI, Work Order, Sparepart, Kontrak, Attachment
+     */
+    public function getUnitHistory($id)
+    {
+        try {
+            $db = \Config\Database::connect();
+            $logModel = new \App\Models\SystemActivityLogModel();
+            $timeline = [];
+
+            // ── A. Baca dari system_activity_log (real-time logged events) ──
+            // 1. Log langsung di tabel inventory_unit
+            $directLogs = $logModel->getRecordHistory('inventory_unit', (int)$id, 100);
+
+            // 2. Log yang terkait via related_entities JSON
+            $relatedLogs = $logModel->findByRelatedEntity('inventory_unit', [(int)$id], 100);
+
+            // 3. Merge unik (hindari duplikat berdasarkan id)
+            $allLogIds = [];
+            $allLogs = [];
+            foreach (array_merge($directLogs, $relatedLogs) as $log) {
+                if (!isset($allLogIds[$log['id']])) {
+                    $allLogIds[$log['id']] = true;
+                    $allLogs[] = $log;
+                }
+            }
+
+            // Map logs ke timeline format
+            $actionMap = [
+                'item_created'       => ['icon' => 'fas fa-plus-circle',  'color' => 'success',   'label' => 'Unit Masuk Inventory'],
+                'unit_updated'       => ['icon' => 'fas fa-edit',          'color' => 'secondary', 'label' => 'Data Unit Diperbarui'],
+                'UPDATE'             => ['icon' => 'fas fa-edit',          'color' => 'secondary', 'label' => 'Data Unit Diperbarui'],
+                'attach_to_unit'     => ['icon' => 'fas fa-link',          'color' => 'primary',   'label' => 'Attachment Dipasang'],
+                'detach_from_unit'   => ['icon' => 'fas fa-unlink',        'color' => 'warning',   'label' => 'Attachment Dilepas'],
+                'auto_detach'        => ['icon' => 'fas fa-exchange-alt',  'color' => 'info',      'label' => 'Auto-Swap Attachment'],
+                'swap_unit'          => ['icon' => 'fas fa-random',        'color' => 'info',      'label' => 'Attachment Dipindah'],
+                'CREATE'             => ['icon' => 'fas fa-plus-circle',   'color' => 'success',   'label' => 'Data Dibuat'],
+                'WORKFLOW_CHANGE'    => ['icon' => 'fas fa-project-diagram','color' => 'primary',  'label' => 'Perubahan Status'],
+            ];
+
+            foreach ($allLogs as $log) {
+                $actionType = strtolower($log['action_type'] ?? 'update');
+                $map = $actionMap[$log['action_type'] ?? ''] ?? $actionMap[strtoupper($log['action_type'] ?? '')] ?? null;
+
+                // Decode old/new values untuk diff display
+                $oldVals = !empty($log['old_values']) ? json_decode($log['old_values'], true) : null;
+                $newVals = !empty($log['new_values']) ? json_decode($log['new_values'], true) : null;
+                $description = $log['action_description'] ?? '';
+
+                if ($oldVals && $newVals) {
+                    $diffs = [];
+                    foreach ($newVals as $k => $v) {
+                        if (isset($oldVals[$k]) && $oldVals[$k] != $v) {
+                            $diffs[] = "{$k}: {$oldVals[$k]} → {$v}";
+                        }
+                    }
+                    if ($diffs) {
+                        $description .= ' (' . implode(', ', $diffs) . ')';
+                    }
+                }
+
+                $timeline[] = [
+                    'type'        => $actionType,
+                    'icon'        => $map['icon']  ?? 'fas fa-circle',
+                    'color'       => $map['color'] ?? 'secondary',
+                    'title'       => $map['label'] ?? ucwords(str_replace('_', ' ', $log['action_type'] ?? '')),
+                    'description' => $description,
+                    'date'        => $log['created_at'] ?? null,
+                    'ref_number'  => null,
+                    'user'        => $log['username'] ?? $log['user_full_name'] ?? null,
+                    'source'      => 'log',
+                ];
+            }
+
+            // ── B. Seed events dari data statis (untuk data sebelum logging) ──
+            // Query unit dasar — kolom FK bersifat optional (pakai INFORMATION_SCHEMA safe query)
+            $unit = $db->query('
+                SELECT iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.created_at
+                FROM inventory_unit iu
+                WHERE iu.id_inventory_unit = ?
+            ', [$id])->getRowArray();
+
+            if (!$unit) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Unit tidak ditemukan.'])->setStatusCode(404);
+            }
+
+            // B1. Unit masuk inventory (created date) — hanya jika belum ada log item_created
+            if ($unit['created_at']) {
+                $exists = array_filter($timeline, fn($t) => $t['type'] === 'item_created' || $t['type'] === 'create');
+                if (empty($exists)) {
+                    $timeline[] = [
+                        'type'        => 'item_created',
+                        'icon'        => 'fas fa-plus-circle',
+                        'color'       => 'success',
+                        'title'       => 'Unit Terdaftar di Inventory',
+                        'description' => 'No. Unit: ' . ($unit['no_unit'] ?? '-') . ' | SN: ' . ($unit['serial_number'] ?? '-'),
+                        'date'        => $unit['created_at'],
+                        'ref_number'  => null,
+                        'source'      => 'seed',
+                    ];
+                }
+            }
+
+            // B2. SPK Persiapan terkait unit ini (via spk_unit pivot jika ada)
+            try {
+                $spkRows = $db->query('
+                    SELECT s.id_spk, s.no_spk, s.tanggal_persiapan, s.tujuan_persiapan
+                    FROM spk_unit su
+                    JOIN spk s ON s.id_spk = su.spk_id
+                    WHERE su.unit_id = ?
+                    LIMIT 5
+                ', [$id])->getResultArray();
+
+                foreach ($spkRows as $spk) {
+                    $timeline[] = [
+                        'type'        => 'spk',
+                        'icon'        => 'fas fa-clipboard-list',
+                        'color'       => 'warning',
+                        'title'       => 'SPK Persiapan Unit',
+                        'description' => 'No. SPK: ' . ($spk['no_spk'] ?? '-') . ($spk['tujuan_persiapan'] ? ' | ' . $spk['tujuan_persiapan'] : ''),
+                        'date'        => $spk['tanggal_persiapan'] ?? $unit['created_at'],
+                        'ref_number'  => $spk['no_spk'],
+                        'source'      => 'seed',
+                    ];
+                }
+            } catch (\Exception $e) {
+                // tabel spk_unit tidak ada atau kolom berubah — skip seed ini
+                log_message('info', '[getUnitHistory] SPK seed skip: ' . $e->getMessage());
+            }
+
+            // B3. Delivery Instruction terkait unit ini (via di_unit pivot atau kolom di kontrak_unit)
+            try {
+                $diRows = $db->query('
+                    SELECT di.id_di, di.no_di, di.tanggal_di
+                    FROM delivery_instruction_unit diu
+                    JOIN delivery_instructions di ON di.id_di = diu.di_id
+                    WHERE diu.unit_id = ?
+                    LIMIT 5
+                ', [$id])->getResultArray();
+
+                foreach ($diRows as $di) {
+                    $timeline[] = [
+                        'type'        => 'di',
+                        'icon'        => 'fas fa-truck',
+                        'color'       => 'primary',
+                        'title'       => 'Delivery Instruction',
+                        'description' => 'No. DI: ' . ($di['no_di'] ?? '-'),
+                        'date'        => $di['tanggal_di'],
+                        'ref_number'  => $di['no_di'],
+                        'source'      => 'seed',
+                    ];
+                }
+            } catch (\Exception $e) {
+                log_message('info', '[getUnitHistory] DI seed skip: ' . $e->getMessage());
+            }
+
+            // B4. Kontrak terkait unit in (via kontrak_unit pivot)
+            try {
+                $kontrakRows = $db->query('
+                    SELECT k.id, k.no_kontrak, k.tanggal_mulai
+                    FROM kontrak_unit ku
+                    JOIN kontrak k ON k.id = ku.kontrak_id
+                    WHERE ku.unit_id = ?
+                    LIMIT 5
+                ', [$id])->getResultArray();
+
+                foreach ($kontrakRows as $kontrak) {
+                    $timeline[] = [
+                        'type'        => 'kontrak',
+                        'icon'        => 'fas fa-file-contract',
+                        'color'       => 'success',
+                        'title'       => 'Kontrak Sewa',
+                        'description' => 'No. Kontrak: ' . ($kontrak['no_kontrak'] ?? '-'),
+                        'date'        => $kontrak['tanggal_mulai'],
+                        'ref_number'  => $kontrak['no_kontrak'],
+                        'source'      => 'seed',
+                    ];
+                }
+            } catch (\Exception $e) {
+                log_message('info', '[getUnitHistory] Kontrak seed skip: ' . $e->getMessage());
+            }
+
+
+            // ── C. Sort semua events secara kronologis (terlama dulu) ──
+
+            usort($timeline, function ($a, $b) {
+                $ta = !empty($a['date']) ? strtotime($a['date']) : 0;
+                $tb = !empty($b['date']) ? strtotime($b['date']) : 0;
+                return $ta - $tb;
+            });
+
+            return $this->response->setJSON([
+                'success'  => true,
+                'total'    => count($timeline),
+                'timeline' => $timeline,
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '[Warehouse::getUnitHistory] Error: ' . $e->getMessage());
+            log_message('error', $e->getTraceAsString());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat history: ' . $e->getMessage(),
+            ])->setStatusCode(500);
+        }
+    }
+
+
+
+    /**
      * Memperbarui data stok unit.
      * Support cross-division access: Service bisa update inventory setelah maintenance
      */
@@ -949,10 +1159,11 @@ class Warehouse extends BaseController
         if (!$this->validate($rules)) {
             return $this->response->setJSON(['success' => false, 'message' => $this->validator->getErrors()]);
         }
+        // Ambil data lama sebelum update untuk log diff
+        $oldUnit = $inventoryUnitModel->find($id);
         if ($inventoryUnitModel->update($id, $data)) {
             // Get unit details for notification
             $unit = $inventoryUnitModel->find($id);
-            $oldUnit = $inventoryUnitModel->find($id); // Get before data if needed
             
             // Send notification: Inventory Unit Status Changed
             helper('notification');
@@ -967,13 +1178,24 @@ class Warehouse extends BaseController
                 notify_inventory_unit_status_changed([
                     'id' => $id,
                     'no_unit' => $unit['no_unit'] ?? '',
-                    'old_status' => $statusNames[$unit['status_unit_id'] ?? 2] ?? 'Unknown',
+                    'old_status' => $statusNames[$oldUnit['status_unit_id'] ?? 2] ?? 'Unknown', // Use oldUnit for old status
                     'new_status' => $statusNames[$data['status_unit_id']] ?? 'Unknown',
                     'lokasi' => $data['lokasi_unit'],
                     'updated_by' => session('username') ?? session('user_id'),
                     'url' => base_url('/warehouse/units')
                 ]);
             }
+
+            // Log perubahan data unit
+            $this->logUpdate('inventory_unit', (int)$id,
+                ['status_unit_id' => $oldUnit['status_unit_id'] ?? null, 'lokasi_unit' => $oldUnit['lokasi_unit'] ?? null],
+                ['status_unit_id' => $data['status_unit_id'], 'lokasi_unit' => $data['lokasi_unit']],
+                [
+                    'description' => 'Data unit diperbarui: status & lokasi',
+                    'workflow_stage' => 'unit_updated',
+                    'relations' => ['inventory_unit' => [(int)$id]]
+                ]
+            );
             
             return $this->response->setJSON(['success' => true, 'message' => 'Data unit berhasil diperbarui.']);
         }
@@ -1152,6 +1374,190 @@ class Warehouse extends BaseController
         }
     }
 
+    /**
+     * Mengambil history/timeline lengkap attachment/battery/charger
+     * Sumber: system_activity_log (real-time log) + seed events (legacy support)
+     */
+    public function getAttachmentHistory($id)
+    {
+        try {
+            $db = \Config\Database::connect();
+            $timeline = [];
+
+            // 0. Validasi attachment exists
+            $attachment = $db->query('
+                SELECT
+                    ia.id_inventory_attachment,
+                    ia.tipe_item,
+                    ia.sn_attachment,
+                    ia.sn_baterai,
+                    ia.sn_charger,
+                    ia.attachment_status,
+                    IF(YEAR(ia.tanggal_masuk) = 0 OR ia.tanggal_masuk IS NULL, NULL, ia.tanggal_masuk) as tanggal_masuk,
+                    ia.created_at,
+                    ia.id_inventory_unit,
+                    ia.lokasi_penyimpanan,
+                    ia.kondisi_fisik
+                FROM inventory_attachment ia
+                WHERE ia.id_inventory_attachment = ?
+            ', [$id])->getRowArray();
+
+            if (!$attachment) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Attachment tidak ditemukan'
+                ])->setStatusCode(404);
+            }
+
+            $sn         = $attachment['sn_attachment'] ?? $attachment['sn_baterai'] ?? $attachment['sn_charger'] ?? '-';
+            $tipeLabel  = ucfirst($attachment['tipe_item'] ?? 'item');
+
+            // ===== REAL LOG EVENTS =====
+            // Baca dari system_activity_logs untuk semua event yang sudah di-log
+            $activityLogModel = new \App\Models\SystemActivityLogModel();
+            $logRows = $activityLogModel->findByRelatedEntity('inventory_attachment', (int)$id);
+
+            $actionMap = [
+                'attach_to_unit'       => ['icon' => 'fas fa-link',          'color' => 'primary'],
+                'detach_from_unit'     => ['icon' => 'fas fa-unlink',         'color' => 'danger'],
+                'auto_detach'          => ['icon' => 'fas fa-exchange-alt',   'color' => 'warning'],
+                'swap_unit'            => ['icon' => 'fas fa-random',         'color' => 'info'],
+                'attachment_updated'   => ['icon' => 'fas fa-pen',            'color' => 'secondary'],
+                'item_created'         => ['icon' => 'fas fa-plus-circle',    'color' => 'success'],
+                'unit_updated'         => ['icon' => 'fas fa-sync-alt',       'color' => 'secondary'],
+            ];
+
+            foreach ($logRows as $log) {
+                $action  = $log['action'] ?? 'unknown';
+                $meta    = $actionMap[$action] ?? ['icon' => 'fas fa-history', 'color' => 'muted'];
+                $context = is_string($log['context_data'] ?? null)
+                    ? (json_decode($log['context_data'], true) ?? [])
+                    : ($log['context_data'] ?? []);
+                $changes = is_string($log['changes_summary'] ?? null)
+                    ? (json_decode($log['changes_summary'], true) ?? [])
+                    : ($log['changes_summary'] ?? []);
+
+                $details = [];
+                if (!empty($context['unit_no_unit']))    $details['Unit']        = $context['unit_no_unit'];
+                if (!empty($context['unit_status']))     $details['Status Unit'] = $context['unit_status'];
+                if (!empty($context['location']))        $details['Lokasi']      = $context['location'];
+                if (!empty($context['kondisi_fisik']))   $details['Kondisi']     = $context['kondisi_fisik'];
+                if (!empty($context['description']))     $details['Keterangan']  = $context['description'];
+                if (!empty($context['performed_by']))    $details['Oleh']        = $context['performed_by'];
+
+                // Tampilkan diff untuk update events
+                if (!empty($changes) && is_array($changes)) {
+                    foreach ($changes as $field => $diff) {
+                        if (is_array($diff) && isset($diff['old'], $diff['new'])) {
+                            $details["$field"] = ($diff['old'] ?? '-') . ' → ' . ($diff['new'] ?? '-');
+                        }
+                    }
+                }
+
+                $title = match($action) {
+                    'attach_to_unit'     => 'Dipasang ke Unit ' . ($context['unit_no_unit'] ?? ''),
+                    'detach_from_unit'   => 'Dilepas dari Unit ' . ($context['unit_no_unit'] ?? ''),
+                    'auto_detach'        => 'Auto-dilepas (Swap) dari Unit ' . ($context['unit_no_unit'] ?? ''),
+                    'swap_unit'          => 'Unit Di-swap — Pindah ke Unit ' . ($context['new_unit_no_unit'] ?? ''),
+                    'attachment_updated' => 'Data ' . $tipeLabel . ' Diperbarui',
+                    'item_created'       => $tipeLabel . ' Ditambahkan ke Inventory',
+                    default              => ucfirst(str_replace('_', ' ', $action)),
+                };
+
+                $timeline[] = [
+                    'type'        => $action,
+                    'icon'        => $meta['icon'],
+                    'color'       => $meta['color'],
+                    'date'        => $log['created_at'],
+                    'title'       => $title,
+                    'subtitle'    => $log['description'] ?? '',
+                    'details'     => $details,
+                    'performed_by'=> $log['performed_by'] ?? null,
+                    'log_id'      => $log['id'],
+                ];
+            }
+
+            // ===== SEED EVENTS =====
+            // Untuk data lama (sebelum audit log ada), seed dari data struktural DB
+
+            // Seed: Item masuk pertama kali (jika belum ada log item_created)
+            $hasItemCreated = !empty(array_filter($logRows, fn($r) => ($r['action'] ?? '') === 'item_created'));
+            $entryDate = $attachment['tanggal_masuk'] ?? $attachment['created_at'];
+            if ($entryDate && !$hasItemCreated) {
+                $timeline[] = [
+                    'type'    => 'item_created',
+                    'icon'    => 'fas fa-plus-circle',
+                    'color'   => 'success',
+                    'date'    => $entryDate,
+                    'title'   => $tipeLabel . ' Masuk Inventory',
+                    'subtitle'=> 'SN: ' . $sn,
+                    'details' => array_filter([
+                        'Status'       => $attachment['attachment_status'] ?? null,
+                        'Lokasi Awal'  => $attachment['lokasi_penyimpanan'] ?? null,
+                        'Kondisi'      => $attachment['kondisi_fisik'] ?? null,
+                    ]),
+                ];
+            }
+
+            // Seed: Saat ini terpasang di unit (jika belum ada log attach_to_unit yang lebih baru)
+            if (!empty($attachment['id_inventory_unit'])) {
+                $hasAttachLog = !empty(array_filter($logRows, fn($r) => in_array($r['action'] ?? '', ['attach_to_unit', 'swap_unit'])));
+                if (!$hasAttachLog) {
+                    $unitRow = $db->query('
+                        SELECT iu.id_inventory_unit, iu.no_unit, iu.serial_number,
+                               su.status_unit as nama_status
+                        FROM inventory_unit iu
+                        LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
+                        WHERE iu.id_inventory_unit = ?
+                        LIMIT 1
+                    ', [$attachment['id_inventory_unit']])->getRowArray();
+
+                    if ($unitRow) {
+                        $timeline[] = [
+                            'type'    => 'attach_to_unit',
+                            'icon'    => 'fas fa-link',
+                            'color'   => 'primary',
+                            'date'    => $attachment['tanggal_masuk'] ?? $attachment['created_at'],
+                            'title'   => 'Terpasang di Unit ' . ($unitRow['no_unit'] ?? '-'),
+                            'subtitle'=> 'SN Unit: ' . ($unitRow['serial_number'] ?? '-'),
+                            'details' => array_filter([
+                                'No Unit'      => $unitRow['no_unit'] ?? null,
+                                'Status Unit'  => $unitRow['nama_status'] ?? null,
+                            ]),
+                        ];
+                    }
+                }
+            }
+
+            // Sort timeline by date descending (newest first)
+            usort($timeline, function ($a, $b) {
+                $dateA = strtotime($a['date'] ?? '1970-01-01');
+                $dateB = strtotime($b['date'] ?? '1970-01-01');
+                return $dateB - $dateA;
+            });
+
+            return $this->response->setJSON([
+                'success'       => true,
+                'attachment_id' => $id,
+                'sn'            => $sn,
+                'tipe'          => $tipeLabel,
+                'total'         => count($timeline),
+                'timeline'      => $timeline,
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', '[Warehouse::getAttachmentHistory] Error: ' . $e->getMessage());
+            log_message('error', $e->getTraceAsString());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Terjadi kesalahan saat memuat history: ' . $e->getMessage(),
+            ])->setStatusCode(500);
+        }
+    }
+
+
+
+
     public function updateAttachment($id)
     {
         if (!$this->request->isAJAX()) {
@@ -1200,6 +1606,21 @@ class Warehouse extends BaseController
                     ]);
                 }
                 
+                // Log perubahan data attachment
+                $this->logUpdate('inventory_attachment', (int)$id,
+                    [
+                        'attachment_status' => $attachment['attachment_status'] ?? null,
+                        'lokasi_penyimpanan' => $attachment['lokasi_penyimpanan'] ?? null,
+                        'kondisi_fisik' => $attachment['kondisi_fisik'] ?? null,
+                    ],
+                    $updateData,
+                    [
+                        'description' => 'Data attachment diperbarui',
+                        'workflow_stage' => 'attachment_updated',
+                        'relations' => ['inventory_attachment' => [(int)$id]]
+                    ]
+                );
+
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Data attachment berhasil diperbarui'
@@ -2162,6 +2583,15 @@ class Warehouse extends BaseController
             // Insert into inventory_attachment
             $attachmentModel = new InventoryAttachmentModel();
             if ($attachmentModel->insert($inventoryData)) {
+                $newId = $attachmentModel->getInsertID();
+                $sn = $inventoryData['sn_attachment'] ?? $inventoryData['sn_baterai'] ?? $inventoryData['sn_charger'] ?? '-';
+                $this->logActivity('item_created', 'inventory_attachment', (int)$newId,
+                    ucfirst($tipeItem) . " baru masuk inventory (SN: {$sn})",
+                    [
+                        'workflow_stage' => 'item_created',
+                        'relations' => ['inventory_attachment' => [(int)$newId]]
+                    ]
+                );
                 return $this->response->setJSON([
                     'success' => true,
                     'message' => 'Item berhasil ditambahkan ke inventory'
