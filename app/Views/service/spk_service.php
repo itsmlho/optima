@@ -138,7 +138,7 @@ $can_export = true;
 
 	<!-- Assign Items Modal (Unit + Attachment) -->
 	<div class="modal fade" id="assignItemsModal" tabindex="-1">
-		<div class="modal-dialog modal-lg modal-dialog-centered">
+		<div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
 			<div class="modal-content">
 				<div class="modal-header"><h6 class="modal-title">Select Unit & Attachment</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
 				<form id="assignItemsForm">

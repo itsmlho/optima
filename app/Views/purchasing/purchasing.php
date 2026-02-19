@@ -218,7 +218,7 @@ $can_export = $permissions['export'];
 
 <!-- Create Delivery Modal -->
 <div class="modal fade" id="createDeliveryModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Create Delivery Schedule</h5>
@@ -287,7 +287,7 @@ $can_export = $permissions['export'];
 
 <!-- Assign Serial Numbers Modal -->
 <div class="modal fade" id="assignSNModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">

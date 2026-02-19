@@ -719,7 +719,7 @@ $can_export = $permissions['export'];
 
 <!-- Edit Contract Modal (Inline Edit) -->
 <div class="modal fade" id="editContractModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
         <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header bg-primary text-white">
                 <h6 class="modal-title">
@@ -790,7 +790,7 @@ $can_export = $permissions['export'];
 
 <!-- Modal SPK dari Kontrak -->
 <div class="modal fade" id="spkFromKontrakModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" style="max-width: 70vw !important; width: 70vw !important;">
         <div class="modal-content" style="max-width: 100% !important; width: 100% !important;">
             <div class="modal-header">
                 <h6 class="modal-title"><?= lang('Marketing.create_spk') ?></h6>

@@ -390,7 +390,10 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('getUnlinkedDeliveriesWidget', 'CustomerManagementController::getUnlinkedDeliveriesWidget');
     });
 
-    // Operator Management Routes
+    // Operator Management Routes - DISABLED (now hardcoded in quotations)
+    // Operators are now treated as line items in quotations (like spare units)
+    // instead of being managed as separate resources
+    /*
     $routes->group('operators', static function ($routes) {
         $routes->get('/', 'OperatorController::index');
         $routes->post('getOperators', 'OperatorController::getOperators');
@@ -403,6 +406,7 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('expiring', 'OperatorController::getExpiringCertifications');
         $routes->get('getStats', 'OperatorController::getStats');
     });
+    */
 
     // Routes removed - functionality moved to CustomerManagementController
 

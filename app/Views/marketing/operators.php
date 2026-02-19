@@ -119,7 +119,7 @@ $can_delete = $permissions['delete'];
 
 <!-- Add/Edit Operator Modal -->
 <div class="modal fade" id="operatorModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">

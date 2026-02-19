@@ -207,13 +207,12 @@ window.OptimaDataTable = (function() {
             }
             
             settings._processingTimeout = setTimeout(function() {
-                console.warn('⚠️ DataTables processing timeout reached - force hiding');
+                console.warn('⚠️ DataTables processing timeout reached - force hiding (this is normal for large datasets)');
                 $processing.hide();
                 
-                if (typeof showNotification === 'function') {
-                    showNotification('Gagal memuat data - timeout. Silakan refresh halaman.', 'warning');
-                }
-            }, 35000); // 35 seconds safety timeout
+                // Don't show notification - data might still be loading successfully
+                // Only log to console for debugging
+            }, 45000); // 45 seconds timeout (increased for production with 2000+ records)
         },
         
         initComplete: function(settings, json) {

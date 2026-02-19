@@ -652,6 +652,8 @@ class Quotation extends BaseController
                 'specification_type' => $this->request->getPost('specification_type') ?: 'UNIT',
                 'quantity' => (int)$this->request->getPost('quantity'),
                 'is_spare_unit' => (int)$this->request->getPost('is_spare_unit') ?: 0,
+                'operator_quantity' => (int)$this->request->getPost('operator_quantity') ?: 0,
+                'operator_monthly_rate' => (float)$this->request->getPost('operator_monthly_rate') ?: 0,
                 'monthly_price' => (float)$this->request->getPost('unit_price'),
                 'daily_price' => (float)$this->request->getPost('harga_per_unit_harian'),
                 'departemen_id' => $this->request->getPost('departemen_id') ?: null,

@@ -1,5 +1,45 @@
 <?= $this->extend('layouts/base') ?>
 
+<?= $this->section('css') ?>
+<style>
+    /* Custom XLarge Modal - Maximum priority override - Loaded AFTER Bootstrap */
+    .modal-dialog[style*="90vw"],
+    .optima-modal-xlarge {
+        max-width: 90vw !important;
+        width: 90vw !important;
+        margin: 1.75rem auto !important;
+    }
+    
+    .modal-dialog[style*="90vw"] .modal-content,
+    .optima-modal-xlarge .modal-content {
+        width: 100% !important;
+    }
+    
+    /* Force overwrite any Bootstrap modal size classes with highest specificity */
+    div.modal-dialog.modal-dialog-scrollable.optima-modal-xlarge,
+    div.modal-dialog.optima-modal-xlarge {
+        max-width: 90vw !important;
+        width: 90vw !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    
+    /* ID-based enforcement (backup with highest specificity) */
+    #detailModal .modal-dialog,
+    #addSpecificationModal .modal-dialog,
+    #createProspectModal .modal-dialog,
+    #addAttachmentModal .modal-dialog,
+    #selectCustomerLocationModal .modal-dialog,
+    #addContractModal .modal-dialog,
+    #createSPKModal .modal-dialog,
+    #printSpecModal .modal-dialog {
+        max-width: 90vw !important;
+        width: 90vw !important;
+        margin: 1.75rem auto !important;
+    }
+</style>
+<?= $this->endSection() ?>
+
 <?= $this->section('content') ?>
 
 <!-- Date Range Filter - Top Right -->
@@ -117,7 +157,7 @@
 
 <!-- Create Prospect Modal -->
 <div class="modal fade" id="createProspectModal" tabindex="-1" aria-labelledby="createProspectModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-scrollable optima-modal-xlarge">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title fw-600" id="createProspectModalLabel">
@@ -126,7 +166,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="createProspectForm" novalidate>
-                <div class="modal-body">
+                <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <div class="alert alert-info">
                         <i class="fas fa-info-circle me-2"></i>
                         <strong>Step 1:</strong> Create prospect with basic company information. 
@@ -251,7 +291,7 @@
 
 <!-- Detail Modal -->
 <div class="modal fade" id="detailModal" tabindex="-1" aria-labelledby="detailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered" style="max-width: 1200px; width: 95%;">
+    <div class="modal-dialog modal-dialog-scrollable optima-modal-xlarge">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -330,7 +370,7 @@
 
 <!-- Unified Specification Modal (Add & Edit) -->
 <div class="modal fade" id="addSpecificationModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-scrollable optima-modal-xlarge" style="max-width: 90vw !important; width: 90vw !important; margin: 1.75rem auto !important;">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-success text-muted" id="specModalHeader">
                 <h6 class="modal-title fw-600" id="specModalTitle">
@@ -372,6 +412,32 @@
                                     Unit backup/cadangan untuk customer, tidak dihitung dalam tagihan bulanan
                                 </small>
                             </div>
+                        </div>
+
+                        <!-- Include Operator Checkbox -->
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" name="include_operator" id="includeOperator" value="1">
+                                <label class="form-check-label fw-bold text-info" for="includeOperator">
+                                    <i class="fas fa-user-tie me-1"></i> Termasuk Operator
+                                </label>
+                                <small class="text-muted d-block ms-4">
+                                    Kontrak termasuk penyediaan operator untuk unit
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- Operator Details (shown when checkbox is checked) -->
+                        <div class="col-md-6" id="operatorQuantityField" style="display: none;">
+                            <label class="form-label">Jumlah Operator</label>
+                            <input type="number" class="form-control" name="operator_quantity" id="operatorQuantity" min="1" value="1" placeholder="Jumlah operator">
+                            <small class="text-muted">Jumlah operator yang disediakan</small>
+                        </div>
+
+                        <div class="col-md-6" id="operatorRateField" style="display: none;">
+                            <label class="form-label">Biaya Operator (per bulan/operator)</label>
+                            <input type="number" class="form-control" name="operator_monthly_rate" id="operatorRate" step="1000" placeholder="Rp per operator per bulan">
+                            <small class="text-muted">Biaya bulanan per operator</small>
                         </div>
                         
                         <div class="col-md-6">
@@ -608,7 +674,7 @@
 
 <!-- Add Attachment Modal -->
 <div class="modal fade" id="addAttachmentModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-scrollable optima-modal-xlarge">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-info text-muted">
                 <h6 class="modal-title fw-600">
@@ -675,7 +741,7 @@
 
 <!-- Unified Customer Location Modal (Select or Add) -->
 <div class="modal fade" id="selectCustomerLocationModal" tabindex="-1" aria-labelledby="selectLocationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-scrollable optima-modal-xlarge">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -834,7 +900,7 @@
 
 <!-- Add Contract Modal -->
 <div class="modal fade" id="addContractModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-scrollable optima-modal-xlarge">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -991,7 +1057,7 @@
 
 <!-- Create SPK Selection Modal -->
 <div class="modal fade" id="createSPKModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal-dialog modal-dialog-scrollable optima-modal-xlarge">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <div>
@@ -1062,7 +1128,6 @@
         </div>
     </div>
 </div>
-
 <?= $this->endSection() ?>
 
 <?= $this->section('javascript') ?>
@@ -1216,6 +1281,7 @@ $(document).ready(function() {
         e.preventDefault();
         
         var formData = new FormData(this);
+        formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
         var url = '<?= base_url('marketing/quotations/store') ?>';
         
         $.ajax({
@@ -1281,6 +1347,30 @@ $(document).ready(function() {
             
             // Remove info message
             $('#spareUnitInfo').remove();
+        }
+    });
+
+    // Include Operator toggle functionality
+    $(document).on('change', '#includeOperator', function() {
+        const isChecked = $(this).is(':checked');
+        const operatorQuantityField = $('#operatorQuantityField');
+        const operatorRateField = $('#operatorRateField');
+        
+        if (isChecked) {
+            // Show operator fields
+            operatorQuantityField.slideDown();
+            operatorRateField.slideDown();
+            
+            // Set default values if empty
+            if (!$('#operatorQuantity').val()) {
+                $('#operatorQuantity').val('1');
+            }
+        } else {
+            // Hide and clear operator fields
+            operatorQuantityField.slideUp();
+            operatorRateField.slideUp();
+            $('#operatorQuantity').val('');
+            $('#operatorRate').val('');
         }
     });
 
@@ -1978,9 +2068,18 @@ function saveQuotation(id) {
     
     // Get form data
     var formData = new FormData(form);
+    formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
     
     // Show loading
-    OptimaPro.showLoading('Saving quotation...');
+    Swal.fire({
+        title: 'Saving...',
+        text: 'Please wait while saving quotation',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
     
     // Send AJAX request
     $.ajax({
@@ -1992,7 +2091,6 @@ function saveQuotation(id) {
         dataType: 'json',
         success: function(response) {
             console.log('Update response:', response); // Debug
-            OptimaPro.hideLoading();
             if (response.status === 'success') {
                 // Show appropriate message based on revision status
                 let message = response.message || 'Quotation updated successfully';
@@ -2027,7 +2125,6 @@ function saveQuotation(id) {
             }
         },
         error: function(xhr) {
-            OptimaPro.hideLoading();
             var errorMsg = 'Failed to update quotation';
             if (xhr.responseJSON && xhr.responseJSON.message) {
                 errorMsg = xhr.responseJSON.message;
@@ -2051,6 +2148,9 @@ function deleteQuotation(id) {
             $.ajax({
                 url: '<?= base_url('marketing/quotations/delete/') ?>' + id,
                 type: 'DELETE',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
                 success: function(response) {
                     if (response.status === 'success') {
                         Swal.fire('Deleted!', response.message, 'success');
@@ -2079,9 +2179,11 @@ function viewQuotationHistory(id) {
         title: '<i class="fas fa-spinner fa-spin"></i> Loading History...',
         text: 'Fetching change history',
         allowOutsideClick: false,
-        showConfirmButton: false
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
     });
-    OptimaPro.showLoading('Loading history...');
 
     fetch(`<?= base_url('marketing/quotations/history/') ?>${id}`, {
             headers: {
@@ -2095,7 +2197,6 @@ function viewQuotationHistory(id) {
             return response.json();
         })
         .then(result => {
-            OptimaPro.hideLoading();
             if (result.success) {
                 let historyHtml = '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
                 
@@ -2143,7 +2244,6 @@ function viewQuotationHistory(id) {
             }
         })
         .catch(error => {
-            OptimaPro.hideLoading();
             console.error('History fetch error:', error);
             console.error('Error details:', error.message);
             Swal.fire({
@@ -2376,6 +2476,18 @@ function displayQuotationSpecifications(specifications) {
             // Spare unit - show NO CHARGE indicator
             details.push(`<div class="col-md-6"><small class="text-muted">Billing Status</small><div class="fw-bold text-warning"><i class="fas fa-gift me-1"></i>TIDAK DITAGIH (No Charge)</div></div>`);
         }
+
+        // Operator Information (if included)
+        if (spec.operator_quantity && spec.operator_quantity > 0) {
+            details.push(`<div class="col-md-12"><hr class="my-2"></div>`);
+            details.push(`<div class="col-md-3"><small class="text-muted"><i class="fas fa-user-tie me-1"></i>Operator</small><div class="fw-bold text-info">${spec.operator_quantity} orang</div></div>`);
+            
+            if (spec.operator_monthly_rate && spec.operator_monthly_rate > 0) {
+                const operatorTotal = spec.operator_quantity * spec.operator_monthly_rate;
+                details.push(`<div class="col-md-3"><small class="text-muted">Rate/Operator/Month</small><div class="fw-bold text-success">Rp ${formatNumber(spec.operator_monthly_rate)}</div></div>`);
+                details.push(`<div class="col-md-3"><small class="text-muted">Total Operator Cost</small><div class="fw-bold text-primary">Rp ${formatNumber(operatorTotal)}</div></div>`);
+            }
+        }
         
         // Brand and Model
         if (spec.merk_unit) {
@@ -2555,6 +2667,9 @@ function proceedWithSpecificationModal() {
     
     // Reset spare unit checkbox and enable price fields
     $('#isSpareUnit').prop('checked', false).trigger('change');
+    
+    // Reset include operator checkbox and hide fields
+    $('#includeOperator').prop('checked', false).trigger('change');
     
     // Reset modal to Add mode
     $('#specModalHeader').removeClass('bg-primary').addClass('bg-success');
@@ -2984,6 +3099,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     const actionText = isEditMode ? 'Updating...' : 'Saving...';
     const successMsg = isEditMode ? 'Specification updated successfully' : 'Specification added successfully';
     
+    formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
     submitBtn.prop('disabled', true).html(`<i class="fas fa-spinner fa-spin me-1"></i>${actionText}`);
     
     $.ajax({
@@ -3072,6 +3188,7 @@ $('#addAttachmentForm').on('submit', function(e) {
     const formData = new FormData(this);
     const submitBtn = $('#submitAttachmentBtn');
     
+    formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Saving...');
     
     $.ajax({
@@ -3540,7 +3657,7 @@ $(document).on('submit', '#editSpecificationForm', function(e) {
     e.preventDefault();
     
     const specId = $('#edit_spec_id').val();
-    const formData = $(this).serialize();
+    const formData = $(this).serialize() + '&csrf_test_name=' + encodeURIComponent(window.csrfToken || '<?= csrf_hash() ?>');
     
     $.ajax({
         url: `<?= base_url('marketing/quotations/update-specification/') ?>${specId}`,
@@ -3591,6 +3708,9 @@ function deleteSpecification(specId) {
             $.ajax({
                 url: `<?= base_url('marketing/quotations/delete-specification/') ?>${specId}`,
                 type: 'DELETE',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
                 success: function(response) {
                     if (response.success) {
                         Swal.fire('Deleted!', response.message, 'success');
@@ -3701,6 +3821,9 @@ $('#createProspectForm').on('submit', function(e) {
     formData.append('quotation_date', new Date().toISOString().split('T')[0]);
     formData.append('stage', 'DRAFT');
     
+    // Add CSRF token
+    formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
+    
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
     
     $.ajax({
@@ -3788,8 +3911,13 @@ function convertToQuotation(quotationId) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/convert-to-quotation') ?>/' + quotationId)
-                .done(function(response) {
+            $.ajax({
+                url: '<?= base_url('marketing/quotations/convert-to-quotation') ?>/' + quotationId,
+                method: 'POST',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
                     if (response.success) {
                         Swal.fire({
                             title: 'Quotation Created!',
@@ -3827,10 +3955,11 @@ function convertToQuotation(quotationId) {
                     } else {
                         Swal.fire('Error', response.message, 'error');
                     }
-                })
-                .fail(function() {
+                },
+                error: function() {
                     Swal.fire('Error', 'Failed to convert prospect', 'error');
-                });
+                }
+            });
         }
     });
 }
@@ -3904,7 +4033,7 @@ function openPrintSpecModal(quotationId) {
                 // Build modal content
                 let modalContent = `
                     <div class="modal fade" id="printSpecModal" tabindex="-1">
-                        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
+                        <div class="modal-dialog modal-dialog-scrollable optima-modal-xlarge">
                             <div class="modal-content">
                                 <div class="modal-header">
                                     <h5 class="modal-title">Select Specifications to Print</h5>
@@ -4091,8 +4220,13 @@ function sendQuotation(quotationId) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/send-quotation') ?>/' + quotationId)
-                .done(function(response) {
+            $.ajax({
+                url: '<?= base_url('marketing/quotations/send-quotation') ?>/' + quotationId,
+                method: 'POST',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
                     if (response.success) {
                         Swal.fire('Success!', 'Quotation sent successfully', 'success');
                         
@@ -4123,10 +4257,11 @@ function sendQuotation(quotationId) {
                             Swal.fire('Error', response.message, 'error');
                         }
                     }
-                })
-                .fail(function() {
+                },
+                error: function() {
                     Swal.fire('Error', 'Failed to send quotation', 'error');
-                });
+                }
+            });
         }
     });
 }
@@ -4208,8 +4343,13 @@ function proceedMarkAsDeal(quotationId, skipValidation = false) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/markAsDeal') ?>/' + quotationId)
-                .done(function(response) {
+            $.ajax({
+                url: '<?= base_url('marketing/quotations/markAsDeal') ?>/' + quotationId,
+                method: 'POST',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
                     if (response.success) {
                         // Show location modal and DO NOT update table yet
                         // Table will be updated only after location workflow completes
@@ -4221,10 +4361,11 @@ function proceedMarkAsDeal(quotationId, skipValidation = false) {
                     } else {
                         Swal.fire('Error', response.message, 'error');
                     }
-                })
-                .fail(function() {
+                },
+                error: function() {
                     Swal.fire('Error', 'Failed to mark as deal', 'error');
-                });
+                }
+            });
         }
     });
 }
@@ -4316,8 +4457,13 @@ function markAsNotDeal(quotationId) {
         }
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/markAsNotDeal') ?>/' + quotationId)
-                .done(function(response) {
+            $.ajax({
+                url: '<?= base_url('marketing/quotations/markAsNotDeal') ?>/' + quotationId,
+                method: 'POST',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
                     if (response.success) {
                         Swal.fire('Success!', response.message, 'success');
                         
@@ -4332,10 +4478,11 @@ function markAsNotDeal(quotationId) {
                     } else {
                         Swal.fire('Error', response.message, 'error');
                     }
-                })
-                .fail(function() {
+                },
+                error: function() {
                     Swal.fire('Error', 'Failed to mark as not deal', 'error');
-                });
+                }
+            });
         }
     });
 }
@@ -4589,6 +4736,7 @@ function saveCustomerLocation(customerId, locationData, quotationId) {
     locationData.location_type = 'HEAD_OFFICE';
     locationData.quotation_id = quotationId; // CRITICAL: Pass quotation ID for workflow tracking
     locationData.workflow_completed = true; // Flag to indicate modal workflow is complete
+    locationData.csrf_test_name = window.csrfToken || '<?= csrf_hash() ?>'; // Add CSRF token
     
     console.log('Saving customer location with quotation ID:', locationData);
     
@@ -4673,7 +4821,8 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
         customer_id: customerId,
         location_id: locationId,
         quotation_id: quotationId, // CRITICAL: Pass quotation ID for workflow tracking
-        workflow_completed: true // Flag to indicate modal workflow is complete
+        workflow_completed: true, // Flag to indicate modal workflow is complete
+        csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>' // Add CSRF token
     };
     
     // Store location globally for contract creation
@@ -5253,8 +5402,13 @@ function createCustomerFromDeal(quotationId) {
         cancelButtonText: 'Cancel'
     }).then((result) => {
         if (result.isConfirmed) {
-            $.post('<?= base_url('marketing/quotations/createCustomerFromDeal') ?>/' + quotationId)
-                .done(function(response) {
+            $.ajax({
+                url: '<?= base_url('marketing/quotations/createCustomerFromDeal') ?>/' + quotationId,
+                method: 'POST',
+                data: {
+                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                },
+                success: function(response) {
                     if (response.success) {
                         Swal.fire({
                             title: 'Customer Created!',
@@ -5281,10 +5435,11 @@ function createCustomerFromDeal(quotationId) {
                     } else {
                         Swal.fire('Error', response.message, 'error');
                     }
-                })
-                .fail(function() {
+                },
+                error: function() {
                     Swal.fire('Error', 'Failed to create customer', 'error');
-                });
+                }
+            });
         }
     });
 }
@@ -5356,8 +5511,13 @@ function createContract(quotationId) {
 }
 
 function proceedWithContractCreation(quotationId) {
-    $.post('<?= base_url('marketing/quotations/createContract') ?>/' + quotationId)
-        .done(function(response) {
+    $.ajax({
+        url: '<?= base_url('marketing/quotations/createContract') ?>/' + quotationId,
+        method: 'POST',
+        data: {
+            csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+        },
+        success: function(response) {
             if (response.success) {
                 Swal.fire({
                     title: 'Contract Created!',
@@ -5399,10 +5559,11 @@ function proceedWithContractCreation(quotationId) {
                     Swal.fire('Error', response.message, 'error');
                 }
             }
-        })
-        .fail(function() {
+        },
+        error: function() {
             Swal.fire('Error', 'Failed to create contract', 'error');
-        });
+        }
+    });
 }
 
 function createSPK(quotationId) {
@@ -5432,8 +5593,13 @@ function proceedWithSPKCreation(quotationId) {
 
 function addSpecifications(quotationId) {
     // Open the specifications modal directly
-    $.post('<?= base_url('marketing/quotations/addSpecifications') ?>/' + quotationId)
-        .done(function(response) {
+    $.ajax({
+        url: '<?= base_url('marketing/quotations/addSpecifications') ?>/' + quotationId,
+        method: 'POST',
+        data: {
+            csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+        },
+        success: function(response) {
             if (response.success && response.open_specifications) {
                 // Open the quotation detail modal and switch to specifications tab
                 viewQuotation(quotationId);
@@ -5453,10 +5619,11 @@ function addSpecifications(quotationId) {
             } else {
                 Swal.fire('Error', response.message || 'Failed to open specifications', 'error');
             }
-        })
-        .fail(function() {
+        },
+        error: function() {
             Swal.fire('Error', 'Failed to open specifications', 'error');
-        });
+        }
+    });
 }
 
 // Legacy function for backward compatibility
@@ -5678,7 +5845,10 @@ function searchCustomers() {
     $.ajax({
         url: '<?= base_url('marketing/customer-management/searchCustomers') ?>',
         method: 'POST',
-        data: { search: searchTerm },
+        data: { 
+            search: searchTerm,
+            csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+        },
         success: function(response) {
             if (response.success && response.data.length > 0) {
                 let html = '<div class="list-group mt-2">';
@@ -5796,13 +5966,23 @@ $(document).on('hidden.bs.modal', '#detailModal', function () {
 // Function to create contract for quotation
 function createContractForQuotation(quotationId) {
     // Show loading
-    OptimaPro.showLoading('Creating contract...');
+    Swal.fire({
+        title: 'Creating Contract...',
+        text: 'Please wait',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
     
     $.ajax({
         url: `<?= base_url('marketing/quotations/createContract/') ?>${quotationId}`,
         method: 'POST',
+        data: {
+            csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+        },
         success: function(response) {
-            OptimaPro.hideLoading();
             if (response.success) {
                 Swal.fire({
                     title: 'Success!',
@@ -5818,7 +5998,6 @@ function createContractForQuotation(quotationId) {
             }
         },
         error: function(xhr) {
-            OptimaPro.hideLoading();
             console.error('Error creating contract:', xhr);
             const errorMsg = xhr.responseJSON?.message || xhr.statusText || 'Failed to create contract';
             Swal.fire('Error', errorMsg, 'error');
@@ -6268,7 +6447,8 @@ $('#createSPKForm').on('submit', function(e) {
         customer_id: $('#spk_customer_id').val(),
         contract_id: $('#spk_contract_id').val(),
         delivery_date: $('#spk_delivery_date').val(),
-        specifications: selectedSpecs
+        specifications: selectedSpecs,
+        csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
     };
     
     console.log('=== SPK Form Data Debug ===');
@@ -6289,6 +6469,9 @@ $('#createSPKForm').on('submit', function(e) {
     // Disable submit button
     const submitBtn = $('#submitSPKBtn');
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
+    
+    // Add CSRF token to formData
+    formData.csrf_test_name = window.csrfToken || '<?= csrf_hash() ?>';
     
     // Submit to backend
     $.ajax({
@@ -6347,6 +6530,40 @@ $('#createSPKForm').on('submit', function(e) {
 
 
 // Third $(document).ready() block removed - merged into main block above
+
+// Force Modal Size on Show - Override any CSS that might be cached
+$(document).ready(function() {
+    // Force modal sizes when they are shown - ALL MODALS
+    const allModals = '#detailModal, #addSpecificationModal, #createProspectModal, #addAttachmentModal, #selectCustomerLocationModal, #addContractModal, #createSPKModal, #printSpecModal';
+    
+    $(allModals).on('show.bs.modal', function(e) {
+        const modal = $(this);
+        const modalDialog = modal.find('.modal-dialog');
+        
+        // Force width with inline style (highest priority)
+        modalDialog.css({
+            'max-width': '90vw',
+            'width': '90vw',
+            'margin': '1.75rem auto'
+        });
+        
+        console.log('🔧 Modal size forced:', modal.attr('id'), 'Width:', modalDialog.css('width'));
+    });
+    
+    // Double-check after modal is fully shown
+    $(allModals).on('shown.bs.modal', function(e) {
+        const modal = $(this);
+        const modalDialog = modal.find('.modal-dialog');
+        
+        // Force again after animation completes
+        modalDialog.css({
+            'max-width': '90vw',
+            'width': '90vw'
+        });
+    });
+    
+    console.log('✅ Modal size enforcement script loaded');
+});
 </script>
 
 <?= $this->endSection() ?>
