@@ -88,8 +88,8 @@
 </div>
 
 <!-- Modal Verifikasi Attachment -->
-<div class="modal fade" id="modalAttachmentVerification" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="modalAttachmentVerification" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content" style="border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); border: 1px solid #e5e7eb;">
             <div class="modal-header" style="background-color: #ffffff; color: #374151; border-bottom: 1px solid #e5e7eb; padding: 20px 24px;">
                 <div style="display: flex; align-items: center; width: 100%;">

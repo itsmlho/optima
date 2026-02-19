@@ -154,8 +154,8 @@ $can_export = $permissions['export'];
   </div>
 
   <!-- Enhanced DI Modal with correct TUKAR workflow support -->
-  <div class="modal fade" id="diCreateModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+  <div class="modal fade modal-wide" id="diCreateModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h6 class="modal-title"><?= lang('Marketing.create') ?> DI</h6>
@@ -1949,7 +1949,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 <!-- Edit DI Modal -->
 <div class="modal fade" id="diEditModal" tabindex="-1">
-  <div class="modal-dialog">
+  <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header"><h6 class="modal-title"><?= lang('App.edit') ?> Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
       <form id="diEditForm">

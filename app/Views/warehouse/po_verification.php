@@ -349,8 +349,8 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- Modal Verifikasi Attachment -->
-<div class="modal fade" id="modalAttachmentVerification" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="modalAttachmentVerification" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalAttachmentVerificationLabel">
@@ -375,8 +375,8 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- View PO Unit Modal -->
-<div class="modal fade" id="viewPOUnitModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="viewPOUnitModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i><?= lang('App.detail') ?></h5>
@@ -391,8 +391,8 @@ $can_export = $permissions['export'];
 </div>
 
 <!-- View PO Sparepart Modal -->
-<div class="modal fade" id="viewPOSparepartModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="viewPOSparepartModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title"><i class="fas fa-eye me-2"></i><?= lang('App.detail') ?></h5>

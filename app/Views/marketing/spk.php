@@ -150,8 +150,8 @@ $can_export = $permissions['export'];
         </div>
     </div>
 
-    <div class="modal fade" id="spkModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal fade modal-wide" id="spkModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header"><h6 class="modal-title"><?= lang('Marketing.create_spk') ?></h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
                 <form id="spkForm">
@@ -355,8 +355,8 @@ $can_export = $permissions['export'];
     </div>
 
     <!-- Create DI Modal -->
-    <div class="modal fade" id="diModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+    <div class="modal fade modal-wide" id="diModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header"><h6 class="modal-title"><?= lang('Marketing.create') ?> Delivery Instruction</h6><button class="btn-close" data-bs-dismiss="modal"></button></div>
                 <form id="diForm">
@@ -2623,8 +2623,8 @@ $can_export = $permissions['export'];
     });
     </script>
     <!-- Detail SPK Modal -->
-    <div class="modal fade" id="spkDetailModal" tabindex="-1">
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal fade modal-wide" id="spkDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-scrollable">
             <div class="modal-content">
                 <div class="modal-header">
                     <h6 class="modal-title"><?= lang('App.detail') ?> SPK <span id="spkNumberHeader" class="text-primary"></span></h6>
@@ -3271,25 +3271,42 @@ $can_export = $permissions['export'];
         document.getElementById('link_spk_id').value = spkId;
         document.getElementById('link_spk_number').value = spkNumber;
         
+        console.log('🔍 Loading active contracts...');
+        
         // Load active contracts
         fetch('<?= base_url('marketing/kontrak/get-active-contracts') ?>')
-            .then(response => response.json())
+            .then(response => {
+                console.log('📥 Response status:', response.status);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
+                console.log('📦 Contracts data:', data);
                 const select = document.getElementById('link_contract_id');
                 select.innerHTML = '<option value="">-- Select Contract --</option>';
                 
-                if (data.success && data.data) {
+                if (data.success && data.data && data.data.length > 0) {
+                    console.log(`✅ Found ${data.data.length} active contracts`);
                     data.data.forEach(contract => {
                         const option = document.createElement('option');
                         option.value = contract.id;
                         option.textContent = `${contract.no_kontrak} - ${contract.pelanggan || contract.nama_customer}`;
                         select.appendChild(option);
                     });
+                } else {
+                    console.warn('⚠️ No active contracts found');
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = '-- No Active Contracts Available --';
+                    option.disabled = true;
+                    select.appendChild(option);
                 }
             })
             .catch(error => {
-                console.error('Error loading contracts:', error);
-                alert('Failed to load contracts. Please try again.');
+                console.error('❌ Error loading contracts:', error);
+                alert('Failed to load contracts. Please check console for details.');
             });
         
         const modal = new bootstrap.Modal(document.getElementById('linkContractModal'));
@@ -3300,11 +3317,17 @@ $can_export = $permissions['export'];
         event.preventDefault();
         
         const formData = new FormData(document.getElementById('linkContractForm'));
+        
+        // Add CSRF token
+        formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
+        
         const submitBtn = event.target.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;
         
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Linking...';
+        
+        console.log('🔗 Linking SPK to contract...');
         
         fetch('<?= base_url('marketing/spk/link-to-contract') ?>', {
             method: 'POST',

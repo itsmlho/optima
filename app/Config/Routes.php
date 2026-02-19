@@ -156,6 +156,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('quotations/createSPK/(:num)', 'Marketing::createSPK/$1');
     $routes->post('quotations/addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
     $routes->post('quotations/addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
+    $routes->post('convertProspectToCustomer/(:num)', 'Marketing::convertProspectToCustomer/$1');
 
     // KONTRAK CRUD
     $routes->group('kontrak', static function ($routes) {
@@ -390,19 +391,19 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('getUnlinkedDeliveriesWidget', 'CustomerManagementController::getUnlinkedDeliveriesWidget');
     });
 
-    // Operator Management Routes
-    $routes->group('operators', static function ($routes) {
-        $routes->get('/', 'OperatorController::index');
-        $routes->post('getOperators', 'OperatorController::getOperators');
-        $routes->get('getOperator/(:num)', 'OperatorController::getOperator/$1');
-        $routes->post('create', 'OperatorController::create');
-        $routes->post('update/(:num)', 'OperatorController::update/$1');
-        $routes->delete('delete/(:num)', 'OperatorController::delete/$1');
-        $routes->post('delete/(:num)', 'OperatorController::delete/$1'); // Fallback for POST method
-        $routes->get('available', 'OperatorController::getAvailableOperators');
-        $routes->get('expiring', 'OperatorController::getExpiringCertifications');
-        $routes->get('getStats', 'OperatorController::getStats');
-    });
+    // Operator Management Routes - DISABLED (operator input moved to contract/quotation forms)
+    // $routes->group('operators', static function ($routes) {
+    //     $routes->get('/', 'OperatorController::index');
+    //     $routes->post('getOperators', 'OperatorController::getOperators');
+    //     $routes->get('getOperator/(:num)', 'OperatorController::getOperator/$1');
+    //     $routes->post('create', 'OperatorController::create');
+    //     $routes->post('update/(:num)', 'OperatorController::update/$1');
+    //     $routes->delete('delete/(:num)', 'OperatorController::delete/$1');
+    //     $routes->post('delete/(:num)', 'OperatorController::delete/$1'); // Fallback for POST method
+    //     $routes->get('available', 'OperatorController::getAvailableOperators');
+    //     $routes->get('expiring', 'OperatorController::getExpiringCertifications');
+    //     $routes->get('getStats', 'OperatorController::getStats');
+    // });
 
     // Routes removed - functionality moved to CustomerManagementController
 
@@ -657,6 +658,7 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('charger-data', 'Warehouse::chargerData');
         
         $routes->get('get-attachment-detail/(:num)', 'Warehouse::getAttachmentDetail/$1'); // Untuk mengambil detail attachment
+        $routes->get('get-attachment-history/(:num)', 'Warehouse::getAttachmentHistory/$1'); // Attachment history/timeline
         $routes->post('update-attachment/(:num)', 'Warehouse::updateAttachment/$1'); // Untuk update attachment
         
         // Master data API endpoints (existing)
@@ -682,6 +684,7 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('invent_unit', 'Warehouse::inventUnit'); // <--- Tambahkan ini untuk AJAX (POST)
         $routes->get('get-unit-detail/(:num)', 'Warehouse::getUnitDetail/$1');
         $routes->get('get-unit-full-detail/(:num)', 'Warehouse::getUnitFullDetail/$1'); // Full detail with all joins
+        $routes->get('get-unit-history/(:num)', 'Warehouse::getUnitHistory/$1'); // Unit history/timeline
         $routes->post('update-unit/(:num)', 'Warehouse::updateUnit/$1');
         $routes->post('delete-unit/(:num)', 'Warehouse::deleteUnit/$1');
     $routes->get('export-invent-unit', 'Warehouse::exportInventUnit');

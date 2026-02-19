@@ -126,8 +126,8 @@
 </div>
 
 <!-- OPTIMIZED Modal untuk Detail Activity -->
-<div class="modal-optimized" id="activityDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
+<div class="modal-optimized modal-wide" id="activityDetailModal" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-primary text-muted">
                 <h5 class="modal-title">

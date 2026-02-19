@@ -242,8 +242,8 @@
 </div>
 
 <!-- Detail Usage Modal -->
-<div class="modal fade" id="usageDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="usageDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-white border-bottom">
                 <h5 class="modal-title text-dark fw-semibold" id="usageModalTitle">
@@ -263,8 +263,8 @@
 </div>
 
 <!-- Detail/Confirm Return Modal -->
-<div class="modal fade" id="returnDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+<div class="modal fade modal-wide" id="returnDetailModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">

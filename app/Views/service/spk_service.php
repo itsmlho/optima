@@ -3745,8 +3745,8 @@ electricFields.classList.remove('d-none');
 		// Create new modal element
 		const newModalId = 'editOptionsModal_' + Date.now();
 		const newModalHtml = `
-			<div class="modal fade" id="${newModalId}" tabindex="-1">
-				<div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
+			<div class="modal fade modal-wide" id="${newModalId}" tabindex="-1">
+				<div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
 					<div class="modal-content">
 						${editOptionsHtml}
 					</div>
