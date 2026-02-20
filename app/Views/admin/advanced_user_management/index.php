@@ -384,11 +384,7 @@ $(document).ready(function() {
             dataType: 'json',
             data: {
                 division_id: divisionId,
-                role_id: roleId,
-                '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
-            },
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
+                role_id: roleId
             },
             success: function(response) {
                 if (response.success) {
@@ -754,11 +750,7 @@ $('#approveUserForm').on('submit', function(e) {
         dataType: 'json',
         data: {
             division_id: divisionId,
-            role_id: roleId,
-            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
-        },
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            role_id: roleId
         },
         success: function(response) {
             if (response.success) {

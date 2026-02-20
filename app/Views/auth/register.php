@@ -25,27 +25,107 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
     <style>
-        /* Custom styles for register page */
+        /* Register page - matches login page style */
+        * { box-sizing: border-box; }
+
         body {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            background: #f5f7fa;
+            font-family: 'Metropolis', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
             padding: 2rem 1rem;
+            margin: 0;
         }
-        
+
+        .auth-container {
+            width: 100%;
+            max-width: 840px;
+        }
+
         .auth-card {
-            border-radius: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 2.5rem 2rem;
             border: 1px solid #e9ecef;
+            position: relative;
+            overflow: hidden;
         }
-        
+
         .auth-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #0061f2, #00ac69);
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #0061f2, #0056b3);
+        }
+
+        .auth-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin: 0 0 0.5rem 0;
+            text-align: center;
+        }
+
+        .auth-subtitle {
+            color: #6c757d;
+            text-align: center;
+            margin-bottom: 1.75rem;
+            font-size: 0.9rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 0.4rem;
+            font-size: 0.875rem;
+        }
+
+        .form-label i { color: #0061f2; }
+
+        .form-control,
+        .form-select {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 0.65rem 1rem;
+            font-size: 0.925rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            background: #ffffff;
+            color: #495057;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #0061f2;
+            box-shadow: 0 0 0 0.15rem rgba(0,97,242,0.12);
+            outline: none;
+            background: white;
+        }
+
+        .form-group { margin-bottom: 1rem; }
+
+        .btn-primary {
+            background: #0061f2;
+            border: none;
+            border-radius: 6px;
+            padding: 0.7rem 1.5rem;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: background 0.2s, box-shadow 0.2s;
+            color: white;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background: #0056b3;
+            box-shadow: 0 2px 8px rgba(0,97,242,0.25);
         }
         
+
+
         .auth-logo {
             display: flex;
             align-items: center;
@@ -477,35 +557,47 @@
         document.getElementById('division').addEventListener('change', function() {
             const divisionId = this.value;
             const roleSelect = document.getElementById('role');
+
+            // Get CSRF token from meta or existing form field
+            const csrfToken = document.querySelector('input[name="<?= csrf_token() ?>"]')?.value || '';
+            const csrfName  = '<?= csrf_token() ?>';
             
             if (divisionId) {
-                fetch(`<?= base_url('auth/get-positions-by-division') ?>`, {
+                roleSelect.innerHTML = '<option value="">Memuat role...</option>';
+                roleSelect.disabled = true;
+
+                fetch('<?= base_url('auth/get-positions-by-division') ?>', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                         'X-Requested-With': 'XMLHttpRequest'
                     },
-                    body: `division_id=${divisionId}`
+                    body: `division_id=${encodeURIComponent(divisionId)}&${encodeURIComponent(csrfName)}=${encodeURIComponent(csrfToken)}`
                 })
-                    .then(response => response.json())
-                    .then(data => {
-                        roleSelect.innerHTML = '<option value="">Pilih Role</option>';
-                        
-                        if (data.success && data.positions) {
-                            data.positions.forEach(position => {
-                                roleSelect.innerHTML += `<option value="${position.name}">${position.name}</option>`;
-                            });
-                            roleSelect.disabled = false;
-                        } else {
-                            roleSelect.innerHTML = '<option value="">Tidak ada role tersedia</option>';
-                            roleSelect.disabled = true;
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading positions:', error);
-                        roleSelect.innerHTML = '<option value="">Error loading roles</option>';
+                .then(function(response) {
+                    if (!response.ok) throw new Error('HTTP ' + response.status);
+                    return response.json();
+                })
+                .then(function(data) {
+                    roleSelect.innerHTML = '<option value="">Pilih Role</option>';
+                    if (data.success && data.positions && data.positions.length > 0) {
+                        data.positions.forEach(function(position) {
+                            const opt = document.createElement('option');
+                            opt.value = position.name;
+                            opt.textContent = position.name;
+                            roleSelect.appendChild(opt);
+                        });
+                        roleSelect.disabled = false;
+                    } else {
+                        roleSelect.innerHTML = '<option value="">Tidak ada role tersedia untuk divisi ini</option>';
                         roleSelect.disabled = true;
-                    });
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error loading positions:', error);
+                    roleSelect.innerHTML = '<option value="">Gagal memuat role — coba lagi</option>';
+                    roleSelect.disabled = false;
+                });
             } else {
                 roleSelect.innerHTML = '<option value="">Pilih Divisi Dahulu</option>';
                 roleSelect.disabled = true;
