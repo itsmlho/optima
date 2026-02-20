@@ -359,7 +359,8 @@ helper('permission_helper');
 <script>
 // Helper function to get CSRF token from cookie
 function getCsrfToken() {
-    const name = '<?= csrf_token() ?>=';\n    const decodedCookie = decodeURIComponent(document.cookie);
+    const name = '<?= csrf_token() ?>=';
+    const decodedCookie = decodeURIComponent(document.cookie);
     const cookies = decodedCookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
         let c = cookies[i].trim();
@@ -440,6 +441,10 @@ $(document).ready(function() {
         ajax: {
             url: '<?= base_url('admin/advanced-users/getDataTable') ?>',
             type: 'POST',
+            data: function(d) {
+                // Include CSRF token in request
+                return d;
+            },
             error: function(xhr, error, thrown) {
                 let msg = 'Failed to load users data.';
                 if (xhr.responseText) {
@@ -449,6 +454,7 @@ $(document).ready(function() {
                     } catch (e) {}
                 }
                 alert(msg);
+                console.error('DataTable error:', xhr.status, xhr.responseText);
             }
         },
         columns: [
