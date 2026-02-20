@@ -20,7 +20,7 @@
                             <div class="card border-warning">
                                 <div class="card-body text-center">
                                     <h3 class="text-warning" id="totalTemporaryUnits">0</h3>
-                                    <p class="mb-0 small">Total Temporary Units</p>
+                                    <p class="mb-0 small">Total Temp                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            orary Units</p>
                                 </div>
                             </div>
                         </div>

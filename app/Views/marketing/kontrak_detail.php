@@ -348,7 +348,8 @@ function loadUnits() {
             const locations = {};
             let total = 0;
             res.data.forEach(u => {
-                const loc = u.location_name || 'Unknown Location';
+                // API returns: lokasi, no_unit, jenis_unit, merk, model, kapasitas, harga_sewa_bulanan
+                const loc = u.lokasi || u.location_name || 'Unknown Location';
                 if (!locations[loc]) locations[loc] = [];
                 locations[loc].push(u);
                 total++;
@@ -374,17 +375,19 @@ function loadUnits() {
                       <div class="table-responsive">
                         <table class="table table-sm table-hover mb-0">
                           <thead class="bg-light"><tr>
-                            <th>Unit No</th><th>Type</th><th>Brand/Model</th>
+                            <th>Unit No</th><th>Type</th><th>Brand / Model</th>
                             <th>Capacity</th><th class="text-end">Rate/Month</th><th>Status</th>
                           </tr></thead><tbody>`;
                 units.forEach(u => {
+                    const brandModel = [u.merk, u.model].filter(Boolean).join(' / ') || '—';
+                    const rate       = u.harga_sewa_bulanan || u.rate_monthly || 0;
                     html += `<tr>
-                        <td><strong>${u.unit_no || '—'}</strong></td>
-                        <td>${u.unit_type || '—'}</td>
-                        <td>${u.brand_model || '—'}</td>
-                        <td>${u.capacity || '—'}</td>
-                        <td class="text-end">${rupiah(u.rate_monthly)}</td>
-                        <td><span class="badge bg-success">Active</span></td>
+                        <td><strong>${u.no_unit || u.unit_no || '—'}</strong></td>
+                        <td>${u.jenis_unit || u.unit_type || '—'}</td>
+                        <td>${brandModel}</td>
+                        <td>${u.kapasitas || u.capacity || '—'}</td>
+                        <td class="text-end">${rupiah(rate)}</td>
+                        <td><span class="badge bg-${u.status === 'TERSEDIA' ? 'success' : 'warning'}">${u.status || 'Active'}</span></td>
                     </tr>`;
                 });
                 html += `</tbody></table></div></div></div></div>`;
@@ -397,6 +400,7 @@ function loadUnits() {
         }
     });
 }
+
 
 // ── Load History ────────────────────────────────────────
 function loadHistory() {
@@ -509,7 +513,7 @@ function deleteContract(id) {
     if (!confirm('Are you sure you want to delete this contract? This action cannot be undone.')) return;
     $.ajax({
         url: BASE_URL + 'marketing/kontrak/delete/' + id,
-        type: 'DELETE',
+        type: 'POST',
         success: function(res) {
             if (res.success) {
                 window.location.href = BASE_URL + 'marketing/kontrak';
@@ -521,29 +525,40 @@ function deleteContract(id) {
     });
 }
 
-// These reuse the shared renewal/amendment/history modal functions from kontrak.php
-// (they are included via the component includes above)
+// ── Action functions: Renewal, Amendment, History ────────
+
 function openRenewalWizard(id) {
+    // Step 1 of the renewal wizard has a select for expiring contracts.
+    // We load the expiring list, add this contract if not present, then pre-select it.
     $.ajax({
-        url: BASE_URL + 'marketing/kontrak/get/' + id,
+        url: BASE_URL + 'marketing/kontrak/getExpiringContracts',
         type: 'GET',
         success: function(res) {
-            if (res.success && res.data) {
-                const c = res.data;
-                $('#renewalParentContractId').val(id);
-                $('#renewalOldContractNumber').text(c.no_kontrak);
-                $('#renewalCustomerName').text(c.customer_name || 'N/A');
-                $('#renewalOldStartDate').text(c.tanggal_mulai || 'N/A');
-                $('#renewalOldEndDate').text(c.tanggal_berakhir || 'N/A');
-                if (c.tanggal_berakhir) {
-                    const oldEnd  = new Date(c.tanggal_berakhir);
-                    const newStart = new Date(oldEnd); newStart.setDate(newStart.getDate() + 1);
-                    const newEnd  = new Date(newStart); newEnd.setFullYear(newEnd.getFullYear() + 1); newEnd.setDate(newEnd.getDate() - 1);
-                    $('#renewalStartDate').val(newStart.toISOString().split('T')[0]);
-                    $('#renewalEndDate').val(newEnd.toISOString().split('T')[0]);
+            const $sel = $('#renewalExpiringContracts');
+            if ($sel.length && res.success && res.data) {
+                $sel.empty().append('<option value="">-- Select contract --</option>');
+                res.data.forEach(c => $sel.append(new Option(c.no_kontrak + ' - ' + (c.customer_name||''), c.id)));
+                // If current contract not in expiring list, add it manually
+                if (!res.data.find(c => c.id == id)) {
+                    $.ajax({ url: BASE_URL + 'marketing/kontrak/get/' + id, type: 'GET',
+                        success: function(r) {
+                            if (r.success && r.data) {
+                                $sel.append(new Option(r.data.no_kontrak + ' (current)', id));
+                            }
+                            $sel.val(id).trigger('change');
+                        }
+                    });
+                } else {
+                    $sel.val(id).trigger('change');
                 }
-                $('#renewalWizardModal').modal('show');
             }
+            // Reset wizard to step 1
+            if (typeof goToStep === 'function') goToStep(1);
+            $('#renewalWizardModal').modal('show');
+        },
+        error: function() {
+            // Fallback: just open the modal and let user select
+            $('#renewalWizardModal').modal('show');
         }
     });
 }
@@ -565,13 +580,12 @@ function openAmendmentModal(id) {
 }
 
 function openHistoryModal(id) {
-    $('#assetHistoryModal').modal('show');
-    $.ajax({ url: BASE_URL + 'marketing/kontrak/getContractHistory/' + id, type: 'GET',
-        success: function(r) { if (r.success) renderContractTimeline(r.data); }
-    });
-    $.ajax({ url: BASE_URL + 'marketing/kontrak/getRateHistory/' + id, type: 'GET',
-        success: function(r) { if (r.success && r.data) renderRateHistory(r.data); }
-    });
+    // openAssetHistory is defined in asset-history.js and pre-selects the contract
+    if (typeof openAssetHistory === 'function') {
+        openAssetHistory(id);
+    } else {
+        $('#assetHistoryModal').modal('show');
+    }
 }
 
 // ── Tab lazy-loading ────────────────────────────────────

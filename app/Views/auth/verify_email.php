@@ -25,22 +25,79 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
     <style>
-        /* Custom styles for verify email page */
+        * { box-sizing: border-box; }
         body {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 1.5rem 1rem;
+            background: #f5f7fa;
+            font-family: 'Metropolis', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 3rem 1rem;
+            margin: 0;
         }
-        
-        .verify-card::before {
+        .auth-container { width: 100%; max-width: 560px; }
+        .auth-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 2.5rem 2rem;
+            border: 1px solid #e9ecef;
+            position: relative;
+            overflow: hidden;
+        }
+        .auth-card::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #0061f2, #00ac69);
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #0061f2, #0056b3);
         }
+        /* Legacy class aliases used in HTML */
+        .auth-card-wide { max-width: none; }
+        .auth-icon.email-icon {
+            width: 64px; height: 64px;
+            background: #e7f3ff;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 1.25rem;
+            font-size: 1.75rem; color: #0061f2;
+        }
+        .auth-title {
+            font-size: 1.5rem; font-weight: 700;
+            color: #2c3e50; text-align: center; margin: 0 0 0.5rem;
+        }
+        .auth-subtitle { color: #6c757d; text-align: center; margin-bottom: 1.5rem; font-size: 0.9rem; }
+        .email-display {
+            background: #f8f9fa; border-radius: 8px;
+            padding: 0.75rem 1rem; margin-bottom: 1rem;
+            font-size: 0.9rem; color: #495057; border: 1px solid #dee2e6;
+        }
+        .steps-container { margin: 1.5rem 0; }
+        .steps-container h5 { font-weight: 700; color: #2c3e50; margin-bottom: 1rem; }
+        .step-item {
+            display: flex; align-items: flex-start;
+            gap: 0.75rem; margin-bottom: 0.875rem;
+        }
+        .step-number {
+            min-width: 28px; height: 28px;
+            background: #0061f2; color: white;
+            border-radius: 50%; display: flex;
+            align-items: center; justify-content: center;
+            font-size: 0.8rem; font-weight: 700; flex-shrink: 0;
+        }
+        .step-content span { font-size: 0.875rem; color: #6c757d; }
+        .help-text { margin-top: 1.25rem; font-size: 0.875rem; color: #6c757d; }
+        .help-text a { color: #0061f2; text-decoration: none; }
+        .btn-outline-primary {
+            border: 1px solid #0061f2; color: #0061f2;
+            background: transparent; border-radius: 6px;
+            padding: 0.6rem 1.25rem; font-weight: 600;
+            transition: all 0.2s; display: inline-block; text-decoration: none;
+        }
+        .btn-outline-primary:hover { background: #0061f2; color: white; }
     </style>
+
 </head>
 <body>
     <div class="auth-container">

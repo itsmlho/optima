@@ -28,10 +28,16 @@
     <!-- Custom Styles for OTP Verification -->
     <!-- Custom Styles -->
     <style>
-        /* Custom styles for verify OTP page */
+        * { box-sizing: border-box; }
         body {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            padding: 1rem;
+            background: #f5f7fa;
+            font-family: 'Metropolis', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+            margin: 0;
         }
         
         .otp-container {

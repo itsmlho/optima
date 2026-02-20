@@ -863,7 +863,7 @@ class Kontrak extends BaseController
     }
 
     /**
-     * Get contract details for SPK creation
+     * Get contract details for SPK creation / detail page AJAX
      */
     public function get($kontrakId)
     {
@@ -872,7 +872,22 @@ class Kontrak extends BaseController
         }
 
         try {
-            $kontrak = $this->kontrakModel->find($kontrakId);
+            $kontrak = $this->db->table('kontrak k')
+                ->select('k.*,
+                    c.customer_name, c.customer_code, c.contact_person, c.phone,
+                    cl.location_name,
+                    (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) AS total_units,
+                    (SELECT COALESCE(SUM(ks.monthly_rate * ks.quantity), 0)
+                     FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id) AS total_value,
+                    (SELECT COALESCE(SUM(ks.operator_quantity), 0)
+                     FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id) AS operator_quantity,
+                    (SELECT ks.operator_rate
+                     FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id AND ks.operator_quantity > 0 LIMIT 1) AS operator_monthly_rate')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->where('k.id', (int)$kontrakId)
+                ->get()->getRowArray();
+
             if (!$kontrak) {
                 return $this->response->setJSON([
                     'success' => false,
@@ -883,7 +898,7 @@ class Kontrak extends BaseController
 
             return $this->response->setJSON([
                 'success' => true,
-                'data' => $kontrak,
+                'data'    => $kontrak,
                 'csrf_hash' => csrf_hash()
             ]);
         } catch (\Exception $e) {
@@ -894,6 +909,7 @@ class Kontrak extends BaseController
             ]);
         }
     }
+
 
     /**
      * Get units related to a contract for display in detail modal.
@@ -2420,5 +2436,73 @@ class Kontrak extends BaseController
             ]);
         }
     }
-}
 
+    /**
+     * Get documents attached to a contract
+     */
+    public function documents($kontrakId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            if (!$this->db->tableExists('contract_documents')) {
+                return $this->response->setJSON(['success' => true, 'data' => []]);
+            }
+
+            $docs = $this->db->table('contract_documents')
+                ->where('kontrak_id', (int)$kontrakId)
+                ->orderBy('created_at', 'DESC')
+                ->get()->getResultArray();
+
+            $formatted = array_map(function ($d) {
+                return [
+                    'id'          => $d['id'],
+                    'file_name'   => $d['file_name'] ?? $d['filename'] ?? '—',
+                    'file_path'   => $d['file_path'] ?? $d['filepath'] ?? '',
+                    'uploaded_at' => $d['created_at'] ?? '',
+                    'uploaded_by' => $d['uploaded_by'] ?? 'System',
+                ];
+            }, $docs);
+
+            return $this->response->setJSON(['success' => true, 'data' => $formatted]);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Delete a contract document by ID
+     */
+    public function deleteDocument($docId)
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            if (!$this->db->tableExists('contract_documents')) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Documents table does not exist']);
+            }
+
+            $doc = $this->db->table('contract_documents')->where('id', (int)$docId)->get()->getRowArray();
+            if (!$doc) {
+                return $this->response->setJSON(['success' => false, 'message' => 'Document not found']);
+            }
+
+            // Delete physical file if exists
+            $path = FCPATH . ltrim($doc['file_path'] ?? '', '/');
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+
+            $this->db->table('contract_documents')->where('id', (int)$docId)->delete();
+
+            return $this->response->setJSON(['success' => true, 'message' => 'Document deleted']);
+        } catch (\Exception $e) {
+            return $this->response->setJSON(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+        }
+    }
+}
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    

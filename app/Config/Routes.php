@@ -200,6 +200,18 @@ $routes->group('marketing',  static function ($routes) {
         // Debug endpoint (development only)
         $routes->get('debug-test-insert', 'Kontrak::debugTestInsert');
         
+        // Contract documents
+        $routes->get('documents/(:num)', 'Kontrak::documents/$1');
+        $routes->post('deleteDocument/(:num)', 'Kontrak::deleteDocument/$1');
+        
+        // Expiring contracts for renewal wizard
+        $routes->get('getExpiringContracts', 'Kontrak::getExpiringContracts');
+        
+        // getAllContracts and getAllUnits for asset-history.js
+        $routes->get('getAllContracts', 'Kontrak::getAllContracts');
+        $routes->get('getAllUnits', 'Kontrak::getAllUnits');
+
+        
         // For SPK workflow - use Marketing controller methods
         $routes->get('get-active-contracts', 'Marketing::getActiveContracts');
         $routes->get('get-kontrak/(:num)', 'Marketing::getKontrak/$1');
