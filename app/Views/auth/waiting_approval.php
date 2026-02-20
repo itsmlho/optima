@@ -22,45 +22,82 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
     
     <style>
-        /* Custom styles for waiting approval page */
+        * { box-sizing: border-box; }
         body {
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            background-attachment: fixed;
-            padding: 1.5rem;
+            background: #f5f7fa;
+            font-family: 'Metropolis', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 3rem 1rem;
+            margin: 0;
         }
-        
-        .waiting-container {
-            background: rgba(255, 255, 255, 0.98);
-            backdrop-filter: blur(30px) saturate(180%);
+        .auth-container { width: 100%; max-width: 700px; }
+        .auth-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            padding: 2.5rem 2rem;
+            border: 1px solid #e9ecef;
             position: relative;
+            overflow: hidden;
         }
-        
-        .contact-box {
-            background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
-            color: white;
+        .auth-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #0061f2, #0056b3);
         }
-        
-        .contact-box h5 {
-            color: white;
+        .auth-card-wide { /* alias */ }
+        .header-section { text-align: center; margin-bottom: 1.5rem; }
+        .auth-icon.waiting-icon {
+            width: 64px; height: 64px;
+            background: #fff3cd; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 1.75rem; color: #ffc107;
+            margin-bottom: 1rem;
         }
-        
-        .contact-box p {
-            margin-bottom: 0.5rem;
+        .auth-title { font-size: 1.5rem; font-weight: 700; color: #2c3e50; }
+        .auth-subtitle { color: #6c757d; font-size: 0.9rem; }
+        .info-grid.content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1.25rem 0;
+        }
+        @media (max-width: 600px) {
+            .info-grid.content-grid { grid-template-columns: 1fr; }
+        }
+        .info-section.info-box {
+            background: #f8f9fa;
+            border-left: 3px solid #0061f2;
+            border-radius: 8px;
+            padding: 1rem;
             font-size: 0.875rem;
-            line-height: 1.5;
         }
-        
-        .contact-box a {
-            color: white;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 1rem;
+        .info-section.info-box h5 { font-weight: 700; color: #2c3e50; margin-bottom: 0.75rem; }
+        .info-section.info-box ul { padding-left: 1.25rem; margin: 0; color: #495057; }
+        .contact-box {
+            background: linear-gradient(135deg, #0061f2, #4d8cff);
+            color: white; border-radius: 8px; padding: 1rem;
+            font-size: 0.875rem;
         }
-        
-        .contact-box a:hover {
-            text-decoration: underline;
+        .contact-box h5 { color: white; font-weight: 700; margin-bottom: 0.75rem; }
+        .contact-box p { margin-bottom: 0.5rem; opacity: 0.95; }
+        .contact-box a { color: white; font-weight: 600; }
+        .btn-primary {
+            background: #0061f2; border: none; border-radius: 6px;
+            padding: 0.7rem 1.5rem; font-weight: 600; font-size: 0.95rem;
+            color: white; width: 100%; display: block; text-align: center;
+            text-decoration: none; transition: background 0.2s; margin-top: 1.25rem;
         }
+        .btn-primary:hover { background: #0056b3; color: white; }
+        .btn-block { width: 100%; }
+        .btn-back { margin-top: 1.25rem; }
     </style>
+
 </head>
 <body>
     <div class="auth-container">

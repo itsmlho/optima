@@ -8479,7 +8479,7 @@ class Marketing extends BaseDataTableController
                 $builder = $db->table('delivery_instructions');
                 $dis = $builder->where('spk_id', $spkId)
                     ->where('status_di', 'SELESAI')
-                    ->where('sampai_tanggal_approve IS NOT NULL')
+                    ->whereNotNull('sampai_tanggal_approve')
                     ->get()
                     ->getResultArray();
                 
@@ -9154,4 +9154,3 @@ class Marketing extends BaseDataTableController
             ]);
         }
     }
-}
