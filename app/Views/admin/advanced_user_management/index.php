@@ -196,8 +196,8 @@ helper('permission_helper');
                                         <div class="form-check ms-3">
                                             <input class="form-check-input" type="checkbox" name="selected_permissions[]" value="<?= $permission['id'] ?>" id="perm<?= $permission['id'] ?>">
                                             <label class="form-check-label" for="perm<?= $permission['id'] ?>">
-                                                <?= esc($permission['name']) ?>
-                                                <small class="text-muted d-block"><?= esc($permission['key']) ?></small>
+                                                <?= esc($permission['display_name'] ?? $permission['key_name'] ?? '') ?>
+                                                <small class="text-muted d-block"><?= esc($permission['key_name'] ?? '') ?></small>
                                             </label>
                                         </div>
                                         <?php endforeach; ?>
@@ -357,30 +357,23 @@ helper('permission_helper');
 
 <?= $this->section('javascript') ?>
 <script>
-// Helper function to get CSRF token from cookie
+// ============================================================
+// CSRF Helper — always reads the latest token from cookie
+// CI4 sets the token value in cookie: csrf_cookie_name
+// Token field name is:  csrf_test_name
+// ============================================================
 function getCsrfToken() {
-    // Prefer window.csrfToken if set by base layout
     if (window.csrfToken) return window.csrfToken;
-    // Fallback: read from cookie (CI4 stores value in csrf_cookie_name cookie)
     const name = 'csrf_cookie_name=';
-    const decodedCookie = decodeURIComponent(document.cookie);
-    const cookies = decodedCookie.split(';');
+    const cookies = decodeURIComponent(document.cookie).split(';');
     for (let i = 0; i < cookies.length; i++) {
-        let c = cookies[i].trim();
-        if (c.indexOf(name) == 0) {
-            return c.substring(name.length, c.length);
-        }
+        const c = cookies[i].trim();
+        if (c.indexOf(name) === 0) return c.substring(name.length);
     }
-    return '';
+    // Last resort: read from meta tag set by base layout
+    const meta = document.querySelector('meta[name="csrf-token"]');
+    return meta ? meta.getAttribute('content') : '';
 }
-
-// Setup global AJAX config to include CSRF token
-$.ajaxSetup({
-    beforeSend: function(xhr) {
-        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
-    }
-});
 
 $(document).ready(function() {
     // Handle approve form submission
@@ -404,12 +397,17 @@ $(document).ready(function() {
         submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Memproses...');
         
         $.ajax({
-            url: '<?= base_url("admin/advanced-users/approve-user") ?>/' + userId,
+            url: '<?= base_url('admin/advanced-users/approve-user') ?>/' + userId,
             type: 'POST',
             dataType: 'json',
-            data: {
-                division_id: divisionId,
-                role_id: roleId
+            data: function() {
+                const d = { division_id: divisionId, role_id: roleId };
+                d['<?= csrf_token() ?>'] = getCsrfToken();
+                return d;
+            }(),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCsrfToken()
             },
             success: function(response) {
                 if (response.success) {
@@ -442,14 +440,12 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: '<?= base_url("admin/advanced-users/getDataTable") ?>',
+            url: '<?= base_url('admin/advanced-users/getDataTable') ?>',
             type: 'POST',
             data: function(d) {
-                // DataTable doesn't use $.ajaxSetup, so we must inject the CSRF token manually
                 d['<?= csrf_token() ?>'] = getCsrfToken();
                 return d;
             },
-
             error: function(xhr, error, thrown) {
                 let msg = 'Failed to load users data.';
                 if (xhr.responseText) {
@@ -459,7 +455,6 @@ $(document).ready(function() {
                     } catch (e) {}
                 }
                 alert(msg);
-                console.error('DataTable error:', xhr.status, xhr.responseText);
             }
         },
         columns: [
@@ -501,14 +496,20 @@ $(document).ready(function() {
             return;
         }
         
+        var csrfData = {};
+        csrfData['<?= csrf_token() ?>'] = getCsrfToken();
         $.ajax({
-            url: '<?= base_url("admin/advanced-users/bulk-assign-permissions") ?>',
+            url: '<?= base_url('admin/advanced-users/bulk-assign-permissions') ?>',
             method: 'POST',
-            data: {
+            data: $.extend({
                 user_ids: selectedUsers,
                 permission_ids: selectedPermissions,
                 division_id: formData.get('division_id'),
                 granted: formData.get('action') === 'grant' ? 1 : 0
+            }, csrfData),
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': getCsrfToken()
             },
             dataType: 'json',
             success: function(response) {
@@ -539,7 +540,7 @@ function loadDivisionUsers(divisionId) {
         return; // Already loaded
     }
     
-    $.get('<?= base_url("admin/advanced-users/division-users") ?>/' + divisionId, function(data) {
+    $.get('<?= base_url('admin/advanced-users/division-users') ?>/' + divisionId, function(data) {
         contentDiv.html(data);
         contentDiv.data('loaded', true);
     }).fail(function() {
@@ -551,7 +552,7 @@ function viewUserMatrix(userId) {
     $('#userMatrixContent').html('Loading...');
     $('#userMatrixModal').modal('show');
     
-    $.get('<?= base_url("admin/advanced-users/user-matrix") ?>/' + userId, function(response) {
+    $.get('<?= base_url('admin/advanced-users/user-matrix') ?>/' + userId, function(response) {
         if (response.success) {
             renderUserMatrix(response.data);
         } else {
@@ -642,75 +643,54 @@ function renderUserMatrix(data) {
 }
 
 function quickAssignMenu(userId) {
-    window.location.href = '<?= base_url("admin/advanced-users/quick-assign") ?>?user=' + userId;
+    window.location.href = '<?= base_url('admin/advanced-users/quick-assign') ?>?user=' + userId;
 }
 
-// Division-Role mapping (same as in form.php)
-const allRoles = [
-    // Marketing Division (ID: 0)
-    { id: '2', name: 'Head Marketing', division: '0' },
-    { id: '3', name: 'Staff Marketing', division: '0' },
-    
-    // Service Diesel Division (ID: 1)
-    { id: '6', name: 'Head Service Diesel', division: '1' },
-    { id: '7', name: 'Staff Service Diesel', division: '1' },
-    
-    // Service Electric Division (ID: 2)
-    { id: '8', name: 'Head Service Electric', division: '2' },
-    { id: '9', name: 'Staff Service Electric', division: '2' },
-    
-    // Warehouse Division (ID: 3)
-    { id: '16', name: 'Head Warehouse', division: '3' },
-    { id: '32', name: 'Staff Warehouse', division: '3' },
-    
-    // HRD Division (ID: 4)
-    { id: '14', name: 'Head HRD', division: '4' },
-    { id: '15', name: 'Staff HRD', division: '4' },
-    
-    // Administrator Division (ID: 5)
-    { id: '30', name: 'Administrator', division: '5' },
-    
-    // Purchasing Division (ID: 6)
-    { id: '10', name: 'Head Purchasing', division: '6' },
-    { id: '11', name: 'Staff Purchasing', division: '6' },
-    
-    // IT Division (ID: 7)
-    { id: '33', name: 'Head IT', division: '7' },
-    { id: '34', name: 'Staff IT', division: '7' }
-];
+// Division-Role mapping from actual DB data with division_id
+const allRoles = <?= json_encode(array_values(array_map(function($r) {
+    return ['id' => (string)$r['id'], 'name' => $r['name'], 'division_id' => (string)($r['division_id'] ?? '')];
+}, $roles ?? []))) ?>;
 
-// Function to update roles based on division
+// Function to update roles based on division (filter by division_id)
 function updateApprovalRoles(selectedDivision) {
     console.log('updateApprovalRoles called with division:', selectedDivision);
     const roleSelect = $('#approveRoleId');
     roleSelect.empty();
     roleSelect.append('<option value="">Select Role</option>');
     
-    if (selectedDivision) {
-        // Convert division ID to string for comparison
-        const divisionStr = selectedDivision.toString();
-        const filteredRoles = allRoles.filter(role => role.division === divisionStr);
-        console.log('Filtered roles for division', divisionStr, ':', filteredRoles);
-        
-        if (filteredRoles.length === 0) {
-            console.warn('No roles found for division:', divisionStr);
-        }
-        
+    if (!selectedDivision) {
+        console.log('No division selected');
+        return;
+    }
+    
+    // Filter roles by division_id
+    const divisionStr = selectedDivision.toString();
+    const filteredRoles = allRoles.filter(role => role.division_id === divisionStr);
+    
+    console.log('Filtered roles for division', divisionStr, ':', filteredRoles);
+    
+    if (filteredRoles.length === 0) {
+        console.warn('No roles found for division:', divisionStr);
+        roleSelect.append('<option value="" disabled>No roles available for this division</option>');
+    } else {
         filteredRoles.forEach(role => {
             roleSelect.append('<option value="' + role.id + '">' + role.name + '</option>');
         });
-        
-        // Force trigger change event
-        roleSelect.trigger('change');
     }
+    
+    roleSelect.trigger('change');
 }
 
 function approveUser(userId, userName) {
     // Load user data and show modal
     $.ajax({
-        url: '<?= base_url("admin/advanced-users/get-user-for-approval") ?>/' + userId,
+        url: '<?= base_url('admin/advanced-users/get-user-for-approval') ?>/' + userId,
         type: 'GET',
         dataType: 'json',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+
         success: function(response) {
             if (response.success) {
                 // Populate user info
@@ -750,59 +730,6 @@ function approveUser(userId, userName) {
     });
 }
 
-// Handle approve form submission
-$('#approveUserForm').on('submit', function(e) {
-    e.preventDefault();
-    
-    const form = $(this);
-    const userId = $('#approveUserId').val();
-    const divisionId = $('#approveDivisionId').val();
-    const roleId = $('#approveRoleId').val();
-    
-    // Validate
-    if (!divisionId || !roleId) {
-        form.addClass('was-validated');
-        return false;
-    }
-    
-    // Disable submit button
-    const submitBtn = form.find('button[type="submit"]');
-    const originalText = submitBtn.html();
-    submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Memproses...');
-    
-    $.ajax({
-        url: '<?= base_url("admin/advanced-users/approve-user") ?>/' + userId,
-        type: 'POST',
-        dataType: 'json',
-        data: {
-            division_id: divisionId,
-            role_id: roleId
-        },
-        success: function(response) {
-            if (response.success) {
-                // Close modal
-                bootstrap.Modal.getInstance(document.getElementById('approveUserModal')).hide();
-                
-                // Show success message
-                alert(response.message);
-                
-                // Reload table
-                $('#usersTable').DataTable().ajax.reload(null, false);
-            } else {
-                alert('Error: ' + (response.message || 'Gagal mengaktifkan user'));
-                submitBtn.prop('disabled', false).html(originalText);
-            }
-        },
-        error: function(xhr) {
-            const response = xhr.responseJSON || {};
-            alert('Error: ' + (response.message || 'Terjadi kesalahan saat mengaktifkan user'));
-            submitBtn.prop('disabled', false).html(originalText);
-        }
-    });
-    
-    return false;
-});
-
 // Handle division change for approval modal
 $(document).on('change', '#approveDivisionId', function() {
     console.log('Approval division changed to:', $(this).val());
@@ -825,9 +752,18 @@ function deactivateUser(userId, userName) {
     }
     
     $.ajax({
-        url: '<?= base_url("admin/advanced-users/deactivate-user") ?>/' + userId,
+        url: '<?= base_url('admin/advanced-users/deactivate-user') ?>/' + userId,
         type: 'POST',
         dataType: 'json',
+        data: (function() {
+            var d = {};
+            d['<?= csrf_token() ?>'] = getCsrfToken();
+            return d;
+        })(),
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCsrfToken()
+        },
         success: function(response) {
             if (response.success) {
                 alert(response.message);
@@ -844,9 +780,9 @@ function deactivateUser(userId, userName) {
 }
 
 function confirmDeleteUser(userId, userName) {
-    if (confirm('Are you sure you want to delete user "' + userName + '"?\\n\\nThis action cannot be undone!')) {
+    if (confirm('Are you sure you want to delete user "' + userName + '"?\n\nThis action cannot be undone!')) {
         $.ajax({
-            url: '<?= base_url("admin/advanced-users/delete") ?>/' + userId,
+            url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
             method: 'DELETE',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -873,12 +809,12 @@ function confirmDeleteUser(userId, userName) {
 }
 
 function exportUsers() {
-    window.location.href = '<?= base_url("admin/advanced-users/export") ?>';
+    window.location.href = '<?= base_url('admin/advanced-users/export') ?>';
 }
 
 function cleanExpiredPermissions() {
     if (confirm('Are you sure you want to clean all expired permissions?\n\nThis will remove permissions that have expired or are no longer valid.')) {
-        $.post('<?= base_url("admin/advanced-users/clean-expired") ?>', {}, function(response) {
+        $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', { '<?= csrf_token() ?>': getCsrfToken() }, function(response) {
             if (response.success) {
                 alert('Expired permissions cleaned successfully.\n\nRemoved: ' + (response.removed_count || 0) + ' permissions');
                 location.reload();
