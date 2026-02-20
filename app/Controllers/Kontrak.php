@@ -43,6 +43,128 @@ class Kontrak extends BaseController
     }
 
     /**
+     * Menyediakan data kontrak yang dikelompokkan per customer untuk Grouped View.
+     */
+    public function getGrouped()
+    {
+        try {
+            $db = \Config\Database::connect();
+
+            // Build optional filter conditions
+            $conditions = [];
+            $params     = [];
+
+            $rentalType = $this->request->getGet('rental_type');
+            $status     = $this->request->getGet('status');
+            $customerId = $this->request->getGet('customer_id');
+
+            if ($rentalType) { $conditions[] = 'k.rental_type = ?'; $params[] = $rentalType; }
+            if ($status)     { $conditions[] = 'k.status = ?';      $params[] = $status; }
+            if ($customerId) { $conditions[] = 'c.id = ?';           $params[] = $customerId; }
+
+            $where = $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '';
+
+            $sql = "
+                SELECT
+                    COALESCE(c.id, 0) AS customer_id,
+                    COALESCE(c.customer_name, 'Unknown Customer') AS customer_name,
+                    k.id            AS kontrak_id,
+                    k.no_kontrak,
+                    k.customer_po_number,
+                    k.rental_type,
+                    k.status,
+                    k.tanggal_mulai,
+                    k.tanggal_berakhir,
+                    k.total_units,
+                    k.nilai_total,
+                    k.jenis_sewa,
+                    cl.location_name
+                FROM kontrak k
+                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
+                LEFT JOIN customers c ON cl.customer_id = c.id
+                $where
+                ORDER BY c.customer_name ASC, k.tanggal_mulai DESC
+                LIMIT 3000
+            ";
+
+            $rows = $db->query($sql, $params)->getResultArray();
+
+            // Group by customer
+            $customers = [];
+            foreach ($rows as $row) {
+                $cid  = $row['customer_id'];
+                $cname = $row['customer_name'];
+
+                if (!isset($customers[$cid])) {
+                    $customers[$cid] = [
+                        'customer_id'      => $cid,
+                        'customer_name'    => $cname,
+                        'total_contracts'  => 0,
+                        'total_units'      => 0,
+                        'monthly_value'    => 0,
+                        'contracts'        => [],
+                    ];
+                }
+
+                // Days remaining
+                $daysRemaining = null;
+                if (!empty($row['tanggal_berakhir'])) {
+                    $ts = strtotime($row['tanggal_berakhir']);
+                    if ($ts && date('Y', $ts) > 1) {
+                        $endDate = new \DateTime($row['tanggal_berakhir']);
+                        $today   = new \DateTime('today');
+                        $diff    = $today->diff($endDate);
+                        $daysRemaining = $diff->invert ? -$diff->days : $diff->days;
+                    }
+                }
+
+                // Safe end date
+                $safeEnd = null;
+                if (!empty($row['tanggal_berakhir'])) {
+                    $ts = strtotime($row['tanggal_berakhir']);
+                    if ($ts && date('Y', $ts) > 1) {
+                        $safeEnd = $row['tanggal_berakhir'];
+                    }
+                }
+
+                $customers[$cid]['contracts'][] = [
+                    'id'            => $row['kontrak_id'],
+                    'no_kontrak'    => $row['no_kontrak'],
+                    'po_number'     => $row['customer_po_number'],
+                    'rental_type'   => $row['rental_type'],
+                    'status'        => $row['status'],
+                    'start_date'    => $row['tanggal_mulai'],
+                    'end_date'      => $safeEnd,
+                    'total_units'   => intval($row['total_units']),
+                    'nilai_total'   => floatval($row['nilai_total']),
+                    'jenis_sewa'    => $row['jenis_sewa'],
+                    'location'      => $row['location_name'],
+                    'days_remaining'=> $daysRemaining,
+                ];
+
+                $customers[$cid]['total_contracts']++;
+                $customers[$cid]['total_units'] += intval($row['total_units']);
+                if ($row['status'] === 'ACTIVE') {
+                    $customers[$cid]['monthly_value'] += floatval($row['nilai_total']);
+                }
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data'    => array_values($customers),
+                'total'   => count($customers),
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::getGrouped error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Server error: ' . $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
      * Menyediakan data untuk DataTables Server-Side.
      */
     public function getDataTable()
@@ -79,7 +201,14 @@ class Kontrak extends BaseController
                 
                 $row['client_name']     = esc($contract['pelanggan']);
                 $row['jenis_sewa']      = ucfirst($contract['jenis_sewa'] ?? 'BULANAN');
-                $row['period']          = date('d M Y', strtotime($contract['tanggal_mulai'])) . ' - ' . date('d M Y', strtotime($contract['tanggal_berakhir']));
+                // Raw dates for JS Days Remaining calculation (view renders its own period display)
+                $row['start_date']      = $contract['tanggal_mulai'] ?? null;
+                $row['end_date']        = (!empty($contract['tanggal_berakhir']) && date('Y', strtotime($contract['tanggal_berakhir'])) > 0)
+                                            ? $contract['tanggal_berakhir']
+                                            : null;
+                $row['period']          = ($row['start_date'] ? date('d M Y', strtotime($row['start_date'])) : '-') .
+                                          ' - ' .
+                                          ($row['end_date'] ? date('d M Y', strtotime($row['end_date'])) : 'Open-ended');
                 $row['total_units']     = intval($contract['total_units'] ?? 0);
                 $row['value']           = 'Rp ' . number_format($contract['nilai_total'] ?? 0, 0, ',', '.');
                 
@@ -678,50 +807,29 @@ class Kontrak extends BaseController
     }
 
     /**
-     * Get contract detail
+     * Contract detail page
      */
     public function detail($id)
     {
-        log_message('debug', '=== Kontrak::detail START === ID: ' . $id);
-        
-        // Validate ID
         if (!$id || $id == '0' || $id == 0) {
-            log_message('error', 'Invalid contract ID: ' . $id);
-            return $this->response->setJSON([
-                'success' => false, 
-                'message' => lang('Marketing.contract') . ' ID ' . lang('App.error_invalid_data') . '.'
-            ]);
+            return redirect()->to('marketing/kontrak')->with('error', 'ID kontrak tidak valid.');
         }
 
-        try {
-            $contract = $this->kontrakModel->findWithDynamicCalculation($id);
-            log_message('debug', 'Contract data: ' . json_encode($contract));
-        } catch (\Exception $e) {
-            log_message('error', 'Error in findWithDynamicCalculation: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Database error: ' . $e->getMessage()
-            ]);
+        $contract = $this->db->table('kontrak k')
+            ->select('k.*, cl.customer_id, c.customer_name, cl.location_name')
+            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+            ->join('customers c', 'c.id = cl.customer_id', 'left')
+            ->where('k.id', (int)$id)
+            ->get()->getRowArray();
+
+        if (!$contract) {
+            return redirect()->to('marketing/kontrak')->with('error', 'Kontrak tidak ditemukan.');
         }
-        
-        if ($contract) {
-            // Add backward compatibility aliases for SPK modal
-            $contract['pelanggan'] = $contract['customer_name'] ?? '';
-            $contract['pic'] = $contract['contact_person'] ?? '';
-            $contract['kontak'] = $contract['phone'] ?? '';
-            $contract['lokasi'] = $contract['location_name'] ?? '';
-            $contract['alamat'] = $contract['address'] ?? '';
-            
-            return $this->response->setJSON([
-                'success' => true, 
-                'data' => $contract
-            ]);
-        } else {
-            return $this->response->setJSON([
-                'success' => false, 
-                'message' => lang('Marketing.contract') . ' ' . lang('App.error_not_found') . '.'
-            ]);
-        }
+
+        return view('marketing/kontrak_detail', [
+            'title'    => 'Detail Kontrak — ' . ($contract['no_kontrak'] ?? '#' . $id),
+            'contract' => $contract,
+        ]);
     }
 
     /**
@@ -731,22 +839,26 @@ class Kontrak extends BaseController
     {
         // Validate ID
         if (!$id || $id == '0' || $id == 0) {
-            return $this->response->setJSON([
-                'success' => false, 
-                'message' => 'ID kontrak tidak valid.'
-            ]);
+            return redirect()->to('marketing/kontrak')->with('error', 'ID kontrak tidak valid.');
         }
 
-        $contract = $this->kontrakModel->find($id);
+        // Fetch contract with customer join so the edit view has customer_id
+        $contract = $this->db->table('kontrak k')
+            ->select('k.*, cl.customer_id, c.customer_name, cl.location_name')
+            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+            ->join('customers c', 'c.id = cl.customer_id', 'left')
+            ->where('k.id', (int)$id)
+            ->get()->getRowArray();
+
         if (!$contract) {
-            return redirect()->to('marketing/contracts')->with('error', 'Kontrak tidak ditemukan.');
+            return redirect()->to('marketing/kontrak')->with('error', 'Kontrak tidak ditemukan.');
         }
 
         $data = [
-            'title' => 'Edit Kontrak',
-            'contract' => $contract
+            'title'    => 'Edit Kontrak — ' . ($contract['no_kontrak'] ?? '#' . $id),
+            'contract' => $contract,
         ];
-        
+
         return view('marketing/kontrak_edit', $data);
     }
 

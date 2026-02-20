@@ -140,7 +140,6 @@ $can_export = $permissions['export'];
                     <tr>
                         <th>Customer Code</th>
                         <th>Customer Name</th>
-                        <th>Area</th>
                         <th>Locations</th>
                         <th>Contracts</th>
                         <th>Total Units</th>
@@ -958,14 +957,6 @@ function initializeCustomerTable() {
                 },
                 { data: 'customer_name' },
                 { 
-                    data: 'area_name',
-                    render: function(data) {
-                        if (!data) return '-';
-                        const areas = data.split(', ');
-                        return areas.length > 2 ? areas[0] + ' +' + (areas.length - 1) : data;
-                    }
-                },
-                { 
                     data: 'locations_count',
                     className: 'text-center',
                     orderable: false,
@@ -1022,7 +1013,7 @@ function initializeCustomerTable() {
                 '#customerTable',
                 dateInputs.eq(0).attr('id') ? '#' + dateInputs.eq(0).attr('id') : dateInputs.eq(0),
                 dateInputs.eq(1).attr('id') ? '#' + dateInputs.eq(1).attr('id') : dateInputs.eq(1),
-                7 // created_at column index
+                6 // created_at column index (was 7, area column removed)
             );
         }
         
@@ -1376,7 +1367,7 @@ function showContractActions(event, contractId, contractNo, showRenew, showAmend
         <div class="contract-actions-menu" style="position: fixed; top: ${rect.bottom + 5}px; left: ${rect.left - 140}px; z-index: 10500;">
             <div class="list-group shadow">
                 <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); openContractDetail(${contractId}); $('.contract-actions-menu').remove();">
-                    <i class="fas fa-eye text-primary me-2"></i>View Detail (Read-Only)
+                    <i class="fas fa-eye text-primary me-2"></i>View Detail
                 </a>
                 <a href="<?= base_url('marketing/kontrak?contract=') ?>${contractId}" target="_blank" class="list-group-item list-group-item-action" onclick="$('.contract-actions-menu').remove();">
                     <i class="fas fa-external-link-alt text-success me-2"></i>Manage in Kontrak Page

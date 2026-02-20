@@ -291,6 +291,26 @@ let usageTable, returnsTable;
 let usageTableInitialized = false;
 let returnsTableInitialized = false;
 
+// Setup CSRF token for all AJAX requests
+$.ajaxSetup({
+    headers: {
+        'X-CSRF-TOKEN': '<?= csrf_hash() ?>'
+    },
+    beforeSend: function(xhr, settings) {
+        // Add CSRF token to POST/PUT/DELETE requests
+        if (settings.type !== 'GET' && settings.type !== 'HEAD') {
+            if (!settings.data) {
+                settings.data = {};
+            }
+            if (typeof settings.data === 'string') {
+                settings.data += '&<?= csrf_token() ?>=' + '<?= csrf_hash() ?>';
+            } else {
+                settings.data['<?= csrf_token() ?>'] = '<?= csrf_hash() ?>';
+            }
+        }
+    }
+});
+
 $(document).ready(function() {
     // Handle tab switching
     $('#sparepartTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
@@ -407,7 +427,11 @@ $(document).ready(function() {
         serverSide: true,
         ajax: {
             url: '<?= base_url('warehouse/sparepart-usage/get-usage-grouped') ?>',
-            type: 'POST'
+            type: 'POST',
+            data: function (d) {
+                d.<?= csrf_token() ?> = '<?= csrf_hash() ?>';
+                return d;
+            }
         },
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
         columns: [
@@ -549,6 +573,8 @@ $(document).ready(function() {
             type: 'POST',
             data: function(d) {
                 d.status = $('#filter-status').val();
+                d.<?= csrf_token() ?> = '<?= csrf_hash() ?>';
+                return d;
             }
         },
         dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>rtip',
@@ -932,7 +958,10 @@ $(document).ready(function() {
         $.ajax({
             url: '<?= base_url('warehouse/sparepart-usage/confirm-return') ?>/' + id,
             type: 'POST',
-            data: { notes: notes },
+            data: { 
+                notes: notes,
+                <?= csrf_token() ?>: '<?= csrf_hash() ?>'
+            },
             success: function(response) {
                 if (response.success) {
                     alert('Sparepart return has been successfully confirmed');
