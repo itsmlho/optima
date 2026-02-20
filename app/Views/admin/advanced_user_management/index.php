@@ -359,7 +359,10 @@ helper('permission_helper');
 <script>
 // Helper function to get CSRF token from cookie
 function getCsrfToken() {
-    const name = '<?= csrf_token() ?>=';
+    // Prefer window.csrfToken if set by base layout
+    if (window.csrfToken) return window.csrfToken;
+    // Fallback: read from cookie (CI4 stores value in csrf_cookie_name cookie)
+    const name = 'csrf_cookie_name=';
     const decodedCookie = decodeURIComponent(document.cookie);
     const cookies = decodedCookie.split(';');
     for (let i = 0; i < cookies.length; i++) {
@@ -375,7 +378,7 @@ function getCsrfToken() {
 $.ajaxSetup({
     beforeSend: function(xhr) {
         xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-        xhr.setRequestHeader('X-CSRF-TOKEN', getCsrfToken());
+        xhr.setRequestHeader('X-CSRFToken', getCsrfToken());
     }
 });
 
@@ -442,9 +445,11 @@ $(document).ready(function() {
             url: '<?= base_url('admin/advanced-users/getDataTable') ?>',
             type: 'POST',
             data: function(d) {
-                // Include CSRF token in request
+                // DataTable doesn't use $.ajaxSetup, so we must inject the CSRF token manually
+                d['<?= csrf_token() ?>'] = getCsrfToken();
                 return d;
             },
+
             error: function(xhr, error, thrown) {
                 let msg = 'Failed to load users data.';
                 if (xhr.responseText) {
@@ -886,5 +891,4 @@ function cleanExpiredPermissions() {
     }
 }
 </script>
-<?= $this->endSection() ?>
 <?= $this->endSection() ?>
