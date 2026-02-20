@@ -162,6 +162,7 @@ $routes->group('marketing',  static function ($routes) {
     $routes->group('kontrak', static function ($routes) {
         $routes->get('/', 'Kontrak::index'); 
         $routes->post('getDataTable', 'Kontrak::getDataTable');
+        $routes->get('getGrouped', 'Kontrak::getGrouped');
         $routes->get('generate-number', 'Kontrak::generateNumber');
         $routes->post('check-duplicate', 'Kontrak::checkDuplicate');
         $routes->post('store', 'Kontrak::store');
@@ -186,8 +187,12 @@ $routes->group('marketing',  static function ($routes) {
         $routes->get('available-units/(:num)', 'Kontrak::getAvailableUnits/$1');
         $routes->post('assign-units', 'Kontrak::assignUnitsToSpesifikasi');
         
+        $routes->get('detail/(:num)', 'Kontrak::detail/$1');
         // Inventory status monitoring
         $routes->get('inventory-status/(:num)', 'Kontrak::getInventoryStatus/$1');
+        $routes->get('getContractHistory/(:num)', 'Kontrak::getContractHistory/$1');
+        $routes->get('getRateHistory/(:num)', 'Kontrak::getRateHistory/$1');
+        $routes->get('getRateHistory', 'Kontrak::getRateHistory');
         $routes->post('bulk-fix-inventory-status', 'Kontrak::bulkFixInventoryStatus');
         $routes->post('trigger-status-update/(:num)', 'Kontrak::triggerStatusUpdateAfterWorkflow/$1');
         $routes->post('link-fabrication-attachments/(:num)', 'Kontrak::linkFabricationAttachments/$1');

@@ -997,7 +997,8 @@ class Warehouse extends BaseController
             // ── B. Seed events dari data statis (untuk data sebelum logging) ──
             // Query unit dasar — kolom FK bersifat optional (pakai INFORMATION_SCHEMA safe query)
             $unit = $db->query('
-                SELECT iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.created_at
+                SELECT iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.created_at,
+                       iu.kontrak_id, iu.workflow_status
                 FROM inventory_unit iu
                 WHERE iu.id_inventory_unit = ?
             ', [$id])->getRowArray();
@@ -1076,24 +1077,69 @@ class Warehouse extends BaseController
                 log_message('info', '[getUnitHistory] DI seed skip: ' . $e->getMessage());
             }
 
-            // B4. Kontrak terkait unit in (via kontrak_unit pivot)
+
+            // B4-current. Kontrak aktif saat ini (dari inventory_unit.kontrak_id — lebih reliable)
+            // Hanya seed jika belum ada log kontrak di activity_log
+            $hasKontrakLog = !empty(array_filter($timeline, fn($t) => str_contains($t['type'] ?? '', 'kontrak')));
+            if (!empty($unit['kontrak_id']) && !$hasKontrakLog) {
+                try {
+                    $aktifKontrak = $db->query('
+                        SELECT k.id, k.no_kontrak, ku.tanggal_mulai
+                        FROM kontrak k
+                        LEFT JOIN kontrak_unit ku ON ku.kontrak_id = k.id AND ku.unit_id = ? AND ku.is_temporary = 0
+                        WHERE k.id = ?
+                        LIMIT 1
+                    ', [$id, $unit['kontrak_id']])->getRowArray();
+
+                    if ($aktifKontrak) {
+                        $timeline[] = [
+                            'type'        => 'kontrak',
+                            'icon'        => 'fas fa-file-contract',
+                            'color'       => 'success',
+                            'title'       => 'Kontrak Sewa',
+                            'description' => 'No. Kontrak: ' . ($aktifKontrak['no_kontrak'] ?? '-') . ' | Aktif',
+                            'date'        => $aktifKontrak['tanggal_mulai'] ?? $unit['created_at'],
+                            'ref_number'  => $aktifKontrak['no_kontrak'],
+                            'source'      => 'seed',
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    log_message('info', '[getUnitHistory] Kontrak-current seed skip: ' . $e->getMessage());
+                }
+            }
+
+            // B4. Kontrak historis terkait unit ini (via kontrak_unit pivot)
+            // Hanya ambil yang sudah selesai/ditarik — status ACTIVE di kontrak_unit
+            // rentan dirty data, dan kontrak aktif seharusnya ter-log di system_activity_log.
             try {
                 $kontrakRows = $db->query('
-                    SELECT k.id, k.no_kontrak, k.tanggal_mulai
+                    SELECT k.id, k.no_kontrak, ku.tanggal_mulai, ku.tanggal_selesai,
+                           ku.status as ku_status, ku.tanggal_tarik
                     FROM kontrak_unit ku
                     JOIN kontrak k ON k.id = ku.kontrak_id
                     WHERE ku.unit_id = ?
-                    LIMIT 5
+                      AND ku.status IN (\'PULLED\', \'REPLACED\', \'INACTIVE\', \'TEMP_ENDED\')
+                    ORDER BY COALESCE(ku.tanggal_tarik, ku.tanggal_selesai, ku.tanggal_mulai) ASC
+                    LIMIT 10
                 ', [$id])->getResultArray();
 
+                $statusLabel = [
+                    'PULLED'     => 'Ditarik',
+                    'REPLACED'   => 'Diganti Unit Lain',
+                    'INACTIVE'   => 'Kontrak Berakhir',
+                    'TEMP_ENDED' => 'Penggantian Sementara Selesai',
+                ];
+
                 foreach ($kontrakRows as $kontrak) {
+                    $stLabel = $statusLabel[$kontrak['ku_status']] ?? $kontrak['ku_status'];
+                    $endDate  = $kontrak['tanggal_tarik'] ?? $kontrak['tanggal_selesai'] ?? $kontrak['tanggal_mulai'];
                     $timeline[] = [
                         'type'        => 'kontrak',
                         'icon'        => 'fas fa-file-contract',
-                        'color'       => 'success',
-                        'title'       => 'Kontrak Sewa',
-                        'description' => 'No. Kontrak: ' . ($kontrak['no_kontrak'] ?? '-'),
-                        'date'        => $kontrak['tanggal_mulai'],
+                        'color'       => 'secondary',
+                        'title'       => 'Kontrak Sewa Selesai',
+                        'description' => 'No. Kontrak: ' . ($kontrak['no_kontrak'] ?? '-') . ' | ' . $stLabel,
+                        'date'        => $endDate,
                         'ref_number'  => $kontrak['no_kontrak'],
                         'source'      => 'seed',
                     ];

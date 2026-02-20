@@ -117,8 +117,19 @@ $can_export = can_export('marketing');
 
 <!-- Contracts Table Card -->
 <div class="card table-card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0">Contract & PO Management</h5>
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-3">
+            <h5 class="mb-0">Contract & PO Management</h5>
+            <!-- View Mode Toggle -->
+            <div class="btn-group btn-group-sm" role="group" id="viewModeToggle">
+                <button type="button" class="btn btn-secondary active" id="btnFlatView" onclick="switchViewMode('flat')">
+                    <i class="fas fa-list me-1"></i>Flat
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="btnGroupedView" onclick="switchViewMode('grouped')">
+                    <i class="fas fa-layer-group me-1"></i>By Customer
+                </button>
+            </div>
+        </div>
         <div class="d-flex gap-2">
             <?php if ($can_create): ?>
                 <button type="button" class="btn btn-primary btn-sm" onclick="openAddContractModal()">
@@ -130,32 +141,38 @@ $can_export = can_export('marketing');
                     <i class="fas fa-file-excel me-1"></i>Export
                 </button>
             <?php endif; ?>
-            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshTable()">
+            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="refreshView()">
                 <i class="fas fa-sync me-1"></i>Refresh
             </button>
         </div>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
+    <!-- FLAT VIEW body -->
+    <div id="flatViewBody" class="card-body p-0" style="overflow: visible;">
+        <div class="table-responsive" style="overflow: visible;">
             <table class="table table-striped table-hover mb-0" id="contractsTable">
                 <thead class="bg-light">
                     <tr>
-                        <th>Contract No</th>
-                        <th>Type</th>
-                        <th>PO Number</th>
-                        <th>Customer</th>
+                        <th>Kontrak / PO</th>
+                        <th>Tipe</th>
                         <th>Billing</th>
-                        <th>Period</th>
-                        <th>Units</th>
-                        <th>Value</th>
+                        <th>Periode &amp; Sisa Hari</th>
+                        <th>Unit</th>
+                        <th>Nilai</th>
                         <th>Status</th>
-                        <th>Actions</th>
+                        <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <!-- DataTables will populate -->
                 </tbody>
             </table>
+        </div>
+    </div>
+    <!-- GROUPED VIEW body (inside same card, hidden by default) -->
+    <div id="groupedViewBody" style="display:none">
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <p class="text-muted">Memuat data...</p>
         </div>
     </div>
 </div>
@@ -310,16 +327,24 @@ $can_export = can_export('marketing');
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light">
+            <div class="modal-footer bg-light d-flex justify-content-between">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Close
                 </button>
-                <button type="button" class="btn btn-warning" onclick="editContractFromModal()">
-                    <i class="fas fa-edit me-1"></i>Edit Contract
-                </button>
-                <button type="button" class="btn btn-danger" onclick="deleteContractFromModal()">
-                    <i class="fas fa-trash me-1"></i>Delete Contract
-                </button>
+                <div class="btn-group" role="group" id="contractActionButtons">
+                    <button type="button" class="btn btn-primary" onclick="editContractFromModal()" title="Edit Contract">
+                        <i class="fas fa-edit me-1"></i>Edit
+                    </button>
+                    <button type="button" class="btn btn-success" id="btnRenewal" onclick="openRenewalFromModal()" title="Renew Contract">
+                        <i class="fas fa-sync-alt me-1"></i>Renewal
+                    </button>
+                    <button type="button" class="btn btn-warning" id="btnAmendment" onclick="openAmendmentFromModal()" title="Change Rate">
+                        <i class="fas fa-calculator me-1"></i>Change Rate
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="deleteContractFromModal()" title="Delete Contract">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -513,12 +538,58 @@ function initializeContractsTable() {
             }
         },
         columns: [
-            { data: 'contract_number' },
+            { 
+                data: 'contract_number',
+                render: function(data, type, row) {
+                    const customerName = row.client_name || '—';
+                    const contractNo = data || '—';
+                    const poNo = row.po ? `<br><small class="text-muted"><i class="fas fa-file-invoice me-1"></i>PO: ${row.po}</small>` : '';
+                    return `<div class="fw-semibold">${customerName}</div>
+                            <small class="text-muted font-monospace">${contractNo}</small>${poNo}`;
+                }
+            },
             { data: 'rental_type' },
-            { data: 'po' },
-            { data: 'client_name' },
-            { data: 'jenis_sewa' },
-            { data: 'period' },
+            { 
+                data: 'jenis_sewa',
+                render: function(data) {
+                    const map = { 'BULANAN': 'Monthly', 'HARIAN': 'Daily' };
+                    return map[data] || data || '—';
+                }
+            },
+            { 
+                data: 'period',
+                render: function(data, type, row) {
+                    // Fix invalid dates (year <= 0 or null)
+                    function safeDate(str) {
+                        if (!str) return null;
+                        const d = new Date(str);
+                        if (isNaN(d.getTime()) || d.getFullYear() <= 0) return null;
+                        return d;
+                    }
+                    const startStr = row.start_date || null;
+                    const endStr   = row.end_date   || null;
+                    const start = safeDate(startStr);
+                    const end   = safeDate(endStr);
+                    const startLabel = start ? start.toLocaleDateString('id-ID', {day:'2-digit', month:'short', year:'numeric'}) : '—';
+                    const endLabel   = end   ? end.toLocaleDateString('id-ID',   {day:'2-digit', month:'short', year:'numeric'}) : 'Open-ended';
+                    
+                    let daysHtml = '';
+                    if (end && row.status === 'ACTIVE') {
+                        const today = new Date();
+                        today.setHours(0,0,0,0);
+                        const diffMs = end - today;
+                        const days = Math.ceil(diffMs / (1000*60*60*24));
+                        if (days < 0) {
+                            daysHtml = `<br><span class="badge bg-danger">Expired ${Math.abs(days)}h lalu</span>`;
+                        } else if (days <= 30) {
+                            daysHtml = `<br><span class="badge bg-warning text-dark">${days}h lagi</span>`;
+                        } else if (days <= 90) {
+                            daysHtml = `<br><span class="badge bg-info">${days}h lagi</span>`;
+                        }
+                    }
+                    return `<small>${startLabel} – ${endLabel}</small>${daysHtml}`;
+                }
+            },
             { data: 'total_units', className: 'text-center' },
             { data: 'value', className: 'text-end' },
             { data: 'status' },
@@ -527,33 +598,7 @@ function initializeContractsTable() {
                 orderable: false, 
                 className: 'text-center',
                 render: function(data, type, row) {
-                    let buttons = '';
-                    
-                    // View Detail button - PRIMARY ACTION
-                    buttons += '<button class="btn btn-sm btn-info me-1" onclick="viewContractDetail(' + row.id + ')" title="View Details">' +
-                               '<i class="fas fa-eye"></i></button>';
-                    
-                    // Edit button
-                    buttons += '<button class="btn btn-sm btn-primary me-1" onclick="editContract(' + row.id + ')" title="Edit Contract">' +
-                               '<i class="fas fa-edit"></i></button>';
-                    
-                    // Renewal button (untuk kontrak yang akan expire dalam 90 hari)
-                    if (row.days_until_expiry !== undefined && row.days_until_expiry <= 90 && row.days_until_expiry > 0 && row.status === 'ACTIVE') {
-                        buttons += '<button class="btn btn-sm btn-success me-1" onclick="openRenewalWizard(' + row.id + ')" title="Renew Contract">' +
-                                   '<i class="fas fa-sync-alt"></i></button>';
-                    }
-                    
-                    // Amendment button (untuk kontrak aktif)
-                    if (row.status === 'ACTIVE') {
-                        buttons += '<button class="btn btn-sm btn-warning me-1" onclick="openAmendmentModal(' + row.id + ')" title="Change Rate">' +
-                                   '<i class="fas fa-calculator"></i></button>';
-                    }
-                    
-                    // Delete button
-                    buttons += '<button class="btn btn-sm btn-danger" onclick="deleteContract(' + row.id + ')" title="Delete Contract">' +
-                               '<i class="fas fa-trash"></i></button>';
-                    
-                    return buttons;
+                    return buildActionButtons(row.id, row.status, row.days_until_expiry);
                 }
             }
         ],
@@ -564,13 +609,26 @@ function initializeContractsTable() {
             processing: '<i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading...',
             emptyTable: 'No contracts found',
             zeroRecords: 'No matching contracts found'
+        },
+        drawCallback: function() {
+            // Enable Bootstrap tooltips for action buttons
+            $('[title]').tooltip({
+                container: 'body',
+                trigger: 'hover'
+            });
         }
     });
 }
 
 // Apply filters
 function applyFilters() {
-    contractsTable.ajax.reload();
+    if (currentViewMode === 'flat') {
+        contractsTable.ajax.reload();
+    } else {
+        // Reload grouped view with current filters
+        groupedData = null;
+        loadGroupedView(true);
+    }
 }
 
 // Refresh table
@@ -593,9 +651,25 @@ function exportContracts() {
     window.location.href = url;
 }
 
-// Edit contract
+// Edit contract — navigate to dedicated edit page
 function editContract(id) {
     window.location.href = '<?= base_url('marketing/kontrak/edit') ?>/' + id;
+}
+
+/**
+ * Shared action button builder — used by BOTH flat DataTable and grouped view.
+ * Now shows only View Detail button - all actions moved to modal.
+ * @param {number} id          Contract ID
+ * @param {string} status      Contract status (ACTIVE, EXPIRED, PENDING, CANCELLED)
+ * @param {number|null} days   Days remaining (positive = future, negative = past, null = open-ended)
+ */
+function buildActionButtons(id, status, days) {
+    return `
+        <a href="<?= base_url('marketing/kontrak/detail') ?>/${id}"
+           class="btn btn-sm btn-primary"
+           title="View Details">
+            <i class="fas fa-eye me-1"></i>View Detail
+        </a>`;
 }
 
 // View contract units
@@ -698,7 +772,7 @@ function openRenewalWizard(contractId) {
 function openAmendmentModal(contractId) {
     // Populate contract dropdown and select this contract
     $.ajax({
-        url: '<?= base_url('kontrak/getActiveContracts') ?>',
+        url: '<?= base_url('marketing/kontrak/get-active-contracts') ?>',
         type: 'GET',
         success: function(response) {
             if (response.success) {
@@ -732,7 +806,7 @@ function openHistoryModal(contractId) {
     
     // Load contract history
     $.ajax({
-        url: '<?= base_url('kontrak/getContractHistory') ?>/' + contractId,
+        url: '<?= base_url('marketing/kontrak/getContractHistory') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success) {
@@ -759,7 +833,7 @@ function openHistoryModal(contractId) {
     
     // Load rate history
     $.ajax({
-        url: '<?= base_url('kontrak/getRateHistory') ?>/' + contractId,
+        url: '<?= base_url('marketing/kontrak/getRateHistory') ?>/' + contractId,
         type: 'GET',
         success: function(response) {
             if (response.success && response.data) {
@@ -849,14 +923,63 @@ function renderRateHistory(rates) {
 }
 
 // ============================================================================
-// NEW: CONTRACT DETAIL MODAL FUNCTIONS
+// CONTRACT DETAIL MODAL HELPER FUNCTIONS
 // ============================================================================
 
 let currentContractId = null;
+let currentContractStatus = null;
 
 /**
- * View Contract Detail - Opens comprehensive detail modal
+ * Update modal action buttons visibility based on contract status
  */
+function updateModalActionButtons(status) {
+    const canRenew = (status === 'ACTIVE' || status === 'EXPIRED');
+    const canAmend = (status === 'ACTIVE');
+    
+    // Show/hide Renewal button
+    if (canRenew) {
+        $('#btnRenewal').show();
+    } else {
+        $('#btnRenewal').hide();
+    }
+    
+    // Show/hide Change Rate button
+    if (canAmend) {
+        $('#btnAmendment').show();
+    } else {
+        $('#btnAmendment').hide();
+    }
+}
+
+/**
+ * Open Renewal Wizard from Modal
+ */
+function openRenewalFromModal() {
+    if (!currentContractId) return;
+    console.log('🔄 Opening renewal wizard for contract ID:', currentContractId);
+    $('#contractDetailModal').modal('hide');
+    setTimeout(function() {
+        openRenewalWizard(currentContractId);
+    }, 300);
+}
+
+/**
+ * Open Amendment Modal from Modal
+ */
+function openAmendmentFromModal() {
+    if (!currentContractId) return;
+    console.log('🧮 Opening amendment modal for contract ID:', currentContractId);
+    $('#contractDetailModal').modal('hide');
+    setTimeout(function() {
+        openAmendmentModal(currentContractId);
+    }, 300);
+}
+
+/**
+ * Called from the modal footer "Edit Contract" button.
+ * For now opens a simple prompt; can be upgraded to an inline edit tab.
+ */
+
 function viewContractDetail(contractId) {
     currentContractId = contractId;
     
@@ -985,6 +1108,12 @@ function loadContractOverview(contractId) {
                 financialHtml += '</div>';
                 
                 $('#financialSummaryContent').html(financialHtml);
+                
+                // Store contract status for action buttons
+                currentContractStatus = contract.status;
+                
+                // Update action buttons visibility based on status
+                updateModalActionButtons(contract.status);
                 
                 console.log('✅ Contract overview loaded successfully');
             } else {
@@ -1402,5 +1531,277 @@ $(document).on('submit', '#addContractForm', function(e) {
     });
 });
 
+</script>
+
+<style>
+/* ──── Grouped View Styles ──── */
+.gv-customer-header {
+    cursor: pointer;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    transition: background 0.2s;
+    user-select: none;
+}
+.gv-customer-header:hover {
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+}
+.gv-customer-header.collapsed .gv-caret { transform: rotate(-90deg); }
+.gv-caret { transition: transform 0.2s ease; display: inline-block; }
+.gv-child-table thead th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.gv-child-table td { vertical-align: middle; font-size: 0.875rem; }
+.gv-customer-block { border: 1px solid #dee2e6; border-radius: 8px; margin-bottom: 10px; }
+.gv-child-wrap { transition: none; }
+#groupedViewBody .table-responsive { overflow: visible; }
+#groupedViewBody .dropdown-menu { z-index: 9050; }
+.gv-summary-badges .badge { font-size: 0.72rem; }
+.gv-search-wrap { padding: 12px 16px; background: #f1f3f5; border-bottom: 1px solid #dee2e6; }
+
+/* ──── Action Button Styling ──── */
+.btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* Modal footer button group */
+#contractActionButtons .btn {
+    min-width: 95px;
+}
+</style>
+
+<script>
+// ──── View Mode State ────────────────────────────────────────────────
+let currentViewMode = 'flat';
+let groupedData     = null; // cache
+
+function switchViewMode(mode) {
+    currentViewMode = mode;
+    const flatBtn     = document.getElementById('btnFlatView');
+    const groupedBtn  = document.getElementById('btnGroupedView');
+    const flatBody    = document.getElementById('flatViewBody');
+    const groupedBody = document.getElementById('groupedViewBody');
+
+    if (mode === 'flat') {
+        flatBtn.classList.add('active', 'btn-secondary');
+        flatBtn.classList.remove('btn-outline-secondary');
+        groupedBtn.classList.remove('active', 'btn-secondary');
+        groupedBtn.classList.add('btn-outline-secondary');
+        flatBody.style.display    = '';
+        groupedBody.style.display = 'none';
+    } else {
+        groupedBtn.classList.add('active', 'btn-secondary');
+        groupedBtn.classList.remove('btn-outline-secondary');
+        flatBtn.classList.remove('active', 'btn-secondary');
+        flatBtn.classList.add('btn-outline-secondary');
+        flatBody.style.display    = 'none';
+        groupedBody.style.display = '';
+        loadGroupedView(false);
+    }
+}
+
+function refreshView() {
+    if (currentViewMode === 'flat') {
+        if (contractsTable) contractsTable.ajax.reload(null, false);
+    } else {
+        groupedData = null;
+        loadGroupedView(true);
+    }
+}
+
+function loadGroupedView(forceReload) {
+    if (groupedData && !forceReload) {
+        renderGroupedView(groupedData);
+        return;
+    }
+
+    const body = document.getElementById('groupedViewBody');
+    body.innerHTML = `
+        <div class="text-center py-5">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <p class="text-muted">Memuat data grouped...</p>
+        </div>`;
+
+    // Pass current filters — use underscore IDs matching filter form HTML
+    const rentalType = $('#filter_rental_type').val() || '';
+    const status     = $('#filter_status').val()     || '';
+    const customerId = $('#filter_customer').val()   || '';
+
+    const params = new URLSearchParams();
+    if (rentalType) params.append('rental_type', rentalType);
+    if (status)     params.append('status', status);
+    if (customerId) params.append('customer_id', customerId);
+
+    fetch(`<?= base_url('marketing/kontrak/getGrouped') ?>?${params.toString()}`)
+        .then(r => r.json())
+        .then(resp => {
+            if (!resp.success) throw new Error(resp.message || 'Gagal memuat data');
+            groupedData = resp.data;
+            renderGroupedView(groupedData);
+        })
+        .catch(err => {
+            body.innerHTML = `<div class="alert alert-danger m-3"><i class="fas fa-exclamation-circle me-2"></i>${err.message}</div>`;
+        });
+}
+
+function renderGroupedView(customers) {
+    const body = document.getElementById('groupedViewBody');
+    if (!customers || customers.length === 0) {
+        body.innerHTML = `<div class="text-center py-5 text-muted"><i class="fas fa-inbox fa-3x mb-3"></i><p>Tidak ada data kontrak</p></div>`;
+        return;
+    }
+
+    // Search input bar
+    let html = `
+        <div class="gv-search-wrap d-flex align-items-center gap-2">
+            <i class="fas fa-search text-muted"></i>
+            <input type="text" id="gvSearch" class="form-control form-control-sm" placeholder="Cari nama customer atau nomor kontrak..." oninput="filterGroupedView(this.value)">
+            <span class="text-muted text-nowrap small" id="gvCount">${customers.length} customer</span>
+        </div>
+        <div class="p-3" id="gvAccordion">`;
+
+    customers.forEach((cust, ci) => {
+        const expanded = ci < 3; // auto-open first 3
+        const monthlyFmt = cust.monthly_value > 0
+            ? 'Rp ' + Number(cust.monthly_value).toLocaleString('id-ID')
+            : '—';
+
+        html += `
+        <div class="gv-customer-block" data-customer="${escHtml(cust.customer_name)}" id="gvBlock${ci}">
+            <!-- Customer Header Row -->
+            <div class="gv-customer-header p-3 d-flex align-items-center gap-3 ${expanded ? '' : 'collapsed'}"
+                 onclick="toggleCustomerBlock(${ci})">
+                <span class="gv-caret text-muted" style="${expanded ? '' : 'transform:rotate(-90deg)'}">
+                    <i class="fas fa-chevron-down"></i>
+                </span>
+                <div class="flex-grow-1">
+                    <strong class="text-dark">${escHtml(cust.customer_name)}</strong>
+                </div>
+                <div class="gv-summary-badges d-flex gap-2 flex-wrap">
+                    <span class="badge bg-primary">${cust.total_contracts} kontrak</span>
+                    <span class="badge bg-info text-dark">${cust.total_units} unit</span>
+                    ${cust.monthly_value > 0 ? `<span class="badge bg-success">${monthlyFmt}/bln</span>` : ''}
+                </div>
+            </div>
+            <!-- Contract Sub-table -->
+            <div class="gv-child-wrap" id="gvChild${ci}" style="${expanded ? '' : 'display:none'}">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover mb-0 gv-child-table">
+                        <thead class="bg-light">
+                            <tr>
+                                <th style="width:30%">No. Kontrak / PO</th>
+                                <th>Tipe</th>
+                                <th>Billing</th>
+                                <th>Periode &amp; Sisa Hari</th>
+                                <th class="text-center">Unit</th>
+                                <th class="text-end">Nilai</th>
+                                <th>Status</th>
+                                <th class="text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${cust.contracts.map(k => buildContractRow(k)).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>`;
+    });
+
+    html += `</div>`; // #gvAccordion
+    body.innerHTML = html;
+    
+    // Initialize tooltips for action buttons in grouped view
+    setTimeout(() => {
+        $('#groupedViewBody [title]').tooltip({
+            container: 'body',
+            trigger: 'hover'
+        });
+    }, 100);
+}
+
+function buildContractRow(k) {
+    // Type badge
+    const typeBadge = {
+        'CONTRACT':   '<span class="badge bg-primary"><i class="fas fa-file-contract me-1"></i>Contract</span>',
+        'PO_ONLY':    '<span class="badge bg-info text-dark"><i class="fas fa-file-invoice me-1"></i>PO Only</span>',
+        'DAILY_SPOT': '<span class="badge bg-warning text-dark"><i class="fas fa-calendar-day me-1"></i>Daily</span>',
+    }[k.rental_type] || `<span class="badge bg-secondary">${escHtml(k.rental_type||'—')}</span>`;
+
+    // Billing
+    const billingMap = { 'BULANAN': 'Monthly', 'HARIAN': 'Daily' };
+    const billing = billingMap[k.jenis_sewa?.toUpperCase()] || k.jenis_sewa || '—';
+
+    // Period
+    const startLbl = k.start_date ? new Date(k.start_date).toLocaleDateString('id-ID', {day:'2-digit',month:'short',year:'numeric'}) : '—';
+    const endLbl   = k.end_date   ? new Date(k.end_date).toLocaleDateString('id-ID',   {day:'2-digit',month:'short',year:'numeric'}) : 'Open-ended';
+
+    let daysBadge = '';
+    if (k.days_remaining !== null && k.status === 'ACTIVE') {
+        if (k.days_remaining < 0)      daysBadge = `<br><span class="badge bg-danger">Expired ${Math.abs(k.days_remaining)}h lalu</span>`;
+        else if (k.days_remaining <= 30) daysBadge = `<br><span class="badge bg-warning text-dark">${k.days_remaining}h lagi</span>`;
+        else if (k.days_remaining <= 90) daysBadge = `<br><span class="badge bg-info">${k.days_remaining}h lagi</span>`;
+    }
+
+    // Status badge
+    const statusColor = { ACTIVE:'success', PENDING:'warning', EXPIRED:'danger', CANCELLED:'secondary' }[k.status] || 'secondary';
+    const statusBadge = `<span class="badge bg-${statusColor}">${escHtml(k.status||'—')}</span>`;
+
+    // Contract / PO display
+    const kontrakNo = escHtml(k.no_kontrak || '—');
+    const poLine = k.po_number ? `<br><small class="text-muted"><i class="fas fa-file-invoice me-1"></i>PO: ${escHtml(k.po_number)}</small>` : '';
+
+    const nilai = k.nilai_total > 0 ? 'Rp ' + Number(k.nilai_total).toLocaleString('id-ID') : '—';
+
+    return `<tr>
+        <td><span class="font-monospace small">${kontrakNo}</span>${poLine}</td>
+        <td>${typeBadge}</td>
+        <td><small>${escHtml(billing)}</small></td>
+        <td><small>${startLbl} \u2013 ${endLbl}</small>${daysBadge}</td>
+        <td class="text-center">${k.total_units}</td>
+        <td class="text-end"><small>${nilai}</small></td>
+        <td>${statusBadge}</td>
+        <td class="text-center">${buildActionButtons(k.id, k.status, k.days_remaining)}</td>
+    </tr>`;
+}
+
+function toggleCustomerBlock(ci) {
+    const childWrap = document.getElementById(`gvChild${ci}`);
+    const header    = childWrap.previousElementSibling;
+    const caret     = header.querySelector('.gv-caret');
+    const isHidden  = childWrap.style.display === 'none';
+    childWrap.style.display = isHidden ? '' : 'none';
+    if (isHidden) {
+        header.classList.remove('collapsed');
+        caret.style.transform = '';
+    } else {
+        header.classList.add('collapsed');
+        caret.style.transform = 'rotate(-90deg)';
+    }
+}
+
+function filterGroupedView(query) {
+    if (!groupedData) return;
+    query = query.toLowerCase().trim();
+    const blocks = document.querySelectorAll('.gv-customer-block');
+    let visible = 0;
+    blocks.forEach(block => {
+        const customerName = block.getAttribute('data-customer').toLowerCase();
+        const text = block.innerText.toLowerCase();
+        const match = !query || customerName.includes(query) || text.includes(query);
+        block.style.display = match ? '' : 'none';
+        if (match) visible++;
+    });
+    const countEl = document.getElementById('gvCount');
+    if (countEl) countEl.textContent = `${visible} customer`;
+}
+
+function viewContractBrief(id) {
+    // Delegate to existing viewContractDetail if it exists, or openContractDetail
+    if (typeof viewContractDetail === 'function') viewContractDetail(id);
+    else if (typeof openContractModal === 'function') openContractModal(id);
+}
+
+function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 </script>
 <?= $this->endSection() ?>
