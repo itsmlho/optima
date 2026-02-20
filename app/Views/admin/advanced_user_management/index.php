@@ -404,7 +404,7 @@ $(document).ready(function() {
         submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Memproses...');
         
         $.ajax({
-            url: '<?= base_url('admin/advanced-users/approve-user') ?>/' + userId,
+            url: '<?= base_url("admin/advanced-users/approve-user") ?>/' + userId,
             type: 'POST',
             dataType: 'json',
             data: {
@@ -442,7 +442,7 @@ $(document).ready(function() {
         processing: true,
         serverSide: true,
         ajax: {
-            url: '<?= base_url('admin/advanced-users/getDataTable') ?>',
+            url: '<?= base_url("admin/advanced-users/getDataTable") ?>',
             type: 'POST',
             data: function(d) {
                 // DataTable doesn't use $.ajaxSetup, so we must inject the CSRF token manually
@@ -502,7 +502,7 @@ $(document).ready(function() {
         }
         
         $.ajax({
-            url: '<?= base_url('admin/advanced-users/bulk-assign-permissions') ?>',
+            url: '<?= base_url("admin/advanced-users/bulk-assign-permissions") ?>',
             method: 'POST',
             data: {
                 user_ids: selectedUsers,
@@ -539,7 +539,7 @@ function loadDivisionUsers(divisionId) {
         return; // Already loaded
     }
     
-    $.get('<?= base_url('admin/advanced-users/division-users') ?>/' + divisionId, function(data) {
+    $.get('<?= base_url("admin/advanced-users/division-users") ?>/' + divisionId, function(data) {
         contentDiv.html(data);
         contentDiv.data('loaded', true);
     }).fail(function() {
@@ -551,7 +551,7 @@ function viewUserMatrix(userId) {
     $('#userMatrixContent').html('Loading...');
     $('#userMatrixModal').modal('show');
     
-    $.get('<?= base_url('admin/advanced-users/user-matrix') ?>/' + userId, function(response) {
+    $.get('<?= base_url("admin/advanced-users/user-matrix") ?>/' + userId, function(response) {
         if (response.success) {
             renderUserMatrix(response.data);
         } else {
@@ -642,7 +642,7 @@ function renderUserMatrix(data) {
 }
 
 function quickAssignMenu(userId) {
-    window.location.href = '<?= base_url('admin/advanced-users/quick-assign') ?>?user=' + userId;
+    window.location.href = '<?= base_url("admin/advanced-users/quick-assign") ?>?user=' + userId;
 }
 
 // Division-Role mapping (same as in form.php)
@@ -708,7 +708,7 @@ function updateApprovalRoles(selectedDivision) {
 function approveUser(userId, userName) {
     // Load user data and show modal
     $.ajax({
-        url: '<?= base_url('admin/advanced-users/get-user-for-approval') ?>/' + userId,
+        url: '<?= base_url("admin/advanced-users/get-user-for-approval") ?>/' + userId,
         type: 'GET',
         dataType: 'json',
         success: function(response) {
@@ -771,7 +771,7 @@ $('#approveUserForm').on('submit', function(e) {
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Memproses...');
     
     $.ajax({
-        url: '<?= base_url('admin/advanced-users/approve-user') ?>/' + userId,
+        url: '<?= base_url("admin/advanced-users/approve-user") ?>/' + userId,
         type: 'POST',
         dataType: 'json',
         data: {
@@ -825,7 +825,7 @@ function deactivateUser(userId, userName) {
     }
     
     $.ajax({
-        url: '<?= base_url('admin/advanced-users/deactivate-user') ?>/' + userId,
+        url: '<?= base_url("admin/advanced-users/deactivate-user") ?>/' + userId,
         type: 'POST',
         dataType: 'json',
         success: function(response) {
@@ -844,9 +844,9 @@ function deactivateUser(userId, userName) {
 }
 
 function confirmDeleteUser(userId, userName) {
-    if (confirm('Are you sure you want to delete user "' + userName + '"?\n\nThis action cannot be undone!')) {
+    if (confirm('Are you sure you want to delete user "' + userName + '"?\\n\\nThis action cannot be undone!')) {
         $.ajax({
-            url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
+            url: '<?= base_url("admin/advanced-users/delete") ?>/' + userId,
             method: 'DELETE',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
@@ -873,12 +873,12 @@ function confirmDeleteUser(userId, userName) {
 }
 
 function exportUsers() {
-    window.location.href = '<?= base_url('admin/advanced-users/export') ?>';
+    window.location.href = '<?= base_url("admin/advanced-users/export") ?>';
 }
 
 function cleanExpiredPermissions() {
     if (confirm('Are you sure you want to clean all expired permissions?\n\nThis will remove permissions that have expired or are no longer valid.')) {
-        $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', {}, function(response) {
+        $.post('<?= base_url("admin/advanced-users/clean-expired") ?>', {}, function(response) {
             if (response.success) {
                 alert('Expired permissions cleaned successfully.\n\nRemoved: ' + (response.removed_count || 0) + ' permissions');
                 location.reload();
