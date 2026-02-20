@@ -357,6 +357,27 @@ helper('permission_helper');
 
 <?= $this->section('javascript') ?>
 <script>
+// Helper function to get CSRF token from cookie
+function getCsrfToken() {
+    const name = '<?= csrf_token() ?>=';\n    const decodedCookie = decodeURIComponent(document.cookie);
+    const cookies = decodedCookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+        let c = cookies[i].trim();
+        if (c.indexOf(name) == 0) {
+            return c.substring(name.length, c.length);
+        }
+    }
+    return '';
+}
+
+// Setup global AJAX config to include CSRF token
+$.ajaxSetup({
+    beforeSend: function(xhr) {
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.setRequestHeader('X-CSRF-TOKEN', getCsrfToken());
+    }
+});
+
 $(document).ready(function() {
     // Handle approve form submission
     $('#approveUserForm').on('submit', function(e) {
@@ -419,7 +440,6 @@ $(document).ready(function() {
         ajax: {
             url: '<?= base_url('admin/advanced-users/getDataTable') ?>',
             type: 'POST',
-            data: { '<?= csrf_token() ?>': '<?= csrf_hash() ?>' },
             error: function(xhr, error, thrown) {
                 let msg = 'Failed to load users data.';
                 if (xhr.responseText) {
@@ -477,8 +497,7 @@ $(document).ready(function() {
                 user_ids: selectedUsers,
                 permission_ids: selectedPermissions,
                 division_id: formData.get('division_id'),
-                granted: formData.get('action') === 'grant' ? 1 : 0,
-                '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
+                granted: formData.get('action') === 'grant' ? 1 : 0
             },
             dataType: 'json',
             success: function(response) {
@@ -681,10 +700,6 @@ function approveUser(userId, userName) {
         url: '<?= base_url('admin/advanced-users/get-user-for-approval') ?>/' + userId,
         type: 'GET',
         dataType: 'json',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
-        },
         success: function(response) {
             if (response.success) {
                 // Populate user info
@@ -802,10 +817,6 @@ function deactivateUser(userId, userName) {
         url: '<?= base_url('admin/advanced-users/deactivate-user') ?>/' + userId,
         type: 'POST',
         dataType: 'json',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
-        },
         success: function(response) {
             if (response.success) {
                 alert(response.message);
@@ -856,9 +867,7 @@ function exportUsers() {
 
 function cleanExpiredPermissions() {
     if (confirm('Are you sure you want to clean all expired permissions?\n\nThis will remove permissions that have expired or are no longer valid.')) {
-        $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', {
-            '<?= csrf_token() ?>': '<?= csrf_hash() ?>'
-        }, function(response) {
+        $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', {}, function(response) {
             if (response.success) {
                 alert('Expired permissions cleaned successfully.\n\nRemoved: ' + (response.removed_count || 0) + ' permissions');
                 location.reload();
