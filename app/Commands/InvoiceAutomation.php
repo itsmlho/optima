@@ -138,7 +138,7 @@ class InvoiceAutomation extends BaseCommand
         // Use reflection to access protected method
         $reflection = new \ReflectionClass($job);
         $method = $reflection->getMethod('getEligibleDeliveryInstructions');
-        $method->setAccessible(true);
+        // setAccessible() is no longer needed in PHP 8.1+
         
         $eligibleDIs = $method->invoke($job);
         
