@@ -26,8 +26,9 @@ $currentLang = service('request')->getLocale();
     <title>OPTIMA | PT Sarana Mitra Luas Tbk</title>
     
     <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="<?= base_url('favicon.ico') ?>">
     <link rel="icon" type="image/svg+xml" href="<?= base_url('assets/images/logo-optima.ico') ?>">
-    <link rel="icon" type="image/x-icon" href="<?= base_url('logo-optima.ico') ?>">
+    <link rel="shortcut icon" href="<?= base_url('favicon.ico') ?>">>
     <link rel="apple-touch-icon" href="<?= base_url('assets/images/logo-optima.ico') ?>">
     
     <!-- Fonts -->
