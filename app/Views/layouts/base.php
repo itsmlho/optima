@@ -88,6 +88,27 @@ $currentLang = service('request')->getLocale();
     <!-- Toast Container Bootstrap 5 (pojok kanan atas) -->
     <div class="toast-container position-fixed top-0 end-0 p-3" id="optima-toast-container" style="z-index: 1090;"></div>
     <script>
+        // ============================================================
+        // GLOBAL CSRF TOKEN HELPER - Available to ALL views/pages
+        // Reads from cookie dynamically to prevent stale token issues
+        // ============================================================
+        window.getCsrfToken = function() {
+            const cookieName = '<?= config('Security')->cookieName ?? 'csrf_cookie_name' ?>';
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === cookieName) {
+                    return decodeURIComponent(value);
+                }
+            }
+            // Fallback to meta tag
+            const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+            return metaCsrf ? metaCsrf.getAttribute('content') : '';
+        };
+        // Alias for backward compatibility
+        window.csrfToken = window.getCsrfToken();
+        // Refresh token alias on each AJAX call via jQuery global setup (set below after jQuery loads)
+
         // Global function for mark all as read
         window.markAllAsRead = function() {
             if (window.optimaSSENotifications) {
