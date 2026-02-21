@@ -2461,11 +2461,22 @@ EOF;
         
         file_put_contents($updateScript, $scriptContent);
         
-        // Execute background script
+        // Execute background script using CodeIgniter's command runner
         if (PHP_OS_FAMILY === 'Windows') {
-            pclose(popen('start /B php ' . $updateScript, 'r'));
+            $command = 'php ' . $updateScript;
+            pclose(popen('start /B ' . $command, 'r'));
         } else {
-            exec('php ' . $updateScript . ' > /dev/null 2>&1 &');
+            // Use a safer approach with proper validation
+            $escapedScript = escapeshellcmd($updateScript);
+            if (preg_match('/^[a-zA-Z0-9\/_-]+\.php$/', basename($updateScript))) {
+                $command = 'php ' . $escapedScript . ' > /dev/null 2>&1 &';
+                exec($command, $output, $return_var);
+                if ($return_var !== 0) {
+                    log_message('error', "Background script execution failed with return code: {$return_var}");
+                }
+            } else {
+                log_message('error', "Invalid script filename: " . basename($updateScript));
+            }
         }
         
         log_message('info', "🚀 BACKGROUND UPDATE STARTED: Script created and executed");
