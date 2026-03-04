@@ -990,15 +990,17 @@ class Kontrak extends BaseController
                 ];
             }
             
-            // Get summary data from inventory_unit instead of kontrak_spesifikasi
+            // Get summary data via kontrak_unit junction table
             $summaryQuery = "
                 SELECT 
-                    COUNT(DISTINCT kontrak_id) as total_spesifikasi,
+                    COUNT(DISTINCT ku.kontrak_id) as total_spesifikasi,
                     COUNT(*) as total_unit_dibutuhkan,
-                    COALESCE(SUM(harga_sewa_bulanan), 0) as total_nilai_bulanan,
-                    COALESCE(SUM(harga_sewa_harian), 0) as total_nilai_harian
-                FROM inventory_unit
-                WHERE kontrak_id = ?
+                    COALESCE(SUM(iu.harga_sewa_bulanan), 0) as total_nilai_bulanan,
+                    COALESCE(SUM(iu.harga_sewa_harian), 0) as total_nilai_harian
+                FROM kontrak_unit ku
+                JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+                WHERE ku.kontrak_id = ?
+                AND ku.status IN ('ACTIVE', 'TEMP_ACTIVE')
             ";
             
             $summaryResult = $this->db->query($summaryQuery, [$kontrakId]);
