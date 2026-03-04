@@ -348,13 +348,9 @@ class DeliveryInstructionService
                 
                 if ($shouldDisconnectFKs) {
                     // Fully disconnect: update workflow status
-                    // TODO Step 4: Remove kontrak_id/customer_id/customer_location_id after column drop
                     $this->db->table('inventory_unit')
                         ->where('id_inventory_unit', $unitId)
                         ->update([
-                            'kontrak_id' => null,
-                            'customer_id' => null,
-                            'customer_location_id' => null,
                             'workflow_status' => 'STOCK_ASET',
                             'contract_disconnect_date' => date('Y-m-d H:i:s'),
                             'contract_disconnect_stage' => 'HABIS_KONTRAK',
@@ -421,14 +417,10 @@ class DeliveryInstructionService
                 'updated_by' => session('user_id')
             ]);
 
-        // Disconnect old unit: update workflow + dual-write legacy FKs
-        // TODO Step 4: Remove kontrak_id/customer_id/customer_location_id after column drop
+        // Disconnect old unit: update workflow status
         $this->db->table('inventory_unit')
             ->where('id_inventory_unit', $oldUnitId)
             ->update([
-                'kontrak_id' => null,
-                'customer_id' => null,
-                'customer_location_id' => null,
                 'workflow_status' => 'STOCK_ASET',
                 'contract_disconnect_date' => date('Y-m-d H:i:s'),
                 'contract_disconnect_stage' => 'DITUKAR',
@@ -447,14 +439,10 @@ class DeliveryInstructionService
             'created_by' => session('user_id')
         ]);
 
-        // Dual-write: transfer legacy FKs to new unit (kontrak_unit INSERT above is the primary)
-        // TODO Step 4: Remove kontrak_id/customer_id/customer_location_id after column drop
+        // Update new unit workflow status (contract link is via kontrak_unit)
         $this->db->table('inventory_unit')
             ->where('id_inventory_unit', $newUnitId)
             ->update([
-                'kontrak_id' => $oldUnitInfo['kontrak_id'],
-                'customer_id' => $oldUnitInfo['customer_id'],
-                'customer_location_id' => $oldUnitInfo['customer_location_id'],
                 'workflow_status' => 'DISEWA',
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
@@ -503,14 +491,10 @@ class DeliveryInstructionService
             'created_by' => session('user_id')
         ]);
         
-        // Dual-write: set legacy FKs on replacement unit (kontrak_unit INSERT above is the primary)
-        // TODO Step 4: Remove kontrak_id/customer_id/customer_location_id after column drop
+        // Update replacement unit workflow status (contract link is via kontrak_unit)
         $this->db->table('inventory_unit')
             ->where('id_inventory_unit', $newUnitId)
             ->update([
-                'kontrak_id' => $oldUnitInfo['kontrak_id'],
-                'customer_id' => $oldUnitInfo['customer_id'],
-                'customer_location_id' => $oldUnitInfo['customer_location_id'],
                 'workflow_status' => 'TEMPORARY_RENTAL',
                 'is_temporary_assignment' => true,
                 'temporary_for_contract_id' => $oldUnitInfo['kontrak_id'],

@@ -138,7 +138,7 @@ class Phase3OptimizationsCommand extends BaseCommand
                 'idx_wo_deleted_status' => ['deleted_at', 'status_id']
             ],
             'inventory_unit' => [
-                'idx_iu_kontrak_status' => ['kontrak_id', 'status_unit_id'],
+                // 'idx_iu_kontrak_status' removed: kontrak_id column dropped (Step 4)
                 'idx_iu_model_tipe' => ['model_unit_id', 'tipe_unit_id'],
                 'idx_iu_no_unit' => ['no_unit']
             ]
