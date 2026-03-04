@@ -77,9 +77,14 @@ class OptimizedUnitAssetModel extends UnitAssetModel
             $unitData['kapasitas'] = $this->getKapasitasById($unitData['kapasitas_unit_id']);
         }
         
-        // Load kontrak info jika ada
-        if ($unitData['kontrak_id']) {
-            $unitData['kontrak_info'] = $this->getKontrakInfoById($unitData['kontrak_id']);
+        // Load kontrak info via kontrak_unit junction
+        $kontrakUnit = $this->db->table('kontrak_unit')
+            ->where('unit_id', $unitData['id_inventory_unit'])
+            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+            ->where('is_temporary', 0)
+            ->get()->getRowArray();
+        if ($kontrakUnit) {
+            $unitData['kontrak_info'] = $this->getKontrakInfoById($kontrakUnit['kontrak_id']);
         }
         
         return $unitData;

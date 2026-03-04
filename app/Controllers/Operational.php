@@ -1195,9 +1195,26 @@ class Operational extends BaseController
                             'updated_at' => date('Y-m-d H:i:s')
                         ];
 
-                        // Add kontrak info if available
+                        // Add kontrak info if available (kontrak_unit junction is primary link)
+                        // kontrak_id column will be dropped - link is via kontrak_unit table
                         if ($kontrak) {
-                            $updateUnitData['kontrak_id'] = $kontrak['id'];
+                            // Ensure kontrak_unit junction record exists
+                            $existingKu = $this->db->table('kontrak_unit')
+                                ->where('kontrak_id', $kontrak['id'])
+                                ->where('unit_id', $deliveryUnit['unit_id'])
+                                ->where('status', 'ACTIVE')
+                                ->countAllResults();
+                            if ($existingKu == 0) {
+                                $this->db->table('kontrak_unit')->insert([
+                                    'kontrak_id' => $kontrak['id'],
+                                    'unit_id' => $deliveryUnit['unit_id'],
+                                    'tanggal_mulai' => date('Y-m-d'),
+                                    'status' => 'ACTIVE',
+                                    'is_temporary' => false,
+                                    'created_at' => date('Y-m-d H:i:s'),
+                                    'created_by' => session('user_id')
+                                ]);
+                            }
                         }
                         if ($kontrakSpesifikasiId) {
                             $updateUnitData['kontrak_spesifikasi_id'] = $kontrakSpesifikasiId;
