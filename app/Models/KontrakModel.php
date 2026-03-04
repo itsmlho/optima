@@ -78,7 +78,7 @@ class KontrakModel extends Model
     protected $beforeInsert = ['beforeInsert'];
     protected $afterInsert = [];
     protected $beforeUpdate = ['beforeUpdate'];
-    protected $afterUpdate = [];
+    protected $afterUpdate = ['logContractChanges'];
     protected $beforeFind = [];
     protected $afterFind = [];
     protected $beforeDelete = [];
@@ -87,13 +87,46 @@ class KontrakModel extends Model
     protected function beforeInsert(array $data)
     {
         if (!isset($data['data']['dibuat_oleh'])) {
-            $data['data']['dibuat_oleh'] = session()->get('user_id');
+            // NOTE: Callers should pass 'dibuat_oleh' explicitly in CLI/cron contexts
+            $data['data']['dibuat_oleh'] = session()->get('user_id') ?? null;
         }
         return $data;
     }
 
     protected function beforeUpdate(array $data)
     {
+        return $data;
+    }
+
+    /**
+     * Log contract changes to contract_timeline
+     */
+    protected function logContractChanges(array $data)
+    {
+        // Only log if status changed
+        if (!isset($data['id']) || !isset($data['data']['status'])) {
+            return $data;
+        }
+
+        try {
+            // Get old status
+            $old = $this->find($data['id']);
+            if ($old && isset($old['status']) && $old['status'] !== $data['data']['status']) {
+                $timeline = new \App\Services\ContractTimelineService();
+                $timeline->recordStatusChange(
+                    $data['id'],
+                    $old['status'],
+                    $data['data']['status'],
+                    null,
+                    session()->get('user_id')
+                );
+                log_message('info', "✅ Contract #{$data['id']} status changed: {$old['status']} → {$data['data']['status']}");
+            }
+        } catch (\Throwable $e) {
+            // Don't fail the update if timeline logging fails
+            log_message('error', '[KontrakModel] Timeline logging failed: ' . $e->getMessage());
+        }
+
         return $data;
     }
 
@@ -142,8 +175,8 @@ class KontrakModel extends Model
                          cl.phone as kontak, 
                          cl.location_name as lokasi, 
                          k.jenis_sewa,
-                         (SELECT COALESCE(SUM(harga_sewa_bulanan), 0) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as nilai_total,
-                         (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as total_units,
+                         (SELECT COALESCE(SUM(iu.harga_sewa_bulanan), 0) FROM kontrak_unit ku JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as nilai_total,
+                         (SELECT COUNT(*) FROM kontrak_unit ku JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as total_units,
                          k.tanggal_mulai, k.tanggal_berakhir, k.status, k.dibuat_pada, k.diperbarui_pada,
                          CONCAT(u.first_name, " ", u.last_name) as dibuat_oleh_nama');
         
@@ -324,14 +357,14 @@ class KontrakModel extends Model
             return null;
         }
 
-        // Then get the dynamic calculations from inventory_unit (exclude temporary units for accurate billing)
+        // Then get the dynamic calculations from kontrak_unit junction (exclude temporary units for accurate billing)
         $calculations = $this->db->query("
             SELECT 
                 COUNT(CASE WHEN ku.is_temporary != 1 THEN 1 END) as actual_units,
                 COALESCE(SUM(CASE WHEN ku.is_temporary != 1 THEN iu.harga_sewa_bulanan ELSE 0 END), 0) as total_nilai
-            FROM inventory_unit iu 
-            LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.kontrak_id = iu.kontrak_id
-            WHERE iu.kontrak_id = ?
+            FROM kontrak_unit ku
+            JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+            WHERE ku.kontrak_id = ? AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
         ", [$id])->getRowArray();
 
         // Override the calculated fields

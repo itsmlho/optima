@@ -18,7 +18,7 @@ $can_export = $permissions['export'];
 <!-- Page Header -->
 <div class="mb-3">
     <h4 class="fw-bold mb-1">
-        <i class="bi bi-cart-check me-2 text-primary"></i>
+        <i class="fas fa-shopping-cart me-2 text-primary"></i>
         Purchase Orders Management
     </h4>
     <p class="text-muted mb-0">Create and track purchase orders for units and spare parts from suppliers</p>
@@ -127,7 +127,7 @@ $can_export = $permissions['export'];
             <div class="card-body p-0">
         <div class="table-responsive">
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOTable">
-                <thead>
+                <thead class="table-light">
                     <tr>
                         <th><?= lang('App.po_number') ?></th>
                         <th><?= lang('Common.date') ?></th>
@@ -136,7 +136,7 @@ $can_export = $permissions['export'];
                         <th><?= lang('App.total_items') ?></th>
                         <th><?= lang('App.verification_progress') ?></th>
                         <th><?= lang('App.delivery_status') ?></th>
-                        <th><?= lang('Common.actions') ?></th>
+                        <th class="text-center"><?= lang('Common.actions') ?></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -159,7 +159,7 @@ $can_export = $permissions['export'];
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="poDeliveryTable">
-                        <thead>
+                        <thead class="table-light">
                             <tr>
                                 <th><?= lang('App.packing_list') ?></th>
                                 <th><?= lang('App.po_number') ?></th>
@@ -167,9 +167,9 @@ $can_export = $permissions['export'];
                                 <th><?= lang('App.delivery_date') ?></th>
                                 <th><?= lang('App.driver') ?></th>
                                 <th><?= lang('App.items') ?></th>
-                                <th>Status</th>
-                                <th>Actions</th>
-                                <th>Print Packing List</th>
+                                <th><?= lang('Common.status') ?></th>
+                                <th class="text-center"><?= lang('Common.actions') ?></th>
+                                <th><?= lang('App.print_packing_list') ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -192,7 +192,7 @@ $can_export = $permissions['export'];
             <div class="card-body p-0">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover mb-0 clickable-row <?= !$can_view ? 'table-disabled' : '' ?>" id="unitAttachmentPOCompletedTable">
-                        <thead>
+                        <thead class="table-light">
                             <tr>
                                 <th><?= lang('App.po_number') ?></th>
                                 <th><?= lang('Common.date') ?></th>
@@ -201,7 +201,7 @@ $can_export = $permissions['export'];
                                 <th><?= lang('App.total_items') ?></th>
                                 <th><?= lang('App.verification_progress') ?></th>
                                 <th><?= lang('App.delivery_status') ?></th>
-                                <th><?= lang('Common.actions') ?></th>
+                                <th class="text-center"><?= lang('Common.actions') ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -3631,8 +3631,8 @@ function updateItemsTable() {
                 <td>${description}</td>
                 <td class="text-center">${item.qty}</td>
                 <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem(${index})" title="Delete">
-                        <i class="fas fa-trash"></i>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem(${index})" title="Hapus item" aria-label="Hapus item">
+                        <i class="fas fa-trash" aria-hidden="true"></i>
                     </button>
                 </td>
             </tr>

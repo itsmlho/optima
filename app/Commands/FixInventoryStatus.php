@@ -23,7 +23,7 @@ class FixInventoryStatus extends BaseCommand
         $activeContracts = $db->query("
             SELECT k.id, k.no_kontrak, k.status 
             FROM kontrak k 
-            WHERE k.status = 'Aktif'
+            WHERE k.status = 'ACTIVE'
             ORDER BY k.id
         ")->getResultArray();
 

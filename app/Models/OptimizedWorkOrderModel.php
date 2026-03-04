@@ -51,7 +51,8 @@ class OptimizedWorkOrderModel extends Model
         // Optimized joins with proper indexes
         $builder->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left');
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
-        $builder->join('kontrak k', 'iu.kontrak_id = k.id', 'left');
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
         $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
         $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->join('work_order_categories woc', 'woc.id = wo.category_id', 'left');
@@ -187,7 +188,7 @@ class OptimizedWorkOrderModel extends Model
             'iu.merk_unit',
             'iu.model_unit',
             'iu.departemen_id',
-            'c.nama_customer as pelanggan',
+            'c.customer_name as pelanggan',
             'wc.nama_kategori as category',
             'wp.nama_prioritas as priority',
             'wp.warna as priority_color',
@@ -197,7 +198,10 @@ class OptimizedWorkOrderModel extends Model
         ]);
         
         $builder->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left');
-        $builder->join('customer c', 'c.id = iu.customer_id', 'left');
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->join('work_order_categories wc', 'wc.id = wo.category_id', 'left');
         $builder->join('work_order_priorities wp', 'wp.id = wo.priority', 'left');
         $builder->join('work_order_statuses ws', 'ws.id = wo.status_id', 'left');
@@ -208,7 +212,7 @@ class OptimizedWorkOrderModel extends Model
                     ->like('wo.work_order_number', $search)
                     ->orLike('wo.issue_description', $search)
                     ->orLike('iu.no_unit', $search)
-                    ->orLike('c.nama_customer', $search)
+                    ->orLike('c.customer_name', $search)
                     ->groupEnd();
         }
         

@@ -4,47 +4,29 @@
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.bootstrap5.min.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
-<style>
-.status-badge {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    border-radius: 6px;
-    text-transform: uppercase;
-}
-.status-draft { background: #6c757d; color: white; }
-.status-approved { background: #0dcaf0; color: white; }
-.status-sent { background: #0d6efd; color: white; }
-.status-paid { background: #198754; color: white; }
-.status-overdue { background: #dc3545; color: white; }
-.status-cancelled { background: #adb5bd; color: white; }
-
-.action-buttons .btn {
-    padding: 0.25rem 0.5rem;
-    font-size: 0.75rem;
-}
-</style>
+<!-- Badge styles are centralized in optima-datatable.css -->
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid px-4 py-4">
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<!-- Page Header -->
+<div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center">
         <div>
-            <h1 class="h3 mb-1 text-gray-800">
+            <h4 class="fw-bold mb-1">
                 <i class="fas fa-file-invoice text-primary me-2"></i>Invoice Management
-            </h1>
-            <p class="text-muted mb-0">Manage invoices, approvals, dan payment tracking</p>
+            </h4>
+            <p class="text-muted mb-0 small">Manage invoices, approvals, dan payment tracking</p>
         </div>
         <div>
-            <a href="<?= base_url('finance') ?>" class="btn btn-outline-secondary me-2">
+            <a href="<?= base_url('finance') ?>" class="btn btn-outline-secondary btn-sm me-2">
                 <i class="fas fa-arrow-left me-2"></i>Dashboard
             </a>
-            <button class="btn btn-success" onclick="showGenerateModal()">
+            <button class="btn btn-success btn-sm" onclick="showGenerateModal()">
                 <i class="fas fa-plus me-2"></i>Generate Invoice
             </button>
         </div>
     </div>
+</div>
 
     <!-- Back-Billing Alert Widget -->
     <div class="card border-warning border-start border-4 shadow-sm mb-4" id="backBillingAlert" style="display:none;">
@@ -113,9 +95,9 @@
 
     <!-- Table -->
     <div class="card shadow-sm border-0">
-        <div class="card-body">
+        <div class="card-body p-0">
             <div class="table-responsive">
-                <table id="invoicesTable" class="table table-hover table-striped" style="width:100%">
+                <table id="invoicesTable" class="table table-hover table-striped mb-0" style="width:100%">
                     <thead class="table-light">
                         <tr>
                             <th>Invoice No</th>
@@ -126,7 +108,7 @@
                             <th>Due Date</th>
                             <th>Type</th>
                             <th>Status</th>
-                            <th>Actions</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -467,8 +449,14 @@ function showBackBillingModal() {
     });
 }
 
-function autoGenerateBackBilling() {
-    if (!confirm('This will generate ALL missing invoices. Continue?')) return;
+async function autoGenerateBackBilling() {
+    const confirmed = await confirmSwal({
+        title: 'Generate Semua Back-Billing',
+        text: 'Ini akan men-generate SEMUA invoice yang belum terbuat. Lanjutkan?',
+        icon: 'info',
+        confirmText: '<i class="fas fa-magic me-1"></i>Ya, Generate Semua'
+    });
+    if (!confirmed) return;
     
     // Get all unique contract IDs from missing invoices
     fetch('<?= base_url('finance/detectBackBilling') ?>', {
@@ -499,7 +487,7 @@ function autoGenerateBackBilling() {
             
             Promise.all(promises).then(() => {
                 $('#backBillingProgress').remove();
-                alert('Back-billing generation completed!');
+                alertSwal('success', 'Back-billing generation selesai!');
                 loadBackBillingStats();
                 invoicesTable.ajax.reload();
                 $('#backBillingModal').modal('hide');
@@ -582,17 +570,23 @@ function submitGenerateInvoice() {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert(`Invoice generated: ${data.invoice_number}`);
+            alertSwal('success', `Invoice berhasil dibuat: ${data.invoice_number}`);
             bootstrap.Modal.getInstance(document.getElementById('generateInvoiceModal')).hide();
             invoicesTable.ajax.reload();
         } else {
-            alert('Error: ' + data.message);
+            alertSwal('error', data.message, 'Gagal Generate Invoice');
         }
     });
 }
 
-function approveInvoice(id) {
-    if (!confirm('Approve this invoice?')) return;
+async function approveInvoice(id) {
+    const confirmed = await confirmSwal({
+        title: 'Setujui Invoice',
+        text: 'Apakah Anda yakin ingin menyetujui invoice ini?',
+        icon: 'question',
+        confirmText: '<i class="fas fa-check me-1"></i>Ya, Setujui'
+    });
+    if (!confirmed) return;
     
     fetch(`<?= base_url('finance/invoices/approve/') ?>${id}`, {
         method: 'POST',
@@ -600,8 +594,12 @@ function approveInvoice(id) {
     })
     .then(r => r.json())
     .then(data => {
-        alert(data.success ? 'Invoice approved' : 'Error: ' + data.message);
-        if (data.success) invoicesTable.ajax.reload();
+        if (data.success) {
+            alertSwal('success', 'Invoice berhasil disetujui');
+            invoicesTable.ajax.reload();
+        } else {
+            alertSwal('error', data.message, 'Gagal Menyetujui');
+        }
     });
 }
 

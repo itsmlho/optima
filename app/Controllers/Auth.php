@@ -46,7 +46,8 @@ class Auth extends BaseController
             $rememberToken = get_cookie('remember_token');
             
             if ($rememberToken) {
-                $user = $this->userModel->where('remember_token', $rememberToken)
+                $hashedToken = hash('sha256', $rememberToken);
+                $user = $this->userModel->where('remember_token', $hashedToken)
                                         ->where('status', 'active')
                                         ->first();
                 
@@ -482,15 +483,16 @@ class Auth extends BaseController
      */
     private function setRememberToken($userId)
     {
-        $token = bin2hex(random_bytes(32));
-        
+        $rawToken = bin2hex(random_bytes(32));
+        $hashedToken = hash('sha256', $rawToken);
+
         $this->userModel->update($userId, [
-            'remember_token' => $token,
-            'updated_at' => date('Y-m-d H:i:s')
+            'remember_token' => $hashedToken,
+            'updated_at'     => date('Y-m-d H:i:s')
         ]);
-        
-        // Set cookie
-        $this->response->setCookie('remember_token', $token, 30 * 24 * 3600); // 30 days
+
+        // Cookie carries raw token; DB stores hashed version
+        $this->response->setCookie('remember_token', $rawToken, 30 * 24 * 3600); // 30 days
     }
 
     /**

@@ -9,8 +9,13 @@ use App\Models\DeliveryItemModel;
 use App\Models\KontrakModel;
 use App\Traits\ActivityLoggingTrait;
 use App\Services\DeliveryInstructionService;
+use App\Services\UnitTimelineService;
 use App\Config\JenisPerintahKerja;
 use App\Config\TujuanPerintahKerja;
+use App\Models\InventoryAttachmentModel;
+use App\Models\InventoryBatteryModel;
+use App\Models\InventoryChargerModel;
+use App\Models\InventoryComponentHelper;
 
 class Operational extends BaseController
 {
@@ -21,6 +26,7 @@ class Operational extends BaseController
     protected $diItemModel;
     protected $kontrakModel;
     protected $diService;
+    protected $unitTimelineService;
 
     public function __construct()
     {
@@ -29,6 +35,7 @@ class Operational extends BaseController
         $this->diItemModel = new DeliveryItemModel();
         $this->kontrakModel = new KontrakModel();
         $this->diService = new DeliveryInstructionService();
+        $this->unitTimelineService = new UnitTimelineService();
     }
 
     /**
@@ -589,6 +596,14 @@ class Operational extends BaseController
                     
                 case 'complete_delivery':
                     $updateData['status_di'] = 'SELESAI';
+                    
+                    // Log unit timeline events when DI completes
+                    try {
+                        $this->logUnitTimelineOnDICompletion((int)$id, $di);
+                    } catch (\Exception $e) {
+                        log_message('error', "Failed to log unit timeline for DI {$id}: " . $e->getMessage());
+                        // Don't fail the DI completion if timeline logging fails
+                    }
                     break;
                     
                 case 'cancel':
@@ -1133,7 +1148,7 @@ class Operational extends BaseController
                         ->where('no_kontrak', $di['po_kontrak_nomor'])
                         ->orWhere('no_po_marketing', $di['po_kontrak_nomor'])
                     ->groupEnd()
-                    ->update(['status'=>'Aktif','diperbarui_pada'=>date('Y-m-d H:i:s')]);
+                    ->update(['status'=>'ACTIVE','diperbarui_pada'=>date('Y-m-d H:i:s')]);
                     
                 log_message('info', 'Activated kontrak for DI ' . $id);
             } catch (\Exception $e) {
@@ -1245,10 +1260,10 @@ class Operational extends BaseController
 
                 foreach ($deliveryAttachments as $deliveryAttachment) {
                     if (!empty($deliveryAttachment['attachment_id']) && !empty($deliveryAttachment['parent_unit_id'])) {
-                        // Find the inventory_attachment record based on the attachment
-                        $inventoryAttachment = $this->db->table('inventory_attachment')
-                            ->where('attachment_id', $deliveryAttachment['attachment_id'])
-                            ->where('id_inventory_unit', $deliveryAttachment['parent_unit_id'])
+                        // Find the inventory_attachments record based on the attachment
+                        $inventoryAttachment = $this->db->table('inventory_attachments')
+                            ->where('attachment_type_id', $deliveryAttachment['attachment_id'])
+                            ->where('inventory_unit_id', $deliveryAttachment['parent_unit_id'])
                             ->get()->getRowArray();
 
                         if ($inventoryAttachment) {
@@ -1256,11 +1271,11 @@ class Operational extends BaseController
                                 'updated_at' => date('Y-m-d H:i:s')
                             ];
 
-                            $this->db->table('inventory_attachment')
-                                ->where('id_inventory_attachment', $inventoryAttachment['id_inventory_attachment'])
+                            $this->db->table('inventory_attachments')
+                                ->where('id', $inventoryAttachment['id'])
                                 ->update($updateAttachmentData);
 
-                            log_message('info', "Updated inventory_attachment {$inventoryAttachment['id_inventory_attachment']} for DI {$id}");
+                            log_message('info', "Updated inventory_attachments {$inventoryAttachment['id']} for DI {$id}");
                         }
                     }
                 }
@@ -1572,12 +1587,8 @@ class Operational extends BaseController
 
         // Load attachment data
         if ($item && $item['item_type'] === 'ATTACHMENT') {
-            $a = $this->db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan')
-                ->select('att.tipe, att.merk, att.model')
-                ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                ->where('ia.id_inventory_attachment', $item['attachment_id'])
-                ->get()->getRowArray();
+            $componentHelper = new InventoryComponentHelper();
+            $a = $componentHelper->getAttachmentByInventoryId($item['attachment_id']);
 
             if ($a) {
                 $enriched['selected']['attachment'] = [
@@ -1594,12 +1605,8 @@ class Operational extends BaseController
                 $enriched['attachment_tipe'] = $a['tipe'] ?? $enriched['attachment_tipe'] ?? '';
             }
         } else if ($spk && !empty($spk['fabrikasi_attachment_id'])) {
-            $a = $this->db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan')
-                ->select('att.tipe, att.merk, att.model')
-                ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                ->where('ia.id_inventory_attachment', $spk['fabrikasi_attachment_id'])
-                ->get()->getRowArray();
+            $componentHelper = new InventoryComponentHelper();
+            $a = $componentHelper->getAttachmentByInventoryId($spk['fabrikasi_attachment_id']);
 
             if ($a) {
                 $enriched['selected']['attachment'] = [
@@ -2307,22 +2314,14 @@ class Operational extends BaseController
                         $batteryId = $persiapanData['battery_inventory_attachment_id'] ?? null;
                         $chargerId = $persiapanData['charger_inventory_attachment_id'] ?? null;
                         
+                        $componentHelper = new InventoryComponentHelper();
+                        
                         if ($batteryId) {
-                            $batteryDetails = $this->db->table('inventory_attachment ia')
-                                ->select('ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
-                                ->join('baterai b', 'b.id = ia.baterai_id', 'left')
-                                ->where('ia.id_inventory_attachment', $batteryId)
-                                ->get()
-                                ->getRowArray();
+                            $batteryDetails = $componentHelper->getBatteryByInventoryId($batteryId);
                         }
                         
                         if ($chargerId) {
-                            $chargerDetails = $this->db->table('inventory_attachment ia')
-                                ->select('ia.sn_charger, c.merk_charger, c.tipe_charger')
-                                ->join('charger c', 'c.id_charger = ia.charger_id', 'left')
-                                ->where('ia.id_inventory_attachment', $chargerId)
-                                ->get()
-                                ->getRowArray();
+                            $chargerDetails = $componentHelper->getChargerByInventoryId($chargerId);
                         }
                     }
                     
@@ -2331,13 +2330,10 @@ class Operational extends BaseController
                         $fabrikasiData = $unitStages['fabrikasi'];
                         $attachmentId = $fabrikasiData['attachment_inventory_attachment_id'] ?? null;
                         
+                        $componentHelper = new InventoryComponentHelper();
+                        
                         if ($attachmentId) {
-                            $attachmentDetails = $this->db->table('inventory_attachment ia')
-                                ->select('ia.sn_attachment, a.merk, a.model, a.tipe')
-                                ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
-                                ->where('ia.id_inventory_attachment', $attachmentId)
-                                ->get()
-                                ->getRowArray();
+                            $attachmentDetails = $componentHelper->getAttachmentByInventoryId($attachmentId);
                         }
                     }
                     
@@ -2715,6 +2711,132 @@ class Operational extends BaseController
                 'success' => false,
                 'message' => 'Failed to process return: ' . $e->getMessage()
             ]);
+        }
+    }
+
+    /**
+     * Log unit timeline events when DI completes
+     * Records deployment or retrieval based on DI type
+     */
+    protected function logUnitTimelineOnDICompletion(int $diId, array $diData)
+    {
+        // Get DI jenis perintah kerja to determine if deployment or retrieval
+        $jenisPerintahId = $diData['jenis_perintah_kerja_id'] ?? null;
+        
+        if (!$jenisPerintahId) {
+            log_message('warning', "DI {$diId} has no jenis_perintah_kerja_id, skipping timeline logging");
+            return;
+        }
+        
+        // Get jenis perintah kerja details
+        $jenisPK = $this->db->table('jenis_perintah_kerja')
+            ->where('id', $jenisPerintahId)
+            ->get()
+            ->getRowArray();
+        
+        if (!$jenisPK) {
+            log_message('warning', "Jenis perintah kerja {$jenisPerintahId} not found for DI {$diId}");
+            return;
+        }
+        
+        $jenisKode = $jenisPK['kode'] ?? '';
+        
+        // Get units from delivery_items
+        $deliveryItems = $this->db->table('delivery_items')
+            ->where('delivery_instruction_id', $diId)
+            ->where('unit_id IS NOT NULL', null, false)
+            ->get()
+            ->getResultArray();
+        
+        if (empty($deliveryItems)) {
+            log_message('info', "No units found in delivery_items for DI {$diId}");
+            return;
+        }
+        
+        // Get contract info for location
+        $kontrakId = $diData['kontrak_id'] ?? null;
+        $locationInfo = [];
+        
+        if ($kontrakId) {
+            $kontrak = $this->db->table('kontrak')
+                ->select('pelanggan, lokasi, nomor_kontrak')
+                ->where('id', $kontrakId)
+                ->get()
+                ->getRowArray();
+                
+            if ($kontrak) {
+                $locationInfo = [
+                    'customer' => $kontrak['pelanggan'] ?? '',
+                    'location' => $kontrak['lokasi'] ?? '',
+                    'contract_number' => $kontrak['nomor_kontrak'] ?? ''
+                ];
+            }
+        }
+        
+        // Log based on DI type
+        foreach ($deliveryItems as $item) {
+            $unitId = $item['unit_id'];
+            
+            try {
+                if ($jenisKode === 'ANTAR') {
+                    // Deployment: unit sent to customer
+                    $this->unitTimelineService->recordDeployment(
+                        $unitId,
+                        $locationInfo['customer'] ?? 'Customer',
+                        $locationInfo['location'] ?? 'Unknown Location',
+                        $locationInfo['contract_number'] ?? null,
+                        [
+                            'di_id' => $diId,
+                            'di_nomor' => $diData['nomor_di'] ?? null,
+                            'deployment_date' => $diData['sampai_tanggal_approve'] ?? date('Y-m-d'),
+                            'driver' => $diData['nama_supir'] ?? null,
+                            'vehicle' => $diData['kendaraan'] ?? null
+                        ]
+                    );
+                    log_message('info', "✅ Logged deployment for unit {$unitId} via DI {$diId}");
+                    
+                } elseif ($jenisKode === 'TARIK') {
+                    // Retrieval: unit pulled from customer
+                    $this->unitTimelineService->recordRetrieval(
+                        $unitId,
+                        $locationInfo['customer'] ?? 'Customer',
+                        $locationInfo['location'] ?? 'Unknown Location',
+                        'DI_COMPLETED',
+                        [
+                            'di_id' => $diId,
+                            'di_nomor' => $diData['nomor_di'] ?? null,
+                            'retrieval_date' => $diData['sampai_tanggal_approve'] ?? date('Y-m-d'),
+                            'driver' => $diData['nama_supir'] ?? null,
+                            'vehicle' => $diData['kendaraan'] ?? null,
+                            'reason' => 'Unit retrieved via delivery instruction'
+                        ]
+                    );
+                    log_message('info', "✅ Logged retrieval for unit {$unitId} via DI {$diId}");
+                    
+                } elseif ($jenisKode === 'TUKAR') {
+                    // Exchange: log as retrieval + deployment (handled separately)
+                    $this->unitTimelineService->recordRetrieval(
+                        $unitId,
+                        $locationInfo['customer'] ?? 'Customer',
+                        $locationInfo['location'] ?? 'Unknown Location',
+                        'UNIT_EXCHANGE',
+                        [
+                            'di_id' => $diId,
+                            'di_nomor' => $diData['nomor_di'] ?? null,
+                            'exchange_date' => $diData['sampai_tanggal_approve'] ?? date('Y-m-d'),
+                            'operation_type' => 'TUKAR'
+                        ]
+                    );
+                    log_message('info', "✅ Logged exchange (retrieval) for unit {$unitId} via DI {$diId}");
+                    
+                } else {
+                    log_message('info', "DI type {$jenisKode} does not require timeline logging for unit {$unitId}");
+                }
+                
+            } catch (\Exception $e) {
+                log_message('error', "Failed to log timeline for unit {$unitId} in DI {$diId}: " . $e->getMessage());
+                // Continue with other units even if one fails
+            }
         }
     }
 

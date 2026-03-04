@@ -182,7 +182,7 @@ class KontrakSpesifikasiModel extends Model
             ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
             ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
             ->where('iu.status_unit_id', 7) // STOCK
-            ->where('iu.kontrak_id IS NULL'); // Not assigned
+            ->where('NOT EXISTS (SELECT 1 FROM kontrak_unit ku WHERE ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\'))', null, false); // Not assigned to active contract
 
         // Filter berdasarkan spesifikasi
         if ($spek->departemen_id) {
@@ -257,11 +257,11 @@ class KontrakSpesifikasiModel extends Model
             }
 
             // Get kontrak status to determine appropriate unit status
-            $kontrakStatus = $kontrak['status'] ?? 'Pending';
+            $kontrakStatus = $kontrak['status'] ?? 'PENDING';
             
             // Set status based on contract status
             $newStatusId = 7; // Default: STOCK ASET (available)
-            if ($kontrakStatus === 'Aktif') {
+            if ($kontrakStatus === 'ACTIVE') {
                 $newStatusId = 3; // RENTAL - only when contract is active
             } else {
                 $newStatusId = 7; // Keep as STOCK ASET when contract is pending

@@ -229,30 +229,30 @@
 
 <?= $this->section('javascript') ?>
 <script>
-function deleteReport(id) {
-    if (confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
-        $.ajax({
-            url: '<?= base_url('reports/delete/') ?>' + id,
-            method: 'DELETE',
-            dataType: 'json',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    showNotification('Report deleted successfully!', 'success');
-                    setTimeout(function() {
-                        window.location.href = '<?= base_url('reports') ?>';
-                    }, 1500);
-                } else {
-                    showNotification('Failed to delete report: ' + response.message, 'error');
-                }
-            },
-            error: function(xhr, status, error) {
-                showNotification('Error deleting report: ' + error, 'error');
+async function deleteReport(id) {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Report',
+        text: 'Apakah Anda yakin ingin menghapus report ini? Tindakan ini tidak dapat dibatalkan.',
+        type: 'delete'
+    });
+    if (!confirmed) return;
+    $.ajax({
+        url: '<?= base_url('reports/delete/') ?>' + id,
+        method: 'DELETE',
+        dataType: 'json',
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+        success: function(response) {
+            if (response.success) {
+                alertSwal('success', 'Report berhasil dihapus!');
+                setTimeout(function() { window.location.href = '<?= base_url('reports') ?>'; }, 1500);
+            } else {
+                alertSwal('error', response.message, 'Gagal Hapus Report');
             }
-        });
-    }
+        },
+        error: function(xhr, status, error) {
+            alertSwal('error', 'Error: ' + error);
+        }
+    });
 }
 
 function refreshPage() {
@@ -263,10 +263,15 @@ function retryGeneration() {
     showNotification('Retry generation feature coming soon!', 'info');
 }
 
-function regenerateReport() {
-    if (confirm('Are you sure you want to regenerate this report? This will create a new version with current data.')) {
-        showNotification('Regenerate report feature coming soon!', 'info');
-    }
+async function regenerateReport() {
+    const confirmed = await confirmSwal({
+        title: 'Regenerasi Report',
+        text: 'Ini akan membuat versi baru dengan data terkini. Lanjutkan?',
+        icon: 'info',
+        confirmText: '<i class="fas fa-redo me-1"></i>Ya, Regenerasi'
+    });
+    if (!confirmed) return;
+    alertSwal('info', 'Fitur regenerate report akan segera tersedia!');
 }
 
 function shareReport() {

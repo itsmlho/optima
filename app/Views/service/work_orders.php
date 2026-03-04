@@ -22,7 +22,7 @@ $assetService = new \App\Services\AssetMinificationService();
 <!-- Page Header -->
 <div class="mb-3">
     <h4 class="fw-bold mb-1">
-        <i class="bi bi-wrench me-2 text-primary"></i>
+        <i class="fas fa-wrench me-2 text-primary"></i>
         Work Orders Management
     </h4>
     <p class="text-muted mb-0">Monitor and manage service work orders from open to completion</p>
@@ -188,7 +188,7 @@ $assetService = new \App\Services\AssetMinificationService();
                 <?php endif; ?>
                 <div class="table-responsive">
                     <table id="progressWorkOrdersTable" class="table table-striped table-hover <?= !$can_view ? 'table-disabled' : '' ?>">
-                        <thead>
+                        <thead class="table-light">
                             <tr>
                                 <th width="5%"><?= lang('Common.no') ?></th>
                                 <th><?= lang('Service.work_order') ?></th>
@@ -198,7 +198,7 @@ $assetService = new \App\Services\AssetMinificationService();
                                 <th><?= lang('App.priority') ?></th>
                                 <th><?= lang('Common.category') ?></th>
                                 <th><?= lang('Common.status') ?></th>
-                                <th width="10%"><?= lang('App.action') ?></th>
+                                <th width="10%" class="text-center"><?= lang('App.action') ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -267,17 +267,17 @@ $assetService = new \App\Services\AssetMinificationService();
                 <?php endif; ?>
                 <div class="table-responsive">
                     <table id="closedWorkOrdersTable" class="table table-striped table-hover <?= !$can_view ? 'table-disabled' : '' ?>">
-                        <thead>
+                        <thead class="table-light">
                             <tr>
-                                <th width="5%">No</th>
-                                <th>WO Number</th>
-                                <th>Date</th>
-                                <th>Unit</th>
-                                <th>Type</th>
-                                <th>Priority</th>
-                                <th>Category</th>
-                                <th>Closed Date</th>
-                                <th width="10%">Actions</th>
+                                <th width="5%"><?= lang('Common.no') ?></th>
+                                <th><?= lang('Service.work_order') ?></th>
+                                <th><?= lang('Common.date') ?></th>
+                                <th><?= lang('App.unit') ?></th>
+                                <th><?= lang('Common.type') ?></th>
+                                <th><?= lang('App.priority') ?></th>
+                                <th><?= lang('Common.category') ?></th>
+                                <th><?= lang('Service.closed_date') ?></th>
+                                <th width="10%" class="text-center"><?= lang('App.action') ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -759,6 +759,21 @@ const canCreateService = <?= $can_create ? 'true' : 'false' ?>;
 const canExportService = <?= $can_export ? 'true' : 'false' ?>;
 
 $(document).ready(function() {
+    // Hide global page loading overlay as soon as this page JS is ready
+    try {
+        if (window.OptimaPro && typeof window.OptimaPro.hideLoading === 'function') {
+            window.OptimaPro.hideLoading();
+        } else {
+            const loadingEl = document.getElementById('pageLoading');
+            if (loadingEl) {
+                loadingEl.style.opacity = '0';
+                loadingEl.style.display = 'none';
+                loadingEl.classList.add('fade-out');
+            }
+        }
+    } catch (e) {
+        console.warn('Failed to hide pageLoading overlay early:', e);
+    }
     
     // Initialize global spareparts data for dropdowns
     <?php if (!empty($spareparts)): ?>
@@ -824,6 +839,12 @@ $(document).ready(function() {
                 d.useOptimized = true;
                 d.status = $('#filter-status-progress').val();
                 d.priority = $('#filter-priority-progress').val();
+                // Add CSRF token
+                if (typeof window.getCsrfToken === 'function') {
+                    d.csrf_test_name = window.getCsrfToken();
+                } else if (window.csrfToken) {
+                    d.csrf_test_name = window.csrfToken;
+                }
             }
         },
         columns: [
@@ -839,7 +860,6 @@ $(document).ready(function() {
         ],
         order: [[2, 'desc']], // Order by report_date descending
         language: {
-            "sProcessing": "Processing...",
             "sLengthMenu": "Show _MENU_ entries",
             "sZeroRecords": "No matching records found",
             "sInfo": "Showing _START_ to _END_ of _TOTAL_ entries",
@@ -887,6 +907,12 @@ $(document).ready(function() {
                 d.useOptimized = true;
                 d.priority = $('#filter-priority-closed').val();
                 d.month = $('#filter-month-closed').val();
+                // Add CSRF token
+                if (typeof window.getCsrfToken === 'function') {
+                    d.csrf_test_name = window.getCsrfToken();
+                } else if (window.csrfToken) {
+                    d.csrf_test_name = window.csrfToken;
+                }
             }
         },
         columns: [

@@ -2,25 +2,23 @@
 
 <?= $this->section('content') ?>
 
-<div class="container-fluid">
-    <!-- Page Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h1 class="h3 mb-0 text-gray-800">
-                        <i class="fas fa-cogs me-2"></i><?= esc($page_title) ?>
-                    </h1>
-                    <p class="text-muted mb-0">Manage system settings and configurations</p>
-                </div>
-                <div>
-                    <button type="button" class="btn btn-primary" onclick="saveAllSettings()">
-                        <i class="fas fa-save me-2"></i>Save All Changes
-                    </button>
-                </div>
-            </div>
+<!-- Page Header -->
+<div class="mb-3">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h4 class="fw-bold mb-1">
+                <i class="fas fa-cogs me-2 text-primary"></i><?= esc($page_title) ?>
+            </h4>
+            <p class="text-muted mb-0 small">Manage system settings and configurations</p>
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveAllSettings()">
+                <i class="fas fa-save me-2"></i>Save All Changes
+            </button>
         </div>
     </div>
+</div>
+
 
     <!-- Settings Tabs -->
     <div class="row">
@@ -428,19 +426,20 @@ function saveAllSettings() {
     });
 }
 
-function clearCache() {
-    if (confirm('Are you sure you want to clear all cache?')) {
-        fetch('<?= base_url('admin/cache/clear') ?>', {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            showAlert(data.success ? 'success' : 'error', data.message);
-        });
-    }
+async function clearCache() {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Cache',
+        text: 'Apakah Anda yakin ingin menghapus semua cache?',
+        type: 'delete',
+        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Cache'
+    });
+    if (!confirmed) return;
+    fetch('<?= base_url('admin/cache/clear') ?>', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
 }
 
 function testCacheConnection() {
@@ -483,19 +482,20 @@ function startQueue() {
     });
 }
 
-function stopQueue() {
-    if (confirm('Are you sure you want to stop the queue?')) {
-        fetch('<?= base_url('admin/queue/stop') ?>', {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            showAlert(data.success ? 'success' : 'error', data.message);
-        });
-    }
+async function stopQueue() {
+    const confirmed = await confirmSwal({
+        title: 'Hentikan Queue',
+        text: 'Apakah Anda yakin ingin menghentikan queue?',
+        type: 'delete',
+        confirmText: '<i class="fas fa-stop me-1"></i>Ya, Hentikan'
+    });
+    if (!confirmed) return;
+    fetch('<?= base_url('admin/queue/stop') ?>', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
 }
 
 function createBackup() {
@@ -526,71 +526,67 @@ function checkSystemHealth() {
 }
 
 function showAlert(type, message) {
-    // Create alert element
+    // Gunakan global alertSwal jika tersedia, fallback ke Bootstrap alert
+    if (typeof alertSwal !== 'undefined') {
+        alertSwal(type, message);
+        return;
+    }
     const alertDiv = document.createElement('div');
     alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show`;
-    alertDiv.innerHTML = `
-        ${message}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    // Insert at top of container
-    const container = document.querySelector('.container-fluid');
-    container.insertBefore(alertDiv, container.firstChild);
-    
-    // Auto-remove after 5 seconds
-    setTimeout(() => {
-        if (alertDiv.parentNode) {
-            alertDiv.remove();
-        }
-    }, 5000);
+    alertDiv.innerHTML = `${message}<button type="button" class="btn-close" data-bs-dismiss="alert"></button>`;
+    const container = document.querySelector('.mb-3') || document.body.firstChild;
+    container.after(alertDiv);
+    setTimeout(() => { if (alertDiv.parentNode) alertDiv.remove(); }, 5000);
 }
 
 // Additional functionality
-function clearLogs() {
-    if (confirm('Are you sure you want to clear all logs?')) {
-        fetch('<?= base_url('admin/logs/clear') ?>', {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            showAlert(data.success ? 'success' : 'error', data.message);
-        });
-    }
+async function clearLogs() {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Semua Log',
+        text: 'Apakah Anda yakin ingin menghapus semua log?',
+        type: 'delete',
+        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Log'
+    });
+    if (!confirmed) return;
+    fetch('<?= base_url('admin/logs/clear') ?>', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
 }
 
-function clearFailedJobs() {
-    if (confirm('Are you sure you want to clear all failed jobs?')) {
-        fetch('<?= base_url('admin/queue/clear-failed') ?>', {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            showAlert(data.success ? 'success' : 'error', data.message);
-        });
-    }
+async function clearFailedJobs() {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Failed Jobs',
+        text: 'Apakah Anda yakin ingin menghapus semua failed jobs?',
+        type: 'delete',
+        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus'
+    });
+    if (!confirmed) return;
+    fetch('<?= base_url('admin/queue/clear-failed') ?>', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
 }
 
-function optimizeDatabase() {
-    if (confirm('Are you sure you want to optimize the database? This may take some time.')) {
-        showAlert('info', 'Optimizing database...');
-        fetch('<?= base_url('admin/database/optimize') ?>', {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            showAlert(data.success ? 'success' : 'error', data.message);
-        });
-    }
+async function optimizeDatabase() {
+    const confirmed = await confirmSwal({
+        title: 'Optimasi Database',
+        text: 'Proses ini mungkin membutuhkan beberapa waktu. Apakah Anda yakin?',
+        icon: 'info',
+        confirmText: '<i class="fas fa-database me-1"></i>Ya, Optimasi'
+    });
+    if (!confirmed) return;
+    showAlert('info', 'Mengoptimasi database...');
+    fetch('<?= base_url('admin/database/optimize') ?>', {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => { showAlert(data.success ? 'success' : 'error', data.message); });
 }
 
 function clearSessions() {

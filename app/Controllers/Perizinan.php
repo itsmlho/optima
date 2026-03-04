@@ -6,18 +6,21 @@ use App\Controllers\BaseController;
 use App\Models\SiloModel;
 use App\Models\UnitAssetModel;
 use App\Models\DepartemenModel;
+use App\Services\ExportService;
 
 class Perizinan extends BaseController
 {
     protected $siloModel;
     protected $unitModel;
     protected $departemenModel;
+    protected $exportService;
 
     public function __construct()
     {
         $this->siloModel = new SiloModel();
         $this->unitModel = new UnitAssetModel();
         $this->departemenModel = new DepartemenModel();
+        $this->exportService = new ExportService();
     }
 
     /**
@@ -218,7 +221,10 @@ class Perizinan extends BaseController
                 tu.jenis as jenis_unit,
                 k.kapasitas_unit,
                 d.nama_departemen as departemen');
-            $builder->join('customers c', 'c.id = iu.customer_id', 'left');
+            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
+            $builder->join('kontrak kt', 'kt.id = ku.kontrak_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = kt.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
@@ -804,6 +810,55 @@ class Perizinan extends BaseController
         if (!$this->hasPermission('perizinan.silo.export')) {
             return redirect()->to('/dashboard')->with('error', 'Anda tidak memiliki izin untuk export data SILO.');
         }
-        return view('perizinan/export_silo');
+        
+        // Get data from database
+        $db = \Config\Database::connect();
+        $builder = $db->table('silo s');
+        $builder->select('
+            s.*, 
+            iu.no_unit, 
+            u.username as operator_name, 
+            u2.username as checker_name,
+            c.customer_name, 
+            cl.address as location_address
+        ');
+        $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
+        $builder->join('users u', 'u.id = s.created_by', 'left');
+        $builder->join('users u2', 'u2.id = s.updated_by', 'left');
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak kt', 'kt.id = ku.kontrak_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = kt.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        $builder->orderBy('s.id_silo', 'DESC');
+        
+        $query = $builder->get();
+        $silos = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'No Unit', 'Tanggal', 'Jam', 'Lokasi', 'Status', 'Keterangan', 'Operator', 'Pengecek'];
+        
+        // Prepare data rows
+        $data = [];
+        $no = 1;
+        foreach ($silos as $silo) {
+            $dateSource = $silo['created_at'] ?? null;
+            $tanggal = $dateSource ? date('Y-m-d', strtotime($dateSource)) : '-';
+            $jam = $dateSource ? date('H:i', strtotime($dateSource)) : '-';
+            
+            $data[] = [
+                $no++,
+                $silo['no_unit'] ?? '',
+                $tanggal,
+                $jam,
+                $silo['location_address'] ?? '',
+                $silo['status'] ?? '',
+                $silo['keterangan'] ?? '',
+                $silo['operator_name'] ?? '',
+                $silo['checker_name'] ?? ''
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'Data Silo');
     }
 }

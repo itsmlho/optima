@@ -4,10 +4,20 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
+/**
+ * @deprecated This model references non-existent 'forklifts' table
+ * @see InventoryUnitModel - Use this instead for unit management
+ * 
+ * FIXME: Table 'forklifts' does not exist in database
+ * Should use 'inventory_unit' table with primary key 'id_inventory_unit'
+ * Currently NOT IN USE - instantiated in Dashboard.php but never called
+ * 
+ * Action Required: Remove from Dashboard.php or refactor to use InventoryUnitModel
+ */
 class AssetManagementModel extends Model
 {
-    protected $table            = 'forklifts';
-    protected $primaryKey       = 'forklift_id';
+    protected $table            = 'inventory_unit';
+    protected $primaryKey       = 'id_inventory_unit';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
@@ -30,34 +40,11 @@ class AssetManagementModel extends Model
 
     // Validation
     protected $validationRules = [
-        'unit_code'         => 'required|max_length[20]|is_unique[forklifts.unit_code,forklift_id,{forklift_id}]',
-        'unit_name'         => 'required|max_length[255]',
-        'brand'             => 'required|max_length[100]',
-        'model'             => 'required|max_length[100]',
-        'type'              => 'required|in_list[electric,diesel,gas,hybrid]',
-        'capacity'          => 'required|numeric|greater_than[0]',
-        'fuel_type'         => 'required|in_list[electric,diesel,petrol,gas,hybrid]',
-        'status'            => 'required|in_list[available,rented,maintenance,retired,reserved]',
-        'condition'         => 'required|in_list[excellent,good,fair,poor,damaged]',
-        'availability'      => 'required|in_list[available,unavailable,reserved]',
-        'engine_power'      => 'permit_empty|numeric',
-        'lift_height'       => 'permit_empty|numeric',
-        'year_manufactured' => 'permit_empty|numeric|greater_than[1900]',
-        'serial_number'     => 'permit_empty|max_length[100]',
-        'purchase_date'     => 'permit_empty|valid_date',
-        'purchase_price'    => 'permit_empty|numeric|greater_than[0]',
-        'current_value'     => 'permit_empty|numeric|greater_than[0]',
-        'supplier'          => 'permit_empty|max_length[255]',
-        'warranty_expiry'   => 'permit_empty|valid_date',
-        'insurance_expiry'  => 'permit_empty|valid_date',
-        'location'          => 'permit_empty|max_length[255]',
+        // Validation disabled — this model is deprecated.
+        // Use InventoryUnitModel for all write operations.
     ];
 
-    protected $validationMessages = [
-        'unit_code' => [
-            'is_unique' => 'Unit code sudah ada dalam sistem.'
-        ]
-    ];
+    protected $validationMessages = [];
 
     // --- Metode Kustom ---
 
@@ -80,7 +67,7 @@ class AssetManagementModel extends Model
             $builder->where('condition', $filters['condition']);
         }
 
-        return $builder->orderBy('unit_code', 'ASC')->findAll();
+        return $builder->orderBy('unit_code', 'ASC')->get()->getResultArray();
     }
 
     public function getAssetStats()

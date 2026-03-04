@@ -1596,17 +1596,21 @@ function viewArea(id) {
   });
 }
 
-function deleteArea(id) {
-  if (!confirm('Delete this area?')) return;
+async function deleteArea(id) {
+  const confirmed = await confirmSwal({
+      title: 'Hapus Area',
+      text: 'Apakah Anda yakin ingin menghapus area ini?',
+      type: 'delete'
+  });
+  if (!confirmed) return;
   
   $.ajax({
     url: `<?= base_url('service/area-management/deleteArea') ?>/${id}`,
     type: 'DELETE',
     success: function(resp){
       if (resp.success) {
-        notify('Area deleted','success');
+        notify('Area berhasil dihapus','success');
         refreshAreas();
-        
       } else {
         notify(resp.message,'error');
       }
@@ -1640,23 +1644,28 @@ function viewEmployee(id) {
   });
 }
 
-function deleteEmployee(id) {
-  if (!confirm('Deactivate this employee? This will set the employee as inactive instead of permanently deleting.')) return;
+async function deleteEmployee(id) {
+  const confirmed = await confirmSwal({
+      title: 'Nonaktifkan Karyawan',
+      text: 'Karyawan akan dinonaktifkan (bukan dihapus permanen). Lanjutkan?',
+      icon: 'warning',
+      confirmText: '<i class="fas fa-user-slash me-1"></i>Ya, Nonaktifkan'
+  });
+  if (!confirmed) return;
   
   $.ajax({
     url: `<?= base_url('service/area-management/deleteEmployee') ?>/${id}`,
     type: 'DELETE',
     success: function(resp){
       if (resp.success) {
-        notify('Employee deactivated successfully','success');
+        notify('Karyawan berhasil dinonaktifkan','success');
         refreshEmployees();
-        
       } else {
         notify(resp.message,'error');
       }
     },
     error: function() {
-      notify('Error deactivating employee', 'error');
+      notify('Error menonaktifkan karyawan', 'error');
     }
   });
 }
@@ -1723,8 +1732,8 @@ function renderAssignmentsTable(assignments) {
       <td>${a.start_date ? new Date(a.start_date).toLocaleDateString('en-GB') : '-'}</td>
       <td>${a.end_date ? new Date(a.end_date).toLocaleDateString('en-GB') : '-'}</td>
       <td>
-        <button class='btn btn-sm btn-outline-primary mr-1' onclick='editAssignment(${a.id})' title="Edit Assignment"><i class='fas fa-edit'></i></button>
-        <button class='btn btn-sm btn-outline-danger' onclick='removeAssignment(${a.id})' title="Remove Assignment"><i class='fas fa-trash'></i></button>
+        <button class='btn btn-sm btn-outline-primary mr-1' onclick='editAssignment(${a.id})' title="Edit Assignment" aria-label="Edit assignment"><i class='fas fa-edit' aria-hidden='true'></i></button>
+        <button class='btn btn-sm btn-outline-danger' onclick='removeAssignment(${a.id})' title="Remove Assignment" aria-label="Hapus assignment"><i class='fas fa-trash' aria-hidden='true'></i></button>
       </td>
     </tr>`;
   });
@@ -1792,8 +1801,14 @@ function loadAvailableEmployeesForAssignment() {
   });
 }
 
-function removeAssignment(id) {
-  if (!confirm('Remove this assignment?\n\nThis will unassign the employee from this area.\nThis action cannot be undone.')) return;
+async function removeAssignment(id) {
+  const confirmed = await confirmSwal({
+      title: 'Hapus Assignment',
+      text: 'Karyawan akan di-unassign dari area ini. Tindakan ini tidak dapat dibatalkan.',
+      type: 'delete',
+      confirmText: '<i class="fas fa-user-minus me-1"></i>Ya, Hapus Assignment'
+  });
+  if (!confirmed) return;
   
   console.log('🗑️ Attempting to delete assignment ID:', id);
   

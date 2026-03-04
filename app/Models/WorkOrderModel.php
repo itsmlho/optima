@@ -297,7 +297,8 @@ class WorkOrderModel extends Model
                            ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
                            ->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left')
                            ->join('kapasitas kap', 'iu.kapasitas_unit_id = kap.id_kapasitas', 'left')
-                           ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+                           ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left')
+                           ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
                            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
                            ->join('customers c', 'c.id = cl.customer_id', 'left')
                            ->where('iu.status_unit', 'AVAILABLE'); // Only available units
@@ -384,7 +385,8 @@ class WorkOrderModel extends Model
                 ->join('work_order_categories woc', 'wo.category_id = woc.id', 'left')
                 ->join('work_order_subcategories wosc', 'wo.subcategory_id = wosc.id', 'left')
                 ->join('inventory_unit iu', 'wo.unit_id = iu.id_inventory_unit', 'left')
-                ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+                ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
                 ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
                 ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
@@ -590,7 +592,8 @@ class WorkOrderModel extends Model
             LEFT JOIN kapasitas kap ON iu.kapasitas_unit_id = kap.id_kapasitas
             LEFT JOIN mesin m ON iu.model_mesin_id = m.id
             LEFT JOIN tipe_mast tm ON iu.model_mast_id = tm.id_mast
-            LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+            LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+            LEFT JOIN kontrak k ON ku.kontrak_id = k.id
             LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
             LEFT JOIN customers c ON c.id = cl.customer_id
             LEFT JOIN areas a ON iu.area_id = a.id

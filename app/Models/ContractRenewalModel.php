@@ -174,7 +174,7 @@ class ContractRenewalModel extends Model
         }
         
         // Check contract status
-        if ($contract['status'] === 'Dibatalkan') {
+        if ($contract['status'] === 'CANCELLED') {
             $result['eligible'] = false;
             $result['reasons'][] = 'Cannot renew cancelled contract';
         }

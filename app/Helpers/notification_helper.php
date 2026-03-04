@@ -3207,7 +3207,7 @@ if (!function_exists('check_contract_expiry_scheduled')) {
                 ->select('k.*, c.customer_name, cl.location_name')
                 ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
-                ->where('k.status', 'Aktif')
+                ->where('k.status', 'ACTIVE')
                 ->where('k.tanggal_berakhir >=', date('Y-m-d'))
                 ->where('k.tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
                 ->get()

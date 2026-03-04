@@ -13,36 +13,42 @@ $canAmend  = ($status === 'ACTIVE');
 ?>
 
 <!-- Page Header -->
-<div class="d-flex align-items-center gap-3 mb-4">
-    <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-outline-secondary btn-sm">
-        <i class="fas fa-arrow-left me-1"></i>Back
-    </a>
-    <div class="flex-grow-1">
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a href="<?= base_url('marketing/kontrak') ?>"><i class="fas fa-file-contract me-1"></i>Kontrak</a></li>
+                <li class="breadcrumb-item active"><?= esc($noKontrak) ?></li>
+            </ol>
+        </nav>
         <h4 class="fw-bold mb-0">
             <i class="fas fa-file-contract me-2 text-primary"></i>Contract Detail
         </h4>
-        <small class="text-muted"><?= esc($noKontrak) ?></small>
+        <p class="text-muted small mb-0"><?= esc($noKontrak) ?> &bull; <span class="badge bg-<?= $statusClass ?>"><?= esc($status) ?></span></p>
     </div>
     <!-- Action Buttons -->
     <div class="d-flex gap-2 flex-wrap">
-        <a href="<?= base_url('marketing/kontrak/edit/' . $id) ?>" class="btn btn-primary">
-            <i class="fas fa-edit me-1"></i>Edit
+        <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Kembali
+        </a>
+        <a href="<?= base_url('marketing/kontrak/edit/' . $id) ?>" class="btn btn-primary btn-sm">
+            <i class="fas fa-edit me-1" aria-hidden="true"></i>Edit
         </a>
         <?php if ($canRenew): ?>
-        <button type="button" class="btn btn-success" id="btnRenewal" onclick="openRenewalWizard(<?= $id ?>)">
-            <i class="fas fa-sync-alt me-1"></i>Renewal
+        <button type="button" class="btn btn-success btn-sm" id="btnRenewal" onclick="openRenewalWizard(<?= $id ?>)">
+            <i class="fas fa-sync-alt me-1" aria-hidden="true"></i>Renewal
         </button>
         <?php endif; ?>
         <?php if ($canAmend): ?>
-        <button type="button" class="btn btn-warning" id="btnAmendment" onclick="openAmendmentModal(<?= $id ?>)">
-            <i class="fas fa-calculator me-1"></i>Change Rate
+        <button type="button" class="btn btn-warning btn-sm" id="btnAmendment" onclick="openAmendmentModal(<?= $id ?>)">
+            <i class="fas fa-calculator me-1" aria-hidden="true"></i>Change Rate
         </button>
         <?php endif; ?>
-        <button type="button" class="btn btn-outline-info" onclick="openHistoryModal(<?= $id ?>)">
-            <i class="fas fa-history me-1"></i>History
+        <button type="button" class="btn btn-outline-info btn-sm" onclick="openHistoryModal(<?= $id ?>)">
+            <i class="fas fa-history me-1" aria-hidden="true"></i>History
         </button>
-        <button type="button" class="btn btn-danger" onclick="deleteContract(<?= $id ?>)">
-            <i class="fas fa-trash me-1"></i>Delete
+        <button type="button" class="btn btn-danger btn-sm" onclick="deleteContract(<?= $id ?>)">
+            <i class="fas fa-trash me-1" aria-hidden="true"></i>Delete
         </button>
     </div>
 </div>
@@ -261,7 +267,7 @@ $canAmend  = ($status === 'ACTIVE');
 <?= $this->section('javascript') ?>
 <script>
 const CONTRACT_ID = <?= (int)$id ?>;
-const BASE_URL    = '<?= base_url() ?>';
+// BASE_URL is already defined globally in base.php
 
 // ── Helper: format rupiah ────────────────────────────────
 function rupiah(v) {
@@ -502,15 +508,25 @@ function uploadContractDocument() {
     alert('Upload document feature coming soon.');
 }
 
-function deleteDocument(docId) {
-    if (!confirm('Delete this document?')) return;
+async function deleteDocument(docId) {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Dokumen',
+        text: 'Apakah Anda yakin ingin menghapus dokumen ini?',
+        type: 'delete'
+    });
+    if (!confirmed) return;
     $.post(BASE_URL + 'marketing/kontrak/deleteDocument/' + docId, {}, function(res) {
-        if (res.success) { loadDocuments(); } else { alert(res.message || 'Failed to delete.'); }
+        if (res.success) { loadDocuments(); } else { alertSwal('error', res.message || 'Gagal menghapus dokumen.'); }
     });
 }
 
-function deleteContract(id) {
-    if (!confirm('Are you sure you want to delete this contract? This action cannot be undone.')) return;
+async function deleteContract(id) {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Kontrak',
+        text: 'Apakah Anda yakin ingin menghapus kontrak ini? Tindakan ini tidak dapat dibatalkan.',
+        type: 'delete'
+    });
+    if (!confirmed) return;
     $.ajax({
         url: BASE_URL + 'marketing/kontrak/delete/' + id,
         type: 'POST',
@@ -518,10 +534,10 @@ function deleteContract(id) {
             if (res.success) {
                 window.location.href = BASE_URL + 'marketing/kontrak';
             } else {
-                alert(res.message || 'Failed to delete contract.');
+                alertSwal('error', res.message || 'Gagal menghapus kontrak.');
             }
         },
-        error: function() { alert('Error deleting contract.'); }
+        error: function() { alertSwal('error', 'Terjadi kesalahan saat menghapus kontrak.'); }
     });
 }
 

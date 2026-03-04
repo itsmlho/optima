@@ -31,12 +31,15 @@ class OptimizedUnitAssetModel extends Model
             'iu.kondisi',
             'iu.lokasi',
             'iu.departemen_id',
-            'c.nama_customer',
+            'c.customer_name as nama_customer',
             'd.nama_departemen'
         ]);
         
-        // Optimized joins
-        $builder->join('customer c', 'c.id = iu.customer_id', 'left');
+        // Optimized joins - route through kontrak_unit junction to get customer
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->join('departemen d', 'd.id = iu.departemen_id', 'left');
         
         // Search filter
@@ -45,7 +48,7 @@ class OptimizedUnitAssetModel extends Model
                     ->like('iu.no_unit', $search)
                     ->orLike('iu.merk_unit', $search)
                     ->orLike('iu.model_unit', $search)
-                    ->orLike('c.nama_customer', $search)
+                    ->orLike('c.customer_name', $search)
                     ->groupEnd();
         }
         
@@ -80,14 +83,17 @@ class OptimizedUnitAssetModel extends Model
         
         $builder->select([
             'iu.*',
-            'c.nama_customer',
-            'c.alamat as customer_address', 
-            'c.telepon as customer_phone',
+            'c.customer_name as nama_customer',
+            'c.primary_address as customer_address', 
+            'c.primary_phone as customer_phone',
             'd.nama_departemen',
             's.nama_supplier'
         ]);
         
-        $builder->join('customer c', 'c.id = iu.customer_id', 'left');
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->join('departemen d', 'd.id = iu.departemen_id', 'left');
         $builder->join('supplier s', 's.id = iu.supplier_id', 'left');
         
@@ -152,11 +158,14 @@ class OptimizedUnitAssetModel extends Model
             'iu.merk_unit',
             'iu.model_unit',
             'iu.departemen_id',
-            'c.nama_customer',
+            'c.customer_name as nama_customer',
             'd.nama_departemen'
         ]);
         
-        $builder->join('customer c', 'c.id = iu.customer_id', 'left');
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->join('departemen d', 'd.id = iu.departemen_id', 'left');
         
         if (!empty($departmentIds)) {
@@ -184,21 +193,24 @@ class OptimizedUnitAssetModel extends Model
         
         $builder->select([
             'iu.id_inventory_unit as value',
-            'CONCAT(iu.no_unit, " - ", c.nama_customer, " (", iu.merk_unit, " ", iu.model_unit, ")") as label',
+            'CONCAT(iu.no_unit, " - ", COALESCE(c.customer_name, "N/A"), " (", iu.merk_unit, " ", iu.model_unit, ")") as label',
             'iu.no_unit',
             'iu.merk_unit',
             'iu.model_unit',
-            'c.nama_customer'
+            'c.customer_name as nama_customer'
         ]);
         
-        $builder->join('customer c', 'c.id = iu.customer_id', 'left');
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         
         if (!empty($term)) {
             $builder->groupStart()
                     ->like('iu.no_unit', $term)
                     ->orLike('iu.merk_unit', $term)
                     ->orLike('iu.model_unit', $term)
-                    ->orLike('c.nama_customer', $term)
+                    ->orLike('c.customer_name', $term)
                     ->groupEnd();
         }
         

@@ -489,7 +489,6 @@ $(document).ready(function() {
         order: [[1, 'desc']],
         pageLength: 25,
         language: {
-            processing: "Processing...",
             search: "Search:",
             lengthMenu: "Show _MENU_ entries",
             info: "Showing _START_ to _END_ of _TOTAL_ entries",
@@ -657,7 +656,6 @@ $(document).ready(function() {
         order: [[0, 'desc']],
         pageLength: 25,
         language: {
-            processing: "Processing...",
             search: "Search:",
             lengthMenu: "Show _MENU_ entries",
             info: "Showing _START_ to _END_ of _TOTAL_ entries",

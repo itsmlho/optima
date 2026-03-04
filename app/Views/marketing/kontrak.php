@@ -182,173 +182,10 @@ $can_export = can_export('marketing');
 <?= $this->include('components/addendum_prorate') ?>
 <?= $this->include('components/asset_history') ?>
 
-<!-- Contract Detail Modal - NEW COMPREHENSIVE VIEW -->
-<div class="modal fade modal-wide" id="contractDetailModal" tabindex="-1" data-bs-backdrop="static">
-    <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header modal-header-primary">
-                <div>
-                    <h5 class="modal-title">
-                        <i class="fas fa-file-contract me-2"></i><strong>Contract Details</strong>
-                    </h5>
-                    <small id="contractModalSubtitle">Complete contract information</small>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <!-- Navigation Tabs -->
-                <ul class="nav nav-tabs nav-fill mb-3" role="tablist">
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="overview-tab" data-bs-toggle="tab" data-bs-target="#overview-content" type="button" role="tab">
-                            <i class="fas fa-info-circle me-1"></i>Overview
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="units-tab" data-bs-toggle="tab" data-bs-target="#units-content" type="button" role="tab">
-                            <i class="fas fa-truck me-1"></i>Units & Locations
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history-content" type="button" role="tab">
-                            <i class="fas fa-history me-1"></i>History
-                        </button>
-                    </li>
-                    <li class="nav-item" role="presentation">
-                        <button class="nav-link" id="documents-tab" data-bs-toggle="tab" data-bs-target="#documents-content" type="button" role="tab">
-                            <i class="fas fa-file-alt me-1"></i>Documents
-                        </button>
-                    </li>
-                </ul>
-
-                <!-- Tab Contents -->
-                <div class="tab-content">
-                    <!-- Overview Tab -->
-                    <div class="tab-pane fade show active" id="overview-content" role="tabpanel">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="fas fa-file-contract me-2"></i><strong>Contract Information</strong></h6>
-                            </div>
-                            <div class="card-body" id="contractInfoContent">
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
-                                    <p>Loading contract details...</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="card mb-3">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><i class="fas fa-building me-2"></i><strong>Customer Information</strong></h6>
-                                    </div>
-                                    <div class="card-body" id="customerInfoContent">
-                                        <div class="text-center text-muted py-3">Loading...</div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-md-6">
-                                <div class="card mb-3">
-                                    <div class="card-header bg-light">
-                                        <h6 class="mb-0"><i class="fas fa-calculator me-2"></i><strong>Financial Summary</strong></h6>
-                                    </div>
-                                    <div class="card-body" id="financialSummaryContent">
-                                        <div class="text-center text-muted py-3">Loading...</div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Units & Locations Tab -->
-                    <div class="tab-pane fade" id="units-content" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0"><i class="fas fa-truck me-2"></i><strong>Rented Units by Location</strong></h6>
-                                <span class="badge bg-primary" id="totalUnitsCount">0 Units</span>
-                            </div>
-                            <div class="card-body p-0">
-                                <div class="accordion" id="locationsAccordion">
-                                    <div class="text-center text-muted py-4">
-                                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
-                                        <p>Loading units...</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- History Tab -->
-                    <div class="tab-pane fade" id="history-content" role="tabpanel">
-                        <div class="card mb-3">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0"><i class="fas fa-clock me-2"></i><strong>Contract Timeline</strong></h6>
-                                <select class="form-select form-select-sm" style="width: auto;" id="historyFilter">
-                                    <option value="all">All Events</option>
-                                    <option value="contract">Contracts</option>
-                                    <option value="amendment">Amendments</option>
-                                    <option value="renewal">Renewals</option>
-                                </select>
-                            </div>
-                            <div class="card-body" id="contractTimelineContent">
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
-                                    <p>Loading history...</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h6 class="mb-0"><i class="fas fa-chart-line me-2"></i><strong>Rate Changes</strong></h6>
-                            </div>
-                            <div class="card-body" id="rateHistoryContent">
-                                <div class="text-center text-muted py-3">Loading rate history...</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Documents Tab -->
-                    <div class="tab-pane fade" id="documents-content" role="tabpanel">
-                        <div class="card">
-                            <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0"><i class="fas fa-paperclip me-2"></i><strong>Contract Documents</strong></h6>
-                                <button class="btn btn-sm btn-primary" onclick="uploadContractDocument()">
-                                    <i class="fas fa-upload me-1"></i>Upload Document
-                                </button>
-                            </div>
-                            <div class="card-body" id="documentsListContent">
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
-                                    <p>Loading documents...</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer bg-light d-flex justify-content-between">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Close
-                </button>
-                <div class="btn-group" role="group" id="contractActionButtons">
-                    <button type="button" class="btn btn-primary" onclick="editContractFromModal()" title="Edit Contract">
-                        <i class="fas fa-edit me-1"></i>Edit
-                    </button>
-                    <button type="button" class="btn btn-success" id="btnRenewal" onclick="openRenewalFromModal()" title="Renew Contract">
-                        <i class="fas fa-sync-alt me-1"></i>Renewal
-                    </button>
-                    <button type="button" class="btn btn-warning" id="btnAmendment" onclick="openAmendmentFromModal()" title="Change Rate">
-                        <i class="fas fa-calculator me-1"></i>Change Rate
-                    </button>
-                    <button type="button" class="btn btn-danger" onclick="deleteContractFromModal()" title="Delete Contract">
-                        <i class="fas fa-trash me-1"></i>Delete
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Contract Detail Modal REMOVED: 
+     Konten detail sudah tersedia di dedicated page kontrak_detail.php.
+     Tombol "View Detail" di tabel sudah mengarah ke /marketing/kontrak/detail/{id}.
+     Modal ini dihapus untuk menghindari konflik DOM ID (contractInfoContent, dll). -->
 
 <!-- Direct Contract Creation Modal -->
 <div class="modal fade modal-wide" id="addContractModal" tabindex="-1">
@@ -611,8 +448,14 @@ function initializeContractsTable() {
             zeroRecords: 'No matching contracts found'
         },
         drawCallback: function() {
-            // Enable Bootstrap tooltips for action buttons
-            $('[title]').tooltip({
+            // Re-initialize Bootstrap tooltips safely for action buttons in this table
+            const $table = $('#contractsTable');
+            
+            // Dispose existing tooltip instances to avoid "more than one instance" warning
+            $table.find('[title]').tooltip('dispose');
+
+            // Initialize tooltips only within this table
+            $table.find('[title]').tooltip({
                 container: 'body',
                 trigger: 'hover'
             });
@@ -688,25 +531,29 @@ function viewContractUnits(id) {
 }
 
 // Delete contract
-function deleteContract(id) {
-    if (confirm('Are you sure you want to delete this contract?')) {
-        $.ajax({
-            url: '<?= base_url('marketing/kontrak/delete') ?>/' + id,
-            type: 'POST',
-            data: { <?= csrf_token() ?>: '<?= csrf_hash() ?>' },
-            success: function(response) {
-                if (response.success) {
-                    showNotification('Contract deleted successfully', 'success');
-                    refreshTable();
-                } else {
-                    showNotification(response.message || 'Failed to delete contract', 'error');
-                }
-            },
-            error: function() {
-                showNotification('Error deleting contract', 'error');
+async function deleteContract(id) {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Kontrak',
+        text: 'Apakah Anda yakin ingin menghapus kontrak ini? Tindakan ini tidak dapat dibatalkan.',
+        type: 'delete'
+    });
+    if (!confirmed) return;
+    $.ajax({
+        url: '<?= base_url('marketing/kontrak/delete') ?>/' + id,
+        type: 'POST',
+        data: { <?= csrf_token() ?>: '<?= csrf_hash() ?>' },
+        success: function(response) {
+            if (response.success) {
+                showNotification('Contract deleted successfully', 'success');
+                refreshTable();
+            } else {
+                showNotification(response.message || 'Failed to delete contract', 'error');
             }
-        });
-    }
+        },
+        error: function() {
+            showNotification('Error deleting contract', 'error');
+        }
+    });
 }
 
 // Show notification

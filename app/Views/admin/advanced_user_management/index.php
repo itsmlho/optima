@@ -411,22 +411,17 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response.success) {
-                    // Close modal
                     bootstrap.Modal.getInstance(document.getElementById('approveUserModal')).hide();
-                    
-                    // Show success message
-                    alert(response.message);
-                    
-                    // Reload table
+                    alertSwal('success', response.message, 'User Diaktifkan!');
                     $('#usersTable').DataTable().ajax.reload(null, false);
                 } else {
-                    alert('Error: ' + (response.message || 'Gagal mengaktifkan user'));
+                    alertSwal('error', response.message || 'Gagal mengaktifkan user', 'Error');
                     submitBtn.prop('disabled', false).html(originalText);
                 }
             },
             error: function(xhr) {
                 const response = xhr.responseJSON || {};
-                alert('Error: ' + (response.message || 'Terjadi kesalahan saat mengaktifkan user'));
+                alertSwal('error', response.message || 'Terjadi kesalahan saat mengaktifkan user', 'Error');
                 submitBtn.prop('disabled', false).html(originalText);
             }
         });
@@ -514,19 +509,19 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 if (response.success) {
-                    alert('Bulk permission assignment completed successfully.');
+                    alertSwal('success', 'Bulk permission berhasil diterapkan.');
                     $('#bulkPermissionModal').modal('hide');
                     location.reload();
                 } else {
-                    alert('Error: ' + response.message);
+                    alertSwal('error', response.message, 'Error');
                 }
             },
             error: function(xhr) {
                 try {
                     var response = JSON.parse(xhr.responseText);
-                    alert('Error: ' + response.message);
+                    alertSwal('error', response.message);
                 } catch (e) {
-                    alert('An error occurred while processing the request.');
+                    alertSwal('error', 'Terjadi kesalahan saat memproses permintaan.');
                 }
             }
         });
@@ -746,10 +741,14 @@ $(document).on('shown.bs.modal', '#approveUserModal', function() {
     }
 });
 
-function deactivateUser(userId, userName) {
-    if (!confirm('Apakah Anda yakin ingin menonaktifkan user "' + userName + '"?\n\nUser tidak akan dapat login ke sistem setelah dinonaktifkan.')) {
-        return;
-    }
+async function deactivateUser(userId, userName) {
+    const confirmed = await confirmSwal({
+        title: 'Nonaktifkan User',
+        text: `Apakah Anda yakin ingin menonaktifkan user "${userName}"? User tidak akan dapat login ke sistem setelah dinonaktifkan.`,
+        icon: 'warning',
+        confirmText: '<i class="fas fa-user-slash me-1"></i>Ya, Nonaktifkan'
+    });
+    if (!confirmed) return;
     
     $.ajax({
         url: '<?= base_url('admin/advanced-users/deactivate-user') ?>/' + userId,
@@ -766,65 +765,74 @@ function deactivateUser(userId, userName) {
         },
         success: function(response) {
             if (response.success) {
-                alert(response.message);
+                alertSwal('success', response.message, 'User Dinonaktifkan');
                 $('#usersTable').DataTable().ajax.reload();
             } else {
-                alert('Error: ' + (response.message || 'Gagal menonaktifkan user'));
+                alertSwal('error', response.message || 'Gagal menonaktifkan user', 'Error');
             }
         },
         error: function(xhr) {
             const response = xhr.responseJSON || {};
-            alert('Error: ' + (response.message || 'Terjadi kesalahan saat menonaktifkan user'));
+            alertSwal('error', response.message || 'Terjadi kesalahan saat menonaktifkan user', 'Error');
         }
     });
 }
 
-function confirmDeleteUser(userId, userName) {
-    if (confirm('Are you sure you want to delete user "' + userName + '"?\n\nThis action cannot be undone!')) {
-        $.ajax({
-            url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
-            method: 'DELETE',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    alert('User deleted successfully');
-                    location.reload();
-                } else {
-                    alert('Error: ' + response.message);
-                }
-            },
-            error: function(xhr) {
-                try {
-                    var response = JSON.parse(xhr.responseText);
-                    alert('Error: ' + response.message);
-                } catch (e) {
-                    alert('An error occurred while deleting the user.');
-                }
+async function confirmDeleteUser(userId, userName) {
+    const confirmed = await confirmSwal({
+        title: 'Hapus User',
+        text: `Apakah Anda yakin ingin menghapus user "${userName}"? Tindakan ini tidak dapat dibatalkan!`,
+        type: 'delete'
+    });
+    if (!confirmed) return;
+    $.ajax({
+        url: '<?= base_url('admin/advanced-users/delete') ?>/' + userId,
+        method: 'DELETE',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
+        },
+        success: function(response) {
+            if (response.success) {
+                alertSwal('success', 'User berhasil dihapus!');
+                location.reload();
+            } else {
+                alertSwal('error', response.message, 'Error');
             }
-        });
-    }
+        },
+        error: function(xhr) {
+            try {
+                var response = JSON.parse(xhr.responseText);
+                alertSwal('error', response.message);
+            } catch (e) {
+                alertSwal('error', 'Terjadi kesalahan saat menghapus user.');
+            }
+        }
+    });
 }
 
 function exportUsers() {
     window.location.href = '<?= base_url('admin/advanced-users/export') ?>';
 }
 
-function cleanExpiredPermissions() {
-    if (confirm('Are you sure you want to clean all expired permissions?\n\nThis will remove permissions that have expired or are no longer valid.')) {
-        $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', { '<?= csrf_token() ?>': getCsrfToken() }, function(response) {
-            if (response.success) {
-                alert('Expired permissions cleaned successfully.\n\nRemoved: ' + (response.removed_count || 0) + ' permissions');
-                location.reload();
-            } else {
-                alert('Error: ' + response.message);
-            }
-        }).fail(function() {
-            alert('An error occurred while cleaning expired permissions.');
-        });
-    }
+async function cleanExpiredPermissions() {
+    const confirmed = await confirmSwal({
+        title: 'Bersihkan Permission Kadaluarsa',
+        text: 'Ini akan menghapus semua permission yang sudah kadaluarsa atau tidak lagi valid. Lanjutkan?',
+        icon: 'warning',
+        confirmText: '<i class="fas fa-broom me-1"></i>Ya, Bersihkan'
+    });
+    if (!confirmed) return;
+    $.post('<?= base_url('admin/advanced-users/clean-expired') ?>', { '<?= csrf_token() ?>': getCsrfToken() }, function(response) {
+        if (response.success) {
+            alertSwal('success', 'Permission kadaluarsa berhasil dibersihkan.\nTerhapus: ' + (response.removed_count || 0) + ' permissions');
+            location.reload();
+        } else {
+            alertSwal('error', response.message, 'Error');
+        }
+    }).fail(function() {
+        alertSwal('error', 'Terjadi kesalahan saat membersihkan permission kadaluarsa.');
+    });
 }
 </script>
 <?= $this->endSection() ?>

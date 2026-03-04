@@ -44,22 +44,19 @@ class CleanupDuplicates extends BaseCommand
         CLI::write('Found ' . count($duplicates) . ' duplicate groups:', 'red');
         CLI::newLine();
         
-        $table = new \CodeIgniter\CLI\Table();
-        $table->setHeading(['Unit ID', 'Type', 'Att ID', 'Chr ID', 'Bat ID', 'Count', 'IDs']);
-        
+        $tableData = [['Unit ID', 'Type', 'Att ID', 'Chr ID', 'Bat ID', 'Count', 'IDs']];
         foreach ($duplicates as $dup) {
-            $table->addRow([
+            $tableData[] = [
                 $dup['id_inventory_unit'],
                 $dup['tipe_item'],
                 $dup['attachment_id'],
                 $dup['charger_id'],
                 $dup['baterai_id'],
                 $dup['count'],
-                $dup['all_ids']
-            ]);
+                $dup['all_ids'],
+            ];
         }
-        
-        CLI::table($table);
+        CLI::table($tableData);
         CLI::newLine();
         
         // 2. Ask confirmation
@@ -81,6 +78,9 @@ class CleanupDuplicates extends BaseCommand
             $deleteIds = $ids; // Delete rest
             
             if (!empty($deleteIds)) {
+                // DEPRECATED: Table structure has changed
+                CLI::write("  ✗ Cannot delete - table structure changed", 'red');
+                /*
                 $db->table('inventory_attachment')
                     ->whereIn('id_inventory_attachment', $deleteIds)
                     ->delete();
@@ -88,6 +88,7 @@ class CleanupDuplicates extends BaseCommand
                 $deletedCount += count($deleteIds);
                 
                 CLI::write("  ✓ Kept ID {$keepId}, deleted: " . implode(', ', $deleteIds), 'green');
+                */
             }
         }
         

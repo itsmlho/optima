@@ -31,6 +31,7 @@ use App\Models\InventoryUnitModel; // <-- untuk inventory unit
 use App\Models\InventoryAttachmentModel; // <-- untuk inventory attachment
 use App\Models\PODeliveryModel; // <-- untuk delivery tracking
 use App\Models\DeliveryItemModel; // <-- untuk delivery items
+use App\Services\ExportService;
 
 
 class Purchasing extends BaseController
@@ -66,6 +67,7 @@ class Purchasing extends BaseController
     protected $poAttachmentModel; // <-- untuk po attachment items
     protected $poDeliveryModel; // <-- untuk delivery tracking
     protected $deliveryItemModel; // <-- untuk delivery items
+    protected $exportService;
 
     public function __construct()
     {
@@ -98,6 +100,7 @@ class Purchasing extends BaseController
         $this->poAttachmentModel = new POAttachmentModel(); // <-- untuk po attachment items
         $this->poDeliveryModel = new PODeliveryModel(); // <-- untuk delivery tracking
         $this->deliveryItemModel = new DeliveryItemModel(); // <-- untuk delivery items
+        $this->exportService = new ExportService();
         
         helper(['form', 'url']);
     }
@@ -478,7 +481,41 @@ class Purchasing extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('purchasing/export_po');
+        
+        // Get data from database (all statuses)
+        $db = \Config\Database::connect();
+        $query = $db->query("
+            SELECT 
+                po.*, 
+                s.nama_supplier
+            FROM purchase_orders po
+            LEFT JOIN suppliers s ON s.id_supplier = po.supplier_id
+            ORDER BY 
+                FIELD(po.status, 'Pending', 'Partial Received', 'Completed'),
+                po.created_at DESC
+        ");
+        $allPOs = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'No PO', 'Supplier', 'Date', 'Items', 'Value', 'Status'];
+        
+        // Prepare data rows
+        $data = [];
+        $no = 1;
+        foreach ($allPOs as $po) {
+            $data[] = [
+                $no++,
+                $po['no_po'] ?? '',
+                $po['nama_supplier'] ?? '',
+                date('d/m/Y', strtotime($po['tanggal_po'])),
+                $po['total_items'] ?? 0,
+                'Rp ' . number_format($po['total_value'] ?? 0, 0, ',', '.'),
+                $po['status'] ?? ''
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'PO Report Detailed');
     }
 
     public function exportSupplier()
@@ -491,7 +528,43 @@ class Purchasing extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('purchasing/export_supplier');
+        
+        // Get data from database
+        $db = \Config\Database::connect();
+        $query = $db->query("
+            SELECT 
+                s.*,
+                (SELECT COUNT(*) FROM purchase_orders po WHERE po.supplier_id = s.id_supplier) as manual_total_orders
+            FROM suppliers s
+            ORDER BY s.created_at DESC
+        ");
+        $suppliers = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'Kode Supplier', 'Nama Supplier', 'Tipe Bisnis', 'Contact Person', 'Telepon', 'Email', 'Website', 'Alamat', 'Rating', 'Total PO', 'Status'];
+        
+        // Prepare data rows
+        $data = [];
+        $no = 1;
+        foreach ($suppliers as $supplier) {
+            $data[] = [
+                $no++,
+                $supplier['supplier_code'] ?? '',
+                $supplier['nama_supplier'] ?? '',
+                $supplier['tipe_bisnis'] ?? '',
+                $supplier['contact_person'] ?? '',
+                $supplier['telepon'] ?? '',
+                $supplier['email'] ?? '',
+                $supplier['website'] ?? '',
+                $supplier['alamat'] ?? '',
+                $supplier['rating'] ?? '',
+                $supplier['manual_total_orders'] ?? 0,
+                $supplier['status'] ?? ''
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'Supplier Management Detailed');
     }
 
     public function exportPOProgres()
@@ -506,7 +579,41 @@ class Purchasing extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('purchasing/export_po_progres');
+        
+        // Get data from database
+        $db = \Config\Database::connect();
+        $query = $db->query("
+            SELECT 
+                po.*, 
+                s.nama_supplier
+            FROM purchase_orders po
+            LEFT JOIN suppliers s ON s.id_supplier = po.supplier_id
+            WHERE po.status = 'Pending'
+            ORDER BY po.created_at DESC
+        ");
+        $data = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'No PO', 'Supplier', 'Tanggal PO', 'Total Items', 'Total Value', 'Status', 'Created Date'];
+        
+        // Prepare data rows
+        $rows = [];
+        $no = 1;
+        foreach ($data as $po) {
+            $rows[] = [
+                $no++,
+                $po['no_po'] ?? '',
+                $po['nama_supplier'] ?? '',
+                date('d/m/Y', strtotime($po['tanggal_po'])),
+                $po['total_items'] ?? 0,
+                'Rp ' . number_format($po['total_value'] ?? 0, 0, ',', '.'),
+                $po['status'] ?? '-',
+                date('d/m/Y', strtotime($po['created_at']))
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($rows, $headers, 'PO Progres Detailed');
     }
 
     public function exportPODelivery()
@@ -521,7 +628,64 @@ class Purchasing extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('purchasing/export_po_delivery');
+        
+        // Get data from database
+        $db = \Config\Database::connect();
+        $query = $db->query("
+            SELECT 
+                po.no_po,
+                s.nama_supplier,
+                pd.packing_list_no,
+                pd.delivery_sequence,
+                pd.delivery_date,
+                pd.driver_name,
+                pd.driver_phone,
+                pd.vehicle_info,
+                pd.vehicle_plate,
+                pdi.item_type,
+                pdi.item_name,
+                pdi.item_description,
+                pdi.qty,
+                pdi.serial_number,
+                po.status
+            FROM po_deliveries pd
+            LEFT JOIN purchase_orders po ON po.id_po = pd.po_id
+            LEFT JOIN suppliers s ON s.id_supplier = po.supplier_id
+            LEFT JOIN po_delivery_items pdi ON pdi.delivery_id = pd.id_delivery
+            WHERE po.status IN ('Partial Received', 'Completed')
+            ORDER BY pd.delivery_date DESC, pd.delivery_sequence ASC
+        ");
+        $deliveries = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'No PO', 'Supplier', 'Packing List', 'Del. Seq', 'Del. Date', 'Driver', 'Phone', 'Vehicle Info', 'Plate', 'Item Type', 'Item Name', 'Description', 'Qty', 'SN', 'Status'];
+        
+        // Prepare data rows
+        $data = [];
+        $no = 1;
+        foreach ($deliveries as $delivery) {
+            $data[] = [
+                $no++,
+                $delivery['no_po'] ?? '',
+                $delivery['nama_supplier'] ?? '',
+                $delivery['packing_list_no'] ?? '',
+                $delivery['delivery_sequence'] ?? '',
+                $delivery['delivery_date'] ?? '',
+                $delivery['driver_name'] ?? '',
+                $delivery['driver_phone'] ?? '',
+                $delivery['vehicle_info'] ?? '',
+                $delivery['vehicle_plate'] ?? '',
+                $delivery['item_type'] ?? '',
+                $delivery['item_name'] ?? '',
+                $delivery['item_description'] ?? '',
+                $delivery['qty'] ?? '',
+                $delivery['serial_number'] ?? '',
+                $delivery['status'] ?? ''
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'PO Delivery Detailed');
     }
 
     public function exportPOCompleted()
@@ -536,7 +700,41 @@ class Purchasing extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('purchasing/export_po_completed');
+        
+        // Get data from database
+        $db = \Config\Database::connect();
+        $query = $db->query("
+            SELECT 
+                po.*, 
+                s.nama_supplier
+            FROM purchase_orders po
+            LEFT JOIN suppliers s ON s.id_supplier = po.supplier_id
+            WHERE po.status = 'Completed'
+            ORDER BY po.created_at DESC
+        ");
+        $data = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'No PO', 'Supplier', 'Tanggal PO', 'Total Items', 'Total Value', 'Status', 'Completed Date'];
+        
+        // Prepare data rows
+        $rows = [];
+        $no = 1;
+        foreach ($data as $po) {
+            $rows[] = [
+                $no++,
+                $po['no_po'] ?? '',
+                $po['nama_supplier'] ?? '',
+                date('d/m/Y', strtotime($po['tanggal_po'])),
+                $po['total_items'] ?? 0,
+                'Rp ' . number_format($po['total_value'] ?? 0, 0, ',', '.'),
+                $po['status'] ?? '-',
+                $po['updated_at'] ?? ''
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($rows, $headers, 'PO Completed Detailed');
     }
 
     /**

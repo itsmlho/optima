@@ -672,7 +672,6 @@ function initializeEnhancedDataTable() {
         lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
         order: [[0, 'asc']],
         language: {
-            processing: 'Processing...',
             search: 'Search Assets:',
             lengthMenu: 'Show _MENU_ assets',
             info: 'Showing _START_ to _END_ of _TOTAL_ assets',

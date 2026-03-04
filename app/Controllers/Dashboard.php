@@ -4,20 +4,20 @@ namespace App\Controllers;
 
 use App\Controllers\BaseController;
 use App\Models\UserModel;
-use App\Models\AssetManagementModel;
+// use App\Models\AssetManagementModel; // DEPRECATED - Not in use, references non-existent 'forklifts' table
 use App\Models\InventoryUnitModel;
 
 
 class Dashboard extends BaseController
 {
     protected $userModel;
-    protected $AssetManagementModel;
+    // protected $AssetManagementModel; // DEPRECATED - Removed unused instantiation
     protected $inventoryUnitModel;
 
     public function __construct()
     {
         $this->userModel = new UserModel();
-        $this->AssetManagementModel = new AssetManagementModel();
+        // $this->AssetManagementModel = new AssetManagementModel(); // DEPRECATED - Not used anywhere in controller
         $this->inventoryUnitModel = new InventoryUnitModel();
     }
 
@@ -834,32 +834,29 @@ class Dashboard extends BaseController
             // Total Assets (Unit + Attachment + Charger + Baterai)
             $totalUnits = $db->table('inventory_unit')->countAllResults();
             
-            // Count attachments from inventory_attachment table
-            $totalAttachmentsCount = $db->table('inventory_attachment')
-                ->where('tipe_item', 'attachment')
-                ->where('attachment_id IS NOT NULL', null, false)
+            // Count attachments from new 3-table structure
+            $totalAttachmentsCount = $db->table('inventory_attachments')
+                ->where('attachment_type_id IS NOT NULL', null, false)
                 ->countAllResults();
             
-            $totalChargersCount = $db->table('inventory_attachment')
-                ->where('tipe_item', 'charger')
-                ->where('charger_id IS NOT NULL', null, false)
+            $totalChargersCount = $db->table('inventory_chargers')
+                ->where('charger_type_id IS NOT NULL', null, false)
                 ->countAllResults();
             
-            $totalBateraiCount = $db->table('inventory_attachment')
-                ->where('tipe_item', 'battery')
-                ->where('baterai_id IS NOT NULL', null, false)
+            $totalBateraiCount = $db->table('inventory_batteries')
+                ->where('battery_type_id IS NOT NULL', null, false)
                 ->countAllResults();
             
             $totalAssets = $totalUnits + $totalAttachmentsCount + $totalChargersCount + $totalBateraiCount;
             
             // Active Contracts
             $totalContracts = $db->table('kontrak')
-                ->where('status', 'Aktif')
+                ->where('status', 'ACTIVE')
                 ->countAllResults();
             
             // Contract growth calculation
             $lastMonthContracts = $db->table('kontrak')
-                ->where('status', 'Aktif')
+                ->where('status', 'ACTIVE')
                 ->where('DATE(created_at) >=', date('Y-m-01', strtotime('-1 month')))
                 ->where('DATE(created_at) <', date('Y-m-01'))
                 ->countAllResults();
@@ -947,44 +944,38 @@ class Dashboard extends BaseController
                 ->where('status_unit_id', 5) // Out of Service
                 ->countAllResults();
             
-            // Attachments (dari inventory_attachment dengan tipe_item='attachment')
-            $totalAttachments = $db->table('inventory_attachment')
-                ->where('tipe_item', 'attachment')
-                ->where('attachment_id IS NOT NULL', null, false)
+            // Attachments (dari inventory_attachments table)
+            $totalAttachments = $db->table('inventory_attachments')
+                ->where('attachment_type_id IS NOT NULL', null, false)
                 ->countAllResults();
             
-            $activeAttachments = $db->table('inventory_attachment')
-                ->where('tipe_item', 'attachment')
-                ->where('attachment_id IS NOT NULL', null, false)
-                ->where('attachment_status', 'USED')
+            $activeAttachments = $db->table('inventory_attachments')
+                ->where('attachment_type_id IS NOT NULL', null, false)
+                ->where('status', 'IN_USE')
                 ->countAllResults();
             
             $attachmentUtilization = $totalAttachments > 0 
                 ? round(($activeAttachments / $totalAttachments) * 100, 1) 
                 : 0;
             
-            // Chargers (dari inventory_attachment dengan tipe_item='charger')
-            $totalChargers = $db->table('inventory_attachment')
-                ->where('tipe_item', 'charger')
-                ->where('charger_id IS NOT NULL', null, false)
+            // Chargers (dari inventory_chargers table)
+            $totalChargers = $db->table('inventory_chargers')
+                ->where('charger_type_id IS NOT NULL', null, false)
                 ->countAllResults();
             
-            $activeChargers = $db->table('inventory_attachment')
-                ->where('tipe_item', 'charger')
-                ->where('charger_id IS NOT NULL', null, false)
-                ->where('attachment_status', 'USED')
+            $activeChargers = $db->table('inventory_chargers')
+                ->where('charger_type_id IS NOT NULL', null, false)
+                ->where('status', 'IN_USE')
                 ->countAllResults();
             
-            // Baterai (dari inventory_attachment dengan tipe_item='battery')
-            $totalBaterai = $db->table('inventory_attachment')
-                ->where('tipe_item', 'battery')
-                ->where('baterai_id IS NOT NULL', null, false)
+            // Baterai (dari inventory_batteries table)
+            $totalBaterai = $db->table('inventory_batteries')
+                ->where('battery_type_id IS NOT NULL', null, false)
                 ->countAllResults();
             
-            $activeBaterai = $db->table('inventory_attachment')
-                ->where('tipe_item', 'battery')
-                ->where('baterai_id IS NOT NULL', null, false)
-                ->where('attachment_status', 'USED')
+            $activeBaterai = $db->table('inventory_batteries')
+                ->where('battery_type_id IS NOT NULL', null, false)
+                ->where('status', 'IN_USE')
                 ->countAllResults();
             
             return [
@@ -1219,12 +1210,12 @@ class Dashboard extends BaseController
             
             // Active contracts
             $activeContracts = $db->table('kontrak')
-                ->where('status', 'Aktif')
+                ->where('status', 'ACTIVE')
                 ->countAllResults();
             
             // Expiring contracts (next 30 days)
             $expiringContracts = $db->table('kontrak')
-                ->where('status', 'Aktif')
+                ->where('status', 'ACTIVE')
                 ->where('tanggal_berakhir >=', date('Y-m-d'))
                 ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
                 ->countAllResults();

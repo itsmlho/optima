@@ -42,7 +42,7 @@ class Security extends BaseConfig
      *
      * Header name for Cross Site Request Forgery protection.
      */
-    public string $headerName = 'X-CSRFToken';
+    public string $headerName = 'X-CSRF-TOKEN';
 
     /**
      * --------------------------------------------------------------------------

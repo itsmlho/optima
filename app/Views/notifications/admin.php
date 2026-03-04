@@ -511,32 +511,37 @@ function editRuleFromDetail() {
     document.getElementById('ruleModal').classList.add('show');
 }
 
-function deleteRuleFromDetail() {
+async function deleteRuleFromDetail() {
     if (!currentRuleId) return;
     
-    if (confirm('Are you sure you want to delete this notification rule?')) {
-        fetch(`<?= base_url('notifications/deleteRule') ?>/${currentRuleId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': window.csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeViewModal();
-                location.reload();
-            } else {
-                alert('Failed to delete rule: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Failed to delete rule');
-        });
-    }
+    const confirmed = await confirmSwal({
+        title: 'Hapus Notification Rule',
+        text: 'Apakah Anda yakin ingin menghapus rule notifikasi ini?',
+        type: 'delete'
+    });
+    if (!confirmed) return;
+    
+    fetch(`<?= base_url('notifications/deleteRule') ?>/${currentRuleId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeViewModal();
+            location.reload();
+        } else {
+            alertSwal('error', data.message, 'Gagal Hapus Rule');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alertSwal('error', 'Gagal menghapus rule');
+    });
 }
 
 function closeViewModal() {
@@ -613,67 +618,78 @@ function editRule() {
     });
 }
 
-function testRule() {
+async function testRule() {
     if (!currentRuleId) return;
     
-    if (confirm('Test this notification rule?')) {
-        fetch(`<?= base_url('notifications/testRule') ?>/${currentRuleId}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': window.csrfToken
-            },
-            body: JSON.stringify({
-                test_data: {
-                    spk_id: 'TEST_001',
-                    created_by: '<?= session()->get('name') ?>',
-                    timestamp: new Date().toISOString()
-                }
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Rule test completed successfully!');
-            } else {
-                alert('Test failed: ' + data.message);
+    const confirmed = await confirmSwal({
+        title: 'Test Notification Rule',
+        text: 'Kirim notifikasi test untuk rule ini?',
+        icon: 'info',
+        confirmText: '<i class="fas fa-play me-1"></i>Ya, Test'
+    });
+    if (!confirmed) return;
+    
+    fetch(`<?= base_url('notifications/testRule') ?>/${currentRuleId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': window.csrfToken
+        },
+        body: JSON.stringify({
+            test_data: {
+                spk_id: 'TEST_001',
+                created_by: '<?= session()->get('name') ?>',
+                timestamp: new Date().toISOString()
             }
-            closeActionsModal();
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Failed to test rule');
-        });
-    }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alertSwal('success', 'Test rule berhasil!');
+        } else {
+            alertSwal('error', data.message, 'Test Gagal');
+        }
+        closeActionsModal();
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alertSwal('error', 'Gagal menjalankan test rule');
+    });
 }
 
-function deleteRule() {
+async function deleteRule() {
     if (!currentRuleId) return;
     
-    if (confirm('Are you sure you want to delete this notification rule?')) {
-        fetch(`<?= base_url('notifications/deleteRule') ?>/${currentRuleId}`, {
-            method: 'DELETE',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': window.csrfToken
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                closeActionsModal();
-                location.reload();
-            } else {
-                alert('Failed to delete rule: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Failed to delete rule');
-        });
-    }
+    const confirmed = await confirmSwal({
+        title: 'Hapus Notification Rule',
+        text: 'Apakah Anda yakin ingin menghapus rule notifikasi ini?',
+        type: 'delete'
+    });
+    if (!confirmed) return;
+    
+    fetch(`<?= base_url('notifications/deleteRule') ?>/${currentRuleId}`, {
+        method: 'DELETE',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': window.csrfToken
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            closeActionsModal();
+            location.reload();
+        } else {
+            alertSwal('error', data.message, 'Gagal Hapus Rule');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alertSwal('error', 'Gagal menghapus rule');
+    });
 }
 
 function refreshRules() {
