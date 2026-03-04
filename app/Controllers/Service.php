@@ -1805,11 +1805,12 @@ class Service extends BaseController
                 } else {
                     log_message('error', "❌ PDI: Missing target_unit_id in spesifikasi. Available keys: " . implode(', ', array_keys($spesifikasi)));
                     
-                    // FALLBACK for OLD SPK: Get any unit from contract
+                    // FALLBACK for OLD SPK: Get any unit from contract via kontrak_unit junction
                     if ($spkData['kontrak_id']) {
-                        $contractUnit = $this->db->table('inventory_unit')
-                            ->select('id_inventory_unit')
+                        $contractUnit = $this->db->table('kontrak_unit')
+                            ->select('unit_id as id_inventory_unit')
                             ->where('kontrak_id', $spkData['kontrak_id'])
+                            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
                             ->limit(1)
                             ->get()
                             ->getRowArray();
@@ -2300,11 +2301,12 @@ class Service extends BaseController
                 } else {
                     log_message('error', "❌ Missing target_unit_id in spesifikasi. Available keys: " . implode(', ', array_keys($spesifikasi)));
                     
-                    // FALLBACK for OLD SPK: Get any unit from contract
+                    // FALLBACK for OLD SPK: Get any unit from contract via kontrak_unit junction
                     if ($spkData['kontrak_id']) {
-                        $contractUnit = $this->db->table('inventory_unit')
-                            ->select('id_inventory_unit')
+                        $contractUnit = $this->db->table('kontrak_unit')
+                            ->select('unit_id as id_inventory_unit')
                             ->where('kontrak_id', $spkData['kontrak_id'])
+                            ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
                             ->limit(1)
                             ->get()
                             ->getRowArray();

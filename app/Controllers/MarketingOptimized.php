@@ -520,10 +520,10 @@ class MarketingOptimized extends BaseDataTableController
             return $this->db->query("
                 SELECT 
                     COUNT(*) as total_units,
-                    COUNT(CASE WHEN kontrak_id IS NULL THEN 1 END) as available_units,
-                    COUNT(CASE WHEN kontrak_id IS NOT NULL THEN 1 END) as contracted_units
-                FROM inventory_unit
-                WHERE active = 1
+                    COUNT(CASE WHEN ku.unit_id IS NULL THEN 1 END) as available_units,
+                    COUNT(CASE WHEN ku.unit_id IS NOT NULL THEN 1 END) as contracted_units
+                FROM inventory_unit iu
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE', 'TEMP_ACTIVE')
             ")->getRowArray();
         }, 300, 'inventory');
     }
