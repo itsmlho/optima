@@ -897,7 +897,7 @@ Standardize to Bootstrap 5 best practices:
 **Severity**: MEDIUM  
 **Impact**: Authorization bypass possible
 
-**Problem:**
+           **Problem:**
 ```php
 // quotations.php - Line 654 - GOOD
 public function storeQuotation()
