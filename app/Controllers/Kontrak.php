@@ -216,19 +216,15 @@ class Kontrak extends BaseController
                 $statusClass = 'bg-secondary';
                 switch($contract['status']) {
                     case 'ACTIVE':
-                    case 'Aktif':  // Legacy fallback
                         $statusClass = 'bg-success';
                         break;
                     case 'PENDING':
-                    case 'Pending':  // Legacy fallback
                         $statusClass = 'bg-warning';
                         break;
                     case 'EXPIRED':
-                    case 'Berakhir':  // Legacy fallback
                         $statusClass = 'bg-danger';
                         break;
                     case 'CANCELLED':
-                    case 'Dibatalkan':  // Legacy fallback
                         $statusClass = 'bg-secondary';
                         break;
                 }
@@ -521,7 +517,7 @@ class Kontrak extends BaseController
             'customer_location_id' => 'required|is_natural_no_zero',
             'start_date'      => 'required|valid_date',
             'end_date'        => 'required|valid_date',
-            'status'          => 'required|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED,Aktif,Pending,Berakhir,Dibatalkan]'
+            'status'          => 'required|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]'
         ];
 
         if (!$this->validate($rules)) {
@@ -720,9 +716,9 @@ class Kontrak extends BaseController
         $spekCount = 0; // Spesifikasi moved to quotations
         log_message('debug', 'Kontrak::delete - Contract has ' . $spekCount . ' spesifikasi records (migrated to quotations)');
         
-        // Check for related inventory_unit records
-        $unitCount = $db->table('inventory_unit')->where('kontrak_id', $id)->countAllResults();
-        log_message('debug', 'Kontrak::delete - Contract has ' . $unitCount . ' inventory_unit records');
+        // Check for related kontrak_unit records (units assigned to this contract)
+        $unitCount = $db->table('kontrak_unit')->where('kontrak_id', $id)->where('status', 'ACTIVE')->countAllResults();
+        log_message('debug', 'Kontrak::delete - Contract has ' . $unitCount . ' active kontrak_unit records');
         
         log_message('debug', 'Kontrak::delete - Attempting to delete contract: ' . $contract['no_kontrak']);
         
@@ -874,15 +870,12 @@ class Kontrak extends BaseController
         try {
             $kontrak = $this->db->table('kontrak k')
                 ->select('k.*,
-                    c.customer_name, c.customer_code, c.contact_person, c.phone,
-                    cl.location_name,
-                    (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) AS total_units,
-                    (SELECT COALESCE(SUM(ks.monthly_rate * ks.quantity), 0)
-                     FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id) AS total_value,
-                    (SELECT COALESCE(SUM(ks.operator_quantity), 0)
-                     FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id) AS operator_quantity,
-                    (SELECT ks.operator_rate
-                     FROM kontrak_spesifikasi ks WHERE ks.kontrak_id = k.id AND ks.operator_quantity > 0 LIMIT 1) AS operator_monthly_rate')
+                    c.customer_name, c.customer_code, c.phone,
+                    cl.location_name, cl.contact_person, cl.phone as location_phone, cl.email as location_email,
+                    (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.kontrak_id = k.id AND ku.status = \'ACTIVE\') AS total_units,
+                    k.nilai_total AS total_value,
+                    k.operator_quantity,
+                    k.operator_monthly_rate')
                 ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
                 ->where('k.id', (int)$kontrakId)
@@ -927,8 +920,9 @@ class Kontrak extends BaseController
             }
             
             // Query dengan JOIN untuk mendapatkan data yang lebih lengkap
+            // Use kontrak_unit junction table instead of inventory_unit.kontrak_id
             $query = "
-                SELECT 
+                SELECT
                     iu.id_inventory_unit,
                     iu.no_unit,
                     iu.serial_number,
@@ -939,18 +933,20 @@ class Kontrak extends BaseController
                     COALESCE(d.nama_departemen, 'N/A') as departemen,
                     COALESCE(su.status_unit, 'TERSEDIA') as status,
                     iu.status_unit_id,
-                    iu.kontrak_id,
+                    ku.kontrak_id,
                     iu.harga_sewa_bulanan,
                     iu.harga_sewa_harian,
                     COALESCE(cl.location_name, iu.lokasi_unit, 'Lokasi Belum Ditentukan') as lokasi
-                FROM inventory_unit iu
+                FROM kontrak_unit ku
+                JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
                 LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
                 LEFT JOIN kapasitas k ON iu.kapasitas_unit_id = k.id_kapasitas
                 LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
                 LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
                 LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
-                LEFT JOIN customer_locations cl ON iu.customer_location_id = cl.id
-                WHERE iu.kontrak_id = ?
+                LEFT JOIN kontrak kt ON kt.id = ku.kontrak_id
+                LEFT JOIN customer_locations cl ON cl.id = kt.customer_location_id
+                WHERE ku.kontrak_id = ?
                 ORDER BY iu.no_unit ASC
             ";
             
@@ -1116,7 +1112,7 @@ class Kontrak extends BaseController
             log_message('info', "Updating inventory status for contract {$kontrakId}: {$oldStatus} -> {$newStatus}");
 
             // Contract becomes active - set to RENTAL
-            if (in_array($newStatus, ['ACTIVE', 'Aktif']) && !in_array($oldStatus, ['ACTIVE', 'Aktif'])) {
+            if ($newStatus === 'ACTIVE' && $oldStatus !== 'ACTIVE') {
                 $result = $this->inventoryStatusModel->updateStatusForActiveContract($kontrakId);
                 if ($result) {
                     log_message('info', "Successfully updated inventory to RENTAL status for active contract {$kontrakId}");
@@ -1126,7 +1122,7 @@ class Kontrak extends BaseController
             }
             
             // Contract ends or gets cancelled - set to UNIT PULANG
-            elseif (in_array($newStatus, ['EXPIRED', 'Berakhir', 'CANCELLED', 'Dibatalkan']) && in_array($oldStatus, ['ACTIVE', 'Aktif'])) {
+            elseif (in_array($newStatus, ['EXPIRED', 'CANCELLED']) && $oldStatus === 'ACTIVE') {
                 $result = $this->inventoryStatusModel->updateStatusForEndedContract($kontrakId);
                 if ($result) {
                     log_message('info', "Successfully updated inventory to UNIT PULANG status for ended contract {$kontrakId}");
@@ -2026,7 +2022,7 @@ class Kontrak extends BaseController
             $builder->select('k.*, c.customer_name, cl.location_name');
             $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
             $builder->join('customers c', 'c.id = cl.customer_id', 'left');
-            $builder->orderBy('k.created_at', 'DESC');
+            $builder->orderBy('k.dibuat_pada', 'DESC');
             
             $contracts = $builder->get()->getResultArray();
             
@@ -2268,14 +2264,14 @@ class Kontrak extends BaseController
             
             // Get rate changes from amendments
             $builder = $this->db->table('amendment_unit_rates aur');
-            $builder->select('aur.*, ca.effective_date as date, ca.reason, k.no_kontrak as contract_number, u.nomor_unit as unit_number');
+            $builder->select('aur.*, ca.effective_date as date, ca.reason, k.no_kontrak as contract_number, iu.no_unit as unit_number');
             $builder->join('contract_amendments ca', 'ca.id = aur.amendment_id', 'left');
-            $builder->join('contract_units cu', 'cu.unit_id = aur.unit_id', 'left');
-            $builder->join('kontrak k', 'k.id = cu.contract_id', 'left');
-            $builder->join('unit u', 'u.id = aur.unit_id', 'left');
+            $builder->join('kontrak_unit cu', 'cu.unit_id = aur.unit_id', 'left');
+            $builder->join('kontrak k', 'k.id = cu.kontrak_id', 'left');
+            $builder->join('inventory_unit iu', 'iu.id_inventory_unit = aur.unit_id', 'left');
             
             if ($contractId) {
-                $builder->where('cu.contract_id', $contractId);
+                $builder->where('cu.kontrak_id', $contractId);
             }
             
             if ($unitId) {
@@ -2303,10 +2299,10 @@ class Kontrak extends BaseController
             
             // Get rate changes from renewals
             $renewalsBuilder = $this->db->table('contract_renewal_unit_map rum');
-            $renewalsBuilder->select('rum.*, k1.no_kontrak as parent_contract, k2.no_kontrak as renewal_contract, k2.created_at as date, u.nomor_unit as unit_number');
+            $renewalsBuilder->select('rum.*, k1.no_kontrak as parent_contract, k2.no_kontrak as renewal_contract, k2.created_at as date, iu.no_unit as unit_number');
             $renewalsBuilder->join('kontrak k1', 'k1.id = rum.parent_contract_id', 'left');
             $renewalsBuilder->join('kontrak k2', 'k2.id = rum.renewal_contract_id', 'left');
-            $renewalsBuilder->join('unit u', 'u.id = rum.renewal_unit_id', 'left');
+            $renewalsBuilder->join('inventory_unit iu', 'iu.id_inventory_unit = rum.renewal_unit_id', 'left');
             
             if ($contractId) {
                 $renewalsBuilder->where('k2.id', $contractId);
@@ -2417,8 +2413,10 @@ class Kontrak extends BaseController
         }
         
         try {
-            $builder = $this->db->table('unit');
-            $builder->orderBy('nomor_unit', 'ASC');
+            $builder = $this->db->table('inventory_unit iu');
+            $builder->select('iu.id_inventory_unit AS id, iu.no_unit_na AS nomor_unit, tu.tipe AS tipe_unit');
+            $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
+            $builder->orderBy('iu.no_unit_na', 'ASC');
             
             $units = $builder->get()->getResultArray();
             

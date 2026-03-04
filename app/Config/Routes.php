@@ -40,9 +40,11 @@ $routes->group('health', static function ($routes) {
     $routes->get('performance', 'HealthController::performance');
 });
 
-// Test Routes (Development Only)
-$routes->get('test/quotations', 'TestQuotations::testDataTables');
-$routes->get('debug/battery-data', 'DebugBattery::checkBatteryData');
+// Test/Debug Routes (Development Only — blocked in production)
+if (ENVIRONMENT !== 'production') {
+    $routes->get('test/quotations',    'TestQuotations::testDataTables');
+    $routes->get('debug/battery-data', 'DebugBattery::checkBatteryData');
+}
 
 // Customer AJAX Endpoints - MUST be before other routes to avoid conflicts
 $routes->get('customers/get/(:num)', 'Customers::get/$1');
@@ -197,8 +199,10 @@ $routes->group('marketing',  static function ($routes) {
         $routes->post('trigger-status-update/(:num)', 'Kontrak::triggerStatusUpdateAfterWorkflow/$1');
         $routes->post('link-fabrication-attachments/(:num)', 'Kontrak::linkFabricationAttachments/$1');
         
-        // Debug endpoint (development only)
-        $routes->get('debug-test-insert', 'Kontrak::debugTestInsert');
+        // Debug endpoint (development only — blocked in production)
+        if (ENVIRONMENT !== 'production') {
+            $routes->get('debug-test-insert', 'Kontrak::debugTestInsert');
+        }
         
         // Contract documents
         $routes->get('documents/(:num)', 'Kontrak::documents/$1');
@@ -444,6 +448,7 @@ $routes->group('service', static function ($routes) {
     // Work Order CRUD routes
     $routes->post('work-orders/store', 'WorkOrderController::store');
     $routes->get('work-orders/view/(:num)', 'WorkOrderController::view/$1');
+    $routes->get('work-orders/detail/(:num)', 'WorkOrderController::detail/$1'); // Dedicated detail page
     $routes->get('work-orders/edit/(:num)', 'WorkOrderController::edit/$1');
     $routes->get('work-orders/print/(:num)', 'WorkOrderController::print/$1');
     $routes->post('work-orders/update/(:num)', 'WorkOrderController::update/$1');
@@ -619,11 +624,11 @@ $routes->group('warehouse', static function ($routes) {
     $routes->get('unit/view/(:num)', 'Warehouse::index'); // Unit detail via notification
     // $routes->get('sparepart', 'Warehouse::sparepart');
     
-    // Master data API endpoints (outside inventory group for direct access)
-    $routes->get('master-attachment', 'Warehouse::masterAttachment');
-    $routes->get('master-baterai', 'Warehouse::masterBaterai');
-    $routes->get('master-charger', 'Warehouse::masterCharger');
-    $routes->get('get-units', 'Warehouse::getUnits');
+    // Master data API endpoints – backward compat (canonical routes now under inventory/attachments/)
+    $routes->get('master-attachment', 'Warehouse\AttachmentInventoryController::masterAttachment');
+    $routes->get('master-baterai',    'Warehouse\AttachmentInventoryController::masterBaterai');
+    $routes->get('master-charger',    'Warehouse\AttachmentInventoryController::masterCharger');
+    $routes->get('get-units',         'Warehouse\AttachmentInventoryController::getUnits');
     
     // Purchase Order Verification Routes for Warehouse
     $routes->group('purchase-orders', static function ($routes) {
@@ -665,30 +670,44 @@ $routes->group('warehouse', static function ($routes) {
 
     // PERBAIKAN: Grup baru untuk Inventory, sejajar dengan purchase-orders
     $routes->group('inventory', static function ($routes) {
-        // ATTACHMENT
-        $routes->get('invent_attachment', 'Warehouse::inventAttachment');
-        $routes->post('invent_attachment', 'Warehouse::inventAttachment'); // Untuk AJAX DataTable
-        
-        // Separate data endpoints for each item type
-        $routes->post('attachment-data', 'Warehouse::attachmentData');
-        $routes->post('battery-data', 'Warehouse::batteryData');
-        $routes->post('charger-data', 'Warehouse::chargerData');
-        
-        $routes->get('get-attachment-detail/(:num)', 'Warehouse::getAttachmentDetail/$1'); // Untuk mengambil detail attachment
-        $routes->get('get-attachment-history/(:num)', 'Warehouse::getAttachmentHistory/$1'); // Attachment history/timeline
-        $routes->post('update-attachment/(:num)', 'Warehouse::updateAttachment/$1'); // Untuk update attachment
-        
-        // Master data API endpoints (existing)
-        $routes->get('master-merk/(:segment)', 'Warehouse::masterMerk/$1');
-        $routes->get('master-tipe/(:segment)', 'Warehouse::masterTipe/$1');
-        $routes->get('master-jenis/(:segment)', 'Warehouse::masterJenis/$1');
-        $routes->get('master-model/(:segment)', 'Warehouse::masterModel/$1');
-        $routes->post('save-master-merk/(:segment)', 'Warehouse::saveMasterMerk/$1');
-        $routes->post('save-master-tipe/(:segment)', 'Warehouse::saveMasterTipe/$1');
-        $routes->post('save-master-jenis/(:segment)', 'Warehouse::saveMasterJenis/$1');
-        $routes->post('save-master-model/(:segment)', 'Warehouse::saveMasterModel/$1');
-        $routes->post('save-master-data/(:segment)', 'Warehouse::saveMasterData/$1');
-        $routes->post('add-inventory-item', 'Warehouse::addInventoryItem');
+        // ATTACHMENT - Clean subgroup (new controller)
+        $routes->group('attachments', static function ($routes) {
+            $routes->get('/',                           'Warehouse\AttachmentInventoryController::inventAttachment');
+            $routes->post('/',                          'Warehouse\AttachmentInventoryController::inventAttachment');
+            $routes->get('detail/(:num)',               'Warehouse\AttachmentInventoryController::getAttachmentDetail/$1');
+            $routes->get('history/(:num)',              'Warehouse\AttachmentInventoryController::getAttachmentHistory/$1');
+            $routes->post('update/(:num)',              'Warehouse\AttachmentInventoryController::updateAttachment/$1');
+            $routes->post('delete/(:num)',              'Warehouse\AttachmentInventoryController::deleteAttachment/$1');
+            $routes->get('available-units',             'Warehouse\AttachmentInventoryController::getAvailableUnits');
+            $routes->post('attach',                     'Warehouse\AttachmentInventoryController::attachToUnit');
+            $routes->post('swap',                       'Warehouse\AttachmentInventoryController::swapUnit');
+            $routes->post('detach',                     'Warehouse\AttachmentInventoryController::detachFromUnit');
+            $routes->post('add',                        'Warehouse\AttachmentInventoryController::addInventoryItem');
+            $routes->get('export/attachment',           'Warehouse\AttachmentInventoryController::exportAttachmentInventory');
+            $routes->get('export/battery',              'Warehouse\AttachmentInventoryController::exportBatteryInventory');
+            $routes->get('export/charger',              'Warehouse\AttachmentInventoryController::exportChargerInventory');
+            $routes->get('units',                       'Warehouse\AttachmentInventoryController::getUnits');
+            $routes->get('master/attachment',           'Warehouse\AttachmentInventoryController::masterAttachment');
+            $routes->get('master/baterai',              'Warehouse\AttachmentInventoryController::masterBaterai');
+            $routes->get('master/charger',              'Warehouse\AttachmentInventoryController::masterCharger');
+            $routes->get('master-merk/(:segment)',      'Warehouse\AttachmentInventoryController::masterMerk/$1');
+            $routes->get('master-tipe/(:segment)',      'Warehouse\AttachmentInventoryController::masterTipe/$1');
+            $routes->get('master-jenis/(:segment)',     'Warehouse\AttachmentInventoryController::masterJenis/$1');
+            $routes->get('master-model/(:segment)',     'Warehouse\AttachmentInventoryController::masterModel/$1');
+            $routes->post('save-master-data/(:segment)', 'Warehouse\AttachmentInventoryController::saveMasterData/$1');
+        });
+        // Backward-compat aliases → new controller
+        $routes->get('invent_attachment',                'Warehouse\AttachmentInventoryController::inventAttachment');
+        $routes->post('invent_attachment',               'Warehouse\AttachmentInventoryController::inventAttachment');
+        $routes->post('attachment-data',                 'Warehouse\AttachmentInventoryController::attachmentData');
+        $routes->post('battery-data',                    'Warehouse\AttachmentInventoryController::batteryData');
+        $routes->post('charger-data',                    'Warehouse\AttachmentInventoryController::chargerData');
+        $routes->post('add-inventory-item',              'Warehouse\AttachmentInventoryController::addInventoryItem');
+        $routes->get('master-merk/(:segment)',           'Warehouse\AttachmentInventoryController::masterMerk/$1');
+        $routes->get('master-tipe/(:segment)',           'Warehouse\AttachmentInventoryController::masterTipe/$1');
+        $routes->get('master-jenis/(:segment)',          'Warehouse\AttachmentInventoryController::masterJenis/$1');
+        $routes->get('master-model/(:segment)',          'Warehouse\AttachmentInventoryController::masterModel/$1');
+        $routes->post('save-master-data/(:segment)',     'Warehouse\AttachmentInventoryController::saveMasterData/$1');
 
         //SPAREPART
         $routes->get('invent_sparepart', 'Warehouse::inventSparepart');
@@ -696,9 +715,19 @@ $routes->group('warehouse', static function ($routes) {
         $routes->get('get_sparepart/(:num)', 'Warehouse::getInventorySparepart/$1'); // Untuk mengambil data edit
         $routes->post('update_sparepart/(:num)', 'Warehouse::updateInventorySparepart/$1'); // Untuk menyimpan data edit
 
-        //unit
-        $routes->get('invent_unit', 'Warehouse::inventUnit'); // Halaman utama (GET)
-        $routes->post('invent_unit', 'Warehouse::inventUnit'); // <--- Tambahkan ini untuk AJAX (POST)
+        // Unit Inventory (SPA + CRUD)
+        $routes->group('unit', function($routes) {
+            $routes->get('/',                    'Warehouse\UnitInventoryController::index');
+            $routes->post('datatable',           'Warehouse\UnitInventoryController::datatable');
+            $routes->get('create',               'Warehouse\UnitInventoryController::create');
+            $routes->post('store',               'Warehouse\UnitInventoryController::store');
+            $routes->get('(:num)',               'Warehouse\UnitInventoryController::show/$1');
+            $routes->post('(:num)/destroy',      'Warehouse\UnitInventoryController::destroy/$1');
+            $routes->get('(:num)/timeline',      'Warehouse\UnitInventoryController::getTimeline/$1');
+            $routes->get('(:num)/movements',     'Warehouse\UnitInventoryController::getMovementHistory/$1');
+            $routes->get('(:num)/print',         'Warehouse\UnitInventoryController::printUnit/$1');
+            $routes->post('(:num)/inline-update','Warehouse\UnitInventoryController::inlineUpdate/$1');
+        });
         $routes->get('get-unit-detail/(:num)', 'Warehouse::getUnitDetail/$1');
         $routes->get('get-unit-full-detail/(:num)', 'Warehouse::getUnitFullDetail/$1'); // Full detail with all joins
         $routes->get('get-unit-history/(:num)', 'Warehouse::getUnitHistory/$1'); // Unit history/timeline
@@ -706,9 +735,10 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('delete-unit/(:num)', 'Warehouse::deleteUnit/$1');
     $routes->get('export-invent-unit', 'Warehouse::exportInventUnit');
     $routes->get('export_unit_inventory', 'Warehouse::exportUnitInventory');
-    $routes->get('export_attachment_inventory', 'Warehouse::exportAttachmentInventory');
-    $routes->get('export_battery_inventory', 'Warehouse::exportBatteryInventory');
-    $routes->get('export_charger_inventory', 'Warehouse::exportChargerInventory');
+    // Backward-compat export routes → new controller
+    $routes->get('export_attachment_inventory', 'Warehouse\AttachmentInventoryController::exportAttachmentInventory');
+    $routes->get('export_battery_inventory',    'Warehouse\AttachmentInventoryController::exportBatteryInventory');
+    $routes->get('export_charger_inventory',    'Warehouse\AttachmentInventoryController::exportChargerInventory');
     $routes->post('confirm-to-asset/(:num)', 'Warehouse::confirmUnitToAsset/$1');
         $routes->get('debug-invent-unit', 'Warehouse::debugInventUnit'); // Debug endpoint
     });
@@ -1195,11 +1225,11 @@ $routes->group('warehouse/inventory', static function($r){
     $r->get('unit-components', 'Warehouse\InventoryApi::getUnitComponents');
     $r->post('replace-component', 'Warehouse\InventoryApi::replaceComponent');
     
-    // Manual attach/detach/swap routes
-    $r->get('get-available-units', 'Warehouse::getAvailableUnits');
-    $r->post('attach-to-unit', 'Warehouse::attachToUnit');
-    $r->post('swap-unit', 'Warehouse::swapUnit');
-    $r->post('detach-from-unit', 'Warehouse::detachFromUnit');
+    // Manual attach/detach/swap backward-compat → new controller (main routes now under attachments/)
+    $r->get('get-available-units', 'Warehouse\AttachmentInventoryController::getAvailableUnits');
+    $r->post('attach-to-unit', 'Warehouse\AttachmentInventoryController::attachToUnit');
+    $r->post('swap-unit', 'Warehouse\AttachmentInventoryController::swapUnit');
+    $r->post('detach-from-unit', 'Warehouse\AttachmentInventoryController::detachFromUnit');
 });
 
 // Test Route for Activity Log

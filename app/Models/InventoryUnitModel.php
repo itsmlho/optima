@@ -26,9 +26,13 @@ class InventoryUnitModel extends Model
         'keterangan',
         'harga_sewa_bulanan', // Harga sewa per bulan untuk kontrak
         'harga_sewa_harian',  // Harga sewa per hari untuk kontrak
-        'kontrak_id',  // Foreign key ke tabel kontrak
-        'customer_id',
-        'customer_location_id',
+        
+        // ⚠️ DEPRECATED FIELDS - Removed after Phase 1A migration (2026-03-25)
+        // Use vw_unit_with_contracts VIEW or kontrak_unit junction table instead
+        // 'kontrak_id',  // DEPRECATED: Use getWithContractInfo() or getCurrentContract()
+        // 'customer_id', // DEPRECATED: Derive via kontrak → customer_locations
+        // 'customer_location_id', // DEPRECATED: Derive via kontrak
+        
         'area_id',
         'kontrak_spesifikasi_id', // Foreign key ke kontrak_spesifikasi
         'tipe_unit_id',
@@ -74,6 +78,7 @@ class InventoryUnitModel extends Model
     protected $allowCallbacks = true;
     protected $beforeInsert   = ['cleanUpdateData'];
     protected $beforeUpdate   = ['cleanUpdateData'];
+    protected $afterUpdate    = ['logUnitChanges'];
 
     /**
      * Clean data before insert/update - remove any invalid fields
@@ -114,6 +119,47 @@ class InventoryUnitModel extends Model
     }
 
     /**
+     * Log unit changes to unit_timeline
+     */
+    protected function logUnitChanges(array $data)
+    {
+        // Only log if status changed
+        if (!isset($data['id']) || !isset($data['data']['status_unit_id'])) {
+            return $data;
+        }
+
+        try {
+            // Get old status
+            $old = $this->find($data['id']);
+            if ($old && isset($old['status_unit_id']) && $old['status_unit_id'] != $data['data']['status_unit_id']) {
+                $timeline = new \App\Services\UnitTimelineService();
+                
+                // Get status names for logging
+                $statusModel = new \App\Models\StatusUnitModel();
+                $oldStatus = $statusModel->find($old['status_unit_id']);
+                $newStatus = $statusModel->find($data['data']['status_unit_id']);
+                
+                $oldStatusName = $oldStatus['nama_status'] ?? "Status #{$old['status_unit_id']}";
+                $newStatusName = $newStatus['nama_status'] ?? "Status #{$data['data']['status_unit_id']}";
+                
+                $timeline->recordStatusChange(
+                    $data['id'],
+                    $oldStatusName,
+                    $newStatusName,
+                    null,
+                    session()->get('user_id')
+                );
+                log_message('info', "✅ Unit #{$data['id']} status changed: {$oldStatusName} → {$newStatusName}");
+            }
+        } catch (\Throwable $e) {
+            // Don't fail the update if timeline logging fails
+            log_message('error', '[InventoryUnitModel] Timeline logging failed: ' . $e->getMessage());
+        }
+
+        return $data;
+    }
+
+    /**
      * Apply status filter (supports single or multiple comma-separated values)
      */
     private function applyStatusFilter($builder, $statusFilter)
@@ -150,12 +196,145 @@ class InventoryUnitModel extends Model
     }
 
     /**
+     * Get units with contract info using vw_unit_with_contracts VIEW
+     * 
+     * Replaces direct access to redundant FK fields (kontrak_id, customer_id, customer_location_id)
+     * This method uses the VIEW created in Phase 1A migration
+     * 
+     * @param array $filters Optional filters: ['unit_id', 'customer_id', 'kontrak_id', 'status_unit_id']
+     * @return array Units with derived contract information
+     */
+    public function getWithContractInfo(array $filters = [])
+    {
+        $builder = $this->db->table('vw_unit_with_contracts');
+        
+        // Apply filters
+        if (!empty($filters['unit_id'])) {
+            $builder->where('id_inventory_unit', $filters['unit_id']);
+        }
+        
+        if (!empty($filters['customer_id'])) {
+            // Route through kontrak_unit junction to find units for a customer
+            $custId = intval($filters['customer_id']);
+            $builder->where("id_inventory_unit IN (SELECT ku.unit_id FROM kontrak_unit ku JOIN kontrak k ON k.id = ku.kontrak_id JOIN customer_locations cl ON cl.id = k.customer_location_id WHERE cl.customer_id = {$custId} AND ku.status IN ('ACTIVE','TEMP_ACTIVE'))", null, false);
+        }
+        
+        if (!empty($filters['kontrak_id'])) {
+            // Route through kontrak_unit junction to find units for a contract
+            $kId = intval($filters['kontrak_id']);
+            $builder->where("id_inventory_unit IN (SELECT ku.unit_id FROM kontrak_unit ku WHERE ku.kontrak_id = {$kId} AND ku.status IN ('ACTIVE','TEMP_ACTIVE'))", null, false);
+        }
+        
+        if (!empty($filters['status_unit_id'])) {
+            if (is_array($filters['status_unit_id'])) {
+                $builder->whereIn('status_unit_id', $filters['status_unit_id']);
+            } else {
+                $builder->where('status_unit_id', $filters['status_unit_id']);
+            }
+        }
+        
+        if (!empty($filters['no_unit'])) {
+            $builder->like('no_unit', $filters['no_unit']);
+        }
+        
+        // Order by
+        $orderBy = $filters['order_by'] ?? 'no_unit';
+        $orderDir = $filters['order_dir'] ?? 'ASC';
+        $builder->orderBy($orderBy, $orderDir);
+        
+        // Limit
+        if (isset($filters['limit'])) {
+            $offset = $filters['offset'] ?? 0;
+            $builder->limit($filters['limit'], $offset);
+        }
+        
+        return $builder->get()->getResultArray();
+    }
+
+    /**
+     * Get a single unit's current active contract
+     * 
+     * Uses kontrak_unit junction table (source of truth) instead of redundant inventory_unit.kontrak_id
+     * Only returns ACTIVE contract assignments (status IN ACTIVE/TEMP_ACTIVE)
+     * 
+     * @param int $unitId Unit ID
+     * @return array|null Contract details or null if no active contract
+     */
+    public function getCurrentContract(int $unitId): ?array
+    {
+        return $this->db->table('kontrak_unit ku')
+            ->select('ku.*, 
+                     k.no_kontrak,
+                     k.customer_location_id,
+                     k.tanggal_mulai,
+                     k.tanggal_berakhir,
+                     k.rental_type,
+                     k.jenis_sewa,
+                     k.status as contract_status,
+                     cl.location_name,
+                     cl.customer_id,
+                     c.customer_name,
+                     c.customer_code')
+            ->join('kontrak k', 'ku.kontrak_id = k.id', 'left')
+            ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+            ->join('customers c', 'cl.customer_id = c.id', 'left')
+            ->where('ku.unit_id', $unitId)
+            ->whereIn('ku.status', ['ACTIVE', 'PULLED', 'REPLACED'])  // Match current schema enum values
+            ->where('ku.is_temporary', 0)  // Exclude temporary replacements
+            ->orderBy('ku.created_at', 'DESC')  // Get most recent if multiple
+            ->limit(1)
+            ->get()
+            ->getRowArray();
+    }
+
+    /**
+     * Get unit's contract history
+     * 
+     * Returns all contract assignments for a unit (including completed/historical)
+     * 
+     * @param int $unitId Unit ID
+     * @return array Array of contract assignments
+     */
+    public function getContractHistory(int $unitId): array
+    {
+        return $this->db->table('kontrak_unit ku')
+            ->select('ku.*, 
+                     k.no_kontrak,
+                     k.tanggal_mulai as contract_start_date,
+                     k.tanggal_berakhir as contract_end_date,
+                     c.customer_name,
+                     cl.location_name')
+            ->join('kontrak k', 'ku.kontrak_id = k.id', 'left')
+            ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
+            ->join('customers c', 'cl.customer_id = c.id', 'left')
+            ->where('ku.unit_id', $unitId)
+            ->orderBy('ku.created_at', 'DESC')
+            ->get()
+            ->getResultArray();
+    }
+
+    /**
      * Update the unit with attachment model/sn based on an inventory_attachment row.
      * Best-effort: if inventory attachment not found, nothing happens.
      */
     public function attachAttachmentFromInventoryAttachment(int $unitId, int $inventoryAttachmentId): bool
     {
-        $attRow = $this->db->table('inventory_attachment')->select('attachment_id, sn_attachment')->where('id_inventory_attachment', $inventoryAttachmentId)->get()->getRowArray();
+        // Try to find the component in all 3 tables
+        $componentHelper = new \App\Models\InventoryComponentHelper();
+        $componentType = $componentHelper->detectComponentType($inventoryAttachmentId);
+        
+        if (!$componentType) return false;
+        
+        $attRow = null;
+        
+        // Get attachment data based on type
+        if ($componentType === 'attachment') {
+            $attRow = $this->db->table('inventory_attachments')
+                ->select('attachment_type_id as attachment_id, serial_number as sn_attachment')
+                ->where('id', $inventoryAttachmentId)
+                ->get()->getRowArray();
+        }
+        
         if (!$attRow) return false;
         // Use available columns: store linked attachment model/SN into unit extra fields if exist
         $payload = [
@@ -178,43 +357,21 @@ class InventoryUnitModel extends Model
                               COALESCE(iu.no_unit, iu.no_unit_na) as no_unit,
                               iu.no_unit as nomor_aset,
                               iu.no_unit_na,
+                              iu.serial_number,
                               iu.serial_number as serial_number_po,
                               iu.status_unit_id as status_unit,
                               iu.status_unit_id as status_unit_id,
-                              COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
-                              COALESCE(cl.location_name, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
-                              COALESCE(mu.merk_unit, "Unknown") as merk_unit,
-                              COALESCE(mu.model_unit, "Unknown") as model_unit,
-                              COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as nama_tipe_unit,
-                              COALESCE(su.status_unit, CASE 
-                                  WHEN iu.status_unit_id = 1 THEN "AVAILABLE_STOCK"
-                                  WHEN iu.status_unit_id = 2 THEN "STOCK_NON_ASET"
-                                  WHEN iu.status_unit_id = 3 THEN "BOOKED"
-                                  WHEN iu.status_unit_id = 4 THEN "IN_PREPARATION"
-                                  WHEN iu.status_unit_id = 5 THEN "READY_TO_DELIVER"
-                                  WHEN iu.status_unit_id = 6 THEN "IN_DELIVERY"
-                                  WHEN iu.status_unit_id = 7 THEN "RENTAL_ACTIVE"
-                                  WHEN iu.status_unit_id = 8 THEN "MAINTENANCE"
-                                  WHEN iu.status_unit_id = 9 THEN "RETURNED"
-                                  WHEN iu.status_unit_id = 10 THEN "SOLD"
-                                  WHEN iu.status_unit_id = 11 THEN "RENTAL_INACTIVE"
-                                  ELSE CONCAT("Status ", iu.status_unit_id)
-                              END) as status_unit_name,
+                              COALESCE(mu.merk_unit, "-") as merk_unit,
+                              COALESCE(mu.model_unit, "-") as model_unit,
+                              COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "-") as nama_tipe_unit,
+                              COALESCE(su.status_unit, "UNKNOWN") as status_unit_name,
                               iu.departemen_id,
                               COALESCE(d.nama_departemen, "-") as nama_departemen,
-                              iu.lokasi_unit as lokasi_unit_internal,
                               iu.lokasi_unit,
-                              iu.created_at as tanggal_masuk,
-                              c.customer_name,
-                              cl.location_name as customer_location_name');
+                              iu.created_at');
             $tableExists = $this->checkTablesExist(['model_unit', 'tipe_unit', 'status_unit', 'departemen', 'kontrak']);
             
-            // Join with kontrak table for pelanggan and lokasi
-            if ($tableExists['kontrak']) {
-                $builder->join('kontrak as k', 'k.id = iu.kontrak_id', 'left')
-                        ->join('customer_locations as cl', 'cl.id = iu.customer_location_id', 'left')
-                        ->join('customers as c', 'c.id = iu.customer_id', 'left');
-            }
+            // Minimal Join (Avoid missing fields in kontrak or customers table)
             if ($tableExists['model_unit']) {
                 $builder->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
             }
@@ -361,6 +518,8 @@ class InventoryUnitModel extends Model
 
     /**
      * Get units for dropdown selection
+     * 
+     * Updated: Uses kontrak_unit junction table instead of redundant iu.kontrak_id
      */
     public function getUnitsForDropdown()
     {
@@ -373,8 +532,12 @@ class InventoryUnitModel extends Model
                           COALESCE(cl.location_name, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
                           COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                           COALESCE(mu.model_unit, "Unknown") as model_unit,
-                          COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe')
-                ->join('kontrak as k', 'k.id = iu.kontrak_id', 'left')
+                          COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe,
+                          ku.kontrak_id,
+                          k.no_kontrak')
+                // Updated: JOIN via kontrak_unit junction (source of truth)
+                ->join('kontrak_unit ku', 'iu.id_inventory_unit = ku.unit_id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
+                ->join('kontrak as k', 'k.id = ku.kontrak_id', 'left')
                 ->join('customer_locations as cl', 'cl.id = k.customer_location_id', 'left')
                 ->join('customers as c', 'c.id = cl.customer_id', 'left')
                 ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
@@ -387,6 +550,8 @@ class InventoryUnitModel extends Model
 
     /**
      * Get unit detail with contract info for work orders
+     * 
+     * Updated: Uses kontrak_unit junction table instead of redundant iu.kontrak_id
      */
     public function getUnitDetailForWorkOrder($unitId)
     {
@@ -395,7 +560,7 @@ class InventoryUnitModel extends Model
                           iu.no_unit, 
                           iu.serial_number,
                           iu.lokasi_unit as lokasi_unit_internal,
-                          iu.kontrak_id,
+                          ku.kontrak_id,
                           k.no_kontrak,
                           c.customer_name as pelanggan,
                           cl.location_name as lokasi_kontrak,
@@ -404,13 +569,15 @@ class InventoryUnitModel extends Model
                           COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                           COALESCE(mu.model_unit, "Unknown") as model_unit,
                           COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe,
-                          COALESCE(ku.kapasitas, "Unknown") as kapasitas')
-                ->join('kontrak as k', 'k.id = iu.kontrak_id', 'left')
+                          COALESCE(kap.kapasitas, "Unknown") as kapasitas')
+                // Updated: JOIN via kontrak_unit junction (source of truth)
+                ->join('kontrak_unit ku', 'iu.id_inventory_unit = ku.unit_id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
+                ->join('kontrak as k', 'k.id = ku.kontrak_id', 'left')
                 ->join('customer_locations as cl', 'cl.id = k.customer_location_id', 'left')
                 ->join('customers as c', 'c.id = cl.customer_id', 'left')
                 ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
-                ->join('kapasitas_unit as ku', 'ku.id_kapasitas = iu.kapasitas_unit_id', 'left')
+                ->join('kapasitas_unit as kap', 'kap.id_kapasitas = iu.kapasitas_unit_id', 'left')
                 ->where('iu.id_inventory_unit', $unitId);
         
         return $builder->get()->getRowArray();

@@ -180,8 +180,10 @@ abstract class BaseController extends Controller
 
             return false;
         } catch (\Throwable $e) {
-            // If anything goes wrong, do not block UI
-            return true;
+            // Fail-CLOSED: deny access if RBAC check itself errors (e.g. DB timeout).
+            // Logging is critical here — this may indicate a DB connectivity issue.
+            log_message('critical', '[RBAC] hasPermission("{perm}") failed — access denied. Error: ' . str_replace('{perm}', $permissionKey, $e->getMessage()));
+            return false;
         }
     }
     
@@ -325,8 +327,9 @@ abstract class BaseController extends Controller
             // Check permission
             return $this->hasPermission($permissionKey);
         } catch (\Throwable $e) {
-            // If anything goes wrong, do not block UI
-            return true;
+            // Fail-CLOSED: deny access on error.
+            log_message('critical', '[RBAC] canAccessResource("{mod}") failed — access denied. Error: ' . str_replace('{mod}', $module, $e->getMessage()));
+            return false;
         }
     }
 

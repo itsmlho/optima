@@ -6,9 +6,13 @@ use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface; 
 use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
+use App\Models\InventoryBatteryModel;
+use App\Models\InventoryChargerModel;
+use App\Models\InventoryComponentHelper;
 use App\Models\SpkModel;
 use App\Helpers\UnitComponentFormatter;
 use App\Traits\ActivityLoggingTrait;
+use App\Services\ExportService;
 
 
 class Service extends BaseController
@@ -18,16 +22,24 @@ class Service extends BaseController
     protected $db;
     protected $unitModel;
     protected $attModel;
+    protected $batteryModel;
+    protected $chargerModel;
+    protected $componentHelper;
     protected $spkModel;
     protected $componentFormatter;
+    protected $exportService;
 
     public function __construct()
     {
         $this->db = \Config\Database::connect();
         $this->unitModel = new InventoryUnitModel();
         $this->attModel = new InventoryAttachmentModel();
+        $this->batteryModel = new InventoryBatteryModel();
+        $this->chargerModel = new InventoryChargerModel();
+        $this->componentHelper = new InventoryComponentHelper();
         $this->spkModel = new SpkModel();
         $this->componentFormatter = new UnitComponentFormatter();
+        $this->exportService = new ExportService();
         
         // Load auth helper for division filtering
         helper('auth');
@@ -66,56 +78,12 @@ class Service extends BaseController
     }
 
     /**
-     * Get unit components from inventory_attachment (single source of truth)
+     * Get unit components from new inventory tables (batteries, chargers, attachments)
+     * Delegates to InventoryComponentHelper for backward compatibility
      */
     private function getUnitComponents($unitId)
     {
-        $components = [
-            'battery' => null,
-            'charger' => null,
-            'attachment' => null
-        ];
-
-        // Get battery info - include both available and in use for the unit
-        $battery = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment, ia.baterai_id, ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
-            ->join('baterai b', 'ia.baterai_id = b.id', 'left')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'battery')
-            ->whereIn('ia.attachment_status', ['AVAILABLE', 'IN_USE']) // Available or In use for this unit
-            ->get()->getRowArray();
-
-        if ($battery) {
-            $components['battery'] = $battery;
-        }
-
-        // Get charger info - include both available and in use for the unit
-        $charger = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment, ia.charger_id, ia.sn_charger, c.merk_charger, c.tipe_charger')
-            ->join('charger c', 'ia.charger_id = c.id_charger', 'left')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'charger')
-            ->whereIn('ia.attachment_status', ['AVAILABLE', 'IN_USE']) // Available or In use for this unit
-            ->get()->getRowArray();
-
-        if ($charger) {
-            $components['charger'] = $charger;
-        }
-
-        // Get attachment info - include both available and used for the unit
-        $attachment = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment, ia.attachment_id, ia.sn_attachment, a.tipe, a.merk, a.model')
-            ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'attachment')
-            ->whereIn('ia.attachment_status', ['AVAILABLE', 'USED']) // Available or In use for this unit
-            ->get()->getRowArray();
-
-        if ($attachment) {
-            $components['attachment'] = $attachment;
-        }
-
-        return $components;
+        return $this->componentHelper->getUnitComponents($unitId);
     }
 
     /**
@@ -132,30 +100,42 @@ class Service extends BaseController
     }
 
     /**
-     * Update component assignment in inventory_attachment
+     * Update component assignment in new inventory tables (batteries, chargers, attachments)
      */
     private function updateComponentAssignment($unitId, $componentType, $inventoryAttachmentId, $action = 'assign')
     {
         if (!$inventoryAttachmentId) return false;
 
+        // Determine correct table based on component type
+        $tableName = match(strtolower($componentType)) {
+            'battery' => 'inventory_batteries',
+            'charger' => 'inventory_chargers',
+            'attachment' => 'inventory_attachments',
+            default => null
+        };
+        
+        if (!$tableName) {
+            error_log("Invalid component type: $componentType");
+            return false;
+        }
+
         // First, unassign any existing component of this type from the unit
-        $this->db->table('inventory_attachment')
-            ->where('id_inventory_unit', $unitId)
-            ->where('tipe_item', $componentType)
+        $this->db->table($tableName)
+            ->where('inventory_unit_id', $unitId)
             ->update([
-                'id_inventory_unit' => null,
+                'inventory_unit_id' => null,
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
-        // Note: status_unit akan otomatis sinkronisasi dengan trigger (menjadi 7 = Available)
+        // Note: status will be updated via trigger or application logic
 
         // Then assign the new component
-        $this->db->table('inventory_attachment')
-            ->where('id_inventory_attachment', $inventoryAttachmentId)
+        $this->db->table($tableName)
+            ->where('id', $inventoryAttachmentId)
             ->update([
-                'id_inventory_unit' => $unitId,
+                'inventory_unit_id' => $unitId,
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
-        // Note: status_unit akan otomatis sinkronisasi dengan trigger berdasarkan unit status
+        // Note: status will be updated via trigger or application logic
 
         return $this->db->affectedRows() > 0;
     }
@@ -251,7 +231,64 @@ class Service extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('service/export_workorder');
+        
+        // Get data from database
+        $query = $this->db->query("
+            SELECT 
+                wo.*,
+                iu.no_unit,
+                iu.serial_number,
+                iu.tahun_unit,
+                iu.lokasi_unit,
+                ws.status_name,
+                wp.priority_name,
+                wc.category_name,
+                wsc.subcategory_name,
+                a.staff_name as admin_name,
+                f.staff_name as foreman_name,
+                m.staff_name as mechanic_name,
+                d.nama_departemen
+            FROM work_orders wo
+            LEFT JOIN inventory_unit iu ON iu.id_inventory_unit = wo.unit_id
+            LEFT JOIN work_order_statuses ws ON ws.id = wo.status_id
+            LEFT JOIN work_order_priorities wp ON wp.id = wo.priority_id
+            LEFT JOIN work_order_categories wc ON wc.id = wo.category_id
+            LEFT JOIN work_order_subcategories wsc ON wsc.id = wo.subcategory_id
+            LEFT JOIN employees a ON a.id = wo.admin_id
+            LEFT JOIN employees f ON f.id = wo.foreman_id
+            LEFT JOIN employees m ON m.id = wo.mechanic_id
+            LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
+            ORDER BY wo.report_date DESC
+        ");
+        $workorders = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'WO Code', 'Report Date', 'No Unit', 'Department', 'Priority', 'Status', 'Category', 'Subcategory', 'Admin', 'Foreman', 'Mechanic', 'Description', 'Location'];
+        
+        // Prepare data rows
+        $data = [];
+        $no = 1;
+        foreach ($workorders as $wo) {
+            $data[] = [
+                $no++,
+                $wo['wo_code'] ?? '',
+                $wo['report_date'] ?? '',
+                $wo['no_unit'] ?? '',
+                $wo['nama_departemen'] ?? '',
+                $wo['priority_name'] ?? '',
+                $wo['status_name'] ?? '',
+                $wo['category_name'] ?? '',
+                $wo['subcategory_name'] ?? '',
+                $wo['admin_name'] ?? '',
+                $wo['foreman_name'] ?? '',
+                $wo['mechanic_name'] ?? '',
+                $wo['problem_description'] ?? '',
+                $wo['lokasi_unit'] ?? ''
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'Work Orders Detailed');
     }
 
     public function exportEmployee()
@@ -266,7 +303,52 @@ class Service extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('service/export_employee');
+        
+        // Get data from database
+        $query = $this->db->query("
+            SELECT 
+                aea.*, 
+                a.area_name, 
+                a.area_code,
+                d.nama_departemen,
+                e.staff_name,
+                e.staff_role,
+                e.email,
+                e.contact_number
+            FROM area_employee_assignments aea
+            LEFT JOIN areas a ON a.id = aea.area_id
+            LEFT JOIN departemen d ON d.id_departemen = a.departemen_id
+            LEFT JOIN employees e ON e.id = aea.employee_id
+            ORDER BY e.staff_name ASC, aea.start_date DESC
+        ");
+        $assignments = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'Nama Karyawan', 'Role', 'Kontak', 'Kode Area', 'Area Assignment', 'Departemen', 'Status', 'Start Date', 'End Date'];
+        
+        // Prepare data rows
+        $data = [];
+        $no = 1;
+        foreach ($assignments as $assignment) {
+            $isActive = is_null($assignment['end_date']) || strtotime($assignment['end_date']) > time();
+            $status = $isActive ? 'Active' : 'Inactive';
+            
+            $data[] = [
+                $no++,
+                $assignment['staff_name'] ?? '',
+                $assignment['staff_role'] ?? '',
+                $assignment['contact_number'] ?? '',
+                $assignment['area_code'] ?? '',
+                $assignment['area_name'] ?? '',
+                $assignment['nama_departemen'] ?? '',
+                $status,
+                $assignment['start_date'] ?? '',
+                $assignment['end_date'] ?? '-'
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'Employee Assignments Detailed');
     }
 
     public function exportArea()
@@ -281,7 +363,43 @@ class Service extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('service/export_area');
+        
+        // Get data from database
+        $query = $this->db->query("
+            SELECT 
+                a.*, 
+                (
+                    SELECT COUNT(*) 
+                    FROM area_employee_assignments aea 
+                    WHERE aea.area_id = a.id 
+                    AND (aea.end_date IS NULL OR aea.end_date > CURDATE())
+                ) as employee_count
+            FROM areas a
+            ORDER BY a.area_name ASC
+        ");
+        $areas = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'Kode Area', 'Nama Area', 'Deskripsi', 'Status', 'Jumlah Karyawan Aktif', 'Tanggal Dibuat'];
+        
+        // Prepare data rows
+        $data = [];
+        $no = 1;
+        foreach ($areas as $area) {
+            $status = $area['is_active'] ? 'Active' : 'Inactive';
+            $data[] = [
+                $no++,
+                $area['area_code'] ?? '',
+                $area['area_name'] ?? '',
+                $area['description'] ?? '',
+                $status,
+                $area['employee_count'] ?? 0,
+                $area['created_at'] ?? ''
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'Area Management Detailed');
     }
 
     // --- SPK Service Handlers ---
@@ -976,12 +1094,7 @@ class Service extends BaseController
         }
         
         if (!empty($row['fabrikasi_attachment_id'])) {
-            $a = $this->db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan')
-                ->select('att.tipe, att.merk, att.model')
-                ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                ->where('ia.id_inventory_attachment', $row['fabrikasi_attachment_id'])
-                ->get()->getRowArray();
+            $a = $this->componentHelper->getAttachmentByInventoryId($row['fabrikasi_attachment_id']);
                 
             if ($a) {
                 $label = trim(($a['tipe'] ?: '-') . ' ' . ($a['merk'] ?: '') . ' ' . ($a['model'] ?: ''));
@@ -1030,11 +1143,7 @@ class Service extends BaseController
                 }
             }
             if (empty($enriched['selected']['attachment']) && !empty($sel['inventory_attachment_id'])) {
-                $a = $this->db->table('inventory_attachment ia')
-                    ->select('a.tipe, a.merk, a.model, ia.sn_attachment, ia.lokasi_penyimpanan')
-                    ->join('attachment a','a.id_attachment = ia.attachment_id','left')
-                    ->where('ia.id_inventory_attachment', (int)$sel['inventory_attachment_id'])
-                    ->get()->getRowArray();
+                $a = $this->componentHelper->getAttachmentByInventoryId((int)$sel['inventory_attachment_id']);
                 if ($a) {
                     $label = trim(($a['tipe'] ?: '-') . ' ' . ($a['merk'] ?: '') . ' ' . ($a['model'] ?: ''));
                     $suffix = [];
@@ -1174,11 +1283,7 @@ class Service extends BaseController
                     }
                 }
                 if (!empty($pu['attachment_id'])) {
-                    $aInfo = $this->db->table('inventory_attachment ia')
-                        ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan, att.tipe, att.merk, att.model')
-                        ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                        ->where('ia.id_inventory_attachment', $pu['attachment_id'])
-                        ->get()->getRowArray();
+                    $aInfo = $this->componentHelper->getAttachmentByInventoryId($pu['attachment_id']);
                     if ($aInfo) {
                         $attLabel = trim(($aInfo['tipe'] ?: '-') . ' ' . ($aInfo['merk'] ?: '') . ' ' . ($aInfo['model'] ?: ''));
                         $suf = [];
@@ -1869,27 +1974,40 @@ class Service extends BaseController
     {
         $old_unit_id = null;
         
+        // Determine table name based on component type
+        $tableName = match($type) {
+            'battery' => 'inventory_batteries',
+            'charger' => 'inventory_chargers',
+            'attachment' => 'inventory_attachments',
+            default => null
+        };
+        
+        if (!$tableName) {
+            log_message('error', "Invalid component type: {$type}");
+            return;
+        }
+        
         try {
             // If action is 'replace', detach old component first
             if ($componentData['action'] === 'replace' && !empty($componentData['existing_model_id'])) {
                 // Get old unit_id before detaching for audit log
-                $oldAttachment = $this->db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $componentData['existing_model_id'])
+                $oldComponent = $this->db->table($tableName)
+                    ->where('id', $componentData['existing_model_id'])
                     ->get()->getRowArray();
                 
-                $old_unit_id = $oldAttachment['id_inventory_unit'] ?? null;
+                $old_unit_id = $oldComponent['inventory_unit_id'] ?? null;
                 
                 // Defensive: Explicitly set only allowed fields
                 $updateData = [
-                    'id_inventory_unit' => null,
-                    'attachment_status' => 'AVAILABLE',
+                    'inventory_unit_id' => null,
+                    'status' => 'AVAILABLE',
                     'updated_at' => date('Y-m-d H:i:s')
                 ];
                 
                 log_message('info', "🔧 Detaching component {$type} ID {$componentData['existing_model_id']} - Data: " . json_encode($updateData));
                 
-                $this->db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $componentData['existing_model_id'])
+                $this->db->table($tableName)
+                    ->where('id', $componentData['existing_model_id'])
                     ->update($updateData);
                 
                 log_message('info', "Component {$type} ID {$componentData['existing_model_id']} detached from unit {$old_unit_id}");
@@ -1899,15 +2017,15 @@ class Service extends BaseController
             if (!empty($componentData['new_inventory_attachment_id'])) {
                 // Defensive: Explicitly set only allowed fields
                 $updateData = [
-                    'id_inventory_unit' => $unit_id,
-                    'attachment_status' => 'USED',
+                    'inventory_unit_id' => $unit_id,
+                    'status' => 'IN_USE',
                     'updated_at' => date('Y-m-d H:i:s')
                 ];
                 
                 log_message('info', "🔧 Attaching component {$type} ID {$componentData['new_inventory_attachment_id']} - Data: " . json_encode($updateData));
                 
-                $this->db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $componentData['new_inventory_attachment_id'])
+                $this->db->table($tableName)
+                    ->where('id', $componentData['new_inventory_attachment_id'])
                     ->update($updateData);
                 
                 // Log to audit table
@@ -1949,13 +2067,13 @@ class Service extends BaseController
             if ($battery_id) {
             // Defensive: Explicitly set only allowed fields
             $updateData = [
-                'id_inventory_unit' => $unit_id, 
-                'attachment_status' => 'USED', 
+                'inventory_unit_id' => $unit_id, 
+                'status' => 'IN_USE', 
                 'updated_at' => date('Y-m-d H:i:s')
             ];
             
-            $this->db->table('inventory_attachment')
-                ->where('id_inventory_attachment', $battery_id)
+            $this->db->table('inventory_batteries')
+                ->where('id', $battery_id)
                 ->update($updateData);
             
             // Log to audit table
@@ -1977,13 +2095,13 @@ class Service extends BaseController
         if ($charger_id) {
             // Defensive: Explicitly set only allowed fields
             $updateData = [
-                'id_inventory_unit' => $unit_id, 
-                'attachment_status' => 'USED', 
+                'inventory_unit_id' => $unit_id, 
+                'status' => 'IN_USE', 
                 'updated_at' => date('Y-m-d H:i:s')
             ];
             
-            $this->db->table('inventory_attachment')
-                ->where('id_inventory_attachment', $charger_id)
+            $this->db->table('inventory_chargers')
+                ->where('id', $charger_id)
                 ->update($updateData);
             
             // Log to audit table
@@ -2231,10 +2349,8 @@ class Service extends BaseController
         
         // Debug: Check if attachment exists and is valid
         if ($approvalData['attachment_id']) {
-            $attachmentCheck = $this->db->table('inventory_attachment')
-                ->where('id_inventory_attachment', $approvalData['attachment_id'])
-                ->get()
-                ->getRowArray();
+            // Use componentHelper to find component in any of the 3 tables
+            $attachmentCheck = $this->componentHelper->findComponentByIdAny($approvalData['attachment_id']);
             
             if (!$attachmentCheck) {
                 log_message('error', 'Attachment not found: ' . $approvalData['attachment_id']);
@@ -2334,19 +2450,39 @@ if ($mysqli->connect_error) {
 $mysqli->begin_transaction();
 
 try {
+    // Detect component type using componentHelper
+    $componentHelper = new \App\Models\InventoryComponentHelper();
+    $componentType = $componentHelper->detectComponentType($attachment_id);
+    
+    if (!$componentType) {
+        throw new Exception('Component not found with ID: ' . $attachment_id);
+    }
+    
+    // Determine table name
+    $tableName = match($componentType) {
+        'battery' => 'inventory_batteries',
+        'charger' => 'inventory_chargers',
+        'attachment' => 'inventory_attachments',
+        default => null
+    };
+    
+    if (!$tableName) {
+        throw new Exception('Invalid component type: ' . $componentType);
+    }
+    
     if ($transfer_mode) {
         // KANIBAL MODE: Two-step update for proper detach → attach workflow
         
         // Get old unit_id before detaching (for audit log)
-        $getOldUnit = $mysqli->query("SELECT id_inventory_unit FROM inventory_attachment WHERE id_inventory_attachment = $attachment_id");
+        $getOldUnit = $mysqli->query("SELECT inventory_unit_id FROM {$tableName} WHERE id = $attachment_id");
         $oldUnitData = $getOldUnit->fetch_assoc();
-        $old_unit_id = $oldUnitData['id_inventory_unit'] ?? null;
+        $old_unit_id = $oldUnitData['inventory_unit_id'] ?? null;
         
         // STEP 1: Detach from old unit
-        $sql1 = "UPDATE inventory_attachment 
-                 SET id_inventory_unit = NULL, 
+        $sql1 = "UPDATE {$tableName}
+                 SET inventory_unit_id = NULL, 
                      updated_at = '" . date('Y-m-d H:i:s') . "' 
-                 WHERE id_inventory_attachment = $attachment_id";
+                 WHERE id = $attachment_id";
         
         $result1 = $mysqli->query($sql1);
         $affected1 = $mysqli->affected_rows;
@@ -2355,16 +2491,16 @@ try {
             throw new Exception('KANIBAL STEP 1 FAILED: Detach failed - ' . $mysqli->error);
         }
         
-        error_log('✅ KANIBAL STEP 1 SUCCESS: Attachment ' . $attachment_id . ' detached from unit ' . ($old_unit_id ?? 'NULL') . ' (affected: ' . $affected1 . ')');
+        error_log('✅ KANIBAL STEP 1 SUCCESS: ' . ucfirst($componentType) . ' ' . $attachment_id . ' detached from unit ' . ($old_unit_id ?? 'NULL') . ' (affected: ' . $affected1 . ')');
         
         // Wait 1 second to ensure trigger completes
         sleep(1);
         
         // STEP 2: Attach to new unit
-        $sql2 = "UPDATE inventory_attachment 
-                 SET id_inventory_unit = $unit_id, 
+        $sql2 = "UPDATE {$tableName}
+                 SET inventory_unit_id = $unit_id, 
                      updated_at = '" . date('Y-m-d H:i:s') . "' 
-                 WHERE id_inventory_attachment = $attachment_id";
+                 WHERE id = $attachment_id";
         
         $result2 = $mysqli->query($sql2);
         $affected2 = $mysqli->affected_rows;
@@ -2373,7 +2509,7 @@ try {
             throw new Exception('KANIBAL STEP 2 FAILED: Attach failed - ' . $mysqli->error);
         }
         
-        error_log('✅ KANIBAL STEP 2 SUCCESS: Attachment ' . $attachment_id . ' attached to unit ' . $unit_id . ' (affected: ' . $affected2 . ')');
+        error_log('✅ KANIBAL STEP 2 SUCCESS: ' . ucfirst($componentType) . ' ' . $attachment_id . ' attached to unit ' . $unit_id . ' (affected: ' . $affected2 . ')');
         
         // Insert audit log
         $spk_id = %SPK_ID%;
@@ -2390,10 +2526,10 @@ try {
         
     } else {
         // NORMAL MODE: Direct assignment (new attachment from warehouse)
-        $sql = "UPDATE inventory_attachment 
-                SET id_inventory_unit = $unit_id, 
+        $sql = "UPDATE {$tableName}
+                SET inventory_unit_id = $unit_id, 
                     updated_at = '" . date('Y-m-d H:i:s') . "' 
-                WHERE id_inventory_attachment = $attachment_id";
+                WHERE id = $attachment_id";
         
         $result = $mysqli->query($sql);
         $affected_rows = $mysqli->affected_rows;
@@ -2843,48 +2979,62 @@ EOF;
             $type = 'attachment';
         }
         
-        $qb = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment as id, ia.tipe_item, ia.sn_attachment, ia.sn_baterai, ia.sn_charger, ia.lokasi_penyimpanan, ia.kondisi_fisik, ia.kelengkapan, ia.id_inventory_unit, ia.attachment_status, iu.no_unit, iu.serial_number, mu.merk_unit, mu.model_unit')
-            ->select('a.tipe as attachment_tipe, a.merk as attachment_merk, a.model as attachment_model')
-            ->select('b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
-            ->select('c.merk_charger, c.tipe_charger')
-            ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
-            ->join('baterai b', 'b.id = ia.baterai_id', 'left')
-            ->join('charger c', 'c.id_charger = ia.charger_id', 'left')
-            ->join('inventory_unit iu', 'iu.id_inventory_unit = ia.id_inventory_unit', 'left')
-            ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
-            ->where('ia.tipe_item', $type);  // Filter by requested type
+        // Build query based on component type (use separate tables now)
+        if ($type === 'battery') {
+            $qb = $this->db->table('inventory_batteries ib')
+                ->select('ib.id, ib.serial_number as sn_baterai, ib.storage_location as lokasi_penyimpanan, ib.status, ib.inventory_unit_id, iu.no_unit, iu.serial_number as unit_serial_number, mu.merk_unit, mu.model_unit')
+                ->select('b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
+                ->join('baterai b', 'b.id = ib.battery_type_id', 'left')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = ib.inventory_unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+        } elseif ($type === 'charger') {
+            $qb = $this->db->table('inventory_chargers ic')
+                ->select('ic.id, ic.serial_number as sn_charger, ic.storage_location as lokasi_penyimpanan, ic.status, ic.inventory_unit_id, iu.no_unit, iu.serial_number as unit_serial_number, mu.merk_unit, mu.model_unit')
+                ->select('c.merk_charger, c.tipe_charger')
+                ->join('charger c', 'c.id_charger = ic.charger_type_id', 'left')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = ic.inventory_unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+        } else { // attachment
+            $qb = $this->db->table('inventory_attachments ia')
+                ->select('ia.id, ia.serial_number as sn_attachment, ia.storage_location as lokasi_penyimpanan, ia.status, ia.inventory_unit_id, iu.no_unit, iu.serial_number as unit_serial_number, mu.merk_unit, mu.model_unit')
+                ->select('a.tipe, a.merk, a.model')
+                ->join('attachment a', 'a.id_attachment = ia.attachment_type_id', 'left')
+                ->join('inventory_unit iu', 'iu.id_inventory_unit = ia.inventory_unit_id', 'left')
+                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
+        }
         
         // If no search query, prioritize AVAILABLE items first
         if (empty($q)) {
-            $qb->whereIn('ia.attachment_status', ['AVAILABLE', 'USED'])
-               ->orderBy("FIELD(ia.attachment_status, 'AVAILABLE', 'USED')", '', false) // AVAILABLE first
-               ->orderBy('ia.id_inventory_attachment', 'DESC');
+            $qb->whereIn($type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : 'ia.status'), ['AVAILABLE', 'IN_USE'])
+               ->orderBy("FIELD(" . ($type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : 'ia.status')) . ", 'AVAILABLE', 'IN_USE')", '', false)
+               ->orderBy($type === 'battery' ? 'ib.id' : ($type === 'charger' ? 'ic.id' : 'ia.id'), 'DESC');
         } else {
             // With search query, show all matching items regardless of status
-            $qb->whereIn('ia.attachment_status', ['AVAILABLE', 'USED', 'MAINTENANCE'])
+            $qb->whereIn($type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : 'ia.status'), ['AVAILABLE', 'IN_USE', 'MAINTENANCE'])
                ->groupStart();
             
             if ($type === 'attachment') {
-                $qb->like('ia.sn_attachment', $q)
+                $qb->like('ia.serial_number', $q)
                    ->orLike('a.tipe', $q)
                    ->orLike('a.merk', $q)
-                   ->orLike('a.model', $q);
+                   ->orLike('a.model', $q)
+                   ->orLike('ia.storage_location', $q);
             } elseif ($type === 'battery') {
-                $qb->like('ia.sn_baterai', $q)
+                $qb->like('ib.serial_number', $q)
                    ->orLike('b.merk_baterai', $q)
                    ->orLike('b.tipe_baterai', $q)
-                   ->orLike('b.jenis_baterai', $q);
+                   ->orLike('b.jenis_baterai', $q)
+                   ->orLike('ib.storage_location', $q);
             } elseif ($type === 'charger') {
-                $qb->like('ia.sn_charger', $q)
+                $qb->like('ic.serial_number', $q)
                    ->orLike('c.merk_charger', $q)
-                   ->orLike('c.tipe_charger', $q);
+                   ->orLike('c.tipe_charger', $q)
+                   ->orLike('ic.storage_location', $q);
             }
             
-            $qb->orLike('ia.lokasi_penyimpanan', $q)
-               ->groupEnd()
-               ->orderBy("FIELD(ia.attachment_status, 'AVAILABLE', 'USED', 'MAINTENANCE')", '', false)
-               ->orderBy('ia.id_inventory_attachment', 'DESC');
+            $qb->groupEnd()
+               ->orderBy("FIELD(" . ($type === 'battery' ? 'ib.status' : ($type === 'charger' ? 'ic.status' : 'ia.status')) . ", 'AVAILABLE', 'IN_USE', 'MAINTENANCE')", '', false)
+               ->orderBy($type === 'battery' ? 'ib.id' : ($type === 'charger' ? 'ic.id' : 'ia.id'), 'DESC');
         }
         
         // Add pagination
@@ -2892,13 +3042,13 @@ EOF;
         
         $rows = $qb->get()->getResultArray();
         $data = array_map(function($r) use ($type){
-            $isUsed = !empty($r['id_inventory_unit']);
+            $isUsed = !empty($r['inventory_unit_id']);
             $label = '';
             $serialNumber = '';
             
             // Build label and serial number based on type
             if ($type === 'attachment') {
-                $label = trim(($r['attachment_tipe'] ?: '-') . ' ' . ($r['attachment_merk'] ?: '') . ' ' . ($r['attachment_model'] ?: ''));
+                $label = trim(($r['tipe'] ?: '-') . ' ' . ($r['merk'] ?: '') . ' ' . ($r['model'] ?: ''));
                 $serialNumber = $r['sn_attachment'];
             } elseif ($type === 'battery') {
                 $label = trim(($r['merk_baterai'] ?: '-') . ' ' . ($r['tipe_baterai'] ?: ''));
@@ -2914,20 +3064,18 @@ EOF;
             return [
                 'id'=>(int)$r['id'],
                 'label'=>$label,
-                'sn_attachment' => $r['sn_attachment'],
-                'sn_baterai' => $r['sn_baterai'], 
-                'sn_charger' => $r['sn_charger'],
-                'tipe_item' => $r['tipe_item'],
-                'kondisi_fisik' => $r['kondisi_fisik'],
-                'kelengkapan' => $r['kelengkapan'],
+                'sn_attachment' => $r['sn_attachment'] ?? null,
+                'sn_baterai' => $r['sn_baterai'] ?? null, 
+                'sn_charger' => $r['sn_charger'] ?? null,
+                'tipe_item' => $type,
                 'lokasi_penyimpanan' => $r['lokasi_penyimpanan'],
-                'attachment_status' => $r['attachment_status'],
+                'attachment_status' => $r['status'], // Map status to old field name
                 'is_used' => $isUsed,
                 'used_by_unit' => $isUsed ? $r['no_unit'] : null,
                 'installed_unit' => $isUsed ? [
-                    'unit_id' => $r['id_inventory_unit'],
+                    'unit_id' => $r['inventory_unit_id'],
                     'no_unit' => $r['no_unit'],
-                    'serial_number' => $r['serial_number'],
+                    'serial_number' => $r['unit_serial_number'],
                     'merk_unit' => $r['merk_unit'],
                     'model_unit' => $r['model_unit']
                 ] : null
@@ -3321,9 +3469,9 @@ EOF;
             // Update attachment relationships
             if (!empty($newAttachmentId)) {
                 // VALIDASI: Cek apakah attachment available atau sudah dipakai unit lain
-                $attachmentCheck = $db->table('inventory_attachment')
-                    ->select('id_inventory_attachment, attachment_status, id_inventory_unit')
-                    ->where('id_inventory_attachment', $newAttachmentId)
+                $attachmentCheck = $db->table('inventory_attachments')
+                    ->select('id, status, inventory_unit_id')
+                    ->where('id', $newAttachmentId)
                     ->get()->getRowArray();
                 
                 if (!$attachmentCheck) {
@@ -3331,14 +3479,14 @@ EOF;
                 }
                 
                 // Jika attachment USED dan bukan milik unit ini, reject
-                if ($attachmentCheck['attachment_status'] === 'USED' && 
-                    !empty($attachmentCheck['id_inventory_unit']) &&
-                    $attachmentCheck['id_inventory_unit'] != $unitId) {
+                if ($attachmentCheck['status'] === 'IN_USE' && 
+                    !empty($attachmentCheck['inventory_unit_id']) &&
+                    $attachmentCheck['inventory_unit_id'] != $unitId) {
                     
                     // Get unit number yang pakai attachment ini
                     $usedByUnit = $db->table('inventory_unit')
                         ->select('no_unit')
-                        ->where('id_inventory_unit', $attachmentCheck['id_inventory_unit'])
+                        ->where('id_inventory_unit', $attachmentCheck['inventory_unit_id'])
                         ->get()->getRowArray();
                     
                     $usedBy = $usedByUnit ? $usedByUnit['no_unit'] : 'Unit Lain';
@@ -3360,18 +3508,18 @@ EOF;
 
             if (!empty($newBateraiId)) {
                 // VALIDASI: Cek apakah baterai available
-                $bateraiCheck = $db->table('inventory_attachment')
-                    ->select('id_inventory_attachment, attachment_status, id_inventory_unit')
-                    ->where('id_inventory_attachment', $newBateraiId)
+                $bateraiCheck = $db->table('inventory_batteries')
+                    ->select('id, status, inventory_unit_id')
+                    ->where('id', $newBateraiId)
                     ->get()->getRowArray();
                 
-                if ($bateraiCheck && $bateraiCheck['attachment_status'] === 'USED' && 
-                    !empty($bateraiCheck['id_inventory_unit']) &&
-                    $bateraiCheck['id_inventory_unit'] != $unitId) {
+                if ($bateraiCheck && $bateraiCheck['status'] === 'IN_USE' && 
+                    !empty($bateraiCheck['inventory_unit_id']) &&
+                    $bateraiCheck['inventory_unit_id'] != $unitId) {
                     
                     $usedByUnit = $db->table('inventory_unit')
                         ->select('no_unit')
-                        ->where('id_inventory_unit', $bateraiCheck['id_inventory_unit'])
+                        ->where('id_inventory_unit', $bateraiCheck['inventory_unit_id'])
                         ->get()->getRowArray();
                     
                     $usedBy = $usedByUnit ? $usedByUnit['no_unit'] : 'Unit Lain';
@@ -3393,18 +3541,18 @@ EOF;
 
             if (!empty($newChargerId)) {
                 // VALIDASI: Cek apakah charger available
-                $chargerCheck = $db->table('inventory_attachment')
-                    ->select('id_inventory_attachment, attachment_status, id_inventory_unit')
-                    ->where('id_inventory_attachment', $newChargerId)
+                $chargerCheck = $db->table('inventory_chargers')
+                    ->select('id, status, inventory_unit_id')
+                    ->where('id', $newChargerId)
                     ->get()->getRowArray();
                 
-                if ($chargerCheck && $chargerCheck['attachment_status'] === 'USED' && 
-                    !empty($chargerCheck['id_inventory_unit']) &&
-                    $chargerCheck['id_inventory_unit'] != $unitId) {
+                if ($chargerCheck && $chargerCheck['status'] === 'IN_USE' && 
+                    !empty($chargerCheck['inventory_unit_id']) &&
+                    $chargerCheck['inventory_unit_id'] != $unitId) {
                     
                     $usedByUnit = $db->table('inventory_unit')
                         ->select('no_unit')
-                        ->where('id_inventory_unit', $chargerCheck['id_inventory_unit'])
+                        ->where('id_inventory_unit', $chargerCheck['inventory_unit_id'])
                         ->get()->getRowArray();
                     
                     $usedBy = $usedByUnit ? $usedByUnit['no_unit'] : 'Unit Lain';
@@ -3524,15 +3672,35 @@ EOF;
     private function releaseAttachment($attachmentId)
     {
         $db = \Config\Database::connect();
-        $db->table('inventory_attachment')
-            ->where('id_inventory_attachment', $attachmentId)
+        
+        // Determine which table this component is in
+        $componentType = $this->componentHelper->detectComponentType($attachmentId);
+        if (!$componentType) {
+            log_message('error', "Cannot determine component type for ID: {$attachmentId}");
+            return;
+        }
+        
+        $tableName = match($componentType) {
+            'battery' => 'inventory_batteries',
+            'charger' => 'inventory_chargers',
+            'attachment' => 'inventory_attachments',
+            default => null
+        };
+        
+        if (!$tableName) {
+            log_message('error', "Invalid component type: {$componentType}");
+            return;
+        }
+        
+        $db->table($tableName)
+            ->where('id', $attachmentId)
             ->update([
-                'id_inventory_unit' => null,
-                'attachment_status' => 'AVAILABLE',
+                'inventory_unit_id' => null,
+                'status' => 'AVAILABLE',
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
         
-        log_message('info', "Released attachment ID: {$attachmentId}");
+        log_message('info', "Released {$componentType} ID: {$attachmentId}");
     }
 
     /**
@@ -3541,15 +3709,35 @@ EOF;
     private function attachToUnit($attachmentId, $unitId)
     {
         $db = \Config\Database::connect();
-        $db->table('inventory_attachment')
-            ->where('id_inventory_attachment', $attachmentId)
+        
+        // Determine which table this component is in
+        $componentType = $this->componentHelper->detectComponentType($attachmentId);
+        if (!$componentType) {
+            log_message('error', "Cannot determine component type for ID: {$attachmentId}");
+            return;
+        }
+        
+        $tableName = match($componentType) {
+            'battery' => 'inventory_batteries',
+            'charger' => 'inventory_chargers',
+            'attachment' => 'inventory_attachments',
+            default => null
+        };
+        
+        if (!$tableName) {
+            log_message('error', "Invalid component type: {$componentType}");
+            return;
+        }
+        
+        $db->table($tableName)
+            ->where('id', $attachmentId)
             ->update([
-                'id_inventory_unit' => $unitId,
-                'attachment_status' => 'USED',
+                'inventory_unit_id' => $unitId,
+                'status' => $componentType === 'attachment' ? 'IN_USE' : 'IN_USE',
                 'updated_at' => date('Y-m-d H:i:s')
             ]);
         
-        log_message('info', "Attached attachment ID: {$attachmentId} to unit ID: {$unitId}");
+        log_message('info', "Attached {$componentType} ID: {$attachmentId} to unit ID: {$unitId}");
     }
     
 }

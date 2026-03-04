@@ -32,24 +32,28 @@ class SpkModel extends Model
     public function generateNextNumber(): string
     {
         $prefix = 'SPK/'.date('Ym').'/';
-        
-        // Use database lock to prevent race conditions
-        $this->db->query('LOCK TABLES spk WRITE');
-        
+
+        // Use SELECT ... FOR UPDATE inside a transaction to serialize concurrent inserts
+        // without blocking reads on the entire table (unlike LOCK TABLES)
+        $this->db->transException(true)->transStart();
+
         try {
-            $row = $this->db->table($this->table)->like('nomor_spk', $prefix)->orderBy('id','DESC')->get()->getRowArray();
+            $row = $this->db->query(
+                "SELECT nomor_spk FROM {$this->table} WHERE nomor_spk LIKE ? ORDER BY id DESC LIMIT 1 FOR UPDATE",
+                [$prefix . '%']
+            )->getRowArray();
+
             $seq = 1;
             if ($row && isset($row['nomor_spk'])) {
                 $parts = explode('/', $row['nomor_spk']);
                 $seq = isset($parts[2]) ? ((int)$parts[2] + 1) : 1;
             }
-            
+
             $newNumber = $prefix . str_pad((string)$seq, 3, '0', STR_PAD_LEFT);
-            
+
             // Double-check that this number doesn't already exist
             $exists = $this->db->table($this->table)->where('nomor_spk', $newNumber)->countAllResults();
             if ($exists > 0) {
-                // If it exists, increment and try again (up to 100 attempts)
                 $attempts = 0;
                 while ($exists > 0 && $attempts < 100) {
                     $seq++;
@@ -57,16 +61,19 @@ class SpkModel extends Model
                     $exists = $this->db->table($this->table)->where('nomor_spk', $newNumber)->countAllResults();
                     $attempts++;
                 }
-                
+
                 if ($exists > 0) {
-                    // If we still can't find a unique number, add timestamp
                     $newNumber = $prefix . date('His') . str_pad((string)$seq, 2, '0', STR_PAD_LEFT);
                 }
             }
-            
+
+            $this->db->transComplete();
             return $newNumber;
-        } finally {
-            $this->db->query('UNLOCK TABLES');
+
+        } catch (\Throwable $e) {
+            $this->db->transRollback();
+            log_message('error', '[SpkModel] generateNextNumber failed: ' . $e->getMessage());
+            throw $e;
         }
     }
 

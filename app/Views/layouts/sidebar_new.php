@@ -152,12 +152,12 @@ helper('permission_helper');
                 <div class="nav-dropdown">
                     <div class="nav-dropdown-header"><?= lang('App.inventory_warehouse') ?></div>
                     <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
-                    <a href="<?= base_url('/warehouse/inventory/invent_unit') ?>" class="nav-dropdown-item">
+                    <a href="<?= base_url('/warehouse/inventory/unit') ?>" class="nav-dropdown-item">
                         <i class="fas fa-truck"></i> <?= lang('App.unit_inventory') ?>
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('warehouse', 'attachment_inventory')): ?>
-                    <a href="<?= base_url('/warehouse/inventory/invent_attachment') ?>" class="nav-dropdown-item">
+                    <a href="<?= base_url('/warehouse/inventory/attachments') ?>" class="nav-dropdown-item">
                         <i class="fas fa-battery-half"></i> <?= lang('App.attachment_battery_inventory') ?>
                     </a>
                     <?php endif; ?>
@@ -483,7 +483,7 @@ helper('permission_helper');
             <?php if (can_view('warehouse')): ?>
             <!-- Unit Inventory -->
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/warehouse/inventory/invent_unit') ?>"
+                <a class="nav-link" href="<?= base_url('/warehouse/inventory/unit') ?>"
                    data-search-terms="inventory unit assets warehouse">
                     <i class="fas fa-truck"></i>
                     <span class="nav-link-text"><?= lang('App.unit_inventory') ?></span>
@@ -492,7 +492,7 @@ helper('permission_helper');
             
             <!-- Attachment & Battery Inventory -->
             <li class="nav-item">
-                <a class="nav-link" href="<?= base_url('/warehouse/inventory/invent_attachment') ?>"
+                <a class="nav-link" href="<?= base_url('/warehouse/inventory/attachments') ?>"
                    data-search-terms="inventory attachment battery warehouse">
                     <i class="fas fa-battery-half"></i>
                     <span class="nav-link-text"><?= lang('App.attachment_battery_inventory') ?></span>

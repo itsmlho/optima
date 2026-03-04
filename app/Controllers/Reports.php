@@ -930,7 +930,8 @@ class Reports extends BaseController
         // Get real rental data from inventory_unit with status RENTAL_ACTIVE (7)
         $activeRentals = $db->table('inventory_unit iu')
             ->select('iu.*, k.no_kontrak, k.pelanggan')
-            ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
+            ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
+            ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
             ->where('iu.status_unit_id', 7) // RENTAL_ACTIVE
             ->get()->getResultArray();
             

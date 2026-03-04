@@ -475,11 +475,12 @@ class MarketingOptimized extends BaseDataTableController
                     ia.file_type,
                     ia.description as attachment_description
                 FROM inventory_unit iu
+                LEFT JOIN kontrak_unit ku ON ku.kontrak_id = ? AND ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
                 LEFT JOIN kendaraan_tracking kt ON iu.id_inventory_unit = kt.inventory_unit_id
                 LEFT JOIN inventory_attachment ia ON iu.id_inventory_unit = ia.inventory_unit_id
-                WHERE iu.kontrak_id = ?
+                WHERE ku.kontrak_id IS NOT NULL
                 ORDER BY iu.id_inventory_unit ASC
-            ", [$kontrakId])->getResultArray();
+            ", [$kontrakId, $kontrakId])->getResultArray();
         }, 600, 'inventory'); // 10 minutes cache
 
         return $this->response->setJSON([

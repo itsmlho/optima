@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mysql -u root optima_ci -e \"DESCRIBE customer_locations;\")",
+      "Bash(mysql -u root optima_ci 2)",
+      "Bash(1:*)"
+    ]
+  }
+}

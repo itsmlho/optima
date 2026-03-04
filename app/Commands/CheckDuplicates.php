@@ -5,14 +5,30 @@ namespace App\Commands;
 use CodeIgniter\CLI\BaseCommand;
 use CodeIgniter\CLI\CLI;
 
+/**
+ * DEPRECATED: This command references the old inventory_attachment table structure.
+ * The inventory has been migrated to 3 separate tables:
+ * - inventory_batteries
+ * - inventory_chargers
+ * - inventory_attachments
+ * 
+ * This command needs to be rewritten to work with the new structure.
+ */
 class CheckDuplicates extends BaseCommand
 {
     protected $group       = 'Database';
     protected $name        = 'check:duplicates';
-    protected $description = 'Check for duplicate attachments on Unit No: 1';
+    protected $description = '[DEPRECATED] Check for duplicate attachments on Unit No: 1';
 
     public function run(array $params)
     {
+        CLI::write('=== WARNING: This command is DEPRECATED ===', 'red');
+        CLI::write('The inventory structure has changed to 3 separate tables.', 'yellow');
+        CLI::write('This command needs to be rewritten.', 'yellow');
+        CLI::newLine();
+        return;
+        
+        /* DEPRECATED CODE - DO NOT RUN
         $db = \Config\Database::connect();
         
         CLI::write('=== Checking Unit No: 1 Attachments ===', 'yellow');
@@ -76,5 +92,6 @@ class CheckDuplicates extends BaseCommand
         if (!$hasDuplicates) {
             CLI::write('No duplicates found!', 'green');
         }
+        */
     }
 }

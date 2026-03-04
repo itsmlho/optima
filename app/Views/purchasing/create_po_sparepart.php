@@ -4,11 +4,22 @@
 <?= $this->section('content') ?>
 
 <!-- Page Header -->
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <a href="<?= base_url('/purchasing') ?>" class="btn btn-light btn-action">
-        <i class="fas fa-arrow-left me-2"></i>Back to Purchasing
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a href="<?= base_url('/purchasing') ?>"><i class="fas fa-shopping-cart me-1"></i>Purchasing</a></li>
+                <li class="breadcrumb-item active">Buat PO Sparepart</li>
+            </ol>
+        </nav>
+        <h4 class="fw-bold mb-0">
+            <i class="fas fa-tools me-2 text-primary"></i>Buat Purchase Order - Sparepart
+        </h4>
+        <p class="text-muted small mb-0">Input Purchase Order untuk pembelian sparepart</p>
+    </div>
+    <a href="<?= base_url('/purchasing') ?>" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Kembali
     </a>
-    <h4 class="mb-0">Buat Purchase Order - Sparepart</h4>
 </div>
 
 <div class="container-fluid">
@@ -67,7 +78,7 @@
             <div class="card-body p-4">
                 <div class="table-responsive">
                     <table class="table table-striped table-hover" id="sparepart-table">
-                        <thead>
+                        <thead class="table-light">
                             <tr>
                                 <th style="width: 40%;">Sparepart</th>
                                 <th style="width: 15%;">Quantity</th>
@@ -139,7 +150,7 @@
             </select>
         </td>
         <td><input type="text" class="form-control" name="keterangan_item[]" placeholder="Catatan (opsional)"></td>
-        <td><button type="button" class="btn btn-danger btn-sm btn-remove"><i class="fas fa-trash"></i></button></td>
+        <td><button type="button" class="btn btn-danger btn-sm btn-remove" aria-label="Hapus baris sparepart"><i class="fas fa-trash" aria-hidden="true"></i></button></td>
     </tr>
 </template>
 

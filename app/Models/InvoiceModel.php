@@ -200,116 +200,126 @@ class InvoiceModel extends Model
     public function createRecurringInvoice(int $scheduleId, int $userId): array
     {
         $result = ['success' => false, 'invoice_id' => null, 'errors' => []];
-        
+
         $scheduleModel = new \App\Models\RecurringBillingScheduleModel();
         $schedule = $scheduleModel->find($scheduleId);
-        
+
         if (!$schedule) {
             $result['errors'][] = 'Billing schedule not found';
             return $result;
         }
-        
+
         // Get contract
         $kontrakModel = new \App\Models\KontrakModel();
         $contract = $kontrakModel->select('kontrak.*, customer_locations.customer_id')
                                  ->join('customer_locations', 'customer_locations.id = kontrak.customer_location_id')
                                  ->find($schedule['contract_id']);
-        
+
         if (!$contract) {
             $result['errors'][] = 'Contract not found';
             return $result;
         }
-        
-        // Calculate billing period using BillingCalculator
-        $billingCalculator = new \App\Libraries\BillingCalculator();
+
+        // Calculate billing period
         $billingStart = $schedule['next_billing_date'];
-        
-        // Calculate end based on frequency (backward compatible)
-        $frequency = $schedule['frequency'];
-        if ($frequency === 'MONTHLY') {
-            $billingEnd = date('Y-m-d', strtotime($billingStart . ' +1 month -1 day'));
-        } elseif ($frequency === 'QUARTERLY') {
-            $billingEnd = date('Y-m-d', strtotime($billingStart . ' +3 months -1 day'));
-        } elseif ($frequency === 'YEARLY') {
-            $billingEnd = date('Y-m-d', strtotime($billingStart . ' +1 year -1 day'));
-        }
-        
-        // Use BillingCalculator to get accurate billing amount
+        $frequency    = $schedule['frequency'] ?? 'MONTHLY';
+        $billingEnd   = match ($frequency) {
+            'QUARTERLY' => date('Y-m-d', strtotime($billingStart . ' +3 months -1 day')),
+            'YEARLY'    => date('Y-m-d', strtotime($billingStart . ' +1 year -1 day')),
+            default     => date('Y-m-d', strtotime($billingStart . ' +1 month -1 day')), // MONTHLY
+        };
+
+        // Use BillingCalculator for accurate amount
+        $billingCalculator = new \App\Libraries\BillingCalculator();
         try {
-            $billingResult = $billingCalculator->calculate($contract['id'], $billingStart, $billingEnd);
+            $billingResult    = $billingCalculator->calculate($contract['id'], $billingStart, $billingEnd);
             $calculatedAmount = $billingResult['amount'];
-            $billingMethod = $billingResult['method'];
-            $billingDays = $billingResult['days'];
+            $billingMethod    = $billingResult['method'];
+            $billingDays      = $billingResult['days'];
         } catch (\Exception $e) {
             log_message('error', 'InvoiceModel::createRecurringInvoice - BillingCalculator error: ' . $e->getMessage());
-            // Fallback: will calculate from items
             $calculatedAmount = 0;
-            $billingMethod = 'LEGACY';
-            $billingDays = 0;
+            $billingMethod    = 'LEGACY';
+            $billingDays      = 0;
         }
-        
-        // Generate invoice number
-        $invoiceNumber = $this->generateInvoiceNumber();
-        
-        // Calculate due date (30 days from issue)
-        $issueDate = date('Y-m-d');
-        $dueDate = date('Y-m-d', strtotime($issueDate . ' +30 days'));
-        
+
         // Check for applicable amendments
         $amendmentModel = new \App\Models\ContractAmendmentModel();
-        $effectiveRate = $amendmentModel->getEffectiveRate($contract['id'], $billingStart);
-        
-        // Prepare invoice data
-        $invoiceData = [
-            'invoice_number' => $invoiceNumber,
-            'contract_id' => $contract['id'],
-            'di_id' => null, // Recurring invoice not tied to specific DI
-            'customer_id' => $contract['customer_id'],
-            'invoice_type' => $effectiveRate ? 'ADDENDUM' : 'RECURRING_RENTAL',
-            'billing_period_start' => $billingStart,
-            'billing_period_end' => $billingEnd,
-            'issue_date' => $issueDate,
-            'due_date' => $dueDate,
-            'subtotal' => $calculatedAmount > 0 ? $calculatedAmount : 0,
-            'discount_amount' => 0,
-            'tax_percent' => 11.00,
-            'tax_amount' => $calculatedAmount > 0 ? ($calculatedAmount * 0.11) : 0,
-            'total_amount' => $calculatedAmount > 0 ? ($calculatedAmount * 1.11) : 0,
-            'status' => 'DRAFT',
-            'notes' => "Recurring rental invoice for period {$billingStart} to {$billingEnd} ({$billingDays} days, {$billingMethod})",
-            'created_by' => $userId
-        ];
-        
-        // Insert invoice
-        if ($this->insert($invoiceData)) {
+        $effectiveRate  = $amendmentModel->getEffectiveRate($contract['id'], $billingStart);
+
+        $issueDate = date('Y-m-d');
+        $dueDate   = date('Y-m-d', strtotime($issueDate . ' +30 days'));
+
+        // ─── BEGIN ATOMIC BLOCK ─────────────────────────────────────────────────────
+        $this->db->transStart();
+        try {
+            // Generate invoice number inside the transaction
+            $invoiceNumber = $this->generateInvoiceNumber();
+
+            $invoiceData = [
+                'invoice_number'        => $invoiceNumber,
+                'contract_id'           => $contract['id'],
+                'di_id'                 => null,
+                'customer_id'           => $contract['customer_id'],
+                'invoice_type'          => $effectiveRate ? 'ADDENDUM' : 'RECURRING_RENTAL',
+                'billing_period_start'  => $billingStart,
+                'billing_period_end'    => $billingEnd,
+                'issue_date'            => $issueDate,
+                'due_date'              => $dueDate,
+                'subtotal'              => $calculatedAmount > 0 ? $calculatedAmount : 0,
+                'discount_amount'       => 0,
+                'tax_percent'           => 11.00,
+                'tax_amount'            => $calculatedAmount > 0 ? ($calculatedAmount * 0.11) : 0,
+                'total_amount'          => $calculatedAmount > 0 ? ($calculatedAmount * 1.11) : 0,
+                'status'                => 'DRAFT',
+                'notes'                 => "Recurring rental invoice for period {$billingStart} to {$billingEnd} ({$billingDays} days, {$billingMethod})",
+                'created_by'            => $userId,
+            ];
+
+            if (!$this->insert($invoiceData)) {
+                throw new \Exception('Failed to insert invoice record.');
+            }
             $invoiceId = $this->getInsertID();
-            
+
             // Add items from contract specifications
             $invoiceItemModel = new \App\Models\InvoiceItemModel();
             $itemCount = $invoiceItemModel->addItemsFromContract($contract['id'], $effectiveRate);
-            
-            // If BillingCalculator didn't provide amount, recalculate from items
+
+            // Guard: cannot have an invoice with zero items
+            if ((int)$itemCount === 0) {
+                throw new \Exception(
+                    "Kontrak #{$contract['id']} tidak memiliki item spesifikasi aktif. " .
+                    "Invoice tidak dapat dibuat dengan 0 item."
+                );
+            }
+
+            // If BillingCalculator failed, derive totals from items
             if ($calculatedAmount === 0) {
                 $this->recalculateInvoiceTotals($invoiceId);
             }
-            
-            // Update schedule
+
+            // Advance the billing schedule only after invoice is confirmed
             $nextBillingDate = date('Y-m-d', strtotime($billingEnd . ' +1 day'));
             $scheduleModel->update($scheduleId, [
                 'next_billing_date' => $nextBillingDate,
-                'last_invoice_id' => $invoiceId
+                'last_invoice_id'   => $invoiceId,
             ]);
-            
-            $result['success'] = true;
-            $result['invoice_id'] = $invoiceId;
+
+            $this->db->transComplete();
+            // ─── END ATOMIC BLOCK ────────────────────────────────────────────────────
+
+            $result['success']        = true;
+            $result['invoice_id']     = $invoiceId;
             $result['invoice_number'] = $invoiceNumber;
-            $result['message'] = "Invoice {$invoiceNumber} created with {$itemCount} items (Method: {$billingMethod})";
-            
+            $result['message']        = "Invoice {$invoiceNumber} created with {$itemCount} items (Method: {$billingMethod})";
+            return $result;
+
+        } catch (\Exception $e) {
+            $this->db->transRollback();
+            log_message('error', '[InvoiceModel::createRecurringInvoice] schedule #' . $scheduleId . ': ' . $e->getMessage());
+            $result['errors'][] = $e->getMessage();
             return $result;
         }
-        
-        $result['errors'][] = 'Failed to create invoice';
-        return $result;
     }
     
     /**

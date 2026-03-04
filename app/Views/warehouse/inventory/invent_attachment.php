@@ -192,38 +192,39 @@
 </div>
 
 
-<!-- Modal Edit Stok Attachment -->
+<!-- Modal Edit Stock -->
 <div class="modal fade" id="editAttachmentModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Edit Stock Attachment</h5>
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Edit Stock Item</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="editAttachmentForm">
                 <div class="modal-body">
-                    <input type="hidden" id="edit_id" name="id_inventory_attachment">
+                    <input type="hidden" id="edit_id"        name="id">
+                    <input type="hidden" id="edit_tipe_item" name="tipe_item">
                     <div class="mb-3">
-                        <label class="form-label">SN Attachment</label>
-                        <input type="text" class="form-control" id="edit_sn_attachment" readonly>
+                        <label class="form-label fw-semibold">Item Number / Serial Number</label>
+                        <input type="text" class="form-control bg-light" id="edit_item_label" readonly>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">SN Charger</label>
-                        <input type="text" class="form-control" id="edit_sn_charger" readonly>
-                    </div>
-                    <div class="mb-3">
-                        <label for="edit_attachment_status" class="form-label">Status</label>
-                        <select class="form-select" id="edit_attachment_status" name="attachment_status" required>
-                            <option value="AVAILABLE">AVAILABLE</option>
-                            <option value="USED">USED</option>
-                            <option value="IN_USE">IN USE</option>
-                            <option value="MAINTENANCE">MAINTENANCE</option>
-                            <option value="DAMAGED">DAMAGED</option>
+                        <label for="edit_status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
+                        <select class="form-select" id="edit_status" name="status" required>
+                            <option value="AVAILABLE">Available</option>
+                            <option value="IN_USE">In Use</option>
+                            <option value="SPARE">Spare</option>
+                            <option value="MAINTENANCE">Maintenance</option>
+                            <option value="BROKEN">Broken</option>
+                            <option value="RESERVED">Reserved</option>
+                            <option value="SOLD">Sold</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_lokasi" class="form-label">Storage Location</label>
-                        <select class="form-select" id="edit_lokasi" name="lokasi_penyimpanan">
+                        <label for="edit_storage_location" class="form-label fw-semibold">Storage Location</label>
+                        <select class="form-select" id="edit_storage_location" name="storage_location">
+                            <option value="Workshop">Workshop</option>
+                            <option value="WAREHOUSE">Warehouse</option>
                             <option value="POS 1">POS 1</option>
                             <option value="POS 2">POS 2</option>
                             <option value="POS 3">POS 3</option>
@@ -232,24 +233,28 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_kondisi" class="form-label">Physical Condition</label>
-                        <select class="form-select" id="edit_kondisi" name="kondisi_fisik">
-                            <option value="Baik">Good</option>
-                            <option value="Rusak Ringan">Minor Damage</option>
-                            <option value="Rusak Berat">Major Damage</option>
+                        <label for="edit_physical_condition" class="form-label fw-semibold">Physical Condition</label>
+                        <select class="form-select" id="edit_physical_condition" name="physical_condition">
+                            <option value="GOOD">Good</option>
+                            <option value="MINOR_DAMAGE">Minor Damage</option>
+                            <option value="MAJOR_DAMAGE">Major Damage</option>
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label for="edit_kelengkapan" class="form-label">Completeness</label>
-                        <select class="form-select" id="edit_kelengkapan" name="kelengkapan">
-                            <option value="Lengkap">Complete</option>
-                            <option value="Tidak Lengkap">Incomplete</option>
+                        <label for="edit_completeness" class="form-label fw-semibold">Completeness</label>
+                        <select class="form-select" id="edit_completeness" name="completeness">
+                            <option value="COMPLETE">Complete</option>
+                            <option value="INCOMPLETE">Incomplete</option>
                         </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="edit_notes" class="form-label fw-semibold">Notes</label>
+                        <textarea class="form-control" id="edit_notes" name="notes" rows="2" placeholder="Optional notes..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Save Changes</button>
                 </div>
             </form>
         </div>
@@ -516,10 +521,10 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Physical Condition</label>
-                                <select class="form-select" id="new-kondisi-fisik" name="kondisi_fisik">
-                                    <option value="Baik">Good</option>
-                                    <option value="Rusak Ringan">Minor Damage</option>
-                                    <option value="Rusak Berat">Major Damage</option>
+                                <select class="form-select" id="new-kondisi-fisik" name="physical_condition">
+                                    <option value="GOOD">Good</option>
+                                    <option value="MINOR_DAMAGE">Minor Damage</option>
+                                    <option value="MAJOR_DAMAGE">Major Damage</option>
                                 </select>
                             </div>
                         </div>
@@ -529,7 +534,7 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Storage Location <span class="text-danger">*</span></label>
-                                <select class="form-select" id="new-lokasi" name="lokasi_penyimpanan" required>
+                                <select class="form-select" id="new-lokasi" name="storage_location" required>
                                     <option value="">Select Location</option>
                                     <optgroup label="Workshop">
                                         <option value="Workshop" selected>Workshop</option>
@@ -549,11 +554,13 @@
                         <div class="col-md-6">
                             <div class="mb-3">
                                 <label class="form-label">Status</label>
-                                <select class="form-select" id="new-attachment-status" name="attachment_status">
+                                <select class="form-select" id="new-attachment-status" name="status">
                                     <option value="AVAILABLE">Available</option>
                                     <option value="IN_USE">In Use</option>
+                                    <option value="SPARE">Spare</option>
                                     <option value="MAINTENANCE">Maintenance</option>
                                     <option value="BROKEN">Broken</option>
+                                    <option value="RESERVED">Reserved</option>
                                 </select>
                             </div>
                         </div>
@@ -773,41 +780,39 @@
                     }
                 }
             },
-            // Kondisi Fisik
+            // Physical Condition
             { 
-                data: 'kondisi_fisik',
+                data: 'physical_condition',
                 render: function(data, type, row) {
                     if (!data) return '-';
-                    
-                    const kondisiMap = {
-                        'Baik': '<span class="badge bg-success">Good</span>',
-                        'Rusak Ringan': '<span class="badge bg-warning">Minor Damage</span>',
-                        'Rusak Berat': '<span class="badge bg-danger">Major Damage</span>'
+                    const map = {
+                        'GOOD':         '<span class="badge bg-success">Good</span>',
+                        'MINOR_DAMAGE': '<span class="badge bg-warning text-dark">Minor Damage</span>',
+                        'MAJOR_DAMAGE': '<span class="badge bg-danger">Major Damage</span>'
                     };
-                    
-                    return kondisiMap[data] || `<span class="badge bg-secondary">${data}</span>`;
+                    return map[data] || `<span class="badge bg-secondary">${data}</span>`;
                 }
             },
             // Status
             { 
-                data: 'attachment_status',
+                data: 'status',
                 render: function(data, type, row) {
                     if (!data) return '-';
-                    
-                    const statusMap = {
-                        'AVAILABLE': '<span class="badge bg-success">Available</span>',
-                        'IN_USE': '<span class="badge bg-primary">In Use</span>',
-                        'USED': '<span class="badge bg-info">Used</span>',
-                        'MAINTENANCE': '<span class="badge bg-warning">Maintenance</span>',
-                        'BROKEN': '<span class="badge bg-danger">Broken</span>'
+                    const map = {
+                        'AVAILABLE':  '<span class="badge bg-success">Available</span>',
+                        'IN_USE':     '<span class="badge bg-primary">In Use</span>',
+                        'SPARE':      '<span class="badge bg-info">Spare</span>',
+                        'MAINTENANCE':'<span class="badge bg-warning text-dark">Maintenance</span>',
+                        'BROKEN':     '<span class="badge bg-danger">Broken</span>',
+                        'RESERVED':   '<span class="badge bg-secondary">Reserved</span>',
+                        'SOLD':       '<span class="badge bg-dark">Sold</span>'
                     };
-                    
-                    return statusMap[data] || `<span class="badge bg-secondary">${data}</span>`;
+                    return map[data] || `<span class="badge bg-secondary">${data}</span>`;
                 }
             },
-            // Lokasi
+            // Storage Location
             { 
-                data: 'lokasi_penyimpanan',
+                data: 'storage_location',
                 render: function(data, type, row) {
                     return data || '-';
                 }
@@ -1241,105 +1246,6 @@
     `;
     }
 
-    // ===== ATTACHMENT HISTORY =====
-    var attachmentHistoryLoaded = false;
-    var currentHistoryAttachmentId = null;
-
-    window.loadAttachmentHistory = function(id) {
-        if (attachmentHistoryLoaded) return; // Hanya load sekali per buka modal
-        attachmentHistoryLoaded = true;
-
-        $('#attachmentHistoryContent').html('<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><br><br>Loading history...</div>');
-
-        $.ajax({
-            url: `<?= base_url('warehouse/inventory/get-attachment-history/') ?>${id}`,
-            type: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (!response.success) {
-                    $('#attachmentHistoryContent').html(`<div class="alert alert-danger">${response.message}</div>`);
-                    return;
-                }
-
-                const timeline = response.timeline;
-                if (!timeline || timeline.length === 0) {
-                    $('#attachmentHistoryContent').html(`
-                        <div class="text-center p-4 text-muted">
-                            <i class="fas fa-inbox fa-2x mb-2"></i>
-                            <p>No history found for this item.</p>
-                        </div>
-                    `);
-                    return;
-                }
-
-                const colorMap = {
-                    entry:        'success',
-                    unit_install: 'primary',
-                    workorder:    'warning',
-                    purchase:     'info',
-                };
-
-                const iconMap = {
-                    entry:        'fas fa-plus-circle',
-                    unit_install: 'fas fa-link',
-                    workorder:    'fas fa-wrench',
-                    purchase:     'fas fa-file-invoice',
-                };
-
-                let html = `
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h6 class="fw-bold mb-0"><i class="fas fa-history me-2 text-primary"></i>Activity Timeline</h6>
-                        <span class="badge bg-secondary">${timeline.length} event(s)</span>
-                    </div>
-                    <div class="timeline-container">
-                `;
-
-                timeline.forEach(function(item) {
-                    const color  = item.color  || colorMap[item.type]  || 'secondary';
-                    const icon   = item.icon   || iconMap[item.type]   || 'fas fa-circle';
-                    let dateStr = '-';
-                    if (item.date) {
-                        const d = new Date(item.date);
-                        if (!isNaN(d.getTime())) {
-                            dateStr = d.toLocaleDateString('id-ID', { year: 'numeric', month: 'short', day: 'numeric' });
-                        }
-                    }
-
-                    html += `
-                        <div class="d-flex mb-3">
-                            <div class="me-3 text-center" style="min-width:40px;">
-                                <div class="rounded-circle bg-${color} text-white d-flex align-items-center justify-content-center mx-auto" style="width:36px;height:36px;">
-                                    <i class="${icon}" style="font-size:0.8rem;"></i>
-                                </div>
-                                <div class="border-start border-2 mx-auto mt-1" style="height:100%;min-height:20px;width:2px;border-color:var(--bs-${color})!important;"></div>
-                            </div>
-                            <div class="flex-grow-1 pb-3">
-                                <div class="card border-${color} border-start border-3 shadow-sm">
-                                    <div class="card-body py-2 px-3">
-                                        <div class="d-flex justify-content-between align-items-start">
-                                            <strong class="text-${color === 'warning' ? 'dark' : color}">${item.title}</strong>
-                                            <small class="text-muted ms-2 text-nowrap">${dateStr}</small>
-                                        </div>
-                                        <p class="mb-0 text-muted small mt-1">${item.description || '-'}</p>
-                                        ${item.ref_number ? `<span class="badge bg-light text-dark border mt-1" style="font-size:0.7rem;">${item.ref_number}</span>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                });
-
-                html += `</div>`;
-                $('#attachmentHistoryContent').html(html);
-            },
-            error: function(xhr) {
-                $('#attachmentHistoryContent').html(`<div class="alert alert-danger">Error ${xhr.status}: Could not load history.</div>`);
-            }
-        });
-    }
-
-
-
     function editAttachment(id) {
         $.ajax({
             url: `<?= base_url('warehouse/inventory/get-attachment-detail/') ?>${id}`,
@@ -1348,16 +1254,20 @@
             success: function(response) {
                 if (response.success) {
                     const data = response.data;
-                    $('#edit_id').val(data.id_inventory_attachment);
-                    $('#edit_sn_attachment').val(data.sn_attachment);
-                    $('#edit_sn_charger').val(data.sn_charger);
-                    $('#edit_attachment_status').val(data.attachment_status);
-                    $('#edit_lokasi').val(data.lokasi_penyimpanan);
-                    $('#edit_kondisi').val(data.kondisi_fisik);
-                    $('#edit_kelengkapan').val(data.kelengkapan);
+                    const label = data.item_number
+                        ? `${data.item_number} — ${data.serial_number || '-'}`
+                        : (data.serial_number || `#${data.id}`);
+                    $('#edit_id').val(data.id);
+                    $('#edit_tipe_item').val(data.tipe_item);
+                    $('#edit_item_label').val(label);
+                    $('#edit_status').val(data.status);
+                    $('#edit_storage_location').val(data.storage_location);
+                    $('#edit_physical_condition').val(data.physical_condition);
+                    $('#edit_completeness').val(data.completeness);
+                    $('#edit_notes').val(data.notes || '');
                     $('#editAttachmentModal').modal('show');
                 } else {
-                    Swal.fire('Gagal!', response.message, 'error');
+                    Swal.fire('Error!', response.message, 'error');
                 }
             }
         });
@@ -1912,7 +1822,7 @@
         formData.append('<?= csrf_token() ?>', '<?= csrf_hash() ?>');
         
         $.ajax({
-            url: '<?= base_url('warehouse/add-inventory-item') ?>',
+            url: '<?= base_url('warehouse/inventory/add-inventory-item') ?>',
             type: 'POST',
             data: formData,
             processData: false,

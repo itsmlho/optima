@@ -65,22 +65,81 @@ $currentLang = service('request')->getLocale();
     <link href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css" rel="stylesheet">
     
     <!-- OPTIMA Pro CSS (Enhanced with Centralized Components) -->
-    <link href="<?= base_url('assets/css/desktop/optima-pro.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/desktop/optima-pro.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-pro.css') ?>" rel="stylesheet">
     <!-- Select2 Custom CSS -->
-    <link href="<?= base_url('assets/css/plugins/select2-custom.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/plugins/select2-custom.css') ?>?v=<?= filemtime(FCPATH.'assets/css/plugins/select2-custom.css') ?>" rel="stylesheet">
     <!-- Dashboard Modern CSS -->
-    <link href="<?= base_url('assets/css/desktop/dashboard-modern.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/desktop/dashboard-modern.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/dashboard-modern.css') ?>" rel="stylesheet">
     <!-- Global Permission CSS -->
-    <link href="<?= base_url('assets/css/plugins/global-permission.css') ?>?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= base_url('assets/css/plugins/global-permission.css') ?>?v=<?= filemtime(FCPATH.'assets/css/plugins/global-permission.css') ?>" rel="stylesheet">
     <!-- Notification Popup CSS -->
-    <link href="<?= base_url('assets/css/plugins/notification-popup.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    
+    <link href="<?= base_url('assets/css/plugins/notification-popup.css') ?>?v=<?= filemtime(FCPATH.'assets/css/plugins/notification-popup.css') ?>" rel="stylesheet">
+
     <!-- OPTIMA DataTable CSS - Centralized Table Styling System -->
-    <link href="<?= base_url('assets/css/desktop/optima-datatable.css') ?>?v=<?= time() ?>" rel="stylesheet">
-    
+    <link href="<?= base_url('assets/css/desktop/optima-datatable.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-datatable.css') ?>" rel="stylesheet">
+
     <!-- Sidebar Scroll Management -->
-    <script src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= time() ?>"></script>
+    <script src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= filemtime(FCPATH.'assets/js/sidebar-scroll.js') ?>"></script>
    
+    <!-- OPTIMA Command Palette Search Button — Header Styles -->
+    <style>
+    #header-search-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        background: rgba(255,255,255,0.13);
+        border: 1px solid rgba(255,255,255,0.22);
+        border-radius: 10px;
+        padding: 6px 14px;
+        color: rgba(255,255,255,0.85);
+        font-size: 0.82rem;
+        cursor: pointer;
+        transition: background 0.2s, border-color 0.2s, color 0.2s;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+    #header-search-btn:hover {
+        background: rgba(255,255,255,0.24);
+        border-color: rgba(255,255,255,0.4);
+        color: #fff;
+    }
+    #header-search-btn .header-search-kbd {
+        display: inline-flex;
+        gap: 2px;
+        opacity: 0.7;
+    }
+    #header-search-btn .header-search-kbd kbd {
+        background: rgba(255,255,255,0.15);
+        border: 1px solid rgba(255,255,255,0.25);
+        border-radius: 4px;
+        padding: 1px 5px;
+        font-size: 0.68rem;
+        font-family: inherit;
+        line-height: 1.4;
+        color: inherit;
+    }
+    #header-search-btn .header-search-label {
+        opacity: 0.8;
+    }
+    /* Hide label + kbd on very small screens, keep only icon */
+    @media (max-width: 480px) {
+        #header-search-btn .header-search-label,
+        #header-search-btn .header-search-kbd { display: none; }
+        #header-search-btn { padding: 6px 10px; }
+    }
+    @media (max-width: 768px) {
+        #header-search-btn .header-search-kbd { display: none; }
+    }
+    /* Dark mode */
+    html[data-bs-theme="dark"] #header-search-btn {
+        background: rgba(255,255,255,0.07);
+        border-color: rgba(255,255,255,0.12);
+    }
+    html[data-bs-theme="dark"] #header-search-btn:hover {
+        background: rgba(255,255,255,0.14);
+    }
+    </style>
+
     <!-- Page Specific CSS -->
     <?= $this->renderSection('css') ?>
 </head>
@@ -371,6 +430,52 @@ $currentLang = service('request')->getLocale();
         };
         function escapeHtml(str){ return String(str??'').replace(/[&<>"']/g,s=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s])); }
         
+        // ============================================================
+        // GLOBAL SWEETALERT2 HELPERS — OPTIMA Standard
+        // Menggantikan confirm() browser native di semua modul
+        // ============================================================
+        
+        /**
+         * Konfirmasi hapus / aksi berbahaya dengan SweetAlert2
+         * @param {Object} opts - { title, text, confirmText, type }
+         * @returns {Promise<boolean>} true jika dikonfirmasi
+         */
+        window.confirmSwal = async function(opts = {}) {
+            if (typeof Swal === 'undefined') {
+                // Fallback ke browser confirm jika SweetAlert belum load
+                return Promise.resolve(confirm(opts.text || 'Apakah Anda yakin?'));
+            }
+            const result = await Swal.fire({
+                title: opts.title || 'Konfirmasi',
+                text: opts.text || 'Apakah Anda yakin?',
+                icon: opts.icon || 'warning',
+                showCancelButton: true,
+                confirmButtonColor: opts.type === 'delete' ? '#dc3545' : (opts.type === 'success' ? '#198754' : '#0d6efd'),
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: opts.confirmText || (opts.type === 'delete' ? '<i class="fas fa-trash me-1"></i>Ya, Hapus' : '<i class="fas fa-check me-1"></i>Ya, Lanjutkan'),
+                cancelButtonText: '<i class="fas fa-times me-1"></i>Batal',
+                reverseButtons: true,
+            });
+            return result.isConfirmed;
+        };
+        
+        /**
+         * Alert informatif dengan SweetAlert2
+         * @param {string} type - 'success', 'error', 'warning', 'info'
+         * @param {string} message
+         * @param {string} title
+         */
+        window.alertSwal = function(type, message, title = '') {
+            if (typeof Swal === 'undefined') return;
+            Swal.fire({
+                icon: type === 'danger' ? 'error' : type,
+                title: title || (type === 'success' ? 'Berhasil' : type === 'error' || type === 'danger' ? 'Terjadi Kesalahan' : 'Perhatian'),
+                text: message,
+                confirmButtonText: 'OK',
+                confirmButtonColor: '#0d6efd',
+            });
+        };
+        
         // Backward compatibility & Helper functions
         window.showToast = window.createOptimaToast; // Alias untuk kompatibilitas
         window.OptimaPro = window.OptimaPro || {};
@@ -422,6 +527,17 @@ $currentLang = service('request')->getLocale();
             
             <!-- Right Section: Controls -->
             <div class="header-right">
+
+                <!-- Ctrl+K Search Trigger (Command Palette) -->
+                <button type="button" id="header-search-btn"
+                    onclick="window.openCommandPalette ? window.openCommandPalette() : null"
+                    aria-label="Buka pencarian cepat (Ctrl+K)"
+                    title="Pencarian Cepat — Ctrl+K">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <span class="header-search-label">Cari...</span>
+                    <span class="header-search-kbd"><kbd>Ctrl</kbd><kbd>K</kbd></span>
+                </button>
+
                 <!-- Language Switcher -->
                 <div class="dropdown">
                     <button class="header-control-btn" type="button" data-bs-toggle="dropdown" title="<?= lang('App.select_language') ?>">
@@ -774,7 +890,7 @@ $currentLang = service('request')->getLocale();
             if (!loading) return;
             
             // Minimum delay to ensure animation is visible and professional (1.5 seconds)
-            const minLoadTime = 1500;
+            const minLoadTime = 300; // Reduced from 1500ms for better UX
             const elapsed = performance.now() - (window.pageStartTime || 0);
             const remainingTime = Math.max(0, minLoadTime - elapsed);
             
@@ -883,12 +999,16 @@ $currentLang = service('request')->getLocale();
             return window.createOptimaToast({ type: t, title, message, duration });
         };
         
-        // Global AJAX setup
+        // Global AJAX setup — dynamic CSRF token refreshed per request
         if (typeof $ !== 'undefined') {
             $.ajaxSetup({
-                headers: {
-                    'X-CSRF-TOKEN': window.csrfToken,
-                    'X-Requested-With': 'XMLHttpRequest'
+                beforeSend: function(xhr, settings) {
+                    // Always read the latest CSRF token before sending
+                    const token = window.getCsrfToken ? window.getCsrfToken() : (window.csrfToken || '');
+                    if (token) {
+                        xhr.setRequestHeader('X-CSRF-TOKEN', token);
+                    }
+                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                 }
             });
         }
@@ -1247,5 +1367,414 @@ $currentLang = service('request')->getLocale();
     
     <!-- OPTIMA DataTable Configuration - Centralized Table Behavior -->
     <script src="<?= base_url('assets/js/optima-datatable-config.js') ?>?v=<?= time() ?>"></script>
+
+    <!-- ============================================================
+         OPTIMA COMMAND PALETTE (Ctrl+K / ⌘K)
+         Global search overlay yang tersedia di semua halaman.
+         Mengindex semua link navigasi sidebar secara otomatis.
+    ============================================================ -->
+    <!-- Command Palette HTML -->
+    <div id="optima-command-palette" role="dialog" aria-modal="true" aria-label="Command Palette" style="display:none;">
+        <div id="optima-cp-backdrop"></div>
+        <div id="optima-cp-dialog">
+            <div id="optima-cp-header">
+                <i class="fas fa-search" id="optima-cp-icon" aria-hidden="true"></i>
+                <input type="text" id="optima-cp-input" placeholder="Cari menu, halaman, fitur..." autocomplete="off" spellcheck="false" autofocus>
+                <kbd id="optima-cp-esc-hint" title="Tekan Esc untuk menutup">Esc</kbd>
+            </div>
+            <div id="optima-cp-results" role="listbox"></div>
+            <div id="optima-cp-footer">
+                <span><kbd>↑↓</kbd> Navigasi</span>
+                <span><kbd>Enter</kbd> Buka</span>
+                <span><kbd>Esc</kbd> Tutup</span>
+                <span class="ms-auto opacity-50 small">OPTIMA Search</span>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    /* === Command Palette === */
+    #optima-command-palette {
+        position: fixed; inset: 0; z-index: 9999;
+    }
+    #optima-cp-backdrop {
+        position: absolute; inset: 0;
+        background: rgba(0,0,0,.5);
+        backdrop-filter: blur(4px);
+        animation: cpFadeIn .15s ease;
+    }
+    #optima-cp-dialog {
+        position: absolute;
+        top: 12%; left: 50%;
+        transform: translateX(-50%);
+        width: min(640px, 94vw);
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 24px 64px rgba(0,0,0,.22), 0 0 0 1px rgba(0,0,0,.08);
+        overflow: hidden;
+        animation: cpSlideIn .18s cubic-bezier(.22,1,.36,1);
+    }
+    html[data-bs-theme="dark"] #optima-cp-dialog {
+        background: #1e2130;
+        box-shadow: 0 24px 64px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07);
+    }
+    @keyframes cpFadeIn  { from { opacity:0 } to { opacity:1 } }
+    @keyframes cpSlideIn { from { opacity:0; transform:translateX(-50%) translateY(-12px) } to { opacity:1; transform:translateX(-50%) translateY(0) } }
+
+    #optima-cp-header {
+        display: flex; align-items: center; gap: 12px;
+        padding: 16px 20px;
+        border-bottom: 1px solid rgba(0,0,0,.08);
+    }
+    html[data-bs-theme="dark"] #optima-cp-header { border-color: rgba(255,255,255,.08); }
+    #optima-cp-icon { color: #6c757d; font-size: 1rem; flex-shrink: 0; }
+    #optima-cp-input {
+        flex: 1; border: none; outline: none; font-size: 1rem;
+        background: transparent; color: inherit;
+    }
+    #optima-cp-esc-hint {
+        background: #f1f3f5; color: #6c757d;
+        border: 1px solid #dee2e6; border-radius: 6px;
+        padding: 2px 8px; font-size: .75rem; font-family: inherit;
+        cursor: pointer;
+    }
+    html[data-bs-theme="dark"] #optima-cp-esc-hint { background:#2a2d3e; border-color:#3a3d50; color:#9ba1b0; }
+
+    #optima-cp-results {
+        max-height: 380px;
+        overflow-y: auto;
+        padding: 8px 0;
+    }
+    #optima-cp-results:empty::before {
+        content: 'Ketik untuk mencari...';
+        display: block; text-align: center;
+        padding: 32px; color: #9ba1b0; font-size: .9rem;
+    }
+    .cp-group-label {
+        padding: 8px 20px 4px;
+        font-size: .7rem; font-weight: 700; letter-spacing: .08em;
+        text-transform: uppercase; color: #9ba1b0;
+    }
+    .cp-item {
+        display: flex; align-items: center; gap: 14px;
+        padding: 10px 20px;
+        cursor: pointer;
+        transition: background .1s;
+        border-radius: 0;
+        text-decoration: none;
+        color: inherit;
+    }
+    .cp-item:hover, .cp-item.active {
+        background: rgba(0,97,242,.08);
+        color: #0061f2;
+    }
+    html[data-bs-theme="dark"] .cp-item:hover, html[data-bs-theme="dark"] .cp-item.active {
+        background: rgba(86,141,255,.12);
+        color: #568dff;
+    }
+    .cp-item-icon {
+        width: 34px; height: 34px;
+        border-radius: 8px;
+        background: rgba(0,97,242,.1);
+        display: flex; align-items: center; justify-content: center;
+        font-size: .85rem; color: #0061f2; flex-shrink: 0;
+    }
+    html[data-bs-theme="dark"] .cp-item-icon { background: rgba(86,141,255,.15); color:#568dff; }
+    .cp-item-label { font-size: .9rem; font-weight: 500; line-height: 1.2; }
+    .cp-item-group { font-size: .75rem; color: #9ba1b0; }
+    .cp-no-results {
+        text-align: center; padding: 32px;
+        color: #9ba1b0; font-size: .9rem;
+    }
+    .cp-no-results i { font-size: 2rem; display: block; margin-bottom: 8px; opacity: .4; }
+
+    #optima-cp-footer {
+        display: flex; gap: 16px; align-items: center;
+        padding: 10px 20px;
+        border-top: 1px solid rgba(0,0,0,.08);
+        font-size: .75rem; color: #9ba1b0;
+    }
+    html[data-bs-theme="dark"] #optima-cp-footer { border-color: rgba(255,255,255,.08); }
+    #optima-cp-footer kbd {
+        background: #f1f3f5; border: 1px solid #dee2e6;
+        border-radius: 4px; padding: 1px 5px;
+        font-size: .7rem; color: #6c757d;
+    }
+    html[data-bs-theme="dark"] #optima-cp-footer kbd { background:#2a2d3e; border-color:#3a3d50; color:#9ba1b0; }
+
+    /* Ctrl+K button in topbar */
+    #optima-cp-trigger {
+        display: flex; align-items: center; gap: 8px;
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 8px;
+        padding: 5px 14px; margin: 0 8px;
+        cursor: pointer;
+        color: rgba(255,255,255,.8);
+        font-size: .82rem;
+        transition: all .2s;
+    }
+    #optima-cp-trigger:hover { background: rgba(255,255,255,.2); color:#fff; }
+    #optima-cp-trigger kbd {
+        background: rgba(255,255,255,.15);
+        border: 1px solid rgba(255,255,255,.25);
+        border-radius: 4px; padding: 1px 5px;
+        font-size: .7rem; font-family: inherit;
+    }
+    @media(max-width:576px) { #optima-cp-trigger span.cp-trigger-text { display:none; } }
+    </style>
+
+    <script>
+    // =============================================================
+    // OPTIMA COMMAND PALETTE — Global Search
+    // =============================================================
+    (function() {
+        'use strict';
+
+        const SHORTCUT_KEY = 'k';
+        let isOpen = false;
+        let activeIdx = -1;
+        let filteredItems = [];
+        let allItems = [];
+
+        // --- Build index from sidebar nav links ---
+        function buildIndex() {
+            const items = [];
+            // Collect from all rendered sidebar nav links
+            document.querySelectorAll('.nav-dropdown-item, .sidebar-nav-link, .nav-link[href]').forEach(el => {
+                const href = el.getAttribute('href') || '';
+                if (!href || href === '#' || href.startsWith('javascript')) return;
+
+                const icon = el.querySelector('i') ? el.querySelector('i').className : 'fas fa-circle';
+                let text = el.textContent.trim().replace(/\s+/g, ' ');
+                if (!text || text.length < 2) return;
+
+                // Try to get group label from closest parent header
+                let group = '';
+                const header = el.closest('.nav-group-item, .sidebar-section');
+                if (header) {
+                    const lbl = header.querySelector('.nav-group-label, .nav-link-text, .sidebar-section-header');
+                    if (lbl) group = lbl.textContent.trim();
+                }
+
+                items.push({ label: text, href, icon, group });
+            });
+
+            // Hardcoded quick actions (always available)
+            const quickActions = [
+                { label: 'Dashboard', href: '<?= base_url('/dashboard') ?>', icon: 'fas fa-tachometer-alt', group: 'Navigation' },
+                { label: 'Work Orders', href: '<?= base_url('service/work-orders') ?>', icon: 'fas fa-clipboard-check', group: 'Service' },
+                { label: 'Contracts — Kontrak', href: '<?= base_url('marketing/kontrak') ?>', icon: 'fas fa-file-contract', group: 'Marketing' },
+                { label: 'Invoices', href: '<?= base_url('finance/invoices') ?>', icon: 'fas fa-file-invoice-dollar', group: 'Finance' },
+                { label: 'Purchasing', href: '<?= base_url('/purchasing') ?>', icon: 'fas fa-shopping-cart', group: 'Purchasing' },
+                { label: 'Inventory Unit', href: '<?= base_url('warehouse/inventory/units') ?>', icon: 'fas fa-boxes', group: 'Warehouse' },
+                { label: 'Customer Management', href: '<?= base_url('marketing/customer-management') ?>', icon: 'fas fa-users', group: 'Marketing' },
+                { label: 'Reports', href: '<?= base_url('/reports') ?>', icon: 'fas fa-chart-bar', group: 'Laporan' },
+                { label: 'Settings — Pengaturan', href: '<?= base_url('admin/settings') ?>', icon: 'fas fa-cog', group: 'Admin' },
+                { label: 'Quotations', href: '<?= base_url('marketing/quotations') ?>', icon: 'fas fa-file-invoice', group: 'Marketing' },
+                { label: 'Sparepart Validation', href: '<?= base_url('service/sparepart-validation') ?>', icon: 'fas fa-toolbox', group: 'Service' },
+                { label: 'Area & Employee Management', href: '<?= base_url('service/area-employee-management') ?>', icon: 'fas fa-users-cog', group: 'Service' },
+                { label: 'Delivery Instructions', href: '<?= base_url('marketing/di') ?>', icon: 'fas fa-shipping-fast', group: 'Marketing' },
+            ];
+
+            // Merge: quickActions first, then sidebar-discovered (dedup by href)
+            const seenHrefs = new Set();
+            const merged = [];
+            [...quickActions, ...items].forEach(item => {
+                if (!seenHrefs.has(item.href)) {
+                    seenHrefs.add(item.href);
+                    merged.push(item);
+                }
+            });
+            return merged;
+        }
+
+        // --- Render results ---
+        function render(query) {
+            const container = document.getElementById('optima-cp-results');
+            if (!query.trim()) {
+                // Show all quick actions as default
+                filteredItems = allItems.slice(0, 8);
+            } else {
+                const q = query.toLowerCase();
+                filteredItems = allItems.filter(item =>
+                    item.label.toLowerCase().includes(q) ||
+                    (item.group && item.group.toLowerCase().includes(q))
+                ).slice(0, 12);
+            }
+            activeIdx = filteredItems.length > 0 ? 0 : -1;
+
+            if (filteredItems.length === 0) {
+                container.innerHTML = `<div class="cp-no-results"><i class="fas fa-search-minus"></i>Tidak ditemukan: "<strong>${escStr(query)}</strong>"</div>`;
+                return;
+            }
+
+            // Group by category
+            const groups = {};
+            filteredItems.forEach((item, i) => {
+                const g = item.group || 'Lainnya';
+                if (!groups[g]) groups[g] = [];
+                groups[g].push({ ...item, _idx: i });
+            });
+
+            let html = '';
+            Object.entries(groups).forEach(([groupName, groupItems]) => {
+                html += `<div class="cp-group-label">${escStr(groupName)}</div>`;
+                groupItems.forEach(item => {
+                    const isActive = item._idx === activeIdx ? ' active' : '';
+                    html += `<a href="${item.href}" class="cp-item${isActive}" data-idx="${item._idx}" role="option" aria-selected="${item._idx === activeIdx}">
+                        <div class="cp-item-icon"><i class="${item.icon}" aria-hidden="true"></i></div>
+                        <div>
+                            <div class="cp-item-label">${escStr(item.label)}</div>
+                        </div>
+                    </a>`;
+                });
+            });
+            container.innerHTML = html;
+
+            // Add click handlers
+            container.querySelectorAll('.cp-item').forEach(el => {
+                el.addEventListener('mouseenter', () => {
+                    activeIdx = parseInt(el.dataset.idx);
+                    updateActive();
+                });
+            });
+        }
+
+        function escStr(str) {
+            return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function updateActive() {
+            document.querySelectorAll('#optima-cp-results .cp-item').forEach(el => {
+                const idx = parseInt(el.dataset.idx);
+                el.classList.toggle('active', idx === activeIdx);
+                el.setAttribute('aria-selected', idx === activeIdx);
+            });
+            // Scroll active into view
+            const activeEl = document.querySelector('#optima-cp-results .cp-item.active');
+            if (activeEl) activeEl.scrollIntoView({ block: 'nearest' });
+        }
+
+        // --- Open / Close ---
+        function open() {
+            if (isOpen) return;
+            isOpen = true;
+            allItems = buildIndex();
+            const palette = document.getElementById('optima-command-palette');
+            palette.style.display = 'block';
+            const input = document.getElementById('optima-cp-input');
+            input.value = '';
+            render('');
+            setTimeout(() => input.focus(), 50);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function close() {
+            if (!isOpen) return;
+            isOpen = false;
+            document.getElementById('optima-command-palette').style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        function navigate(dir) {
+            if (filteredItems.length === 0) return;
+            activeIdx = (activeIdx + dir + filteredItems.length) % filteredItems.length;
+            updateActive();
+        }
+
+        function activate() {
+            if (activeIdx < 0 || !filteredItems[activeIdx]) return;
+            window.location.href = filteredItems[activeIdx].href;
+        }
+
+        // --- Event listeners ---
+        document.addEventListener('DOMContentLoaded', function() {
+            const palette = document.getElementById('optima-command-palette');
+            const backdrop = document.getElementById('optima-cp-backdrop');
+            const input = document.getElementById('optima-cp-input');
+
+            // Close on backdrop click
+            backdrop.addEventListener('click', close);
+
+            // Input
+            input.addEventListener('input', () => render(input.value));
+            input.addEventListener('keydown', e => {
+                if (e.key === 'ArrowDown') { e.preventDefault(); navigate(1); }
+                else if (e.key === 'ArrowUp') { e.preventDefault(); navigate(-1); }
+                else if (e.key === 'Enter') { e.preventDefault(); activate(); close(); }
+                else if (e.key === 'Escape') { close(); }
+            });
+
+            // ESC hint click
+            document.getElementById('optima-cp-esc-hint').addEventListener('click', close);
+
+            // Add Ctrl+K trigger button to navbar if it exists
+            const navbar = document.querySelector('.navbar .navbar-nav, .topbar, .navbar-collapse, .top-navigation');
+            if (navbar) {
+                const triggerBtn = document.createElement('button');
+                triggerBtn.id = 'optima-cp-trigger';
+                triggerBtn.type = 'button';
+                triggerBtn.setAttribute('aria-label', 'Buka pencarian (Ctrl+K)');
+                triggerBtn.innerHTML = '<i class="fas fa-search" aria-hidden="true"></i><span class="cp-trigger-text">Cari...</span><kbd>Ctrl K</kbd>';
+                triggerBtn.addEventListener('click', open);
+                navbar.prepend(triggerBtn);
+            }
+        });
+
+        // Global keyboard shortcut Ctrl+K / Cmd+K
+        document.addEventListener('keydown', function(e) {
+            if ((e.ctrlKey || e.metaKey) && e.key === SHORTCUT_KEY) {
+                e.preventDefault();
+                isOpen ? close() : open();
+            }
+        });
+
+        // Expose globally
+        window.openCommandPalette = open;
+        window.closeCommandPalette = close;
+    })();
+    </script>
+
+    <!-- Phase 6.4: Export with Loading Feedback — Global helper -->
+    <script>
+    /**
+     * exportWithLoading(url, label)
+     * Shows SweetAlert2 loading state while exporting a file.
+     * Usage: exportWithLoading('<?= base_url('reports/export') ?>', 'Export Data')
+     */
+    window.exportWithLoading = async function(url, label = 'Mengekspor data') {
+        Swal.fire({
+            title: label + '...',
+            html: '<div class="my-2 text-muted small">Sedang memproses, harap tunggu.</div>',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => Swal.showLoading()
+        });
+
+        try {
+            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            if (!response.ok) throw new Error('Server error: ' + response.status);
+
+            const blob = await response.blob();
+            const disposition = response.headers.get('Content-Disposition') || '';
+            let filename = label.replace(/\s+/g, '_') + '.xlsx';
+            const match = disposition.match(/filename[^;=\n]*=(['"]?)([^'";\n]+)\1/);
+            if (match) filename = match[2];
+
+            // Trigger download
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(a.href);
+
+            Swal.fire({ icon: 'success', title: 'Berhasil!', text: `${filename} berhasil diunduh.`, timer: 2500, showConfirmButton: false });
+        } catch (err) {
+            Swal.fire({ icon: 'error', title: 'Gagal Export', text: err.message || 'Terjadi kesalahan saat mengekspor data.' });
+        }
+    };
+    </script>
+
 </body>
 </html>

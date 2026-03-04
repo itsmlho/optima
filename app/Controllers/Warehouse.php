@@ -7,11 +7,22 @@ use App\Traits\ActivityLoggingTrait;
 use App\Models\InventorySparepartModel;
 use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
+use App\Models\InventoryBatteryModel;
+use App\Models\InventoryChargerModel;
+use App\Services\ExportService;
 use Config\Database;
 
 class Warehouse extends BaseController
 {
     use ActivityLoggingTrait;
+    
+    protected $exportService;
+    
+    public function initController(\CodeIgniter\HTTP\RequestInterface $request, \CodeIgniter\HTTP\ResponseInterface $response, \Psr\Log\LoggerInterface $logger)
+    {
+        parent::initController($request, $response, $logger);
+        $this->exportService = new ExportService();
+    }
     public function index()
     {
         // Check permission for accessing warehouse dashboard
@@ -50,6 +61,65 @@ class Warehouse extends BaseController
         ];
 
         return view('warehouse/index', $data);
+    }
+
+    /**
+     * Get warehouse statistics for dashboard
+     */
+    protected function getWarehouseStats()
+    {
+        $unitModel = new InventoryUnitModel();
+        $attachmentModel = new InventoryAttachmentModel();
+        $sparepartModel = new InventorySparepartModel();
+
+        return [
+            'total_units' => $unitModel->countAllResults(false),
+            'total_attachments' => $attachmentModel->countAllResults(false),
+            'total_spareparts' => $sparepartModel->countAllResults(false),
+        ];
+    }
+
+    /**
+     * Get inventory overview - placeholder for future implementation
+     */
+    protected function getInventoryOverview()
+    {
+        return [];
+    }
+
+    /**
+     * Get recent transactions - placeholder for future implementation
+     */
+    protected function getRecentTransactions()
+    {
+        return [];
+    }
+
+    /**
+     * Get low stock alerts from spareparts
+     */
+    protected function getLowStockAlerts()
+    {
+        $sparepartModel = new InventorySparepartModel();
+
+        // Get spareparts with low stock (stok <= 10)
+        $lowStockItems = $sparepartModel
+            ->select('inventory_spareparts.stok, sparepart.kode, sparepart.desc_sparepart')
+            ->join('sparepart', 'sparepart.id_sparepart = inventory_spareparts.sparepart_id')
+            ->where('inventory_spareparts.stok > 0')
+            ->where('inventory_spareparts.stok <=', 10)
+            ->findAll();
+
+        $alerts = [];
+        foreach ($lowStockItems as $item) {
+            $alerts[] = [
+                'item_name' => $item['desc_sparepart'] ?? '-',
+                'item_code' => $item['kode'] ?? '-',
+                'quantity' => $item['stok'] ?? 0,
+            ];
+        }
+
+        return $alerts;
     }
 
     //INVENTORY SPAREPART
@@ -183,165 +253,7 @@ class Warehouse extends BaseController
         }
     }
 
-    // INVENTORY UNIT
-    public function inventUnit()
-    {
-        // Check permission for viewing unit inventory
-        if (!$this->hasPermission('warehouse.unit_inventory.view')) {
-            if ($this->request->isAJAX()) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Access denied: You do not have permission to view unit inventory'
-                ])->setStatusCode(403);
-            }
-            return redirect()->to('/')->with('error', 'Access denied: You do not have permission to view unit inventory');
-        }
-        
-        $inventoryUnitModel = new InventoryUnitModel();
-        if ($this->request->isAJAX()) {
-            try {
-                $start = $this->request->getPost('start') ?? 0;
-                $length = $this->request->getPost('length') ?? 10;
-                $searchValue = $this->request->getPost('search')['value'] ?? '';
-                $statusFilter = $this->request->getPost('status_unit'); // param tetap sama dari front-end
-                $departemenFilter = $this->request->getPost('departemen_id');
-
-                $orderMap = [
-                    'iu.no_unit', // manual asset number (nullable)
-                    'iu.id_inventory_unit', // internal id
-                    'iu.serial_number',
-                    'mu.merk_unit',
-                    'mu.model_unit',
-                    'tu.tipe', // kolom nama_tipe_unit sudah tidak ada, gunakan tipe
-                    'su.status_unit',
-                    'iu.lokasi_unit',
-                    'iu.created_at'
-                ];
-                $orderColumnIndex = $this->request->getPost('order')[0]['column'] ?? 0;
-                $orderColumn = $orderMap[$orderColumnIndex] ?? 'iu.created_at';
-                $orderDir = $this->request->getPost('order')[0]['dir'] ?? 'desc';
-
-                $data = $inventoryUnitModel->getDataTable($start, $length, $orderColumn, $orderDir, $searchValue, $statusFilter, $departemenFilter);
-                $recordsFiltered = $inventoryUnitModel->countFiltered($searchValue, $statusFilter, $departemenFilter);
-                $recordsTotal = $inventoryUnitModel->countAllData();
-
-                // Hitung dynamic counts untuk semua status (abaikan filter status, tapi hormati search + departemen)
-                $db = Database::connect();
-                $countBuilder = $db->table('inventory_unit iu');
-                // Joins minimal untuk pencarian konsisten
-                if ($searchValue) {
-                    $countBuilder->groupStart()
-                        ->like('iu.serial_number', $searchValue)
-                        ->orLike('iu.lokasi_unit', $searchValue)
-                        ->groupEnd();
-                }
-                if ($departemenFilter) $countBuilder->where('iu.departemen_id', $departemenFilter);
-                
-                $allFiltered = (clone $countBuilder)->countAllResults();
-                
-                // Stock Unit counts: AVAILABLE_STOCK (1), STOCK_NON_ASET (2), BOOKED (3), RETURNED (9)
-                $availableStockCount = (clone $countBuilder)->where('iu.status_unit_id', 1)->countAllResults();
-                $stockNonAsetCount   = (clone $countBuilder)->where('iu.status_unit_id', 2)->countAllResults();
-                $bookedCount         = (clone $countBuilder)->where('iu.status_unit_id', 3)->countAllResults();
-                $returnedCount       = (clone $countBuilder)->where('iu.status_unit_id', 9)->countAllResults();
-                
-                // Rental counts: RENTAL_ACTIVE (7), RENTAL_INACTIVE (11)
-                $rentalActiveCount   = (clone $countBuilder)->where('iu.status_unit_id', 7)->countAllResults();
-                $rentalInactiveCount = (clone $countBuilder)->where('iu.status_unit_id', 11)->countAllResults();
-                
-                // Progress counts: IN_PREPARATION (4), READY_TO_DELIVER (5), IN_DELIVERY (6), MAINTENANCE (8)
-                $inPreparationCount  = (clone $countBuilder)->where('iu.status_unit_id', 4)->countAllResults();
-                $readyToDeliverCount = (clone $countBuilder)->where('iu.status_unit_id', 5)->countAllResults();
-                $inDeliveryCount     = (clone $countBuilder)->where('iu.status_unit_id', 6)->countAllResults();
-                $maintenanceCount    = (clone $countBuilder)->where('iu.status_unit_id', 8)->countAllResults();
-                
-                // Sold count: SOLD (10)
-                $soldCount           = (clone $countBuilder)->where('iu.status_unit_id', 10)->countAllResults();
-                
-                $dynamicStats = [
-                    'total'              => $allFiltered,
-                    'available_stock'    => $availableStockCount,
-                    'stock_non_aset'     => $stockNonAsetCount,
-                    'booked'             => $bookedCount,
-                    'returned'           => $returnedCount,
-                    'rental_active'      => $rentalActiveCount,
-                    'rental_inactive'    => $rentalInactiveCount,
-                    'in_preparation'     => $inPreparationCount,
-                    'ready_to_deliver'   => $readyToDeliverCount,
-                    'in_delivery'        => $inDeliveryCount,
-                    'maintenance'        => $maintenanceCount,
-                    'sold'               => $soldCount,
-                ];
-
-                return $this->response->setJSON([
-                    'draw' => intval($this->request->getPost('draw')),
-                    'recordsTotal' => $recordsTotal,
-                    'recordsFiltered' => $recordsFiltered,
-                    'data' => $data,
-                    'stats' => $dynamicStats,
-                    'csrf_hash' => csrf_hash()
-                ]);
-            } catch (\Exception $e) {
-                return $this->response->setStatusCode(500)->setJSON([
-                    'draw' => intval($this->request->getPost('draw')),
-                    'recordsTotal' => 0,
-                    'recordsFiltered' => 0,
-                    'data' => [],
-                    'error' => 'Terjadi kesalahan pada server: ' . $e->getMessage(),
-                    'csrf_hash' => csrf_hash()
-                ]);
-            }
-        }
-        $stats = $inventoryUnitModel->getStats();
-        // Tambah count status baru sesuai database terbaru dan kategori
-        try {
-            $dbTmp = Database::connect();
-            if ($dbTmp->tableExists('inventory_unit')) {
-                // Individual status counts
-                $stats['available_stock'] = $dbTmp->table('inventory_unit')->where('status_unit_id', 1)->countAllResults(); // AVAILABLE_STOCK
-                $stats['stock_non_aset']  = $dbTmp->table('inventory_unit')->where('status_unit_id', 2)->countAllResults(); // STOCK_NON_ASET
-                $stats['booked']          = $dbTmp->table('inventory_unit')->where('status_unit_id', 3)->countAllResults(); // BOOKED
-                $stats['in_preparation']  = $dbTmp->table('inventory_unit')->where('status_unit_id', 4)->countAllResults(); // IN_PREPARATION
-                $stats['ready_to_deliver'] = $dbTmp->table('inventory_unit')->where('status_unit_id', 5)->countAllResults(); // READY_TO_DELIVER
-                $stats['in_delivery']     = $dbTmp->table('inventory_unit')->where('status_unit_id', 6)->countAllResults(); // IN_DELIVERY
-                $stats['rental_active']   = $dbTmp->table('inventory_unit')->where('status_unit_id', 7)->countAllResults(); // RENTAL_ACTIVE
-                $stats['maintenance']     = $dbTmp->table('inventory_unit')->where('status_unit_id', 8)->countAllResults(); // MAINTENANCE
-                $stats['returned']        = $dbTmp->table('inventory_unit')->where('status_unit_id', 9)->countAllResults(); // RETURNED
-                $stats['sold']            = $dbTmp->table('inventory_unit')->where('status_unit_id', 10)->countAllResults(); // SOLD
-                $stats['rental_inactive'] = $dbTmp->table('inventory_unit')->where('status_unit_id', 11)->countAllResults(); // RENTAL_INACTIVE
-            } else {
-                // Set all to 0 if table doesn't exist
-                $defaultStats = ['available_stock', 'stock_non_aset', 'booked', 'in_preparation', 'ready_to_deliver', 'in_delivery', 'rental_active', 'maintenance', 'returned', 'sold', 'rental_inactive'];
-                foreach ($defaultStats as $stat) {
-                    $stats[$stat] = 0;
-                }
-            }
-        } catch (\Throwable $e) { 
-            $stats['available_stock'] = 0;
-            $stats['stock_non_aset'] = 0;
-            $stats['rental_active'] = 0;
-            $stats['sold'] = 0;
-            $stats['maintenance'] = 0;
-        }
-        // Ambil opsi departemen untuk filter dropdown
-        $db = Database::connect();
-        $departemen = [];
-        try {
-            if ($db->tableExists('departemen')) {
-                $departemen = $db->table('departemen')->select('id_departemen,nama_departemen')->orderBy('nama_departemen','ASC')->get()->getResultArray();
-            }
-        } catch (\Throwable $e) { /* ignore */ }
-        $data = [
-            'title' => 'Inventory Unit',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/warehouse/inventory' => 'Inventory Unit'
-            ],
-            'stats' => $stats,
-            'departemen_options' => $departemen,
-        ];
-        return view('warehouse/inventory/invent_unit', $data);
-    }
+    // INVENTORY UNIT — legacy method removed; use Warehouse\UnitInventoryController instead
 
     /** Export CSV for unified inventory units */
     public function exportInventUnit()
@@ -393,55 +305,71 @@ class Warehouse extends BaseController
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('warehouse/export_unit_inventory');
+        
+        // Get data from database
+        $db = \Config\Database::connect();
+        $query = $db->query("
+            SELECT 
+                iu.*,
+                d.nama_departemen,
+                su.status_unit,
+                mu.merk_unit, mu.model_unit,
+                tu.tipe,
+                k.kapasitas_unit,
+                tm.tipe_mast,
+                m.merk_mesin, m.model_mesin,
+                ctr.no_kontrak, ctr.status AS status_kontrak,
+                sl.status AS status_silo,
+                jr.tipe_roda,
+                tb.tipe_ban,
+                v.jumlah_valve
+            FROM inventory_unit iu
+            LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
+            LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
+            LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+            LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
+            LEFT JOIN kapasitas k ON k.id_kapasitas = iu.kapasitas_unit_id
+            LEFT JOIN tipe_mast tm ON tm.id_mast = iu.model_mast_id
+            LEFT JOIN mesin m ON m.id = iu.model_mesin_id
+            LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+            LEFT JOIN kontrak ctr ON ctr.id = ku.kontrak_id
+            LEFT JOIN silo sl ON sl.unit_id = iu.id_inventory_unit
+            LEFT JOIN jenis_roda jr ON jr.id_roda = iu.roda_id
+            LEFT JOIN tipe_ban tb ON tb.id_ban = iu.ban_id
+            LEFT JOIN valve v ON v.id_valve = iu.valve_id
+            ORDER BY iu.id_inventory_unit DESC
+        ");
+        $units = $query->getResultArray();
+        
+        // Prepare headers
+        $headers = ['No', 'No Unit', 'Department', 'Status', 'Model', 'Type', 'Capacity', 'Mast', 'Engine', 'Contract', 'Silo Status', 'Wheel', 'Tire', 'Valve'];
+        
+        // Prepare data rows
+        $data = [];
+        $no = 1;
+        foreach ($units as $unit) {
+            $data[] = [
+                $no++,
+                $unit['no_unit'] ?? '',
+                $unit['nama_departemen'] ?? '',
+                $unit['status_unit'] ?? '',
+                trim(($unit['merk_unit'] ?? '') . ' ' . ($unit['model_unit'] ?? '')),
+                $unit['tipe'] ?? '',
+                $unit['kapasitas_unit'] ?? '',
+                $unit['tipe_mast'] ?? '',
+                trim(($unit['merk_mesin'] ?? '') . ' ' . ($unit['model_mesin'] ?? '')),
+                $unit['no_kontrak'] ?? '',
+                $unit['status_silo'] ?? '',
+                $unit['tipe_roda'] ?? '',
+                $unit['tipe_ban'] ?? '',
+                $unit['jumlah_valve'] ?? ''
+            ];
+        }
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'Unit Inventory Detailed');
     }
 
-    public function exportAttachmentInventory()
-    {
-        if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.inventory_attachment')) {
-            return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.inventory_attachment');
-        }
-        if (method_exists($this, 'logActivity')) {
-            $this->logActivity('EXPORT', 'inventory_attachment', 0, 'Export Attachment Inventory CSV', [
-                'module_name' => 'WAREHOUSE',
-                'submenu_item' => 'Attachment Inventory',
-                'business_impact' => 'LOW'
-            ]);
-        }
-        return view('warehouse/export_attachment_inventory');
-    }
-
-    public function exportBatteryInventory()
-    {
-        if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.inventory_battery')) {
-            return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.inventory_battery');
-        }
-        if (method_exists($this, 'logActivity')) {
-            $this->logActivity('EXPORT', 'inventory_attachment', 0, 'Export Battery Inventory CSV', [
-                'module_name' => 'WAREHOUSE',
-                'submenu_item' => 'Battery Inventory',
-                'business_impact' => 'LOW'
-            ]);
-        }
-        return view('warehouse/export_battery_inventory');
-    }
-
-    public function exportChargerInventory()
-    {
-        if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.inventory_charger')) {
-            return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.inventory_charger');
-        }
-        if (method_exists($this, 'logActivity')) {
-            $this->logActivity('EXPORT', 'inventory_attachment', 0, 'Export Charger Inventory CSV', [
-                'module_name' => 'WAREHOUSE',
-                'submenu_item' => 'Charger Inventory',
-                'business_impact' => 'LOW'
-            ]);
-        }
-        return view('warehouse/export_charger_inventory');
-    }
-
-    /** Konfirmasi perubahan status menjadi RENTAL (3) langsung di controller baru */
     public function confirmUnitToAsset($id)
     {
         if (!$this->request->isAJAX()) {
@@ -560,7 +488,8 @@ class Warehouse extends BaseController
                 ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
                 ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
                 ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
-                ->join('kontrak k', 'k.id = iu.kontrak_id', 'left')
+                ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
                 ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
                 ->join('customers c', 'c.id = cl.customer_id', 'left')
                 ->where('iu.id_inventory_unit', $id)
@@ -727,7 +656,7 @@ class Warehouse extends BaseController
                     COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                     COALESCE(mu.model_unit, "Unknown") as model_unit,
                     COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as nama_tipe_unit,
-                    COALESCE(ku.kapasitas_unit, "Unknown") as kapasitas_unit,
+                    COALESCE(kap.kapasitas_unit, "Unknown") as kapasitas_unit,
                     COALESCE(su.status_unit, "Unknown") as status_unit_name,
                     COALESCE(d.nama_departemen, "Unknown") as nama_departemen,
                     
@@ -746,10 +675,10 @@ class Warehouse extends BaseController
                     COALESCE(jr.tipe_roda, "-") as tipe_roda,
                     COALESCE(v.jumlah_valve, "-") as jumlah_valve,
                     
-                    -- Contract & Customer Info
-                    iu.kontrak_id,
-                    iu.customer_id,
-                    iu.customer_location_id,
+                    -- Contract & Customer Info (from junction table)
+                    ku.kontrak_id,
+                    cl.customer_id,
+                    k.customer_location_id,
                     COALESCE(k.no_kontrak, "-") as no_kontrak,
                     COALESCE(k.status, "-") as status_kontrak,
                     k.tanggal_mulai as kontrak_mulai,
@@ -800,15 +729,16 @@ class Warehouse extends BaseController
                 LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
                 LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
                 LEFT JOIN departemen d ON d.id_departemen = iu.departemen_id
-                LEFT JOIN kapasitas ku ON ku.id_kapasitas = iu.kapasitas_unit_id
+                LEFT JOIN kapasitas kap ON kap.id_kapasitas = iu.kapasitas_unit_id
                 LEFT JOIN tipe_mast tm ON tm.id_mast = iu.model_mast_id
                 LEFT JOIN mesin m ON m.id = iu.model_mesin_id
                 LEFT JOIN tipe_ban tb ON tb.id_ban = iu.ban_id
                 LEFT JOIN jenis_roda jr ON jr.id_roda = iu.roda_id
                 LEFT JOIN valve v ON v.id_valve = iu.valve_id
-                LEFT JOIN kontrak k ON k.id = iu.kontrak_id
-                LEFT JOIN customers c ON c.id = iu.customer_id
-                LEFT JOIN customer_locations cl ON cl.id = iu.customer_location_id
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0
+                LEFT JOIN kontrak k ON k.id = ku.kontrak_id
+                LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
+                LEFT JOIN customers c ON c.id = cl.customer_id
                 LEFT JOIN areas a ON a.id = iu.area_id
                 LEFT JOIN purchase_orders po ON po.id_po = iu.id_po
                 LEFT JOIN suppliers s ON s.id_supplier = po.supplier_id
@@ -995,11 +925,12 @@ class Warehouse extends BaseController
             }
 
             // ── B. Seed events dari data statis (untuk data sebelum logging) ──
-            // Query unit dasar — kolom FK bersifat optional (pakai INFORMATION_SCHEMA safe query)
+            // Query unit dasar with current contract from junction table
             $unit = $db->query('
                 SELECT iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.created_at,
-                       iu.kontrak_id, iu.workflow_status
+                       ku.kontrak_id, iu.workflow_status
                 FROM inventory_unit iu
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0
                 WHERE iu.id_inventory_unit = ?
             ', [$id])->getRowArray();
 
@@ -1078,7 +1009,7 @@ class Warehouse extends BaseController
             }
 
 
-            // B4-current. Kontrak aktif saat ini (dari inventory_unit.kontrak_id — lebih reliable)
+            // B4-current. Kontrak aktif saat ini (dari kontrak_unit junction table - source of truth)
             // Hanya seed jika belum ada log kontrak di activity_log
             $hasKontrakLog = !empty(array_filter($timeline, fn($t) => str_contains($t['type'] ?? '', 'kontrak')));
             if (!empty($unit['kontrak_id']) && !$hasKontrakLog) {
@@ -1086,8 +1017,8 @@ class Warehouse extends BaseController
                     $aktifKontrak = $db->query('
                         SELECT k.id, k.no_kontrak, ku.tanggal_mulai
                         FROM kontrak k
-                        LEFT JOIN kontrak_unit ku ON ku.kontrak_id = k.id AND ku.unit_id = ? AND ku.is_temporary = 0
-                        WHERE k.id = ?
+                        INNER JOIN kontrak_unit ku ON ku.kontrak_id = k.id AND ku.unit_id = ? AND ku.is_temporary = 0
+                        WHERE k.id = ? AND ku.status IN ("ACTIVE","TEMP_ACTIVE")
                         LIMIT 1
                     ', [$id, $unit['kontrak_id']])->getRowArray();
 
@@ -1325,1856 +1256,6 @@ class Warehouse extends BaseController
                 'file' => $e->getFile(),
                 'line' => $e->getLine(),
                 'trace' => $e->getTraceAsString()
-            ]);
-        }
-    }
-
-    public function inventAttachment()
-    {
-        if ($this->request->isAJAX()) {
-            try {
-                $attachmentModel = new InventoryAttachmentModel();
-                
-                $request = [
-                    'start' => $this->request->getPost('start'),
-                    'length' => $this->request->getPost('length'),
-                    'search' => $this->request->getPost('search'),
-                    'order' => $this->request->getPost('order'),
-                    'status_unit' => $this->request->getPost('status_unit'),
-                    'tipe_item' => $this->request->getPost('tipe_item'),
-                    'status_filter' => $this->request->getPost('status_filter'),
-                    'model_filter' => $this->request->getPost('model_filter')
-                ];
-
-                // Debug logging
-                log_message('debug', '[Warehouse::inventAttachment] Request: ' . json_encode($request));
-
-                $result = $attachmentModel->getDataTable($request);
-                
-                return $this->response->setJSON([
-                    'draw' => $this->request->getPost('draw'),
-                    'recordsTotal' => $attachmentModel->countAll(),
-                    'recordsFiltered' => $result['recordsFiltered'],
-                    'data' => $result['data'],
-                    'csrf_hash' => csrf_hash()
-                ]);
-            } catch (\Exception $e) {
-                log_message('error', '[Warehouse::inventAttachment] Error: ' . $e->getMessage());
-                log_message('error', $e->getTraceAsString());
-                
-                return $this->response->setJSON([
-                    'draw' => $this->request->getPost('draw'),
-                    'recordsTotal' => 0,
-                    'recordsFiltered' => 0,
-                    'data' => [],
-                    'error' => 'Terjadi kesalahan pada server: ' . $e->getMessage(),
-                    'csrf_hash' => csrf_hash()
-                ])->setStatusCode(500);
-            }
-        }
-
-        $attachmentModel = new InventoryAttachmentModel();
-        $data = [
-            'title' => 'Inventory Attachment',
-            'page_title' => 'Inventory Attachment',
-            'breadcrumbs' => [
-                '/' => 'Dashboard',
-                '/warehouse/inventory/invent_attachment' => 'Inventory Attachment'
-            ],
-            'stats' => $attachmentModel->getStats(),
-            'detailed_stats' => $attachmentModel->getDetailedStats()
-        ];
-
-        return view('warehouse/inventory/invent_attachment', $data);
-    }
-
-    public function getAttachmentDetail($id)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-
-        try {
-            $attachmentModel = new InventoryAttachmentModel();
-            $attachment = $attachmentModel->getAttachmentDetail($id);
-
-            if (!$attachment) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Attachment tidak ditemukan'
-                ])->setStatusCode(404);
-            }
-
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $attachment
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::getAttachmentDetail] Error: ' . $e->getMessage());
-            log_message('error', $e->getTraceAsString());
-
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat memuat detail attachment: ' . $e->getMessage()
-            ])->setStatusCode(500);
-        }
-    }
-
-    /**
-     * Mengambil history/timeline lengkap attachment/battery/charger
-     * Sumber: system_activity_log (real-time log) + seed events (legacy support)
-     */
-    public function getAttachmentHistory($id)
-    {
-        try {
-            $db = \Config\Database::connect();
-            $timeline = [];
-
-            // 0. Validasi attachment exists
-            $attachment = $db->query('
-                SELECT
-                    ia.id_inventory_attachment,
-                    ia.tipe_item,
-                    ia.sn_attachment,
-                    ia.sn_baterai,
-                    ia.sn_charger,
-                    ia.attachment_status,
-                    IF(YEAR(ia.tanggal_masuk) = 0 OR ia.tanggal_masuk IS NULL, NULL, ia.tanggal_masuk) as tanggal_masuk,
-                    ia.created_at,
-                    ia.id_inventory_unit,
-                    ia.lokasi_penyimpanan,
-                    ia.kondisi_fisik
-                FROM inventory_attachment ia
-                WHERE ia.id_inventory_attachment = ?
-            ', [$id])->getRowArray();
-
-            if (!$attachment) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Attachment tidak ditemukan'
-                ])->setStatusCode(404);
-            }
-
-            $sn         = $attachment['sn_attachment'] ?? $attachment['sn_baterai'] ?? $attachment['sn_charger'] ?? '-';
-            $tipeLabel  = ucfirst($attachment['tipe_item'] ?? 'item');
-
-            // ===== REAL LOG EVENTS =====
-            // Baca dari system_activity_logs untuk semua event yang sudah di-log
-            $activityLogModel = new \App\Models\SystemActivityLogModel();
-            $logRows = $activityLogModel->findByRelatedEntity('inventory_attachment', (int)$id);
-
-            $actionMap = [
-                'attach_to_unit'       => ['icon' => 'fas fa-link',          'color' => 'primary'],
-                'detach_from_unit'     => ['icon' => 'fas fa-unlink',         'color' => 'danger'],
-                'auto_detach'          => ['icon' => 'fas fa-exchange-alt',   'color' => 'warning'],
-                'swap_unit'            => ['icon' => 'fas fa-random',         'color' => 'info'],
-                'attachment_updated'   => ['icon' => 'fas fa-pen',            'color' => 'secondary'],
-                'item_created'         => ['icon' => 'fas fa-plus-circle',    'color' => 'success'],
-                'unit_updated'         => ['icon' => 'fas fa-sync-alt',       'color' => 'secondary'],
-            ];
-
-            foreach ($logRows as $log) {
-                $action  = $log['action'] ?? 'unknown';
-                $meta    = $actionMap[$action] ?? ['icon' => 'fas fa-history', 'color' => 'muted'];
-                $context = is_string($log['context_data'] ?? null)
-                    ? (json_decode($log['context_data'], true) ?? [])
-                    : ($log['context_data'] ?? []);
-                $changes = is_string($log['changes_summary'] ?? null)
-                    ? (json_decode($log['changes_summary'], true) ?? [])
-                    : ($log['changes_summary'] ?? []);
-
-                $details = [];
-                if (!empty($context['unit_no_unit']))    $details['Unit']        = $context['unit_no_unit'];
-                if (!empty($context['unit_status']))     $details['Status Unit'] = $context['unit_status'];
-                if (!empty($context['location']))        $details['Lokasi']      = $context['location'];
-                if (!empty($context['kondisi_fisik']))   $details['Kondisi']     = $context['kondisi_fisik'];
-                if (!empty($context['description']))     $details['Keterangan']  = $context['description'];
-                if (!empty($context['performed_by']))    $details['Oleh']        = $context['performed_by'];
-
-                // Tampilkan diff untuk update events
-                if (!empty($changes) && is_array($changes)) {
-                    foreach ($changes as $field => $diff) {
-                        if (is_array($diff) && isset($diff['old'], $diff['new'])) {
-                            $details["$field"] = ($diff['old'] ?? '-') . ' → ' . ($diff['new'] ?? '-');
-                        }
-                    }
-                }
-
-                $title = match($action) {
-                    'attach_to_unit'     => 'Dipasang ke Unit ' . ($context['unit_no_unit'] ?? ''),
-                    'detach_from_unit'   => 'Dilepas dari Unit ' . ($context['unit_no_unit'] ?? ''),
-                    'auto_detach'        => 'Auto-dilepas (Swap) dari Unit ' . ($context['unit_no_unit'] ?? ''),
-                    'swap_unit'          => 'Unit Di-swap — Pindah ke Unit ' . ($context['new_unit_no_unit'] ?? ''),
-                    'attachment_updated' => 'Data ' . $tipeLabel . ' Diperbarui',
-                    'item_created'       => $tipeLabel . ' Ditambahkan ke Inventory',
-                    default              => ucfirst(str_replace('_', ' ', $action)),
-                };
-
-                $timeline[] = [
-                    'type'        => $action,
-                    'icon'        => $meta['icon'],
-                    'color'       => $meta['color'],
-                    'date'        => $log['created_at'],
-                    'title'       => $title,
-                    'subtitle'    => $log['description'] ?? '',
-                    'details'     => $details,
-                    'performed_by'=> $log['performed_by'] ?? null,
-                    'log_id'      => $log['id'],
-                ];
-            }
-
-            // ===== SEED EVENTS =====
-            // Untuk data lama (sebelum audit log ada), seed dari data struktural DB
-
-            // Seed: Item masuk pertama kali (jika belum ada log item_created)
-            $hasItemCreated = !empty(array_filter($logRows, fn($r) => ($r['action'] ?? '') === 'item_created'));
-            $entryDate = $attachment['tanggal_masuk'] ?? $attachment['created_at'];
-            if ($entryDate && !$hasItemCreated) {
-                $timeline[] = [
-                    'type'    => 'item_created',
-                    'icon'    => 'fas fa-plus-circle',
-                    'color'   => 'success',
-                    'date'    => $entryDate,
-                    'title'   => $tipeLabel . ' Masuk Inventory',
-                    'subtitle'=> 'SN: ' . $sn,
-                    'details' => array_filter([
-                        'Status'       => $attachment['attachment_status'] ?? null,
-                        'Lokasi Awal'  => $attachment['lokasi_penyimpanan'] ?? null,
-                        'Kondisi'      => $attachment['kondisi_fisik'] ?? null,
-                    ]),
-                ];
-            }
-
-            // Seed: Saat ini terpasang di unit (jika belum ada log attach_to_unit yang lebih baru)
-            if (!empty($attachment['id_inventory_unit'])) {
-                $hasAttachLog = !empty(array_filter($logRows, fn($r) => in_array($r['action'] ?? '', ['attach_to_unit', 'swap_unit'])));
-                if (!$hasAttachLog) {
-                    $unitRow = $db->query('
-                        SELECT iu.id_inventory_unit, iu.no_unit, iu.serial_number,
-                               su.status_unit as nama_status
-                        FROM inventory_unit iu
-                        LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
-                        WHERE iu.id_inventory_unit = ?
-                        LIMIT 1
-                    ', [$attachment['id_inventory_unit']])->getRowArray();
-
-                    if ($unitRow) {
-                        $timeline[] = [
-                            'type'    => 'attach_to_unit',
-                            'icon'    => 'fas fa-link',
-                            'color'   => 'primary',
-                            'date'    => $attachment['tanggal_masuk'] ?? $attachment['created_at'],
-                            'title'   => 'Terpasang di Unit ' . ($unitRow['no_unit'] ?? '-'),
-                            'subtitle'=> 'SN Unit: ' . ($unitRow['serial_number'] ?? '-'),
-                            'details' => array_filter([
-                                'No Unit'      => $unitRow['no_unit'] ?? null,
-                                'Status Unit'  => $unitRow['nama_status'] ?? null,
-                            ]),
-                        ];
-                    }
-                }
-            }
-
-            // Sort timeline by date descending (newest first)
-            usort($timeline, function ($a, $b) {
-                $dateA = strtotime($a['date'] ?? '1970-01-01');
-                $dateB = strtotime($b['date'] ?? '1970-01-01');
-                return $dateB - $dateA;
-            });
-
-            return $this->response->setJSON([
-                'success'       => true,
-                'attachment_id' => $id,
-                'sn'            => $sn,
-                'tipe'          => $tipeLabel,
-                'total'         => count($timeline),
-                'timeline'      => $timeline,
-            ]);
-
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::getAttachmentHistory] Error: ' . $e->getMessage());
-            log_message('error', $e->getTraceAsString());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat memuat history: ' . $e->getMessage(),
-            ])->setStatusCode(500);
-        }
-    }
-
-
-
-
-    public function updateAttachment($id)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-
-        try {
-            $attachmentModel = new InventoryAttachmentModel();
-            
-            // Validate attachment exists
-            $attachment = $attachmentModel->find($id);
-            if (!$attachment) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Attachment tidak ditemukan'
-                ])->setStatusCode(404);
-            }
-
-            // Get update data
-            $updateData = [
-                'attachment_status' => $this->request->getPost('attachment_status'),
-                'lokasi_penyimpanan' => $this->request->getPost('lokasi_penyimpanan'),
-                'kondisi_fisik' => $this->request->getPost('kondisi_fisik')
-            ];
-
-            // Remove empty values
-            $updateData = array_filter($updateData, function($value) {
-                return $value !== null && $value !== '';
-            });
-
-            if ($attachmentModel->update($id, $updateData)) {
-                // Get attachment details for notification
-                $updatedAttachment = $attachmentModel->find($id);
-                
-                // Send notification: Attachment Detached/Updated
-                helper('notification');
-                if ($updatedAttachment) {
-                    notify_attachment_detached([
-                        'id' => $id,
-                        'attachment_type' => $attachment['tipe'] ?? 'Attachment',
-                        'serial_number' => $attachment['sn_attachment'] ?? '',
-                        'new_status' => $updateData['attachment_status'] ?? '',
-                        'new_location' => $updateData['lokasi_penyimpanan'] ?? '',
-                        'updated_by' => session('username') ?? session('user_id'),
-                        'url' => base_url('/warehouse/attachments')
-                    ]);
-                }
-                
-                // Log perubahan data attachment
-                $this->logUpdate('inventory_attachment', (int)$id,
-                    [
-                        'attachment_status' => $attachment['attachment_status'] ?? null,
-                        'lokasi_penyimpanan' => $attachment['lokasi_penyimpanan'] ?? null,
-                        'kondisi_fisik' => $attachment['kondisi_fisik'] ?? null,
-                    ],
-                    $updateData,
-                    [
-                        'description' => 'Data attachment diperbarui',
-                        'workflow_stage' => 'attachment_updated',
-                        'relations' => ['inventory_attachment' => [(int)$id]]
-                    ]
-                );
-
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Data attachment berhasil diperbarui'
-                ]);
-            } else {
-                $errors = $attachmentModel->errors();
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Gagal memperbarui data attachment',
-                    'errors' => $errors
-                ])->setStatusCode(400);
-            }
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::updateAttachment] Error: ' . $e->getMessage());
-            log_message('error', $e->getTraceAsString());
-
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan saat memperbarui attachment: ' . $e->getMessage()
-            ])->setStatusCode(500);
-        }
-    }
-
-    // private function getSparepartStats()
-    // {
-    //     return [
-    //         'total_items' => 156,
-    //         'low_stock_items' => 12,
-    //         'out_of_stock' => 3,
-    //         'total_value' => 45750000
-    //     ];
-    // }
-
-    // private function getWarehouseLocations()
-    // {
-    //     return ['A-01', 'A-02', 'B-01', 'B-02', 'C-01', 'C-02'];
-    // }
-
-    private function getNonAssets()
-    {
-        return [
-            [
-                'id' => 1,
-                'item_code' => 'NA-001',
-                'item_name' => 'Safety Helmet',
-                'category' => 'Safety Equipment',
-                'description' => 'High-quality safety helmet for construction work',
-                'stock' => 50,
-                'min_stock' => 20,
-                'unit' => 'pcs',
-                'unit_price' => 125000,
-                'location' => 'Safety Cabinet A',
-                'last_updated' => '2024-01-15'
-            ],
-            [
-                'id' => 2,
-                'item_code' => 'NA-002',
-                'item_name' => 'Safety Vest',
-                'category' => 'Safety Equipment',
-                'description' => 'High-visibility safety vest',
-                'stock' => 35,
-                'min_stock' => 15,
-                'unit' => 'pcs',
-                'unit_price' => 85000,
-                'location' => 'Safety Cabinet B',
-                'last_updated' => '2024-01-15'
-            ],
-            [
-                'id' => 3,
-                'item_code' => 'NA-003',
-                'item_name' => 'Hand Tools Set',
-                'category' => 'Maintenance Supplies',
-                'description' => 'Complete hand tools set for maintenance',
-                'stock' => 15,
-                'min_stock' => 5,
-                'unit' => 'set',
-                'unit_price' => 450000,
-                'location' => 'Tool Cabinet 1',
-                'last_updated' => '2024-01-14'
-            ],
-            [
-                'id' => 4,
-                'item_code' => 'NA-004',
-                'item_name' => 'Office Paper A4',
-                'category' => 'Office Supplies',
-                'description' => 'A4 size office paper for printing',
-                'stock' => 100,
-                'min_stock' => 50,
-                'unit' => 'pack',
-                'unit_price' => 25000,
-                'location' => 'Office Storage',
-                'last_updated' => '2024-01-10'
-            ],
-            [
-                'id' => 5,
-                'item_code' => 'NA-005',
-                'item_name' => 'Cleaning Detergent',
-                'category' => 'Cleaning Supplies',
-                'description' => 'Industrial cleaning detergent',
-                'stock' => 25,
-                'min_stock' => 10,
-                'unit' => 'bottle',
-                'unit_price' => 75000,
-                'location' => 'Cleaning Storage',
-                'last_updated' => '2024-01-05'
-            ]
-        ];
-    }
-
-    private function getInventoryStats()
-    {
-        return [
-            'total_items' => 225,
-            'office_supplies' => 45,
-            'consumables' => 68,
-            'total_value' => 1875000
-        ];
-    }
-
-    private function getNonAssetStats()
-    {
-        // Legacy method - redirect to getInventoryStats
-        return $this->getInventoryStats();
-    }
-
-    private function getInventoryItems()
-    {
-        return $this->getNonAssets(); // Reuse existing data for now
-    }
-
-    private function getNonAssetCategories()
-    {
-        return ['Safety Equipment', 'Tools', 'Office Equipment', 'Maintenance'];
-    }
-
-    private function getWarehouseStats()
-    {
-        $db = \Config\Database::connect();
-        
-        // Get actual counts from inventory tables
-        $totalSpareparts = $db->table('inventory_sparepart')->countAllResults();
-        $totalNonAssets = $db->table('inventory_attachment')->countAllResults();
-        
-        // Count low stock items (current_stock < minimum_stock)
-        $lowStockSpareparts = $db->table('inventory_sparepart')
-            ->where('stok_tersedia < stok_minimum')
-            ->countAllResults();
-        $lowStockAttachments = $db->table('inventory_attachment')
-            ->where('stok_tersedia < stok_minimum')
-            ->countAllResults();
-        $lowStockItems = $lowStockSpareparts + $lowStockAttachments;
-        
-        // Calculate total inventory value
-        $sparepartValue = $db->query("SELECT COALESCE(SUM(stok_tersedia * harga_satuan), 0) as total FROM inventory_sparepart")->getRow()->total ?? 0;
-        $attachmentValue = $db->query("SELECT COALESCE(SUM(stok_tersedia * harga_satuan), 0) as total FROM inventory_attachment")->getRow()->total ?? 0;
-        $totalInventoryValue = $sparepartValue + $attachmentValue;
-        
-        // Calculate warehouse utilization (simplified: items with stock / total items)
-        $itemsWithStock = $db->query("SELECT 
-            (SELECT COUNT(*) FROM inventory_sparepart WHERE stok_tersedia > 0) + 
-            (SELECT COUNT(*) FROM inventory_attachment WHERE stok_tersedia > 0) as total
-        ")->getRow()->total ?? 0;
-        $totalItems = $totalSpareparts + $totalNonAssets;
-        $warehouseUtilization = $totalItems > 0 ? ($itemsWithStock / $totalItems * 100) : 0;
-        
-        return [
-            'total_spareparts' => $totalSpareparts,
-            'total_non_assets' => $totalNonAssets,
-            'low_stock_items' => $lowStockItems,
-            'total_inventory_value' => $totalInventoryValue,
-            'warehouse_utilization' => round($warehouseUtilization, 1),
-            'inventory_turnover' => 0 // TODO: Calculate from transaction history
-        ];
-    }
-
-    private function getInventoryOverview()
-    {
-        $db = \Config\Database::connect();
-        
-        // Spareparts data
-        $totalSparepartItems = $db->table('inventory_sparepart')->countAllResults();
-        $sparepartValue = $db->query("SELECT COALESCE(SUM(stok_tersedia * harga_satuan), 0) as total FROM inventory_sparepart")->getRow()->total ?? 0;
-        $lowStockSpareparts = $db->table('inventory_sparepart')
-            ->where('stok_tersedia < stok_minimum')
-            ->countAllResults();
-        $sparepartCategories = $db->table('inventory_sparepart')
-            ->distinct()
-            ->select('jenis_barang')
-            ->where('jenis_barang IS NOT NULL')
-            ->where('jenis_barang !=', '')
-            ->countAllResults();
-        
-        // Non-assets data
-        $totalNonAssetItems = $db->table('inventory_attachment')->countAllResults();
-        $nonAssetValue = $db->query("SELECT COALESCE(SUM(stok_tersedia * harga_satuan), 0) as total FROM inventory_attachment")->getRow()->total ?? 0;
-        $lowStockNonAssets = $db->table('inventory_attachment')
-            ->where('stok_tersedia < stok_minimum')
-            ->countAllResults();
-        $nonAssetCategories = $db->table('inventory_attachment')
-            ->distinct()
-            ->select('jenis_barang')
-            ->where('jenis_barang IS NOT NULL')
-            ->where('jenis_barang !=', '')
-            ->countAllResults();
-        
-        return [
-            'spareparts' => [
-                'total_items' => $totalSparepartItems,
-                'total_value' => (int) $sparepartValue,
-                'low_stock' => $lowStockSpareparts,
-                'categories' => $sparepartCategories
-            ],
-            'non_assets' => [
-                'total_items' => $totalNonAssetItems,
-                'total_value' => (int) $nonAssetValue,
-                'low_stock' => $lowStockNonAssets,
-                'categories' => $nonAssetCategories
-            ]
-        ];
-    }
-
-    private function getRecentTransactions()
-    {
-        $db = \Config\Database::connect();
-        
-        // Try to get from transaction history if table exists
-        // For now, query recent PO deliveries as IN transactions
-        $transactions = [];
-        
-        try {
-            // Get recent PO deliveries (IN transactions)
-            $poDeliveries = $db->query("
-                SELECT 
-                    CONCAT('PO-', po.id) as id,
-                    'IN' as type,
-                    CONCAT(po.nomor_po, ' - ', COALESCE(po.supplier, 'N/A')) as item,
-                    COALESCE(pod.quantity_delivered, 0) as quantity,
-                    pod.tanggal_terima as date,
-                    po.nomor_po as reference
-                FROM po_delivery pod
-                JOIN purchase_orders po ON po.id = pod.po_id
-                WHERE pod.tanggal_terima IS NOT NULL
-                ORDER BY pod.tanggal_terima DESC
-                LIMIT 10
-            ")->getResultArray();
-            
-            foreach ($poDeliveries as $delivery) {
-                $transactions[] = [
-                    'id' => $delivery['id'],
-                    'type' => 'IN',
-                    'item' => $delivery['item'],
-                    'quantity' => $delivery['quantity'],
-                    'date' => $delivery['date'],
-                    'reference' => $delivery['reference']
-                ];
-            }
-            
-            // If no data, show placeholder
-            if (empty($transactions)) {
-                $transactions[] = [
-                    'id' => 'N/A',
-                    'type' => 'INFO',
-                    'item' => 'No recent transactions',
-                    'quantity' => 0,
-                    'date' => date('Y-m-d H:i:s'),
-                    'reference' => '-'
-                ];
-            }
-        } catch (\Exception $e) {
-            log_message('error', 'Error fetching warehouse transactions: ' . $e->getMessage());
-            $transactions[] = [
-                'id' => 'ERROR',
-                'type' => 'INFO',
-                'item' => 'Unable to load transaction data',
-                'quantity' => 0,
-                'date' => date('Y-m-d H:i:s'),
-                'reference' => '-'
-            ];
-        }
-        
-        return $transactions;
-    }
-
-    private function getLowStockAlerts()
-    {
-        $db = \Config\Database::connect();
-        $alerts = [];
-        
-        try {
-            // Get low stock spareparts
-            $lowSpareparts = $db->query("
-                SELECT 
-                    kode_barang as item_code,
-                    nama_barang as item_name,
-                    stok_tersedia as current_stock,
-                    stok_minimum as min_stock,
-                    'Sparepart' as category
-                FROM inventory_sparepart
-                WHERE stok_tersedia < stok_minimum
-                ORDER BY (stok_tersedia - stok_minimum) ASC
-                LIMIT 10
-            ")->getResultArray();
-            
-            // Get low stock attachments
-            $lowAttachments = $db->query("
-                SELECT 
-                    kode_barang as item_code,
-                    nama_barang as item_name,
-                    stok_tersedia as current_stock,
-                    stok_minimum as min_stock,
-                    'Non-Asset' as category
-                FROM inventory_attachment
-                WHERE stok_tersedia < stok_minimum
-                ORDER BY (stok_tersedia - stok_minimum) ASC
-                LIMIT 10
-            ")->getResultArray();
-            
-            // Merge and calculate urgency
-            $allLowStock = array_merge($lowSpareparts, $lowAttachments);
-            foreach ($allLowStock as $item) {
-                $deficit = $item['min_stock'] - $item['current_stock'];
-                $deficitPercent = $item['min_stock'] > 0 ? ($deficit / $item['min_stock'] * 100) : 0;
-                
-                // Determine urgency
-                if ($deficitPercent >= 50 || $item['current_stock'] == 0) {
-                    $urgency = 'High';
-                } elseif ($deficitPercent >= 25) {
-                    $urgency = 'Medium';
-                } else {
-                    $urgency = 'Low';
-                }
-                
-                $alerts[] = [
-                    'item_code' => $item['item_code'] ?? 'N/A',
-                    'item_name' => $item['item_name'] ?? 'Unknown',
-                    'current_stock' => (int) $item['current_stock'],
-                    'min_stock' => (int) $item['min_stock'],
-                    'category' => $item['category'],
-                    'urgency' => $urgency
-                ];
-            }
-            
-            // If no alerts, add placeholder
-            if (empty($alerts)) {
-                $alerts[] = [
-                    'item_code' => 'N/A',
-                    'item_name' => 'No low stock items',
-                    'current_stock' => 0,
-                    'min_stock' => 0,
-                    'category' => 'Info',
-                    'urgency' => 'Low'
-                ];
-            }
-        } catch (\Exception $e) {
-            log_message('error', 'Error fetching low stock alerts: ' . $e->getMessage());
-            $alerts[] = [
-                'item_code' => 'ERROR',
-                'item_name' => 'Unable to load low stock data',
-                'current_stock' => 0,
-                'min_stock' => 0,
-                'category' => 'Error',
-                'urgency' => 'Low'
-            ];
-        }
-        
-        // Send notification for critical low stock items
-        helper('notification');
-        if (function_exists('notify_warehouse_stock_alert')) {
-            foreach ($alerts as $alert) {
-                if ($alert['urgency'] === 'High' || $alert['urgency'] === 'Medium') {
-                    notify_warehouse_stock_alert([
-                        'item_id' => null,
-                        'item_name' => $alert['item_name'],
-                        'current_stock' => $alert['current_stock'],
-                        'minimum_stock' => $alert['min_stock'],
-                        'warehouse_name' => 'Main Warehouse',
-                        'unit' => 'pcs',
-                        'url' => base_url('/warehouse/inventory')
-                    ]);
-                }
-            }
-        }
-        
-        return $alerts;
-    }
-
-    // Master data API endpoints for dynamic dropdowns
-    public function masterMerk($type)
-    {
-        try {
-            $db = \Config\Database::connect();
-            $data = [];
-            
-            switch($type) {
-                case 'attachment':
-                    $query = $db->query('SELECT DISTINCT merk as value, merk as text FROM attachment ORDER BY merk');
-                    $data = $query->getResultArray();
-                    break;
-                case 'battery':
-                    $query = $db->query('SELECT DISTINCT merk_baterai as value, merk_baterai as text FROM baterai ORDER BY merk_baterai');
-                    $data = $query->getResultArray();
-                    break;
-                case 'charger':
-                    $query = $db->query('SELECT DISTINCT merk_charger as value, merk_charger as text FROM charger ORDER BY merk_charger');
-                    $data = $query->getResultArray();
-                    break;
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $data
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error loading merk data: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    public function masterTipe($type)
-    {
-        try {
-            $db = \Config\Database::connect();
-            $data = [];
-            
-            switch($type) {
-                case 'attachment':
-                    $query = $db->query('SELECT DISTINCT tipe as value, tipe as text FROM attachment ORDER BY tipe');
-                    $data = $query->getResultArray();
-                    break;
-                case 'battery':
-                    $query = $db->query('SELECT DISTINCT tipe_baterai as value, tipe_baterai as text FROM baterai ORDER BY tipe_baterai');
-                    $data = $query->getResultArray();
-                    break;
-                case 'charger':
-                    $query = $db->query('SELECT DISTINCT tipe_charger as value, tipe_charger as text FROM charger ORDER BY tipe_charger');
-                    $data = $query->getResultArray();
-                    break;
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $data
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error loading tipe data: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    public function masterJenis($type)
-    {
-        try {
-            $db = \Config\Database::connect();
-            $data = [];
-            
-            if ($type === 'battery') {
-                $query = $db->query('SELECT DISTINCT jenis_baterai as value, jenis_baterai as text FROM baterai ORDER BY jenis_baterai');
-                $data = $query->getResultArray();
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $data
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error loading jenis data: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    public function masterModel($type)
-    {
-        try {
-            $db = \Config\Database::connect();
-            $data = [];
-            
-            if ($type === 'attachment') {
-                $query = $db->query('SELECT DISTINCT model as value, model as text FROM attachment ORDER BY model');
-                $data = $query->getResultArray();
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $data
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error loading model data: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    // Save new master data endpoints
-    public function saveMasterMerk($type)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $value = $this->request->getPost('value');
-            if (empty($value)) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Value tidak boleh kosong']);
-            }
-            
-            $db = \Config\Database::connect();
-            
-            switch($type) {
-                case 'attachment':
-                    // Check if merk already exists
-                    $exists = $db->query('SELECT COUNT(*) as count FROM attachment WHERE merk = ?', [$value])->getRow()->count;
-                    if ($exists > 0) {
-                        return $this->response->setJSON(['success' => false, 'message' => 'Merk sudah ada']);
-                    }
-                    // Insert new attachment with default values
-                    $db->query('INSERT INTO attachment (merk, tipe, model) VALUES (?, ?, ?)', [$value, 'Default Type', 'Default Model']);
-                    break;
-                case 'battery':
-                    // Check if merk already exists
-                    $exists = $db->query('SELECT COUNT(*) as count FROM baterai WHERE merk_baterai = ?', [$value])->getRow()->count;
-                    if ($exists > 0) {
-                        return $this->response->setJSON(['success' => false, 'message' => 'Merk sudah ada']);
-                    }
-                    // Insert new battery with default values
-                    $db->query('INSERT INTO baterai (merk_baterai, tipe_baterai, jenis_baterai) VALUES (?, ?, ?)', [$value, 'Default Type', 'Default Jenis']);
-                    break;
-                case 'charger':
-                    // Check if merk already exists
-                    $exists = $db->query('SELECT COUNT(*) as count FROM charger WHERE merk_charger = ?', [$value])->getRow()->count;
-                    if ($exists > 0) {
-                        return $this->response->setJSON(['success' => false, 'message' => 'Merk sudah ada']);
-                    }
-                    // Insert new charger with default values
-                    $db->query('INSERT INTO charger (merk_charger, tipe_charger) VALUES (?, ?)', [$value, 'Default Type']);
-                    break;
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Merk berhasil ditambahkan'
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error saving merk: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    public function saveMasterTipe($type)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $value = $this->request->getPost('value');
-            if (empty($value)) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Value tidak boleh kosong']);
-            }
-            
-            $db = \Config\Database::connect();
-            
-            switch($type) {
-                case 'attachment':
-                    // Check if tipe already exists
-                    $exists = $db->query('SELECT COUNT(*) as count FROM attachment WHERE tipe = ?', [$value])->getRow()->count;
-                    if ($exists > 0) {
-                        return $this->response->setJSON(['success' => false, 'message' => 'Tipe sudah ada']);
-                    }
-                    // Insert new attachment with default values
-                    $db->query('INSERT INTO attachment (merk, tipe, model) VALUES (?, ?, ?)', ['Default Merk', $value, 'Default Model']);
-                    break;
-                case 'battery':
-                    // Check if tipe already exists
-                    $exists = $db->query('SELECT COUNT(*) as count FROM baterai WHERE tipe_baterai = ?', [$value])->getRow()->count;
-                    if ($exists > 0) {
-                        return $this->response->setJSON(['success' => false, 'message' => 'Tipe sudah ada']);
-                    }
-                    // Insert new battery with default values
-                    $db->query('INSERT INTO baterai (merk_baterai, tipe_baterai, jenis_baterai) VALUES (?, ?, ?)', ['Default Merk', $value, 'Default Jenis']);
-                    break;
-                case 'charger':
-                    // Check if tipe already exists
-                    $exists = $db->query('SELECT COUNT(*) as count FROM charger WHERE tipe_charger = ?', [$value])->getRow()->count;
-                    if ($exists > 0) {
-                        return $this->response->setJSON(['success' => false, 'message' => 'Tipe sudah ada']);
-                    }
-                    // Insert new charger with default values
-                    $db->query('INSERT INTO charger (merk_charger, tipe_charger) VALUES (?, ?)', ['Default Merk', $value]);
-                    break;
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Tipe berhasil ditambahkan'
-            ]);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error saving tipe: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    public function saveMasterJenis($type)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $value = $this->request->getPost('value');
-            if (empty($value)) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Value tidak boleh kosong']);
-            }
-            
-            if ($type === 'battery') {
-                $db = \Config\Database::connect();
-                
-                // Check if jenis already exists
-                $exists = $db->query('SELECT COUNT(*) as count FROM baterai WHERE jenis_baterai = ?', [$value])->getRow()->count;
-                if ($exists > 0) {
-                    return $this->response->setJSON(['success' => false, 'message' => 'Jenis sudah ada']);
-                }
-                
-                // Insert new battery with default values
-                $db->query('INSERT INTO baterai (merk_baterai, tipe_baterai, jenis_baterai) VALUES (?, ?, ?)', ['Default Merk', 'Default Type', $value]);
-                
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Jenis berhasil ditambahkan'
-                ]);
-            }
-            
-            return $this->response->setJSON(['success' => false, 'message' => 'Jenis hanya tersedia untuk battery']);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error saving jenis: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    public function saveMasterModel($type)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $value = $this->request->getPost('value');
-            if (empty($value)) {
-                return $this->response->setJSON(['success' => false, 'message' => 'Value tidak boleh kosong']);
-            }
-            
-            if ($type === 'attachment') {
-                $db = \Config\Database::connect();
-                
-                // Check if model already exists
-                $exists = $db->query('SELECT COUNT(*) as count FROM attachment WHERE model = ?', [$value])->getRow()->count;
-                if ($exists > 0) {
-                    return $this->response->setJSON(['success' => false, 'message' => 'Model sudah ada']);
-                }
-                
-                // Insert new attachment with default values
-                $db->query('INSERT INTO attachment (merk, tipe, model) VALUES (?, ?, ?)', ['Default Merk', 'Default Type', $value]);
-                
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Model berhasil ditambahkan'
-                ]);
-            }
-            
-            return $this->response->setJSON(['success' => false, 'message' => 'Model hanya tersedia untuk attachment']);
-        } catch (\Exception $e) {
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Error saving model: ' . $e->getMessage()
-            ]);
-        }
-    }
-    
-    // Separate methods for each item type
-    public function attachmentData()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $attachmentModel = new InventoryAttachmentModel();
-            
-            $request = [
-                'start' => $this->request->getPost('start'),
-                'length' => $this->request->getPost('length'),
-                'search' => $this->request->getPost('search'),
-                'order' => $this->request->getPost('order'),
-                'tipe_item' => 'attachment' // Fixed to attachment only
-            ];
-
-            $result = $attachmentModel->getDataTable($request);
-            
-            return $this->response->setJSON([
-                'draw' => $this->request->getPost('draw'),
-                'recordsTotal' => $attachmentModel->countAll(),
-                'recordsFiltered' => $result['recordsFiltered'],
-                'data' => $result['data'],
-                'csrf_hash' => csrf_hash()
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::attachmentData] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'draw' => $this->request->getPost('draw'),
-                'recordsTotal' => 0,
-                'recordsFiltered' => 0,
-                'data' => [],
-                'error' => 'Terjadi kesalahan pada server: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ])->setStatusCode(500);
-        }
-    }
-    
-    public function batteryData()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $attachmentModel = new InventoryAttachmentModel();
-            
-            $request = [
-                'start' => $this->request->getPost('start'),
-                'length' => $this->request->getPost('length'),
-                'search' => $this->request->getPost('search'),
-                'order' => $this->request->getPost('order'),
-                'tipe_item' => 'battery' // Fixed to battery only
-            ];
-
-            $result = $attachmentModel->getDataTable($request);
-            
-            return $this->response->setJSON([
-                'draw' => $this->request->getPost('draw'),
-                'recordsTotal' => $attachmentModel->countAll(),
-                'recordsFiltered' => $result['recordsFiltered'],
-                'data' => $result['data'],
-                'csrf_hash' => csrf_hash()
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::batteryData] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'draw' => $this->request->getPost('draw'),
-                'recordsTotal' => 0,
-                'recordsFiltered' => 0,
-                'data' => [],
-                'error' => 'Terjadi kesalahan pada server: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ])->setStatusCode(500);
-        }
-    }
-    
-    public function chargerData()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $attachmentModel = new InventoryAttachmentModel();
-            
-            $request = [
-                'start' => $this->request->getPost('start'),
-                'length' => $this->request->getPost('length'),
-                'search' => $this->request->getPost('search'),
-                'order' => $this->request->getPost('order'),
-                'tipe_item' => 'charger' // Fixed to charger only
-            ];
-
-            $result = $attachmentModel->getDataTable($request);
-            
-            return $this->response->setJSON([
-                'draw' => $this->request->getPost('draw'),
-                'recordsTotal' => $attachmentModel->countAll(),
-                'recordsFiltered' => $result['recordsFiltered'],
-                'data' => $result['data'],
-                'csrf_hash' => csrf_hash()
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::chargerData] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'draw' => $this->request->getPost('draw'),
-                'recordsTotal' => 0,
-                'recordsFiltered' => 0,
-                'data' => [],
-                'error' => 'Terjadi kesalahan pada server: ' . $e->getMessage(),
-                'csrf_hash' => csrf_hash()
-            ])->setStatusCode(500);
-        }
-    }
-
-    public function saveMasterData($type)
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $db = \Config\Database::connect();
-            $merk = $this->request->getPost('merk');
-            $tipe = $this->request->getPost('tipe');
-            
-            if ($type === 'attachment') {
-                $model = $this->request->getPost('model');
-                
-                // Check if combination already exists
-                $checkQuery = $db->query('SELECT id_attachment FROM attachment WHERE merk = ? AND tipe = ? AND model = ?', [$merk, $tipe, $model]);
-                if ($checkQuery->getNumRows() > 0) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Kombinasi merk, tipe, dan model sudah ada'
-                    ]);
-                }
-                
-                // Insert new attachment
-                $db->query('INSERT INTO attachment (merk, tipe, model) VALUES (?, ?, ?)', [$merk, $tipe, $model]);
-                
-            } elseif ($type === 'battery') {
-                $jenis = $this->request->getPost('jenis');
-                
-                // Check if combination already exists
-                $checkQuery = $db->query('SELECT id FROM baterai WHERE merk_baterai = ? AND tipe_baterai = ? AND jenis_baterai = ?', [$merk, $tipe, $jenis]);
-                if ($checkQuery->getNumRows() > 0) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Kombinasi merk, tipe, dan jenis sudah ada'
-                    ]);
-                }
-                
-                // Insert new battery
-                $db->query('INSERT INTO baterai (merk_baterai, tipe_baterai, jenis_baterai) VALUES (?, ?, ?)', [$merk, $tipe, $jenis]);
-                
-            } elseif ($type === 'charger') {
-                // Check if combination already exists
-                $checkQuery = $db->query('SELECT id_charger FROM charger WHERE merk_charger = ? AND tipe_charger = ?', [$merk, $tipe]);
-                if ($checkQuery->getNumRows() > 0) {
-                    return $this->response->setJSON([
-                        'success' => false,
-                        'message' => 'Kombinasi merk dan tipe sudah ada'
-                    ]);
-                }
-                
-                // Insert new charger
-                $db->query('INSERT INTO charger (merk_charger, tipe_charger) VALUES (?, ?)', [$merk, $tipe]);
-            }
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => 'Master data berhasil ditambahkan'
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::saveMasterData] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    public function addInventoryItem()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-        
-        try {
-            $tipeItem = $this->request->getPost('tipe_item');
-            $db = \Config\Database::connect();
-            
-            // Get or create master data IDs based on form data
-            $attachmentId = null;
-            $bateraiId = null;
-            $chargerId = null;
-            
-            if ($tipeItem === 'attachment') {
-                $merk = $this->request->getPost('attachment_merk');
-                $tipe = $this->request->getPost('attachment_tipe');
-                $model = $this->request->getPost('attachment_model');
-                
-                // Find or create attachment record
-                $attachmentQuery = $db->query('SELECT id_attachment FROM attachment WHERE merk = ? AND tipe = ? AND model = ?', [$merk, $tipe, $model]);
-                $attachment = $attachmentQuery->getRow();
-                
-                if ($attachment) {
-                    $attachmentId = $attachment->id_attachment;
-                } else {
-                    // Create new attachment record
-                    $db->query('INSERT INTO attachment (merk, tipe, model) VALUES (?, ?, ?)', [$merk, $tipe, $model]);
-                    $attachmentId = $db->insertID();
-                }
-            } elseif ($tipeItem === 'battery') {
-                $merk = $this->request->getPost('battery_merk');
-                $tipe = $this->request->getPost('battery_tipe');
-                $jenis = $this->request->getPost('battery_jenis');
-                
-                // Find or create battery record
-                $batteryQuery = $db->query('SELECT id FROM baterai WHERE merk_baterai = ? AND tipe_baterai = ? AND jenis_baterai = ?', [$merk, $tipe, $jenis]);
-                $battery = $batteryQuery->getRow();
-                
-                if ($battery) {
-                    $bateraiId = $battery->id;
-                } else {
-                    // Create new battery record
-                    $db->query('INSERT INTO baterai (merk_baterai, tipe_baterai, jenis_baterai) VALUES (?, ?, ?)', [$merk, $tipe, $jenis]);
-                    $bateraiId = $db->insertID();
-                }
-            } elseif ($tipeItem === 'charger') {
-                $merk = $this->request->getPost('charger_merk');
-                $tipe = $this->request->getPost('charger_tipe');
-                
-                // Find or create charger record
-                $chargerQuery = $db->query('SELECT id_charger FROM charger WHERE merk_charger = ? AND tipe_charger = ?', [$merk, $tipe]);
-                $charger = $chargerQuery->getRow();
-                
-                if ($charger) {
-                    $chargerId = $charger->id_charger;
-                } else {
-                    // Create new charger record
-                    $db->query('INSERT INTO charger (merk_charger, tipe_charger) VALUES (?, ?)', [$merk, $tipe]);
-                    $chargerId = $db->insertID();
-                }
-            }
-            
-            // Prepare inventory data with default values
-            $inventoryData = [
-                'tipe_item' => $tipeItem,
-                'po_id' => 1, // Default PO ID, should be handled properly in real implementation
-                'attachment_id' => $attachmentId,
-                'baterai_id' => $bateraiId,
-                'charger_id' => $chargerId,
-                'sn_attachment' => $tipeItem === 'attachment' ? $this->request->getPost('sn_attachment') : null,
-                'sn_baterai' => $tipeItem === 'battery' ? $this->request->getPost('sn_baterai') : null,
-                'sn_charger' => $tipeItem === 'charger' ? $this->request->getPost('sn_charger') : null,
-                'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
-                'lokasi_penyimpanan' => $this->request->getPost('lokasi_penyimpanan') ?: 'Workshop',
-                'attachment_status' => 'AVAILABLE', // Default status for new items
-                'id_inventory_unit' => null, // Not attached to any unit yet
-                'catatan_inventory' => $this->request->getPost('catatan'),
-                'tanggal_masuk' => date('Y-m-d H:i:s')
-            ];
-            
-            // Insert into inventory_attachment
-            $attachmentModel = new InventoryAttachmentModel();
-            if ($attachmentModel->insert($inventoryData)) {
-                $newId = $attachmentModel->getInsertID();
-                $sn = $inventoryData['sn_attachment'] ?? $inventoryData['sn_baterai'] ?? $inventoryData['sn_charger'] ?? '-';
-                $this->logActivity('item_created', 'inventory_attachment', (int)$newId,
-                    ucfirst($tipeItem) . " baru masuk inventory (SN: {$sn})",
-                    [
-                        'workflow_stage' => 'item_created',
-                        'relations' => ['inventory_attachment' => [(int)$newId]]
-                    ]
-                );
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => 'Item berhasil ditambahkan ke inventory'
-                ]);
-            } else {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Gagal menambahkan item ke inventory'
-                ]);
-            }
-            
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::addInventoryItem] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Get available units for attach/swap dropdown
-     */
-    public function getAvailableUnits()
-    {
-        try {
-            $db = \Config\Database::connect();
-            
-            // Get all units with existing attachment info
-            $units = $db->table('inventory_unit iu')
-                ->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, iu.status_unit_id, su.status_unit as status_unit_name, CONCAT(mu.merk_unit, " - ", mu.model_unit) as model_unit')
-                ->select('(SELECT COUNT(*) FROM inventory_attachment WHERE id_inventory_unit = iu.id_inventory_unit AND tipe_item = "attachment") as has_attachment')
-                ->select('(SELECT COUNT(*) FROM inventory_attachment WHERE id_inventory_unit = iu.id_inventory_unit AND tipe_item = "battery") as has_battery')
-                ->select('(SELECT COUNT(*) FROM inventory_attachment WHERE id_inventory_unit = iu.id_inventory_unit AND tipe_item = "charger") as has_charger')
-                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
-                ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
-                ->orderBy('iu.no_unit', 'ASC')
-                ->get()
-                ->getResultArray();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'units' => $units
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::getAvailableUnits] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal memuat daftar unit: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Attach attachment to unit
-     */
-    public function attachToUnit()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-
-        try {
-            $attachmentModel = new InventoryAttachmentModel();
-            $db = \Config\Database::connect();
-            
-            $attachmentId = $this->request->getPost('attachment_id');
-            $unitId = $this->request->getPost('unit_id');
-            $notes = $this->request->getPost('notes');
-            
-            if (!$attachmentId || !$unitId) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Data tidak lengkap'
-                ]);
-            }
-            
-            // Get attachment type
-            $newAttachment = $attachmentModel->find($attachmentId);
-            if (!$newAttachment) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Attachment tidak ditemukan'
-                ]);
-            }
-            
-            $attachmentType = $newAttachment['tipe_item'];
-            
-            // Get unit number
-            $unit = $db->table('inventory_unit')
-                ->select('no_unit')
-                ->where('id_inventory_unit', $unitId)
-                ->get()->getRowArray();
-            
-            if (!$unit) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Unit tidak ditemukan'
-                ]);
-            }
-            
-            $db->transStart();
-            
-            // Check if unit already has attachment of same type
-            $existingAttachment = $db->table('inventory_attachment')
-                ->where('id_inventory_unit', $unitId)
-                ->where('tipe_item', $attachmentType)
-                ->get()->getRowArray();
-            
-            $message = '';
-            
-            if ($existingAttachment) {
-                // Auto-detach existing attachment
-                $attachmentModel->detachFromUnit($existingAttachment['id_inventory_attachment'], 'Auto-detach karena ada replacement');
-                $message = "Attachment lama dilepas dan dipasang yang baru ke Unit {$unit['no_unit']}";
-                
-                // Log detach
-                $this->logActivity('auto_detach', 'inventory_attachment', $existingAttachment['id_inventory_attachment'], "Attachment lama dilepas dari Unit {$unit['no_unit']} (auto)", [
-                    'old_attachment_id' => $existingAttachment['id_inventory_attachment'],
-                    'new_attachment_id' => $attachmentId,
-                    'unit_id' => $unitId
-                ]);
-            } else {
-                $message = "Berhasil memasang attachment ke Unit {$unit['no_unit']}";
-            }
-            
-            // Attach new attachment (trigger akan auto-update status dan lokasi)
-            $result = $attachmentModel->attachToUnit($attachmentId, $unitId, $unit['no_unit']);
-            
-            if ($result) {
-                $db->transComplete();
-                
-                if ($db->transStatus() === false) {
-                    throw new \Exception('Transaction failed');
-                }
-                
-                // Log activity
-                $this->logActivity('attach_to_unit', 'inventory_attachment', (int)$attachmentId, "Attachment dipasang ke Unit {$unit['no_unit']}", [
-                    'attachment_id' => $attachmentId,
-                    'unit_id' => $unitId,
-                    'notes' => $notes,
-                    'had_existing' => !empty($existingAttachment)
-                ]);
-                
-                // Send cross-division notification to Service
-                helper('notification');
-                if (function_exists('notify_attachment_attached')) {
-                    // Get full attachment details with JOIN
-                    $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
-                    $attachmentInfo = $attachmentModel->buildAttachmentInfo($fullAttachment);
-                    
-                    notify_attachment_attached([
-                        'attachment_id' => $attachmentId,
-                        'unit_id' => $unitId,
-                        'no_unit' => $unit['no_unit'],
-                        'tipe_item' => $fullAttachment['tipe_item'] ?? '',
-                        'attachment_info' => $attachmentInfo,
-                        'performed_by' => session('username') ?? 'System',
-                        'performed_at' => date('Y-m-d H:i:s'),
-                        'notes' => $notes ?? '',
-                        'url' => base_url('/warehouse/unit/view/' . $unitId),
-                        'module' => 'inventory'
-                    ]);
-                }
-                
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => $message
-                ]);
-            } else {
-                $db->transRollback();
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Gagal memasang attachment'
-                ]);
-            }
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::attachToUnit] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Swap attachment between units
-     */
-    public function swapUnit()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-
-        try {
-            $attachmentModel = new InventoryAttachmentModel();
-            
-            $attachmentId = $this->request->getPost('attachment_id');
-            $fromUnitId = $this->request->getPost('from_unit_id');
-            $toUnitId = $this->request->getPost('to_unit_id');
-            $reason = $this->request->getPost('reason');
-            
-            if (!$attachmentId || !$toUnitId || !$reason) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Data tidak lengkap'
-                ]);
-            }
-            
-            $db = \Config\Database::connect();
-            $db->transStart();
-            
-            // Get attachment with actual unit data
-            $movingAttachment = $attachmentModel->find($attachmentId);
-            if (!$movingAttachment) {
-                log_message('error', '[Warehouse::swapUnit] Attachment not found: ' . $attachmentId);
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Attachment tidak ditemukan'
-                ]);
-            }
-            
-            // Use ACTUAL from_unit_id from database, not from form
-            $actualFromUnitId = $movingAttachment['id_inventory_unit'];
-            if (!$actualFromUnitId) {
-                log_message('error', '[Warehouse::swapUnit] Attachment not attached to any unit');
-                $db->transRollback();
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Attachment tidak terpasang di unit manapun'
-                ]);
-            }
-            
-            $attachmentType = $movingAttachment['tipe_item'];
-            
-            log_message('info', '[Warehouse::swapUnit] Request data: ' . json_encode([
-                'attachment_id' => $attachmentId,
-                'from_unit_id_form' => $fromUnitId,
-                'from_unit_id_actual' => $actualFromUnitId,
-                'to_unit_id' => $toUnitId,
-                'attachment_type' => $attachmentType,
-                'reason' => $reason
-            ]));
-            
-            // Check if target unit already has attachment of same type
-            $existingAttachment = $db->table('inventory_attachment')
-                ->where('id_inventory_unit', $toUnitId)
-                ->where('tipe_item', $attachmentType)
-                ->where('id_inventory_attachment !=', $attachmentId)
-                ->get()->getRowArray();
-            
-            if ($existingAttachment) {
-                log_message('info', '[Warehouse::swapUnit] Found existing attachment, auto-detaching: ' . $existingAttachment['id_inventory_attachment']);
-                // Auto-detach existing attachment from target unit
-                $detachResult = $attachmentModel->detachFromUnit($existingAttachment['id_inventory_attachment'], 'Auto-detach karena ada replacement (swap)');
-                
-                if (!$detachResult) {
-                    log_message('error', '[Warehouse::swapUnit] Failed to detach existing attachment');
-                }
-                
-                // Log auto-detach
-                $this->logActivity('auto_detach', 'inventory_attachment', $existingAttachment['id_inventory_attachment'], "Attachment lama dilepas dari unit tujuan (auto swap)", [
-                    'old_attachment_id' => $existingAttachment['id_inventory_attachment'],
-                    'moving_attachment_id' => $attachmentId,
-                    'unit_id' => $toUnitId
-                ]);
-            }
-            
-            // Use swap method with ACTUAL from_unit_id
-            log_message('info', '[Warehouse::swapUnit] Calling swapAttachmentBetweenUnits');
-            $result = $attachmentModel->swapAttachmentBetweenUnits($attachmentId, $actualFromUnitId, $toUnitId, $reason);
-            
-            log_message('info', '[Warehouse::swapUnit] Swap result: ' . ($result ? 'true' : 'false'));
-            
-            if (!$result) {
-                $db->transRollback();
-                log_message('error', '[Warehouse::swapUnit] swapAttachmentBetweenUnits returned false');
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Gagal memindahkan attachment - operasi swap gagal'
-                ]);
-            }
-            
-            $db->transComplete();
-            
-            if ($db->transStatus() === false) {
-                log_message('error', '[Warehouse::swapUnit] Transaction failed');
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Gagal memindahkan attachment - transaksi database gagal'
-                ]);
-            }
-            
-            // Get unit numbers for message
-            $fromUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $actualFromUnitId)->get()->getRowArray();
-            $toUnit = $db->table('inventory_unit')->select('no_unit')->where('id_inventory_unit', $toUnitId)->get()->getRowArray();
-            
-            // Log activity
-            $this->logActivity('swap_unit', 'inventory_attachment', (int)$attachmentId, "Attachment dipindah dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}", [
-                'attachment_id' => $attachmentId,
-                'from_unit_id' => $actualFromUnitId,
-                'to_unit_id' => $toUnitId,
-                'reason' => $reason
-            ]);
-            
-            // Send cross-division notification to Service
-            helper('notification');
-            if (function_exists('notify_attachment_swapped')) {
-                // Get full attachment details with JOIN
-                $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
-                
-                // Build attachment_info with proper data
-                $attachmentInfo = $attachmentModel->buildAttachmentInfo($fullAttachment);
-                
-                notify_attachment_swapped([
-                    'attachment_id' => $attachmentId,
-                    'from_unit_id' => $actualFromUnitId,
-                    'from_unit_number' => $fromUnit['no_unit'],
-                    'to_unit_id' => $toUnitId,
-                    'to_unit_number' => $toUnit['no_unit'],
-                    'tipe_item' => $fullAttachment['tipe_item'] ?? '',
-                    'attachment_info' => $attachmentInfo,
-                    'reason' => $reason,
-                    'performed_by' => session('username') ?? 'System',
-                    'performed_at' => date('Y-m-d H:i:s'),
-                    'url' => base_url('/warehouse/attachment/view/' . $attachmentId),
-                    'module' => 'inventory'
-                ]);
-            }
-            
-            log_message('info', '[Warehouse::swapUnit] Success');
-            return $this->response->setJSON([
-                'success' => true,
-                'message' => "Berhasil memindahkan attachment dari Unit {$fromUnit['no_unit']} ke Unit {$toUnit['no_unit']}"
-            ]);
-            
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::swapUnit] Exception: ' . $e->getMessage());
-            log_message('error', '[Warehouse::swapUnit] Stack trace: ' . $e->getTraceAsString());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Detach attachment from unit
-     */
-    public function detachFromUnit()
-    {
-        if (!$this->request->isAJAX()) {
-            return $this->response->setJSON(['success' => false, 'message' => 'Invalid request'])->setStatusCode(400);
-        }
-
-        try {
-            $attachmentModel = new InventoryAttachmentModel();
-            
-            $attachmentId = $this->request->getPost('attachment_id');
-            $reason = $this->request->getPost('reason');
-            $newLocation = $this->request->getPost('new_location');
-            
-            if (!$attachmentId || !$reason) {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Data tidak lengkap'
-                ]);
-            }
-            
-            // Get current unit for logging
-            $db = \Config\Database::connect();
-            $attachment = $db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_unit, iu.no_unit')
-                ->join('inventory_unit iu', 'iu.id_inventory_unit = ia.id_inventory_unit', 'left')
-                ->where('ia.id_inventory_attachment', $attachmentId)
-                ->get()->getRowArray();
-            
-            // Detach from unit (trigger akan auto-update status dan lokasi)
-            $result = $attachmentModel->detachFromUnit($attachmentId, $reason);
-            
-            if ($result) {
-                // Update lokasi if custom location provided
-                if ($newLocation && $newLocation != 'Workshop') {
-                    $attachmentModel->update($attachmentId, ['lokasi_penyimpanan' => $newLocation]);
-                }
-                
-                // Log activity
-                $unitInfo = $attachment['no_unit'] ?? $attachment['id_inventory_unit'] ?? 'Unknown';
-                $this->logActivity('detach_from_unit', 'inventory_attachment', (int)$attachmentId, "Attachment dilepas dari Unit {$unitInfo}", [
-                    'attachment_id' => $attachmentId,
-                    'from_unit_id' => $attachment['id_inventory_unit'] ?? null,
-                    'reason' => $reason,
-                    'new_location' => $newLocation
-                ]);
-                
-                // Send cross-division notification to Service
-                helper('notification');
-                if (function_exists('notify_attachment_detached')) {
-                    // Get full attachment details with JOIN
-                    $fullAttachment = $attachmentModel->getFullAttachmentDetail($attachmentId);
-                    $attachmentInfo = $attachmentModel->buildAttachmentInfo($fullAttachment);
-                    
-                    notify_attachment_detached([
-                        'attachment_id' => $attachmentId,
-                        'unit_id' => $attachment['id_inventory_unit'] ?? null,
-                        'no_unit' => $unitInfo,
-                        'tipe_item' => $fullAttachment['tipe_item'] ?? '',
-                        'attachment_info' => $attachmentInfo,
-                        'reason' => $reason,
-                        'new_location' => $newLocation ?? 'Workshop',
-                        'performed_by' => session('username') ?? 'System',
-                        'performed_at' => date('Y-m-d H:i:s'),
-                        'url' => base_url('/warehouse/attachment/view/' . $attachmentId),
-                        'module' => 'inventory'
-                    ]);
-                }
-                
-                return $this->response->setJSON([
-                    'success' => true,
-                    'message' => "Berhasil melepas attachment dari Unit {$unitInfo}"
-                ]);
-            } else {
-                return $this->response->setJSON([
-                    'success' => false,
-                    'message' => 'Gagal melepas attachment'
-                ]);
-            }
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::detachFromUnit] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Terjadi kesalahan: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Get master attachment data for dropdown
-     */
-    public function masterAttachment()
-    {
-        try {
-            $db = \Config\Database::connect();
-            $attachments = $db->table('attachment')
-                ->select('id_attachment as id, CONCAT(tipe, " - ", merk, " ", model) as text')
-                ->orderBy('tipe', 'ASC')
-                ->get()
-                ->getResultArray();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $attachments
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::masterAttachment] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal memuat data attachment: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Get master baterai data for dropdown
-     */
-    public function masterBaterai()
-    {
-        try {
-            $db = \Config\Database::connect();
-            $batteries = $db->table('baterai')
-                ->select('id, CONCAT(merk_baterai, " - ", tipe_baterai, " (", jenis_baterai, ")") as text')
-                ->orderBy('merk_baterai', 'ASC')
-                ->get()
-                ->getResultArray();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $batteries
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::masterBaterai] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal memuat data baterai: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Get master charger data for dropdown
-     */
-    public function masterCharger()
-    {
-        try {
-            $db = \Config\Database::connect();
-            $chargers = $db->table('charger')
-                ->select('id_charger as id, CONCAT(merk_charger, " - ", tipe_charger) as text')
-                ->orderBy('merk_charger', 'ASC')
-                ->get()
-                ->getResultArray();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $chargers
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::masterCharger] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal memuat data charger: ' . $e->getMessage()
-            ]);
-        }
-    }
-
-    /**
-     * Get units data for dropdown
-     */
-    public function getUnits()
-    {
-        try {
-            $db = \Config\Database::connect();
-            $units = $db->table('inventory_unit iu')
-                ->select('iu.id_inventory_unit as id, iu.no_unit as nomor_unit, mu.merk_unit as merk, mu.model_unit as model')
-                ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
-                ->orderBy('iu.no_unit', 'ASC')
-                ->get()
-                ->getResultArray();
-            
-            return $this->response->setJSON([
-                'success' => true,
-                'data' => $units
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', '[Warehouse::getUnits] Error: ' . $e->getMessage());
-            return $this->response->setJSON([
-                'success' => false,
-                'message' => 'Gagal memuat data units: ' . $e->getMessage()
             ]);
         }
     }

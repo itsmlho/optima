@@ -337,8 +337,8 @@
                                                 <i class="fas fa-eye"></i>
                                             </button>
                                         <?php endif; ?>
-                                        <button class="btn btn-sm btn-danger" onclick="deleteReport(<?= $report['id'] ?>)" title="Delete">
-                                            <i class="fas fa-trash"></i>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteReport(<?= $report['id'] ?>)" title="Hapus Report" aria-label="Hapus report">
+                                            <i class="fas fa-trash" aria-hidden="true"></i>
                                         </button>
                                     </td>
                                 </tr>
@@ -589,28 +589,30 @@ function viewReport(id) {
     window.open('<?= base_url('reports/view/') ?>' + id, '_blank');
 }
 
-function deleteReport(id) {
-    if (confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
-        $.ajax({
-            url: '<?= base_url('reports/delete/') ?>' + id,
-            method: 'DELETE',
-            dataType: 'json',
-            headers: {
-                'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    showNotification('Report deleted successfully!', 'success');
-                    location.reload();
-                } else {
-                    showNotification('Failed to delete report: ' + response.message, 'error');
-                }
-            },
-            error: function(xhr, status, error) {
-                showNotification('Error deleting report: ' + error, 'error');
+async function deleteReport(id) {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Report',
+        text: 'Apakah Anda yakin ingin menghapus report ini? Tindakan ini tidak dapat dibatalkan.',
+        type: 'delete'
+    });
+    if (!confirmed) return;
+    $.ajax({
+        url: '<?= base_url('reports/delete/') ?>' + id,
+        method: 'DELETE',
+        dataType: 'json',
+        headers: { 'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content') },
+        success: function(response) {
+            if (response.success) {
+                alertSwal('success', 'Report berhasil dihapus!');
+                location.reload();
+            } else {
+                alertSwal('error', response.message, 'Gagal Hapus Report');
             }
-        });
-    }
+        },
+        error: function(xhr, status, error) {
+            alertSwal('error', 'Error: ' + error);
+        }
+    });
 }
 
 // Utility Functions
@@ -627,10 +629,15 @@ function exportReportsList() {
     $('#reportsTable').DataTable().button('.buttons-excel').trigger();
 }
 
-function clearOldReports() {
-    if (confirm('Are you sure you want to clear old reports? This will remove reports older than 30 days.')) {
-        showNotification('Clear old reports feature coming soon!', 'info');
-    }
+async function clearOldReports() {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Report Lama',
+        text: 'Ini akan menghapus semua report yang lebih dari 30 hari. Lanjutkan?',
+        type: 'delete',
+        confirmText: '<i class="fas fa-trash me-1"></i>Ya, Hapus Report Lama'
+    });
+    if (!confirmed) return;
+    alertSwal('info', 'Fitur hapus report lama akan segera tersedia!');
 }
 
 function showLoading(message) {

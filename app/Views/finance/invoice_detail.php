@@ -50,33 +50,34 @@
 <?= $this->endSection() ?>
 
 <?= $this->section('content') ?>
-<div class="container-fluid px-4 py-4">
-    <!-- Back Button -->
-    <div class="mb-3">
-        <a href="<?= base_url('finance/invoices') ?>" class="btn btn-outline-secondary">
-            <i class="fas fa-arrow-left me-2"></i>Back to Invoices
+<!-- Page Header with Breadcrumb -->
+<div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-2">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1 small">
+                <li class="breadcrumb-item"><a href="<?= base_url('finance/invoices') ?>"><i class="fas fa-file-invoice me-1"></i>Invoices</a></li>
+                <li class="breadcrumb-item active"><?= esc($invoice['invoice_number'] ?? 'Detail') ?></li>
+            </ol>
+        </nav>
+        <h4 class="fw-bold mb-0">
+            <i class="fas fa-file-invoice-dollar me-2 text-primary"></i>
+            <?= esc($invoice['invoice_number'] ?? 'Invoice Detail') ?>
+        </h4>
+        <p class="text-muted small mb-0">
+            Kontrak: <?= esc($invoice['contract_number'] ?? '-') ?>
+            &bull; <span class="badge bg-<?= in_array($invoice['status'] ?? '', ['PAID']) ? 'success' : (in_array($invoice['status'] ?? '', ['OVERDUE']) ? 'danger' : (in_array($invoice['status'] ?? '', ['APPROVED','SENT']) ? 'primary' : 'secondary')) ?>"><?= esc($invoice['status'] ?? 'DRAFT') ?></span>
+        </p>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+        <a href="<?= base_url('finance/invoices') ?>" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-arrow-left me-1"></i>Kembali
         </a>
     </div>
+</div>
+<div>
 
-    <!-- Invoice Header -->
+    <!-- Invoice Details Card -->
     <div class="card shadow-sm border-0 mb-4">
-        <div class="invoice-header">
-            <div class="row align-items-center">
-                <div class="col-md-8">
-                    <h1 class="h3 mb-2">
-                        <i class="fas fa-file-invoice me-2"></i><?= esc($invoice['invoice_number'] ?? '-') ?>
-                    </h1>
-                    <p class="mb-0 opacity-75">
-                        <i class="fas fa-file-contract me-2"></i><?= esc($invoice['contract_number'] ?? '-') ?>
-                    </p>
-                </div>
-                <div class="col-md-4 text-md-end">
-                    <span class="status-badge-lg status-<?= strtolower($invoice['status'] ?? 'draft') ?>">
-                        <?= esc($invoice['status'] ?? 'DRAFT') ?>
-                    </span>
-                </div>
-            </div>
-        </div>
         <div class="card-body">
             <div class="row">
                 <div class="col-md-6">
@@ -275,9 +276,14 @@
 
 <?= $this->section('scripts') ?>
 <script>
-function approveInvoice(id) {
-    if (!confirm('Approve this invoice?')) return;
-    
+async function approveInvoice(id) {
+    const ok = await confirmSwal(
+        'Approve Invoice?',
+        'Invoice akan disetujui dan dikirim ke customer.',
+        'Approve', 'success'
+    );
+    if (!ok) return;
+
     fetch(`<?= base_url('finance/invoices/approve/') ?>${id}`, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -285,21 +291,28 @@ function approveInvoice(id) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Invoice approved successfully');
-            location.reload();
+            alertSwal('success', 'Invoice berhasil disetujui.').then(() => location.reload());
         } else {
-            alert('Error: ' + data.message);
+            alertSwal('error', 'Error: ' + data.message);
         }
     });
 }
 
-function markAsPaid(id) {
-    const paymentDate = prompt('Enter payment date (YYYY-MM-DD):', new Date().toISOString().split('T')[0]);
-    if (!paymentDate) return;
-    
+async function markAsPaid(id) {
+    const { value: paymentDate, isConfirmed } = await Swal.fire({
+        title: 'Tandai Lunas',
+        html: '<label class="form-label">Tanggal Pembayaran</label><input id="swal-payment-date" type="date" class="form-control" value="' + new Date().toISOString().split('T')[0] + '">',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Konfirmasi',
+        cancelButtonText: 'Batal',
+        preConfirm: () => document.getElementById('swal-payment-date').value
+    });
+    if (!isConfirmed || !paymentDate) return;
+
     const formData = new FormData();
     formData.append('payment_date', paymentDate);
-    
+
     fetch(`<?= base_url('finance/invoices/mark-paid/') ?>${id}`, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -308,21 +321,31 @@ function markAsPaid(id) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Invoice marked as paid');
-            location.reload();
+            alertSwal('success', 'Invoice telah ditandai lunas.').then(() => location.reload());
         } else {
-            alert('Error: ' + data.message);
+            alertSwal('error', 'Error: ' + data.message);
         }
     });
 }
 
-function cancelInvoice(id) {
-    const reason = prompt('Enter cancellation reason:');
-    if (!reason) return;
-    
+async function cancelInvoice(id) {
+    const { value: reason, isConfirmed } = await Swal.fire({
+        title: 'Batalkan Invoice',
+        input: 'textarea',
+        inputLabel: 'Alasan Pembatalan',
+        inputPlaceholder: 'Masukkan alasan...',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        confirmButtonText: 'Ya, Batalkan',
+        cancelButtonText: 'Kembali',
+        inputValidator: v => !v && 'Alasan harus diisi'
+    });
+    if (!isConfirmed) return;
+
     const formData = new FormData();
     formData.append('reason', reason);
-    
+
     fetch(`<?= base_url('finance/invoices/cancel/') ?>${id}`, {
         method: 'POST',
         headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -331,10 +354,9 @@ function cancelInvoice(id) {
     .then(r => r.json())
     .then(data => {
         if (data.success) {
-            alert('Invoice cancelled');
-            location.reload();
+            alertSwal('success', 'Invoice telah dibatalkan.').then(() => location.reload());
         } else {
-            alert('Error: ' + data.message);
+            alertSwal('error', 'Error: ' + data.message);
         }
     });
 }
@@ -344,8 +366,7 @@ function printInvoice() {
 }
 
 function downloadPDF() {
-    alert('PDF generation feature coming soon');
-    // TODO: Implement PDF generation via TCPDF or similar
+    alertSwal('info', 'Fitur PDF generation akan segera hadir.');
 }
 </script>
 <?= $this->endSection() ?>

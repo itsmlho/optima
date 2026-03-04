@@ -194,7 +194,7 @@ class BackgroundScheduler
         $expiringContracts = $this->db->table('kontrak k')
             ->select('k.*, c.customer_name')
             ->join('customers c', 'c.id = k.customer_id', 'left')
-            ->where('k.status', 'Aktif')
+            ->where('k.status', 'ACTIVE')
             ->where('k.tanggal_berakhir >=', date('Y-m-d'))
             ->where('k.tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
             ->get()

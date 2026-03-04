@@ -64,8 +64,15 @@ class CustomerManagementController extends BaseController
     public function getCustomers()
     {
         try {
+            // Check permission - return empty data without 403 status to avoid DataTable error
             if (!$this->hasPermission('marketing.customer.view')) {
-                return $this->response->setJSON(['draw'=>1,'recordsTotal'=>0,'recordsFiltered'=>0,'data'=>[]])->setStatusCode(403);
+                return $this->response->setJSON([
+                    'draw' => 1,
+                    'recordsTotal' => 0,
+                    'recordsFiltered' => 0,
+                    'data' => [],
+                    'error' => 'Anda tidak memiliki izin untuk melihat data customer'
+                ]);
             }
             
             $request = $this->request;
@@ -147,24 +154,27 @@ class CustomerManagementController extends BaseController
             foreach ($customers as &$customer) {
             $customer['locations_count'] = $this->locationModel->where('customer_id', $customer['id'])->countAllResults();
             
-            // Get contracts count from customer_contracts table
-            $contractsCount = $this->db->table('customer_contracts')
+            // Get contracts count directly from kontrak (customer_contracts table does not exist)
+            $contractsCount = $this->db->table('kontrak')
                 ->where('customer_id', $customer['id'])
-                ->where('is_active', 1)
+                ->where('status !=', 'CANCELLED')
                 ->countAllResults();
             
-            // Get units count directly from inventory_unit.customer_id
-            $unitsCount = $this->db->table('inventory_unit')
-                ->where('customer_id', $customer['id'])
+            // Get units count - via kontrak_unit junction table (source of truth)
+            $unitsCount = $this->db->table('kontrak_unit ku')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->where('cl.customer_id', $customer['id'])
+                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)')
                 ->countAllResults();
             
-            // Get PO count from contracts
-            $poCount = $this->db->table('customer_contracts cc')
-                ->join('kontrak k', 'cc.kontrak_id = k.id', 'left')
-                ->where('cc.customer_id', $customer['id'])
-                ->where('cc.is_active', 1)
-                ->where('k.customer_po_number IS NOT NULL')
-                ->where('k.customer_po_number !=', '')
+            // Get PO count directly from kontrak
+            $poCount = $this->db->table('kontrak')
+                ->where('customer_id', $customer['id'])
+                ->where('status !=', 'CANCELLED')
+                ->where('customer_po_number IS NOT NULL')
+                ->where('customer_po_number !=', '')
                 ->countAllResults();
             
             $customer['contracts_count'] = $contractsCount;
@@ -276,44 +286,64 @@ class CustomerManagementController extends BaseController
                                            ->orderBy('location_name', 'ASC')
                                            ->findAll();
             
-            // Get customer contracts with units summary using customer_contracts table
-            $contractsBuilder = $this->db->table('customer_contracts cc');
-            $contracts = $contractsBuilder->select('k.*, cl.location_name, 
-                                                   COUNT(CASE WHEN ku.is_temporary != 1 THEN 1 END) as active_units,
-                                                   SUM(CASE WHEN iu.workflow_status IS NOT NULL AND ku.is_temporary != 1 THEN 1 ELSE 0 END) as workflow_units')
-                                        ->join('kontrak k', 'cc.kontrak_id = k.id', 'left')
+            // Get customer contracts with units summary from kontrak_unit junction table
+            $contractsBuilder = $this->db->table('kontrak k');
+            $contracts = $contractsBuilder->select('k.*, cl.location_name,
+                                                   (SELECT COUNT(*) FROM kontrak_unit ku2 WHERE ku2.kontrak_id = k.id AND (ku2.is_temporary IS NULL OR ku2.is_temporary != 1)) as active_units')
                                         ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                                        ->join('inventory_unit iu', 'k.id = iu.kontrak_id', 'left')
-                                        ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
-                                        ->where('cc.customer_id', $id)
-                                        ->where('cc.is_active', 1)
-                                        ->groupBy('k.id')
+                                        ->where('k.customer_id', $id)
+                                        ->where('k.status !=', 'CANCELLED')
                                         ->orderBy('k.tanggal_mulai', 'DESC')
                                         ->get()->getResultArray();
+
+            // Get customer units - via kontrak_unit junction table (source of truth)
+            $contractUnits = $this->db->table('kontrak_unit ku')
+                ->select('ku.unit_id as id_inventory_unit')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->where('cl.customer_id', $id)
+                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)')
+                ->get()->getResultArray();
+
+            $unitIds = array_column($contractUnits, 'id_inventory_unit');
+            $unitIds = array_unique(array_filter($unitIds)); // Filter out nulls and empty values
+
+            if (empty($unitIds) || count($unitIds) === 0) {
+                $units = [];
+            } else {
+                $unitsBuilder = $this->db->table('inventory_unit iu');
+                $units = $unitsBuilder->select('iu.*')
+                                    ->whereIn('iu.id_inventory_unit', $unitIds)
+                                    ->orderBy('iu.no_unit', 'ASC')
+                                    ->get()->getResultArray();
+
+                // Add contract info to each unit
+                if (!empty($units)) {
+                    foreach ($units as &$unit) {
+                        $contractInfo = $this->db->table('kontrak_unit ku')
+                            ->select('k.no_kontrak, cl.location_name as contract_location, ku.is_temporary')
+                            ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                            ->where('ku.unit_id', $unit['id_inventory_unit'])
+                            ->where('(ku.is_temporary IS NULL OR ku.is_temporary != 1)')
+                            ->orderBy('ku.id', 'DESC')
+                            ->limit(1)
+                            ->get()->getRowArray();
+
+                        $unit['no_kontrak'] = $contractInfo['no_kontrak'] ?? null;
+                        $unit['contract_location'] = $contractInfo['contract_location'] ?? null;
+                        $unit['is_temporary'] = $contractInfo['is_temporary'] ?? null;
+                    }
+                }
+            }
             
-            // Get customer units with details directly from inventory_unit.customer_id
-            $unitsBuilder = $this->db->table('inventory_unit iu');
-            $units = $unitsBuilder->select('iu.*, k.no_kontrak, cl.location_name as contract_location,
-                                          su.status_unit, tu.tipe as nama_tipe, mu.model_unit as nama_model,
-                                          iu.workflow_status, iu.lokasi_unit, ku.is_temporary')
-                                ->join('kontrak k', 'iu.kontrak_id = k.id', 'left')
-                                ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
-                                ->join('customer_locations cl', 'iu.customer_location_id = cl.id', 'left')
-                                ->join('status_unit su', 'iu.status_unit_id = su.id_status', 'left')
-                                ->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left')
-                                ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
-                                ->where('iu.customer_id', $id)
-                                ->where('(ku.is_temporary IS NULL OR ku.is_temporary != 1)')
-                                ->orderBy('k.tanggal_mulai', 'DESC')
-                                ->orderBy('iu.no_unit', 'ASC')
-                                ->get()->getResultArray();
-            
-            // Get activity history (work orders through customer_contracts)
+            // Get activity history (work orders via kontrak.customer_id)
             $activityBuilder = $this->db->table('spk s');
             $activities = $activityBuilder->select('s.*, "Work Order" as activity_type')
-                                        ->join('customer_contracts cc', 's.kontrak_id = cc.kontrak_id', 'left')
-                                        ->where('cc.customer_id', $id)
-                                        ->where('cc.is_active', 1)
+                                        ->join('kontrak k', 's.kontrak_id = k.id', 'left')
+                                        ->where('k.customer_id', $id)
+                                        ->where('k.status !=', 'CANCELLED')
                                         ->orderBy('s.dibuat_pada', 'DESC')
                                         ->limit(20)
                                         ->get()->getResultArray();
@@ -322,9 +352,9 @@ class CustomerManagementController extends BaseController
             $deliveryBuilder = $this->db->table('delivery_instructions di');
             $deliveries = $deliveryBuilder->select('di.*, s.pelanggan, "Delivery" as activity_type')
                                         ->join('spk s', 'di.spk_id = s.id', 'left')
-                                        ->join('customer_contracts cc', 's.kontrak_id = cc.kontrak_id', 'left')
-                                        ->where('cc.customer_id', $id)
-                                        ->where('cc.is_active', 1)
+                                        ->join('kontrak k', 's.kontrak_id = k.id', 'left')
+                                        ->where('k.customer_id', $id)
+                                        ->where('k.status !=', 'CANCELLED')
                                         ->orderBy('di.dibuat_pada', 'DESC')
                                         ->limit(10)
                                         ->get()->getResultArray();
@@ -343,7 +373,7 @@ class CustomerManagementController extends BaseController
                 'total_locations' => count($locations),
                 'primary_locations' => count(array_filter($locations, function($loc) { return $loc['is_primary'] == 1; })),
                 'total_contracts' => count($contracts),
-                'active_contracts' => count(array_filter($contracts, function($c) { return $c['status'] == 'Aktif'; })),
+                'active_contracts' => count(array_filter($contracts, function($c) { return $c['status'] == 'ACTIVE'; })),
                 'total_po_only' => count(array_filter($contracts, function($c) { return isset($c['rental_type']) && $c['rental_type'] == 'PO_ONLY'; })),
                 'total_units' => count($units),
                 'active_units' => count(array_filter($units, function($u) { return in_array($u['status_unit'], ['DISEWA', 'BEROPERASI']); })),
@@ -1362,21 +1392,27 @@ class CustomerManagementController extends BaseController
             $activeCustomers = $activeBuilder->where('is_active', 1)->countAllResults();
             
             // Get total contracts for filtered customers via customer_contracts
-            $contractBuilder = $this->db->table('customer_contracts cc');
-            $contractBuilder->select('COUNT(DISTINCT cc.kontrak_id) as total')
-                ->join('customers c', 'cc.customer_id = c.id', 'left')
-                ->where('cc.is_active', 1);
+            // customer_contracts table doesn't exist; count directly from kontrak
+            $contractBuilder = $this->db->table('kontrak k');
+            $contractBuilder->select('COUNT(DISTINCT k.id) as total')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
+                ->where('k.status !=', 'CANCELLED');
             $this->applyDateFilter($contractBuilder, 'c.created_at');
-            $contractResult = $contractBuilder->get()->getRow();
+            $contractResultSet = $contractBuilder->get();
+            $contractResult    = $contractResultSet ? $contractResultSet->getRow() : null;
             $totalContracts = $contractResult->total ?? 0;
             
-            // Get total units for filtered customers directly from inventory_unit
-            $unitBuilder = $this->db->table('inventory_unit iu');
-            $unitBuilder->select('COUNT(*) as total')
-                ->join('customers c', 'iu.customer_id = c.id', 'left')
-                ->where('iu.customer_id IS NOT NULL');
+            // Get total units for filtered customers via kontrak_unit junction table
+            $unitBuilder = $this->db->table('kontrak_unit ku');
+            $unitBuilder->select('COUNT(DISTINCT ku.unit_id) as total')
+                ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
+                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)');
             $this->applyDateFilter($unitBuilder, 'c.created_at');
-            $unitResult = $unitBuilder->get()->getRow();
+            $unitResultSet = $unitBuilder->get();
+            $unitResult    = $unitResultSet ? $unitResultSet->getRow() : null;
             $totalUnits = $unitResult->total ?? 0;
             
             $stats = [
@@ -1435,19 +1471,18 @@ class CustomerManagementController extends BaseController
                 ]);
             }
 
-            // Get total count for all contracts/PO using customer_contracts table
+            // Get total count for all contracts/PO directly from kontrak
             $totalQuery = "
                 SELECT COUNT(*) as total,
                        COUNT(CASE WHEN k.rental_type = 'CONTRACT' THEN 1 END) as total_contracts,
                        COUNT(CASE WHEN k.rental_type = 'PO_ONLY' THEN 1 END) as total_po_only,
                        COUNT(CASE WHEN k.rental_type = 'DAILY_SPOT' THEN 1 END) as total_daily_spot
-                FROM customer_contracts cc
-                JOIN kontrak k ON cc.kontrak_id = k.id
-                WHERE cc.customer_id = ? AND cc.is_active = 1
+                FROM kontrak k
+                WHERE k.customer_id = ? AND k.status != 'CANCELLED'
             ";
             $totalResult = $this->db->query($totalQuery, [$customerId])->getRowArray();
 
-            // Get contracts for this customer using customer_contracts table
+            // Get contracts for this customer directly from kontrak
             $query = "
                 SELECT 
                     k.id,
@@ -1463,11 +1498,10 @@ class CustomerManagementController extends BaseController
                     k.nilai_total,
                     k.dibuat_pada as created_at,
                     k.diperbarui_pada as updated_at
-                FROM customer_contracts cc
-                JOIN kontrak k ON cc.kontrak_id = k.id
+                FROM kontrak k
                 LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-                LEFT JOIN customers c ON cc.customer_id = c.id
-                WHERE cc.customer_id = ? AND cc.is_active = 1
+                LEFT JOIN customers c ON k.customer_id = c.id
+                WHERE k.customer_id = ? AND k.status != 'CANCELLED'
                 ORDER BY k.dibuat_pada DESC
             ";
             
@@ -1529,7 +1563,7 @@ class CustomerManagementController extends BaseController
                                                 WHEN k.rental_type='PO_ONLY' THEN 'PO-only agreement' 
                                                 ELSE 'daily/spot rental' END, 
                                ' at ', cl.location_name) as description,
-                        u.staff_name as user,
+                        u.username as user,
                         k.dibuat_pada as created_at
                     FROM kontrak k
                     LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
@@ -1547,14 +1581,14 @@ class CustomerManagementController extends BaseController
             if ($filter === 'all' || $filter === 'quotation') {
                 $quotationQuery = "
                     SELECT 
-                        q.id,
+                        q.id_quotation as id,
                         'quotation' as type,
-                        CONCAT('Quotation #', q.id, ' - ', q.status) as title,
-                        CONCAT('Quotation for ', COALESCE(q.project_name, 'customer project')) as description,
-                        u.staff_name as user,
+                        CONCAT('Quotation #', q.quotation_number, ' - ', q.stage) as title,
+                        CONCAT('Quotation for ', q.prospect_name) as description,
+                        u.username as user,
                         q.created_at
                     FROM quotations q
-                    LEFT JOIN customers c ON q.customer_id = c.id
+                    LEFT JOIN customers c ON q.created_customer_id = c.id
                     LEFT JOIN users u ON q.created_by = u.id
                     WHERE c.id = ?
                     ORDER BY q.created_at DESC
@@ -1572,14 +1606,14 @@ class CustomerManagementController extends BaseController
                         'delivery' as type,
                         CONCAT('Delivery ', di.nomor_di, ' - ', di.status_di) as title,
                         CONCAT('Delivery to ', cl.location_name, ' on ', DATE_FORMAT(di.tanggal_kirim, '%d %b %Y')) as description,
-                        u.staff_name as user,
+                        u.username as user,
                         di.dibuat_pada as created_at
                     FROM delivery_instructions di
                     LEFT JOIN spk s ON di.spk_id = s.id
                     LEFT JOIN kontrak k ON s.kontrak_id = k.id
                     LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
                     LEFT JOIN customers c ON cl.customer_id = c.id
-                    LEFT JOIN users u ON di.dibuat_oleh_user_id = u.id
+                    LEFT JOIN users u ON u.id = di.dibuat_oleh
                     WHERE c.id = ?
                     ORDER BY di.dibuat_pada DESC
                     LIMIT 20
@@ -1911,7 +1945,9 @@ class CustomerManagementController extends BaseController
                         mu.merk_unit,
                         mu.model_unit
                     ')
-                    ->join('kontrak k', 'k.id = iu.kontrak_id', 'left')
+                    // Updated: JOIN via kontrak_unit junction table (source of truth)
+                    ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
+                    ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
                     ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
                     ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
                     ->join('kapasitas kap', 'kap.id_kapasitas = iu.kapasitas_unit_id', 'left')
@@ -1921,7 +1957,8 @@ class CustomerManagementController extends BaseController
                     ->join('valve v', 'v.id_valve = iu.valve_id', 'left')
                     ->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
                     ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
-                    ->where('iu.kontrak_id', $contract['id'])
+                    ->where('ku.kontrak_id', $contract['id'])
+                    ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
                     ->get()
                     ->getResultArray();
 

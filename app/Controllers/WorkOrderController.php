@@ -10,6 +10,10 @@ use App\Models\CustomerModel;
 use App\Models\AreaModel;
 use App\Models\WorkOrderSparepartModel;
 use App\Models\WorkOrderSparepartUsageModel;
+use App\Models\InventoryAttachmentModel;
+use App\Models\InventoryBatteryModel;
+use App\Models\InventoryChargerModel;
+use App\Models\InventoryComponentHelper;
 use CodeIgniter\Controller;
 
 class WorkOrderController extends Controller
@@ -107,7 +111,9 @@ class WorkOrderController extends Controller
                          COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
                          a.id as area_id, a.area_name, a.area_code,
                          mu.merk_unit, tu.tipe');
-        $builder->join('kontrak k', 'iu.kontrak_id = k.id', 'left');
+        // Updated: JOIN via kontrak_unit junction table (source of truth)
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
         $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
         $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->join('areas a', 'c.area_id = a.id', 'left');
@@ -650,7 +656,11 @@ class WorkOrderController extends Controller
                 break;
         }
         
-        return '<div class="btn-group-vertical btn-group-sm" role="group">' . implode(' ', $buttons) . '</div>';
+        // Add a "Detail" link button for all statuses
+        $detailUrl = base_url('service/work-orders/detail/' . $woId);
+        $detailBtn = '<a href="'.$detailUrl.'" class="btn btn-sm btn-outline-info" title="Lihat Detail"><i class="fas fa-eye me-1"></i>Detail</a>';
+        
+        return '<div class="btn-group-vertical btn-group-sm" role="group">' . implode(' ', $buttons) . $detailBtn . '</div>';
     }
     
     // Update work order status
@@ -792,6 +802,114 @@ class WorkOrderController extends Controller
         return view('service/work_order_form', $data);
     }
     
+    /**
+     * Dedicated Work Order Detail Page
+     * Displays a full-page, rich detail view for a specific work order.
+     */
+    public function detail($id)
+    {
+        $session = session();
+        if (!$session->get('isLoggedIn')) {
+            return redirect()->to('/auth/login');
+        }
+
+        try {
+            $db = \Config\Database::connect();
+
+            // Main WO data with joins
+            $wo = $db->query("
+                SELECT 
+                    wo.*,
+                    ws.status_name, ws.status_code, ws.color as status_color,
+                    wp.priority_name, wp.color as priority_color,
+                    wc.category_name,
+                    wcs.subcategory_name,
+                    iu.no_unit, iu.hm as unit_hm,
+                    mu.merk_unit, tu.tipe as model_unit,
+                    COALESCE(c.customer_name, 'Belum Ada Kontrak') as pelanggan,
+                    cl.location_name,
+                    a.area_name, a.area_code,
+                    -- Staff
+                    adm.staff_name as admin_name,
+                    frm.staff_name as foreman_name,
+                    mec.staff_name as mechanic_name,
+                    hlp.staff_name as helper_name,
+                    -- Dates
+                    TIMESTAMPDIFF(HOUR, wo.report_date, IFNULL(wo.closed_date, NOW())) as ttr_hours
+                FROM work_orders wo
+                LEFT JOIN work_order_statuses ws  ON wo.status_id = ws.id
+                LEFT JOIN work_order_priorities wp ON wo.priority_id = wp.id
+                LEFT JOIN work_order_categories wc ON wo.category_id = wc.id
+                LEFT JOIN work_order_subcategories wcs ON wo.subcategory_id = wcs.id
+                LEFT JOIN inventory_unit iu ON wo.unit_id = iu.id_inventory_unit
+                LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
+                LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
+                -- Updated: JOIN via kontrak_unit junction table (source of truth)
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+                LEFT JOIN kontrak k ON k.id = ku.kontrak_id
+                LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
+                LEFT JOIN customers c ON c.id = cl.customer_id
+                LEFT JOIN areas a ON c.area_id = a.id
+                LEFT JOIN employees adm ON wo.admin_id = adm.id
+                LEFT JOIN employees frm ON wo.foreman_id = frm.id
+                LEFT JOIN employees mec ON wo.mechanic_id = mec.id
+                LEFT JOIN employees hlp ON wo.helper_id = hlp.id
+                WHERE wo.id = ?
+            ", [$id])->getRowArray();
+
+            if (!$wo) {
+                return redirect()->to('/service/work-orders')->with('error', 'Work Order tidak ditemukan.');
+            }
+
+            // Status history
+            $statusHistory = $db->query("
+                SELECT 
+                    wsh.*,
+                    ws_from.status_name as from_status,
+                    ws_to.status_name as to_status,
+                    ws_to.color as to_color
+                FROM work_order_status_history wsh
+                LEFT JOIN work_order_statuses ws_from ON wsh.from_status_id = ws_from.id
+                LEFT JOIN work_order_statuses ws_to ON wsh.to_status_id = ws_to.id
+                WHERE wsh.work_order_id = ?
+                ORDER BY wsh.created_at ASC
+            ", [$id])->getResultArray();
+
+            // Spareparts used
+            $spareparts = $db->query("
+                SELECT wos.*, s.kode as sparepart_code, s.desc_sparepart as sparepart_name
+                FROM work_order_spareparts wos
+                LEFT JOIN sparepart s ON wos.sparepart_id = s.id_sparepart
+                WHERE wos.work_order_id = ?
+                ORDER BY wos.id ASC
+            ", [$id])->getResultArray();
+
+            // Additional mechanics/helpers (from assignments table if exists)
+            $assignments = $db->query("
+                SELECT woa.*, e.staff_name, e.staff_role
+                FROM work_order_assignments woa
+                JOIN employees e ON woa.employee_id = e.id
+                WHERE woa.work_order_id = ?
+                ORDER BY e.staff_role, e.staff_name
+            ", [$id])->getResultArray();
+
+            $data = [
+                'title'         => 'WO Detail: ' . $wo['work_order_number'],
+                'wo'            => $wo,
+                'statusHistory' => $statusHistory,
+                'spareparts'    => $spareparts,
+                'assignments'   => $assignments,
+            ];
+
+            return view('service/work_order_detail', $data);
+
+        } catch (\Exception $e) {
+            log_message('error', 'WorkOrder detail error: ' . $e->getMessage());
+            return redirect()->to('/service/work-orders')
+                ->with('error', 'Terjadi kesalahan saat memuat detail work order.');
+        }
+    }
+
     // Menyimpan data work order baru
     public function store()
     {
@@ -1589,7 +1707,9 @@ class WorkOrderController extends Controller
                     d.nama_departemen
                 FROM inventory_unit iu
                 LEFT JOIN areas a ON iu.area_id = a.id
-                LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+                -- Updated: JOIN via kontrak_unit junction table (source of truth)
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+                LEFT JOIN kontrak k ON k.id = ku.kontrak_id
                 LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
                 LEFT JOIN customers c ON cl.customer_id = c.id
                 LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
@@ -1616,7 +1736,9 @@ class WorkOrderController extends Controller
             $unitQuery = $db->query("
                 SELECT c.area_id 
                 FROM inventory_unit iu
-                JOIN kontrak k ON iu.kontrak_id = k.id
+                -- Updated: JOIN via kontrak_unit junction table (source of truth)
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+                JOIN kontrak k ON k.id = ku.kontrak_id
                 JOIN customer_locations cl ON cl.id = k.customer_location_id
                 JOIN customers c ON c.id = cl.customer_id
                 WHERE iu.id_inventory_unit = ?
@@ -1720,7 +1842,9 @@ class WorkOrderController extends Controller
             $builder = $db->table('inventory_unit iu');
             $builder->select('iu.id_inventory_unit, iu.no_unit, iu.serial_number, 
                             c.customer_name as pelanggan, cl.location_name as lokasi, tu.tipe as unit_type, mu.model_unit, mu.merk_unit');
-            $builder->join('kontrak k', 'iu.kontrak_id = k.id', 'left');
+            // Updated: JOIN via kontrak_unit junction table (source of truth)
+            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
+            $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
             $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
             $builder->join('customers c', 'c.id = cl.customer_id', 'left');
             $builder->join('tipe_unit tu', 'iu.jenis_unit_id = tu.id_tipe_unit', 'left');
@@ -1953,7 +2077,9 @@ class WorkOrderController extends Controller
                         a.id as area_id, 
                         a.area_name
                     FROM inventory_unit iu
-                    LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+                    -- Updated: JOIN via kontrak_unit junction table (source of truth)
+                    LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+                    LEFT JOIN kontrak k ON k.id = ku.kontrak_id
                     LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
                     LEFT JOIN customers c ON c.id = cl.customer_id
                     LEFT JOIN areas a ON a.id = iu.area_id
@@ -2513,7 +2639,9 @@ class WorkOrderController extends Controller
                     c.customer_name as pelanggan,
                     cl.location_name as lokasi
                 FROM inventory_unit iu
-                LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+                -- Updated: JOIN via kontrak_unit junction table (source of truth)
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+                LEFT JOIN kontrak k ON k.id = ku.kontrak_id
                 LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
                 LEFT JOIN customers c ON cl.customer_id = c.id
                 WHERE iu.id_inventory_unit = ?
@@ -3098,10 +3226,32 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             $chargerInventoryId = $this->request->getPost('charger_id'); // This is actually id_inventory_attachment  
             $bateraiInventoryId = $this->request->getPost('baterai_id'); // This is actually id_inventory_attachment
             
+            $componentHelper = new InventoryComponentHelper();
+            
             // Get existing attachment records to preserve po_id and catatan_inventory
-            $existingAttachments = $db->table('inventory_attachment')
-                ->where('id_inventory_unit', $unitId)
+            $existingAttachments = [];
+            
+            // Query all 3 tables for existing components
+            $existingBatteries = $db->table('inventory_batteries')
+                ->where('inventory_unit_id', $unitId)
                 ->get()->getResultArray();
+            foreach ($existingBatteries as $bat) {
+                $existingAttachments[] = array_merge($bat, ['tipe_item' => 'battery']);
+            }
+            
+            $existingChargers = $db->table('inventory_chargers')
+                ->where('inventory_unit_id', $unitId)
+                ->get()->getResultArray();
+            foreach ($existingChargers as $chr) {
+                $existingAttachments[] = array_merge($chr, ['tipe_item' => 'charger']);
+            }
+            
+            $existingAttachmentsTable = $db->table('inventory_attachments')
+                ->where('inventory_unit_id', $unitId)
+                ->get()->getResultArray();
+            foreach ($existingAttachmentsTable as $att) {
+                $existingAttachments[] = array_merge($att, ['tipe_item' => 'attachment']);
+            }
             
             // Create map of existing records by type
             $existingMap = [];
@@ -3180,16 +3330,16 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             }
             
             // Check attachment changes
-            $oldAttachmentId = $existingMap['attachment']['attachment_id'] ?? null;
+            $oldAttachmentId = $existingMap['attachment']['attachment_type_id'] ?? null;
             $currentAttachmentId = null;
             if ($attachmentInventoryId) {
-                // Get attachment_id from inventory_attachment table
-                $currentAttQuery = $db->table('inventory_attachment')
-                    ->select('attachment_id')
-                    ->where('id_inventory_attachment', $attachmentInventoryId)
+                // Get attachment_type_id from inventory_attachments table
+                $currentAttQuery = $db->table('inventory_attachments')
+                    ->select('attachment_type_id')
+                    ->where('id', $attachmentInventoryId)
                     ->get();
                 $currentAtt = $currentAttQuery ? $currentAttQuery->getRowArray() : null;
-                $currentAttachmentId = $currentAtt['attachment_id'] ?? null;
+                $currentAttachmentId = $currentAtt['attachment_type_id'] ?? null;
             }
             if ($oldAttachmentId != $currentAttachmentId) {
                 $oldAttInfo = '';
@@ -3208,16 +3358,16 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             }
             
             // Check charger changes
-            $oldChargerId = $existingMap['charger']['charger_id'] ?? null;
+            $oldChargerId = $existingMap['charger']['charger_type_id'] ?? null;
             $currentChargerId = null;
             if ($chargerInventoryId) {
-                // Get charger_id from inventory_attachment table
-                $currentChrQuery = $db->table('inventory_attachment')
-                    ->select('charger_id')
-                    ->where('id_inventory_attachment', $chargerInventoryId)
+                // Get charger_type_id from inventory_chargers table
+                $currentChrQuery = $db->table('inventory_chargers')
+                    ->select('charger_type_id')
+                    ->where('id', $chargerInventoryId)
                     ->get();
                 $currentChr = $currentChrQuery ? $currentChrQuery->getRowArray() : null;
-                $currentChargerId = $currentChr['charger_id'] ?? null;
+                $currentChargerId = $currentChr['charger_type_id'] ?? null;
             }
             if ($oldChargerId != $currentChargerId) {
                 $oldChrInfo = '';
@@ -3236,16 +3386,16 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             }
             
             // Check baterai changes
-            $oldBateraiId = $existingMap['battery']['baterai_id'] ?? null;
+            $oldBateraiId = $existingMap['battery']['battery_type_id'] ?? null;
             $currentBateraiId = null;
             if ($bateraiInventoryId) {
-                // Get baterai_id from inventory_attachment table
-                $currentBatQuery = $db->table('inventory_attachment')
-                    ->select('baterai_id')
-                    ->where('id_inventory_attachment', $bateraiInventoryId)
+                // Get battery_type_id from inventory_batteries table
+                $currentBatQuery = $db->table('inventory_batteries')
+                    ->select('battery_type_id')
+                    ->where('id', $bateraiInventoryId)
                     ->get();
                 $currentBat = $currentBatQuery ? $currentBatQuery->getRowArray() : null;
-                $currentBateraiId = $currentBat['baterai_id'] ?? null;
+                $currentBateraiId = $currentBat['battery_type_id'] ?? null;
             }
             if ($oldBateraiId != $currentBateraiId) {
                 $oldBatInfo = '';
@@ -3263,100 +3413,162 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 $allChanges[] = "Baterai: " . ($oldBatInfo ?: '-') . " → " . ($newBatInfo ?: '-');
             }
             
-            // STEP 1: Release ALL old attachments from this unit (set to AVAILABLE and detach)
-            $oldAttachments = $db->table('inventory_attachment')
-                ->where('id_inventory_unit', $unitId)
-                ->whereIn('tipe_item', ['attachment', 'battery', 'charger'])
+            // STEP 1: Release ALL old components from this unit (set to AVAILABLE and detach)
+            // Release batteries
+            $oldBatteries = $db->table('inventory_batteries')
+                ->where('inventory_unit_id', $unitId)
                 ->get()
                 ->getResultArray();
             
-            foreach ($oldAttachments as $oldAtt) {
-                $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $oldAtt['id_inventory_attachment'])
+            foreach ($oldBatteries as $oldBat) {
+                $db->table('inventory_batteries')
+                    ->where('id', $oldBat['id'])
                     ->update([
-                        'id_inventory_unit' => null,
-                        'attachment_status' => 'AVAILABLE',
-                        'lokasi_penyimpanan' => 'Workshop',
+                        'inventory_unit_id' => null,
+                        'status' => 'AVAILABLE',
+                        'storage_location' => 'Workshop',
                         'updated_at' => date('Y-m-d H:i:s')
                     ]);
                 
-                log_message('info', "[WorkOrder] Released attachment {$oldAtt['id_inventory_attachment']} (type: {$oldAtt['tipe_item']}) from unit {$unitId}");
+                log_message('info', "[WorkOrder] Released battery {$oldBat['id']} from unit {$unitId}");
             }
             
-            // STEP 2: Attach NEW attachments to this unit
+            // Release chargers
+            $oldChargers = $db->table('inventory_chargers')
+                ->where('inventory_unit_id', $unitId)
+                ->get()
+                ->getResultArray();
+            
+            foreach ($oldChargers as $oldChr) {
+                $db->table('inventory_chargers')
+                    ->where('id', $oldChr['id'])
+                    ->update([
+                        'inventory_unit_id' => null,
+                        'status' => 'AVAILABLE',
+                        'storage_location' => 'Workshop',
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
+                
+                log_message('info', "[WorkOrder] Released charger {$oldChr['id']} from unit {$unitId}");
+            }
+            
+            // Release attachments
+            $oldAttachmentsRelease = $db->table('inventory_attachments')
+                ->where('inventory_unit_id', $unitId)
+                ->get()
+                ->getResultArray();
+            
+            foreach ($oldAttachmentsRelease as $oldAtt) {
+                $db->table('inventory_attachments')
+                    ->where('id', $oldAtt['id'])
+                    ->update([
+                        'inventory_unit_id' => null,
+                        'status' => 'AVAILABLE',
+                        'storage_location' => 'Workshop',
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ]);
+                
+                log_message('info', "[WorkOrder] Released attachment {$oldAtt['id']} from unit {$unitId}");
+            }
+            
+            // STEP 2: Attach NEW components to this unit
             // Handle attachment record if selected
             if (!empty($attachmentInventoryId)) {
-                // Update the selected attachment record to attach to this unit
-                $updateData = [
-                    'id_inventory_unit' => $unitId,
-                    'attachment_status' => 'IN_USE',
-                    'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
-                    'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
-                    'catatan_fisik' => $this->request->getPost('catatan_fisik'),
-                    'lokasi_penyimpanan' => 'Terpasang di Unit',
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
+                // Determine which table this component is in
+                $componentType = $componentHelper->detectComponentType($attachmentInventoryId);
+                $tableName = match($componentType) {
+                    'battery' => 'inventory_batteries',
+                    'charger' => 'inventory_chargers',
+                    'attachment' => 'inventory_attachments',
+                    default => null
+                };
                 
-                $updateResult = $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $attachmentInventoryId)
-                    ->update($updateData);
-                
-                if ($updateResult === false) {
-                    $errorMsg = $this->getMySQLError($db);
-                    throw new \Exception('Gagal update data attachment: ' . $errorMsg);
+                if ($tableName) {
+                    // Update the selected component record to attach to this unit
+                    $updateData = [
+                        'inventory_unit_id' => $unitId,
+                        'status' => 'IN_USE',
+                        'storage_location' => 'Terpasang di Unit',
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                    
+                    $updateResult = $db->table($tableName)
+                        ->where('id', $attachmentInventoryId)
+                        ->update($updateData);
+                    
+                    if ($updateResult === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        throw new \Exception('Gagal update data attachment: ' . $errorMsg);
+                    }
+                    
+                    log_message('info', "[WorkOrder] Attached {$componentType} {$attachmentInventoryId} to unit {$unitId}");
                 }
-                
-                log_message('info', "[WorkOrder] Attached attachment {$attachmentInventoryId} to unit {$unitId}");
             }
             
             // Handle charger record if selected
             if (!empty($chargerInventoryId)) {
-                // Update the selected charger record to attach to this unit
-                $updateData = [
-                    'id_inventory_unit' => $unitId,
-                    'attachment_status' => 'IN_USE',
-                    'kondisi_fisik' => $this->request->getPost('kondisi_fisik_charger') ?: 'Baik',
-                    'kelengkapan' => $this->request->getPost('kelengkapan_charger') ?: 'Lengkap',
-                    'catatan_fisik' => $this->request->getPost('catatan_fisik_charger'),
-                    'lokasi_penyimpanan' => 'Terpasang di Unit',
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
+                // Determine which table this component is in
+                $componentType = $componentHelper->detectComponentType($chargerInventoryId);
+                $tableName = match($componentType) {
+                    'battery' => 'inventory_batteries',
+                    'charger' => 'inventory_chargers',
+                    'attachment' => 'inventory_attachments',
+                    default => null
+                };
                 
-                $updateResult = $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $chargerInventoryId)
-                    ->update($updateData);
-                
-                if ($updateResult === false) {
-                    $errorMsg = $this->getMySQLError($db);
-                    throw new \Exception('Gagal update data charger: ' . $errorMsg);
+                if ($tableName) {
+                    // Update the selected component record to attach to this unit
+                    $updateData = [
+                        'inventory_unit_id' => $unitId,
+                        'status' => 'IN_USE',
+                        'storage_location' => 'Terpasang di Unit',
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                    
+                    $updateResult = $db->table($tableName)
+                        ->where('id', $chargerInventoryId)
+                        ->update($updateData);
+                    
+                    if ($updateResult === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        throw new \Exception('Gagal update data charger: ' . $errorMsg);
+                    }
+                    
+                    log_message('info', "[WorkOrder] Attached {$componentType} {$chargerInventoryId} to unit {$unitId}");
                 }
-                
-                log_message('info', "[WorkOrder] Attached charger {$chargerInventoryId} to unit {$unitId}");
             }
             
             // Handle baterai record if selected
             if (!empty($bateraiInventoryId)) {
-                // Update the selected baterai record to attach to this unit
-                $updateData = [
-                    'id_inventory_unit' => $unitId,
-                    'attachment_status' => 'IN_USE',
-                    'kondisi_fisik' => $this->request->getPost('kondisi_fisik_baterai') ?: 'Baik',
-                    'kelengkapan' => $this->request->getPost('kelengkapan_baterai') ?: 'Lengkap',
-                    'catatan_fisik' => $this->request->getPost('catatan_fisik_baterai'),
-                    'lokasi_penyimpanan' => 'Terpasang di Unit',
-                    'updated_at' => date('Y-m-d H:i:s')
-                ];
+                // Determine which table this component is in
+                $componentType = $componentHelper->detectComponentType($bateraiInventoryId);
+                $tableName = match($componentType) {
+                    'battery' => 'inventory_batteries',
+                    'charger' => 'inventory_chargers',
+                    'attachment' => 'inventory_attachments',
+                    default => null
+                };
                 
-                $updateResult = $db->table('inventory_attachment')
-                    ->where('id_inventory_attachment', $bateraiInventoryId)
-                    ->update($updateData);
-                
-                if ($updateResult === false) {
-                    $errorMsg = $this->getMySQLError($db);
-                    throw new \Exception('Gagal update data baterai: ' . $errorMsg);
+                if ($tableName) {
+                    // Update the selected component record to attach to this unit
+                    $updateData = [
+                        'inventory_unit_id' => $unitId,
+                        'status' => 'IN_USE',
+                        'storage_location' => 'Terpasang di Unit',
+                        'updated_at' => date('Y-m-d H:i:s')
+                    ];
+                    
+                    $updateResult = $db->table($tableName)
+                        ->where('id', $bateraiInventoryId)
+                        ->update($updateData);
+                    
+                    if ($updateResult === false) {
+                        $errorMsg = $this->getMySQLError($db);
+                        throw new \Exception('Gagal update data baterai: ' . $errorMsg);
+                    }
+                    
+                    log_message('info', "[WorkOrder] Attached {$componentType} {$bateraiInventoryId} to unit {$unitId}");
                 }
-                
-                log_message('info', "[WorkOrder] Attached baterai {$bateraiInventoryId} to unit {$unitId}");
             }
 
             // Handle unit accessories and hour meter update
@@ -3364,52 +3576,48 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
             
             // Handle charger record if selected with SWAP logic
             if (!empty($chargerInventoryId)) {
-                // Get charger_id from the inventory_attachment record
-                $chargerRecord = $db->table('inventory_attachment')
-                    ->select('charger_id')
-                    ->where('id_inventory_attachment', $chargerInventoryId)
+                // Get charger_type_id from the inventory_chargers record
+                $chargerRecord = $db->table('inventory_chargers')
+                    ->select('charger_type_id')
+                    ->where('id', $chargerInventoryId)
                     ->get()
                     ->getRowArray();
                 
-                $chargerId = $chargerRecord ? $chargerRecord['charger_id'] : null;
+                $chargerId = $chargerRecord ? $chargerRecord['charger_type_id'] : null;
                 
                 if (!empty($chargerId)) {
                     // Check if this charger is currently attached to another unit (SWAP scenario)
-                    $existingChargerUnit = $db->table('inventory_attachment')
-                        ->select('id_inventory_attachment, id_inventory_unit, tipe_item, attachment_status')
-                        ->where('charger_id', $chargerId)
-                        ->where('tipe_item', 'charger')
-                        ->where('id_inventory_unit !=', $unitId)
-                        ->where('attachment_status', 'IN_USE')
+                    $existingChargerUnit = $db->table('inventory_chargers')
+                        ->select('id, inventory_unit_id, status')
+                        ->where('charger_type_id', $chargerId)
+                        ->where('inventory_unit_id !=', $unitId)
+                        ->where('status', 'IN_USE')
                         ->get()
                         ->getRowArray();
                 
                 if ($existingChargerUnit) {
                     // SWAP: Charger is currently attached to another unit
-                    $fromUnitId = $existingChargerUnit['id_inventory_unit'];
-                    $recordId = $existingChargerUnit['id_inventory_attachment'];
+                    $fromUnitId = $existingChargerUnit['inventory_unit_id'];
+                    $recordId = $existingChargerUnit['id'];
                     
                     log_message('info', "[WorkOrder] Swapping charger {$chargerId} from unit {$fromUnitId} to unit {$unitId}");
                     
-                    // Use the swap method from InventoryAttachmentModel
-                    // Note: This method throws exception if validation fails (e.g., charger on non-electric unit)
-                    try {
-                        $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
-                        
-                        if (!$swapSuccess) {
-                            throw new \Exception('Gagal melakukan swap charger dari unit lain');
-                        }
-                    } catch (\Exception $swapEx) {
-                        // Re-throw with user-friendly message
-                        throw new \Exception('Gagal melakukan swap charger: ' . $swapEx->getMessage());
-                    }
+                    // Manual swap: detach from old unit, attach to new unit
+                    $db->table('inventory_chargers')
+                        ->where('id', $recordId)
+                        ->update([
+                            'inventory_unit_id' => $unitId,
+                            'status' => 'IN_USE',
+                            'storage_location' => 'Terpasang di Unit',
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
                     
                     // Update SN if provided
                     $snCharger = $this->request->getPost('sn_charger');
                     if (!empty($snCharger)) {
-                        $db->table('inventory_attachment')
-                            ->where('id_inventory_attachment', $recordId)
-                            ->update(['sn_charger' => $snCharger]);
+                        $db->table('inventory_chargers')
+                            ->where('id', $recordId)
+                            ->update(['serial_number' => $snCharger]);
                     }
                     
                     // Send swap notification if function exists
@@ -3437,103 +3645,56 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         ]);
                     }
                 } else {
-                    // NOT SWAP: Charger is available or this is new charger
-                    // Validate charger_id exists in charger table
-                    $chargerExists = $db->table('charger')
-                        ->where('id_charger', $chargerId)
-                        ->countAllResults() > 0;
-                    
-                    if (!$chargerExists) {
-                        // Skip if charger doesn't exist
-                    } else {
-                        $chargerData = [
-                            'id_inventory_unit' => $unitId,
-                            'tipe_item' => 'charger',
-                            'charger_id' => $chargerId,
-                            'sn_charger' => $this->request->getPost('sn_charger'),
-                            'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
-                            'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
-                            'catatan_fisik' => $this->request->getPost('catatan_fisik'),
-                            'attachment_status' => 'IN_USE',
-                            'lokasi_penyimpanan' => 'Terpasang di Unit',
-                            'created_at' => date('Y-m-d H:i:s')
-                        ];
-                    
-                        // Preserve po_id and catatan_inventory if they existed
-                        if (isset($existingMap['charger'])) {
-                            if (!empty($existingMap['charger']['po_id'])) {
-                                $chargerData['po_id'] = $existingMap['charger']['po_id'];
-                            }
-                            if (!empty($existingMap['charger']['catatan_inventory'])) {
-                                $chargerData['catatan_inventory'] = $existingMap['charger']['catatan_inventory'];
-                            }
-                            // Preserve created_at if updating existing record
-                            if (!empty($existingMap['charger']['created_at'])) {
-                                $chargerData['created_at'] = $existingMap['charger']['created_at'];
-                                $chargerData['updated_at'] = date('Y-m-d H:i:s');
-                            }
-                        }
-
-                        $insertResult = $db->table('inventory_attachment')->insert($chargerData);
-                        
-                        if (!$insertResult) {
-                            $errorMsg = $this->getMySQLError($db);
-                            log_message('error', 'Failed to insert charger data. Error: ' . $errorMsg);
-                            throw new \Exception('Gagal menyimpan data charger: ' . $errorMsg);
-                        }
-                    }
+                    // NOT SWAP: Charger is available - no insert needed, already attached above
+                    log_message('info', "[WorkOrder] Charger {$chargerInventoryId} attached to unit {$unitId} (no swap)");
                 }
             }
             }
             
             // Handle baterai record if selected with SWAP logic
             if (!empty($bateraiInventoryId)) {
-                // Get baterai_id from the inventory_attachment record
-                $bateraiRecord = $db->table('inventory_attachment')
-                    ->select('baterai_id')
-                    ->where('id_inventory_attachment', $bateraiInventoryId)
+                // Get battery_type_id from the inventory_batteries record
+                $bateraiRecord = $db->table('inventory_batteries')
+                    ->select('battery_type_id')
+                    ->where('id', $bateraiInventoryId)
                     ->get()
                     ->getRowArray();
                 
-                $bateraiId = $bateraiRecord ? $bateraiRecord['baterai_id'] : null;
+                $bateraiId = $bateraiRecord ? $bateraiRecord['battery_type_id'] : null;
                 
                 if (!empty($bateraiId)) {
                 // Check if this baterai is currently attached to another unit (SWAP scenario)
-                $existingBateraiUnit = $db->table('inventory_attachment')
-                    ->select('id_inventory_attachment, id_inventory_unit, tipe_item, attachment_status')
-                    ->where('baterai_id', $bateraiId)
-                    ->where('tipe_item', 'baterai')
-                    ->where('id_inventory_unit !=', $unitId)
-                    ->where('attachment_status', 'IN_USE')
+                $existingBateraiUnit = $db->table('inventory_batteries')
+                    ->select('id, inventory_unit_id, status')
+                    ->where('battery_type_id', $bateraiId)
+                    ->where('inventory_unit_id !=', $unitId)
+                    ->where('status', 'IN_USE')
                     ->get()
                     ->getRowArray();
                 
                 if ($existingBateraiUnit) {
                     // SWAP: Baterai is currently attached to another unit
-                    $fromUnitId = $existingBateraiUnit['id_inventory_unit'];
-                    $recordId = $existingBateraiUnit['id_inventory_attachment'];
+                    $fromUnitId = $existingBateraiUnit['inventory_unit_id'];
+                    $recordId = $existingBateraiUnit['id'];
                     
                     log_message('info', "[WorkOrder] Swapping baterai {$bateraiId} from unit {$fromUnitId} to unit {$unitId}");
                     
-                    // Use the swap method from InventoryAttachmentModel
-                    // Note: This method throws exception if validation fails (e.g., baterai on non-electric unit)
-                    try {
-                        $swapSuccess = $attachmentModel->swapAttachmentBetweenUnits($recordId, $fromUnitId, $unitId, 'Work Order Verification');
-                        
-                        if (!$swapSuccess) {
-                            throw new \Exception('Gagal melakukan swap baterai dari unit lain');
-                        }
-                    } catch (\Exception $swapEx) {
-                        // Re-throw with user-friendly message
-                        throw new \Exception('Gagal melakukan swap baterai: ' . $swapEx->getMessage());
-                    }
+                    // Manual swap: detach from old unit, attach to new unit
+                    $db->table('inventory_batteries')
+                        ->where('id', $recordId)
+                        ->update([
+                            'inventory_unit_id' => $unitId,
+                            'status' => 'IN_USE',
+                            'storage_location' => 'Terpasang di Unit',
+                            'updated_at' => date('Y-m-d H:i:s')
+                        ]);
                     
                     // Update SN if provided
                     $snBaterai = $this->request->getPost('sn_baterai');
                     if (!empty($snBaterai)) {
-                        $db->table('inventory_attachment')
-                            ->where('id_inventory_attachment', $recordId)
-                            ->update(['sn_baterai' => $snBaterai]);
+                        $db->table('inventory_batteries')
+                            ->where('id', $recordId)
+                            ->update(['serial_number' => $snBaterai]);
                     }
                     
                     // Send swap notification if function exists
@@ -3561,51 +3722,8 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                         ]);
                     }
                 } else {
-                    // NOT SWAP: Baterai is available or this is new baterai
-                    // Validate baterai_id exists in baterai table (primary key is 'id', not 'id_baterai')
-                    $bateraiExists = $db->table('baterai')
-                        ->where('id', $bateraiId)
-                        ->countAllResults() > 0;
-                    
-                    if (!$bateraiExists) {
-                        // Skip if baterai doesn't exist
-                    } else {
-                        $bateraiData = [
-                            'id_inventory_unit' => $unitId,
-                            'tipe_item' => 'baterai',
-                            'baterai_id' => $bateraiId,
-                            'sn_baterai' => $this->request->getPost('sn_baterai'),
-                            'kondisi_fisik' => $this->request->getPost('kondisi_fisik') ?: 'Baik',
-                            'kelengkapan' => $this->request->getPost('kelengkapan') ?: 'Lengkap',
-                            'catatan_fisik' => $this->request->getPost('catatan_fisik'),
-                            'attachment_status' => 'IN_USE',
-                            'lokasi_penyimpanan' => 'Terpasang di Unit',
-                            'created_at' => date('Y-m-d H:i:s')
-                        ];
-                    
-                        // Preserve po_id and catatan_inventory if they existed
-                        if (isset($existingMap['baterai'])) {
-                            if (!empty($existingMap['baterai']['po_id'])) {
-                                $bateraiData['po_id'] = $existingMap['baterai']['po_id'];
-                            }
-                            if (!empty($existingMap['baterai']['catatan_inventory'])) {
-                                $bateraiData['catatan_inventory'] = $existingMap['baterai']['catatan_inventory'];
-                            }
-                            // Preserve created_at if updating existing record
-                            if (!empty($existingMap['baterai']['created_at'])) {
-                                $bateraiData['created_at'] = $existingMap['baterai']['created_at'];
-                                $bateraiData['updated_at'] = date('Y-m-d H:i:s');
-                            }
-                        }
-
-                        $insertResult = $db->table('inventory_attachment')->insert($bateraiData);
-                        
-                        if (!$insertResult) {
-                            $errorMsg = $this->getMySQLError($db);
-                            log_message('error', 'Failed to insert baterai data. Error: ' . $errorMsg);
-                            throw new \Exception('Gagal menyimpan data baterai: ' . $errorMsg);
-                        }
-                    }
+                    // NOT SWAP: Baterai is available - no insert needed, already attached above
+                    log_message('info', "[WorkOrder] Baterai {$bateraiInventoryId} attached to unit {$unitId} (no swap)");
                 }
             }
             }
@@ -3897,8 +4015,8 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                 $fromStatusId = $currentWorkOrder->status_id ?? null;
             }
 
-            // Load return model for auto-creating return records
-            $returnModel = new \App\Models\WorkOrderSparepartReturnModel();
+            // Load DB builder for auto-creating return records
+            $returnDb = \Config\Database::connect();
 
             // Update used spareparts quantities and create return records if needed
             $usedSpareparts = $this->request->getPost('used_spareparts') ?: [];
@@ -3944,7 +4062,7 @@ $attachmentInventoryId = $this->request->getPost('attachment_id'); // This is ac
                                 'return_notes' => 'Auto-generated from sparepart validation'
                             ];
 
-                            $returnModel->insert($returnData);
+                            $returnDb->table('work_order_sparepart_returns')->insert($returnData);
                             log_message('info', "Auto-created return record for WO {$workOrderId}, Sparepart: {$originalSparepart['sparepart_name']}, Return Qty: {$quantityReturn}");
                         } else if ($quantityReturn > 0 && $isFromWarehouse == 0) {
                             // ← NEW: Log skip for non-warehouse sparepart

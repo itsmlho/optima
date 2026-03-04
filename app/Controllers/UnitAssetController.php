@@ -101,7 +101,7 @@ class UnitAssetController extends BaseController
             $lokasiFilter = $this->request->getPost('lokasi_filter');
 
             $builder = $db->table('inventory_unit iu');
-            $builder->select('iu.no_unit, iu.serial_number as serial_number_po, iu.lokasi_unit, iu.status_aset, iu.status_unit_id, iu.kontrak_id, iu.tanggal_masuk, ' .
+            $builder->select('iu.no_unit, iu.serial_number as serial_number_po, iu.lokasi_unit, iu.status_aset, iu.status_unit_id, ku.kontrak_id, iu.tanggal_masuk, ' .
                 'mu.merk_unit, mu.model_unit, CONCAT("Forklift ", tu.jenis, " ", tu.tipe) as nama_tipe_unit, ' .
                 'd.nama_departemen, su.status_unit AS status_unit_name, ' .
                 'cl.location_name as customer_location_name, cl.city as customer_city, cl.address as customer_address, ' .
@@ -110,7 +110,8 @@ class UnitAssetController extends BaseController
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
             $builder->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left');
-            $builder->join('kontrak k', 'k.id = iu.kontrak_id', 'left');
+            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
+            $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
             $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
             $builder->join('customers c', 'c.id = cl.customer_id', 'left');
 

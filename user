@@ -1,0 +1,16 @@
+=== marketing_name data ===
+No marketing_name data found
+
+=== Matching with CONCAT(first_name, last_name) ===
+Matched: 0, Unmatched: 0
+
+=== FK rules on contract_amendments/contract_po_history ===
+contract_po_history: contract_po_history_ibfk_1 DELETE=CASCADE UPDATE=NO ACTION
+contract_po_history: contract_po_history_ibfk_2 DELETE=SET NULL UPDATE=NO ACTION
+contract_amendments: fk_amendments_contract DELETE=CASCADE UPDATE=CASCADE
+contract_amendments: fk_ca_contract DELETE=CASCADE UPDATE=CASCADE
+contract_po_history: fk_cph_contract DELETE=CASCADE UPDATE=CASCADE
+
+=== FK on kontrak.customer_location_id DELETE_RULE ===
+fk_kontrak_customer_location: DELETE=RESTRICT UPDATE=CASCADE
+fk_k_customer_loc: DELETE=SET NULL UPDATE=CASCADE

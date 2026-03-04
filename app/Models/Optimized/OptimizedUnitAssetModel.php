@@ -440,7 +440,8 @@ class OptimizedUnitAssetModel extends UnitAssetModel
         LEFT JOIN tipe_unit tu ON tu.id_tipe_unit = iu.tipe_unit_id
         LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
         LEFT JOIN kapasitas k_info ON k_info.id_kapasitas = iu.kapasitas_unit_id
-        LEFT JOIN kontrak k ON iu.kontrak_id = k.id
+        LEFT JOIN kontrak_unit ku_v ON ku_v.unit_id = iu.id_inventory_unit AND ku_v.status IN ('ACTIVE','TEMP_ACTIVE') AND ku_v.is_temporary = 0
+        LEFT JOIN kontrak k ON ku_v.kontrak_id = k.id
         LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
         LEFT JOIN customers c ON cl.customer_id = c.id
         ";

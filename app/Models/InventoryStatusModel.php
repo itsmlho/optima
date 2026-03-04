@@ -23,22 +23,55 @@ class InventoryStatusModel extends Model
             $this->db->transBegin();
 
             // Update inventory_unit status to RENTAL (id: 3)
-            // Cover both cases: units linked via kontrak_spesifikasi_id and units linked directly via kontrak_id
+            // Cover both cases: units linked via kontrak_spesifikasi_id and units linked via kontrak_unit junction
             $this->db->query("
                 UPDATE inventory_unit iu
                 LEFT JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
                 SET iu.status_unit_id = 3
-                WHERE (ks.kontrak_id = ? OR iu.kontrak_id = ?) AND iu.status_unit_id != 3
+                WHERE (ks.kontrak_id = ? OR EXISTS (
+                    SELECT 1 FROM kontrak_unit ku 
+                    WHERE ku.unit_id = iu.id_inventory_unit AND ku.kontrak_id = ? 
+                    AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                )) AND iu.status_unit_id != 3
             ", [$kontrakId, $kontrakId]);
 
-            // Update inventory_attachment status to IN_USE for items linked to this contract
-            // This covers attachments referenced by inventory_unit regardless of how the unit is linked
+            // Update inventory_batteries status to IN_USE for items linked to this contract
             $this->db->query("
-                UPDATE inventory_attachment ia
-                JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
+                UPDATE inventory_batteries ib
+                JOIN inventory_unit iu ON ib.inventory_unit_id = iu.id_inventory_unit
                 LEFT JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
-                SET ia.attachment_status = 'IN_USE'
-                WHERE (ks.kontrak_id = ? OR iu.kontrak_id = ?) AND ia.attachment_status != 'IN_USE'
+                SET ib.status = 'IN_USE'
+                WHERE (ks.kontrak_id = ? OR EXISTS (
+                    SELECT 1 FROM kontrak_unit ku 
+                    WHERE ku.unit_id = iu.id_inventory_unit AND ku.kontrak_id = ? 
+                    AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                )) AND ib.status != 'IN_USE'
+            ", [$kontrakId, $kontrakId]);
+            
+            // Update inventory_chargers status to IN_USE for items linked to this contract
+            $this->db->query("
+                UPDATE inventory_chargers ic
+                JOIN inventory_unit iu ON ic.inventory_unit_id = iu.id_inventory_unit
+                LEFT JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                SET ic.status = 'IN_USE'
+                WHERE (ks.kontrak_id = ? OR EXISTS (
+                    SELECT 1 FROM kontrak_unit ku 
+                    WHERE ku.unit_id = iu.id_inventory_unit AND ku.kontrak_id = ? 
+                    AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                )) AND ic.status != 'IN_USE'
+            ", [$kontrakId, $kontrakId]);
+            
+            // Update inventory_attachments status to IN_USE for items linked to this contract
+            $this->db->query("
+                UPDATE inventory_attachments ia
+                JOIN inventory_unit iu ON ia.inventory_unit_id = iu.id_inventory_unit
+                LEFT JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                SET ia.status = 'IN_USE'
+                WHERE (ks.kontrak_id = ? OR EXISTS (
+                    SELECT 1 FROM kontrak_unit ku 
+                    WHERE ku.unit_id = iu.id_inventory_unit AND ku.kontrak_id = ? 
+                    AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                )) AND ia.status != 'IN_USE'
             ", [$kontrakId, $kontrakId]);
 
             // Handle departemen-specific attachment rules
@@ -72,15 +105,37 @@ class InventoryStatusModel extends Model
                 WHERE ks.kontrak_id = ? AND iu.status_unit_id = 3
             ", [$kontrakId]);
 
-            // Update inventory_attachment status to AVAILABLE when contract ends (detach from unit)
+            // Update inventory_batteries status to AVAILABLE when contract ends
             $this->db->query("
-                UPDATE inventory_attachment ia
-                JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
+                UPDATE inventory_batteries ib
+                JOIN inventory_unit iu ON ib.inventory_unit_id = iu.id_inventory_unit
                 JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
-                SET ia.attachment_status = 'AVAILABLE',
-                    ia.id_inventory_unit = NULL,
-                    ia.lokasi_penyimpanan = 'Returned from contract'
-                WHERE ks.kontrak_id = ? AND ia.attachment_status = 'IN_USE'
+                SET ib.status = 'AVAILABLE',
+                    ib.inventory_unit_id = NULL,
+                    ib.storage_location = 'Returned from contract'
+                WHERE ks.kontrak_id = ? AND ib.status = 'IN_USE'
+            ", [$kontrakId]);
+            
+            // Update inventory_chargers status to AVAILABLE when contract ends
+            $this->db->query("
+                UPDATE inventory_chargers ic
+                JOIN inventory_unit iu ON ic.inventory_unit_id = iu.id_inventory_unit
+                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                SET ic.status = 'AVAILABLE',
+                    ic.inventory_unit_id = NULL,
+                    ic.storage_location = 'Returned from contract'
+                WHERE ks.kontrak_id = ? AND ic.status = 'IN_USE'
+            ", [$kontrakId]);
+            
+            // Update inventory_attachments status to AVAILABLE when contract ends
+            $this->db->query("
+                UPDATE inventory_attachments ia
+                JOIN inventory_unit iu ON ia.inventory_unit_id = iu.id_inventory_unit
+                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                SET ia.status = 'AVAILABLE',
+                    ia.inventory_unit_id = NULL,
+                    ia.storage_location = 'Returned from contract'
+                WHERE ks.kontrak_id = ? AND ia.status = 'IN_USE'
             ", [$kontrakId]);
 
             $this->db->transCommit();
@@ -112,13 +167,31 @@ class InventoryStatusModel extends Model
                 WHERE ks.kontrak_id = ? AND iu.status_unit_id = 4
             ", [$kontrakId]);
 
-            // Update inventory_attachment status to AVAILABLE after DI completed
+            // Update inventory_batteries status to AVAILABLE after DI completed
             $this->db->query("
-                UPDATE inventory_attachment ia
-                JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
+                UPDATE inventory_batteries ib
+                JOIN inventory_unit iu ON ib.inventory_unit_id = iu.id_inventory_unit
                 JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
-                SET ia.attachment_status = 'AVAILABLE'
-                WHERE ks.kontrak_id = ? AND ia.attachment_status = 'IN_USE'
+                SET ib.status = 'AVAILABLE'
+                WHERE ks.kontrak_id = ? AND ib.status = 'IN_USE'
+            ", [$kontrakId]);
+            
+            // Update inventory_chargers status to AVAILABLE after DI completed
+            $this->db->query("
+                UPDATE inventory_chargers ic
+                JOIN inventory_unit iu ON ic.inventory_unit_id = iu.id_inventory_unit
+                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                SET ic.status = 'AVAILABLE'
+                WHERE ks.kontrak_id = ? AND ic.status = 'IN_USE'
+            ", [$kontrakId]);
+            
+            // Update inventory_attachments status to AVAILABLE after DI completed
+            $this->db->query("
+                UPDATE inventory_attachments ia
+                JOIN inventory_unit iu ON ia.inventory_unit_id = iu.id_inventory_unit
+                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                SET ia.status = 'AVAILABLE'
+                WHERE ks.kontrak_id = ? AND ia.status = 'IN_USE'
             ", [$kontrakId]);
 
             $this->db->transCommit();
@@ -143,26 +216,37 @@ class InventoryStatusModel extends Model
                 iu.id_inventory_unit,
                 iu.no_unit,
                 su.status_unit as unit_status,
-                COUNT(ia.id_inventory_attachment) as attachment_count
+                (
+                    (SELECT COUNT(*) FROM inventory_batteries WHERE inventory_unit_id = iu.id_inventory_unit) +
+                    (SELECT COUNT(*) FROM inventory_chargers WHERE inventory_unit_id = iu.id_inventory_unit) +
+                    (SELECT COUNT(*) FROM inventory_attachments WHERE inventory_unit_id = iu.id_inventory_unit)
+                ) as attachment_count
             FROM inventory_unit iu
             JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
             JOIN status_unit su ON iu.status_unit_id = su.id_status
-            LEFT JOIN inventory_attachment ia ON iu.id_inventory_unit = ia.id_inventory_unit
             WHERE ks.kontrak_id = ?
             GROUP BY iu.id_inventory_unit
         ", [$kontrakId])->getResultArray();
 
         $attachments = $this->db->query("
-            SELECT 
-                ia.id_inventory_attachment,
-                ia.tipe_item,
-                ia.attachment_status,
-                iu.no_unit
-            FROM inventory_attachment ia
-            JOIN inventory_unit iu ON ia.id_inventory_unit = iu.id_inventory_unit
+            SELECT id, 'battery' as tipe_item, status, iu.no_unit
+            FROM inventory_batteries ib
+            JOIN inventory_unit iu ON ib.inventory_unit_id = iu.id_inventory_unit
             JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
             WHERE ks.kontrak_id = ?
-        ", [$kontrakId])->getResultArray();
+            UNION ALL
+            SELECT id, 'charger' as tipe_item, status, iu.no_unit
+            FROM inventory_chargers ic
+            JOIN inventory_unit iu ON ic.inventory_unit_id = iu.id_inventory_unit
+            JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+            WHERE ks.kontrak_id = ?
+            UNION ALL
+            SELECT id, 'attachment' as tipe_item, status, iu.no_unit
+            FROM inventory_attachments ia
+            JOIN inventory_unit iu ON ia.inventory_unit_id = iu.id_inventory_unit
+            JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+            WHERE ks.kontrak_id = ?
+        ", [$kontrakId, $kontrakId, $kontrakId])->getResultArray();
 
         return [
             'units' => $units,
@@ -177,35 +261,53 @@ class InventoryStatusModel extends Model
     public function handleDepartmentAttachmentRules($kontrakId)
     {
         try {
-            // Get units with GASOLINE or DIESEL departments that have charger/battery attachments
-            $unitsWithInvalidAttachments = $this->db->query("
+            // Get units with GASOLINE or DIESEL departments that have charger/battery components
+            $unitsWithInvalidBatteries = $this->db->query("
                 SELECT 
                     iu.id_inventory_unit,
                     iu.no_unit,
                     d.nama_departemen,
-                    ia.id_inventory_attachment,
-                    ia.tipe_item
+                    ib.id,
+                    'battery' as tipe_item
                 FROM inventory_unit iu
                 JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
                 JOIN departemen d ON iu.departemen_id = d.id_departemen
-                JOIN inventory_attachment ia ON iu.id_inventory_unit = ia.id_inventory_unit
+                JOIN inventory_batteries ib ON iu.id_inventory_unit = ib.inventory_unit_id
                 WHERE ks.kontrak_id = ?
                 AND d.nama_departemen IN ('GASOLINE', 'DIESEL')
-                AND ia.tipe_item IN ('charger', 'battery')
             ", [$kontrakId])->getResultArray();
+            
+            $unitsWithInvalidChargers = $this->db->query("
+                SELECT 
+                    iu.id_inventory_unit,
+                    iu.no_unit,
+                    d.nama_departemen,
+                    ic.id,
+                    'charger' as tipe_item
+                FROM inventory_unit iu
+                JOIN kontrak_spesifikasi ks ON iu.kontrak_spesifikasi_id = ks.id
+                JOIN departemen d ON iu.departemen_id = d.id_departemen
+                JOIN inventory_chargers ic ON iu.id_inventory_unit = ic.inventory_unit_id
+                WHERE ks.kontrak_id = ?
+                AND d.nama_departemen IN ('GASOLINE', 'DIESEL')
+            ", [$kontrakId])->getResultArray();
+            
+            $unitsWithInvalidAttachments = array_merge($unitsWithInvalidBatteries, $unitsWithInvalidChargers);
 
             if (!empty($unitsWithInvalidAttachments)) {
                 log_message('info', "Found " . count($unitsWithInvalidAttachments) . " invalid attachments for GASOLINE/DIESEL units in contract {$kontrakId}");
                 
                 foreach ($unitsWithInvalidAttachments as $attachment) {
                     // Detach charger/battery from GASOLINE/DIESEL units
+                    $tableName = $attachment['tipe_item'] === 'battery' ? 'inventory_batteries' : 'inventory_chargers';
+                    
                     $this->db->query("
-                        UPDATE inventory_attachment 
-                        SET id_inventory_unit = NULL,
-                            attachment_status = 'AVAILABLE',
-                            lokasi_penyimpanan = 'Detached from GASOLINE/DIESEL unit'
-                        WHERE id_inventory_attachment = ?
-                    ", [$attachment['id_inventory_attachment']]);
+                        UPDATE {$tableName}
+                        SET inventory_unit_id = NULL,
+                            status = 'AVAILABLE',
+                            storage_location = 'Detached from GASOLINE/DIESEL unit'
+                        WHERE id = ?
+                    ", [$attachment['id']]);
                     
                     log_message('info', "Detached {$attachment['tipe_item']} from {$attachment['nama_departemen']} unit {$attachment['no_unit']}");
                 }
@@ -258,16 +360,25 @@ class InventoryStatusModel extends Model
                 }
 
                 // Link attachment to unit
+                $tableName = match($attachment['tipe_item']) {
+                    'battery' => 'inventory_batteries',
+                    'charger' => 'inventory_chargers',
+                    'attachment' => 'inventory_attachments',
+                    default => null
+                };
+                
+                if (!$tableName) continue;
+                
                 $this->db->query("
-                    UPDATE inventory_attachment 
-                    SET id_inventory_unit = ?,
-                        attachment_status = 'IN_USE',
-                        lokasi_penyimpanan = ?
-                    WHERE id_inventory_attachment = ?
+                    UPDATE {$tableName}
+                    SET inventory_unit_id = ?,
+                        status = 'IN_USE',
+                        storage_location = ?
+                    WHERE id = ?
                 ", [
                     $spkData['id_inventory_unit'],
                     "Terpasang di Unit {$spkData['no_unit']}",
-                    $attachment['id_inventory_attachment']
+                    $attachment['id']
                 ]);
 
                 log_message('info', "Linked {$attachment['tipe_item']} to unit {$spkData['no_unit']}");
@@ -295,12 +406,26 @@ class InventoryStatusModel extends Model
         // Example: Get from spk_fabrication_attachments table or similar
         return $this->db->query("
             SELECT 
-                ia.id_inventory_attachment,
-                ia.tipe_item
+                ib.id,
+                'battery' as tipe_item
             FROM spk_fabrication_attachments sfa
-            JOIN inventory_attachment ia ON sfa.attachment_id = ia.id_inventory_attachment
+            JOIN inventory_batteries ib ON sfa.attachment_id = ib.id
             WHERE sfa.spk_id = ?
-        ", [$spkId])->getResultArray();
+            UNION ALL
+            SELECT 
+                ic.id,
+                'charger' as tipe_item
+            FROM spk_fabrication_attachments sfa
+            JOIN inventory_chargers ic ON sfa.attachment_id = ic.id
+            WHERE sfa.spk_id = ?
+            UNION ALL
+            SELECT 
+                ia.id,
+                'attachment' as tipe_item
+            FROM spk_fabrication_attachments sfa
+            JOIN inventory_attachments ia ON sfa.attachment_id = ia.id
+            WHERE sfa.spk_id = ?
+        ", [$spkId, $spkId, $spkId])->getResultArray();
     }
 
     /**

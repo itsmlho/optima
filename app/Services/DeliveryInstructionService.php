@@ -48,7 +48,7 @@ class DeliveryInstructionService
             ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
             ->join('kontrak k', 'k.id = ku.kontrak_id')
             ->where('ku.kontrak_id', $kontrakId)
-            ->where('ku.status', 'AKTIF');
+            ->where('ku.status', 'ACTIVE');
 
         // For TARIK operations, only show units that are currently deployed
         if ($jenisPerintahKode === JenisPerintahKerja::TARIK) {
@@ -102,7 +102,7 @@ class DeliveryInstructionService
                 kontrak.lokasi,
                 jpk.nama as jenis_perintah_nama,
                 tpk.nama as tujuan_perintah_nama,
-                (SELECT COUNT(*) FROM kontrak_unit WHERE kontrak_id = kontrak.id AND status = "AKTIF") as total_units_in_contract
+                (SELECT COUNT(*) FROM kontrak_unit WHERE kontrak_id = kontrak.id AND status = "ACTIVE") as total_units_in_contract
             ')
             ->join('kontrak', 'kontrak.id = spk.kontrak_id', 'left')
             ->join('jenis_perintah_kerja jpk', 'jpk.id = spk.jenis_perintah_kerja_id', 'left')
@@ -113,16 +113,16 @@ class DeliveryInstructionService
         if ($tujuanPerintahKode) {
             $contractStatusFilter = TujuanPerintahKerja::getContractStatusFilter($tujuanPerintahKode);
             
-            if ($contractStatusFilter === 'AKTIF') {
-                $query->where('kontrak.status', 'AKTIF')
+            if ($contractStatusFilter === 'ACTIVE') {
+                $query->where('kontrak.status', 'ACTIVE')
                       ->where('kontrak.tanggal_selesai >=', date('Y-m-d'));
-            } elseif ($contractStatusFilter === 'NON_AKTIF') {
-                $query->where('kontrak.status', 'NON_AKTIF')
+            } elseif ($contractStatusFilter === 'EXPIRED') {
+                $query->where('kontrak.status', 'EXPIRED')
                       ->orWhere('kontrak.tanggal_selesai <', date('Y-m-d'));
             } elseif ($contractStatusFilter === 'BARU') {
                 $query->groupStart()
                       ->where('spk.kontrak_id IS NULL')
-                      ->orWhere('kontrak.status', 'DRAFT')
+                      ->orWhere('kontrak.status', 'PENDING')
                       ->groupEnd();
             }
         }
@@ -130,7 +130,7 @@ class DeliveryInstructionService
         // For TARIK and TUKAR, ensure SPK has active contract with units
         if (in_array($jenisPerintahKode, [JenisPerintahKerja::TARIK, JenisPerintahKerja::TUKAR])) {
             $query->where('spk.kontrak_id IS NOT NULL')
-                  ->where('kontrak.status', 'AKTIF')
+                  ->where('kontrak.status', 'ACTIVE')
                   ->having('total_units_in_contract >', 0);
         }
 
@@ -271,7 +271,7 @@ class DeliveryInstructionService
         // Get contract info before disconnecting
         $contractUnit = $this->db->table('kontrak_unit')
             ->where('unit_id', $unitId)
-            ->where('status', 'AKTIF')
+            ->where('status', 'ACTIVE')
             ->get()
             ->getRowArray();
 
@@ -286,10 +286,12 @@ class DeliveryInstructionService
             $isTemporary = in_array($tujuanId, [6, 7]); // MAINTENANCE, RUSAK are temporary
             $isRelocation = ($tujuanId == 5); // PINDAH_LOKASI
             
-            // Get customer/location info before potential disconnect
-            $unitInfo = $this->db->table('inventory_unit')
-                ->select('kontrak_id, customer_id, customer_location_id')
-                ->where('id_inventory_unit', $unitId)
+            // Get customer/location info from kontrak_unit junction (Phase 1A refactored)
+            $unitInfo = $this->db->table('kontrak_unit ku')
+                ->select('ku.kontrak_id, k.customer_id, k.customer_location_id')
+                ->join('kontrak k', 'k.id = ku.kontrak_id')
+                ->where('ku.unit_id', $unitId)
+                ->where('ku.status', 'ACTIVE')
                 ->get()
                 ->getRowArray();
             
@@ -345,7 +347,8 @@ class DeliveryInstructionService
                     ]);
                 
                 if ($shouldDisconnectFKs) {
-                    // Fully disconnect all FKs
+                    // Fully disconnect: update workflow status
+                    // TODO Step 4: Remove kontrak_id/customer_id/customer_location_id after column drop
                     $this->db->table('inventory_unit')
                         ->where('id_inventory_unit', $unitId)
                         ->update([
@@ -374,15 +377,17 @@ class DeliveryInstructionService
         // Get old contract info
         $oldContractUnit = $this->db->table('kontrak_unit')
             ->where('unit_id', $oldUnitId)
-            ->where('status', 'AKTIF')
+            ->where('status', 'ACTIVE')
             ->get()
             ->getRowArray();
 
         if ($oldContractUnit) {
-            // Get customer/location info for transfer
-            $oldUnitInfo = $this->db->table('inventory_unit')
-                ->select('kontrak_id, customer_id, customer_location_id')
-                ->where('id_inventory_unit', $oldUnitId)
+            // Get customer/location info from kontrak_unit junction (Phase 1A refactored)
+            $oldUnitInfo = $this->db->table('kontrak_unit ku')
+                ->select('ku.kontrak_id, k.customer_id, k.customer_location_id')
+                ->join('kontrak k', 'k.id = ku.kontrak_id')
+                ->where('ku.unit_id', $oldUnitId)
+                ->where('ku.status', 'ACTIVE')
                 ->get()
                 ->getRowArray();
             
@@ -416,7 +421,8 @@ class DeliveryInstructionService
                 'updated_by' => session('user_id')
             ]);
 
-        // CRITICAL FIX: Disconnect ALL FKs from old unit in inventory_unit
+        // Disconnect old unit: update workflow + dual-write legacy FKs
+        // TODO Step 4: Remove kontrak_id/customer_id/customer_location_id after column drop
         $this->db->table('inventory_unit')
             ->where('id_inventory_unit', $oldUnitId)
             ->update([
@@ -434,14 +440,15 @@ class DeliveryInstructionService
             'kontrak_id' => $oldContractUnit['kontrak_id'],
             'unit_id' => $newUnitId,
             'tanggal_mulai' => date('Y-m-d'),
-            'status' => 'AKTIF',
+            'status' => 'ACTIVE',
             'unit_sebelumnya_id' => $oldUnitId,
             'is_temporary' => false,
             'created_at' => date('Y-m-d H:i:s'),
             'created_by' => session('user_id')
         ]);
 
-        // Transfer ALL FKs to new unit in inventory_unit
+        // Dual-write: transfer legacy FKs to new unit (kontrak_unit INSERT above is the primary)
+        // TODO Step 4: Remove kontrak_id/customer_id/customer_location_id after column drop
         $this->db->table('inventory_unit')
             ->where('id_inventory_unit', $newUnitId)
             ->update([
@@ -496,7 +503,8 @@ class DeliveryInstructionService
             'created_by' => session('user_id')
         ]);
         
-        // Set TEMPORARY FKs on replacement unit
+        // Dual-write: set legacy FKs on replacement unit (kontrak_unit INSERT above is the primary)
+        // TODO Step 4: Remove kontrak_id/customer_id/customer_location_id after column drop
         $this->db->table('inventory_unit')
             ->where('id_inventory_unit', $newUnitId)
             ->update([
@@ -556,11 +564,15 @@ class DeliveryInstructionService
             'RELOKASI' => ['DISEWA', 'BEROPERASI']
         ];
 
-        // Check workflow_status if set, otherwise check legacy status
+        // Check workflow_status if set, otherwise check via kontrak_unit junction
         $currentStatus = $unit['workflow_status'] ?? null;
         if (!$currentStatus) {
-            // Fallback: infer from kontrak relationship
-            $currentStatus = $unit['kontrak_id'] ? 'DISEWA' : 'TERSEDIA';
+            // Fallback: infer from kontrak_unit junction (Phase 1A refactored)
+            $activeKu = $this->db->table('kontrak_unit')
+                ->where('unit_id', $unitId)
+                ->where('status', 'ACTIVE')
+                ->countAllResults();
+            $currentStatus = $activeKu > 0 ? 'DISEWA' : 'TERSEDIA';
         }
 
         return in_array($currentStatus, $allowedStatuses[$jenisPerintah] ?? []);
@@ -603,32 +615,101 @@ class DeliveryInstructionService
      */
     protected function transferAttachments($oldUnitId, $newUnitId)
     {
-        // Get all attachments from old unit
-        $attachments = $this->db->table('inventory_attachment')
-            ->where('id_inventory_unit', $oldUnitId)
+        // Get all attachments/batteries/chargers from old unit
+        $batteries = $this->db->table('inventory_batteries')
+            ->where('inventory_unit_id', $oldUnitId)
+            ->get()
+            ->getResultArray();
+            
+        $chargers = $this->db->table('inventory_chargers')
+            ->where('inventory_unit_id', $oldUnitId)
+            ->get()
+            ->getResultArray();
+            
+        $attachments = $this->db->table('inventory_attachments')
+            ->where('inventory_unit_id', $oldUnitId)
             ->get()
             ->getResultArray();
 
-        foreach ($attachments as $attachment) {
+        // Transfer batteries
+        foreach ($batteries as $battery) {
             // Step 1: Detach from old unit
-            $this->db->table('inventory_attachment')
-                ->where('id_inventory_attachment', $attachment['id_inventory_attachment'])
+            $this->db->table('inventory_batteries')
+                ->where('id', $battery['id'])
                 ->update([
-                    'id_inventory_unit' => null,
+                    'inventory_unit_id' => null,
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
 
             // Step 2: Attach to new unit
-            $this->db->table('inventory_attachment')
-                ->where('id_inventory_attachment', $attachment['id_inventory_attachment'])
+            $this->db->table('inventory_batteries')
+                ->where('id', $battery['id'])
                 ->update([
-                    'id_inventory_unit' => $newUnitId,
+                    'inventory_unit_id' => $newUnitId,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+            // Log the transfer
+            $this->db->table('attachment_transfer_log')->insert([
+                'attachment_id' => $battery['id'],
+                'from_unit_id' => $oldUnitId,
+                'to_unit_id' => $newUnitId,
+                'transfer_type' => 'TUKAR',
+                'triggered_by' => 'DI_WORKFLOW',
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+        }
+        
+        // Transfer chargers
+        foreach ($chargers as $charger) {
+            // Step 1: Detach from old unit
+            $this->db->table('inventory_chargers')
+                ->where('id', $charger['id'])
+                ->update([
+                    'inventory_unit_id' => null,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+            // Step 2: Attach to new unit
+            $this->db->table('inventory_chargers')
+                ->where('id', $charger['id'])
+                ->update([
+                    'inventory_unit_id' => $newUnitId,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+            // Log the transfer
+            $this->db->table('attachment_transfer_log')->insert([
+                'attachment_id' => $charger['id'],
+                'from_unit_id' => $oldUnitId,
+                'to_unit_id' => $newUnitId,
+                'transfer_type' => 'TUKAR',
+                'triggered_by' => 'DI_WORKFLOW',
+                'created_at' => date('Y-m-d H:i:s')
+            ]);
+        }
+        
+        // Transfer attachments
+        foreach ($attachments as $attachment) {
+            // Step 1: Detach from old unit
+            $this->db->table('inventory_attachments')
+                ->where('id', $attachment['id'])
+                ->update([
+                    'inventory_unit_id' => null,
+                    'updated_at' => date('Y-m-d H:i:s')
+                ]);
+
+            // Step 2: Attach to new unit
+            $this->db->table('inventory_attachments')
+                ->where('id', $attachment['id'])
+                ->update([
+                    'inventory_unit_id' => $newUnitId,
                     'updated_at' => date('Y-m-d H:i:s')
                 ]);
 
             // Log the transfer in attachment_transfer_log
             $this->db->table('attachment_transfer_log')->insert([
-                'attachment_id' => $attachment['id_inventory_attachment'],
+                'attachment_id' => $attachment['id'],
                 'from_unit_id' => $oldUnitId,
                 'to_unit_id' => $newUnitId,
                 'transfer_type' => 'TUKAR',
@@ -678,7 +759,7 @@ class DeliveryInstructionService
 
         // Apply unit selection rules based on tujuan perintah
         if ($unitRules['requires_active_contract']) {
-            $query->where('ku.status', 'AKTIF')
+            $query->where('ku.status', 'ACTIVE')
                   ->where('ku.tanggal_selesai >=', date('Y-m-d'));
                   
             // If SPK has specific contract, filter by that contract
@@ -689,7 +770,7 @@ class DeliveryInstructionService
 
         if ($unitRules['requires_inactive_contract']) {
             $query->groupStart()
-                  ->where('ku.status', 'NON_AKTIF')
+                  ->where('ku.status', 'INACTIVE')
                   ->orWhere('ku.tanggal_selesai <', date('Y-m-d'))
                   ->groupEnd();
         }
@@ -778,7 +859,7 @@ class DeliveryInstructionService
 
             if ($spk) {
                 $isExpired = $spk['tanggal_selesai'] && $spk['tanggal_selesai'] < date('Y-m-d');
-                $isInactive = $spk['status'] === 'NON_AKTIF';
+                $isInactive = $spk['status'] === 'EXPIRED';
                 
                 if (!$isExpired && !$isInactive) {
                     $errors[] = 'Untuk TARIK karena habis kontrak, harus memilih SPK dengan kontrak yang sudah berakhir atau non-aktif';
@@ -795,7 +876,7 @@ class DeliveryInstructionService
                 ->get()
                 ->getRowArray();
 
-            if ($spk && $spk['kontrak_id'] && $spk['status'] === 'AKTIF') {
+            if ($spk && $spk['kontrak_id'] && $spk['status'] === 'ACTIVE') {
                 $errors[] = 'Untuk ANTAR kontrak baru, tidak boleh memilih SPK dengan kontrak aktif yang sudah ada';
             }
         }

@@ -81,8 +81,10 @@ class SiloModel extends Model
             $builder->join('inventory_unit iu', 'iu.id_inventory_unit = s.unit_id', 'left');
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
-            $builder->join('customers c', 'c.id = iu.customer_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = iu.customer_location_id', 'left');
+            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
 
             // Apply filters
@@ -171,8 +173,10 @@ class SiloModel extends Model
                 d.nama_departemen as departemen');
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
-            $builder->join('customers c', 'c.id = iu.customer_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = iu.customer_location_id', 'left');
+            $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+            $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
             
             // Check if silo table exists
@@ -255,8 +259,10 @@ class SiloModel extends Model
         $builder->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left');
         $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
         $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
-        $builder->join('customers c', 'c.id = iu.customer_id', 'left');
-        $builder->join('customer_locations cl', 'cl.id = iu.customer_location_id', 'left');
+        $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
+        $builder->join('kontrak ktr', 'ktr.id = ku.kontrak_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = ktr.customer_location_id', 'left');
+        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
         $builder->where('s.id_silo', $siloId);
 
         return $builder->get()->getRowArray();

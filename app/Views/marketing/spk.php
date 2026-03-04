@@ -526,6 +526,18 @@ $can_export = $permissions['export'];
         return `<span class="badge bg-${cls}">${status}</span>`;
     }
     
+    // Step indicator controller for Create SPK modal
+    function setSpkStep(step) {
+        const step1 = document.getElementById('step1Indicator');
+        const step2 = document.getElementById('step2Indicator');
+        const step3 = document.getElementById('step3Indicator');
+
+        if (!step1 || !step2 || !step3) return;
+
+        step1.classList.toggle('active', step >= 1);
+        step2.classList.toggle('active', step >= 2);
+        step3.classList.toggle('active', step >= 3);
+    }
     // Global function for SPK TUKAR workflow unit count (must be global for onchange access)
     function updateSpkTarikCount() {
         const checked = document.querySelectorAll('.spk-tarik-unit-check:checked');
@@ -1357,7 +1369,19 @@ $can_export = $permissions['export'];
                         targetUnitSelect.value = '';
                     }
                     if (spesifikasiDetail) spesifikasiDetail.classList.add('d-none');
-                    if (submitSpkBtn) submitSpkBtn.disabled = true;
+                    if (submitSpkBtn) {
+                        submitSpkBtn.disabled = true;
+                        submitSpkBtn.classList.add('disabled');
+                    }
+                }
+            });
+
+            // Keep visual step indicator in sync with quotation selection
+            kontrakSelect.addEventListener('change', function() {
+                if (this.value) {
+                    setSpkStep(2);
+                } else {
+                    setSpkStep(1);
                 }
             });
         } else {
@@ -1668,6 +1692,7 @@ $can_export = $permissions['export'];
                     }
                     if (spesifikasiSelect) {
                         spesifikasiSelect.innerHTML = options;
+                        validateSpkForm(); // Re-validate whenever spec list is refreshed
                     } else {
                         console.error('❌ spesifikasiSelect element not found');
                     }
@@ -1676,6 +1701,7 @@ $can_export = $permissions['export'];
                     console.error('❌ Error loading quotation specifications:', error);
                     if (spesifikasiSelect) {
                         spesifikasiSelect.innerHTML = '<option value="">Error: ' + error.message + '</option>';
+                        validateSpkForm(); // Disable button on error
                     }
                 });
         }
@@ -1718,7 +1744,21 @@ $can_export = $permissions['export'];
                     const spesifikasiDetail = document.getElementById('spesifikasiDetail');
                     const submitSpkBtn = document.getElementById('submitSpkBtn');
                     if (spesifikasiDetail) spesifikasiDetail.classList.add('d-none');
-                    if (submitSpkBtn) submitSpkBtn.disabled = true;
+                    if (submitSpkBtn) {
+                        submitSpkBtn.disabled = true;
+                        submitSpkBtn.classList.add('disabled');
+                    }
+                }
+            });
+
+            // Keep visual step indicator in sync with specification selection
+            spesifikasiSelect.addEventListener('change', function() {
+                if (this.value && this.options[this.selectedIndex]) {
+                    setSpkStep(3);
+                } else if (kontrakSelect && kontrakSelect.value) {
+                    setSpkStep(2);
+                } else {
+                    setSpkStep(1);
                 }
             });
         } else {
@@ -1885,11 +1925,11 @@ $can_export = $permissions['export'];
         function loadAttachmentInventory(tipe, merk = '') {
             const params = new URLSearchParams({
                 tipe: tipe || '',
-                merk: merk || '',
-                status: 'TERSEDIA'
+                merk: merk || ''
             });
             
-            fetch(`<?= base_url('warehouse/inventory/get-attachment-list') ?>?${params}`)
+            // Use centralized Inventory API endpoint for available attachments
+            fetch(`<?= base_url('warehouse/inventory/available-attachments') ?>?${params}`)
                 .then(response => response.json())
                 .then(data => {
                     
@@ -1963,16 +2003,23 @@ $can_export = $permissions['export'];
                 });
         }
         
-        // Validate SPK form
+        // Validate SPK form (relaxed to avoid over-restricting)
         function validateSpkForm() {
             const kontrakId = kontrakSelect ? kontrakSelect.value : '';
             const spekId = spesifikasiSelect ? spesifikasiSelect.value : '';
             const jumlahUnit = parseInt(jumlahUnitInput ? jumlahUnitInput.value : 0) || 0;
-            const maxUnit = parseInt(jumlahUnitInput ? jumlahUnitInput.max : 0) || 0;
             
-            const isValid = kontrakId && spekId && jumlahUnit > 0 && jumlahUnit <= maxUnit;
+            const isValid = !!kontrakId && !!spekId && jumlahUnit > 0;
+            console.log(`[SPK] validateSpkForm: kontrakId=${kontrakId}, spekId=${spekId}, jumlahUnit=${jumlahUnit}, isValid=${isValid}`);
+
             const submitBtn = document.getElementById('submitSpkBtn');
-            if (submitBtn) submitBtn.disabled = !isValid;
+            if (submitBtn) {
+                submitBtn.disabled = !isValid;
+                // Sync Bootstrap CSS disabled class so the button is visually enabled/disabled correctly.
+                // ui_button() adds 'disabled' as a CSS class (not an HTML attribute), so we must
+                // manage the class manually alongside the disabled property.
+                submitBtn.classList.toggle('disabled', !isValid);
+            }
         }
         
         // Handle input validation
@@ -1984,9 +2031,18 @@ $can_export = $permissions['export'];
         const spkModal = document.getElementById('spkModal');
         if (spkModal) {
             spkModal.addEventListener('show.bs.modal', function() {
+                // Reset step indicator to Step 1 when modal is opened
+                setSpkStep(1);
+
                 loadAvailableKontraks();
                 // Reset form
                 document.getElementById('spkForm').reset();
+                
+                // Pre-fill delivery_plan with today's date so user doesn't have to type it manually
+                const deliveryPlanInput = document.querySelector('#spkForm input[name="delivery_plan"]');
+                if (deliveryPlanInput) {
+                    deliveryPlanInput.value = new Date().toISOString().split('T')[0];
+                }
                 
                 // Hide sections using Bootstrap classes
                 const kontrakInfo = document.getElementById('kontrakInfoSection');
@@ -2006,7 +2062,10 @@ $can_export = $permissions['export'];
                     spesifikasiDet.classList.add('d-none');
                     spesifikasiDet.style.display = ''; // Clear inline style
                 }
-                if (submitBtn) submitBtn.disabled = true;
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.classList.add('disabled');
+                }
             });
         }
         

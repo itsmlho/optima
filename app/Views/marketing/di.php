@@ -1709,8 +1709,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
       });
   };
   
-  window.deleteDI = function(diId) {
-    if (!confirm('Are you sure you want to delete this DI?')) return;
+  window.deleteDI = async function(diId) {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Delivery Instruction',
+        text: 'Apakah Anda yakin ingin menghapus DI ini? Tindakan ini tidak dapat dibatalkan.',
+        type: 'delete'
+    });
+    if (!confirmed) return;
     
     fetch(`<?= base_url('marketing/di/delete/') ?>${diId}`, {
       method: 'POST',
@@ -1721,15 +1726,15 @@ document.addEventListener('DOMContentLoaded', ()=>{
       }
     }).then(r => r.json()).then(j => {
       if (j && j.success) {
-        loadDI(); // Reload data
-        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI successfully deleted', 'success');
-        else alert('DI successfully deleted');
+        loadDI();
+        if (window.OptimaPro && typeof OptimaPro.showNotification==='function') OptimaPro.showNotification('DI berhasil dihapus', 'success');
+        else alertSwal('success', 'DI berhasil dihapus');
       } else {
-        alert(j.message || 'Failed to delete DI');
+        alertSwal('error', j.message || 'Gagal menghapus DI', 'Error');
       }
     }).catch(error => {
       console.error('Delete DI Error:', error);
-      alert('Network error: ' + error.message);
+      alertSwal('error', 'Network error: ' + error.message);
     });
   };
   
@@ -1748,22 +1753,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
     editDI(currentDiId);
   };
   
-  // Delete DI from detail modal with double confirmation
-  window.deleteDiFromDetail = function() {
+  // Delete DI from detail modal with SweetAlert2 confirmation
+  window.deleteDiFromDetail = async function() {
     if (!currentDiId) {
-      alert('DI ID not found');
+      alertSwal('error', 'DI ID tidak ditemukan');
       return;
     }
     
-    // First confirmation
-    if (!confirm('Are you sure you want to delete this DI?')) {
-      return;
-    }
-    
-    // Second confirmation
-    if (!confirm('WARNING: This action cannot be undone!\n\nAre you absolutely sure you want to delete this DI?')) {
-      return;
-    }
+    const confirmed = await confirmSwal({
+        title: 'Hapus Delivery Instruction',
+        text: 'PERINGATAN: Tindakan ini tidak dapat dibatalkan! Apakah Anda benar-benar yakin ingin menghapus DI ini?',
+        type: 'delete',
+        icon: 'warning'
+    });
+    if (!confirmed) return;
     
     // Close detail modal first
     const detailModal = bootstrap.Modal.getInstance(document.getElementById('diDetailModal'));

@@ -35,22 +35,26 @@ class StatusUnitHelper
         $status = $kontrak['status'];
         $newStatusId = $this->getStatusIdByKontrakStatus($status);
         
-        // Update units
-        $this->db->table('inventory_unit')
-            ->where('kontrak_id', $kontrakId)
-            ->update(['status_unit_id' => $newStatusId]);
+        // Update units via kontrak_unit junction table (Phase 1A refactored)
+        $this->db->query("
+            UPDATE inventory_unit iu
+            JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit
+            SET iu.status_unit_id = ?
+            WHERE ku.kontrak_id = ? AND ku.status IN ('ACTIVE', 'TEMP_ACTIVE')
+        ", [$newStatusId, $kontrakId]);
             
-        // Update attachments for units in this kontrak - use attachment_status
+        // Update attachments for units in this kontrak via junction
         $this->db->query("
             UPDATE inventory_attachment ia
             JOIN inventory_unit iu ON iu.id_inventory_unit = ia.id_inventory_unit
+            JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit
             SET ia.attachment_status = 
                 CASE
-                    WHEN ? IN (3, 5) THEN 'IN_USE'  -- Rental or Daily rental
-                    WHEN ? = 4 THEN 'AVAILABLE'  -- Unit returned
+                    WHEN ? IN (3, 5) THEN 'IN_USE'
+                    WHEN ? = 4 THEN 'AVAILABLE'
                     ELSE ia.attachment_status
                 END
-            WHERE iu.kontrak_id = ?
+            WHERE ku.kontrak_id = ? AND ku.status IN ('ACTIVE', 'TEMP_ACTIVE')
         ", [$newStatusId, $newStatusId, $kontrakId]);
         
         return true;
@@ -62,13 +66,13 @@ class StatusUnitHelper
     private function getStatusIdByKontrakStatus($kontrakStatus)
     {
         switch ($kontrakStatus) {
-            case 'Aktif':
+            case 'ACTIVE':
                 return 3; // RENTAL
-            case 'Berakhir':
+            case 'EXPIRED':
                 return 4; // UNIT PULANG
-            case 'Dibatalkan':
+            case 'CANCELLED':
                 return 8; // STOCK NON ASET (default for cancelled)
-            case 'Pending':
+            case 'PENDING':
             default:
                 return 6; // BOOKING
         }
@@ -93,9 +97,18 @@ class StatusUnitHelper
                 ->where('id_inventory_unit', $unitId)
                 ->update(['status_unit_id' => $stockStatus]);
                 
-            $this->db->table('inventory_attachment')
-                ->where('id_inventory_unit', $unitId)
-                ->update(['status_unit' => $stockStatus]);
+            // Update status in all 3 component tables
+            $this->db->table('inventory_batteries')
+                ->where('inventory_unit_id', $unitId)
+                ->update(['status' => 'AVAILABLE']);
+                
+            $this->db->table('inventory_chargers')
+                ->where('inventory_unit_id', $unitId)
+                ->update(['status' => 'AVAILABLE']);
+                
+            $this->db->table('inventory_attachments')
+                ->where('inventory_unit_id', $unitId)
+                ->update(['status' => 'AVAILABLE']);
                 
             return;
         }
@@ -111,9 +124,10 @@ class StatusUnitHelper
     {
         $query = $this->db->table('kontrak k')
             ->select('k.id as kontrak_id, k.no_kontrak, k.status as kontrak_status')
-            ->select('COUNT(iu.id_inventory_unit) as total_units')
+            ->select('COUNT(ku.unit_id) as total_units')
             ->select('GROUP_CONCAT(DISTINCT CONCAT(su.status_unit, " (", iu.status_unit_id, ")")) as unit_statuses')
-            ->join('inventory_unit iu', 'iu.kontrak_id = k.id', 'left')
+            ->join('kontrak_unit ku', 'ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE")', 'left')
+            ->join('inventory_unit iu', 'iu.id_inventory_unit = ku.unit_id', 'left')
             ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
             ->groupBy('k.id, k.no_kontrak, k.status')
             ->orderBy('k.id');

@@ -13,9 +13,13 @@ use App\Models\QuotationModel;
 use App\Models\QuotationSpecificationModel;
 use App\Models\InventoryUnitModel;
 use App\Models\InventoryAttachmentModel;
+use App\Models\InventoryBatteryModel;
+use App\Models\InventoryChargerModel;
+use App\Models\InventoryComponentHelper;
 use App\Models\DeliveryInstructionModel;
 use App\Models\DeliveryItemModel;
 use App\Models\NotificationModel;
+use App\Services\ExportService;
 use App\Traits\ActivityLoggingTrait;
 use App\Traits\DateFilterTrait;
 use Dompdf\Dompdf;
@@ -34,11 +38,15 @@ class Marketing extends BaseDataTableController
     protected $quotationSpecificationModel;
     protected $unitModel;
     protected $attModel;
+    protected $batteryModel;
+    protected $chargerModel;
+    protected $componentHelper;
     protected $diModel;
     protected $diItemModel;
     protected $notifModel;
     protected $performanceService;
     protected $customerModel;
+    protected $exportService;
 
     public function initController(RequestInterface $request, ResponseInterface $response, LoggerInterface $logger)
     {
@@ -51,10 +59,14 @@ class Marketing extends BaseDataTableController
         $this->quotationSpecificationModel = new QuotationSpecificationModel();
         $this->unitModel = new InventoryUnitModel();
         $this->attModel = new InventoryAttachmentModel();
+        $this->batteryModel = new InventoryBatteryModel();
+        $this->chargerModel = new InventoryChargerModel();
+        $this->componentHelper = new InventoryComponentHelper();
         $this->diModel = new DeliveryInstructionModel();
         $this->diItemModel = new DeliveryItemModel();
         $this->notifModel = class_exists(\App\Models\NotificationModel::class) ? new NotificationModel() : null;
         $this->performanceService = new \App\Services\PerformanceService();
+        $this->exportService = new ExportService();
     }
 
     /**
@@ -120,35 +132,188 @@ class Marketing extends BaseDataTableController
         return view('marketing/unit_tersedia');
     }
 
+    /**
+     * Export Contract Data to Excel (REFACTORED)
+     * 
+     * Detailed export with contracts -> customers -> units
+     * Uses ExportService for proper MVC separation
+     */
     public function exportKontrak()
     {
         if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.kontrak')) {
             return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.kontrak');
         }
-        // Log EXPORT action
+        
+        // Log export activity
         if (method_exists($this, 'logActivity')) {
-            $this->logActivity('EXPORT', 'kontrak', 0, 'Export Kontrak CSV', [
+            $this->logActivity('EXPORT', 'kontrak', 0, 'Export Kontrak Data to Excel', [
                 'module_name' => 'MARKETING',
                 'submenu_item' => 'Kontrak',
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('marketing/export_kontrak');
+        
+        // Get contract data from database
+        $query = $this->db->query("
+            SELECT 
+                k.*, 
+                c.customer_name, 
+                cl.location_name,
+                cl.city,
+                iu.no_unit,
+                iu.serial_number,
+                iu.tahun_unit,
+                mu.model_unit,
+                mu.merk_unit,
+                su.status_unit
+            FROM kontrak k
+            LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
+            LEFT JOIN customers c ON c.id = cl.customer_id
+            -- Updated: JOIN via kontrak_unit junction table (source of truth)
+            LEFT JOIN kontrak_unit ku ON ku.kontrak_id = k.id AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+            LEFT JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+            LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+            LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
+            ORDER BY k.dibuat_pada DESC, iu.no_unit ASC
+        ");
+        
+        $data = $query->getResultArray();
+        
+        // Format data for export
+        foreach ($data as &$row) {
+            $row['periode_sewa'] = '-';
+            if (!empty($row['tanggal_mulai']) && !empty($row['tanggal_berakhir'])) {
+                $row['periode_sewa'] = date('d/m/y', strtotime($row['tanggal_mulai'])) . ' - ' . date('d/m/y', strtotime($row['tanggal_berakhir']));
+            }
+            $row['nilai_formatted'] = $row['nilai_total'] ? 'Rp ' . number_format($row['nilai_total'], 0, ',', '.') : '-';
+            $row['unit_model'] = trim(($row['merk_unit'] ?? '') . ' ' . ($row['model_unit'] ?? ''));
+        }
+        
+        // Define headers for Excel
+        $headers = [
+            'no_kontrak' => 'Nomor Kontrak',
+            'customer_po_number' => 'No PO Marketing',
+            'customer_name' => 'Customer',
+            'location_name' => 'Lokasi',
+            'city' => 'Kota',
+            'jenis_sewa' => 'Jenis Sewa',
+            'periode_sewa' => 'Periode Sewa',
+            'nilai_formatted' => 'Nilai Kontrak',
+            'status' => 'Status Kontrak',
+            'no_unit' => 'No Unit',
+            'unit_model' => 'Model Unit',
+            'serial_number' => 'Serial Number',
+            'tahun_unit' => 'Tahun',
+            'status_unit' => 'Status Unit'
+        ];
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'Contract Management', [
+            'filename' => 'Kontrak_PO_Rental_' . date('Y-m-d_H-i-s') . '.xlsx',
+            'author' => 'OPTIMA Marketing',
+            'subject' => 'Contract Management Report (Detailed)'
+        ]);
     }
 
+    /**
+     * Export Customer Management Data to Excel (REFACTORED)
+     * 
+     * Detailed export with customers -> locations -> contracts -> units
+     * Uses ExportService for proper MVC separation
+     */
     public function exportCustomer()
     {
         if (method_exists($this, 'hasPermission') && !$this->hasPermission('export.customer')) {
             return $this->response->setStatusCode(403)->setBody('Forbidden: Missing permission export.customer');
         }
+        
+        // Log export activity
         if (method_exists($this, 'logActivity')) {
-            $this->logActivity('EXPORT', 'customers', 0, 'Export Customer CSV', [
+            $this->logActivity('EXPORT', 'customers', 0, 'Export Customer Data to Excel', [
                 'module_name' => 'MARKETING',
                 'submenu_item' => 'Customer Management',
                 'business_impact' => 'LOW'
             ]);
         }
-        return view('marketing/export_customer');
+        
+        // Get customer data from database
+        $query = $this->db->query("
+            SELECT 
+                c.customer_code,
+                c.customer_name,
+                c.is_active as customer_status,
+                c.created_at as customer_created,
+                a.area_name,
+                cl.location_name,
+                cl.city,
+                cl.address,
+                cl.contact_person as pic_name,
+                cl.phone as pic_phone,
+                k.no_kontrak,
+                k.customer_po_number,
+                k.jenis_sewa,
+                k.tanggal_mulai,
+                k.tanggal_berakhir,
+                k.nilai_total,
+                k.status as kontrak_status,
+                iu.no_unit,
+                iu.serial_number,
+                iu.tahun_unit,
+                mu.model_unit,
+                mu.merk_unit,
+                su.status_unit
+            FROM customers c
+            LEFT JOIN customer_locations cl ON cl.customer_id = c.id
+            LEFT JOIN areas a ON a.id = cl.area_id
+            LEFT JOIN kontrak k ON k.customer_location_id = cl.id
+            -- Updated: JOIN via kontrak_unit junction table (source of truth)
+            LEFT JOIN kontrak_unit ku ON ku.kontrak_id = k.id AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
+            LEFT JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+            LEFT JOIN model_unit mu ON mu.id_model_unit = iu.model_unit_id
+            LEFT JOIN status_unit su ON su.id_status = iu.status_unit_id
+            ORDER BY c.customer_name ASC, cl.location_name ASC, k.tanggal_mulai DESC, iu.no_unit ASC
+        ");
+        
+        $data = $query->getResultArray();
+        
+        // Format data for export
+        foreach ($data as &$row) {
+            $row['periode_sewa'] = '-';
+            if (!empty($row['tanggal_mulai']) && !empty($row['tanggal_berakhir'])) {
+                $row['periode_sewa'] = date('d/m/y', strtotime($row['tanggal_mulai'])) . ' - ' .  date('d/m/y', strtotime($row['tanggal_berakhir']));
+            }
+            $row['pic_full'] = trim(($row['pic_name'] ?? '-') . ' ' .  ($row['pic_phone'] ?? ''));
+            $row['unit_model'] = trim(($row['merk_unit'] ?? '') . ' ' . ($row['model_unit'] ?? ''));
+            $row['nilai_formatted'] = $row['nilai_total'] ? 'Rp ' . number_format($row['nilai_total'], 0, ',', '.') : '-';
+        }
+        
+        // Define headers for Excel
+        $headers = [
+            'customer_code' => 'Kode Customer',
+            'customer_name' => 'Nama Customer',
+            'area_name' => 'Area',
+            'location_name' => 'Lokasi Cabang',
+            'city' => 'Kota',
+            'address' => 'Alamat',
+            'pic_full' => 'PIC',
+            'no_kontrak' => 'No Kontrak',
+            'customer_po_number' => 'No PO',
+            'jenis_sewa' => 'Jenis Sewa',
+            'kontrak_status' => 'Status Kontrak',
+            'nilai_formatted' => 'Nilai Kontrak',
+            'periode_sewa' => 'Periode Sewa',
+            'no_unit' => 'No Unit',
+            'unit_model' => 'Model',
+            'serial_number' => 'Serial Number',
+            'status_unit' => 'Status Unit'
+        ];
+        
+        // Export using ExportService
+        return $this->exportService->exportToExcel($data, $headers, 'Customer Management', [
+            'filename' => 'Customer_Management_' . date('Y-m-d_H-i-s') . '.xlsx',
+            'author' => 'OPTIMA Marketing',
+            'subject' => 'Customer Master Data Report (Detailed)'
+        ]);
     }
 
     // Test method for debugging template system
@@ -198,7 +363,7 @@ class Marketing extends BaseDataTableController
                     iu.ban_id,
                     iu.roda_id,
                     iu.valve_id,
-                    iu.kontrak_id,
+                    ku.kontrak_id,
                     iu.aksesoris,
                     COALESCE(mu.model_unit, "Unknown") as model_unit,
                     COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as nama_tipe_unit,
@@ -211,6 +376,8 @@ class Marketing extends BaseDataTableController
                     COALESCE(roda.tipe_roda, "Unknown") as jenis_roda,
                     COALESCE(valve.jumlah_valve, "Unknown") as jenis_valve
                 FROM inventory_unit iu
+                -- Updated: Get kontrak_id from junction table (source of truth)
+                LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0
                 LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
                 LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
                 LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
@@ -519,7 +686,7 @@ class Marketing extends BaseDataTableController
                 $contractCount = $db->table('kontrak k')
                     ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
                     ->where('cl.customer_id', $quotation['created_customer_id'])
-                    ->whereIn('k.status', ['Aktif', 'Draft', 'Pending'])
+                    ->whereIn('k.status', ['ACTIVE', 'PENDING'])
                     ->countAllResults();
                 $customerContractComplete = $contractCount > 0;
             }
@@ -1036,7 +1203,7 @@ class Marketing extends BaseDataTableController
                 'tanggal_mulai' => date('Y-m-d'),
                 'tanggal_berakhir' => date('Y-m-d', strtotime('+1 month')),
                 'nilai_total' => $quotation['total_amount'],
-                'status' => 'Aktif',
+                'status' => 'ACTIVE',
                 'jenis_sewa' => 'BULANAN', // Default, bisa disesuaikan
                 'dibuat_oleh' => session('user_id'),
                 'dibuat_pada' => date('Y-m-d H:i:s')
@@ -2029,12 +2196,12 @@ class Marketing extends BaseDataTableController
         
         // Get contract stats
         $total_contracts = $this->kontrakModel->countAll();
-        $active_contracts = $this->kontrakModel->where('status', 'Aktif')->countAllResults(false);
+        $active_contracts = $this->kontrakModel->where('status', 'ACTIVE')->countAllResults(false);
         
         // Calculate monthly revenue (from active contracts)
         $monthly_revenue = $this->kontrakModel
             ->selectSum('nilai_total')
-            ->where('status', 'Aktif')
+            ->where('status', 'ACTIVE')
             ->where('MONTH(tanggal_mulai)', date('n'))
             ->where('YEAR(tanggal_mulai)', date('Y'))
             ->get()
@@ -2085,7 +2252,7 @@ class Marketing extends BaseDataTableController
     {
         $contracts = $this->kontrakModel
             ->select('no_kontrak as contract_number, customer_name as client, nilai_total as value, tanggal_mulai as start_date, tanggal_berakhir as end_date, status')
-            ->where('status', 'Aktif')
+            ->where('status', 'ACTIVE')
             ->orderBy('tanggal_mulai', 'DESC')
             ->limit(5)
             ->findAll();
@@ -2111,7 +2278,7 @@ class Marketing extends BaseDataTableController
             
             $revenue = $this->kontrakModel
                 ->selectSum('nilai_total')
-                ->where('status', 'Aktif')
+                ->where('status', 'ACTIVE')
                 ->where("DATE_FORMAT(tanggal_mulai, '%Y-%m')", $date)
                 ->get()
                 ->getRow()
@@ -2276,56 +2443,11 @@ class Marketing extends BaseDataTableController
     }
 
     /**
-     * Get unit components from inventory_attachment (single source of truth)
+     * Get unit components from inventory tables (single source of truth)
      */
     private function getUnitComponents($unitId)
     {
-        $components = [
-            'battery' => null,
-            'charger' => null,
-            'attachment' => null
-        ];
-
-        // Get battery info - include both available and in use for the unit
-        $battery = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment, ia.baterai_id, ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
-            ->join('baterai b', 'ia.baterai_id = b.id', 'left')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'battery')
-            ->whereIn('ia.attachment_status', ['AVAILABLE', 'IN_USE']) // Available or In use for this unit
-            ->get()->getRowArray();
-
-        if ($battery) {
-            $components['battery'] = $battery;
-        }
-
-        // Get charger info - include both available and in use for the unit
-        $charger = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment, ia.charger_id, ia.sn_charger, c.merk_charger, c.tipe_charger')
-            ->join('charger c', 'ia.charger_id = c.id_charger', 'left')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'charger')
-            ->whereIn('ia.attachment_status', ['AVAILABLE', 'IN_USE']) // Available or In use for this unit
-            ->get()->getRowArray();
-
-        if ($charger) {
-            $components['charger'] = $charger;
-        }
-
-        // Get attachment info
-        $attachment = $this->db->table('inventory_attachment ia')
-            ->select('ia.id_inventory_attachment, ia.attachment_id, ia.sn_attachment, a.tipe, a.merk, a.model')
-            ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
-            ->where('ia.id_inventory_unit', $unitId)
-            ->where('ia.tipe_item', 'attachment')
-            ->where('ia.attachment_status', 'IN_USE') // In use
-            ->get()->getRowArray();
-
-        if ($attachment) {
-            $components['attachment'] = $attachment;
-        }
-
-        return $components;
+        return $this->componentHelper->getUnitComponents($unitId);
     }
 
     /** Render HTML print view for browser printing (no PDF lib required) */
@@ -2481,12 +2603,7 @@ class Marketing extends BaseDataTableController
                 
                 // Load attachment info
                 if (!empty($pu['attachment_inventory_id'])) {
-                    $aInfo = $this->db->table('inventory_attachment ia')
-                        ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan, att.tipe, att.merk, att.model')
-                        ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                        ->where('ia.id_inventory_attachment', $pu['attachment_inventory_id'])
-                        ->where('ia.tipe_item', 'attachment')
-                        ->get()->getRowArray();
+                    $aInfo = $this->componentHelper->getAttachmentByInventoryId($pu['attachment_inventory_id']);
                     if ($aInfo) {
                         $attLabel = trim(($aInfo['tipe'] ?: '-') . ' ' . ($aInfo['merk'] ?: '') . ' ' . ($aInfo['model'] ?: ''));
                         $suf = [];
@@ -2498,12 +2615,7 @@ class Marketing extends BaseDataTableController
                 
                 // Load battery info
                 if (!empty($pu['battery_inventory_id'])) {
-                    $bInfo = $this->db->table('inventory_attachment ia')
-                        ->select('ia.id_inventory_attachment, ia.sn_baterai, ia.lokasi_penyimpanan, bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai')
-                        ->join('baterai bat','bat.id = ia.baterai_id','left')
-                        ->where('ia.id_inventory_attachment', $pu['battery_inventory_id'])
-                        ->where('ia.tipe_item', 'battery')
-                        ->get()->getRowArray();
+                    $bInfo = $this->componentHelper->getBatteryByInventoryId($pu['battery_inventory_id']);
                     if ($bInfo) {
                         $batLabel = trim(($bInfo['merk_baterai'] ?: '-') . ' ' . ($bInfo['tipe_baterai'] ?: '') . ' ' . ($bInfo['jenis_baterai'] ?: ''));
                         $suf = [];
@@ -2515,12 +2627,7 @@ class Marketing extends BaseDataTableController
                 
                 // Load charger info  
                 if (!empty($pu['charger_inventory_id'])) {
-                    $cInfo = $this->db->table('inventory_attachment ia')
-                        ->select('ia.id_inventory_attachment, ia.sn_charger, ia.lokasi_penyimpanan, chr.merk_charger, chr.tipe_charger')
-                        ->join('charger chr','chr.id_charger = ia.charger_id','left')
-                        ->where('ia.id_inventory_attachment', $pu['charger_inventory_id'])
-                        ->where('ia.tipe_item', 'charger')
-                        ->get()->getRowArray();
+                    $cInfo = $this->componentHelper->getChargerByInventoryId($pu['charger_inventory_id']);
                     if ($cInfo) {
                         $chrLabel = trim(($cInfo['merk_charger'] ?: '-') . ' ' . ($cInfo['tipe_charger'] ?: ''));
                         $suf = [];
@@ -2685,12 +2792,7 @@ class Marketing extends BaseDataTableController
         
         // Load attachment data from approval workflow if available  
         if (!empty($row['fabrikasi_attachment_id'])) {
-            $a = $this->db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan')
-                ->select('att.tipe, att.merk, att.model')
-                ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                ->where('ia.id_inventory_attachment', $row['fabrikasi_attachment_id'])
-                ->get()->getRowArray();
+            $a = $this->componentHelper->getAttachmentByInventoryId($row['fabrikasi_attachment_id']);
                 
             if ($a) {
                 $enriched['selected']['attachment'] = [
@@ -2711,13 +2813,7 @@ class Marketing extends BaseDataTableController
         
         // Load battery and charger data from JSON spesifikasi (Electric department)
         if (!empty($spec['persiapan_battery_id'])) {
-            $b = $this->db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.sn_baterai, ia.lokasi_penyimpanan')
-                ->select('bat.merk_baterai, bat.tipe_baterai, bat.jenis_baterai')
-                ->join('baterai bat','bat.id = ia.baterai_id','left')
-                ->where('ia.id_inventory_attachment', $spec['persiapan_battery_id'])
-                ->where('ia.tipe_item', 'battery')
-                ->get()->getRowArray();
+            $b = $this->componentHelper->getBatteryByInventoryId($spec['persiapan_battery_id']);
                 
             if ($b) {
                 $enriched['selected']['battery'] = [
@@ -2739,13 +2835,7 @@ class Marketing extends BaseDataTableController
         }
         
         if (!empty($spec['persiapan_charger_id'])) {
-            $c = $this->db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.sn_charger, ia.lokasi_penyimpanan')
-                ->select('chr.merk_charger, chr.tipe_charger')
-                ->join('charger chr','chr.id_charger = ia.charger_id','left')
-                ->where('ia.id_inventory_attachment', $spec['persiapan_charger_id'])
-                ->where('ia.tipe_item', 'charger')
-                ->get()->getRowArray();
+            $c = $this->componentHelper->getChargerByInventoryId($spec['persiapan_charger_id']);
                 
             if ($c) {
                 $enriched['selected']['charger'] = [
@@ -2767,13 +2857,7 @@ class Marketing extends BaseDataTableController
         
         // Load attachment data from JSON spesifikasi if not loaded from fabrikasi_attachment_id
         if (empty($enriched['selected']['attachment']) && !empty($spec['fabrikasi_attachment_id'])) {
-            $a = $this->db->table('inventory_attachment ia')
-                ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan')
-                ->select('att.tipe, att.merk, att.model')
-                ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                ->where('ia.id_inventory_attachment', $spec['fabrikasi_attachment_id'])
-                ->where('ia.tipe_item', 'attachment')
-                ->get()->getRowArray();
+            $a = $this->componentHelper->getAttachmentByInventoryId($spec['fabrikasi_attachment_id']);
                 
             if ($a) {
                 $enriched['selected']['attachment'] = [
@@ -2826,9 +2910,9 @@ class Marketing extends BaseDataTableController
             // Only load legacy attachment data if no approval workflow data exists
             if (empty($enriched['selected']['attachment']) && !empty($sel['inventory_attachment_id'])) {
                 $a = $this->attModel
-                    ->select('a.tipe, a.merk, a.model, inventory_attachment.sn_attachment, inventory_attachment.lokasi_penyimpanan')
-                    ->join('attachment a','a.id_attachment = inventory_attachment.attachment_id','left')
-                    ->where('inventory_attachment.id_inventory_attachment', (int)$sel['inventory_attachment_id'])
+                    ->select('a.tipe, a.merk, a.model, inventory_attachments.serial_number as sn_attachment, inventory_attachments.storage_location as lokasi_penyimpanan')
+                    ->join('attachment a','a.id_attachment = inventory_attachments.attachment_type_id','left')
+                    ->where('inventory_attachments.id', (int)$sel['inventory_attachment_id'])
                     ->first();
                 if ($a) {
                     $enriched['selected']['attachment'] = [
@@ -2909,16 +2993,9 @@ class Marketing extends BaseDataTableController
                         }
                     }
                     
-                    // Get attachment details from inventory_attachment
+                    // Get attachment details from inventory_attachment (OBSOLETE - overwritten below)
+                    // This code is replaced by individual component queries below
                     $attachmentDetails = null;
-                    if ($unitId) {
-                        $attachmentDetails = $this->db->table('inventory_attachment ia')
-                            ->select('ia.sn_attachment, ia.sn_baterai, ia.sn_charger, a.tipe as attachment_type')
-                            ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
-                            ->where('ia.id_inventory_unit', $unitId)
-                            ->get()
-                            ->getRowArray();
-                    }
                     
                     // Get battery and charger details from spk_unit_stages with full names
                     $batteryDetails = null;
@@ -2932,21 +3009,11 @@ class Marketing extends BaseDataTableController
                         $chargerId = $persiapanData['charger_inventory_attachment_id'] ?? null;
                         
                         if ($batteryId) {
-                            $batteryDetails = $this->db->table('inventory_attachment ia')
-                                ->select('ia.sn_baterai, b.merk_baterai, b.tipe_baterai, b.jenis_baterai')
-                                ->join('baterai b', 'b.id = ia.baterai_id', 'left')
-                                ->where('ia.id_inventory_attachment', $batteryId)
-                                ->get()
-                                ->getRowArray();
+                            $batteryDetails = $this->componentHelper->getBatteryByInventoryId($batteryId);
                         }
                         
                         if ($chargerId) {
-                            $chargerDetails = $this->db->table('inventory_attachment ia')
-                                ->select('ia.sn_charger, c.merk_charger, c.tipe_charger')
-                                ->join('charger c', 'c.id_charger = ia.charger_id', 'left')
-                                ->where('ia.id_inventory_attachment', $chargerId)
-                                ->get()
-                                ->getRowArray();
+                            $chargerDetails = $this->componentHelper->getChargerByInventoryId($chargerId);
                         }
                     }
                     
@@ -2960,12 +3027,7 @@ class Marketing extends BaseDataTableController
                         error_log("DEBUG: Attachment ID: " . ($attachmentId ?? 'NULL'));
                         
                         if ($attachmentId) {
-                            $attachmentDetails = $this->db->table('inventory_attachment ia')
-                                ->select('ia.sn_attachment, a.merk, a.model, a.tipe')
-                                ->join('attachment a', 'a.id_attachment = ia.attachment_id', 'left')
-                                ->where('ia.id_inventory_attachment', $attachmentId)
-                                ->get()
-                                ->getRowArray();
+                            $attachmentDetails = $this->componentHelper->getAttachmentByInventoryId($attachmentId);
                             
                             error_log("DEBUG: Attachment details: " . json_encode($attachmentDetails));
                         }
@@ -3351,12 +3413,12 @@ class Marketing extends BaseDataTableController
                     ];
                 }
             }
-            // Attachment label from inventory_attachment
+            // Attachment label from inventory_attachments
             if (!empty($sel['inventory_attachment_id'])) {
                 $a = $this->attModel
-                    ->select('a.tipe, a.merk, a.model, inventory_attachment.sn_attachment, inventory_attachment.lokasi_penyimpanan')
-                    ->join('attachment a','a.id_attachment = inventory_attachment.attachment_id','left')
-                    ->where('inventory_attachment.id_inventory_attachment', (int)$sel['inventory_attachment_id'])
+                    ->select('a.tipe, a.merk, a.model, inventory_attachments.serial_number as sn_attachment, inventory_attachments.storage_location as lokasi_penyimpanan')
+                    ->join('attachment a','a.id_attachment = inventory_attachments.attachment_type_id','left')
+                    ->where('inventory_attachments.id', (int)$sel['inventory_attachment_id'])
                     ->first();
                 if ($a) {
                     $label = trim(($a['tipe'] ?: '-') . ' ' . ($a['merk'] ?: '') . ' ' . ($a['model'] ?: ''));
@@ -3396,11 +3458,7 @@ class Marketing extends BaseDataTableController
                     }
                 }
                 if (!empty($pu['attachment_id'])) {
-                    $aInfo = $this->db->table('inventory_attachment ia')
-                        ->select('ia.id_inventory_attachment, ia.sn_attachment, ia.lokasi_penyimpanan, att.tipe, att.merk, att.model')
-                        ->join('attachment att','att.id_attachment = ia.attachment_id','left')
-                        ->where('ia.id_inventory_attachment', $pu['attachment_id'])
-                        ->get()->getRowArray();
+                    $aInfo = $this->componentHelper->getAttachmentByInventoryId($pu['attachment_id']);
                     if ($aInfo) {
                         $attLabel = trim(($aInfo['tipe'] ?: '-') . ' ' . ($aInfo['merk'] ?: '') . ' ' . ($aInfo['model'] ?: ''));
                         $suf = [];
@@ -3565,7 +3623,7 @@ class Marketing extends BaseDataTableController
                     iu.lokasi_unit,
                     COALESCE(cl.location_name, iu.lokasi_unit, "Lokasi Belum Ditentukan") as lokasi,
                     cl.address as alamat,
-                    iu.customer_location_id,
+                    cl.id as customer_location_id,
                     iu.harga_sewa_bulanan,
                     iu.tahun_pembuatan,
                     iu.catatan
@@ -3574,8 +3632,12 @@ class Marketing extends BaseDataTableController
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
                 ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
-                ->join('customer_locations cl', 'cl.id = iu.customer_location_id', 'left')
-                ->where('iu.kontrak_id', $kontrakId)
+                // Updated: JOIN via kontrak_unit junction table instead of redundant customer_location_id
+                ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
+                ->join('kontrak kt', 'kt.id = ku.kontrak_id', 'left')
+                ->join('customer_locations cl', 'cl.id = kt.customer_location_id', 'left')
+                ->where('ku.kontrak_id', $kontrakId)
+                ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
                 ->orderBy('cl.location_name', 'ASC')
                 ->orderBy('iu.serial_number', 'ASC')
                 ->get()
@@ -3770,7 +3832,7 @@ class Marketing extends BaseDataTableController
     {
         try {
             // Updated query to handle SPKs from both contracts and quotations
-            $sql = "SELECT k.id, k.no_kontrak, k.no_po_marketing, 
+            $sql = "SELECT k.id, k.no_kontrak, k.customer_po_number, 
                            c.customer_name as pelanggan, 
                            cl.location_name as lokasi,
                        COUNT(s.id) AS total_spk,
@@ -3780,11 +3842,15 @@ class Marketing extends BaseDataTableController
                        SUM(CASE WHEN s.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed,
                        SUM(CASE WHEN s.status = 'DELIVERED' THEN 1 ELSE 0 END) AS delivered,
                        SUM(CASE WHEN s.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
-                       MAX(s.updated_at) AS last_update
+                       MAX(s.diperbarui_pada) AS last_update
                 FROM kontrak k
                 LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
                 LEFT JOIN customers c ON cl.customer_id = c.id
-                LEFT JOIN spk s ON (s.kontrak_id = k.id OR s.po_kontrak_nomor = k.no_kontrak OR s.po_kontrak_nomor = k.no_po_marketing)
+                LEFT JOIN spk s ON (
+                    s.kontrak_id = k.id 
+                    OR s.po_kontrak_nomor = k.no_kontrak 
+                    OR s.po_kontrak_nomor = k.customer_po_number
+                )
                 GROUP BY k.id
                 ORDER BY k.id DESC
                 LIMIT 100";
@@ -6024,10 +6090,10 @@ class Marketing extends BaseDataTableController
                         // Insert battery if approved
                         if (!empty($persiapanStage['battery_inventory_attachment_id'])) {
                             $batteryId = $persiapanStage['battery_inventory_attachment_id'];
-                            // Get actual battery_id from inventory_attachment
-                            $invBattery = $this->db->table('inventory_attachment')
-                                ->select('baterai_id')
-                                ->where('id_inventory_attachment', $batteryId)
+                            // Get actual battery_id from inventory_batteries
+                            $invBattery = $this->db->table('inventory_batteries')
+                                ->select('battery_type_id as baterai_id')
+                                ->where('id', $batteryId)
                                 ->get()->getRowArray();
                             
                             if ($invBattery && $invBattery['baterai_id']) {
@@ -6042,13 +6108,12 @@ class Marketing extends BaseDataTableController
                             }
                         }
                         
-                        // Insert charger if approved
                         if (!empty($persiapanStage['charger_inventory_attachment_id'])) {
                             $chargerId = $persiapanStage['charger_inventory_attachment_id'];
-                            // Get actual charger_id from inventory_attachment
-                            $invCharger = $this->db->table('inventory_attachment')
-                                ->select('charger_id')
-                                ->where('id_inventory_attachment', $chargerId)
+                            // Get actual charger_id from inventory_chargers
+                            $invCharger = $this->db->table('inventory_chargers')
+                                ->select('charger_type_id as charger_id')
+                                ->where('id', $chargerId)
                                 ->get()->getRowArray();
                             
                             if ($invCharger && $invCharger['charger_id']) {
@@ -6063,13 +6128,12 @@ class Marketing extends BaseDataTableController
                             }
                         }
                         
-                        // Insert attachment if approved
                         if (!empty($fabrikasiStage['attachment_inventory_attachment_id'])) {
                             $attachmentId = $fabrikasiStage['attachment_inventory_attachment_id'];
-                            // Get actual attachment_id from inventory_attachment
-                            $invAttachment = $this->db->table('inventory_attachment')
-                                ->select('attachment_id')
-                                ->where('id_inventory_attachment', $attachmentId)
+                            // Get actual attachment_id from inventory_attachments
+                            $invAttachment = $this->db->table('inventory_attachments')
+                                ->select('attachment_type_id as attachment_id')
+                                ->where('id', $attachmentId)
                                 ->get()->getRowArray();
                             
                             if ($invAttachment && $invAttachment['attachment_id']) {
@@ -6089,9 +6153,10 @@ class Marketing extends BaseDataTableController
                 // ENHANCEMENT: For ATTACHMENT SPK without units, handle attachment-only delivery
                 if ($isAttachmentSpk && empty($selected['unit_id']) && !empty($selected['inventory_attachment_id'])) {
                     error_log('DI Create - Processing ATTACHMENT-only SPK delivery');
-                    // Map inventory_attachment to attachment_id if needed
-                    $inv = $this->db->table('inventory_attachment')->select('attachment_id, tipe_item')->where('id_inventory_attachment', (int)$selected['inventory_attachment_id'])->get()->getRowArray();
-                    $attId = $inv['attachment_id'] ?? null;
+                    // Map inventory_attachment to attachment_id if needed - check all 3 tables
+                    $inv = $this->componentHelper->findComponentByIdAny($selected['inventory_attachment_id']);
+                    $attId = $inv['attachment_id'] ?? $inv['baterai_id'] ?? $inv['charger_id'] ?? null;
+                    $componentType = $inv['tipe_item'] ?? 'attachment';
                     if ($attId) {
                         $itemResult = $this->diItemModel->insert([
                             'di_id' => $diId,
@@ -6103,7 +6168,7 @@ class Marketing extends BaseDataTableController
                             $errors = $this->diItemModel->errors();
                             throw new \Exception('Failed to insert pure attachment: ' . implode(', ', $errors));
                         }
-                        error_log('DI Create - Added pure attachment delivery (ID: ' . $attId . ')');
+                        error_log('DI Create - Added pure attachment delivery (ID: ' . $attId . ' Type: ' . $componentType . ')');
                     }
                 } else {
                     // Standard workflow for UNIT SPK
@@ -6119,9 +6184,9 @@ class Marketing extends BaseDataTableController
                         }
                     }
                     if (!empty($selected['inventory_attachment_id'])) {
-                        // Map inventory_attachment to attachment_id if needed
-                        $inv = $this->db->table('inventory_attachment')->select('attachment_id')->where('id_inventory_attachment', (int)$selected['inventory_attachment_id'])->get()->getRowArray();
-                        $attId = $inv['attachment_id'] ?? null;
+                        // Map inventory_attachment to attachment_id if needed - check all 3 tables
+                        $inv = $this->componentHelper->findComponentByIdAny($selected['inventory_attachment_id']);
+                        $attId = $inv['attachment_id'] ?? $inv['baterai_id'] ?? $inv['charger_id'] ?? null;
                         if ($attId) {
                             $itemResult = $this->diItemModel->insert([
                                 'di_id' => $diId,
@@ -6339,12 +6404,12 @@ class Marketing extends BaseDataTableController
             $statusFilter = trim($this->request->getPost('statusFilter') ?? 'all');
             if ($statusFilter !== 'all') {
                 if ($statusFilter === 'expiring') {
-                    // Expiring contracts (Aktif status and expiring within 30 days)
+                    // Expiring contracts (ACTIVE status and expiring within 30 days)
                     $expiringDate = date('Y-m-d', strtotime('+30 days'));
-                    $builder->where('k.status', 'Aktif')
+                    $builder->where('k.status', 'ACTIVE')
                            ->where('k.tanggal_berakhir <=', $expiringDate)
                            ->where('k.tanggal_berakhir >=', date('Y-m-d'));
-                    $countBuilder->where('k.status', 'Aktif')
+                    $countBuilder->where('k.status', 'ACTIVE')
                                 ->where('k.tanggal_berakhir <=', $expiringDate)
                                 ->where('k.tanggal_berakhir >=', date('Y-m-d'));
                 } else {
@@ -6394,7 +6459,7 @@ class Marketing extends BaseDataTableController
                             cl.contact_person as pic,
                             cl.phone as kontak,
                             cl.address as alamat,
-                            (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as calculated_total_units,
+                            (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as calculated_total_units,
                             k.nilai_total as calculated_value');
 
             $kontrakData = $builder
@@ -6424,7 +6489,7 @@ class Marketing extends BaseDataTableController
                                 cl.location_name as lokasi,
                                 cl.contact_person as pic,
                                 cl.phone as kontak,
-                                (SELECT COUNT(*) FROM inventory_unit iu WHERE iu.kontrak_id = k.id) as calculated_total_units,
+                                (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as calculated_total_units,
                                 k.nilai_total as calculated_value')
                         ->orderBy('k.id','DESC')
                         ->limit($length, $start)
@@ -6727,15 +6792,15 @@ class Marketing extends BaseDataTableController
     {
         $stats = [
             'total' => $this->db->table('kontrak')->countAllResults(),
-            'active' => $this->db->table('kontrak')->where('status', 'Aktif')->countAllResults(),
+            'active' => $this->db->table('kontrak')->where('status', 'ACTIVE')->countAllResults(),
             'expiring' => 0, // Will be calculated based on date
-            'expired' => $this->db->table('kontrak')->where('status', 'Berakhir')->countAllResults()
+            'expired' => $this->db->table('kontrak')->where('status', 'EXPIRED')->countAllResults()
         ];
 
         // Calculate expiring contracts (within 30 days)
         $expiringDate = date('Y-m-d', strtotime('+30 days'));
         $stats['expiring'] = $this->db->table('kontrak')
-            ->where('status', 'Aktif')
+            ->where('status', 'ACTIVE')
             ->where('tanggal_berakhir <=', $expiringDate)
             ->where('tanggal_berakhir >=', date('Y-m-d'))
             ->countAllResults();
@@ -6746,10 +6811,10 @@ class Marketing extends BaseDataTableController
     private function getStatusClass($status)
     {
         switch ($status) {
-            case 'Aktif': return 'success';
-            case 'Pending': return 'warning';
-            case 'Berakhir': return 'secondary';
-            case 'Dibatalkan': return 'danger';
+            case 'ACTIVE': return 'success';
+            case 'PENDING': return 'warning';
+            case 'EXPIRED': return 'secondary';
+            case 'CANCELLED': return 'danger';
             default: return 'secondary';
         }
     }
@@ -7857,13 +7922,12 @@ class Marketing extends BaseDataTableController
                             FROM kontrak k
                             JOIN customer_locations cl ON cl.id = k.customer_location_id
                             WHERE cl.customer_id = ?
-                            AND k.status IN ('Aktif', 'Draft', 'Pending')
+                            AND k.status IN ('ACTIVE', 'PENDING')
                             ORDER BY 
                                 CASE k.status 
-                                    WHEN 'Aktif' THEN 1
-                                    WHEN 'Draft' THEN 2
-                                    WHEN 'Pending' THEN 3
-                                    ELSE 4
+                                    WHEN 'ACTIVE' THEN 1
+                                    WHEN 'PENDING' THEN 2
+                                    ELSE 3
                                 END ASC,
                                 k.id DESC
                             LIMIT 1
@@ -8136,7 +8200,7 @@ class Marketing extends BaseDataTableController
                 'nilai_total' => $quotation['total_amount'],
                 'tanggal_mulai' => date('Y-m-d'),
                 'tanggal_berakhir' => date('Y-m-d', strtotime('+12 months')),
-                'status' => 'Draft',
+                'status' => 'PENDING',
                 'dibuat_oleh' => session()->get('user_id')
             ];
 
@@ -8479,7 +8543,7 @@ class Marketing extends BaseDataTableController
                 $builder = $db->table('delivery_instructions');
                 $dis = $builder->where('spk_id', $spkId)
                     ->where('status_di', 'SELESAI')
-                    ->whereNotNull('sampai_tanggal_approve')
+                    ->where('sampai_tanggal_approve IS NOT NULL', null, false)
                     ->get()
                     ->getResultArray();
                 
@@ -8816,7 +8880,7 @@ class Marketing extends BaseDataTableController
                 'jenis_sewa' => $originalContract['jenis_sewa'],
                 'tanggal_mulai' => $newStartDate,
                 'tanggal_berakhir' => $newEndDate,
-                'status' => 'Aktif',
+                'status' => 'ACTIVE',
                 'dibuat_oleh' => session()->get('user_id') ?? 1,
                 'dibuat_pada' => date('Y-m-d H:i:s'),
                 'diperbarui_pada' => date('Y-m-d H:i:s')
@@ -9154,3 +9218,4 @@ class Marketing extends BaseDataTableController
             ]);
         }
     }
+}

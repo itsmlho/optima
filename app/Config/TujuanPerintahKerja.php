@@ -176,11 +176,11 @@ class TujuanPerintahKerja
     public static function getContractStatusFilter($kode)
     {
         if (self::requiresActiveContract($kode)) {
-            return 'AKTIF';
+            return 'ACTIVE';
         }
         
         if (self::requiresInactiveContract($kode)) {
-            return 'NON_AKTIF';
+            return 'EXPIRED';
         }
         
         if (self::allowsNewContract($kode)) {

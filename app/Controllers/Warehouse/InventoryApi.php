@@ -12,9 +12,35 @@ class InventoryApi extends BaseController
     public function availableAttachments()
     {
         $attachmentId = (int) $this->request->getGet('attachment_id');
-        $m = new InventoryAttachmentModel();
+        $tipe         = $this->request->getGet('tipe');
+        $merk         = $this->request->getGet('merk');
+
+        // When tipe/merk filters are provided, query the legacy inventory_attachment table
+        // which stores attachment inventory with the attachment master table join.
+        if ($tipe || $merk) {
+            $db      = \Config\Database::connect();
+            $builder = $db->table('inventory_attachment ia')
+                ->select('ia.id_inventory_attachment as id, ia.sn_attachment,
+                          ia.lokasi_penyimpanan, ia.attachment_status as status,
+                          ia.kondisi_fisik, a.tipe, a.merk, a.model')
+                ->join('attachment a', 'ia.attachment_id = a.id_attachment', 'left')
+                ->where('ia.tipe_item', 'attachment')
+                ->where('ia.attachment_status', 'AVAILABLE');
+
+            if ($tipe) {
+                $builder->where('a.tipe', $tipe);
+            }
+            if ($merk) {
+                $builder->where('a.merk', $merk);
+            }
+
+            $rows = $builder->get()->getResultArray();
+            return $this->response->setJSON(['success' => true, 'data' => $rows]);
+        }
+
+        $m    = new InventoryAttachmentModel();
         $rows = $attachmentId ? $m->getAvailableForAttachment($attachmentId) : [];
-        return $this->response->setJSON($rows);
+        return $this->response->setJSON(['success' => true, 'data' => $rows]);
     }
 
     public function availableChargers()

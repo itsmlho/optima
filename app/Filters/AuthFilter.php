@@ -41,7 +41,6 @@ class AuthFilter implements FilterInterface
             'auth/verify-otp',
             'auth/resend-otp',
             'comingsoon',
-            'settings/test-email',  // Test email endpoint (public for testing)
         ];
         
         // Check if current path is a public path
@@ -97,7 +96,8 @@ class AuthFilter implements FilterInterface
         // If not a public path, check if user is logged in
         if (!$session->get('isLoggedIn')) {
             // Check if this is an AJAX request
-            if ($request->isAJAX()) {
+            /** @var \CodeIgniter\HTTP\IncomingRequest $request */
+            if ($request instanceof \CodeIgniter\HTTP\IncomingRequest && $request->isAJAX()) {
                 // Return JSON error instead of redirect for AJAX requests
                 $response = service('response');
                 return $response->setStatusCode(401)->setJSON([
@@ -117,6 +117,7 @@ class AuthFilter implements FilterInterface
         $sessionId = session_id();
         if ($sessionId) {
             try {
+                /** @var \Config\AuthSecurity $authSecurityConfig */
                 $authSecurityConfig = config('AuthSecurity');
                 if ($authSecurityConfig && $authSecurityConfig->trackDevices) {
                     // Check if user_sessions table exists before trying to update
