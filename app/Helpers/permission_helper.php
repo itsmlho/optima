@@ -14,7 +14,7 @@ if (!function_exists('hasPermission')) {
      * @param int|null $userId Optional user ID, defaults to current session user
      * @return bool
      */
-    function hasPermission(string $permissionKey, int $userId = null): bool
+    function hasPermission(string $permissionKey, ?int $userId = null): bool
     {
         if (!$userId) {
             $userId = session()->get('user_id');
@@ -49,7 +49,7 @@ if (!function_exists('hasModuleAccess')) {
      * @param int|null $userId Optional user ID
      * @return bool
      */
-    function hasModuleAccess(string $module, int $userId = null): bool
+    function hasModuleAccess(string $module, ?int $userId = null): bool
     {
         if (!$userId) {
             $userId = session()->get('user_id');
@@ -84,7 +84,7 @@ if (!function_exists('hasPageAccess')) {
      * @param int|null $userId Optional user ID
      * @return bool
      */
-    function hasPageAccess(string $module, string $page, int $userId = null): bool
+    function hasPageAccess(string $module, string $page, ?int $userId = null): bool
     {
         if (!$userId) {
             $userId = session()->get('user_id');
@@ -121,7 +121,7 @@ if (!function_exists('canPerformAction')) {
      * @param int|null $userId Optional user ID
      * @return bool
      */
-    function canPerformAction(string $module, string $page, string $action, int $userId = null): bool
+    function canPerformAction(string $module, string $page, string $action, ?int $userId = null): bool
     {
         $permissionKey = "{$module}.{$page}.{$action}";
         return hasPermission($permissionKey, $userId);
@@ -137,7 +137,7 @@ if (!function_exists('canNavigateTo')) {
      * @param int|null $userId Optional user ID
      * @return bool
      */
-    function canNavigateTo(string $module, string $page, int $userId = null): bool
+    function canNavigateTo(string $module, string $page, ?int $userId = null): bool
     {
         $permissionKey = "{$module}.{$page}.navigation";
         return hasPermission($permissionKey, $userId);
@@ -151,7 +151,7 @@ if (!function_exists('getUserPermissions')) {
      * @param int|null $userId Optional user ID
      * @return array
      */
-    function getUserPermissions(int $userId = null): array
+    function getUserPermissions(?int $userId = null): array
     {
         if (!$userId) {
             $userId = session()->get('user_id');
@@ -185,7 +185,7 @@ if (!function_exists('getUserModulePermissions')) {
      * @param int|null $userId Optional user ID
      * @return array
      */
-    function getUserModulePermissions(string $module, int $userId = null): array
+    function getUserModulePermissions(string $module, ?int $userId = null): array
     {
         if (!$userId) {
             $userId = session()->get('user_id');
@@ -219,7 +219,7 @@ if (!function_exists('isSystemAdmin')) {
      * @param int|null $userId Optional user ID
      * @return bool
      */
-    function isSystemAdmin(int $userId = null): bool
+    function isSystemAdmin(?int $userId = null): bool
     {
         if (!$userId) {
             $userId = session()->get('user_id');
@@ -252,7 +252,7 @@ if (!function_exists('can_view')) {
      * @param int|null $userId Optional user ID
      * @return bool
      */
-    function can_view(string $moduleOrPermission, int $userId = null): bool
+    function can_view(string $moduleOrPermission, ?int $userId = null): bool
     {
         // If it's a module name, check module access
         if (!str_contains($moduleOrPermission, '.')) {
@@ -268,7 +268,7 @@ if (!function_exists('can_edit')) {
     /**
      * Legacy compatibility - check edit permission
      */
-    function can_edit(string $moduleOrPage, int $userId = null): bool
+    function can_edit(string $moduleOrPage, ?int $userId = null): bool
     {
         if (str_contains($moduleOrPage, '.')) {
             return hasPermission($moduleOrPage, $userId);
@@ -283,7 +283,7 @@ if (!function_exists('can_create')) {
     /**
      * Legacy compatibility - check create permission
      */
-    function can_create(string $moduleOrPage, int $userId = null): bool
+    function can_create(string $moduleOrPage, ?int $userId = null): bool
     {
         if (str_contains($moduleOrPage, '.')) {
             return hasPermission($moduleOrPage, $userId);
@@ -298,7 +298,7 @@ if (!function_exists('can_delete')) {
     /**
      * Legacy compatibility - check delete permission
      */
-    function can_delete(string $moduleOrPage, int $userId = null): bool
+    function can_delete(string $moduleOrPage, ?int $userId = null): bool
     {
         if (str_contains($moduleOrPage, '.')) {
             return hasPermission($moduleOrPage, $userId);
@@ -318,7 +318,7 @@ if (!function_exists('checkPermissionOr403')) {
      * @param int|null $userId Optional user ID
      * @throws \CodeIgniter\Exceptions\PageNotFoundException
      */
-    function checkPermissionOr403(string $permissionKey, int $userId = null): void
+    function checkPermissionOr403(string $permissionKey, ?int $userId = null): void
     {
         if (!hasPermission($permissionKey, $userId)) {
             throw new \CodeIgniter\Exceptions\PageNotFoundException("Access denied. Permission required: {$permissionKey}");
