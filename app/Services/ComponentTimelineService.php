@@ -62,7 +62,7 @@ class ComponentTimelineService
         ]);
     }
 
-    public function recordDetachment(int $unitId, string $componentType, int $componentId, string $componentName, string $reason = null, $performedBy = null): bool
+    public function recordDetachment(int $unitId, string $componentType, int $componentId, string $componentName, ?string $reason = null, $performedBy = null): bool
     {
         return $this->recordEvent($unitId, $componentType, 'DETACHED', ucfirst(strtolower($componentType)) . ' Dilepas', [
             'description'   => $reason ?? "{$componentName} dilepas dari unit",
@@ -72,7 +72,7 @@ class ComponentTimelineService
         ]);
     }
 
-    public function recordReplacement(int $unitId, string $componentType, int $oldComponentId, int $newComponentId, string $oldName, string $newName, string $reason = null, $performedBy = null): bool
+    public function recordReplacement(int $unitId, string $componentType, int $oldComponentId, int $newComponentId, string $oldName, string $newName, ?string $reason = null, $performedBy = null): bool
     {
         return $this->recordEvent($unitId, $componentType, 'REPLACED', ucfirst(strtolower($componentType)) . ' Diganti', [
             'description'   => $reason ?? "{$oldName} diganti dengan {$newName}",

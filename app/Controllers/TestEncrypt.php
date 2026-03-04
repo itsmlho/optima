@@ -1,1 +1,17 @@
-<?php \n\nnamespace App\Controllers; \nuse CodeIgniter\Controller; \nuse Config\Encryption; \nclass TestEncrypt extends Controller { \n    public function index()\n    {\n        \$e = service('encrypter');\n        \$c = \$e-;\n        \$d = \$e-;\n        echo 'Decrypted value: ' . \$d;\n    }\n}  
+<?php
+
+namespace App\Controllers;
+
+use CodeIgniter\Controller;
+
+class TestEncrypt extends Controller
+{
+    public function index()
+    {
+        $e = service('encrypter');
+        $plainText = 'Hello World';
+        $c = $e->encrypt($plainText);
+        $d = $e->decrypt($c);
+        echo 'Decrypted value: ' . $d;
+    }
+}
