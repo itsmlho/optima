@@ -2400,11 +2400,18 @@ h6, .h6 { font-size: 1rem; }
     max-width: 70vw !important;
     width: 70vw !important;
     margin: 1.75rem auto !important;
+    height: calc(100% - 3.5rem);
 }
 
 .modal-wider .modal-content {
     max-width: 100% !important;
     width: 100% !important;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.modal-wider .modal-body {
+    overflow-y: auto;
 }
 
 /* Wide Modal - 85vw (recommended for comprehensive detail views with multiple tabs) */
@@ -2412,11 +2419,18 @@ h6, .h6 { font-size: 1rem; }
     max-width: 85vw !important;
     width: 85vw !important;
     margin: 1.75rem auto !important;
+    height: calc(100% - 3.5rem);
 }
 
 .modal-wide .modal-content {
     max-width: 100% !important;
     width: 100% !important;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.modal-wide .modal-body {
+    overflow-y: auto;
 }
 
 /* Full Width Modal - 95vw (for exceptional cases needing maximum space) */
@@ -2424,11 +2438,18 @@ h6, .h6 { font-size: 1rem; }
     max-width: 95vw !important;
     width: 95vw !important;
     margin: 0.5rem auto !important;
+    height: calc(100% - 1rem);
 }
 
 .modal-fullwidth .modal-content {
     max-width: 100% !important;
     width: 100% !important;
+    max-height: 100%;
+    overflow: hidden;
+}
+
+.modal-fullwidth .modal-body {
+    overflow-y: auto;
 }
 
 /* Responsive: Full width on mobile */
