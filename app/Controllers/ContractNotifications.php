@@ -117,8 +117,7 @@ class ContractNotifications extends BaseController
                 u.first_name,
                 u.last_name
             FROM kontrak k
-            LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
-            LEFT JOIN customers c ON c.id = cl.customer_id
+            LEFT JOIN customers c ON c.id = k.customer_id
             LEFT JOIN users u ON u.id = k.dibuat_oleh
             WHERE k.status = 'ACTIVE'
             AND k.tanggal_berakhir BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)

@@ -169,9 +169,9 @@ class Dashboard extends BaseController
                     k.no_kontrak,
                     k.tanggal_berakhir,
                     DATEDIFF(k.tanggal_berakhir, CURDATE()) as days_left,
-                    cl.location_name as customer_location
+                    (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as customer_location
                 FROM kontrak k
-                LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 WHERE k.status = 'ACTIVE'
                 AND k.tanggal_berakhir BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
                 ORDER BY k.tanggal_berakhir ASC
@@ -764,9 +764,8 @@ class Dashboard extends BaseController
         // Contract Expirations (Schema: kontrak -> customer_locations)
         try {
             $alerts['expiring_contracts'] = $db->table('kontrak')
-                                            ->select('kontrak.*, customers.customer_name as customer, customer_locations.location_name')
-                                            ->join('customer_locations', 'customer_locations.id = kontrak.customer_location_id', 'left')
-                                            ->join('customers', 'customers.id = customer_locations.customer_id', 'left') // Assumption on customers.id
+                                            ->select('kontrak.*, customers.customer_name as customer, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = kontrak.id LIMIT 1) as location_name')
+                                            ->join('customers', 'customers.id = kontrak.customer_id', 'left')
                                             ->where('tanggal_berakhir <=', date('Y-m-d', strtotime('+30 days')))
                                             ->where('status', 'ACTIVE')
                                             ->limit(5)

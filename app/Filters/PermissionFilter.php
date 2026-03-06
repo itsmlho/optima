@@ -13,8 +13,8 @@ class PermissionFilter implements FilterInterface
      */
     public function before(RequestInterface $request, $arguments = null)
     {
-        // Load permission helper
-        helper('permission');
+        // Load permission helper and auth helper
+        helper(['permission', 'auth']);
 
         // Check if user is logged in
         if (!session()->get('user_id')) {
@@ -29,7 +29,7 @@ class PermissionFilter implements FilterInterface
         $requiredPermission = $arguments[0];
         
         // Check if user has required permission
-        if (!has_permission($requiredPermission)) {
+        if (!hasPermission($requiredPermission)) {
             if ($request->isAJAX()) {
                 return response()->setJSON([
                     'error' => 'Unauthorized',

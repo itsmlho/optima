@@ -344,8 +344,7 @@ class MarketingOptimized extends BaseDataTableController
                 COALESCE(unit_stats.unit_count, 0) as unit_count,
                 COALESCE(spec_stats.spec_count, 0) as spec_count
             FROM kontrak k
-            LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-            LEFT JOIN customers c ON cl.customer_id = c.id
+            LEFT JOIN customers c ON c.id = k.customer_id
             LEFT JOIN (
                 SELECT kontrak_id, COUNT(*) as unit_count
                 FROM inventory_unit 
@@ -433,8 +432,7 @@ class MarketingOptimized extends BaseDataTableController
         return $this->db->query("
             SELECT k.id, k.no_kontrak, k.status, c.customer_name, k.diperbarui_pada
             FROM kontrak k
-            LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-            LEFT JOIN customers c ON cl.customer_id = c.id
+            LEFT JOIN customers c ON c.id = k.customer_id
             WHERE k.id > ? 
             AND k.diperbarui_pada > DATE_SUB(NOW(), INTERVAL 5 MINUTE)
             ORDER BY k.id ASC

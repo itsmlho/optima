@@ -53,8 +53,7 @@ class OptimizedWorkOrderModel extends Model
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
         $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left');
         $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
-        $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->join('work_order_categories woc', 'woc.id = wo.category_id', 'left');
         $builder->join('work_order_priorities wop', 'wop.id = wo.priority_id', 'left');
         $builder->join('work_order_statuses wos', 'wos.id = wo.status_id', 'left');

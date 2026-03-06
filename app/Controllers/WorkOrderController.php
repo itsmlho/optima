@@ -114,8 +114,7 @@ class WorkOrderController extends Controller
         // Updated: JOIN via kontrak_unit junction table (source of truth)
         $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
         $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
-        $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->join('areas a', 'c.area_id = a.id', 'left');
         $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
         $builder->join('tipe_unit tu', 'iu.tipe_unit_id = tu.id_tipe_unit', 'left');
@@ -847,8 +846,7 @@ class WorkOrderController extends Controller
                 -- Updated: JOIN via kontrak_unit junction table (source of truth)
                 LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
                 LEFT JOIN kontrak k ON k.id = ku.kontrak_id
-                LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
-                LEFT JOIN customers c ON c.id = cl.customer_id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 LEFT JOIN areas a ON c.area_id = a.id
                 LEFT JOIN employees adm ON wo.admin_id = adm.id
                 LEFT JOIN employees frm ON wo.foreman_id = frm.id
@@ -1710,8 +1708,7 @@ class WorkOrderController extends Controller
                 -- Updated: JOIN via kontrak_unit junction table (source of truth)
                 LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
                 LEFT JOIN kontrak k ON k.id = ku.kontrak_id
-                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-                LEFT JOIN customers c ON cl.customer_id = c.id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
                 WHERE iu.id_inventory_unit = ?
             ", [$unitId]);
@@ -1739,8 +1736,7 @@ class WorkOrderController extends Controller
                 -- Updated: JOIN via kontrak_unit junction table (source of truth)
                 LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
                 JOIN kontrak k ON k.id = ku.kontrak_id
-                JOIN customer_locations cl ON cl.id = k.customer_location_id
-                JOIN customers c ON c.id = cl.customer_id
+                JOIN customers c ON c.id = k.customer_id
                 WHERE iu.id_inventory_unit = ?
             ", [$unitId]);
             $unit = $unitQuery->getRowArray();
@@ -1845,8 +1841,7 @@ class WorkOrderController extends Controller
             // Updated: JOIN via kontrak_unit junction table (source of truth)
             $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
             $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
             $builder->join('tipe_unit tu', 'iu.jenis_unit_id = tu.id_tipe_unit', 'left');
             $builder->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left');
             $builder->groupStart()
@@ -2080,8 +2075,7 @@ class WorkOrderController extends Controller
                     -- Updated: JOIN via kontrak_unit junction table (source of truth)
                     LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
                     LEFT JOIN kontrak k ON k.id = ku.kontrak_id
-                    LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
-                    LEFT JOIN customers c ON c.id = cl.customer_id
+                    LEFT JOIN customers c ON c.id = k.customer_id
                     LEFT JOIN areas a ON a.id = iu.area_id
                     LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
                     LEFT JOIN kapasitas kp ON iu.kapasitas_unit_id = kp.id_kapasitas
@@ -2642,8 +2636,7 @@ class WorkOrderController extends Controller
                 -- Updated: JOIN via kontrak_unit junction table (source of truth)
                 LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
                 LEFT JOIN kontrak k ON k.id = ku.kontrak_id
-                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-                LEFT JOIN customers c ON cl.customer_id = c.id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 WHERE iu.id_inventory_unit = ?
             ", [$workOrder['unit_id']])->getRowArray();
             

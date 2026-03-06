@@ -1,0 +1,10 @@
+=== SKIPPED ROWS REPORT ===
+
+Line 2007: Invalid customer_location_id
+  Customer: 247, Location: TIDAK KETEMU
+  Unit: 3382, PO: 
+
+Line 2008: Invalid customer_location_id
+  Customer: 247, Location: TIDAK KETEMU
+  Unit: 1571, PO: 
+

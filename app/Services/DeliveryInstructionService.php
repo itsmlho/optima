@@ -288,7 +288,7 @@ class DeliveryInstructionService
             
             // Get customer/location info from kontrak_unit junction (Phase 1A refactored)
             $unitInfo = $this->db->table('kontrak_unit ku')
-                ->select('ku.kontrak_id, k.customer_id, k.customer_location_id')
+                ->select('ku.kontrak_id, k.customer_id, ku.customer_location_id')
                 ->join('kontrak k', 'k.id = ku.kontrak_id')
                 ->where('ku.unit_id', $unitId)
                 ->where('ku.status', 'ACTIVE')
@@ -380,7 +380,7 @@ class DeliveryInstructionService
         if ($oldContractUnit) {
             // Get customer/location info from kontrak_unit junction (Phase 1A refactored)
             $oldUnitInfo = $this->db->table('kontrak_unit ku')
-                ->select('ku.kontrak_id, k.customer_id, k.customer_location_id')
+                ->select('ku.kontrak_id, k.customer_id, ku.customer_location_id')
                 ->join('kontrak k', 'k.id = ku.kontrak_id')
                 ->where('ku.unit_id', $oldUnitId)
                 ->where('ku.status', 'ACTIVE')

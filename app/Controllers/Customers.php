@@ -258,6 +258,35 @@ class Customers extends BaseController
     }
 
     /**
+     * Show customer detail page with contracts list
+     */
+    public function detail($customerId)
+    {
+        if (!$customerId || $customerId == '0') {
+            return redirect()->to('marketing/kontrak')->with('error', 'ID customer tidak valid.');
+        }
+
+        $customer = $this->customerModel->find($customerId);
+
+        if (!$customer) {
+            return redirect()->to('marketing/kontrak')->with('error', 'Customer tidak ditemukan.');
+        }
+
+        // Get customer locations
+        $locations = $this->customerLocationModel->where('customer_id', $customerId)
+            ->where('is_active', 1)
+            ->findAll();
+
+        $data = [
+            'title' => 'Customer Detail — ' . ($customer['customer_name'] ?? 'Customer'),
+            'customer' => $customer,
+            'locations' => $locations,
+        ];
+
+        return view('marketing/customer_detail', $data);
+    }
+
+    /**
      * Get customer contracts
      */
     public function getContracts($customerId)
@@ -268,22 +297,46 @@ class Customers extends BaseController
 
         try {
             $db = \Config\Database::connect();
-            
-            // Get contracts with location information
-            // Join through customer_locations since kontrak doesn't have direct customer_id
+
+            // Get contracts with location information and unit counts
+            // Join through customers table since kontrak has direct customer_id
             $contracts = $db->table('kontrak k')
-                ->select('k.*, cl.location_name, cl.address, cl.city, cl.province, cl.customer_id, c.customer_name, cl.id as location_id')
-                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                ->join('customers c', 'cl.customer_id = c.id', 'left')
-                ->where('cl.customer_id', $customerId)
-                ->where('cl.is_active', 1)
+                ->select('k.*, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name, (SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as address, (SELECT cl.city FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as city, (SELECT cl.province FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as province, c.id as customer_id, c.customer_name, (SELECT ku.customer_location_id FROM kontrak_unit ku WHERE ku.kontrak_id = k.id LIMIT 1) as location_id')
+                ->join('customers c', 'k.customer_id = c.id', 'left')
+                ->groupStart()
+                    ->where('k.customer_id', $customerId)
+                    ->orWhere('cl.customer_id', $customerId)
+                ->groupEnd()
                 ->orderBy('k.dibuat_pada', 'DESC')
                 ->get()
                 ->getResultArray();
 
+            // Add unit count and nilai_total for each contract
+            foreach ($contracts as &$kontrak) {
+                $kontrakId = $kontrak['id'];
+
+                // Get unit count from kontrak_unit
+                $unitCount = $db->table('kontrak_unit')
+                    ->where('kontrak_id', $kontrakId)
+                    ->where('status', 'AKTIF')
+                    ->countAllResults();
+
+                // Get nilai total from inventory_unit through kontrak_unit
+                $nilaiQuery = "
+                    SELECT COALESCE(SUM(iu.harga_sewa_bulanan), 0) as total
+                    FROM kontrak_unit ku
+                    JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+                    WHERE ku.kontrak_id = ? AND ku.status = 'AKTIF'
+                ";
+                $nilaiResult = $db->query($nilaiQuery, [$kontrakId])->getRow();
+
+                $kontrak['total_units'] = $unitCount;
+                $kontrak['nilai_total'] = $nilaiResult->total ?? 0;
+            }
+
             return $this->response->setJSON([
                 'success' => true,
-                'contracts' => $contracts
+                'data' => $contracts
             ]);
 
         } catch (\Exception $e) {
@@ -320,10 +373,9 @@ class Customers extends BaseController
             
             // Search for contract by specified field
             $contract = $db->table('kontrak k')
-                ->select('k.*, cl.location_name, cl.address, cl.city, cl.province, cl.customer_id, c.customer_name, cl.id as location_id')
-                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                ->join('customers c', 'cl.customer_id = c.id', 'left')
-                ->where('cl.customer_id', $customerId)
+                ->select('k.*, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name, (SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as address, (SELECT cl.city FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as city, (SELECT cl.province FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as province, c.id as customer_id, c.customer_name, (SELECT ku.customer_location_id FROM kontrak_unit ku WHERE ku.kontrak_id = k.id LIMIT 1) as location_id')
+                ->join('customers c', 'k.customer_id = c.id', 'left')
+                ->where('k.customer_id', $customerId)
                 ->where("k.$field", $value)
                 ->where('cl.is_active', 1)
                 ->orderBy('k.dibuat_pada', 'DESC')

@@ -66,6 +66,8 @@ $currentLang = service('request')->getLocale();
     
     <!-- OPTIMA Pro CSS (Enhanced with Centralized Components) -->
     <link href="<?= base_url('assets/css/desktop/optima-pro.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-pro.css') ?>" rel="stylesheet">
+    <!-- Select2 CSS -->
+    <link href="<?= base_url('assets/css/plugins/select2.min.css') ?>" rel="stylesheet">
     <!-- Select2 Custom CSS -->
     <link href="<?= base_url('assets/css/plugins/select2-custom.css') ?>?v=<?= filemtime(FCPATH.'assets/css/plugins/select2-custom.css') ?>" rel="stylesheet">
     <!-- Dashboard Modern CSS -->
@@ -770,6 +772,9 @@ $currentLang = service('request')->getLocale();
     
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.1/dist/sweetalert2.all.min.js"></script>
+    
+    <!-- Select2 -->
+    <script src="<?= base_url('assets/js/select2.min.js') ?>"></script>
     
     <!-- Global Consistent Sorting Headers JavaScript -->
     <script>

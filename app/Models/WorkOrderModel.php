@@ -299,8 +299,7 @@ class WorkOrderModel extends Model
                            ->join('kapasitas kap', 'iu.kapasitas_unit_id = kap.id_kapasitas', 'left')
                            ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left')
                            ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                           ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                           ->join('customers c', 'c.id = cl.customer_id', 'left')
+                           ->join('customers c', 'c.id = k.customer_id', 'left')
                            ->where('iu.status_unit', 'AVAILABLE'); // Only available units
         
         if (!empty($search)) {
@@ -387,8 +386,7 @@ class WorkOrderModel extends Model
                 ->join('inventory_unit iu', 'wo.unit_id = iu.id_inventory_unit', 'left')
                 ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->join('model_unit mu', 'iu.model_unit_id = mu.id_model_unit', 'left')
                 ->join('employees admin', 'wo.admin_id = admin.id', 'left')
                 ->join('employees foreman', 'wo.foreman_id = foreman.id', 'left')
@@ -594,8 +592,7 @@ class WorkOrderModel extends Model
             LEFT JOIN tipe_mast tm ON iu.model_mast_id = tm.id_mast
             LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
             LEFT JOIN kontrak k ON ku.kontrak_id = k.id
-            LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
-            LEFT JOIN customers c ON c.id = cl.customer_id
+            LEFT JOIN customers c ON c.id = k.customer_id
             LEFT JOIN areas a ON iu.area_id = a.id
             LEFT JOIN (
                 SELECT aea.area_id, e.id, e.staff_name, e.phone,

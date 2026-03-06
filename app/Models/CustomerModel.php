@@ -206,8 +206,7 @@ class CustomerModel extends Model
             SELECT iu.* FROM inventory_unit iu
             JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
             JOIN kontrak k ON k.id = ku.kontrak_id
-            JOIN customer_locations cl ON cl.id = k.customer_location_id
-            WHERE cl.customer_id = ?
+            WHERE k.customer_id = ?
         ", [$customerId])->getResultArray();
         
         return $customer;

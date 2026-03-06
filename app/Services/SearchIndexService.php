@@ -50,13 +50,12 @@ class SearchIndexService
             if ($table === 'kontrak') {
                 $builder->select([
                     'k.id', 'k.no_kontrak', 'k.nilai_total', 'k.status',
-                    'c.customer_name', 'cl.location_name'
+                    'c.customer_name'
                 ])
                 ->from('kontrak k')
-                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                ->join('customers c', 'cl.customer_id = c.id', 'left');
+                ->join('customers c', 'k.customer_id = c.id', 'left');
                 
-                $fields = ['no_kontrak', 'customer_name', 'location_name'];
+                $fields = ['no_kontrak', 'customer_name'];
             }
             
             $records = $builder->limit($batchSize, $offset)->get()->getResultArray();

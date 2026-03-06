@@ -46,11 +46,10 @@ class BatchContractOperations extends BaseController
                     k.tanggal_berakhir,
                     k.total_units,
                     DATEDIFF(CURDATE(), k.tanggal_berakhir) as days_overdue,
-                    cl.nama_lokasi as customer_location,
-                    c.nama_customer as customer_name
+                    (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as customer_location,
+                    c.customer_name
                 FROM kontrak k
-                LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
-                LEFT JOIN customers c ON c.id = cl.customer_id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 WHERE k.status = 'ACTIVE'
                 AND k.tanggal_berakhir < CURDATE()
                 ORDER BY k.tanggal_berakhir ASC

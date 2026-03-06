@@ -364,9 +364,8 @@ class ActivityLogViewer extends BaseController
         $customer = '';
         if ($kontrakId) {
             $kontrakQuery = $db->table('kontrak k')
-                ->select('k.no_kontrak, cl.location_name, c.customer_name')
-                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                ->join('customers c', 'cl.customer_id = c.id', 'left')
+                ->select('k.no_kontrak, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name, c.customer_name')
+                ->join('customers c', 'k.customer_id = c.id', 'left')
                 ->where('k.id', $kontrakId)
                 ->get();
             $kontrakData = $kontrakQuery->getRowArray();

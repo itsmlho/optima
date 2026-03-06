@@ -216,7 +216,7 @@ class InventoryUnitModel extends Model
         if (!empty($filters['customer_id'])) {
             // Route through kontrak_unit junction to find units for a customer
             $custId = intval($filters['customer_id']);
-            $builder->where("id_inventory_unit IN (SELECT ku.unit_id FROM kontrak_unit ku JOIN kontrak k ON k.id = ku.kontrak_id JOIN customer_locations cl ON cl.id = k.customer_location_id WHERE cl.customer_id = {$custId} AND ku.status IN ('ACTIVE','TEMP_ACTIVE'))", null, false);
+            $builder->where("id_inventory_unit IN (SELECT ku.unit_id FROM kontrak_unit ku JOIN kontrak k ON k.id = ku.kontrak_id WHERE k.customer_id = {$custId} AND ku.status IN ('ACTIVE','TEMP_ACTIVE'))", null, false);
         }
         
         if (!empty($filters['kontrak_id'])) {
@@ -265,19 +265,17 @@ class InventoryUnitModel extends Model
         return $this->db->table('kontrak_unit ku')
             ->select('ku.*, 
                      k.no_kontrak,
-                     k.customer_location_id,
                      k.tanggal_mulai,
                      k.tanggal_berakhir,
                      k.rental_type,
                      k.jenis_sewa,
                      k.status as contract_status,
-                     cl.location_name,
-                     cl.customer_id,
+                     (SELECT cl.location_name FROM customer_locations cl WHERE cl.id = ku.customer_location_id LIMIT 1) as location_name,
+                     k.customer_id,
                      c.customer_name,
                      c.customer_code')
             ->join('kontrak k', 'ku.kontrak_id = k.id', 'left')
-            ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-            ->join('customers c', 'cl.customer_id = c.id', 'left')
+            ->join('customers c', 'c.id = k.customer_id', 'left')
             ->where('ku.unit_id', $unitId)
             ->whereIn('ku.status', ['ACTIVE', 'PULLED', 'REPLACED'])  // Match current schema enum values
             ->where('ku.is_temporary', 0)  // Exclude temporary replacements
@@ -303,10 +301,9 @@ class InventoryUnitModel extends Model
                      k.tanggal_mulai as contract_start_date,
                      k.tanggal_berakhir as contract_end_date,
                      c.customer_name,
-                     cl.location_name')
+                     (SELECT cl.location_name FROM customer_locations cl WHERE cl.id = ku.customer_location_id LIMIT 1) as location_name')
             ->join('kontrak k', 'ku.kontrak_id = k.id', 'left')
-            ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-            ->join('customers c', 'cl.customer_id = c.id', 'left')
+            ->join('customers c', 'c.id = k.customer_id', 'left')
             ->where('ku.unit_id', $unitId)
             ->orderBy('ku.created_at', 'DESC')
             ->get()
@@ -529,7 +526,7 @@ class InventoryUnitModel extends Model
                           iu.serial_number,
                           iu.lokasi_unit,
                           COALESCE(c.customer_name, "Belum Ada Kontrak") as pelanggan,
-                          COALESCE(cl.location_name, iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
+                          COALESCE((SELECT cl.location_name FROM customer_locations cl WHERE cl.id = ku.customer_location_id LIMIT 1), iu.lokasi_unit, "Lokasi Tidak Diketahui") as lokasi,
                           COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                           COALESCE(mu.model_unit, "Unknown") as model_unit,
                           COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe,
@@ -538,8 +535,7 @@ class InventoryUnitModel extends Model
                 // Updated: JOIN via kontrak_unit junction (source of truth)
                 ->join('kontrak_unit ku', 'iu.id_inventory_unit = ku.unit_id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak as k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations as cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers as c', 'c.id = cl.customer_id', 'left')
+                ->join('customers as c', 'c.id = k.customer_id', 'left')
                 ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
                 ->where('iu.status_unit_id !=', 2) // Exclude WORKSHOP-RUSAK
@@ -563,9 +559,9 @@ class InventoryUnitModel extends Model
                           ku.kontrak_id,
                           k.no_kontrak,
                           c.customer_name as pelanggan,
-                          cl.location_name as lokasi_kontrak,
-                          cl.contact_person as pic_kontrak,
-                          COALESCE(cl.location_name, iu.lokasi_unit) as lokasi,
+                          (SELECT cl.location_name FROM customer_locations cl WHERE cl.id = ku.customer_location_id LIMIT 1) as lokasi_kontrak,
+                          (SELECT cl.contact_person FROM customer_locations cl WHERE cl.id = ku.customer_location_id LIMIT 1) as pic_kontrak,
+                          COALESCE((SELECT cl.location_name FROM customer_locations cl WHERE cl.id = ku.customer_location_id LIMIT 1), iu.lokasi_unit) as lokasi,
                           COALESCE(mu.merk_unit, "Unknown") as merk_unit,
                           COALESCE(mu.model_unit, "Unknown") as model_unit,
                           COALESCE(CONCAT(tu.tipe, " ", tu.jenis), "Unknown") as tipe,
@@ -573,8 +569,7 @@ class InventoryUnitModel extends Model
                 // Updated: JOIN via kontrak_unit junction (source of truth)
                 ->join('kontrak_unit ku', 'iu.id_inventory_unit = ku.unit_id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak as k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations as cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers as c', 'c.id = cl.customer_id', 'left')
+                ->join('customers as c', 'c.id = k.customer_id', 'left')
                 ->join('model_unit as mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('tipe_unit as tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left')
                 ->join('kapasitas_unit as kap', 'kap.id_kapasitas = iu.kapasitas_unit_id', 'left')

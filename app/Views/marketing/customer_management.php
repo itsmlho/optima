@@ -243,8 +243,8 @@ $can_export = $permissions['export'];
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h6 class="mb-0"><strong>Recent Contracts & PO</strong> <small class="text-muted">(Latest 5)</small></h6>
                             <div>
-                                <a href="<?= base_url('marketing/kontrak') ?>" class="btn btn-primary btn-sm" id="btnManageContracts" target="_blank">
-                                    <i class="fas fa-external-link-alt me-1"></i>Manage Contracts
+                                <a href="#" class="btn btn-primary btn-sm" id="btnManageContracts" onclick="event.preventDefault(); viewCustomerContracts()">
+                                    <i class="fas fa-cogs me-1"></i>Kelola Semua Kontrak
                                 </a>
                             </div>
                         </div>
@@ -342,8 +342,18 @@ $can_export = $permissions['export'];
                     </div>
                 </div>
             </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-white" data-bs-dismiss="modal">Close</button>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="$('#contractDetailModal').modal('hide'); deleteContract(currentContractId);">
+                        <i class="fas fa-trash me-1"></i>Hapus
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="$('#contractDetailModal').modal('hide'); window.location.href='<?= base_url('marketing/kontrak/detail/') ?>' + currentContractId;">
+                        <i class="fas fa-cog me-1"></i>Kelola Kontrak
+                    </button>
+                    <button type="button" class="btn btn-white" data-bs-dismiss="modal">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1261,12 +1271,14 @@ function displayContracts(contracts) {
                 </td>
                 <td>${statusBadge}</td>
                 <td class="text-center">
-                    <button type="button" 
-                            class="btn btn-sm btn-light contract-actions-btn" 
-                            onclick="showContractActions(event, ${contract.id}, '${contractNo}', ${showRenew}, ${showAmend})"
-                            title="Actions">
-                        <i class="fas fa-ellipsis-v"></i>
-                    </button>
+                    <div class="btn-group btn-group-sm">
+                        <button type="button" class="btn btn-outline-primary" onclick="openContractDetail(${contract.id})" title="Lihat Ringkasan">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <a href="<?= base_url('marketing/kontrak/detail/') ?>${contract.id}" class="btn btn-outline-secondary" title="Kelola Kontrak">
+                            <i class="fas fa-cog"></i>
+                        </a>
+                    </div>
                 </td>
             </tr>
         `;
@@ -1362,15 +1374,33 @@ function showContractActions(event, contractId, contractNo, showRenew, showAmend
     const button = event.currentTarget;
     const rect = button.getBoundingClientRect();
     
-    // Build simplified menu HTML - View only + Manage in Kontrak page
+    // Build action menu with full CRUD options
+    let renewItem = showRenew ? `
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); $('.contract-actions-menu').remove(); window.location.href='<?= base_url('marketing/kontrak/detail/') ?>' + ${contractId} + '#renewal';">
+                    <i class="fas fa-sync-alt text-success me-2"></i>Renewal
+                </a>` : '';
+    let amendItem = showAmend ? `
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); $('.contract-actions-menu').remove(); window.location.href='<?= base_url('marketing/kontrak/detail/') ?>' + ${contractId} + '#rate';">
+                    <i class="fas fa-calculator text-warning me-2"></i>Change Rate
+                </a>` : '';
+
     let menuHTML = `
-        <div class="contract-actions-menu" style="position: fixed; top: ${rect.bottom + 5}px; left: ${rect.left - 140}px; z-index: 10500;">
-            <div class="list-group shadow">
+        <div class="contract-actions-menu" style="position: fixed; top: ${rect.bottom + 5}px; left: ${rect.left - 180}px; z-index: 10500;">
+            <div class="list-group shadow" style="min-width: 200px;">
                 <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); openContractDetail(${contractId}); $('.contract-actions-menu').remove();">
-                    <i class="fas fa-eye text-primary me-2"></i>View Detail
+                    <i class="fas fa-eye text-primary me-2"></i>Lihat Ringkasan
                 </a>
-                <a href="<?= base_url('marketing/kontrak?contract=') ?>${contractId}" target="_blank" class="list-group-item list-group-item-action" onclick="$('.contract-actions-menu').remove();">
-                    <i class="fas fa-external-link-alt text-success me-2"></i>Manage in Kontrak Page
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); $('.contract-actions-menu').remove(); window.location.href='<?= base_url('marketing/kontrak/detail/') ?>' + ${contractId};">
+                    <i class="fas fa-file-alt text-info me-2"></i>Buka Detail Lengkap
+                </a>
+                <a href="#" class="list-group-item list-group-item-action" onclick="event.preventDefault(); $('.contract-actions-menu').remove(); window.location.href='<?= base_url('marketing/kontrak/edit/') ?>' + ${contractId};">
+                    <i class="fas fa-edit text-primary me-2"></i>Edit Kontrak
+                </a>
+                ${renewItem}
+                ${amendItem}
+                <div class="dropdown-divider m-0"></div>
+                <a href="#" class="list-group-item list-group-item-action text-danger" onclick="event.preventDefault(); $('.contract-actions-menu').remove(); deleteContract(${contractId});">
+                    <i class="fas fa-trash me-2"></i>Hapus Kontrak
                 </a>
             </div>
         </div>`;
@@ -1389,9 +1419,9 @@ function showContractActions(event, contractId, contractNo, showRenew, showAmend
 // View all contracts for current customer (filtered)
 function viewCustomerContracts() {
     if (currentCustomerId) {
-        window.open(`<?= base_url('marketing/kontrak') ?>?customer_id=${currentCustomerId}`, '_blank');
+        window.location.href = `<?= base_url('marketing/kontrak') ?>?customer_id=${currentCustomerId}`;
     } else {
-        window.open(`<?= base_url('marketing/kontrak') ?>`, '_blank');
+        window.location.href = `<?= base_url('marketing/kontrak') ?>`;
     }
 }
 

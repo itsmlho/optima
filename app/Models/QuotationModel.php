@@ -303,14 +303,13 @@ class QuotationModel extends Model
         return $this->db->table('quotations q')
             ->select('q.*, 
                 c.customer_name,
-                cl.location_name,
-                cl.address as location_address,
-                cl.contact_person as pic_name,
-                cl.phone as pic_phone,
+                (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name,
+                (SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_address,
+                (SELECT cl.contact_person FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as pic_name,
+                (SELECT cl.phone FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as pic_phone,
                 k.no_kontrak as contract_number')
             ->join('customers c', 'c.id = q.created_customer_id', 'left')
             ->join('kontrak k', 'k.id = q.created_contract_id', 'left')
-            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
             ->where('q.id_quotation', $id)
             ->get()
             ->getRowArray();
