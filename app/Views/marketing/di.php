@@ -925,7 +925,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       },
       beforeSend: function(xhr) {
         if (window.csrfToken) {
-          xhr.setRequestHeader('X-CSRFToken', window.csrfToken);
+          xhr.setRequestHeader('X-CSRF-TOKEN', window.csrfToken);
         }
       },
       success: function(data) {

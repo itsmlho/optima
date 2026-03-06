@@ -1070,7 +1070,7 @@ function loadStatistics(startDate, endDate) {
         type: 'POST',
         data: data,
         headers: {
-            'X-CSRFToken': window.csrfToken || ''
+            'X-CSRF-TOKEN': window.csrfToken || ''
         },
         success: function(response) {
             if (response.success) {

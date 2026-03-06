@@ -407,7 +407,7 @@ $(document).ready(function() {
             }(),
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': getCsrfToken()
+                'X-CSRF-TOKEN': getCsrfToken()
             },
             success: function(response) {
                 if (response.success) {
@@ -504,7 +504,7 @@ $(document).ready(function() {
             }, csrfData),
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRFToken': getCsrfToken()
+                'X-CSRF-TOKEN': getCsrfToken()
             },
             dataType: 'json',
             success: function(response) {
@@ -761,7 +761,7 @@ async function deactivateUser(userId, userName) {
         })(),
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': getCsrfToken()
+            'X-CSRF-TOKEN': getCsrfToken()
         },
         success: function(response) {
             if (response.success) {
