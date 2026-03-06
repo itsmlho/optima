@@ -410,7 +410,7 @@ function initializeContractsTable() {
             beforeSend: function(xhr) {
                 // Add CSRF token to header
                 if (window.csrfToken) {
-                    xhr.setRequestHeader('X-CSRFToken', window.csrfToken);
+                    xhr.setRequestHeader('X-CSRF-TOKEN', window.csrfToken);
                 }
                 xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             },

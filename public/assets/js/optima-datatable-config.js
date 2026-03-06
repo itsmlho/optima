@@ -30,7 +30,7 @@ window.OptimaDataTable = (function () {
      * Fallback ke manual cookie parsing jika belum tersedia
      * Cookie name: 'csrf_cookie_name' (sesuai Security.php)
      * Token field name: 'csrf_test_name' (sesuai Security.php tokenName)
-     * Header name: 'X-CSRFToken' (sesuai Security.php headerName)
+     * Header name: 'X-CSRF-TOKEN' (sesuai Security.php headerName)
      */
     function getCsrfToken() {
         // Prioritas 1: window.getCsrfToken() dari base.php (paling fresh, baca cookie tiap kali)
@@ -83,7 +83,7 @@ window.OptimaDataTable = (function () {
                 // Add CSRF token to request header
                 const token = getCsrfToken();
                 if (token) {
-                    xhr.setRequestHeader('X-CSRFToken', token);
+                    xhr.setRequestHeader('X-CSRF-TOKEN', token);
                 }
                 xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             },
