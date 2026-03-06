@@ -48,8 +48,6 @@ if (ENVIRONMENT !== 'production') {
 
 // Customer AJAX Endpoints - MUST be before other routes to avoid conflicts
 $routes->get('customers/get/(:num)', 'Customers::get/$1');
-$routes->get('customers/getLocations/(:num)', 'Customers::getLocations/$1');
-$routes->get('customers/getContracts/(:num)', 'Customers::getContracts/$1');
 $routes->post('customers/saveLocation', 'Customers::saveLocation');
 $routes->post('customers/setPrimaryLocation', 'Customers::setPrimaryLocation');
 $routes->post('customers/searchContract', 'Customers::searchContract');
@@ -142,8 +140,11 @@ $routes->group('marketing',  static function ($routes) {
     
     // --- Detail Routes (for notification deep linking) ---
     $routes->get('contracts/view/(:num)', 'Marketing::index'); // Contract detail via notification
-    // Note: spk/detail/(:num) is defined below as API endpoint, not view
-    $routes->get('quotations', 'Marketing::quotations');
+    // Note: spk/detail/(:num) is defined below as API    // Quotations / Penawaran
+    $routes->get('quotations', 'MarketingController::quotations');
+    
+    // Audit Approval
+    $routes->get('audit-approval', 'UnitAudit::approval', ['filter' => 'permission:view_marketing']);
     $routes->get('quotations/stats', 'Marketing::getQuotationStats');
     $routes->post('quotations/data', 'Marketing::getQuotationsData');
     $routes->post('quotations/linkContract', 'Marketing::linkContract');
@@ -336,6 +337,10 @@ $routes->group('marketing',  static function ($routes) {
     $routes->post('kontrak/getDataTable', 'Marketing::getDataTable');
     $routes->get('kontrak/detail/(:num)', 'Kontrak::detail/$1'); // Add missing detail route
     $routes->get('kontrak/units/(:num)', 'Kontrak::getContractUnits/$1'); // Use existing method with correct format
+    $routes->post('kontrak/addUnit', 'Kontrak::addUnit'); // Add unit to contract
+    $routes->post('kontrak/removeUnit', 'Kontrak::removeUnit'); // Remove unit from contract
+    $routes->post('kontrak/updateUnit', 'Kontrak::updateUnit'); // Update unit harga_sewa/is_spare in contract
+    $routes->get('kontrak/getAvailableUnits', 'Kontrak::getAvailableUnits'); // Get available units for contract
     $routes->get('kontrak/customer-locations/(:num)', 'Marketing::customerLocations/$1');
     $routes->get('kontrak/locations/(:num)', 'Kontrak::getLocationsByCustomer/$1'); // Load customer locations for SPK
     $routes->get('kontrak/spesifikasi/(:num)', 'Kontrak::spesifikasi/$1'); // Load contract specifications for SPK
@@ -432,6 +437,11 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('export_kontrak', 'Marketing::exportKontrak');
     $routes->get('export_customer', 'Marketing::exportCustomer');
 
+    // Customer routes (accessible from marketing module)
+    $routes->get('customers/detail/(:num)', 'Customers::detail/$1');
+    $routes->get('customers/getContracts/(:num)', 'Customers::getContracts/$1');
+    $routes->get('customers/getLocations/(:num)', 'Customers::getLocations/$1');
+
 });
 
 // Service Division Routes
@@ -492,6 +502,21 @@ $routes->group('service', static function ($routes) {
     $routes->post('work-orders/staff-dropdown', 'WorkOrderController::staffDropdown');
     $routes->post('work-orders/get-area-staff', 'WorkOrderController::getAreaStaff');
     $routes->post('service/work-orders/get-area-staff', 'WorkOrderController::getAreaStaff');
+
+
+    // Unit Audit & Movement (Audit is in Service, Movement is in Warehouse)
+    $routes->get('unit-audit', 'UnitAudit::index', ['filter' => 'permission:view_service']);
+    $routes->get('unit_audit/getCustomersWithUnits', 'UnitAudit::getCustomersWithUnits', ['filter' => 'permission:view_service']);
+    $routes->get('unit_audit/getCustomerUnits/(:num)', 'UnitAudit::getCustomerUnits/$1', ['filter' => 'permission:view_service']);
+    $routes->get('unit_audit/getAvailableUnits', 'UnitAudit::getAvailableUnits', ['filter' => 'permission:view_service']);
+    $routes->post('unit_audit/createAuditRequest', 'UnitAudit::createAuditRequest', ['filter' => 'permission:create_service']);
+    $routes->get('unit_audit/getAuditRequests', 'UnitAudit::getAuditRequests', ['filter' => 'permission:view_service']);
+    $routes->get('unit_audit/getAuditDetail/(:num)', 'UnitAudit::getAuditDetail/$1', ['filter' => 'permission:view_service']);
+    
+    // Fallback for direct controller access
+    $routes->get('unit_audit', 'UnitAudit::index', ['filter' => 'permission:view_service']);
+    $routes->get('unit_audit/getCustomers', 'UnitAudit::getCustomers');
+
     // PMP and other service pages
     $routes->get('pmps', 'Service::pmps');
         $routes->get('data-unit', 'Service::dataUnit');
@@ -666,6 +691,18 @@ $routes->group('warehouse', static function ($routes) {
         $routes->post('get-returns', 'Warehouse\SparepartUsageController::getReturns');
         $routes->get('get-return-detail/(:num)', 'Warehouse\SparepartUsageController::getReturnDetail/$1');
         $routes->post('confirm-return/(:num)', 'Warehouse\SparepartUsageController::confirmReturn/$1');
+    });
+
+    // Unit Movement / Surat Jalan Routes (moved from service)
+    $routes->group('movements', static function ($routes) {
+        $routes->get('/', 'Warehouse\UnitMovementController::index');
+        $routes->get('getMovements', 'Warehouse\UnitMovementController::getMovements');
+        $routes->post('createMovement', 'Warehouse\UnitMovementController::createMovement');
+        $routes->post('startMovement/(:num)', 'Warehouse\UnitMovementController::startMovement/$1');
+        $routes->post('confirmArrival/(:num)', 'Warehouse\UnitMovementController::confirmArrival/$1');
+        $routes->post('cancelMovement/(:num)', 'Warehouse\UnitMovementController::cancelMovement/$1');
+        $routes->get('getMovementDetail/(:num)', 'Warehouse\UnitMovementController::getMovementDetail/$1');
+        $routes->get('getAvailableUnits', 'Warehouse\UnitMovementController::getAvailableUnits');
     });
 
     // PERBAIKAN: Grup baru untuk Inventory, sejajar dengan purchase-orders

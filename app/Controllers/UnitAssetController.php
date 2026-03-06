@@ -112,8 +112,7 @@ class UnitAssetController extends BaseController
             $builder->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left');
             $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
             $builder->join('kontrak k', 'k.id = ku.kontrak_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
 
             if ($statusFilter !== null && $statusFilter !== '') {
                 $builder->where('iu.status_unit_id', $statusFilter);

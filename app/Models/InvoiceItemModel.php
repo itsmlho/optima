@@ -94,64 +94,166 @@ class InvoiceItemModel extends Model
     }
     
     /**
-     * Add invoice items from Contract specifications
-     * Used for recurring rental invoices
-     * 
-     * @param int $invoiceId Invoice ID
-     * @param int $contractId Contract ID
-     * @param float|null $amendedRate Override rate from amendment (if applicable)
-     * @return int Number of items added
+     * Add invoice items from Contract units (kontrak_unit → inventory_unit)
+     * Digunakan untuk recurring rental invoice.
+     * Harga diambil dari inventory_unit.harga_sewa_bulanan (bukan quotation_specifications).
+     *
+     * @param int        $contractId  Kontrak ID
+     * @param float|null $amendedRate Override rate dari amendment (jika ada)
+     * @return int Jumlah item yang ditambahkan
      */
     public function addItemsFromContract(int $contractId, ?float $amendedRate = null): int
     {
-        // Find invoice first to get invoice_id
+        // Cari invoice terakhir untuk kontrak ini
         $invoiceModel = new \App\Models\InvoiceModel();
         $invoice = $invoiceModel->where('contract_id', $contractId)
                                 ->orderBy('id', 'DESC')
                                 ->first();
-        
+
         if (!$invoice) {
             return 0;
         }
-        
+
         $invoiceId = $invoice['id'];
-        
-        // Use quotation_specifications table directly (kontrak_spesifikasi is legacy)
-        $db = \Config\Database::connect();
-        $builder = $db->table('quotation_specifications');
-        
-        // Get specs for this contract, EXCLUDING spare units (is_spare_unit = 1)
-        $specs = $builder->where('kontrak_id', $contractId)
-                         ->where('is_spare_unit !=', 1)  // Skip spare units
-                         ->where('is_active', 1)
-                         ->get()
-                         ->getResultArray();
-        
+
+        // Ambil semua unit aktif dari kontrak_unit JOIN inventory_unit
+        // Ini adalah sumber kebenaran: harga per unit dari inventory_unit.harga_sewa_bulanan
+        $db      = \Config\Database::connect();
+        $units   = $db->table('kontrak_unit ku')
+                      ->select('
+                          ku.unit_id,
+                          iu.nomor_seri,
+                          iu.merk_unit,
+                          iu.model_unit,
+                          iu.kapasitas,
+                          iu.harga_sewa_bulanan
+                      ')
+                      ->join('inventory_unit iu', 'iu.id_inventory_unit = ku.unit_id')
+                      ->where('ku.kontrak_id', $contractId)
+                      ->where('ku.status', 'ACTIVE')
+                      ->where('ku.is_temporary', 0)
+                      ->get()
+                      ->getResultArray();
+
         $itemCount = 0;
-        
-        foreach ($specs as $spec) {
-            // Build description from specification fields
-            $description = "Rental - {$spec['specification_name']}";
-            
-            // Use amended rate if provided, otherwise use contract spec rate
-            $unitPrice = $amendedRate ?? $spec['monthly_price'] ?? 0;
-            
+
+        foreach ($units as $unit) {
+            // Gunakan amended rate jika ada, otherwise ambil dari unit
+            $unitPrice = $amendedRate ?? (float)($unit['harga_sewa_bulanan'] ?? 0);
+
+            $kapasitas   = $unit['kapasitas'] ? " {$unit['kapasitas']}" : '';
+            $description = "Rental - {$unit['merk_unit']} {$unit['model_unit']}{$kapasitas}"
+                         . " ({$unit['nomor_seri']})";
+
             $itemData = [
-                'invoice_id' => $invoiceId,
-                'item_type' => 'UNIT_RENTAL',
-                'description' => $description,
-                'unit_id' => null, // Recurring invoice not tied to specific units
-                'quantity' => $spec['quantity'] ?? 1,
-                'unit_price' => $unitPrice,
-                'reference_contract_spec_id' => $spec['id_specification'],
-                'notes' => null
+                'invoice_id'                  => $invoiceId,
+                'item_type'                   => 'UNIT_RENTAL',
+                'description'                 => $description,
+                'unit_id'                     => $unit['unit_id'],
+                'quantity'                    => 1,
+                'unit_price'                  => $unitPrice,
+                'subtotal'                    => $unitPrice, // qty=1 jadi sama
+                'reference_contract_spec_id'  => null,
+                'notes'                       => null,
             ];
-            
+
             if ($this->insert($itemData)) {
                 $itemCount++;
             }
         }
-        
+
+        // Fallback: jika tidak ada unit di kontrak_unit, gunakan quotation_specifications (legacy)
+        if ($itemCount === 0) {
+            $builder = $db->table('quotation_specifications');
+            $specs   = $builder->where('kontrak_id', $contractId)
+                               ->where('is_spare_unit !=', 1)
+                               ->where('is_active', 1)
+                               ->get()
+                               ->getResultArray();
+
+            foreach ($specs as $spec) {
+                $unitPrice   = $amendedRate ?? $spec['monthly_price'] ?? 0;
+                $description = "Rental - {$spec['specification_name']}";
+
+                $itemData = [
+                    'invoice_id'                 => $invoiceId,
+                    'item_type'                  => 'UNIT_RENTAL',
+                    'description'                => $description,
+                    'unit_id'                    => null,
+                    'quantity'                   => $spec['quantity'] ?? 1,
+                    'unit_price'                 => $unitPrice,
+                    'subtotal'                   => $unitPrice * ($spec['quantity'] ?? 1),
+                    'reference_contract_spec_id' => $spec['id_specification'],
+                    'notes'                      => null,
+                ];
+
+                if ($this->insert($itemData)) {
+                    $itemCount++;
+                }
+            }
+        }
+
+        return $itemCount;
+    }
+
+    /**
+     * Add invoice items secara manual dari daftar unit (tanpa kontrak/PO)
+     * Digunakan untuk invoice MANUAL_RENTAL: admin pilih unit + harga langsung.
+     *
+     * @param int   $invoiceId Invoice ID
+     * @param array $unitItems Array of ['unit_id' => int, 'unit_price' => float, 'notes' => string|null]
+     * @return int Jumlah item yang berhasil ditambahkan
+     */
+    public function addItemsFromUnits(int $invoiceId, array $unitItems): int
+    {
+        $db        = \Config\Database::connect();
+        $itemCount = 0;
+
+        foreach ($unitItems as $item) {
+            $unitId    = (int) ($item['unit_id'] ?? 0);
+            $unitPrice = (float) ($item['unit_price'] ?? 0);
+
+            if ($unitId <= 0) {
+                continue;
+            }
+
+            // Ambil detail unit dari inventory
+            $unit = $db->table('inventory_unit')
+                       ->select('nomor_seri, merk_unit, model_unit, kapasitas, harga_sewa_bulanan')
+                       ->where('id_inventory_unit', $unitId)
+                       ->get()
+                       ->getRowArray();
+
+            if (!$unit) {
+                continue;
+            }
+
+            // Jika harga tidak diberikan, gunakan harga dari inventory_unit
+            if ($unitPrice <= 0) {
+                $unitPrice = (float)($unit['harga_sewa_bulanan'] ?? 0);
+            }
+
+            $kapasitas   = $unit['kapasitas'] ? " {$unit['kapasitas']}" : '';
+            $description = "Rental - {$unit['merk_unit']} {$unit['model_unit']}{$kapasitas}"
+                         . " ({$unit['nomor_seri']})";
+
+            $itemData = [
+                'invoice_id'                 => $invoiceId,
+                'item_type'                  => 'UNIT_RENTAL',
+                'description'                => $description,
+                'unit_id'                    => $unitId,
+                'quantity'                   => 1,
+                'unit_price'                 => $unitPrice,
+                'subtotal'                   => $unitPrice,
+                'reference_contract_spec_id' => null,
+                'notes'                      => $item['notes'] ?? null,
+            ];
+
+            if ($this->insert($itemData)) {
+                $itemCount++;
+            }
+        }
+
         return $itemCount;
     }
     

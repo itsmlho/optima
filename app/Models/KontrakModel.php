@@ -14,24 +14,27 @@ class KontrakModel extends Model
     protected $protectFields = true;
     protected $allowedFields = [
         'no_kontrak',
-        'customer_po_number',  // Renamed from no_po_marketing
-        'rental_type',         // New: CONTRACT, PO_ONLY, DAILY_SPOT
+        'customer_po_number',   // Nomor PO dari customer (opsional)
+        'rental_type',          // CONTRACT, PO_ONLY, DAILY_SPOT
         'customer_location_id',
-        'nilai_total',
+        // nilai_total DIHAPUS dari allowedFields:
+        // nilai real dihitung otomatis dari kontrak_unit → inventory_unit.harga_sewa_bulanan
+        // Lihat: findWithDynamicCalculation() dan getContractsForDataTable()
         'total_units',
         'jenis_sewa',
-        'billing_method',      // NEW: CYCLE, PRORATE, MONTHLY_FIXED
-        'billing_notes',       // NEW: Special billing instructions
-        'billing_start_date',  // NEW: Override billing start date
+        'billing_method',       // CYCLE, PRORATE, MONTHLY_FIXED
+        'billing_notes',        // Catatan billing khusus
+        'billing_start_date',   // Override tanggal mulai billing
         'tanggal_mulai',
         'tanggal_berakhir',
         'status',
-        'parent_contract_id',  // NEW: For renewal chain
-        'is_renewal',          // NEW: Is this a renewed contract
-        'renewal_generation',  // NEW: Generation number
-        'renewal_initiated_at', // NEW: When renewal started
-        'renewal_initiated_by', // NEW: Who initiated renewal
-        'dibuat_oleh'
+        'parent_contract_id',   // Untuk renewal chain
+        'is_renewal',           // Apakah ini kontrak renewal
+        'renewal_generation',   // Nomor generasi renewal
+        'renewal_initiated_at', // Kapan renewal dimulai
+        'renewal_initiated_by', // Siapa yang memulai renewal
+        'dibuat_oleh',
+        'customer_id',          // Direct customer reference (untuk kontrak tanpa lokasi spesifik)
     ];
 
     // Dates
@@ -43,12 +46,14 @@ class KontrakModel extends Model
 
     // Validation
     protected $validationRules = [
-        'no_kontrak' => 'required|max_length[100]|is_unique[kontrak.no_kontrak]',
-        'customer_location_id' => 'required|is_natural_no_zero',
-        'tanggal_mulai' => 'required|valid_date',
-        'tanggal_berakhir' => 'required|valid_date',
-        'status' => 'permit_empty|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]',
-        'rental_type' => 'permit_empty|in_list[CONTRACT,PO_ONLY,DAILY_SPOT]'
+        // no_kontrak TIDAK lagi unique: satu nomor surat bisa mencakup banyak unit
+        // (legacy: dulu 1 baris per unit dengan nomor sama → sekarang 1 baris per kesepakatan)
+        'no_kontrak'           => 'permit_empty|max_length[100]',
+        'customer_location_id' => 'permit_empty|is_natural_no_zero',
+        'tanggal_mulai'        => 'permit_empty|valid_date',
+        'tanggal_berakhir'     => 'permit_empty|valid_date',
+        'status'               => 'permit_empty|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]',
+        'rental_type'          => 'permit_empty|in_list[CONTRACT,PO_ONLY,DAILY_SPOT]'
     ];
 
     protected $validationMessages = [
@@ -133,18 +138,28 @@ class KontrakModel extends Model
     /**
      * Get contracts for DataTables with statistics
      */
-    public function getContractsForDataTable($start, $length, $search, $orderColumn, $orderDir)
+    public function getContractsForDataTable($start, $length, $search, $orderColumn, $orderDir, $filters = [])
     {
         $builder = $this->db->table($this->table . ' k');
         
-        // Join with customer_locations, customers, and users table for counting
-        $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
-        $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+        // Join with customers directly (new schema) and users table for counting
+        $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
         
         // Filter out invalid IDs (0 or null)
         $builder->where('k.id >', 0);
         $builder->where('k.id IS NOT NULL', null, false);
+
+        // Apply custom filters
+        if (!empty($filters['rental_type'])) {
+            $builder->where('k.rental_type', $filters['rental_type']);
+        }
+        if (!empty($filters['status'])) {
+            $builder->where('k.status', $filters['status']);
+        }
+        if (!empty($filters['customer_id'])) {
+            $builder->where('c.id', $filters['customer_id']);
+        }
         
         // Search functionality for counting with new database structure
         if (!empty($search)) {
@@ -164,18 +179,28 @@ class KontrakModel extends Model
         $builder = $this->db->table($this->table . ' k');
         
         // Join again for data query
-        $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
-        $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+        $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->join('users u', 'k.dibuat_oleh = u.id', 'left');
+
+        // Re-apply custom filters for data query
+        if (!empty($filters['rental_type'])) {
+            $builder->where('k.rental_type', $filters['rental_type']);
+        }
+        if (!empty($filters['status'])) {
+            $builder->where('k.status', $filters['status']);
+        }
+        if (!empty($filters['customer_id'])) {
+            $builder->where('c.id', $filters['customer_id']);
+        }
         
         // Explicitly select all columns we need with dynamic calculations and user name from new structure
         $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type,
                          c.customer_name as pelanggan, 
-                         cl.contact_person as pic, 
-                         cl.phone as kontak, 
-                         cl.location_name as lokasi, 
+                         (SELECT cl.contact_person FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as pic, 
+                         (SELECT cl.phone FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as kontak, 
+                         (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi, 
                          k.jenis_sewa,
-                         (SELECT COALESCE(SUM(iu.harga_sewa_bulanan), 0) FROM kontrak_unit ku JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as nilai_total,
+                         (SELECT COALESCE(SUM(CASE WHEN (ku.is_spare IS NULL OR ku.is_spare = 0) THEN COALESCE(ku.harga_sewa, iu.harga_sewa_bulanan) ELSE 0 END), 0) FROM kontrak_unit ku JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as nilai_total,
                          (SELECT COUNT(*) FROM kontrak_unit ku JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id WHERE ku.kontrak_id = k.id AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0) as total_units,
                          k.tanggal_mulai, k.tanggal_berakhir, k.status, k.dibuat_pada, k.diperbarui_pada,
                          CONCAT(u.first_name, " ", u.last_name) as dibuat_oleh_nama');
@@ -189,8 +214,6 @@ class KontrakModel extends Model
             $builder->groupStart()
                     ->like('k.no_kontrak', $search)
                     ->orLike('c.customer_name', $search)
-                    ->orLike('cl.location_name', $search)
-                    ->orLike('cl.address', $search)
                     ->orLike('k.status', $search)
                     ->groupEnd();
         }
@@ -239,7 +262,14 @@ class KontrakModel extends Model
         $orderColumn = $request->getPost('order')[0]['column'] ?? 0;
         $orderDir = $request->getPost('order')[0]['dir'] ?? 'desc';
 
-        return $this->getContractsForDataTable($start, $length, $searchValue, $orderColumn, $orderDir);
+        // Pass custom filters
+        $filters = [
+            'rental_type' => $request->getPost('rental_type') ?? '',
+            'status'      => $request->getPost('status') ?? '',
+            'customer_id' => $request->getPost('customer_id') ?? '',
+        ];
+
+        return $this->getContractsForDataTable($start, $length, $searchValue, $orderColumn, $orderDir, $filters);
     }
 
     /**
@@ -262,13 +292,10 @@ class KontrakModel extends Model
         }
 
         $builder = $this->db->table($this->table . ' k');
-        $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
-        $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+        $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->groupStart()
                 ->like('k.no_kontrak', $searchValue)
                 ->orLike('c.customer_name', $searchValue)
-                ->orLike('cl.location_name', $searchValue)
-                ->orLike('cl.address', $searchValue)
                 ->orLike('k.status', $searchValue)
                 ->groupEnd();
 
@@ -340,14 +367,13 @@ class KontrakModel extends Model
             ->select('
                 k.*,
                 c.customer_name,
-                cl.location_name,
-                cl.contact_person,
-                cl.phone,
-                cl.address,
+                (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name,
+                (SELECT cl.contact_person FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as contact_person,
+                (SELECT cl.phone FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as phone,
+                (SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as address,
                 CONCAT(u.first_name, " ", u.last_name) as dibuat_oleh_nama
             ')
-            ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-            ->join('customers c', 'cl.customer_id = c.id', 'left')
+            ->join('customers c', 'c.id = k.customer_id', 'left')
             ->join('users u', 'k.dibuat_oleh = u.id', 'left')
             ->where('k.id', $id)
             ->get()
@@ -361,7 +387,7 @@ class KontrakModel extends Model
         $calculations = $this->db->query("
             SELECT 
                 COUNT(CASE WHEN ku.is_temporary != 1 THEN 1 END) as actual_units,
-                COALESCE(SUM(CASE WHEN ku.is_temporary != 1 THEN iu.harga_sewa_bulanan ELSE 0 END), 0) as total_nilai
+                COALESCE(SUM(CASE WHEN ku.is_temporary != 1 AND (ku.is_spare IS NULL OR ku.is_spare = 0) THEN COALESCE(ku.harga_sewa, iu.harga_sewa_bulanan) ELSE 0 END), 0) as total_nilai
             FROM kontrak_unit ku
             JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
             WHERE ku.kontrak_id = ? AND ku.status IN ('ACTIVE','TEMP_ACTIVE')

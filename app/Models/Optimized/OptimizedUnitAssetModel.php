@@ -275,9 +275,8 @@ class OptimizedUnitAssetModel extends UnitAssetModel
         $db = \Config\Database::connect();
         
         $result = $db->table('kontrak k')
-                     ->select('k.*, cl.location_name, c.customer_name')
-                     ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                     ->join('customers c', 'cl.customer_id = c.id', 'left')
+                     ->select('k.*, c.customer_name, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name')
+                     ->join('customers c', 'c.id = k.customer_id', 'left')
                      ->where('k.id', $id)
                      ->get()
                      ->getRowArray();
@@ -406,9 +405,8 @@ class OptimizedUnitAssetModel extends UnitAssetModel
         $db = \Config\Database::connect();
         
         $results = $db->table('kontrak k')
-                      ->select('k.*, cl.location_name, c.customer_name')
-                      ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                      ->join('customers c', 'cl.customer_id = c.id', 'left')
+                      ->select('k.*, c.customer_name, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name')
+                      ->join('customers c', 'c.id = k.customer_id', 'left')
                       ->whereIn('k.id', array_unique($ids))
                       ->get()
                       ->getResultArray();
@@ -447,8 +445,7 @@ class OptimizedUnitAssetModel extends UnitAssetModel
         LEFT JOIN kapasitas k_info ON k_info.id_kapasitas = iu.kapasitas_unit_id
         LEFT JOIN kontrak_unit ku_v ON ku_v.unit_id = iu.id_inventory_unit AND ku_v.status IN ('ACTIVE','TEMP_ACTIVE') AND ku_v.is_temporary = 0
         LEFT JOIN kontrak k ON ku_v.kontrak_id = k.id
-        LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-        LEFT JOIN customers c ON cl.customer_id = c.id
+        LEFT JOIN customers c ON c.id = k.customer_id
         ";
 
         try {

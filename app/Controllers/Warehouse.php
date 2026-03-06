@@ -490,8 +490,7 @@ class Warehouse extends BaseController
                 ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
                 ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->where('iu.id_inventory_unit', $id)
                 ->get()
                 ->getRowArray();
@@ -677,8 +676,7 @@ class Warehouse extends BaseController
                     
                     -- Contract & Customer Info (from junction table)
                     ku.kontrak_id,
-                    cl.customer_id,
-                    k.customer_location_id,
+                    c.id as customer_id,
                     COALESCE(k.no_kontrak, "-") as no_kontrak,
                     COALESCE(k.status, "-") as status_kontrak,
                     k.tanggal_mulai as kontrak_mulai,
@@ -686,8 +684,8 @@ class Warehouse extends BaseController
                     k.jenis_sewa,
                     COALESCE(c.customer_name, "-") as customer_name,
                     COALESCE(c.customer_code, "-") as customer_code,
-                    COALESCE(cl.location_name, "-") as customer_location_name,
-                    COALESCE(cl.address, "-") as customer_address,
+                    COALESCE((SELECT cl.location_name FROM kontrak_unit ku2 JOIN customer_locations cl ON cl.id = ku2.customer_location_id WHERE ku2.kontrak_id = k.id LIMIT 1), "-") as customer_location_name,
+                    COALESCE((SELECT cl.address FROM kontrak_unit ku2 JOIN customer_locations cl ON cl.id = ku2.customer_location_id WHERE ku2.kontrak_id = k.id LIMIT 1), "-") as customer_address,
                     COALESCE(cl.city, "-") as customer_city,
                     COALESCE(cl.contact_person, "-") as customer_contact,
                     COALESCE(cl.phone, "-") as customer_phone,
@@ -737,8 +735,7 @@ class Warehouse extends BaseController
                 LEFT JOIN valve v ON v.id_valve = iu.valve_id
                 LEFT JOIN kontrak_unit ku ON ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0
                 LEFT JOIN kontrak k ON k.id = ku.kontrak_id
-                LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
-                LEFT JOIN customers c ON c.id = cl.customer_id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 LEFT JOIN areas a ON a.id = iu.area_id
                 LEFT JOIN purchase_orders po ON po.id_po = iu.id_po
                 LEFT JOIN suppliers s ON s.id_supplier = po.supplier_id

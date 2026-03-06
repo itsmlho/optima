@@ -139,6 +139,9 @@ $canAmend  = ($status === 'ACTIVE');
                         <div class="card">
                             <div class="card-header bg-light d-flex justify-content-between align-items-center">
                                 <h6 class="mb-0"><i class="fas fa-truck me-2"></i><strong>Rented Units by Location</strong></h6>
+                                <button class="btn btn-sm btn-primary" onclick="openAddUnitModal(<?= $id ?>, '<?= esc($noKontrak) ?>', '<?= $contract['tanggal_mulai'] ?? '' ?>', '<?= $contract['tanggal_berakhir'] ?? '' ?>')">
+                                    <i class="fas fa-plus me-1"></i>Tambah Unit
+                                </button>
                             </div>
                             <div class="card-body p-0">
                                 <div class="accordion" id="locationsAccordion">
@@ -261,6 +264,7 @@ $canAmend  = ($status === 'ACTIVE');
 <?= $this->include('components/renewal_wizard') ?>
 <?= $this->include('components/addendum_prorate') ?>
 <?= $this->include('components/asset_history') ?>
+<?= $this->include('components/add_unit_modal') ?>
 
 <?= $this->endSection() ?>
 
@@ -347,62 +351,231 @@ function loadUnits() {
         type: 'GET',
         success: function(res) {
             if (!res.success || !res.data || !res.data.length) {
-                $('#locationsAccordion').html('<div class="alert alert-info m-3"><i class="fas fa-info-circle me-2"></i>No units found</div>');
+                $('#locationsAccordion').html('<div class="alert alert-info m-3"><i class="fas fa-info-circle me-2"></i>Belum ada unit di kontrak ini. Klik "Tambah Unit" untuk menambahkan.</div>');
                 $('#totalUnitsCount').text('0');
                 return;
             }
-            const locations = {};
-            let total = 0;
-            res.data.forEach(u => {
-                // API returns: lokasi, no_unit, jenis_unit, merk, model, kapasitas, harga_sewa_bulanan
-                const loc = u.lokasi || u.location_name || 'Unknown Location';
+            var locations = {};
+            var total = 0;
+            var grandTotal = 0;
+            res.data.forEach(function(u) {
+                var loc = u.lokasi || u.location_name || 'Unknown Location';
                 if (!locations[loc]) locations[loc] = [];
                 locations[loc].push(u);
                 total++;
             });
 
             $('#totalUnitsCount').text(total);
-            let html = '';
-            let idx  = 0;
-            for (const [loc, units] of Object.entries(locations)) {
-                const aId    = 'loc-' + idx;
-                const isOpen = idx === 0;
-                html += `<div class="accordion-item">
-                  <h2 class="accordion-header">
-                    <button class="accordion-button${isOpen ? '' : ' collapsed'}" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#${aId}">
-                      <i class="fas fa-map-marker-alt me-2 text-primary"></i>
-                      <strong>${loc}</strong>
-                      <span class="badge bg-primary ms-2">${units.length} unit(s)</span>
-                    </button>
-                  </h2>
-                  <div id="${aId}" class="accordion-collapse collapse${isOpen ? ' show' : ''}">
-                    <div class="accordion-body p-0">
-                      <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0">
-                          <thead class="bg-light"><tr>
-                            <th>Unit No</th><th>Type</th><th>Brand / Model</th>
-                            <th>Capacity</th><th class="text-end">Rate/Month</th><th>Status</th>
-                          </tr></thead><tbody>`;
-                units.forEach(u => {
-                    const brandModel = [u.merk, u.model].filter(Boolean).join(' / ') || '—';
-                    const rate       = u.harga_sewa_bulanan || u.rate_monthly || 0;
-                    html += `<tr>
-                        <td><strong>${u.no_unit || u.unit_no || '—'}</strong></td>
-                        <td>${u.jenis_unit || u.unit_type || '—'}</td>
-                        <td>${brandModel}</td>
-                        <td>${u.kapasitas || u.capacity || '—'}</td>
-                        <td class="text-end">${rupiah(rate)}</td>
-                        <td><span class="badge bg-${u.status === 'TERSEDIA' ? 'success' : 'warning'}">${u.status || 'Active'}</span></td>
-                    </tr>`;
+            var html = '';
+            var idx  = 0;
+            for (var loc in locations) {
+                if (!locations.hasOwnProperty(loc)) continue;
+                var units = locations[loc];
+                var aId    = 'loc-' + idx;
+                var isOpen = idx === 0;
+                var locTotal = 0;
+                units.forEach(function(u) {
+                    var effectiveRate = u.is_spare ? 0 : parseFloat(u.harga_efektif || u.ku_harga_sewa || u.harga_sewa_bulanan || 0);
+                    locTotal += effectiveRate;
                 });
-                html += `</tbody></table></div></div></div></div>`;
+                grandTotal += locTotal;
+
+                html += '<div class="accordion-item">';
+                html += '<h2 class="accordion-header">';
+                html += '<button class="accordion-button' + (isOpen ? '' : ' collapsed') + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + aId + '">';
+                html += '<i class="fas fa-map-marker-alt me-2 text-primary"></i>';
+                html += '<strong>' + loc + '</strong>';
+                html += '<span class="badge bg-primary ms-2">' + units.length + ' unit(s)</span>';
+                html += '<span class="ms-auto text-success small">' + rupiah(locTotal) + '/bln</span>';
+                html += '</button></h2>';
+                html += '<div id="' + aId + '" class="accordion-collapse collapse' + (isOpen ? ' show' : '') + '">';
+                html += '<div class="accordion-body p-0"><div class="table-responsive">';
+                html += '<table class="table table-sm table-hover mb-0">';
+                html += '<thead class="bg-light"><tr>';
+                html += '<th>Unit No</th><th>Type</th><th>Brand / Model</th>';
+                html += '<th>Capacity</th><th class="text-end">Rate/Month</th><th class="text-center">Spare</th><th>Status</th><th width="80">Action</th>';
+                html += '</tr></thead><tbody>';
+
+                units.forEach(function(u) {
+                    var brandModel = [u.merk, u.model].filter(Boolean).join(' / ') || '—';
+                    var effectiveRate = u.is_spare ? 0 : parseFloat(u.harga_efektif || u.ku_harga_sewa || u.harga_sewa_bulanan || 0);
+                    var rateDisplay = rupiah(effectiveRate);
+                    var isCustomRate = u.ku_harga_sewa && parseFloat(u.ku_harga_sewa) > 0;
+
+                    // Rate column with custom indicator
+                    if (u.is_spare) {
+                        rateDisplay = '<span class="text-muted">Rp 0</span>';
+                    } else if (isCustomRate) {
+                        rateDisplay += ' <small class="text-info" title="Harga khusus kontrak"><i class="fas fa-tag"></i></small>';
+                    }
+
+                    html += '<tr>';
+                    html += '<td><strong>' + (u.no_unit || u.unit_no || '—') + '</strong></td>';
+                    html += '<td>' + (u.jenis_unit || u.unit_type || '—') + '</td>';
+                    html += '<td>' + brandModel + '</td>';
+                    html += '<td>' + (u.kapasitas || u.capacity || '—') + '</td>';
+                    html += '<td class="text-end">' + rateDisplay + '</td>';
+                    html += '<td class="text-center">';
+                    if (u.is_spare) {
+                        html += '<span class="badge bg-secondary"><i class="fas fa-shield-alt me-1"></i>Spare</span>';
+                    } else {
+                        html += '-';
+                    }
+                    html += '</td>';
+                    html += '<td><span class="badge bg-' + (u.status === 'TERSEDIA' ? 'success' : 'warning') + '">' + (u.status || 'Active') + '</span></td>';
+                    html += '<td>';
+                    html += '<button class="btn btn-xs btn-outline-primary me-1" title="Edit Unit" onclick="openEditUnitModal(' + (u.id_inventory_unit || u.id) + ', \'' + (u.no_unit || '') + '\', ' + parseFloat(u.harga_sewa_bulanan || 0) + ', ' + (u.ku_harga_sewa ? parseFloat(u.ku_harga_sewa) : 'null') + ', ' + (u.is_spare ? 1 : 0) + ')"><i class="fas fa-pencil-alt"></i></button>';
+                    html += '<button class="btn btn-xs btn-outline-danger" title="Hapus dari Kontrak" onclick="removeUnitFromContract(' + (u.id_inventory_unit || u.id) + ')"><i class="fas fa-times"></i></button>';
+                    html += '</td></tr>';
+                });
+
+                // Subtotal row
+                html += '<tr class="table-light">';
+                html += '<td colspan="4" class="text-end"><strong>Subtotal:</strong></td>';
+                html += '<td class="text-end"><strong>' + rupiah(locTotal) + '</strong></td>';
+                html += '<td colspan="3"></td></tr>';
+                html += '</tbody></table></div></div></div></div>';
                 idx++;
             }
+
+            // Grand total
+            html += '<div class="p-3 bg-light border-top">';
+            html += '<div class="d-flex justify-content-between">';
+            html += '<h6 class="mb-0"><strong>Grand Total Sewa Unit:</strong></h6>';
+            html += '<h6 class="mb-0 text-success"><strong>' + rupiah(grandTotal) + '/bulan</strong></h6>';
+            html += '</div></div>';
+
             $('#locationsAccordion').html(html);
         },
         error: function() {
             $('#locationsAccordion').html('<div class="alert alert-danger m-3"><i class="fas fa-exclamation-triangle me-2"></i>Error loading units</div>');
+        }
+    });
+}
+
+// Edit Unit Modal
+function openEditUnitModal(unitId, noUnit, hargaDefault, hargaKu, isSpare) {
+    var currentHarga = hargaKu !== null ? hargaKu : '';
+    var formattedHarga = currentHarga ? formatRupiahInput(currentHarga) : '';
+
+    var htmlContent = '<div class="mb-3">' +
+        '<label class="form-label fw-bold">Unit: ' + noUnit + '</label>' +
+        '<p class="text-muted small mb-2">Harga default: ' + rupiah(hargaDefault) + '/bulan</p>' +
+        '</div>' +
+        '<div class="mb-3">' +
+        '<label class="form-label">Harga Sewa Kontrak (Rp)</label>' +
+        '<input type="text" class="form-control" id="editUnitHarga" value="' + formattedHarga + '" placeholder="Rp 0">' +
+        '<small class="text-muted">Kosongkan untuk menggunakan harga default dari inventory</small>' +
+        '</div>' +
+        '<div class="form-check">' +
+        '<input type="checkbox" class="form-check-input" id="editUnitSpare" ' + (isSpare ? 'checked' : '') + ' onchange="if(this.checked){document.getElementById(\'editUnitHarga\').value=\'Rp 0\';document.getElementById(\'editUnitHarga\').readOnly=true}else{document.getElementById(\'editUnitHarga\').value=\'\';document.getElementById(\'editUnitHarga\').readOnly=false}">' +
+        '<label class="form-check-label" for="editUnitSpare"><i class="fas fa-shield-alt me-1"></i>Spare Unit (harga = 0)</label>' +
+        '</div>';
+
+    Swal.fire({
+        title: 'Edit Unit dalam Kontrak',
+        html: htmlContent,
+        showCancelButton: true,
+        confirmButtonText: '<i class="fas fa-save me-1"></i>Simpan',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#0d6efd',
+        didOpen: function() {
+            // Apply rupiah formatting on input
+            var input = document.getElementById('editUnitHarga');
+            input.addEventListener('input', function(e) {
+                var value = e.target.value.replace(/[^0-9]/g, '');
+                if (value) {
+                    e.target.value = formatRupiahInput(value);
+                }
+            });
+            input.addEventListener('keypress', function(e) {
+                // Only allow numbers
+                if (e.which < 48 || e.which > 57) {
+                    e.preventDefault();
+                }
+            });
+        },
+        preConfirm: function() {
+            var hargaFormatted = document.getElementById('editUnitHarga').value;
+            var harga = hargaFormatted.replace(/[^0-9]/g, ''); // Remove all non-numeric characters
+            var spare = document.getElementById('editUnitSpare').checked;
+            return { harga_sewa: harga !== '' ? parseFloat(harga) : null, is_spare: spare ? 1 : 0 };
+        }
+    }).then(function(result) {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: BASE_URL + 'marketing/kontrak/updateUnit',
+                type: 'POST',
+                data: {
+                    kontrak_id: CONTRACT_ID,
+                    unit_id: unitId,
+                    harga_sewa: result.value.harga_sewa,
+                    is_spare: result.value.is_spare
+                },
+                success: function(res) {
+                    if (res.success) {
+                        loadUnits();
+                        if (typeof alertSwal === 'function') {
+                            alertSwal('success', res.message || 'Unit berhasil diupdate');
+                        }
+                    } else {
+                        if (typeof alertSwal === 'function') {
+                            alertSwal('error', res.message || 'Gagal update unit');
+                        } else {
+                            alert(res.message || 'Gagal update unit');
+                        }
+                    }
+                },
+                error: function() {
+                    alert('Error saat update unit');
+                }
+            });
+        }
+    });
+}
+
+// Helper function to format rupiah for input field
+function formatRupiahInput(angka) {
+    var number_string = angka.toString().replace(/[^0-9]/g, '');
+    var split = number_string.split(',');
+    var sisa = split[0].length % 3;
+    var rupiah = split[0].substr(0, sisa);
+    var ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+    if (ribuan) {
+        var separator = sisa ? '.' : '';
+        rupiah += separator + ribuan.join('.');
+    }
+
+    return 'Rp ' + rupiah;
+}
+
+// Remove unit from contract
+async function removeUnitFromContract(unitId) {
+    const confirmed = await confirmSwal({
+        title: 'Hapus Unit dari Kontrak',
+        text: 'Apakah Anda yakin ingin menghapus unit ini dari kontrak?',
+        type: 'delete'
+    });
+    if (!confirmed) return;
+
+    $.ajax({
+        url: BASE_URL + 'marketing/kontrak/removeUnit',
+        type: 'POST',
+        data: {
+            kontrak_id: CONTRACT_ID,
+            unit_id: unitId
+        },
+        success: function(res) {
+            if (res.success) {
+                loadUnits();
+                alertSwal('success', res.message || 'Unit berhasil dihapus');
+            } else {
+                alertSwal('error', res.message || 'Gagal menghapus unit');
+            }
+        },
+        error: function() {
+            alertSwal('error', 'Error saat menghapus unit');
         }
     });
 }
@@ -606,9 +779,19 @@ function openHistoryModal(id) {
 
 // ── Tab lazy-loading ────────────────────────────────────
 $(document).ready(function() {
+    // Explicitly ensure Overview tab is active on page load
+    // Remove any active classes from other tabs
+    $('.nav-link').removeClass('active');
+    $('.tab-pane').removeClass('show active');
+    
+    // Activate Overview tab and pane
+    $('#tab-overview').addClass('active');
+    $('#pane-overview').addClass('show active');
+    
     // Load overview immediately
     loadOverview();
 
+    // Setup lazy loading for other tabs
     $('#tab-units').on('shown.bs.tab', function() { loadUnits(); });
     $('#tab-history').on('shown.bs.tab', function() { loadHistory(); });
     $('#tab-documents').on('shown.bs.tab', function() { loadDocuments(); });

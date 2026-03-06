@@ -158,8 +158,8 @@ class Marketing extends BaseDataTableController
             SELECT 
                 k.*, 
                 c.customer_name, 
-                cl.location_name,
-                cl.city,
+                (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name,
+                (SELECT cl.city FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as city,
                 iu.no_unit,
                 iu.serial_number,
                 iu.tahun_unit,
@@ -167,8 +167,7 @@ class Marketing extends BaseDataTableController
                 mu.merk_unit,
                 su.status_unit
             FROM kontrak k
-            LEFT JOIN customer_locations cl ON cl.id = k.customer_location_id
-            LEFT JOIN customers c ON c.id = cl.customer_id
+            LEFT JOIN customers c ON c.id = k.customer_id
             -- Updated: JOIN via kontrak_unit junction table (source of truth)
             LEFT JOIN kontrak_unit ku ON ku.kontrak_id = k.id AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
             LEFT JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
@@ -265,7 +264,7 @@ class Marketing extends BaseDataTableController
             FROM customers c
             LEFT JOIN customer_locations cl ON cl.customer_id = c.id
             LEFT JOIN areas a ON a.id = cl.area_id
-            LEFT JOIN kontrak k ON k.customer_location_id = cl.id
+            LEFT JOIN kontrak k ON k.customer_id = c.id
             -- Updated: JOIN via kontrak_unit junction table (source of truth)
             LEFT JOIN kontrak_unit ku ON ku.kontrak_id = k.id AND ku.status IN ('ACTIVE','TEMP_ACTIVE') AND ku.is_temporary = 0
             LEFT JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
@@ -684,8 +683,7 @@ class Marketing extends BaseDataTableController
                 // Otherwise, check if customer has any available contracts
                 $db = \Config\Database::connect();
                 $contractCount = $db->table('kontrak k')
-                    ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                    ->where('cl.customer_id', $quotation['created_customer_id'])
+                    ->where('k.customer_id', $quotation['created_customer_id'])
                     ->whereIn('k.status', ['ACTIVE', 'PENDING'])
                     ->countAllResults();
                 $customerContractComplete = $contractCount > 0;
@@ -1448,16 +1446,15 @@ class Marketing extends BaseDataTableController
         $quotation = $this->db->table('quotations q')
             ->select('q.*, 
                 c.customer_name, 
-                COALESCE(cl_contract.location_name, cl_primary.location_name) as location_name,
-                COALESCE(cl_contract.address, cl_primary.address) as location_address,
-                COALESCE(cl_contract.contact_person, cl_primary.contact_person) as pic_name, 
-                COALESCE(cl_contract.phone, cl_primary.phone) as pic_phone,
-                COALESCE(cl_contract.id, cl_primary.id) as customer_location_id,
+                COALESCE((SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1), cl_primary.location_name) as location_name,
+                COALESCE((SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1), cl_primary.address) as location_address,
+                COALESCE((SELECT cl.contact_person FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1), cl_primary.contact_person) as pic_name, 
+                COALESCE((SELECT cl.phone FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1), cl_primary.phone) as pic_phone,
+                COALESCE((SELECT cl.id FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1), cl_primary.id) as customer_location_id,
                 k.no_kontrak as contract_number,
                 (SELECT COUNT(*) FROM quotation_specifications WHERE id_quotation = q.id_quotation) as spec_count')
             ->join('customers c', 'c.id = q.created_customer_id', 'left')
             ->join('kontrak k', 'k.id = q.created_contract_id', 'left')
-            ->join('customer_locations cl_contract', 'cl_contract.id = k.customer_location_id', 'left')
             ->join('customer_locations cl_primary', 'cl_primary.customer_id = q.created_customer_id AND cl_primary.is_primary = 1 AND cl_primary.is_active = 1', 'left')
             ->where('q.id_quotation', $quotationId)
             ->get()
@@ -3632,10 +3629,10 @@ class Marketing extends BaseDataTableController
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('status_unit su', 'su.id_status = iu.status_unit_id', 'left')
                 ->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left')
-                // Updated: JOIN via kontrak_unit junction table instead of redundant customer_location_id
+                // Updated: JOIN via kontrak_unit junction table, location via ku.customer_location_id
                 ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
                 ->join('kontrak kt', 'kt.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = kt.customer_location_id', 'left')
+                ->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left')
                 ->where('ku.kontrak_id', $kontrakId)
                 ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
                 ->orderBy('cl.location_name', 'ASC')
@@ -3701,10 +3698,9 @@ class Marketing extends BaseDataTableController
         
         // Use database query builder with proper JOINs - updated to use quotation_specifications
         $builder = $this->db->table('kontrak k');
-        $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
-        $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+        $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->join('quotation_specifications qs', 'qs.kontrak_id = k.id', 'inner');
-        $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan, cl.location_name as lokasi');
+        $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi');
         $builder->whereIn('k.status', ['ACTIVE', 'PENDING']);
         $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name, cl.location_name');
         
@@ -3741,15 +3737,14 @@ class Marketing extends BaseDataTableController
         try {
             // Get contracts with specifications from quotation_specifications
             $builder = $this->db->table('kontrak k');
-            $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
-            $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
             $builder->join('quotation_specifications qs', 'qs.kontrak_id = k.id', 'inner');
             
             // Use safe column selection - only select columns that exist
-            $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan, cl.location_name as lokasi');
+            $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name as pelanggan');
             
             $builder->whereIn('k.status', ['ACTIVE', 'PENDING']);
-            $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name, cl.location_name');
+            $builder->groupBy('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.customer_name');
             $rows = $builder->orderBy('k.dibuat_pada', 'DESC')->get()->getResultArray();
             
             log_message('info', 'getActiveContracts found ' . count($rows) . ' contracts');
@@ -3762,7 +3757,6 @@ class Marketing extends BaseDataTableController
                     'customer_po_number' => $r['customer_po_number'] ?? '',
                     'rental_type' => $r['rental_type'] ?? 'CONTRACT',
                     'pelanggan' => $r['pelanggan'] ?? '',
-                    'lokasi' => $r['lokasi'] ?? '',
                     'label' => $label,
                     'pic' => '', // Will be filled separately if needed
                     'kontak' => '' // Will be filled separately if needed
@@ -3791,11 +3785,10 @@ class Marketing extends BaseDataTableController
     {
         try {
             $builder = $this->db->table('kontrak k');
-            $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
-            $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
             
             // Include customer_id for loading customer locations
-            $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.id as customer_id, c.customer_name as pelanggan, cl.location_name as lokasi');
+            $builder->select('k.id, k.no_kontrak, k.customer_po_number, k.rental_type, c.id as customer_id, c.customer_name as pelanggan, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi');
             $builder->where('k.id', $id);
             $row = $builder->get()->getRowArray();
             
@@ -3834,7 +3827,7 @@ class Marketing extends BaseDataTableController
             // Updated query to handle SPKs from both contracts and quotations
             $sql = "SELECT k.id, k.no_kontrak, k.customer_po_number, 
                            c.customer_name as pelanggan, 
-                           cl.location_name as lokasi,
+                           (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi,
                        COUNT(s.id) AS total_spk,
                        SUM(CASE WHEN s.status = 'SUBMITTED' THEN 1 ELSE 0 END) AS submitted,
                        SUM(CASE WHEN s.status = 'IN_PROGRESS' THEN 1 ELSE 0 END) AS in_progress,
@@ -3844,8 +3837,7 @@ class Marketing extends BaseDataTableController
                        SUM(CASE WHEN s.status = 'CANCELLED' THEN 1 ELSE 0 END) AS cancelled,
                        MAX(s.diperbarui_pada) AS last_update
                 FROM kontrak k
-                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-                LEFT JOIN customers c ON cl.customer_id = c.id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 LEFT JOIN spk s ON (
                     s.kontrak_id = k.id 
                     OR s.po_kontrak_nomor = k.no_kontrak 
@@ -4888,9 +4880,12 @@ class Marketing extends BaseDataTableController
             $validContractId = null;
             if ($contractId) {
                 $contract = $this->db->table('kontrak k')
-                    ->select('k.*, c.customer_name as pelanggan, cl.contact_person as pic, cl.phone as kontak, cl.address as lokasi, cl.location_name as nama_lokasi')
-                    ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                    ->join('customers c', 'c.id = cl.customer_id', 'left')
+                    ->select('k.*, c.customer_name as pelanggan, 
+                        (SELECT cl.contact_person FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as pic,
+                        (SELECT cl.phone FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as kontak,
+                        (SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi,
+                        (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as nama_lokasi')
+                    ->join('customers c', 'c.id = k.customer_id', 'left')
                     ->where('k.id', $contractId)
                     ->get()
                     ->getRowArray();
@@ -6391,14 +6386,12 @@ class Marketing extends BaseDataTableController
             $length = (int)($this->request->getPost('length') ?? 10);
             $searchValue = trim($this->request->getPost('search')['value'] ?? '');
 
-            // Base query with JOIN to customer_locations and customers
+            // Base query with JOIN to customers
             $builder = $this->db->table('kontrak k');
-            $builder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
-            $builder->join('customers c', 'cl.customer_id = c.id', 'left');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
             
             $countBuilder = $this->db->table('kontrak k');
-            $countBuilder->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left');
-            $countBuilder->join('customers c', 'cl.customer_id = c.id', 'left');
+            $countBuilder->join('customers c', 'c.id = k.customer_id', 'left');
 
             // Status filter functionality
             $statusFilter = trim($this->request->getPost('statusFilter') ?? 'all');
@@ -6474,8 +6467,7 @@ class Marketing extends BaseDataTableController
                 if ($totalCheck > 0) {
                     log_message('debug', 'Marketing::getDataTable primary query returned empty, running fallback simple select');
                     $kontrakData = $this->db->table('kontrak k')
-                        ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                        ->join('customers c', 'cl.customer_id = c.id', 'left')
+                        ->join('customers c', 'c.id = k.customer_id', 'left')
                         ->select('k.id, 
                                 k.no_kontrak, 
                                 k.no_po_marketing, 
@@ -6660,7 +6652,7 @@ class Marketing extends BaseDataTableController
                     k.no_kontrak,
                     k.no_po_marketing,
                     c.customer_name as pelanggan,
-                    cl.location_name as lokasi,
+                    (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as lokasi,
                     k.tanggal_mulai,
                     k.tanggal_berakhir as tanggal_selesai,
                     k.status,
@@ -6669,8 +6661,7 @@ class Marketing extends BaseDataTableController
                     k.dibuat_pada as created_at,
                     k.diperbarui_pada as updated_at
                 FROM kontrak k
-                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-                LEFT JOIN customers c ON cl.customer_id = c.id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 ORDER BY k.id DESC
             ";
             
@@ -6744,14 +6735,13 @@ class Marketing extends BaseDataTableController
             // Get contract with customer and location data using JOIN
             $kontrak = $this->db->query("SELECT k.*, 
                                                c.customer_name,
-                                               cl.location_name,
-                                               cl.contact_person,
-                                               cl.phone,
-                                               cl.address,
+                                               (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name,
+                                               (SELECT cl.contact_person FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as contact_person,
+                                               (SELECT cl.phone FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as phone,
+                                               (SELECT cl.address FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as address,
                                                CONCAT(u.first_name, ' ', u.last_name) as dibuat_oleh_nama
                                         FROM kontrak k 
-                                        LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id 
-                                        LEFT JOIN customers c ON cl.customer_id = c.id 
+                                        LEFT JOIN customers c ON c.id = k.customer_id 
                                         LEFT JOIN users u ON k.dibuat_oleh = u.id 
                                         WHERE k.id = ?", [$id])->getRowArray();
 
@@ -7918,10 +7908,10 @@ class Marketing extends BaseDataTableController
                     if (!$currentQuotation['created_contract_id']) {
                         // Find existing contracts for this customer
                         $existingContracts = $this->db->query("
-                            SELECT k.id, k.no_kontrak, k.status, cl.location_name
+                            SELECT k.id, k.no_kontrak, k.status, 
+                                (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name
                             FROM kontrak k
-                            JOIN customer_locations cl ON cl.id = k.customer_location_id
-                            WHERE cl.customer_id = ?
+                            WHERE k.customer_id = ?
                             AND k.status IN ('ACTIVE', 'PENDING')
                             ORDER BY 
                                 CASE k.status 

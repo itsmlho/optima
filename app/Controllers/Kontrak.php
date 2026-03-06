@@ -75,13 +75,22 @@ class Kontrak extends BaseController
                     k.status,
                     k.tanggal_mulai,
                     k.tanggal_berakhir,
-                    k.total_units,
-                    k.nilai_total,
+                    (SELECT COUNT(*) FROM kontrak_unit ku
+                     WHERE ku.kontrak_id = k.id
+                     AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                     AND COALESCE(ku.is_temporary, 0) = 0) AS total_units,
+                    (SELECT COALESCE(SUM(iu.harga_sewa_bulanan), 0) FROM kontrak_unit ku
+                     JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
+                     WHERE ku.kontrak_id = k.id
+                     AND ku.status IN ('ACTIVE','TEMP_ACTIVE')
+                     AND COALESCE(ku.is_temporary, 0) = 0) AS nilai_total,
                     k.jenis_sewa,
-                    cl.location_name
+                    (SELECT GROUP_CONCAT(DISTINCT cl.location_name SEPARATOR ', ') 
+                     FROM kontrak_unit ku 
+                     JOIN customer_locations cl ON cl.id = ku.customer_location_id 
+                     WHERE ku.kontrak_id = k.id) AS location_name
                 FROM kontrak k
-                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-                LEFT JOIN customers c ON cl.customer_id = c.id
+                LEFT JOIN customers c ON c.id = k.customer_id
                 $where
                 ORDER BY c.customer_name ASC, k.tanggal_mulai DESC
                 LIMIT 3000
@@ -581,8 +590,8 @@ class Kontrak extends BaseController
             'customer_po_number'   => $this->request->getPost('po_number'),
             'rental_type'          => $this->request->getPost('rental_type') ?: 'CONTRACT',
             'customer_location_id' => (int)$this->request->getPost('customer_location_id'),
-            'nilai_total'          => $this->request->getPost('contract_value') ?: 0,
-            'total_units'          => $this->request->getPost('total_units') ?: 0,
+            // nilai_total dihitung dari kontrak_unit (jika field ada di form, gunakan; sinon biarkan)
+            // total_units TIDAK disimpan dari form — dihitung live dari kontrak_unit
             'tanggal_mulai'        => $this->request->getPost('start_date'),
             'tanggal_berakhir'     => $this->request->getPost('end_date'),
             'status'               => $this->request->getPost('status'),
@@ -812,9 +821,8 @@ class Kontrak extends BaseController
         }
 
         $contract = $this->db->table('kontrak k')
-            ->select('k.*, cl.customer_id, c.customer_name, cl.location_name')
-            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-            ->join('customers c', 'c.id = cl.customer_id', 'left')
+            ->select('k.*, c.customer_name')
+            ->join('customers c', 'c.id = k.customer_id', 'left')
             ->where('k.id', (int)$id)
             ->get()->getRowArray();
 
@@ -840,9 +848,8 @@ class Kontrak extends BaseController
 
         // Fetch contract with customer join so the edit view has customer_id
         $contract = $this->db->table('kontrak k')
-            ->select('k.*, cl.customer_id, c.customer_name, cl.location_name')
-            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-            ->join('customers c', 'c.id = cl.customer_id', 'left')
+            ->select('k.*, c.customer_name')
+            ->join('customers c', 'c.id = k.customer_id', 'left')
             ->where('k.id', (int)$id)
             ->get()->getRowArray();
 
@@ -871,13 +878,11 @@ class Kontrak extends BaseController
             $kontrak = $this->db->table('kontrak k')
                 ->select('k.*,
                     c.customer_name, c.customer_code, c.phone,
-                    cl.location_name, cl.contact_person, cl.phone as location_phone, cl.email as location_email,
                     (SELECT COUNT(*) FROM kontrak_unit ku WHERE ku.kontrak_id = k.id AND ku.status = \'ACTIVE\') AS total_units,
                     k.nilai_total AS total_value,
                     k.operator_quantity,
                     k.operator_monthly_rate')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->where('k.id', (int)$kontrakId)
                 ->get()->getRowArray();
 
@@ -921,6 +926,7 @@ class Kontrak extends BaseController
             
             // Query dengan JOIN untuk mendapatkan data yang lebih lengkap
             // Use kontrak_unit junction table instead of inventory_unit.kontrak_id
+            // Gunakan ku.customer_location_id (lokasi per unit)
             $query = "
                 SELECT
                     iu.id_inventory_unit,
@@ -934,9 +940,13 @@ class Kontrak extends BaseController
                     COALESCE(su.status_unit, 'TERSEDIA') as status,
                     iu.status_unit_id,
                     ku.kontrak_id,
+                    ku.customer_location_id as unit_location_id,
+                    ku.harga_sewa as ku_harga_sewa,
+                    ku.is_spare,
                     iu.harga_sewa_bulanan,
                     iu.harga_sewa_harian,
-                    COALESCE(cl.location_name, iu.lokasi_unit, 'Lokasi Belum Ditentukan') as lokasi
+                    COALESCE(ku.harga_sewa, iu.harga_sewa_bulanan) as harga_efektif,
+                    COALESCE(cl_unit.location_name, iu.lokasi_unit, 'Lokasi Belum Ditentukan') as lokasi
                 FROM kontrak_unit ku
                 JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
                 LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
@@ -944,9 +954,8 @@ class Kontrak extends BaseController
                 LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
                 LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
                 LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
-                LEFT JOIN kontrak kt ON kt.id = ku.kontrak_id
-                LEFT JOIN customer_locations cl ON cl.id = kt.customer_location_id
-                WHERE ku.kontrak_id = ?
+                LEFT JOIN customer_locations cl_unit ON cl_unit.id = ku.customer_location_id
+                WHERE ku.kontrak_id = ? AND ku.status IN ('AKTIF', 'ACTIVE')
                 ORDER BY iu.no_unit ASC
             ";
             
@@ -961,12 +970,18 @@ class Kontrak extends BaseController
             foreach ($units as $unit) {
                 $hargaBulanan = (float)($unit['harga_sewa_bulanan'] ?? 0);
                 $hargaHarian = (float)($unit['harga_sewa_harian'] ?? 0);
+                $hargaEfektif = (float)($unit['harga_efektif'] ?? $hargaBulanan);
+                $isSpare = (int)($unit['is_spare'] ?? 0);
                 
-                $totalHargaBulanan += $hargaBulanan;
+                // Only count non-spare for totals
+                if (!$isSpare) {
+                    $totalHargaBulanan += $hargaEfektif;
+                }
                 $totalHargaHarian += $hargaHarian;
                 
                 $formattedUnits[] = [
                     'id' => $unit['id_inventory_unit'],
+                    'id_inventory_unit' => $unit['id_inventory_unit'],
                     // Original fields
                     'no_unit' => $unit['no_unit'] ?: '-',
                     'serial_number' => $unit['serial_number'] ?: '-',
@@ -978,7 +993,11 @@ class Kontrak extends BaseController
                     'status' => $unit['status'],
                     'status_unit_id' => $unit['status_unit_id'],
                     'lokasi' => $unit['lokasi'],
-                    'harga_per_unit_bulanan' => $hargaBulanan,
+                    'harga_sewa_bulanan' => $hargaBulanan,
+                    'ku_harga_sewa' => $unit['ku_harga_sewa'] ?? null,
+                    'is_spare' => $isSpare,
+                    'harga_efektif' => $hargaEfektif,
+                    'harga_per_unit_bulanan' => $hargaEfektif,
                     'harga_per_unit_harian' => $hargaHarian,
                     // Frontend expected fields (for contract detail modal)
                     'location_name' => $unit['lokasi'],
@@ -986,7 +1005,7 @@ class Kontrak extends BaseController
                     'unit_type' => $unit['jenis_unit'],
                     'brand_model' => trim($unit['merk'] . ' ' . $unit['model']),
                     'capacity' => $unit['kapasitas'],
-                    'rate_monthly' => $hargaBulanan
+                    'rate_monthly' => $hargaEfektif
                 ];
             }
             
@@ -995,7 +1014,7 @@ class Kontrak extends BaseController
                 SELECT 
                     COUNT(DISTINCT ku.kontrak_id) as total_spesifikasi,
                     COUNT(*) as total_unit_dibutuhkan,
-                    COALESCE(SUM(iu.harga_sewa_bulanan), 0) as total_nilai_bulanan,
+                    COALESCE(SUM(CASE WHEN (ku.is_spare IS NULL OR ku.is_spare = 0) THEN COALESCE(ku.harga_sewa, iu.harga_sewa_bulanan) ELSE 0 END), 0) as total_nilai_bulanan,
                     COALESCE(SUM(iu.harga_sewa_harian), 0) as total_nilai_harian
                 FROM kontrak_unit ku
                 JOIN inventory_unit iu ON iu.id_inventory_unit = ku.unit_id
@@ -1026,6 +1045,403 @@ class Kontrak extends BaseController
             return $this->response->setJSON([
                 'success' => false,
                 'message' => 'Error retrieving contract units: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Add unit(s) to a contract
+     * POST /marketing/kontrak/addUnit
+     * Accepts individual units with per-unit harga_sewa and is_spare flag
+     */
+    public function addUnit()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            // Support both JSON body and form POST
+            $jsonInput = $this->request->getJSON(true);
+            if (!empty($jsonInput)) {
+                $kontrakId = $jsonInput['kontrak_id'] ?? null;
+                $units = $jsonInput['units'] ?? null;
+                $customerLocationId = $jsonInput['customer_location_id'] ?? null;
+                $tanggalMulai = $jsonInput['tanggal_mulai'] ?? date('Y-m-d');
+                $tanggalSelesai = $jsonInput['tanggal_selesai'] ?? null;
+            } else {
+                $kontrakId = $this->request->getPost('kontrak_id');
+                $units = $this->request->getPost('units');
+                $customerLocationId = $this->request->getPost('customer_location_id');
+                $tanggalMulai = $this->request->getPost('tanggal_mulai') ?? date('Y-m-d');
+                $tanggalSelesai = $this->request->getPost('tanggal_selesai');
+            }
+
+            // Validate
+            if (!$kontrakId || empty($units)) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Kontrak ID dan unit harus diisi',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            // Check contract exists
+            $kontrak = $this->kontrakModel->find($kontrakId);
+            if (!$kontrak) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Kontrak tidak ditemukan',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            // Get contract dates for default
+            $kontrakMulai = $kontrak['tanggal_mulai'] ?? $tanggalMulai;
+            $kontrakBerakhir = $kontrak['tanggal_berakhir'] ?? $tanggalSelesai;
+
+            // Add units to kontrak_unit junction
+            $added = 0;
+            $errors = [];
+
+            // Normalize: accept both old format (unit_ids array) and new format (units array with details)
+            if (!is_array($units)) {
+                $units = [];
+            }
+            
+            // Check if it's the old format (flat array of unit IDs)
+            $isOldFormat = isset($units[0]) && !is_array($units[0]);
+            if ($isOldFormat) {
+                // Convert old format to new format
+                $units = array_map(function($unitId) {
+                    return ['unit_id' => $unitId, 'harga_sewa' => null, 'is_spare' => 0];
+                }, $units);
+            }
+
+            foreach ($units as $unitData) {
+                $unitId = is_array($unitData) ? ($unitData['unit_id'] ?? null) : $unitData;
+                $hargaSewa = is_array($unitData) ? ($unitData['harga_sewa'] ?? null) : null;
+                $isSpare = is_array($unitData) ? (int)($unitData['is_spare'] ?? 0) : 0;
+                
+                if (!$unitId) continue;
+
+                // Check if unit already exists in this contract
+                $existing = $this->db->table('kontrak_unit')
+                    ->where('kontrak_id', $kontrakId)
+                    ->where('unit_id', $unitId)
+                    ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                    ->get()->getRow();
+
+                if ($existing) {
+                    $errors[] = "Unit ID $unitId sudah ada di kontrak ini";
+                    continue;
+                }
+
+                // If spare, force harga to 0
+                if ($isSpare) {
+                    $hargaSewa = 0;
+                }
+
+                // Insert into kontrak_unit
+                $insertData = [
+                    'kontrak_id' => $kontrakId,
+                    'unit_id' => $unitId,
+                    'customer_location_id' => $customerLocationId ?: null,
+                    'harga_sewa' => $hargaSewa,
+                    'is_spare' => $isSpare,
+                    'tanggal_mulai' => $tanggalMulai ?: $kontrakMulai,
+                    'tanggal_selesai' => $tanggalSelesai ?: $kontrakBerakhir,
+                    'status' => 'ACTIVE',
+                    'created_by' => session()->get('user_id') ?? null
+                ];
+                
+                $this->db->table('kontrak_unit')->insert($insertData);
+                $added++;
+            }
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => "$added unit berhasil ditambahkan ke kontrak" . (count($errors) > 0 ? '. ' . implode(', ', $errors) : ''),
+                'added_count' => $added,
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::addUnit Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    /**
+     * Remove unit from a contract
+     * POST /marketing/kontrak/removeUnit
+     */
+    public function removeUnit()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $kontrakId = $this->request->getPost('kontrak_id');
+            $unitId = $this->request->getPost('unit_id');
+
+            if (!$kontrakId || !$unitId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Kontrak ID dan Unit ID harus diisi',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            // Check exists
+            $exists = $this->db->table('kontrak_unit')
+                ->where('kontrak_id', $kontrakId)
+                ->where('unit_id', $unitId)
+                ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->get()->getRow();
+
+            if (!$exists) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit tidak ditemukan di kontrak ini',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            // Delete or mark as INACTIVE
+            $this->db->table('kontrak_unit')
+                ->where('kontrak_id', $kontrakId)
+                ->where('unit_id', $unitId)
+                ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->update(['status' => 'INACTIVE']);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Unit berhasil dihapus dari kontrak',
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::removeUnit Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    /**
+     * Update unit in a contract (harga_sewa, is_spare)
+     * POST /marketing/kontrak/updateUnit
+     */
+    public function updateUnit()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $kontrakId = $this->request->getPost('kontrak_id');
+            $unitId = $this->request->getPost('unit_id');
+            $hargaSewa = $this->request->getPost('harga_sewa');
+            $isSpare = (int)$this->request->getPost('is_spare');
+
+            if (!$kontrakId || !$unitId) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Kontrak ID dan Unit ID harus diisi',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            // Check exists
+            $exists = $this->db->table('kontrak_unit')
+                ->where('kontrak_id', $kontrakId)
+                ->where('unit_id', $unitId)
+                ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->get()->getRow();
+
+            if (!$exists) {
+                return $this->response->setJSON([
+                    'success' => false,
+                    'message' => 'Unit tidak ditemukan di kontrak ini',
+                    'csrf_hash' => csrf_hash()
+                ]);
+            }
+
+            // If spare, force harga to 0
+            if ($isSpare) {
+                $hargaSewa = 0;
+            }
+
+            // Update kontrak_unit
+            $this->db->table('kontrak_unit')
+                ->where('kontrak_id', $kontrakId)
+                ->where('unit_id', $unitId)
+                ->whereIn('status', ['ACTIVE', 'TEMP_ACTIVE'])
+                ->update([
+                    'harga_sewa' => ($hargaSewa !== null && $hargaSewa !== '') ? (float)$hargaSewa : null,
+                    'is_spare' => $isSpare,
+                    'updated_by' => session()->get('user_id') ?? null,
+                ]);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'message' => 'Unit berhasil diupdate',
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::updateUnit Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
+            ]);
+        }
+    }
+
+    /**
+     * Get available units for adding to contract
+     * GET /marketing/kontrak/getAvailableUnits
+     */
+    public function getAvailableUnits()
+    {
+        if (!$this->request->isAJAX()) {
+            return $this->response->setStatusCode(400)->setJSON(['success' => false, 'message' => 'Bad request']);
+        }
+
+        try {
+            $kontrakId = $this->request->getGet('kontrak_id');
+            $search = $this->request->getGet('search') ?? '';
+
+            // First get customer_id from contract to get locations
+            $kontrak = null;
+            $customerLocations = [];
+
+            if ($kontrakId) {
+                $kontrak = $this->db->table('kontrak k')
+                    ->select('k.*')
+                    ->where('k.id', $kontrakId)
+                    ->get()->getRowArray();
+
+                $custId = $kontrak['customer_id'] ?? null;
+                if ($kontrak && $custId) {
+                    $customerLocations = $this->db->table('customer_locations')
+                        ->where('customer_id', $custId)
+                        ->where('is_active', 1)
+                        ->get()->getResultArray();
+                }
+            }
+
+            // Show ALL units (not just available) — let user choose any unit
+            // Include info about current contract assignment if unit is already contracted
+            $query = "
+                SELECT
+                    iu.id_inventory_unit,
+                    iu.no_unit,
+                    iu.no_unit_na,
+                    iu.serial_number,
+                    iu.status_unit_id,
+                    COALESCE(mu.merk_unit, 'N/A') as merk,
+                    COALESCE(mu.model_unit, 'N/A') as model,
+                    COALESCE(tu.tipe, 'N/A') as tipe,
+                    COALESCE(kap.kapasitas_unit, 'N/A') as kapasitas,
+                    iu.harga_sewa_bulanan,
+                    iu.harga_sewa_harian,
+                    su.status_unit,
+                    COALESCE(d.nama_departemen, 'N/A') as departemen,
+                    -- Current contract info (if any active assignment)
+                    active_ku.kontrak_id as current_kontrak_id,
+                    active_k.no_kontrak as current_kontrak_no,
+                    active_c.customer_name as current_customer,
+                    active_cl.location_name as current_location
+                FROM inventory_unit iu
+                LEFT JOIN model_unit mu ON iu.model_unit_id = mu.id_model_unit
+                LEFT JOIN tipe_unit tu ON iu.tipe_unit_id = tu.id_tipe_unit
+                LEFT JOIN kapasitas kap ON iu.kapasitas_unit_id = kap.id_kapasitas
+                LEFT JOIN status_unit su ON iu.status_unit_id = su.id_status
+                LEFT JOIN departemen d ON iu.departemen_id = d.id_departemen
+                -- Subquery: get latest active kontrak_unit assignment
+                LEFT JOIN (
+                    SELECT ku2.unit_id, ku2.kontrak_id, ku2.customer_location_id
+                    FROM kontrak_unit ku2
+                    WHERE ku2.status IN ('AKTIF','ACTIVE') AND (ku2.is_temporary IS NULL OR ku2.is_temporary = 0)
+                ) active_ku ON active_ku.unit_id = iu.id_inventory_unit
+                LEFT JOIN kontrak active_k ON active_k.id = active_ku.kontrak_id
+                LEFT JOIN customers active_c ON active_c.id = active_k.customer_id
+                LEFT JOIN customer_locations active_cl ON active_cl.id = active_ku.customer_location_id
+                WHERE iu.status_unit_id NOT IN (13) -- Exclude SOLD/DISPOSED only
+            ";
+
+            $params = [];
+
+            if (!empty($search)) {
+                $query .= " AND (
+                    CAST(iu.no_unit AS CHAR) LIKE ?
+                    OR iu.no_unit_na LIKE ?
+                    OR iu.serial_number LIKE ?
+                    OR mu.merk_unit LIKE ?
+                    OR mu.model_unit LIKE ?
+                )";
+                $searchTerm = "%$search%";
+                $params = [$searchTerm, $searchTerm, $searchTerm, $searchTerm, $searchTerm];
+            }
+
+            $query .= " ORDER BY iu.no_unit ASC LIMIT 500";
+
+            $units = $this->db->query($query, $params)->getResultArray();
+
+            // Format units
+            $formattedUnits = array_map(function($u) use ($kontrakId) {
+                $isContracted = !empty($u['current_kontrak_id']);
+                $isSameContract = $isContracted && $u['current_kontrak_id'] == $kontrakId;
+                
+                return [
+                    'id' => (int)$u['id_inventory_unit'],
+                    'no_unit' => $u['no_unit'] ?: $u['no_unit_na'] ?: '-',
+                    'serial_number' => $u['serial_number'] ?: '-',
+                    'merk' => $u['merk'],
+                    'model' => $u['model'],
+                    'tipe' => $u['tipe'],
+                    'kapasitas' => $u['kapasitas'],
+                    'departemen' => $u['departemen'],
+                    'harga_sewa_bulanan' => (float)($u['harga_sewa_bulanan'] ?? 0),
+                    'harga_sewa_harian' => (float)($u['harga_sewa_harian'] ?? 0),
+                    'status_unit' => $u['status_unit'],
+                    'status_unit_id' => (int)$u['status_unit_id'],
+                    // Contract assignment info
+                    'is_contracted' => $isContracted,
+                    'is_same_contract' => $isSameContract,
+                    'current_kontrak_id' => $u['current_kontrak_id'] ? (int)$u['current_kontrak_id'] : null,
+                    'current_kontrak_no' => $u['current_kontrak_no'],
+                    'current_customer' => $u['current_customer'],
+                    'current_location' => $u['current_location'],
+                    // Display label for Select2
+                    'label' => ($u['no_unit'] ?: $u['no_unit_na'] ?: '-') . ' — ' . $u['merk'] . ' ' . $u['model'] . ($isContracted ? ' [CONTRACTED]' : ''),
+                ];
+            }, $units);
+
+            return $this->response->setJSON([
+                'success' => true,
+                'data' => $formattedUnits,
+                'customer_locations' => $customerLocations,
+                'kontrak' => $kontrak,
+                'csrf_hash' => csrf_hash()
+            ]);
+
+        } catch (\Exception $e) {
+            log_message('error', 'Kontrak::getAvailableUnits Error: ' . $e->getMessage());
+            return $this->response->setJSON([
+                'success' => false,
+                'message' => 'Error: ' . $e->getMessage(),
+                'csrf_hash' => csrf_hash()
             ]);
         }
     }
@@ -1255,10 +1671,9 @@ class Kontrak extends BaseController
 
             // Build query with filters
             $builder = $this->db->table('kontrak k');
-            $builder->select('k.*, c.customer_name, c.customer_code, cl.location_name, 
+            $builder->select('k.*, c.customer_name, c.customer_code, 
                              u.staff_name as created_by_name')
-                   ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
-                   ->join('customers c', 'cl.customer_id = c.id', 'left')
+                   ->join('customers c', 'c.id = k.customer_id', 'left')
                    ->join('users u', 'k.dibuat_oleh = u.id', 'left');
 
             if (!empty($rentalType)) $builder->where('k.rental_type', $rentalType);
@@ -1402,9 +1817,8 @@ class Kontrak extends BaseController
         
         try {
             $builder = $this->db->table('kontrak k');
-            $builder->select('k.*, c.customer_name, c.customer_code, cl.location_name');
-            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->select('k.*, c.customer_name, c.customer_code');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
             $builder->where('k.status', 'ACTIVE');
             $builder->where('k.end_date <=', date('Y-m-d', strtotime('+90 days')));
             $builder->where('k.end_date >=', date('Y-m-d'));
@@ -1752,22 +2166,21 @@ class Kontrak extends BaseController
             // NEW APPROACH: Load contracts with quotation specifications
             // This aligns with quotation → SPK workflow
             $builder = $this->db->table('kontrak k');
-            $builder->select('k.id, k.no_kontrak, k.kontrak_number, k.po_number, k.customer_location_id, k.start_date, k.end_date, k.status');
-            $builder->select('c.customer_name, c.customer_code, cl.location_name, cl.pic_name, cl.pic_phone');
+            $builder->select('k.id, k.no_kontrak, k.kontrak_number, k.po_number, k.customer_id, k.start_date, k.end_date, k.status');
+            $builder->select('c.customer_name, c.customer_code');
             $builder->select('q.id_quotation, q.quotation_number, q.prospect_name');
             $builder->select('(SELECT COUNT(*) FROM quotation_specifications qs WHERE qs.quotation_id = q.id_quotation) as total_specs');
             $builder->select('(SELECT COUNT(*) FROM quotation_specifications qs 
                               LEFT JOIN spk s ON s.kontrak_spesifikasi_id = qs.id_specification 
                               WHERE qs.quotation_id = q.id_quotation AND s.id_spk IS NULL) as available_specs');
             
-            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
             $builder->join('quotations q', 'q.created_contract_id = k.id', 'left'); // Link via created_contract_id
             
             $builder->where('k.status', 'ACTIVE');
             $builder->where('q.id_quotation IS NOT NULL'); // Only contracts with quotations
             $builder->groupBy('k.id');
-            $builder->orderBy('k.created_at', 'DESC');
+            $builder->orderBy('k.dibuat_pada', 'DESC');
             
             $contracts = $builder->get()->getResultArray();
             
@@ -2021,9 +2434,11 @@ class Kontrak extends BaseController
         
         try {
             $builder = $this->db->table('kontrak k');
-            $builder->select('k.*, c.customer_name, cl.location_name');
-            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->select('k.*, c.customer_name, 
+                             (SELECT COUNT(DISTINCT ku.customer_location_id) 
+                              FROM kontrak_unit ku 
+                              WHERE ku.kontrak_id = k.id) as location_count');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
             $builder->orderBy('k.dibuat_pada', 'DESC');
             
             $contracts = $builder->get()->getResultArray();
@@ -2211,8 +2626,7 @@ class Kontrak extends BaseController
     {
         $builder = $this->db->table('kontrak k');
         $builder->select('k.*, c.customer_name');
-        $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        $builder->join('customers c', 'c.id = k.customer_id', 'left');
         $builder->where('k.id', $contractId);
         $contract = $builder->get()->getRowArray();
         
@@ -2301,7 +2715,7 @@ class Kontrak extends BaseController
             
             // Get rate changes from renewals
             $renewalsBuilder = $this->db->table('contract_renewal_unit_map rum');
-            $renewalsBuilder->select('rum.*, k1.no_kontrak as parent_contract, k2.no_kontrak as renewal_contract, k2.created_at as date, iu.no_unit as unit_number');
+            $renewalsBuilder->select('rum.*, k1.no_kontrak as parent_contract, k2.no_kontrak as renewal_contract, k2.dibuat_pada as date, iu.no_unit as unit_number');
             $renewalsBuilder->join('kontrak k1', 'k1.id = rum.parent_contract_id', 'left');
             $renewalsBuilder->join('kontrak k2', 'k2.id = rum.renewal_contract_id', 'left');
             $renewalsBuilder->join('inventory_unit iu', 'iu.id_inventory_unit = rum.renewal_unit_id', 'left');
@@ -2315,10 +2729,10 @@ class Kontrak extends BaseController
             }
             
             if ($days && $days !== 'all') {
-                $renewalsBuilder->where('k2.created_at >=', date('Y-m-d', strtotime("-{$days} days")));
+                $renewalsBuilder->where('k2.dibuat_pada >=', date('Y-m-d', strtotime("-{$days} days")));
             }
             
-            $renewalsBuilder->orderBy('k2.created_at', 'DESC');
+            $renewalsBuilder->orderBy('k2.dibuat_pada', 'DESC');
             $renewals = $renewalsBuilder->get()->getResultArray();
             
             foreach ($renewals as $renewal) {
@@ -2367,10 +2781,9 @@ class Kontrak extends BaseController
         try {
             // Get all contracts this unit has been part of
             $builder = $this->db->table('contract_units cu');
-            $builder->select('cu.*, k.id as contract_id, k.no_kontrak, k.start_date, k.end_date, k.status, c.customer_name, cl.location_name, cu.monthly_rate');
+            $builder->select('cu.*, k.id as contract_id, k.no_kontrak, k.start_date, k.end_date, k.status, c.customer_name, cu.monthly_rate');
             $builder->join('kontrak k', 'k.id = cu.contract_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
             $builder->where('cu.unit_id', $unitId);
             $builder->orderBy('cu.on_hire_date', 'ASC');
             

@@ -112,8 +112,7 @@ class SparepartUsageController extends BaseController
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->groupBy('wo.id');
 
             // Apply search
@@ -215,8 +214,7 @@ class SparepartUsageController extends BaseController
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->join('employees e', 'e.id = wo.mechanic_id', 'left')
                 ->where('wo.id', $workOrderId)
                 ->get();
@@ -321,8 +319,7 @@ class SparepartUsageController extends BaseController
                 ->join('inventory_unit iu', 'iu.id_inventory_unit = wo.unit_id', 'left')
                 ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->join('work_order_sparepart_returns wosr', 'wosr.work_order_id = wosp.work_order_id AND wosr.work_order_sparepart_id = wosp.id', 'left')
                 ->where('wosp.quantity_used >', 0) // Only show records with usage
                 ->where('wosp.quantity_used IS NOT NULL'); // Ensure quantity_used is not null
@@ -539,8 +536,7 @@ class SparepartUsageController extends BaseController
                 ->join('model_unit mdu', 'mdu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->join('users u', 'u.id = wosr.confirmed_by', 'left');
             
             // Only filter by status if column exists
@@ -792,8 +788,7 @@ class SparepartUsageController extends BaseController
                 ->join('model_unit mu', 'mu.id_model_unit = iu.model_unit_id', 'left')
                 ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->join('work_order_sparepart_returns wosr', 'wosr.work_order_id = wosp.work_order_id AND wosr.work_order_sparepart_id = wosp.id', 'left')
                 ->where('wosp.id', $id)
                 ->get()

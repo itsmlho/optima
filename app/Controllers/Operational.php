@@ -2501,8 +2501,7 @@ class Operational extends BaseController
                 iu_orig.workflow_status as original_workflow_status
             ')
             ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-            ->join('customers c', 'c.id = cl.customer_id', 'left')
+            ->join('customers c', 'c.id = k.customer_id', 'left')
             ->join('inventory_unit iu_temp', 'iu_temp.id_inventory_unit = ku.unit_id', 'left')
             ->join('inventory_unit iu_orig', 'iu_orig.id_inventory_unit = ku.original_unit_id', 'left')
             ->where('ku.is_temporary', 1)
@@ -2567,8 +2566,7 @@ class Operational extends BaseController
                 SUM(CASE WHEN iu_orig.workflow_status = "MAINTENANCE_COMPLETED" THEN 1 ELSE 0 END) as ready_to_return
             ')
             ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-            ->join('customers c', 'c.id = cl.customer_id', 'left')
+            ->join('customers c', 'c.id = k.customer_id', 'left')
             ->join('inventory_unit iu_orig', 'iu_orig.id_inventory_unit = ku.original_unit_id', 'left')
             ->where('ku.is_temporary', 1)
             ->where('ku.temporary_end_date IS NULL');
@@ -2606,8 +2604,7 @@ class Operational extends BaseController
         try {
             $customers = $this->db->table('customers c')
                 ->select('DISTINCT c.id, c.customer_name')
-                ->join('customer_locations cl', 'cl.customer_id = c.id', 'inner')
-                ->join('kontrak k', 'k.customer_location_id = cl.id', 'inner')
+                ->join('kontrak k', 'k.customer_id = c.id', 'inner')
                 ->join('kontrak_unit ku', 'ku.kontrak_id = k.id', 'inner')
                 ->where('ku.is_temporary', 1)
                 ->where('ku.temporary_end_date IS NULL')

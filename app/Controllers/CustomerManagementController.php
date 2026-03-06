@@ -163,8 +163,7 @@ class CustomerManagementController extends BaseController
             // Get units count - via kontrak_unit junction table (source of truth)
             $unitsCount = $this->db->table('kontrak_unit ku')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->where('cl.customer_id', $customer['id'])
+                ->where('k.customer_id', $customer['id'])
                 ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
                 ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)')
                 ->countAllResults();
@@ -288,9 +287,12 @@ class CustomerManagementController extends BaseController
             
             // Get customer contracts with units summary from kontrak_unit junction table
             $contractsBuilder = $this->db->table('kontrak k');
-            $contracts = $contractsBuilder->select('k.*, cl.location_name,
+            $contracts = $contractsBuilder->select('k.*, 
+                                                   (SELECT GROUP_CONCAT(DISTINCT cl2.location_name SEPARATOR ", ") 
+                                                    FROM kontrak_unit ku2 
+                                                    JOIN customer_locations cl2 ON ku2.customer_location_id = cl2.id 
+                                                    WHERE ku2.kontrak_id = k.id) as location_names,
                                                    (SELECT COUNT(*) FROM kontrak_unit ku2 WHERE ku2.kontrak_id = k.id AND (ku2.is_temporary IS NULL OR ku2.is_temporary != 1)) as active_units')
-                                        ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'left')
                                         ->where('k.customer_id', $id)
                                         ->where('k.status !=', 'CANCELLED')
                                         ->orderBy('k.tanggal_mulai', 'DESC')
@@ -300,8 +302,7 @@ class CustomerManagementController extends BaseController
             $contractUnits = $this->db->table('kontrak_unit ku')
                 ->select('ku.unit_id as id_inventory_unit')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->where('cl.customer_id', $id)
+                ->where('k.customer_id', $id)
                 ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
                 ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)')
                 ->get()->getResultArray();
@@ -324,7 +325,7 @@ class CustomerManagementController extends BaseController
                         $contractInfo = $this->db->table('kontrak_unit ku')
                             ->select('k.no_kontrak, cl.location_name as contract_location, ku.is_temporary')
                             ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                            ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                            ->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left')
                             ->where('ku.unit_id', $unit['id_inventory_unit'])
                             ->where('(ku.is_temporary IS NULL OR ku.is_temporary != 1)')
                             ->orderBy('ku.id', 'DESC')
@@ -738,10 +739,9 @@ class CustomerManagementController extends BaseController
             return $this->response->setJSON(['success'=>false,'message'=>'Unauthorized'])->setStatusCode(403);
         }
         try {
-            // Check if customer has contracts through customer_locations (updated for optimized structure)
+            // Check if customer has contracts (updated for optimized structure)
             $contractsCount = $this->db->table('kontrak k')
-                ->join('customer_locations cl', 'k.customer_location_id = cl.id', 'inner')
-                ->where('cl.customer_id', $id)
+                ->where('k.customer_id', $id)
                 ->countAllResults();
             
             if ($contractsCount > 0) {
@@ -1406,8 +1406,7 @@ class CustomerManagementController extends BaseController
             $unitBuilder = $this->db->table('kontrak_unit ku');
             $unitBuilder->select('COUNT(DISTINCT ku.unit_id) as total')
                 ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->join('customers c', 'c.id = cl.customer_id', 'left')
+                ->join('customers c', 'c.id = k.customer_id', 'left')
                 ->whereIn('ku.status', ['ACTIVE', 'TEMP_ACTIVE'])
                 ->where('(ku.is_temporary IS NULL OR ku.is_temporary = 0)');
             $this->applyDateFilter($unitBuilder, 'c.created_at');
@@ -1490,7 +1489,10 @@ class CustomerManagementController extends BaseController
                     k.customer_po_number,
                     k.rental_type,
                     c.customer_name as pelanggan,
-                    cl.location_name as lokasi,
+                    (SELECT GROUP_CONCAT(DISTINCT cl2.location_name SEPARATOR ', ') 
+                     FROM kontrak_unit ku2 
+                     JOIN customer_locations cl2 ON ku2.customer_location_id = cl2.id 
+                     WHERE ku2.kontrak_id = k.id) as lokasi,
                     k.tanggal_mulai,
                     k.tanggal_berakhir as tanggal_selesai,
                     k.status,
@@ -1499,7 +1501,6 @@ class CustomerManagementController extends BaseController
                     k.dibuat_pada as created_at,
                     k.diperbarui_pada as updated_at
                 FROM kontrak k
-                LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
                 LEFT JOIN customers c ON k.customer_id = c.id
                 WHERE k.customer_id = ? AND k.status != 'CANCELLED'
                 ORDER BY k.dibuat_pada DESC
@@ -1561,13 +1562,11 @@ class CustomerManagementController extends BaseController
                         CONCAT('Contract ', k.rental_type, ' - ', k.no_kontrak) as title,
                         CONCAT('Created ', CASE WHEN k.rental_type='CONTRACT' THEN 'formal contract' 
                                                 WHEN k.rental_type='PO_ONLY' THEN 'PO-only agreement' 
-                                                ELSE 'daily/spot rental' END, 
-                               ' at ', cl.location_name) as description,
+                                                ELSE 'daily/spot rental' END) as description,
                         u.username as user,
                         k.dibuat_pada as created_at
                     FROM kontrak k
-                    LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-                    LEFT JOIN customers c ON cl.customer_id = c.id
+                    LEFT JOIN customers c ON k.customer_id = c.id
                     LEFT JOIN users u ON k.dibuat_oleh = u.id
                     WHERE c.id = ?
                     ORDER BY k.dibuat_pada DESC
@@ -1605,14 +1604,13 @@ class CustomerManagementController extends BaseController
                         di.id,
                         'delivery' as type,
                         CONCAT('Delivery ', di.nomor_di, ' - ', di.status_di) as title,
-                        CONCAT('Delivery to ', cl.location_name, ' on ', DATE_FORMAT(di.tanggal_kirim, '%d %b %Y')) as description,
+                        CONCAT('Delivery on ', DATE_FORMAT(di.tanggal_kirim, '%d %b %Y')) as description,
                         u.username as user,
                         di.dibuat_pada as created_at
                     FROM delivery_instructions di
                     LEFT JOIN spk s ON di.spk_id = s.id
                     LEFT JOIN kontrak k ON s.kontrak_id = k.id
-                    LEFT JOIN customer_locations cl ON k.customer_location_id = cl.id
-                    LEFT JOIN customers c ON cl.customer_id = c.id
+                    LEFT JOIN customers c ON k.customer_id = c.id
                     LEFT JOIN users u ON u.id = di.dibuat_oleh
                     WHERE c.id = ?
                     ORDER BY di.dibuat_pada DESC
@@ -1918,11 +1916,10 @@ class CustomerManagementController extends BaseController
                 ->get()
                 ->getResultArray();
 
-            // Get customer contracts with locations
+            // Get customer contracts
             $contracts = $this->db->table('kontrak k')
-                ->select('k.*, cl.location_name, cl.address as location_address')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
-                ->where('k.customer_location_id IN (SELECT id FROM customer_locations WHERE customer_id = ' . $customerId . ')')
+                ->select('k.*')
+                ->where('k.customer_id', $customerId)
                 ->get()
                 ->getResultArray();
 
@@ -1948,7 +1945,7 @@ class CustomerManagementController extends BaseController
                     // Updated: JOIN via kontrak_unit junction table (source of truth)
                     ->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit', 'left')
                     ->join('kontrak k', 'k.id = ku.kontrak_id', 'left')
-                    ->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left')
+                    ->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left')
                     ->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left')
                     ->join('kapasitas kap', 'kap.id_kapasitas = iu.kapasitas_unit_id', 'left')
                     ->join('tipe_mast tm', 'tm.id_mast = iu.model_mast_id', 'left')

@@ -78,10 +78,9 @@ class Finance extends Controller
 
         try {
             $builder = $this->db->table('invoices i');
-            $builder->select('i.*, k.no_kontrak, c.customer_name, cl.location_name');
+            $builder->select('i.*, k.no_kontrak, c.customer_name, (SELECT cl.location_name FROM kontrak_unit ku JOIN customer_locations cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = k.id LIMIT 1) as location_name');
             $builder->join('kontrak k', 'k.id = i.contract_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = k.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('customers c', 'c.id = k.customer_id', 'left');
 
             // Search
             $search = $this->request->getGet('search')['value'] ?? '';

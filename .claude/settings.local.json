@@ -3,7 +3,13 @@
     "allow": [
       "Bash(mysql -u root optima_ci -e \"DESCRIBE customer_locations;\")",
       "Bash(mysql -u root optima_ci 2)",
-      "Bash(1:*)"
+      "Bash(1:*)",
+      "Bash(php -r \":*)",
+      "Bash(php tools/add_sidebar_menu.php)",
+      "Bash(php c:/laragon/www/optima/tools/add_menus.php)",
+      "Bash(php c:/laragon/www/optima/tools/add_collapsed_menus.php)",
+      "Bash(php c:/laragon/www/optima/tools/add_surat_jalan.php)",
+      "Bash(python c:/laragon/www/optima/tools/add_menus_proper.py)"
     ]
   }
 }

@@ -223,8 +223,8 @@ class Perizinan extends BaseController
                 d.nama_departemen as departemen');
             $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
             $builder->join('kontrak kt', 'kt.id = ku.kontrak_id', 'left');
-            $builder->join('customer_locations cl', 'cl.id = kt.customer_location_id', 'left');
-            $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+            $builder->join('customers c', 'c.id = kt.customer_id', 'left');
+            $builder->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left');
             $builder->join('tipe_unit tu', 'tu.id_tipe_unit = iu.tipe_unit_id', 'left');
             $builder->join('kapasitas k', 'k.id_kapasitas = iu.kapasitas_unit_id', 'left');
             $builder->join('departemen d', 'd.id_departemen = iu.departemen_id', 'left');
@@ -827,8 +827,8 @@ class Perizinan extends BaseController
         $builder->join('users u2', 'u2.id = s.updated_by', 'left');
         $builder->join('kontrak_unit ku', 'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left');
         $builder->join('kontrak kt', 'kt.id = ku.kontrak_id', 'left');
-        $builder->join('customer_locations cl', 'cl.id = kt.customer_location_id', 'left');
-        $builder->join('customers c', 'c.id = cl.customer_id', 'left');
+        $builder->join('customers c', 'c.id = kt.customer_id', 'left');
+        $builder->join('customer_locations cl', 'cl.id = ku.customer_location_id', 'left');
         $builder->orderBy('s.id_silo', 'DESC');
         
         $query = $builder->get();

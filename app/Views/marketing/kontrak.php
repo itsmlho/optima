@@ -115,6 +115,9 @@ $can_export = can_export('marketing');
     </div>
 </div>
 
+<!-- Active Filter Banner (shown when filtered from URL) -->
+<div id="activeFilterBanner" style="display:none"></div>
+
 <!-- Contracts Table Card -->
 <div class="card table-card">
     <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
@@ -305,12 +308,56 @@ $(document).ready(function() {
     // Load statistics
     loadStatistics();
     
-    // Load customers dropdown
-    loadCustomersDropdown();
+    // Load customers dropdown, then auto-apply URL filters
+    loadCustomersDropdown(function() {
+        applyUrlFilters();
+    });
     
     // Initialize DataTable
     initializeContractsTable();
 });
+
+// Auto-apply filters from URL query params (e.g. ?customer_id=5&status=ACTIVE)
+function applyUrlFilters() {
+    const params = new URLSearchParams(window.location.search);
+    let hasFilter = false;
+    
+    if (params.get('customer_id')) {
+        $('#filter_customer').val(params.get('customer_id'));
+        hasFilter = true;
+    }
+    if (params.get('rental_type')) {
+        $('#filter_rental_type').val(params.get('rental_type'));
+        hasFilter = true;
+    }
+    if (params.get('status')) {
+        $('#filter_status').val(params.get('status'));
+        hasFilter = true;
+    }
+    
+    if (hasFilter) {
+        // Show active filter banner
+        const customerName = $('#filter_customer option:selected').text();
+        if (params.get('customer_id') && customerName && customerName !== 'All Customers') {
+            $('#activeFilterBanner').html(`<div class="alert alert-info alert-sm mb-3 d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-filter me-2"></i>Menampilkan kontrak untuk: <strong>${customerName}</strong></span>
+                <button class="btn btn-sm btn-outline-info" onclick="clearAllFilters()"><i class="fas fa-times me-1"></i>Hapus Filter</button>
+            </div>`).show();
+        }
+        applyFilters();
+    }
+}
+
+// Clear all filters and reload
+function clearAllFilters() {
+    $('#filter_rental_type').val('');
+    $('#filter_status').val('');
+    $('#filter_customer').val('');
+    $('#activeFilterBanner').hide().empty();
+    // Clean URL
+    window.history.replaceState({}, '', window.location.pathname);
+    applyFilters();
+}
 
 // Load statistics
 function loadStatistics() {
@@ -333,7 +380,7 @@ function loadStatistics() {
 }
 
 // Load customers for filter dropdown
-function loadCustomersDropdown() {
+function loadCustomersDropdown(callback) {
     $.ajax({
         url: '<?= base_url('marketing/kontrak/customers-dropdown') ?>',
         type: 'GET',
@@ -344,6 +391,10 @@ function loadCustomersDropdown() {
                     $select.append(new Option(customer.customer_name, customer.id));
                 });
             }
+            if (typeof callback === 'function') callback();
+        },
+        error: function() {
+            if (typeof callback === 'function') callback();
         }
     });
 }
@@ -507,12 +558,30 @@ function editContract(id) {
  * @param {number|null} days   Days remaining (positive = future, negative = past, null = open-ended)
  */
 function buildActionButtons(id, status, days) {
+    const canRenew = (status === 'ACTIVE' || status === 'EXPIRED');
+    const canAmend = (status === 'ACTIVE');
+    
+    let renewItem = canRenew ? `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openRenewalWizard(${id})"><i class="fas fa-sync-alt text-success me-2"></i>Renewal</a></li>` : '';
+    let amendItem = canAmend ? `<li><a class="dropdown-item" href="#" onclick="event.preventDefault(); openAmendmentModal(${id})"><i class="fas fa-calculator text-warning me-2"></i>Change Rate</a></li>` : '';
+    let divider = (canRenew || canAmend) ? '<li><hr class="dropdown-divider"></li>' : '';
+
     return `
-        <a href="<?= base_url('marketing/kontrak/detail') ?>/${id}"
-           class="btn btn-sm btn-primary"
-           title="View Details">
-            <i class="fas fa-eye me-1"></i>View Detail
-        </a>`;
+        <div class="btn-group">
+            <a href="<?= base_url('marketing/kontrak/detail') ?>/${id}" class="btn btn-sm btn-outline-primary" title="View Detail">
+                <i class="fas fa-eye"></i>
+            </a>
+            <button type="button" class="btn btn-sm btn-outline-secondary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false">
+                <span class="visually-hidden">Toggle Dropdown</span>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/detail') ?>/${id}"><i class="fas fa-eye text-primary me-2"></i>View Detail</a></li>
+                <li><a class="dropdown-item" href="<?= base_url('marketing/kontrak/edit') ?>/${id}"><i class="fas fa-edit text-info me-2"></i>Edit Kontrak</a></li>
+                ${renewItem}
+                ${amendItem}
+                ${divider}
+                <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); deleteContract(${id})"><i class="fas fa-trash me-2"></i>Hapus Kontrak</a></li>
+            </ul>
+        </div>`;
 }
 
 // View contract units

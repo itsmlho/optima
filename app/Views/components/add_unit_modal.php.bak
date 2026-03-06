@@ -1,0 +1,300 @@
+<!-- =====================================================
+     Modal: Add Unit to Contract
+     ===================================================== -->
+<div class="modal fade" id="addUnitModal" tabindex="-1" aria-labelledby="addUnitModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="addUnitModalLabel">
+                    <i class="fas fa-plus-circle me-2"></i>Tambah Unit ke Kontrak
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Contract Info -->
+                <div class="alert alert-info mb-3">
+                    <strong>Kontrak:</strong> <span id="addUnitKontrakInfo">Loading...</span>
+                </div>
+
+                <!-- Location Selection -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Lokasi Penempatan Unit <span class="text-danger">*</span></label>
+                    <select class="form-select" id="addUnitLocation">
+                        <option value="">-- Pilih Lokasi --</option>
+                    </select>
+                    <div class="form-text">Pilih lokasi customer tempat unit akan ditempatkan</div>
+                </div>
+
+                <!-- Tanggal -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Tanggal Mulai</label>
+                        <input type="date" class="form-control" id="addUnitTanggalMulai">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Tanggal Selesai</label>
+                        <input type="date" class="form-control" id="addUnitTanggalSelesai">
+                    </div>
+                </div>
+
+                <!-- Search -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="addUnitSearch" placeholder="Cari unit (No Unit, Serial, Merk)...">
+                        <button class="btn btn-outline-secondary" type="button" onclick="loadAvailableUnits()">Cari</button>
+                    </div>
+                </div>
+
+                <!-- Units Table -->
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-bordered table-hover table-sm" id="availableUnitsTable">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th width="50" class="text-center">
+                                    <input type="checkbox" id="selectAllUnits" onchange="toggleSelectAllUnits()">
+                                </th>
+                                <th>No Unit</th>
+                                <th>Serial Number</th>
+                                <th>Merk/Model</th>
+                                <th>Tipe</th>
+                                <th>Kapasitas</th>
+                                <th class="text-end">Harga/Bulan</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="availableUnitsBody">
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>Memuat unit tersedia...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Selected Summary -->
+                <div class="mt-3 p-3 bg-light rounded">
+                    <strong>Unit Dipilih:</strong> <span id="selectedUnitCount">0</span>
+                    <span class="ms-3">Total Nilai: <span class="text-success fw-bold" id="selectedTotalValue">Rp 0</span></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" onclick="submitAddUnit()" id="btnSubmitAddUnit" disabled>
+                    <i class="fas fa-plus me-1"></i>Tambah Unit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let availableUnits = [];
+let selectedUnits = [];
+let currentKontrakId = null;
+
+// Open modal
+function openAddUnitModal(kontrakId, kontrakNo, tanggalMulai, tanggalBerakhir) {
+    currentKontrakId = kontrakId;
+    selectedUnits = [];
+
+    // Set contract info
+    document.getElementById('addUnitKontrakInfo').textContent = kontrakNo + ' (' + (tanggalMulai || '-') + ' s/d ' + (tanggalBerakhir || '-') + ')';
+
+    // Set dates
+    $('#addUnitTanggalMulai').val(tanggalMulai || '');
+    $('#addUnitTanggalSelesai').val(tanggalBerakhir || '');
+
+    // Reset selections
+    $('#selectAllUnits').prop('checked', false);
+    updateSelectedSummary();
+
+    // Load customer locations and available units
+    loadAvailableUnits();
+
+    $('#addUnitModal').modal('show');
+}
+
+// Load available units
+function loadAvailableUnits() {
+    const search = $('#addUnitSearch').val() || '';
+    const url = BASE_URL + 'marketing/kontrak/getAvailableUnits?kontrak_id=' + currentKontrakId + '&search=' + encodeURIComponent(search);
+
+    $('#availableUnitsBody').html('<tr><td colspan="8" class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin me-2"></i>Memuat...</td></tr>');
+
+    $.ajax({
+        url: url,
+        type: 'GET',
+        success: function(res) {
+            if (!res.success) {
+                $('#availableUnitsBody').html('<tr><td colspan="8" class="text-center text-danger py-4">Error: ' + res.message + '</td></tr>');
+                return;
+            }
+
+            availableUnits = res.data || [];
+
+            // Populate customer locations
+            const locationSelect = $('#addUnitLocation');
+            locationSelect.empty().append('<option value="">-- Pilih Lokasi --</option>');
+            if (res.customer_locations && res.customer_locations.length > 0) {
+                res.customer_locations.forEach(loc => {
+                    locationSelect.append('<option value="' + loc.id + '">' + loc.location_name + '</option>');
+                });
+            }
+
+            // Set default dates from contract
+            if (res.kontrak && ! $('#addUnitTanggalMulai').val()) {
+                $('#addUnitTanggalMulai').val(res.kontrak.tanggal_mulai || '');
+                $('#addUnitTanggalSelesai').val(res.kontrak.tanggal_berakhir || '');
+            }
+
+            renderAvailableUnits();
+        },
+        error: function() {
+            $('#availableUnitsBody').html('<tr><td colspan="8" class="text-center text-danger py-4">Error loading units</td></tr>');
+        }
+    });
+}
+
+// Render available units table
+function renderAvailableUnits() {
+    if (availableUnits.length === 0) {
+        $('#availableUnitsBody').html('<tr><td colspan="8" class="text-center text-muted py-4">Tidak ada unit tersedia</td></tr>');
+        return;
+    }
+
+    let html = '';
+    availableUnits.forEach(unit => {
+        const isSelected = selectedUnits.includes(unit.id);
+        html += '<tr class="' + (isSelected ? 'table-primary' : '') + '">';
+        html += '<td class="text-center">';
+        html += '<input type="checkbox" class="unit-checkbox" value="' + unit.id + '" ' + (isSelected ? 'checked' : '') + ' onchange="toggleUnitSelection(' + unit.id + ', ' + unit.harga_sewa_bulanan + ')">';
+        html += '</td>';
+        html += '<td><strong>' + unit.no_unit + '</strong></td>';
+        html += '<td>' + unit.serial_number + '</td>';
+        html += '<td>' + unit.merk + ' ' + unit.model + '</td>';
+        html += '<td>' + unit.tipe + '</td>';
+        html += '<td>' + unit.kapasitas + '</td>';
+        html += '<td class="text-end">' + rupiah(unit.harga_sewa_bulanan) + '</td>';
+        html += '<td><span class="badge bg-success">' + unit.status_unit + '</span></td>';
+        html += '</tr>';
+    });
+
+    $('#availableUnitsBody').html(html);
+}
+
+// Toggle unit selection
+function toggleUnitSelection(unitId, price) {
+    const idx = selectedUnits.indexOf(unitId);
+    if (idx > -1) {
+        selectedUnits.splice(idx, 1);
+    } else {
+        selectedUnits.push(unitId);
+    }
+
+    // Update table row highlighting
+    $('.unit-checkbox[value="' + unitId + '"]').closest('tr').toggleClass('table-primary', selectedUnits.includes(unitId));
+
+    // Update select all checkbox
+    $('#selectAllUnits').prop('checked', selectedUnits.length === availableUnits.length);
+
+    updateSelectedSummary();
+}
+
+// Toggle select all
+function toggleSelectAllUnits() {
+    const checked = $('#selectAllUnits').prop('checked');
+    selectedUnits = [];
+
+    $('.unit-checkbox').each(function() {
+        $(this).prop('checked', checked);
+        const unitId = parseInt($(this).val());
+        if (checked) {
+            selectedUnits.push(unitId);
+            $(this).closest('tr').addClass('table-primary');
+        } else {
+            $(this).closest('tr').removeClass('table-primary');
+        }
+    });
+
+    updateSelectedSummary();
+}
+
+// Update selected summary
+function updateSelectedSummary() {
+    let total = 0;
+    selectedUnits.forEach(unitId => {
+        const unit = availableUnits.find(u => u.id === unitId);
+        if (unit) {
+            total += unit.harga_sewa_bulanan || 0;
+        }
+    });
+
+    $('#selectedUnitCount').text(selectedUnits.length);
+    $('#selectedTotalValue').text(rupiah(total));
+    $('#btnSubmitAddUnit').prop('disabled', selectedUnits.length === 0);
+}
+
+// Submit add unit
+function submitAddUnit() {
+    if (selectedUnits.length === 0) {
+        alert('Pilih minimal 1 unit');
+        return;
+    }
+
+    const customerLocationId = $('#addUnitLocation').val();
+    const tanggalMulai = $('#addUnitTanggalMulai').val();
+    const tanggalSelesai = $('#addUnitTanggalSelesai').val();
+
+    // Disable button
+    const btn = $('#btnSubmitAddUnit');
+    btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-1"></i>Menyimpan...');
+
+    $.ajax({
+        url: BASE_URL + 'marketing/kontrak/addUnit',
+        type: 'POST',
+        data: {
+            kontrak_id: currentKontrakId,
+            unit_ids: selectedUnits,
+            customer_location_id: customerLocationId,
+            tanggal_mulai: tanggalMulai,
+            tanggal_selesai: tanggalSelesai
+        },
+        success: function(res) {
+            if (res.success) {
+                $('#addUnitModal').modal('hide');
+                // Reload units in contract
+                if (typeof loadUnits === 'function') {
+                    loadUnits();
+                }
+                // Show success
+                if (typeof showToast === 'function') {
+                    showToast('success', res.message);
+                } else {
+                    alert(res.message);
+                }
+                // Refresh page after short delay
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1000);
+            } else {
+                alert(res.message || 'Gagal menambahkan unit');
+            }
+        },
+        error: function() {
+            alert('Error saat menambahkan unit');
+        },
+        complete: function() {
+            btn.prop('disabled', false).html('<i class="fas fa-plus me-1"></i>Tambah Unit');
+        }
+    });
+}
+
+// Search on enter
+$('#addUnitSearch').on('keypress', function(e) {
+    if (e.which === 13) {
+        loadAvailableUnits();
+    }
+});
+</script>

@@ -32,6 +32,7 @@ $can_create = can_create('marketing');
 
                 <form id="editContractForm">
                     <input type="hidden" id="contractId" value="<?= (int)$contract['id'] ?>">
+                    <input type="hidden" name="customer_id" value="<?= (int)$contract['customer_id'] ?>">
                     <?= csrf_field() ?>
 
                     <!-- ROW 1 – Contract No / PO Number -->
@@ -49,20 +50,14 @@ $can_create = can_create('marketing');
                         </div>
                     </div>
 
-                    <!-- ROW 2 – Customer / Location -->
+                    <!-- ROW 2 – Customer (Read-only) -->
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-12">
                             <label class="form-label fw-semibold">Customer <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editCustomerSelect" name="customer_id">
+                            <select class="form-select" id="editCustomerSelect" disabled>
                                 <option value="">Loading customers…</option>
                             </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">Location <span class="text-danger">*</span></label>
-                            <select class="form-select" id="editLocationSelect" name="customer_location_id" required>
-                                <option value="">Select customer first</option>
-                            </select>
-                            <input type="hidden" id="currentLocationId" value="<?= (int)($contract['customer_location_id'] ?? 0) ?>">
+                            <small class="text-muted">Customer cannot be changed after contract creation. Location is now tracked per unit.</small>
                         </div>
                     </div>
 
@@ -107,17 +102,19 @@ $can_create = can_create('marketing');
                         </div>
                     </div>
 
-                    <!-- ROW 5 – Financial -->
+                    <!-- ROW 5 – Financial (Auto-calculated) -->
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Contract Value (Rp)</label>
-                            <input type="number" class="form-control" name="contract_value" step="0.01" min="0"
-                                   value="<?= esc($contract['nilai_total'] ?? 0) ?>">
+                            <input type="text" class="form-control" id="contractValue" 
+                                   value="<?= number_format($contract['nilai_total'] ?? 0, 0, ',', '.') ?>" readonly>
+                            <small class="text-muted">Auto-calculated from units</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Total Units</label>
-                            <input type="number" class="form-control" name="total_units" min="0"
-                                   value="<?= esc($contract['total_units'] ?? 0) ?>">
+                            <input type="text" class="form-control" id="totalUnits"
+                                   value="<?= esc($contract['total_units'] ?? 0) ?>" readonly>
+                            <small class="text-muted">Auto-calculated from units</small>
                         </div>
                     </div>
 
@@ -166,11 +163,9 @@ $can_create = can_create('marketing');
 <script>
 const CONTRACT_ID = <?= (int)$contract['id'] ?>;
 const CUSTOMERS_URL   = '<?= base_url('marketing/kontrak/customers') ?>';
-const LOCATIONS_URL   = '<?= base_url('marketing/kontrak/locations') ?>';
 const UPDATE_URL      = '<?= base_url('marketing/kontrak/update') ?>/' + CONTRACT_ID;
 const LIST_URL        = '<?= base_url('marketing/kontrak') ?>';
-
-let currentLocationId = $('#currentLocationId').val();
+const UNITS_URL       = '<?= base_url('marketing/kontrak/units') ?>/' + CONTRACT_ID;
 
 // ── Load customers dropdown ──────────────────────────────────────────────────
 function loadCustomers() {
@@ -181,47 +176,38 @@ function loadCustomers() {
                 $sel.append(new Option(c.customer_name, c.id));
             });
         }
-        // Now load locations for the existing customer, then select the right one
-        loadLocationsForCurrentContract();
+        // Select the current customer
+        const contractCustomerId = <?= json_encode($contract['customer_id'] ?? null) ?>;
+        if (contractCustomerId) {
+            $('#editCustomerSelect').val(contractCustomerId);
+        }
     }).fail(function() {
         $('#editCustomerSelect').html('<option value="">Error loading customers</option>');
     });
 }
 
-// ── Load locations when customer changes ─────────────────────────────────────
-$('#editCustomerSelect').on('change', function() {
-    const cid = $(this).val();
-    currentLocationId = null; // reset on manual change
-    loadLocations(cid, null);
-});
-
-function loadLocationsForCurrentContract() {
-    // We need to find which customer owns the current location_id
-    // Use the customers API: look up customer_id from contract directly
-    const contractCustomerId = <?= json_encode($contract['customer_id'] ?? null) ?>;
-    if (contractCustomerId) {
-        $('#editCustomerSelect').val(contractCustomerId);
-        loadLocations(contractCustomerId, currentLocationId);
-    }
-}
-
-function loadLocations(customerId, selectLocationId) {
-    if (!customerId) {
-        $('#editLocationSelect').html('<option value="">Select customer first</option>').prop('disabled', true);
-        return;
-    }
-    $('#editLocationSelect').html('<option>Loading…</option>').prop('disabled', true);
-    $.getJSON(LOCATIONS_URL + '/' + customerId, function(res) {
-        const $sel = $('#editLocationSelect').empty().prop('disabled', false);
-        $sel.append('<option value="">-- Select Location --</option>');
+// ── Load and calculate contract totals from units ────────────────────────────
+function loadContractTotals() {
+    $.getJSON(UNITS_URL, function(res) {
         if (res.success && res.data) {
-            res.data.forEach(loc => {
-                $sel.append(new Option(loc.location_name, loc.id));
+            let totalValue = 0;
+            let totalUnits = 0;
+            
+            res.data.forEach(function(unit) {
+                // Count non-spare units
+                if (!unit.is_spare) {
+                    const rate = parseFloat(unit.harga_efektif || unit.harga_sewa_bulanan || 0);
+                    totalValue += rate;
+                }
+                totalUnits++;
             });
+            
+            // Update the display fields
+            $('#contractValue').val('Rp ' + totalValue.toLocaleString('id-ID'));
+            $('#totalUnits').val(totalUnits);
         }
-        if (selectLocationId) $sel.val(selectLocationId);
     }).fail(function() {
-        $('#editLocationSelect').html('<option>Error loading locations</option>').prop('disabled', false);
+        console.error('Failed to load units for totals calculation');
     });
 }
 
@@ -257,6 +243,7 @@ $('#editContractForm').on('submit', function(e) {
 // ── Init ─────────────────────────────────────────────────────────────────────
 $(document).ready(function() {
     loadCustomers();
+    loadContractTotals(); // Auto-calculate from units
 });
 </script>
 <?= $this->endSection() ?>

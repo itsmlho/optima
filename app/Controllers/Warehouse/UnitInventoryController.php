@@ -157,8 +157,7 @@ class UnitInventoryController extends BaseController
                 // Updated: JOIN customers via kontrak_unit junction table (source of truth)
                 ->join('kontrak_unit ku',        'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k',              'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl',  'cl.id = k.customer_location_id', 'left')
-                ->join('customers c',            'c.id = cl.customer_id',          'left');
+                ->join('customers c',            'c.id = k.customer_id',          'left');
 
             if ($hasTipeMast)  $builder->join('tipe_mast tm', 'tm.id_mast       = iu.model_mast_id',     'left');
             if ($hasMesin) {
@@ -247,7 +246,6 @@ class UnitInventoryController extends BaseController
                           ku.tanggal_selesai as end_date,
                           ku.status')
                 ->join('kontrak k',             'k.id  = ku.kontrak_id',            'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id',   'left')
                 ->join('customers c',           'c.id  = k.customer_id',            'left')
                 ->where('ku.unit_id', (int)$id)
                 ->orderBy('ku.tanggal_mulai', 'DESC')
@@ -433,7 +431,6 @@ class UnitInventoryController extends BaseController
                     ');
 
                 if ($hasKontrak)                     $b->join('kontrak k',             'k.id  = ku.kontrak_id',            'left');
-                if ($hasLocations && $hasKontrak)    $b->join('customer_locations cl', 'cl.id = k.customer_location_id',   'left');
                 if ($hasCustomers && $hasKontrak)    $b->join('customers c',           'c.id  = k.customer_id',            'left');
 
                 $rows = $b->where('ku.unit_id', $unitId)
@@ -643,8 +640,7 @@ class UnitInventoryController extends BaseController
                 // Updated: JOIN customers via kontrak_unit junction table (source of truth)
                 ->join('kontrak_unit ku',       'ku.unit_id = iu.id_inventory_unit AND ku.status IN ("ACTIVE","TEMP_ACTIVE") AND ku.is_temporary = 0', 'left')
                 ->join('kontrak k',             'k.id = ku.kontrak_id', 'left')
-                ->join('customer_locations cl', 'cl.id = k.customer_location_id','left')
-                ->join('customers c',           'c.id = cl.customer_id',         'left');
+                ->join('customers c',           'c.id = k.customer_id',         'left');
 
             if ($db->tableExists('kapasitas')) {
                 $b->select('kap.kapasitas_unit AS kapasitas_display')

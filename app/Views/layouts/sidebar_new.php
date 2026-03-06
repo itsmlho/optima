@@ -68,6 +68,11 @@ helper('permission_helper');
                         <i class="fas fa-shipping-fast"></i> <?= lang('App.delivery_instructions_di') ?>
                     </a>
                     <?php endif; ?>
+                    <?php if (canNavigateTo('marketing', 'audit_approval')): ?>
+                    <a href="<?= base_url('/marketing/audit-approval') ?>" class="nav-dropdown-item">
+                        <i class="fas fa-check-circle"></i> Audit Approval
+                    </a>
+                    <?php endif; ?>
                 </div>
             </li>
             <?php endif; ?>
@@ -93,6 +98,11 @@ helper('permission_helper');
                     <?php if (canNavigateTo('service', 'pmps')): ?>
                     <a href="<?= base_url('/service/pmps') ?>" class="nav-dropdown-item">
                         <i class="fas fa-calendar-check"></i> <?= lang('App.preventive_maintenance_pmps') ?>
+                    </a>
+                    <?php endif; ?>
+                    <?php if (canNavigateTo('service', 'workorder')): ?>
+                    <a href="<?= base_url('/service/unit-audit') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'unit-audit') !== false || strpos(current_url(), 'unit_audit') !== false) ? 'active' : '' ?>">
+                        <i class="fas fa-search"></i> Unit Audit
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'area')): ?>
@@ -174,6 +184,11 @@ helper('permission_helper');
                     <?php if (canNavigateTo('warehouse', 'po_verification')): ?>
                     <a href="<?= base_url('/warehouse/purchase-orders/wh-verification') ?>" class="nav-dropdown-item <?= strpos(current_url(), 'warehouse/purchase-orders/wh-verification') !== false ? 'active' : '' ?>">
                         <i class="fas fa-clipboard-check"></i> <?= lang('App.po_verification') ?>
+                    </a>
+                    <?php endif; ?>
+                    <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
+                    <a href="<?= base_url('/warehouse/movements') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'warehouse/movements') !== false) ? 'active' : '' ?>">
+                        <i class="fas fa-truck-moving"></i> Surat Jalan
                     </a>
                     <?php endif; ?>
                 </div>
@@ -289,6 +304,18 @@ helper('permission_helper');
             </li>
             <?php endif; ?>
 
+            <!-- Audit Approval -->
+            <?php if (can_view('marketing')): ?>
+            <li class="nav-item">
+                <a class="nav-link text-warning" href="<?= base_url('/marketing/audit-approval') ?>"
+                   data-search-terms="audit approval verifikasi unit customer"
+                   data-tooltip="Audit Approval">
+                    <i class="fas fa-check-double"></i>
+                    <span class="nav-link-text">Audit Approval</span>
+                </a>
+            </li>
+            <?php endif; ?>
+
             <!-- Customer Management -->
             <?php if (can_view('marketing')): ?>
             <li class="nav-item">
@@ -374,6 +401,17 @@ helper('permission_helper');
                    data-search-terms="area staff employee management service">
                     <i class="fas fa-map-marked-alt"></i>
                     <span class="nav-link-text"><?= lang('App.area_employee_management') ?></span>
+                </a>
+            </li>
+            <?php endif; ?>
+
+            <!-- Unit Audit -->
+            <?php if (can_view('service')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= (strpos(current_url(), 'unit-audit') !== false || strpos(current_url(), 'unit_audit') !== false) ? 'active' : '' ?>" href="<?= base_url('/service/unit-audit') ?>"
+                   data-search-terms="unit audit pemeriksaan service">
+                    <i class="fas fa-search"></i>
+                    <span class="nav-link-text">Unit Audit</span>
                 </a>
             </li>
             <?php endif; ?>
@@ -528,6 +566,18 @@ helper('permission_helper');
                    data-search-terms="po verification verify purchase order warehouse">
                     <i class="fas fa-clipboard-check"></i>
                     <span class="nav-link-text"><?= lang('App.po_verification') ?></span>
+                </a>
+            </li>
+            <?php endif; ?>
+
+            <!-- Surat Jalan / Movement -->
+            <?php if (can_view('warehouse')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= strpos(current_url(), 'warehouse/movements') !== false ? 'active' : '' ?>" 
+                   href="<?= base_url('/warehouse/movements') ?>"
+                   data-search-terms="surat jalan movement perpindahan unit warehouse">
+                    <i class="fas fa-truck-moving"></i>
+                    <span class="nav-link-text">Surat Jalan</span>
                 </a>
             </li>
             <?php endif; ?>

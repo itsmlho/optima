@@ -17,7 +17,8 @@ class InvoiceModel extends Model
     protected $useSoftDeletes = false;
     protected $allowedFields = [
         'invoice_number',
-        'contract_id',
+        'contract_id',       // Opsional: invoice bisa dibuat tanpa kontrak
+        'po_reference',      // Opsional: nomor PO dari customer
         'di_id',
         'customer_id',
         'invoice_type',
@@ -44,16 +45,17 @@ class InvoiceModel extends Model
     protected $updatedField = 'updated_at';
     
     protected $validationRules = [
-        'invoice_number' => 'required|string|max_length[50]|is_unique[invoices.invoice_number]',
-        'contract_id' => 'required|integer',
-        'customer_id' => 'required|integer',
-        'invoice_type' => 'required|in_list[ONE_TIME,RECURRING_RENTAL,ADDENDUM]',
+        'invoice_number'       => 'required|string|max_length[50]|is_unique[invoices.invoice_number]',
+        // contract_id OPSIONAL: invoice bisa dibuat tanpa kontrak/PO (cukup list unit + harga)
+        'contract_id'          => 'permit_empty|integer',
+        'customer_id'          => 'required|integer',
+        'invoice_type'         => 'required|in_list[ONE_TIME,RECURRING_RENTAL,ADDENDUM,MANUAL]',
         'billing_period_start' => 'required|valid_date',
-        'billing_period_end' => 'required|valid_date',
-        'issue_date' => 'required|valid_date',
-        'due_date' => 'required|valid_date',
-        'status' => 'required|in_list[DRAFT,PENDING_APPROVAL,APPROVED,SENT,PAID,OVERDUE,CANCELLED]',
-        'created_by' => 'required|integer'
+        'billing_period_end'   => 'required|valid_date',
+        'issue_date'           => 'required|valid_date',
+        'due_date'             => 'required|valid_date',
+        'status'               => 'required|in_list[DRAFT,PENDING_APPROVAL,APPROVED,SENT,PAID,OVERDUE,CANCELLED]',
+        'created_by'           => 'required|integer'
     ];
     
     /**
@@ -120,10 +122,9 @@ class InvoiceModel extends Model
         
         // Get DI details
         $di = $diModel->select('delivery_instructions.*, kontrak.no_kontrak, '
-                             . 'customer_locations.customer_id, customers.name as customer_name')
+                             . 'kontrak.customer_id, customers.customer_name')
                       ->join('kontrak', 'kontrak.id = delivery_instructions.contract_id', 'left')
-                      ->join('customer_locations', 'customer_locations.id = kontrak.customer_location_id', 'left')
-                      ->join('customers', 'customers.id = customer_locations.customer_id', 'left')
+                      ->join('customers', 'customers.id = kontrak.customer_id', 'left')
                       ->find($diId);
         
         if (!$di) {
@@ -211,8 +212,7 @@ class InvoiceModel extends Model
 
         // Get contract
         $kontrakModel = new \App\Models\KontrakModel();
-        $contract = $kontrakModel->select('kontrak.*, customer_locations.customer_id')
-                                 ->join('customer_locations', 'customer_locations.id = kontrak.customer_location_id')
+        $contract = $kontrakModel->select('kontrak.*, kontrak.customer_id')
                                  ->find($schedule['contract_id']);
 
         if (!$contract) {

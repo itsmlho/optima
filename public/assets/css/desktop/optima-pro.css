@@ -2224,12 +2224,22 @@ h6, .h6 { font-size: 1rem; }
 
 /* Large and XL modal constraints */
 @media (min-width: 992px) {
+    .modal-lg,
+    .modal-dialog-lg {
+        max-width: 800px;
+    }
+    .modal-lg .modal-content,
     .modal-dialog-lg .modal-content {
         max-width: 800px;
     }
 }
 
 @media (min-width: 1200px) {
+    .modal-xl,
+    .modal-dialog-xl {
+        max-width: 1140px;
+    }
+    .modal-xl .modal-content,
     .modal-dialog-xl .modal-content {
         max-width: 1140px;
     }
