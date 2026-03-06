@@ -1,4 +1,4 @@
-<?= $this->extend('layouts/base') ?>
+﻿<?= $this->extend('layouts/base') ?>
 
 <?php
 // Load global permission helper
@@ -841,9 +841,9 @@ $(document).ready(function() {
                 d.priority = $('#filter-priority-progress').val();
                 // Add CSRF token
                 if (typeof window.getCsrfToken === 'function') {
-                    d.csrf_test_name = window.getCsrfToken();
+                    d[window.csrfTokenName] = window.getCsrfToken();
                 } else if (window.csrfToken) {
-                    d.csrf_test_name = window.csrfToken;
+                    d[window.csrfTokenName] = window.csrfToken;
                 }
             }
         },
@@ -909,9 +909,9 @@ $(document).ready(function() {
                 d.month = $('#filter-month-closed').val();
                 // Add CSRF token
                 if (typeof window.getCsrfToken === 'function') {
-                    d.csrf_test_name = window.getCsrfToken();
+                    d[window.csrfTokenName] = window.getCsrfToken();
                 } else if (window.csrfToken) {
-                    d.csrf_test_name = window.csrfToken;
+                    d[window.csrfTokenName] = window.csrfToken;
                 }
             }
         },

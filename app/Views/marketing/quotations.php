@@ -1,4 +1,4 @@
-<?= $this->extend('layouts/base') ?>
+﻿<?= $this->extend('layouts/base') ?>
 
 <?= $this->section('content') ?>
 
@@ -2137,7 +2137,7 @@ function deleteQuotation(id) {
                 url: '<?= base_url('marketing/quotations/delete/') ?>' + id,
                 type: 'DELETE',
                 data: {
-                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                    [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
                 },
                 success: function(response) {
                     if (response.status === 'success') {
@@ -2226,7 +2226,7 @@ function convertProspectToCustomer(quotationId) {
                     url: '<?= base_url('marketing/convertProspectToCustomer/') ?>' + quotationId,
                     type: 'POST',
                     data: {
-                        csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                        [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
                     },
                     success: function(response) {
                         if (response.success) {
@@ -3182,7 +3182,7 @@ $('#addSpecificationForm').on('submit', function(e) {
     const formData = new FormData(this);
     
     // Add CSRF token
-    formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
+    formData.append(window.csrfTokenName, window.csrfToken || '<?= csrf_hash() ?>');
     
     // Ensure spare unit value is sent (checkbox may not be in FormData if unchecked)
     if (!isSpareUnit) {
@@ -3287,7 +3287,7 @@ $('#addAttachmentForm').on('submit', function(e) {
     const formData = new FormData(this);
     
     // Add CSRF token
-    formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
+    formData.append(window.csrfTokenName, window.csrfToken || '<?= csrf_hash() ?>');
     
     const submitBtn = $('#submitAttachmentBtn');
     
@@ -3759,7 +3759,7 @@ $(document).on('submit', '#editSpecificationForm', function(e) {
     e.preventDefault();
     
     const specId = $('#edit_spec_id').val();
-    const formData = $(this).serialize() + '&csrf_test_name=' + encodeURIComponent(window.csrfToken || '<?= csrf_hash() ?>');
+    const formData = $(this).serialize() + '&' + window.csrfTokenName + '=' + encodeURIComponent(window.csrfToken || '<?= csrf_hash() ?>');
     
     $.ajax({
         url: `<?= base_url('marketing/quotations/update-specification/') ?>${specId}`,
@@ -3811,7 +3811,7 @@ function deleteSpecification(specId) {
                 url: `<?= base_url('marketing/quotations/delete-specification/') ?>${specId}`,
                 type: 'DELETE',
                 data: {
-                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                    [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
                 },
                 success: function(response) {
                     if (response.success) {
@@ -4011,7 +4011,7 @@ function convertToQuotation(quotationId) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.post('<?= base_url('marketing/quotations/convert-to-quotation') ?>/' + quotationId, {
-                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
             })
                 .done(function(response) {
                     if (response.success) {
@@ -4316,7 +4316,7 @@ function sendQuotation(quotationId) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.post('<?= base_url('marketing/quotations/send-quotation') ?>/' + quotationId, {
-                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
             })
                 .done(function(response) {
                     if (response.success) {
@@ -4435,7 +4435,7 @@ function proceedMarkAsDeal(quotationId, skipValidation = false) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.post('<?= base_url('marketing/quotations/markAsDeal') ?>/' + quotationId, {
-                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
             })
                 .done(function(response) {
                     if (response.success) {
@@ -4545,7 +4545,7 @@ function markAsNotDeal(quotationId) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.post('<?= base_url('marketing/quotations/markAsNotDeal') ?>/' + quotationId, {
-                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
             })
                 .done(function(response) {
                     if (response.success) {
@@ -4819,7 +4819,7 @@ function saveCustomerLocation(customerId, locationData, quotationId) {
     locationData.location_type = 'HEAD_OFFICE';
     locationData.quotation_id = quotationId; // CRITICAL: Pass quotation ID for workflow tracking
     locationData.workflow_completed = true; // Flag to indicate modal workflow is complete
-    locationData.csrf_test_name = window.csrfToken || '<?= csrf_hash() ?>'; // CSRF protection
+    locationData[window.csrfTokenName] = window.csrfToken || '<?= csrf_hash() ?>'; // CSRF protection
     
     console.log('Saving customer location with quotation ID:', locationData);
     
@@ -4905,7 +4905,7 @@ function updateCustomerPrimaryLocation(customerId, locationId, quotationId, deal
         location_id: locationId,
         quotation_id: quotationId, // CRITICAL: Pass quotation ID for workflow tracking
         workflow_completed: true, // Flag to indicate modal workflow is complete
-        csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>' // Add CSRF token
+        [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>' // Add CSRF token
     };
     
     // Store location globally for contract creation
@@ -5486,7 +5486,7 @@ function createCustomerFromDeal(quotationId) {
     }).then((result) => {
         if (result.isConfirmed) {
             $.post('<?= base_url('marketing/quotations/createCustomerFromDeal') ?>/' + quotationId, {
-                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
             })
                 .done(function(response) {
                     if (response.success) {
@@ -5591,7 +5591,7 @@ function createContract(quotationId) {
 
 function proceedWithContractCreation(quotationId) {
     $.post('<?= base_url('marketing/quotations/createContract') ?>/' + quotationId, {
-        csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+        [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
     })
         .done(function(response) {
             if (response.success) {
@@ -5672,7 +5672,7 @@ function addSpecifications(quotationId) {
         url: '<?= base_url('marketing/quotations/addSpecifications') ?>/' + quotationId,
         type: 'POST',
         data: {
-            csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+            [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
         },
         dataType: 'json',
         success: function(response) {
@@ -5923,7 +5923,7 @@ function searchCustomers() {
         method: 'POST',
         data: { 
             search: searchTerm,
-            csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+            [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
         },
         success: function(response) {
             if (response.success && response.data.length > 0) {
@@ -6537,7 +6537,7 @@ $('#createSPKForm').on('submit', function(e) {
     submitBtn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Creating...');
     
     // Add CSRF token to formData
-    formData.csrf_test_name = window.csrfToken || '<?= csrf_hash() ?>';
+    formData[window.csrfTokenName] = window.csrfToken || '<?= csrf_hash() ?>';
     
     // Submit to backend
     $.ajax({

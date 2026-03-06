@@ -1,4 +1,4 @@
-<?= $this->extend('layouts/base') ?>
+﻿<?= $this->extend('layouts/base') ?>
 
 <?php
 helper('simple_rbac');
@@ -417,7 +417,7 @@ function initializeContractsTable() {
             data: function(d) {
                 // Add CSRF token to POST data
                 if (window.csrfToken) {
-                    d.csrf_test_name = window.csrfToken;
+                    d[window.csrfTokenName] = window.csrfToken;
                 }
                 // Add custom filters
                 d.rental_type = $('#filter_rental_type').val();
@@ -1261,7 +1261,7 @@ function deleteContractFromModal() {
                 url: '<?= base_url('marketing/kontrak/delete') ?>/' + currentContractId,
                 type: 'POST',
                 data: { 
-                    csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                    [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
                 },
                 success: function(response) {
                     if (response.success) {
@@ -1297,7 +1297,7 @@ function deleteDocument(docId) {
             url: '<?= base_url('marketing/kontrak/deleteDocument') ?>/' + docId,
             type: 'POST',
             data: { 
-                csrf_test_name: window.csrfToken || '<?= csrf_hash() ?>'
+                [window.csrfTokenName]: window.csrfToken || '<?= csrf_hash() ?>'
             },
             success: function(response) {
                 if (response.success) {

@@ -1,4 +1,4 @@
-<?= $this->extend('layouts/base') ?>
+﻿<?= $this->extend('layouts/base') ?>
 
 <?php
 // Load global permission helper
@@ -1063,7 +1063,7 @@ function loadStatistics(startDate, endDate) {
     // Add CSRF token using getCsrfToken() for fresh token
     var csrfToken = (typeof getCsrfToken === 'function') ? getCsrfToken() : (window.csrfToken || '');
     if (csrfToken) {
-        data.csrf_test_name = csrfToken;
+        data[window.csrfTokenName] = csrfToken;
     }
 
     $.ajax({
