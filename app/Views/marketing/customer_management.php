@@ -1059,18 +1059,19 @@ function loadStatistics(startDate, endDate) {
     } else {
         console.log('📊 Loading customer statistics WITHOUT filter (all data)');
     }
-    
-    // Add CSRF token
-    if (window.csrfToken) {
-        data.csrf_test_name = window.csrfToken;
+
+    // Add CSRF token using getCsrfToken() for fresh token
+    var csrfToken = (typeof getCsrfToken === 'function') ? getCsrfToken() : (window.csrfToken || '');
+    if (csrfToken) {
+        data.csrf_test_name = csrfToken;
     }
-    
+
     $.ajax({
         url: '<?= base_url('marketing/customer-management/getCustomerStats') ?>',
         type: 'POST',
         data: data,
         headers: {
-            'X-CSRF-TOKEN': window.csrfToken || ''
+            'X-CSRF-TOKEN': csrfToken
         },
         success: function(response) {
             if (response.success) {
