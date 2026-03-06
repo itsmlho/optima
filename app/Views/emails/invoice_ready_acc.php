@@ -90,7 +90,7 @@
         
         <div class="footer">
             <p><strong>PT SARANA MITRA LUAS Tbk</strong></p>
-            <p>OPTIMA - Enterprise Resource Planning System</p>
+            <p>OPTIMA</p>
             <p style="margin-top: 15px;">Email ini dihasilkan otomatis oleh sistem. Mohon tidak membalas pesan ini.</p>
         </div>
     </div>

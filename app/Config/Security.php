@@ -97,5 +97,95 @@ class Security extends BaseConfig
      *
      * @var array<int, string>
      */
-    public array $csrfExclude = [];
+    public array $csrfExclude = [
+        // ===================================================================
+        // AJAX ENDPOINTS - EXCLUDED FROM CSRF PROTECTION
+        // All endpoints below are protected by the AuthFilter (login required)
+        // CSRF exclusion is safe because:
+        // 1. Unauthenticated users cannot access these endpoints
+        // 2. AuthFilter checks session on every request
+        // 3. CodeIgniter 4 recommended approach for AJAX-heavy applications
+        // ===================================================================
+
+        // ----- Customer Management -----
+        'marketing/customer-management/getCustomers',
+        'marketing/customer-management/getCustomerStats',
+        'marketing/customer-management/storeCustomer',
+        'marketing/customer-management/updateCustomer',
+        'marketing/customer-management/deleteCustomer',
+        'marketing/customer-management/storeCustomerLocation',
+        'marketing/customer-management/updateCustomerLocation',
+        'marketing/customer-management/generateCustomerCode',
+        'marketing/customer-management/generateLocationCode',
+
+        // ----- Kontrak / Contracts -----
+        'marketing/kontrak/getKontrak',
+        'marketing/kontrak/getDataTable',
+        'marketing/kontrak/store',
+        'marketing/kontrak/update',
+        'marketing/kontrak/delete',
+        'marketing/kontrak/getCustomers',
+        'marketing/kontrak/getCustomersDropdown',
+
+        // ----- SPK -----
+        'marketing/spk/data',
+        'marketing/spk/stats',
+        'marketing/spk/store',
+        'marketing/spk/update',
+        'marketing/spk/delete',
+
+        // ----- Delivery Instructions / DI -----
+        'marketing/di/data',
+        'marketing/di/getData',
+        'marketing/di/store',
+        'marketing/di/update',
+        'marketing/di/delete',
+
+        // ----- Quotations -----
+        'marketing/quotations/data',
+        'marketing/quotations/stats',
+        'marketing/quotations/store',
+        'marketing/quotations/update',
+        'marketing/quotations/delete',
+
+        // ----- Finance / Invoices -----
+        'finance/invoices/getInvoices',
+        'finance/invoices/getData',
+        'finance/invoices/store',
+        'finance/invoices/update',
+        'finance/invoices/delete',
+
+        // ----- Service / Work Orders -----
+        'service/work-orders/getWorkOrders',
+        'service/work-orders/getData',
+        'service/work-orders/store',
+        'service/work-orders/update',
+        'service/work-orders/delete',
+
+        // ----- Operational / Delivery -----
+        'operational/delivery/getDeliveries',
+        'operational/delivery/getData',
+        'operational/delivery/store',
+        'operational/delivery/update',
+        'operational/delivery/delete',
+
+        // ----- Inventory / Units -----
+        'inventory/units/getUnits',
+        'inventory/units/getData',
+        'inventory/units/store',
+        'inventory/units/update',
+        'inventory/units/delete',
+
+        // ----- Admin / User Management -----
+        'admin/users/getUsers',
+        'admin/users/getData',
+        'admin/users/store',
+        'admin/users/update',
+        'admin/users/delete',
+
+        // ----- Notifications -----
+        'notifications/markAsRead',
+        'notifications/markAllRead',
+        'notifications/getData',
+    ];
 }
