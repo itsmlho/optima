@@ -143,7 +143,7 @@ $routes->group('marketing',  static function ($routes) {
     // --- Detail Routes (for notification deep linking) ---
     $routes->get('contracts/view/(:num)', 'Marketing::index'); // Contract detail via notification
     // Note: spk/detail/(:num) is defined below as API    // Quotations / Penawaran
-    $routes->get('quotations', 'MarketingController::quotations');
+    $routes->get('quotations', 'Marketing::quotations');
     
     // Audit Approval
     $routes->get('audit-approval', 'UnitAudit::approval', ['filter' => 'permission:view_marketing']);
