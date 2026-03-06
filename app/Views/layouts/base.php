@@ -1005,18 +1005,38 @@ $currentLang = service('request')->getLocale();
         };
         
         // Global AJAX setup — dynamic CSRF token refreshed per request
-        if (typeof $ !== 'undefined') {
-            $.ajaxSetup({
-                beforeSend: function(xhr, settings) {
-                    // Always read the latest CSRF token before sending
-                    const token = window.getCsrfToken ? window.getCsrfToken() : (window.csrfToken || '');
-                    if (token) {
-                        xhr.setRequestHeader('X-CSRF-TOKEN', token);
+        // Using $(function(){}) ensures this runs AFTER jQuery is fully ready
+        // and handles the case where CDN jQuery is replaced by local fallback
+        (function applyAjaxCsrfSetup() {
+            function setup() {
+                $.ajaxSetup({
+                    beforeSend: function(xhr, settings) {
+                        // Always read the latest CSRF token before sending
+                        // getCsrfToken() reads from cookie dynamically (never stale)
+                        const token = (typeof window.getCsrfToken === 'function')
+                            ? window.getCsrfToken()
+                            : (window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
+                        if (token) {
+                            xhr.setRequestHeader('X-CSRF-TOKEN', token);
+                        }
+                        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
                     }
-                    xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-                }
-            });
-        }
+                });
+            }
+            // Try immediately (if jQuery already loaded)
+            if (typeof $ !== 'undefined') {
+                setup();
+                $(function() { setup(); }); // Re-apply on DOM ready as safety net
+            } else {
+                // Fallback: wait for jQuery via polling (CDN delay edge case)
+                const jqWait = setInterval(function() {
+                    if (typeof $ !== 'undefined') {
+                        clearInterval(jqWait);
+                        setup();
+                    }
+                }, 50);
+            }
+        })();
 
         // Theme initialization with tracking prevention fallback
         (function() {
