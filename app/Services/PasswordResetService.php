@@ -23,7 +23,7 @@ class PasswordResetService
     /**
      * Generate reset token dan kirim email
      */
-    public function generateResetToken(int $userId, string $email, string $ipAddress, ?string $userAgent = null): array
+    public function generateResetToken(int $userId, string $email, string $ipAddress, ?string $userAgent = null, string $subject = 'Reset Password - OPTIMA'): array
     {
         // Check rate limit
         $rateLimit = $this->passwordResetModel->checkRateLimit(
@@ -61,7 +61,7 @@ class PasswordResetService
         }
 
         // Send email with reset link
-        $emailSent = $this->sendResetEmail($userId, $email, $reset['token']);
+        $emailSent = $this->sendResetEmail($userId, $email, $reset['token'], $subject);
 
         if (!$emailSent) {
             return [
@@ -82,7 +82,7 @@ class PasswordResetService
     /**
      * Send password reset email
      */
-    public function sendResetEmail(int $userId, string $email, string $token): bool
+    public function sendResetEmail(int $userId, string $email, string $token, string $subject = 'Reset Password - OPTIMA'): bool
     {
         $user = $this->userModel->find($userId);
         
@@ -99,8 +99,7 @@ class PasswordResetService
         // Set email configuration
         $emailService->setFrom($emailConfig->fromEmail ?? 'noreply@optima.local', $emailConfig->fromName ?? 'OPTIMA System');
         $emailService->setTo($email);
-        
-        $subject = 'Reset Password - OPTIMA';
+
         $message = view('emails/password_reset', [
             'user' => $user,
             'reset_link' => $resetLink,

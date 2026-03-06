@@ -1,222 +1,97 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice Ready for Processing</title>
+    <title>Pemberitahuan Otomasi Faktur</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-        .email-wrapper {
-            max-width: 650px;
-            margin: 20px auto;
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-        .header {
-            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-            color: white;
-            padding: 30px 20px;
-            text-align: center;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .header .icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        .content {
-            padding: 30px 25px;
-            background: #fff;
-        }
-        .content p {
-            margin: 0 0 15px 0;
-            color: #555;
-        }
-        .info-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: #f9f9f9;
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        .info-table tr {
-            border-bottom: 1px solid #e0e0e0;
-        }
-        .info-table tr:last-child {
-            border-bottom: none;
-        }
-        .info-table th,
-        .info-table td {
-            padding: 12px 15px;
-            text-align: left;
-        }
-        .info-table th {
-            background: #007bff;
-            color: white;
-            font-weight: 600;
-            width: 40%;
-        }
-        .info-table td {
-            background: white;
-            color: #333;
-        }
-        .info-table td strong {
-            color: #007bff;
-            font-size: 16px;
-        }
-        .alert-box {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px 20px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .alert-box strong {
-            color: #856404;
-            display: block;
-            margin-bottom: 8px;
-            font-size: 16px;
-        }
-        .alert-box ul {
-            margin: 10px 0 0 0;
-            padding-left: 20px;
-            color: #856404;
-        }
-        .alert-box ul li {
-            margin: 5px 0;
-        }
-        .btn-primary {
-            display: inline-block;
-            padding: 12px 30px;
-            background: #007bff;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-weight: 600;
-            margin: 20px 0;
-            transition: background 0.3s;
-        }
-        .btn-primary:hover {
-            background: #0056b3;
-        }
-        .btn-container {
-            text-align: center;
-            margin: 25px 0;
-        }
-        .footer {
-            text-align: center;
-            padding: 20px;
-            background: #f8f9fa;
-            color: #666;
-            font-size: 13px;
-            border-top: 1px solid #e0e0e0;
-        }
-        .footer p {
-            margin: 5px 0;
-        }
-        .footer strong {
-            color: #333;
-        }
-        .note {
-            margin-top: 25px;
-            padding: 15px;
-            background: #e7f3ff;
-            border-radius: 4px;
-            font-size: 14px;
-            color: #004085;
-            border-left: 3px solid #007bff;
-        }
-        .note em {
-            font-style: normal;
-            font-weight: 600;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .email-wrapper { max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e1e5eb; }
+        .header { padding: 25px 30px; background-color: #ffffff; border-bottom: 3px solid #0056b3; text-align: center; }
+        .logo-optima { height: 40px; vertical-align: middle; margin-right: 15px; }
+        .logo-sml { height: 40px; vertical-align: middle; margin-left: 15px; border-left: 1px solid #ccc; padding-left: 20px; }
+        .content { padding: 30px; }
+        .content h2 { color: #0056b3; font-size: 20px; margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .info-table { width: 100%; border-collapse: collapse; margin: 20px 0; background: #ffffff; border: 1px solid #e1e5eb; font-size: 14px; }
+        .info-table th { background: #f8f9fa; color: #555; text-align: left; padding: 12px 15px; width: 40%; border-bottom: 1px solid #e1e5eb; border-right: 1px solid #e1e5eb; }
+        .info-table td { padding: 12px 15px; border-bottom: 1px solid #e1e5eb; }
+        .info-table tr:last-child th, .info-table tr:last-child td { border-bottom: none; }
+        .button { display: inline-block; padding: 12px 25px; background-color: #0056b3; color: #ffffff !important; text-decoration: none; border-radius: 4px; font-weight: 600; margin: 15px 0; text-align: center; }
+        .button:hover { background-color: #004494; }
+        .alert-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; font-size: 14px; }
+        .note { margin-top: 25px; padding: 15px; background: #f8f9fa; border-left: 4px solid #0056b3; font-size: 13px; color: #555; }
+        .footer { background-color: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #6c757d; border-top: 1px solid #e1e5eb; }
     </style>
 </head>
 <body>
     <div class="email-wrapper">
         <div class="header">
-            <div class="icon">🧾</div>
-            <h1>Invoice Ready for Processing</h1>
+            <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA" class="logo-optima">
+            <img src="<?= base_url('assets/images/company-logo.png') ?>" alt="SML" class="logo-sml">
         </div>
-        
+
         <div class="content">
-            <p><strong>Dear Accounting Team,</strong></p>
+            <h2>Pemberitahuan Otomasi Faktur (Invoice)</h2>
+            <p><strong>Yth. Tim Accounting / Finance,</strong></p>
             
-            <p>An invoice has been automatically generated by the Optima ERP system and is now ready for processing. Please review the details below and proceed with preparing the invoice package for the customer.</p>
+            <p>Sistem ERP OPTIMA telah secara otomatis meng-generate draft faktur tagihan (invoice) baru yang siap untuk Anda proses lebih lanjut dalam menyiapkan dokumen kepada pelanggan.</p>
             
             <table class="info-table">
                 <tr>
-                    <th>Invoice Number</th>
-                    <td><strong><?= $invoice['invoice_number'] ?? 'N/A' ?></strong></td>
+                    <th>Nomor Invoice</th>
+                    <td><strong><?= esc($invoice['invoice_number'] ?? 'N/A') ?></strong></td>
                 </tr>
                 <tr>
-                    <th>Customer</th>
-                    <td><?= $customer_name ?? 'N/A' ?></td>
+                    <th>Pelanggan</th>
+                    <td><strong><?= esc($customer_name ?? 'N/A') ?></strong></td>
                 </tr>
                 <tr>
-                    <th>Contract/PO Number</th>
-                    <td><?= $contract_number ?? 'N/A' ?></td>
+                    <th>Nomor PO/Kontrak</th>
+                    <td><?= esc($contract_number ?? 'N/A') ?></td>
                 </tr>
                 <tr>
-                    <th>Invoice Amount</th>
-                    <td><strong style="color: #28a745; font-size: 18px;">Rp <?= number_format($invoice['total_amount'] ?? 0, 0, ',', '.') ?></strong></td>
+                    <th>Nominal Tagihan</th>
+                    <td><strong style="color: #28a745; font-size: 15px;">Rp <?= number_format($invoice['total_amount'] ?? 0, 0, ',', '.') ?></strong></td>
                 </tr>
                 <tr>
-                    <th>DI Number</th>
-                    <td><?= $di['di_number'] ?? 'N/A' ?></td>
+                    <th>Nomor DI (Delivery)</th>
+                    <td><?= esc($di['di_number'] ?? 'N/A') ?></td>
                 </tr>
                 <tr>
-                    <th>DI Completed Date</th>
+                    <th>Tgl. Selesai DI</th>
                     <td><?= isset($di['completed_at']) ? date('d F Y', strtotime($di['completed_at'])) : 'N/A' ?></td>
                 </tr>
                 <tr>
-                    <th>Invoice Generated</th>
+                    <th>Waktu Generate</th>
                     <td><?= isset($invoice['created_at']) ? date('d F Y H:i', strtotime($invoice['created_at'])) : date('d F Y H:i') ?> WIB</td>
                 </tr>
             </table>
             
             <div class="alert-box">
-                <strong>⚠️ Action Required:</strong>
-                <ul>
-                    <li><strong>Step 1:</strong> Verify invoice details and accuracy in the system</li>
-                    <li><strong>Step 2:</strong> Collect and attach all supporting documents (BAST, delivery proof, photos, etc.)</li>
-                    <li><strong>Step 3:</strong> Prepare invoice package in proper format (PDF)</li>
-                    <li><strong>Step 4:</strong> Send complete invoice package to customer</li>
-                    <li><strong>Step 5:</strong> Update payment tracking status in system</li>
-                </ul>
+                <strong>⚠️ Tindakan Diperlukan:</strong>
+                <ol style="margin: 10px 0 0 0; padding-left: 20px; color: #555;">
+                    <li>Lakukan verifikasi kembali nominal dan detail pada sistem.</li>
+                    <li>Lengkapi faktur dengan dokumen pengantar (BAST, lembar konfirmasi, dsb).</li>
+                    <li>Cetak dan persiapkan pengiriman PDF aktual kepada pelanggan.</li>
+                    <li>Mutakhirkan (Update) status pengiriman faktur di modul OPTIMA.</li>
+                </ol>
             </div>
             
-            <div class="btn-container">
-                <a href="<?= base_url('finance/invoices/' . ($invoice['id'] ?? '')) ?>" class="btn-primary">
-                    📄 View Invoice in System
-                </a>
+            <div style="text-align: center;">
+                <a href="<?= base_url('finance/invoices/' . ($invoice['id'] ?? '')) ?>" class="button">Buka Detail Faktur di Sistem</a>
             </div>
             
             <div class="note">
-                <em>📌 Note:</em> This invoice was automatically generated 30 days after delivery completion as per company policy. If you have any questions or need assistance, please contact the Marketing team or system administrator.
+                <strong>Catatan Sistem:</strong> Faktur tagihan ini otomatis diterbitkan 30 hari sesudah status pengangkutan/DO diselesaikan, merujuk pada regulasi SOP penagihan. Harap pastikan dokumentasi sesuai sebelum pendistribusian akhir ke pelanggan.
             </div>
+            
+            <p style="margin-top: 25px;">Hormat kami,<br><strong>Sistem Administrator OPTIMA</strong></p>
         </div>
         
         <div class="footer">
-            <p><strong>PT Sarana Mitra Luas</strong></p>
-            <p>Optima ERP System - Automated Invoice Notification</p>
-            <p>Generated: <?= date('d F Y H:i:s') ?> WIB</p>
-            <p style="margin-top: 10px; font-size: 11px; color: #999;">
-                This is an automated email. Please do not reply directly to this message.
-            </p>
+            <p><strong>PT SARANA MITRA LUAS Tbk</strong></p>
+            <p>OPTIMA - Enterprise Resource Planning System</p>
+            <p style="margin-top: 15px;">Email ini dihasilkan otomatis oleh sistem. Mohon tidak membalas pesan ini.</p>
         </div>
     </div>
 </body>

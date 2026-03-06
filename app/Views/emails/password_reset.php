@@ -5,155 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Reset Password - OPTIMA</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .email-container {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #0061f2;
-        }
-        .logo {
-            font-size: 32px;
-            font-weight: bold;
-            color: #0061f2;
-            margin-bottom: 10px;
-        }
-        .title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #212529;
-            margin-bottom: 20px;
-        }
-        .content {
-            margin: 20px 0;
-        }
-        .button {
-            display: inline-block;
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 6px;
-            margin: 20px 0;
-            font-weight: 600;
-            text-align: center;
-        }
-        .button:hover {
-            background: linear-gradient(135deg, #0050d0 0%, #0061f2 100%);
-        }
-        .info-box {
-            background-color: #f8f9fa;
-            border-left: 4px solid #0061f2;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .info-box strong {
-            color: #0061f2;
-        }
-        .warning-box {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .link-fallback {
-            background-color: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
-            margin: 20px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            word-break: break-all;
-            color: #495057;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-            text-align: center;
-            font-size: 12px;
-            color: #6c757d;
-        }
-        @media only screen and (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            .email-container {
-                padding: 20px;
-            }
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .email-wrapper { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e1e5eb; }
+        .header { padding: 25px 30px; background-color: #ffffff; border-bottom: 3px solid #0056b3; text-align: center; }
+        .logo-optima { height: 40px; vertical-align: middle; margin-right: 15px; }
+        .logo-sml { height: 40px; vertical-align: middle; margin-left: 15px; border-left: 1px solid #ccc; padding-left: 20px; }
+        .content { padding: 30px; }
+        .content h2 { color: #0056b3; font-size: 20px; margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .button { display: inline-block; padding: 12px 25px; background-color: #0056b3; color: #ffffff !important; text-decoration: none; border-radius: 4px; font-weight: 600; margin: 25px 0; text-align: center; }
+        .button:hover { background-color: #004494; }
+        .info-box { background-color: #f8f9fa; border-left: 4px solid #0056b3; padding: 15px; margin: 20px 0; font-size: 14px; }
+        .warning-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; font-size: 14px; }
+        .link-fallback { word-break: break-all; color: #0056b3; font-size: 13px; margin-top: 10px; background: #f4f6f9; padding: 10px; border-radius: 4px; }
+        .footer { background-color: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #6c757d; border-top: 1px solid #e1e5eb; }
     </style>
 </head>
 <body>
-    <div class="email-container">
+    <div class="email-wrapper">
         <div class="header">
-            <div class="logo">OPTIMA</div>
-            <div class="title">Reset Password</div>
+            <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA" class="logo-optima">
+            <img src="<?= base_url('assets/images/company-logo.png') ?>" alt="SML" class="logo-sml">
         </div>
 
         <div class="content">
-            <p>Halo <?= esc($user['first_name'] ?? 'Pengguna') ?>,</p>
+            <h2>Permintaan Reset Kata Sandi</h2>
+            <p>Yth. <?= esc($user['first_name'] ?? 'Pengguna') ?>,</p>
             
-            <p>Kami menerima permintaan untuk mereset password akun OPTIMA Anda. Klik tombol di bawah untuk membuat password baru:</p>
+            <p>Sistem menerima instruksi untuk mengatur ulang (reset) kata sandi akun OPTIMA Anda. Jika Anda merasa mengajukan permintaan ini, silakan klik tombol di bawah untuk proses selanjutnya:</p>
 
-            <div style="text-align: center; margin: 30px 0;">
-                <a href="<?= esc($reset_link) ?>" class="button">
-                    <i class="fas fa-key" style="margin-right: 8px;"></i>
-                    Reset Password
-                </a>
+            <div style="text-align: center;">
+                <a href="<?= esc($reset_link) ?>" class="button">Atur Ulang Kata Sandi</a>
             </div>
 
-            <div class="info-box">
-                <strong>Informasi Penting:</strong>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li>Link reset password berlaku selama <?= $expire_hours ?> jam</li>
-                    <li>Link hanya dapat digunakan sekali</li>
-                    <li>Jika Anda tidak meminta reset password, abaikan email ini</li>
-                    <li>Password Anda tidak akan berubah sampai Anda membuat password baru</li>
-                </ul>
-            </div>
-
+            <p>Jika tautan pada tombol tidak merespon, salin dan akses alamat berikut menggunakan peramban web Anda:</p>
             <div class="link-fallback">
-                <strong>Jika tombol di atas tidak berfungsi,</strong> salin dan tempel link berikut di browser Anda:<br><br>
                 <?= esc($reset_link) ?>
             </div>
 
-            <div class="warning-box">
-                <strong>⚠️ Keamanan:</strong><br>
-                Jika Anda tidak melakukan permintaan reset password ini, segera hubungi administrator sistem di <a href="mailto:<?= esc($support_email) ?>"><?= esc($support_email) ?></a> dan abaikan email ini. Password akun Anda tetap aman.
+            <div class="info-box">
+                <strong>Ketentuan Sistem:</strong>
+                <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #555;">
+                    <li>Tautan pengubahan kata sandi ini hanya valid selama <?= $expire_hours ?> jam ke depan.</li>
+                    <li>Tautan hanya bisa dipergunakan satu kali pemakaian (One-Time-Use).</li>
+                    <li>Kata sandi Anda saat ini tidak akan berubah hingga Anda menetapkan kata sandi yang baru.</li>
+                </ul>
             </div>
 
-            <p style="margin-top: 20px;">
-                Jika Anda memiliki pertanyaan atau memerlukan bantuan, jangan ragu untuk menghubungi tim support kami.
-            </p>
+            <div class="warning-box">
+                <strong>Peringatan Keamanan:</strong><br>
+                Jika Anda tidak mengajukan perintah reset kata sandi, <strong>abaikan surat elektronik ini</strong>. Kami sangat menyarankan Anda untuk melapor kepada Administrator IT (<a href="mailto:<?= esc($support_email) ?>"><?= esc($support_email) ?></a>) bilamana mendapati aktivitas mencurigakan ini berulang.
+            </div>
+
+            <p style="margin-top: 25px;">Hormat kami,<br><strong>Sistem Administrator OPTIMA</strong></p>
         </div>
 
         <div class="footer">
-            <p><strong><?= esc($app_name ?? 'OPTIMA') ?></strong></p>
-            <p>Sistem Manajemen Operasional Terpadu</p>
-            <p>PT SARANA MITRA LUAS Tbk</p>
-            <p style="margin-top: 15px;">
-                Email ini dikirim secara otomatis. Mohon tidak membalas email ini.
-            </p>
-            <p>
-                Jika Anda memiliki pertanyaan, hubungi tim support di <a href="mailto:<?= esc($support_email) ?>"><?= esc($support_email) ?></a>
-            </p>
+            <p><strong>PT SARANA MITRA LUAS Tbk</strong></p>
+            <p>OPTIMA</p>
+            <p style="margin-top: 15px;">Email ini dihasilkan otomatis oleh sistem. Mohon tidak membalas pesan ini.</p>
         </div>
     </div>
 </body>

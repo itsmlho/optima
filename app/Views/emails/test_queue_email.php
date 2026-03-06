@@ -5,108 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= esc($title) ?> - <?= esc($app_name) ?></title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .container {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #0061f2;
-        }
-        .logo {
-            font-size: 32px;
-            font-weight: bold;
-            color: #0061f2;
-            margin-bottom: 10px;
-        }
-        .title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #212529;
-            margin-bottom: 20px;
-        }
-        .content {
-            margin: 20px 0;
-            font-size: 16px;
-            line-height: 1.6;
-        }
-        .test-box {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin: 30px 0;
-        }
-        .test-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-        .info-box {
-            background-color: #f8f9fa;
-            border-left: 4px solid #0061f2;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #dee2e6;
-            text-align: center;
-            font-size: 14px;
-            color: #6c757d;
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .email-wrapper { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e1e5eb; }
+        .header { padding: 25px 30px; background-color: #ffffff; border-bottom: 3px solid #0056b3; text-align: center; }
+        .logo-optima { height: 40px; vertical-align: middle; margin-right: 15px; }
+        .logo-sml { height: 40px; vertical-align: middle; margin-left: 15px; border-left: 1px solid #ccc; padding-left: 20px; }
+        .content { padding: 30px; }
+        .content h2 { color: #0056b3; font-size: 20px; margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .test-box { background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0; font-size: 14px; color: #155724; }
+        .info-box { background-color: #f8f9fa; border-left: 4px solid #0056b3; padding: 15px; margin: 20px 0; font-size: 14px; }
+        .footer { background-color: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #6c757d; border-top: 1px solid #e1e5eb; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="email-wrapper">
         <div class="header">
-            <div class="logo">OPTIMA</div>
-            <div class="title"><?= esc($title) ?></div>
-        </div>
-        
-        <div class="test-box">
-            <div class="test-icon">✅</div>
-            <h3>Queue System Test Berhasil!</h3>
-            <p>Email ini berhasil dikirim melalui sistem antrian (queue) background.</p>
+            <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA" class="logo-optima">
+            <img src="<?= base_url('assets/images/company-logo.png') ?>" alt="SML" class="logo-sml">
         </div>
         
         <div class="content">
-            <p>Halo,</p>
+            <h2>Pesan Pengujian Sistem (System Test)</h2>
+            <p>Yth. Administrator / IT Support,</p>
             
             <p><?= $message ?></p>
             
-            <p>Ini adalah tes untuk memverifikasi bahwa sistem queue email berfungsi dengan baik. Email ini diproses di background dan dikirim melalui sistem antrian file-based yang optimal untuk shared hosting.</p>
-        </div>
-        
-        <div class="info-box">
-            <strong>Informasi Test:</strong>
-            <ul style="margin: 10px 0; padding-left: 20px;">
-                <li>Waktu dikirim: <?= esc($timestamp) ?></li>
-                <li>Sistem: File-based Queue (100% gratis)</li>
-                <li>Processing: Background job</li>
-                <li>Hosting: Optimal untuk shared hosting</li>
-            </ul>
+            <div class="test-box">
+                <strong style="display: block; margin-bottom: 8px;">🚀 Uji Coba Queue Services Berhasil!</strong>
+                Surat elektronik ini didistribusikan secara suksesi menggunakan layanan worker background (Queue System), membuktikan integrasi asinkron server beroperasi optimal tanpa isu blocking.
+            </div>
+            
+            <div class="info-box">
+                <strong>Bahan Diagnostik (Diagnostic Data):</strong>
+                <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #555;">
+                    <li><strong>Stempel Waktu (Timestamp):</strong> <?= esc($timestamp) ?></li>
+                    <li><strong>Metode Eksekusi:</strong> Latar Belakang / Background Queue Job</li>
+                    <li><strong>Lingkungan (Environment):</strong> <?= esc(ENVIRONMENT) ?></li>
+                </ul>
+            </div>
+            
+            <p style="margin-top: 25px;">Hormat kami,<br><strong>Sistem Administrator OPTIMA</strong></p>
         </div>
         
         <div class="footer">
-            <p><strong><?= esc($app_name) ?></strong></p>
-            <p>Sistem manajemen terintegrasi PT Sarana Mitra Luas Tbk</p>
-            <p><small>Email ini dikirim otomatis oleh sistem. Jangan balas email ini.</small></p>
+            <p><strong>PT SARANA MITRA LUAS Tbk</strong></p>
+            <p>OPTIMA</p>
+            <p style="margin-top: 15px;">Email ini dihasilkan otomatis oleh sistem. Mohon tidak membalas pesan ini.</p>
         </div>
     </div>
 </body>

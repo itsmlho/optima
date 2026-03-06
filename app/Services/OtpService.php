@@ -23,7 +23,7 @@ class OtpService
     /**
      * Generate OTP untuk user
      */
-    public function generateOtp(int $userId, string $email): ?array
+    public function generateOtp(int $userId, string $email, string $subject = 'Kode OTP untuk Login - OPTIMA'): ?array
     {
         $user = $this->userModel->find($userId);
         
@@ -66,7 +66,7 @@ class OtpService
         }
 
         // Send OTP via email
-        $emailSent = $this->sendOtpEmail($userId, $email, $otp['otp_code']);
+        $emailSent = $this->sendOtpEmail($userId, $email, $otp['otp_code'], $subject);
 
         if (!$emailSent) {
             return [
@@ -146,7 +146,7 @@ class OtpService
     /**
      * Send OTP via email
      */
-    public function sendOtpEmail(int $userId, string $email, string $otpCode): bool
+    public function sendOtpEmail(int $userId, string $email, string $otpCode, string $subject = 'Kode OTP untuk Login - OPTIMA'): bool
     {
         $user = $this->userModel->find($userId);
         
@@ -161,7 +161,6 @@ class OtpService
         $emailService->setFrom($emailConfig->fromEmail ?? 'noreply@optima.local', $emailConfig->fromName ?? 'OPTIMA System');
         $emailService->setTo($email);
         
-        $subject = 'Kode OTP untuk Login - OPTIMA';
         $message = view('emails/otp_verification', [
             'user' => $user,
             'otp_code' => $otpCode,

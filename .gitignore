@@ -5,5 +5,15 @@ writable/*
 app/Config/Database.php
 vendor/
 .env
+.env_production
+.env.local
+.env.*.local
 node_modules
 _archived/
+# Debug / temporary files
+debug_audit.php
+MARKETING_FIXES.json
+# Credentials (NEVER COMMIT!)
+.credentials/
+*.credentials
+production.txt
