@@ -5,153 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kode OTP - OPTIMA</title>
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f4f4f4;
-        }
-        .email-container {
-            background-color: #ffffff;
-            border-radius: 8px;
-            padding: 30px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            padding-bottom: 20px;
-            border-bottom: 2px solid #0061f2;
-        }
-        .logo {
-            font-size: 32px;
-            font-weight: bold;
-            color: #0061f2;
-            margin-bottom: 10px;
-        }
-        .title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #212529;
-            margin-bottom: 20px;
-        }
-        .otp-box {
-            background: linear-gradient(135deg, #0061f2 0%, #4d8cff 100%);
-            color: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin: 30px 0;
-        }
-        .otp-code {
-            font-size: 36px;
-            font-weight: bold;
-            letter-spacing: 8px;
-            font-family: 'Courier New', monospace;
-            margin: 10px 0;
-        }
-        .content {
-            margin: 20px 0;
-        }
-        .info-box {
-            background-color: #f8f9fa;
-            border-left: 4px solid #0061f2;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .info-box strong {
-            color: #0061f2;
-        }
-        .warning-box {
-            background-color: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .footer {
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid #e9ecef;
-            text-align: center;
-            font-size: 12px;
-            color: #6c757d;
-        }
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: #0061f2;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 4px;
-            margin: 10px 0;
-        }
-        @media only screen and (max-width: 600px) {
-            body {
-                padding: 10px;
-            }
-            .email-container {
-                padding: 20px;
-            }
-            .otp-code {
-                font-size: 28px;
-                letter-spacing: 4px;
-            }
-        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333333; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .email-wrapper { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e1e5eb; }
+        .header { padding: 25px 30px; background-color: #ffffff; border-bottom: 3px solid #0056b3; text-align: center; }
+        .logo-optima { height: 40px; vertical-align: middle; margin-right: 15px; }
+        .logo-sml { height: 40px; vertical-align: middle; margin-left: 15px; border-left: 1px solid #ccc; padding-left: 20px; }
+        .content { padding: 30px; }
+        .content h2 { color: #0056b3; font-size: 20px; margin-top: 0; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+        .otp-box { background-color: #f0f4f8; padding: 25px; border-radius: 4px; text-align: center; margin: 25px 0; border: 1px dashed #0056b3; }
+        .otp-code { font-size: 34px; font-weight: bold; letter-spacing: 8px; font-family: 'Courier New', monospace; color: #0056b3; margin: 10px 0; }
+        .info-box { background-color: #f8f9fa; border-left: 4px solid #0056b3; padding: 15px; margin: 20px 0; font-size: 14px; }
+        .warning-box { background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; font-size: 14px; }
+        .footer { background-color: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #6c757d; border-top: 1px solid #e1e5eb; }
     </style>
 </head>
 <body>
-    <div class="email-container">
+    <div class="email-wrapper">
         <div class="header">
-            <div class="logo">OPTIMA</div>
-            <div class="title">Kode OTP untuk Login</div>
+            <img src="<?= base_url('assets/images/logo-optima.png') ?>" alt="OPTIMA" class="logo-optima">
+            <img src="<?= base_url('assets/images/company-logo.png') ?>" alt="SML" class="logo-sml">
         </div>
 
         <div class="content">
-            <p>Halo <?= esc($user['first_name'] ?? 'Pengguna') ?>,</p>
+            <h2>Verifikasi Login Akun</h2>
+            <p>Yth. <?= esc($user['first_name'] ?? 'Pengguna') ?>,</p>
             
-            <p>Kami menerima permintaan login ke akun OPTIMA Anda. Gunakan kode OTP berikut untuk menyelesaikan proses login:</p>
+            <p>Sistem menerima permintaan login ke akun OPTIMA Anda. Gunakan kode OTP (One Time Password) berikut untuk menyelesaikan proses otentikasi:</p>
 
             <div class="otp-box">
-                <div style="font-size: 14px; margin-bottom: 10px;">Kode OTP Anda:</div>
+                <div style="font-size: 14px; color: #555;">Kode OTP Anda:</div>
                 <div class="otp-code"><?= esc($otp_code) ?></div>
-                <div style="font-size: 12px; margin-top: 10px; opacity: 0.9;">Kode ini berlaku selama <?= $expire_minutes ?> menit</div>
+                <div style="font-size: 13px; color: #666; margin-top: 10px;">Berlaku selama <?= $expire_minutes ?> menit</div>
             </div>
 
             <div class="info-box">
-                <strong>Informasi Penting:</strong>
-                <ul style="margin: 10px 0; padding-left: 20px;">
-                    <li>Kode OTP hanya berlaku selama <?= $expire_minutes ?> menit</li>
-                    <li>Jangan bagikan kode OTP ini kepada siapa pun</li>
-                    <li>Maksimal 3 percobaan verifikasi</li>
-                    <li>Jika Anda tidak meminta kode ini, abaikan email ini</li>
+                <strong>Ketentuan Keamanan:</strong>
+                <ul style="margin: 8px 0 0 0; padding-left: 20px; color: #555;">
+                    <li>Kode ini bersifat rahasia. Jangan berikan kepada siapapun.</li>
+                    <li>Batas maksimal percobaan verifikasi adalah 3 kali.</li>
+                    <li>Sistem tidak pernah meminta kode OTP melalui telepon atau chat.</li>
                 </ul>
             </div>
 
             <div class="warning-box">
-                <strong>⚠️ Keamanan:</strong><br>
-                Jika Anda tidak melakukan login, segera ubah password akun Anda dan hubungi administrator sistem di <a href="mailto:<?= esc($support_email) ?>"><?= esc($support_email) ?></a>.
+                <strong>Peringatan Akses Ilegal:</strong><br>
+                Jika Anda tidak sedang mencoba login ke sistem, abaikan email ini dan segera ubah kata sandi akun Anda demi keamanan.
             </div>
-
-            <p style="margin-top: 20px;">
-                Masukkan kode OTP di halaman verifikasi untuk melanjutkan login.
-            </p>
+            
+            <p style="margin-top: 25px;">Hormat kami,<br><strong>Sistem Administrator OPTIMA</strong></p>
         </div>
 
         <div class="footer">
-            <p><strong><?= esc($app_name ?? 'OPTIMA') ?></strong></p>
-            <p>Sistem Manajemen Operasional Terpadu</p>
-            <p>PT SARANA MITRA LUAS Tbk</p>
-            <p style="margin-top: 15px;">
-                Email ini dikirim secara otomatis. Mohon tidak membalas email ini.
-            </p>
-            <p>
-                Jika Anda memiliki pertanyaan, hubungi tim support di <a href="mailto:<?= esc($support_email) ?>"><?= esc($support_email) ?></a>
-            </p>
+            <p><strong>PT SARANA MITRA LUAS Tbk</strong></p>
+            <p>OPTIMA</p>
+            <p style="margin-top: 15px;">Email ini dihasilkan otomatis oleh sistem. Mohon tidak membalas pesan ini.</p>
         </div>
     </div>
 </body>

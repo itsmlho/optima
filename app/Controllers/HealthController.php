@@ -55,7 +55,6 @@ class HealthController extends BaseController
         return $this->response->setJSON([
             'status' => 'ok',
             'timestamp' => date('c'),
-            'server' => gethostname()
         ]);
     }
 

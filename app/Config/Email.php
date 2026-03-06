@@ -7,7 +7,8 @@ use CodeIgniter\Config\BaseConfig;
 class Email extends BaseConfig
 {
     // From Email Configuration
-    public string $fromEmail  = 'itsupport@sml.co.id';
+    // Credentials are loaded from .env file (email.fromEmail, email.fromName)
+    public string $fromEmail  = '';
     public string $fromName   = 'OPTIMA';
     public string $recipients = '';
 
@@ -29,17 +30,20 @@ class Email extends BaseConfig
     /**
      * SMTP Server Hostname
      */
-    public string $SMTPHost = 'smtp.gmail.com';
+    // SMTP Host loaded from .env (email.SMTPHost)
+    public string $SMTPHost = '';
 
     /**
      * SMTP Username
+     * Loaded from .env: email.SMTPUser
      */
-    public string $SMTPUser = 'itsupport@sml.co.id';
+    public string $SMTPUser = '';
 
     /**
      * SMTP Password (App Password from Google)
+     * Loaded from .env: email.SMTPPass
      */
-    public string $SMTPPass = 'roul fztj xlrw xdct';
+    public string $SMTPPass = '';
 
     /**
      * SMTP Port

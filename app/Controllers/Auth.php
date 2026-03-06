@@ -182,7 +182,7 @@ class Auth extends BaseController
             $this->session->set('remember_login', $remember);
 
             // Generate OTP and send email
-            $otpResult = $this->otpService->generateOtp($user['id'], $user['email']);
+            $otpResult = $this->otpService->generateOtp($user['id'], $user['email'], 'Kode OTP untuk Login Sistem OPTIMA');
 
             if (!$otpResult || isset($otpResult['error'])) {
                 $errorMessage = $otpResult['message'] ?? 'Gagal mengirim OTP. Silakan coba lagi.';
@@ -426,7 +426,7 @@ class Auth extends BaseController
         }
 
         // Generate new OTP
-        $otpResult = $this->otpService->generateOtp($userId, $email);
+        $otpResult = $this->otpService->generateOtp($userId, $email, 'Kirim Ulang: Kode OTP Baru untuk Login OPTIMA');
 
         if (!$otpResult || isset($otpResult['error'])) {
             return $this->response->setJSON([
@@ -796,7 +796,7 @@ class Auth extends BaseController
             }
 
             // Send verification email
-            $this->sendVerificationEmail($userData['email'], $userData['first_name'], $verificationToken, $userId);
+            $this->sendVerificationEmail($userData['email'], $userData['first_name'], $verificationToken, $userId, 'Verifikasi Akun Baru - Sistem Managemen OPTIMA');
 
             $db->transComplete();
 
@@ -919,7 +919,7 @@ class Auth extends BaseController
             }
             
             // Send email
-            $this->sendVerificationEmail($email, $user['first_name'], $verificationToken, $user['id']);
+            $this->sendVerificationEmail($email, $user['first_name'], $verificationToken, $user['id'], 'Kirim Ulang: Verifikasi Akun OPTIMA Anda');
             
             // Store email in session for redirect
             session()->set('temp_email', $email);
@@ -937,7 +937,7 @@ class Auth extends BaseController
     /**
      * Send email verification
      */
-    private function sendVerificationEmail($email, $firstName, $token, $userId)
+    private function sendVerificationEmail($email, $firstName, $token, $userId, $subject = 'Verifikasi Email - OPTIMA')
     {
         try {
             $emailService = \Config\Services::email();
@@ -957,7 +957,7 @@ class Auth extends BaseController
             
             $emailService->setFrom($emailConfig->fromEmail ?? 'itsupport@sml.co.id', $emailConfig->fromName ?? 'OPTIMA System');
             $emailService->setTo($email);
-            $emailService->setSubject('Verifikasi Email - OPTIMA');
+            $emailService->setSubject($subject);
             $emailService->setMessage($message);
             $emailService->setMailType('html');
             
@@ -1180,7 +1180,8 @@ class Auth extends BaseController
             $user['id'],
             $email,
             $ipAddress,
-            $userAgent
+            $userAgent,
+            'Permintaan Reset Password Akun OPTIMA Anda'
         );
 
         if (!$result['success']) {

@@ -28,9 +28,11 @@ $routes->group('language', static function ($routes) {
     $routes->get('test', 'LanguageTest::index', ['as' => 'language.test']); // Test page
 });
 
-// Language Debug Routes (Development)
-$routes->get('language-debug', 'LanguageDebug::index');
-$routes->get('language-debug/set-manual/(:segment)', 'LanguageDebug::setManual/$1');
+// Language Debug Routes (Development Only)
+if (ENVIRONMENT !== 'production') {
+    $routes->get('language-debug', 'LanguageDebug::index');
+    $routes->get('language-debug/set-manual/(:segment)', 'LanguageDebug::setManual/$1');
+}
 
 // Health Check & Monitoring Routes
 $routes->group('health', static function ($routes) {
@@ -157,7 +159,6 @@ $routes->group('marketing',  static function ($routes) {
     $routes->get('quotations/history/(:num)', 'Marketing::getQuotationHistory/$1');
     $routes->post('quotations/createContract/(:num)', 'Marketing::createContract/$1');
     $routes->post('quotations/createSPK/(:num)', 'Marketing::createSPK/$1');
-    $routes->post('quotations/addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
     $routes->post('quotations/addSpecifications/(:num)', 'Marketing::addSpecifications/$1');
     $routes->post('convertProspectToCustomer/(:num)', 'Marketing::convertProspectToCustomer/$1');
 
@@ -350,9 +351,9 @@ $routes->group('marketing',  static function ($routes) {
     // Routes: marketing/kontrak/store -> kontrak/store
     // Routes: marketing/kontrak/update/(:num) -> kontrak/update/(:num)
     // Routes: marketing/kontrak/delete/(:num) -> kontrak/delete/(:num)
-    
+
     // SPK routes in marketing
-    $routes->post('spk/create', 'Marketing::spkCreate');
+    // $routes->post('spk/create', 'Marketing::spkCreate'); // Duplicate
 
     // Customer Management Routes
     $routes->group('customer-management', static function ($routes) {
@@ -479,7 +480,6 @@ $routes->group('service', static function ($routes) {
     $routes->post('service/work-orders/get-subcategory-priority', 'WorkOrderController::getSubcategoryPriority');
     $routes->post('work-orders/get-priority', 'WorkOrderController::getPriority');
     $routes->post('service/work-orders/get-priority', 'WorkOrderController::getPriority');
-    $routes->get('work-orders/print/(:num)', 'WorkOrderController::print/$1');
     $routes->get('work-orders/export', 'WorkOrderController::export');
     // Work Order area and sparepart endpoints
     $routes->post('work-orders/get-unit-area', 'WorkOrderController::getUnitArea');
@@ -549,7 +549,6 @@ $routes->group('service', static function ($routes) {
     $routes->get('spk/edit-options/(:num)', 'Service::getSpkEditOptions/$1');
     $routes->post('spk/edit-stage/(:num)', 'Service::editSpkStage/$1');
     $routes->post('spk/change-unit/(:num)', 'Service::changeSpkUnit/$1');
-    $routes->get('spk/units-with-edit/(:num)', 'Service::getSpkUnitsWithEdit/$1');
     // Simple unit search (for DI prepare)
     $routes->get('data-unit/simple', 'Service::dataUnitSimple');
     // Attachment simple search
