@@ -1,4 +1,4 @@
-<?= $this->extend('layouts/base') ?>
+﻿<?= $this->extend('layouts/base') ?>
 
 <?php
 // Load global permission helper
@@ -558,7 +558,7 @@ $can_export = $permissions['export'];
             type: 'POST',
             data: { 
                 status_filter: currentFilter,
-                csrf_test_name: window.csrfToken || ''
+                [window.csrfTokenName]: window.csrfToken || ''
             },
             beforeSend: function(xhr) {
                 if (window.csrfToken) {
@@ -3378,7 +3378,7 @@ $can_export = $permissions['export'];
         const formData = new FormData(document.getElementById('linkContractForm'));
         
         // Add CSRF token
-        formData.append('csrf_test_name', window.csrfToken || '<?= csrf_hash() ?>');
+        formData.append(window.csrfTokenName, window.csrfToken || '<?= csrf_hash() ?>');
         
         const submitBtn = event.target.querySelector('button[type="submit"]');
         const originalText = submitBtn.innerHTML;

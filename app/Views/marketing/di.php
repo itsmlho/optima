@@ -1,4 +1,4 @@
-<?= $this->extend('layouts/base') ?>
+﻿<?= $this->extend('layouts/base') ?>
 
 <?php 
 // Load global permission helper
@@ -921,7 +921,7 @@ document.addEventListener('DOMContentLoaded', ()=>{
       type: 'POST',
       data: { 
         status_filter: currentFilter,
-        csrf_test_name: window.csrfToken || ''
+        [window.csrfTokenName]: window.csrfToken || ''
       },
       beforeSend: function(xhr) {
         if (window.csrfToken) {
