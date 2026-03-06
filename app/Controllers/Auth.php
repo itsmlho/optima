@@ -545,7 +545,7 @@ class Auth extends BaseController
     }
     
     /**
-     * Get positions by division (AJAX endpoint)
+     * Get roles by division (AJAX endpoint)
      */
     public function getPositionsByDivision()
     {
@@ -564,74 +564,36 @@ class Auth extends BaseController
 
         try {
             $db = \Config\Database::connect();
-            $positions = [];
+            $roles = [];
             
-            if ($db->tableExists('positions')) {
-                // Get division name first
-                $division = null;
-                if ($db->tableExists('divisions')) {
-                    $division = $db->table('divisions')
-                        ->select('id, name')
-                        ->where('id', $divisionId)
-                        ->get()
-                        ->getRowArray();
-                }
-                
-                // Try to get positions by division_id first
-                $positionsData = $db->table('positions')
-                    ->select('id, name, code, description, division_id')
-                    ->where('is_active', 1)
-                    ->where('division_id', $divisionId)
-                    ->orderBy('name', 'ASC')
-                    ->get()
-                    ->getResultArray();
-                
-                // If no positions found by division_id, try to match by division name in position name
-                if (empty($positionsData) && $division) {
-                    $divisionName = strtolower($division['name']);
-                    $positionsData = $db->table('positions')
-                        ->select('id, name, code, description, division_id')
-                        ->where('is_active', 1)
-                        ->like('LOWER(name)', $divisionName)
-                        ->orderBy('name', 'ASC')
-                        ->get()
-                        ->getResultArray();
-                }
-                
-                // If still no positions, get all active positions as fallback
-                if (empty($positionsData)) {
-                    $positionsData = $db->table('positions')
-                        ->select('id, name, code, description, division_id')
-                        ->where('is_active', 1)
-                        ->orderBy('name', 'ASC')
-                        ->get()
-                        ->getResultArray();
-                }
-                
-                foreach ($positionsData as $position) {
-                    $positions[] = [
-                        'id' => $position['id'],
-                        'name' => $position['name'],
-                        'code' => $position['code'] ?? '',
-                        'description' => $position['description'] ?? ''
-                    ];
-                }
+            // Get roles filtered by division_id
+            $rolesData = $db->table('roles')
+                ->select('id, name, slug, description, division_id')
+                ->where('is_active', 1)
+                ->where('division_id', $divisionId)
+                ->where('is_system_role', 0) // Exclude system roles like Super Admin
+                ->orderBy('name', 'ASC')
+                ->get()
+                ->getResultArray();
+            
+            foreach ($rolesData as $role) {
+                $roles[] = [
+                    'id' => $role['id'],
+                    'name' => $role['name'],
+                    'slug' => $role['slug'] ?? '',
+                    'description' => $role['description'] ?? ''
+                ];
             }
             
             return $this->response->setJSON([
                 'success' => true,
-                'positions' => $positions,
-                'debug' => [
-                    'division_id' => $divisionId,
-                    'division_name' => $division['name'] ?? null,
-                    'count' => count($positions)
-                ]
+                'positions' => $roles
             ]);
         } catch (\Exception $e) {
-            log_message('error', 'Error loading positions by division: ' . $e->getMessage());
+            log_message('error', 'Error loading roles by division: ' . $e->getMessage());
             return $this->response->setJSON([
                 'success' => false,
-                'message' => 'Error loading positions: ' . $e->getMessage()
+                'message' => 'Error loading roles: ' . $e->getMessage()
             ]);
         }
     }
