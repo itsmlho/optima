@@ -2433,6 +2433,16 @@ h6, .h6 { font-size: 1rem; }
     overflow-y: auto;
 }
 
+/* Fix: form tag inside modal-content breaks Bootstrap's flex scroll chain.
+   Make form participate in flex layout so modal-body can scroll correctly. */
+.modal-dialog-scrollable .modal-content > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    overflow: hidden;
+    min-height: 0;
+}
+
 /* Full Width Modal - 95vw (for exceptional cases needing maximum space) */
 .modal-fullwidth .modal-dialog {
     max-width: 95vw !important;
