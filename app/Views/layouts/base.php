@@ -1014,7 +1014,7 @@ $currentLang = service('request')->getLocale();
                         // Always read the latest CSRF token before sending
                         // getCsrfToken() reads from cookie dynamically (never stale)
                         const token = (typeof window.getCsrfToken === 'function')
-                            ? window.getCsrfToken()
+                            ? (window.getCsrfToken() || window.csrfToken || '')
                             : (window.csrfToken || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '');
                         if (token) {
                             xhr.setRequestHeader('X-CSRF-TOKEN', token);
