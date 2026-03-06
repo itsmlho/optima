@@ -91,7 +91,8 @@ window.OptimaDataTable = (function () {
                 // Add CSRF token to POST data
                 const token = getCsrfToken();
                 if (token) {
-                    d.csrf_test_name = token;
+                    const tokenName = window.csrfTokenName || 'csrf_test_name';
+                    d[tokenName] = token;
                 }
                 return d;
             },
