@@ -1,5 +1,73 @@
 # 📋 RECENT CHANGES LOG - March 5-7, 2026
 
+---
+
+## 🚀 PRODUCTION DEPLOYMENT READY - March 7, 2026
+
+### **Deployment Strategy**
+- **Database:** Single migration file (`PRODUCTION_MIGRATION_MARCH_7_2026.sql`)
+- **Code:** Deploy via Git (push to production repository)
+- **Documentation:** [PRODUCTION_DEPLOYMENT_MARCH_7_2026.md](PRODUCTION_DEPLOYMENT_MARCH_7_2026.md)
+
+### **Migration File**
+📄 `databases/migrations/PRODUCTION_MIGRATION_MARCH_7_2026.sql`
+
+**Contains:**
+- ✅ 348 comprehensive permissions (13 modules)
+- ✅ 21 new menu permissions (Audit Approval, Unit Audit, Surat Jalan)
+- ✅ Role permission assignments (5 roles)
+- ✅ Automatic verification queries
+- ✅ Transaction safety (START TRANSACTION ... COMMIT)
+- ✅ Rollback script included
+
+**Execution:**
+```bash
+mysql -u [username] -p optima_production < databases/migrations/PRODUCTION_MIGRATION_MARCH_7_2026.sql
+```
+
+**Risk Level:** LOW (INSERT only, ON DUPLICATE KEY UPDATE)  
+**Execution Time:** ~60 seconds
+
+### **Code Deployment (Git)**
+```bash
+# Development
+git add .
+git commit -m "Deploy: Permission system, CSRF fixes, route fixes - March 7 2026"
+git push origin main
+
+# Production
+cd /path/to/optima
+git pull origin main
+php spark cache:clear
+php spark routes:clear
+systemctl restart apache2
+```
+
+### **Files Changed in This Deployment**
+
+**Configuration:**
+- `app/Config/Routes.php` - Fixed nested route group (`admin/roles` → `roles`)
+- `.env` / `.env_production` - CSRF token configuration
+
+**Views:**
+- `app/Views/layouts/base.php` - Enhanced CSRF handling
+- `app/Views/layouts/sidebar_new.php` - Fixed 25+ menu permission checks
+- `app/Views/admin/advanced_user_management/edit_user.php` - Fixed BASE_URL duplicate
+- `app/Views/admin/advanced_user_management/role.php` - Added search, filters, select all
+- `app/Views/marketing/customer_management.php` - Updated AJAX CSRF
+
+**JavaScript:**
+- `public/assets/js/optima-datatable-config.js` - Updated CSRF handling
+
+**Database:**
+- `databases/migrations/PRODUCTION_MIGRATION_MARCH_7_2026.sql` - Complete migration
+
+**Documentation:**
+- `PRODUCTION_DEPLOYMENT_MARCH_7_2026.md` - Deployment guide
+- `databases/migrations/README_MARCH_7_2026.md` - Quick reference
+
+---
+
 ## 🚨 CRITICAL FIX - March 7, 2026
 
 ### **CSRF Configuration Bug Fix**
@@ -53,7 +121,110 @@
 
 ---
 
-## 🔄 Schema Changes (Database)
+## � PERMISSION SYSTEM AUDIT - March 7, 2026
+
+### **Sidebar Permission Inconsistency Fix**
+
+#### **Issue:**
+- New menu items (Unit Audit, Audit Approval, Surat Jalan) visible in **collapsed sidebar** but disappeared in **expanded sidebar**
+- Root cause: Inconsistent permission checks between two sidebar modes
+- **Collapsed mode** used `canNavigateTo(module, page)` ✅ (granular)
+- **Expanded mode** used `can_view(module)` ❌ (too broad)
+
+#### **Impact:**
+- Users with specific page permissions couldn't see allowed menus in expanded mode
+- Affected 25+ menu items across all divisions
+- New features developed but inaccessible to intended user roles
+
+#### **Files Fixed:**
+
+1. **`app/Views/layouts/sidebar_new.php`**
+   - ✅ Fixed 25+ menu items across all divisions
+   - ✅ Standardized all menu checks to use `canNavigateTo(module, page)`
+   - ✅ Added missing permission wrappers (Payment Validation, Sparepart Usage)
+   - ✅ Removed redundant nested `can_view()` wrappers
+
+**Divisions Updated:**
+| Division | Items Fixed | Pattern |
+|----------|-------------|---------|
+| Marketing | 5 items | `can_view('marketing')` → `canNavigateTo('marketing', page)` |
+| Service | 5 items | `can_view('service')` → `canNavigateTo('service', page)` |
+| Operational | 1 item | `can_view('operational')` → `canNavigateTo('operational', page)` |
+| Accounting | 2 items | `can_view('accounting')` → `canNavigateTo('accounting', page)` |
+| Warehouse | 6 items | `can_view('warehouse')` → `canNavigateTo('warehouse', page)` |
+| Perizinan | 1 item | `can_view('perizinan')` → `canNavigateTo('perizinan', page)` |
+
+#### **Database Migrations Created:**
+
+1. **`2026-03-07_add_new_menu_permissions.sql`**
+   - ✅ Added 21 new permissions for 3 new features
+   - **Marketing Audit Approval**: 5 permissions (navigation, view, approve, reject, export)
+   - **Service Unit Audit**: 7 permissions (navigation, view, create, edit, submit, delete, export)
+   - **Warehouse Surat Jalan**: 9 permissions (navigation, view, create, edit, confirm_departure, confirm_arrival, cancel, print, export)
+
+2. **`2026-03-07_assign_new_menu_roles.sql`**
+   - ✅ Assigned permissions to appropriate roles
+   - `marketing_role` → all audit_approval permissions (5)
+   - `service_role` → all unit_audit permissions (7)
+   - `warehouse_role` → all movements permissions (9)
+   - `admin` & `super_admin` → all new permissions (21)
+
+#### **Documentation Created:**
+- 📄 `docs/SIDEBAR_PERMISSION_AUDIT_REPORT.md` - Complete audit report with test cases
+
+#### **Deployment Steps:**
+1. ⚠️ **Backup database** before migration
+2. ⚠️ **Run permissions migration** - `2026-03-07_add_new_menu_permissions.sql`
+3. ⚠️ **Verify 21 permissions created** - Check verification queries
+4. ⚠️ **Deploy sidebar code** - Upload `sidebar_new.php`
+5. ⚠️ **Run role assignments** - `2026-03-07_assign_new_menu_roles.sql`
+6. ⚠️ **Clear cache** - `php spark cache:clear`
+7. ⚠️ **Test with real users** - Login with marketing/service/warehouse roles
+
+#### **Verification:**
+```sql
+-- Check new permissions (Expected: 21)
+SELECT COUNT(*) FROM permissions 
+WHERE key_name LIKE 'marketing.audit_approval.%'
+   OR key_name LIKE 'service.unit_audit.%'
+   OR key_name LIKE 'warehouse.movements.%';
+
+-- Check role assignments (Expected: 5 roles assigned)
+SELECT r.name, COUNT(*) as perm_count
+FROM role_permissions rp
+JOIN roles r ON rp.role_id = r.id
+JOIN permissions p ON rp.permission_id = p.id
+WHERE (p.key_name LIKE 'marketing.audit_approval.%'
+    OR p.key_name LIKE 'service.unit_audit.%'
+    OR p.key_name LIKE 'warehouse.movements.%')
+  AND rp.granted = 1
+GROUP BY r.name;
+```
+
+#### **Fixed Menu Items:**
+**New Features (3 items):**
+- ✅ Marketing → Audit Approval (`/marketing/audit-approval`)
+- ✅ Service → Unit Audit (`/service/unit-audit`)
+- ✅ Warehouse → Surat Jalan (`/warehouse/movements`)
+
+**Existing Menus (22 items):**
+- ✅ Marketing: Quotations, Customer Management, SPK, Delivery Instructions
+- ✅ Service: SPK Service, PMPS, Workorders, Area Management
+- ✅ Operational: Delivery Process
+- ✅ Accounting: Invoice Management, Payment Validation
+- ✅ Warehouse: Unit Inventory, Attachment Inventory, Sparepart Inventory, Sparepart Usage, PO Verification
+- ✅ Perizinan: SILO Permit
+
+#### **Impact:**
+- ✅ Menus now appear consistently in both collapsed and expanded modes
+- ✅ Granular permission control for all menu items
+- ✅ New features accessible to assigned user roles
+- ✅ Foundation for future role-based menu additions
+- ⚠️ Requires database migration execution on production
+
+---
+
+## �🔄 Schema Changes (Database)
 
 ### **March 5, 2026 - Multi-Location Contract Restructure**
 

@@ -238,6 +238,32 @@
     font-size: 12px;
     transition: all 0.2s;
 }
+
+/* Module header select buttons */
+.card-header .btn-light {
+    background: white;
+    color: #0d6efd;
+    border: 1px solid white;
+}
+
+.card-header .btn-light:hover {
+    background: #f8f9fa;
+    color: #0d6efd;
+}
+
+.card-header .btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Permission search input */
+#permissionSearchInput {
+    border-radius: 6px;
+}
+
+#permissionSearchInput:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
 </style>
 <?= $this->endSection() ?>
 
@@ -276,6 +302,28 @@
                 </p>
             </div>
 
+            <!-- Search and Filter -->
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" id="roleSearchInput" class="form-control" placeholder="Search roles by name or description...">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select id="roleStatusFilter" class="form-select">
+                        <option value="">All Status</option>
+                        <option value="active">Active Only</option>
+                        <option value="inactive">Inactive Only</option>
+                    </select>
+                </div>
+                <div class="col-md-3 text-end">
+                    <span id="roleCount" class="badge bg-info fs-6">0 roles</span>
+                </div>
+            </div>
+
             <!-- Roles List -->
             <div class="roles-container">
                 <div id="rolesList">
@@ -288,7 +336,7 @@
 
 <!-- Role Modal -->
 <div class="modal fade" id="roleModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="roleModalTitle">Edit Role</h5>
@@ -314,14 +362,34 @@
                     
                     <div class="mb-3">
                         <label for="roleDescription" class="form-label">Description</label>
-                        <textarea class="form-control" id="roleDescription" name="description" rows="3"></textarea>
+                        <textarea class="form-control" id="roleDescription" name="description" rows="2"></textarea>
                     </div>
 
                     <div class="mb-3">
-                        <h6>Permissions</h6>
-                        <p class="text-muted small">Select permissions for each module and page</p>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Permissions</h6>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="selectAllPermissions(true)">
+                                    <i class="fas fa-check-double"></i> Select All
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="selectAllPermissions(false)">
+                                    <i class="fas fa-times"></i> Deselect All
+                                </button>
+                            </div>
+                        </div>
                         
-                        <div class="permission-container" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Search Filter -->
+                        <div class="mb-3">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text">
+                                    <i class="fas fa-search"></i>
+                                </span>
+                                <input type="text" id="permissionSearchInput" class="form-control" 
+                                       placeholder="Search permissions by module, page, or action...">
+                            </div>
+                        </div>
+                        
+                        <div class="permission-container" style="max-height: 450px; overflow-y: auto;">
                             <div id="permissionsTable">
                                 <!-- Permissions will be loaded here as cards -->
                             </div>
@@ -342,9 +410,24 @@
 
 <?= $this->section('javascript') ?>
 <script>
+// Global variable to store all roles
+let allRoles = [];
+
 // Load roles on page load
 document.addEventListener('DOMContentLoaded', function() {
     loadRoles();
+    
+    // Add search functionality
+    const searchInput = document.getElementById('roleSearchInput');
+    const statusFilter = document.getElementById('roleStatusFilter');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', filterRoles);
+    }
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', filterRoles);
+    }
 });
 
 // Load all roles
@@ -353,7 +436,9 @@ function loadRoles() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                displayRoles(data.roles);
+                allRoles = data.roles; // Store all roles globally
+                displayRoles(allRoles);
+                updateRoleCount(allRoles.length);
             } else {
                 console.error('Error loading roles:', data.message);
                 alert('Error loading roles: ' + data.message);
@@ -363,6 +448,41 @@ function loadRoles() {
             console.error('Error:', error);
             alert('Error loading roles');
         });
+}
+
+// Filter roles based on search and status
+function filterRoles() {
+    const searchTerm = document.getElementById('roleSearchInput').value.toLowerCase();
+    const statusFilter = document.getElementById('roleStatusFilter').value;
+    
+    let filteredRoles = allRoles;
+    
+    // Apply search filter
+    if (searchTerm) {
+        filteredRoles = filteredRoles.filter(role => {
+            const nameMatch = role.name.toLowerCase().includes(searchTerm);
+            const descMatch = (role.description || '').toLowerCase().includes(searchTerm);
+            return nameMatch || descMatch;
+        });
+    }
+    
+    // Apply status filter
+    if (statusFilter === 'active') {
+        filteredRoles = filteredRoles.filter(role => role.is_active);
+    } else if (statusFilter === 'inactive') {
+        filteredRoles = filteredRoles.filter(role => !role.is_active);
+    }
+    
+    displayRoles(filteredRoles);
+    updateRoleCount(filteredRoles.length);
+}
+
+// Update role count badge
+function updateRoleCount(count) {
+    const roleCount = document.getElementById('roleCount');
+    if (roleCount) {
+        roleCount.textContent = `${count} role${count !== 1 ? 's' : ''}`;
+    }
 }
 
 // Display roles in the list
@@ -486,10 +606,20 @@ function displayPermissions(permissions) {
             <div class="col-12">
                 <div class="card mb-3">
                     <div class="card-header bg-primary text-white">
-                        <h6 class="mb-0">
-                            <i class="fas fa-layer-group me-2"></i>
-                            ${module.charAt(0).toUpperCase() + module.slice(1)} Module
-                        </h6>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">
+                                <i class="fas fa-layer-group me-2"></i>
+                                ${module.charAt(0).toUpperCase() + module.slice(1)} Module
+                            </h6>
+                            <div class="btn-group btn-group-sm">
+                                <button type="button" class="btn btn-sm btn-primary" onclick="selectModulePermissions('${module}', true)">
+                                    <i class="fas fa-check-square"></i> All
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectModulePermissions('${module}', false)">
+                                    <i class="fas fa-times"></i> None
+                                </button>
+                            </div>
+                        </div>
                     </div>
                     <div class="card-body p-0">
         `;
@@ -641,6 +771,72 @@ function saveRole() {
         alert('Error saving role');
     });
 }
+
+// Select/Deselect All Permissions (Global)
+function selectAllPermissions(checked) {
+    document.querySelectorAll('.permission-checkbox').forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+    console.log(checked ? '✅ All permissions selected' : '❌ All permissions deselected');
+}
+
+// Select/Deselect All Permissions per Module
+function selectModulePermissions(module, checked) {
+    document.querySelectorAll(`.permission-checkbox[data-module="${module}"]`).forEach(checkbox => {
+        checkbox.checked = checked;
+    });
+    console.log(`${checked ? '✅' : '❌'} Module "${module}" permissions ${checked ? 'selected' : 'deselected'}`);
+}
+
+// Search Permissions
+document.addEventListener('DOMContentLoaded', function() {
+    // Add event listener after modal is shown
+    const roleModal = document.getElementById('roleModal');
+    if (roleModal) {
+        roleModal.addEventListener('shown.bs.modal', function() {
+            const searchInput = document.getElementById('permissionSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    
+                    // Filter permission cards
+                    document.querySelectorAll('#permissionsTable .card.mb-3').forEach(moduleCard => {
+                        const moduleName = moduleCard.querySelector('.card-header h6').textContent.toLowerCase();
+                        let hasVisiblePermissions = false;
+                        
+                        // Check each permission in the module
+                        moduleCard.querySelectorAll('.form-check').forEach(permissionDiv => {
+                            const checkbox = permissionDiv.querySelector('.permission-checkbox');
+                            const label = permissionDiv.querySelector('.form-check-label');
+                            
+                            if (checkbox && label) {
+                                const module = checkbox.dataset.module || '';
+                                const page = checkbox.dataset.page || '';
+                                const action = checkbox.dataset.action || '';
+                                const labelText = label.textContent.toLowerCase();
+                                
+                                const matches = moduleName.includes(searchTerm) ||
+                                              module.includes(searchTerm) ||
+                                              page.includes(searchTerm) ||
+                                              action.includes(searchTerm) ||
+                                              labelText.includes(searchTerm);
+                                
+                                const permCard = permissionDiv.closest('.col-md-6, .col-lg-4');
+                                if (permCard) {
+                                    permCard.style.display = matches ? '' : 'none';
+                                    if (matches) hasVisiblePermissions = true;
+                                }
+                            }
+                        });
+                        
+                        // Hide module card if no visible permissions
+                        moduleCard.style.display = hasVisiblePermissions || !searchTerm ? '' : 'none';
+                    });
+                });
+            }
+        });
+    }
+});
 
 </script>
 <?= $this->endSection() ?>

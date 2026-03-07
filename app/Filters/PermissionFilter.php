@@ -26,6 +26,12 @@ class PermissionFilter implements FilterInterface
             return;
         }
 
+        // ✅ BYPASS: Allow admin and superadmin full access
+        $userRole = session()->get('role');
+        if (in_array($userRole, ['admin', 'superadmin', 'super_admin', 'administrator'])) {
+            return; // Allow access
+        }
+
         $requiredPermission = $arguments[0];
         
         // Check if user has required permission

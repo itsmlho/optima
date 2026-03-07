@@ -69,8 +69,11 @@ helper('permission_helper');
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('marketing', 'audit_approval')): ?>
-                    <a href="<?= base_url('/marketing/audit-approval') ?>" class="nav-dropdown-item">
+                    <a href="<?= base_url('/marketing/audit-approval') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'marketing/audit-approval') !== false && strpos(current_url(), 'location') === false) ? 'active' : '' ?>">
                         <i class="fas fa-check-circle"></i> Audit Approval
+                    </a>
+                    <a href="<?= base_url('/marketing/audit-approval-location') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'marketing/audit-approval-location') !== false) ? 'active' : '' ?>">
+                        <i class="fas fa-map-marker-alt"></i> Approve Audit Unit
                     </a>
                     <?php endif; ?>
                 </div>
@@ -101,8 +104,11 @@ helper('permission_helper');
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'workorder')): ?>
-                    <a href="<?= base_url('/service/unit-audit') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'unit-audit') !== false || strpos(current_url(), 'unit_audit') !== false) ? 'active' : '' ?>">
+                    <a href="<?= base_url('/service/unit-audit') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'service/unit-audit') !== false && strpos(current_url(), 'location') === false) ? 'active' : '' ?>">
                         <i class="fas fa-search"></i> Unit Audit
+                    </a>
+                    <a href="<?= base_url('/service/unit-audit/location') ?>" class="nav-dropdown-item <?= (strpos(current_url(), 'service/unit-audit/location') !== false) ? 'active' : '' ?>">
+                        <i class="fas fa-map-marker-alt"></i> Audit Unit per Lokasi
                     </a>
                     <?php endif; ?>
                     <?php if (canNavigateTo('service', 'area')): ?>
@@ -293,7 +299,7 @@ helper('permission_helper');
             </li>
 
             <!-- Quotations -->
-            <?php if (can_view('marketing')): ?>
+            <?php if (canNavigateTo('marketing', 'quotation')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/marketing/quotations') ?>"
                    data-search-terms="marketing quotations proposals quotes"
@@ -305,19 +311,31 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- Audit Approval -->
-            <?php if (can_view('marketing')): ?>
+            <?php if (canNavigateTo('marketing', 'audit_approval')): ?>
             <li class="nav-item">
-                <a class="nav-link text-warning" href="<?= base_url('/marketing/audit-approval') ?>"
+                <a class="nav-link text-warning <?= (strpos(current_url(), 'marketing/audit-approval') !== false && strpos(current_url(), 'location') === false) ? 'active' : '' ?>" 
+                   href="<?= base_url('/marketing/audit-approval') ?>"
                    data-search-terms="audit approval verifikasi unit customer"
                    data-tooltip="Audit Approval">
                     <i class="fas fa-check-double"></i>
                     <span class="nav-link-text">Audit Approval</span>
                 </a>
             </li>
+            
+            <!-- Approve Audit Unit (per Lokasi) -->
+            <li class="nav-item">
+                <a class="nav-link text-warning <?= (strpos(current_url(), 'marketing/audit-approval-location') !== false) ? 'active' : '' ?>" 
+                   href="<?= base_url('/marketing/audit-approval-location') ?>"
+                   data-search-terms="approve audit unit per lokasi location marketing"
+                   data-tooltip="Approve Audit Unit">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span class="nav-link-text">Approve Audit Unit</span>
+                </a>
+            </li>
             <?php endif; ?>
 
             <!-- Customer Management -->
-            <?php if (can_view('marketing')): ?>
+            <?php if (canNavigateTo('marketing', 'customer')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= (strpos(current_url(), 'customer-management') !== false) ? 'active' : '' ?>" href="<?= base_url('/marketing/customer-management') ?>"
                    data-search-terms="customer management marketing"
@@ -329,7 +347,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- SPK -->
-            <?php if (can_view('marketing')): ?>
+            <?php if (canNavigateTo('marketing', 'spk')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= strpos(current_url(), 'marketing/spk') !== false ? 'active' : '' ?>" 
                    href="<?= base_url('/marketing/spk') ?>"
@@ -342,7 +360,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- Delivery Instructions -->
-            <?php if (can_view('marketing')): ?>
+            <?php if (canNavigateTo('marketing', 'delivery')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/marketing/di') ?>"
                    data-search-terms="delivery instructions di"
@@ -361,7 +379,7 @@ helper('permission_helper');
             </li>
 
             <!-- SPK Service -->
-            <?php if (can_view('service')): ?>
+            <?php if (canNavigateTo('service', 'workorder')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/spk_service') ?>"
                    data-search-terms="spk service unit preparation"
@@ -373,7 +391,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- PMPS -->
-            <?php if (can_view('service')): ?>
+            <?php if (canNavigateTo('service', 'pmps')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/pmps') ?>"
                    data-search-terms="pmps preventive maintenance">
@@ -384,7 +402,7 @@ helper('permission_helper');
             <?php endif; ?>
             
             <!-- Workorders -->
-            <?php if (can_view('service')): ?>
+            <?php if (canNavigateTo('service', 'workorder')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/service/work-orders') ?>"
                    data-search-terms="workorder complaint keluhan">
@@ -395,7 +413,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- Area & Employee Management -->
-            <?php if (can_view('service')): ?>
+            <?php if (canNavigateTo('service', 'area')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= (strpos(current_url(), 'service/area-management') !== false) ? 'active' : '' ?>" href="<?= base_url('/service/area-management') ?>"
                    data-search-terms="area staff employee management service">
@@ -406,12 +424,23 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- Unit Audit -->
-            <?php if (can_view('service')): ?>
+            <?php if (canNavigateTo('service', 'workorder')): ?>
             <li class="nav-item">
-                <a class="nav-link <?= (strpos(current_url(), 'unit-audit') !== false || strpos(current_url(), 'unit_audit') !== false) ? 'active' : '' ?>" href="<?= base_url('/service/unit-audit') ?>"
+                <a class="nav-link <?= (strpos(current_url(), 'service/unit-audit') !== false && strpos(current_url(), 'location') === false) ? 'active' : '' ?>" 
+                   href="<?= base_url('/service/unit-audit') ?>"
                    data-search-terms="unit audit pemeriksaan service">
                     <i class="fas fa-search"></i>
                     <span class="nav-link-text">Unit Audit</span>
+                </a>
+            </li>
+            
+            <!-- Audit Unit per Lokasi -->
+            <li class="nav-item">
+                <a class="nav-link <?= (strpos(current_url(), 'service/unit-audit/location') !== false) ? 'active' : '' ?>" 
+                   href="<?= base_url('/service/unit-audit/location') ?>"
+                   data-search-terms="audit unit per lokasi location service">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span class="nav-link-text">Audit Unit per Lokasi</span>
                 </a>
             </li>
             <?php endif; ?>
@@ -426,7 +455,7 @@ helper('permission_helper');
             </li>
 
             <!-- Delivery Process -->
-            <?php if (can_view('operational')): ?>
+            <?php if (canNavigateTo('operational', 'delivery')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/operational/delivery') ?>"
                    data-search-terms="delivery process pengiriman">
@@ -444,7 +473,7 @@ helper('permission_helper');
             </li>
 
             <!-- Invoice Management -->
-            <?php if (can_view('accounting')): ?>
+            <?php if (canNavigateTo('accounting', 'invoice')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/finance/invoices') ?>"
                    data-search-terms="invoice management tagihan">
@@ -455,6 +484,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- Payment Validation -->
+            <?php if (canNavigateTo('accounting', 'payment')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/finance/invoices') ?>"
                    data-search-terms="payment validation pembayaran">
@@ -462,6 +492,7 @@ helper('permission_helper');
                     <span class="nav-link-text"><?= lang('App.payment_validation') ?></span>
                 </a>
             </li>
+            <?php endif; ?>
             <?php endif; ?>
             
             <!-- PURCHASING DIVISION -->
@@ -518,8 +549,8 @@ helper('permission_helper');
             </li>
 
             <!-- Inventory -->
-            <?php if (can_view('warehouse')): ?>
             <!-- Unit Inventory -->
+            <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/warehouse/inventory/unit') ?>"
                    data-search-terms="inventory unit assets warehouse">
@@ -527,8 +558,10 @@ helper('permission_helper');
                     <span class="nav-link-text"><?= lang('App.unit_inventory') ?></span>
                 </a>
             </li>
+            <?php endif; ?>
             
             <!-- Attachment & Battery Inventory -->
+            <?php if (canNavigateTo('warehouse', 'attachment_inventory')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/warehouse/inventory/attachments') ?>"
                    data-search-terms="inventory attachment battery warehouse">
@@ -536,8 +569,10 @@ helper('permission_helper');
                     <span class="nav-link-text"><?= lang('App.attachment_battery_inventory') ?></span>
                 </a>
             </li>
+            <?php endif; ?>
             
             <!-- Sparepart Inventory -->
+            <?php if (canNavigateTo('warehouse', 'sparepart_inventory')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/warehouse/inventory/invent_sparepart') ?>"
                    data-search-terms="inventory sparepart spare part warehouse">
@@ -548,6 +583,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- Sparepart Usage & Returns -->
+            <?php if (canNavigateTo('warehouse', 'sparepart_usage')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= strpos(current_url(), 'warehouse/sparepart-usage') !== false ? 'active' : '' ?>" 
                    href="<?= base_url('/warehouse/sparepart-usage') ?>"
@@ -557,9 +593,10 @@ helper('permission_helper');
                 </a>
             </li>
             <?php endif; ?>
+            <?php endif; ?>
 
             <!-- PO Verification -->
-            <?php if (can_view('warehouse')): ?>
+            <?php if (canNavigateTo('warehouse', 'po_verification')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= strpos(current_url(), 'warehouse/purchase-orders/wh-verification') !== false ? 'active' : '' ?>" 
                    href="<?= base_url('/warehouse/purchase-orders/wh-verification') ?>"
@@ -571,7 +608,7 @@ helper('permission_helper');
             <?php endif; ?>
 
             <!-- Surat Jalan / Movement -->
-            <?php if (can_view('warehouse')): ?>
+            <?php if (canNavigateTo('warehouse', 'unit_inventory')): ?>
             <li class="nav-item">
                 <a class="nav-link <?= strpos(current_url(), 'warehouse/movements') !== false ? 'active' : '' ?>" 
                    href="<?= base_url('/warehouse/movements') ?>"
@@ -589,7 +626,7 @@ helper('permission_helper');
             </li>
 
             <!-- SILO -->
-            <?php if (can_view('perizinan')): ?>
+            <?php if (canNavigateTo('perizinan', 'silo')): ?>
             <li class="nav-item">
                 <a class="nav-link" href="<?= base_url('/perizinan/silo') ?>"
                    data-search-terms="silo izin layak operasi">
@@ -617,13 +654,61 @@ helper('permission_helper');
 
             <!-- Admin Dashboard -->
             <li class="nav-item">
-                <a class="nav-link <?= (strpos(current_url(), '/admin') !== false && strpos(current_url(), 'activity-log') === false && strpos(current_url(), 'advanced-users') === false && strpos(current_url(), 'roles') === false && strpos(current_url(), 'permissions') === false) ? 'active' : '' ?>" 
+                <a class="nav-link <?= (strpos(current_url(), '/admin') !== false && strpos(current_url(), 'activity-log') === false && strpos(current_url(), 'advanced-users') === false && strpos(current_url(), 'roles') === false && strpos(current_url(), 'permissions') === false && strpos(current_url(), 'permission-management') === false) ? 'active' : '' ?>" 
                    href="<?= base_url('/admin') ?>"
                    data-search-terms="admin dashboard system administration">
                     <i class="fas fa-tachometer-alt"></i>
                     <span class="nav-link-text"><?= lang('App.administration') ?></span>
                 </a>
             </li>
+
+            <!-- Permission Management -->
+            <?php if (canNavigateTo('settings', 'role') || canNavigateTo('settings', 'permission') || canNavigateTo('settings', 'user')): ?>
+            <li class="nav-item">
+                <a class="nav-link <?= (strpos(current_url(), 'permission-management') !== false) ? 'active' : '' ?>" 
+                   href="#"
+                   data-bs-toggle="collapse"
+                   data-bs-target="#permissionSubmenu"
+                   aria-expanded="false">
+                    <i class="fas fa-shield-alt"></i>
+                    <span class="nav-link-text">Permission Management</span>
+                    <i class="fas fa-chevron-down submenu-arrow"></i>
+                </a>
+                <div class="collapse" id="permissionSubmenu">
+                    <ul class="nav flex-column ms-3">
+                        <?php if (canNavigateTo('settings', 'role')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?= (strpos(current_url(), 'role-permissions') !== false) ? 'active' : '' ?>" 
+                               href="<?= base_url('/permission-management/role-permissions') ?>">
+                                <i class="fas fa-users-cog"></i>
+                                <span class="nav-link-text">Role Permissions</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        
+                        <?php if (canNavigateTo('settings', 'user')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?= (strpos(current_url(), 'user-permissions') !== false) ? 'active' : '' ?>" 
+                               href="<?= base_url('/permission-management/user-permissions') ?>">
+                                <i class="fas fa-user-shield"></i>
+                                <span class="nav-link-text">User Permissions</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                        
+                        <?php if (canNavigateTo('settings', 'permission')): ?>
+                        <li class="nav-item">
+                            <a class="nav-link <?= (strpos(current_url(), 'audit-trail') !== false) ? 'active' : '' ?>" 
+                               href="<?= base_url('/permission-management/audit-trail') ?>">
+                                <i class="fas fa-history"></i>
+                                <span class="nav-link-text">Audit Trail</span>
+                            </a>
+                        </li>
+                        <?php endif; ?>
+                    </ul>
+                </div>
+            </li>
+            <?php endif; ?>
             <?php endif; ?>
 
         </ul>
