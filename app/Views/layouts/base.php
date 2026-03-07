@@ -92,21 +92,23 @@ $currentLang = service('request')->getLocale();
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        background: rgba(255,255,255,0.13);
-        border: 1px solid rgba(255,255,255,0.22);
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(0, 0, 0, 0.15);
         border-radius: 10px;
         padding: 6px 14px;
-        color: rgba(255,255,255,0.85);
+        color: #495057;
         font-size: 0.82rem;
         cursor: pointer;
-        transition: background 0.2s, border-color 0.2s, color 0.2s;
+        transition: background 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s;
         white-space: nowrap;
         flex-shrink: 0;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
     }
     #header-search-btn:hover {
-        background: rgba(255,255,255,0.24);
-        border-color: rgba(255,255,255,0.4);
-        color: #fff;
+        background: #ffffff;
+        border-color: rgba(0, 97, 242, 0.4);
+        color: #0061f2;
+        box-shadow: 0 2px 6px rgba(0, 97, 242, 0.12);
     }
     #header-search-btn .header-search-kbd {
         display: inline-flex;
@@ -114,17 +116,18 @@ $currentLang = service('request')->getLocale();
         opacity: 0.7;
     }
     #header-search-btn .header-search-kbd kbd {
-        background: rgba(255,255,255,0.15);
-        border: 1px solid rgba(255,255,255,0.25);
+        background: rgba(0, 0, 0, 0.06);
+        border: 1px solid rgba(0, 0, 0, 0.12);
         border-radius: 4px;
         padding: 1px 5px;
         font-size: 0.68rem;
         font-family: inherit;
         line-height: 1.4;
-        color: inherit;
+        color: #6c757d;
     }
     #header-search-btn .header-search-label {
-        opacity: 0.8;
+        opacity: 0.85;
+        color: #6c757d;
     }
     /* Hide label + kbd on very small screens, keep only icon */
     @media (max-width: 480px) {
@@ -139,9 +142,21 @@ $currentLang = service('request')->getLocale();
     html[data-bs-theme="dark"] #header-search-btn {
         background: rgba(255,255,255,0.07);
         border-color: rgba(255,255,255,0.12);
+        color: rgba(255,255,255,0.85);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
     html[data-bs-theme="dark"] #header-search-btn:hover {
         background: rgba(255,255,255,0.14);
+        border-color: rgba(255,255,255,0.25);
+        color: #fff;
+    }
+    html[data-bs-theme="dark"] #header-search-btn .header-search-kbd kbd {
+        background: rgba(255,255,255,0.15);
+        border-color: rgba(255,255,255,0.25);
+        color: rgba(255,255,255,0.85);
+    }
+    html[data-bs-theme="dark"] #header-search-btn .header-search-label {
+        color: rgba(255,255,255,0.85);
     }
     </style>
 
