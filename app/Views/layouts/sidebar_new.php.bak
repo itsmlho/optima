@@ -631,15 +631,8 @@ helper('permission_helper');
 
     <!-- Simple User Status -->
     <div class="sidebar-user-status">
-        <div class="d-flex align-items-center">
-            <div class="user-avatar">
-                <?= strtoupper(substr(session()->get('first_name') ?: 'A', 0, 1)) ?>
-            </div>
-            <div class="user-info ms-2">
-                <div class="user-name"><?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?></div>
-                <div class="user-role"><?= session()->get('role') ? ucwords(str_replace('_', ' ', session()->get('role'))) : 'Staff' ?></div>
-            </div>
-        </div>
+        <div class="logged-in-text"><?= lang('App.logged_in_as') ?>:</div>
+        <div class="user-name"><?= session()->get('first_name') ? session()->get('first_name') . ' ' . session()->get('last_name') : 'Admin User' ?></div>
     </div>
 </nav>
 

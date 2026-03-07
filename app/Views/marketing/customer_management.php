@@ -1060,18 +1060,25 @@ function loadStatistics(startDate, endDate) {
         console.log('📊 Loading customer statistics WITHOUT filter (all data)');
     }
 
-    // Add CSRF token using getCsrfToken() for fresh token
-    var csrfToken = (typeof getCsrfToken === 'function') ? getCsrfToken() : (window.csrfToken || '');
-    if (csrfToken) {
-        data[window.csrfTokenName] = csrfToken;
+    // Add CSRF token using getCsrfTokenData() for fresh dynamic token
+    const csrfData = (typeof getCsrfTokenData === 'function') 
+        ? getCsrfTokenData() 
+        : { tokenName: window.csrfTokenName || 'csrf_test_name', tokenValue: window.csrfToken || '' };
+    
+    console.log('🔐 CSRF Data:', csrfData);
+    
+    if (csrfData.tokenName && csrfData.tokenValue) {
+        data[csrfData.tokenName] = csrfData.tokenValue;
     }
+    
+    console.log('📤 Sending data:', data);
 
     $.ajax({
         url: '<?= base_url('marketing/customer-management/getCustomerStats') ?>',
         type: 'POST',
         data: data,
         headers: {
-            'X-CSRF-TOKEN': csrfToken
+            'X-CSRF-TOKEN': csrfData.tokenValue
         },
         success: function(response) {
             if (response.success) {
@@ -3170,11 +3177,13 @@ $(window).on('focus', function() {
         if (!window.lastTableRefresh || (now - window.lastTableRefresh) > 10000) {
             console.log('🔄 Auto-refreshing data on window focus...');
             
-            // Refresh CSRF token from DOM before reload (prevents 403 from browser tracking prevention)
-            const metaToken = document.querySelector('meta[name="csrf-token"]');
-            if (metaToken && metaToken.content) {
-                window.csrfToken = metaToken.content;
-                console.log('🔄 CSRF token refreshed from meta tag');
+            // Refresh CSRF token data (both name and value)
+            if (typeof getCsrfTokenData === 'function') {
+                const csrfData = getCsrfTokenData();
+                window.csrfTokenName = csrfData.tokenName;
+                window.csrfTokenValue = csrfData.tokenValue;
+                window.csrfToken = csrfData.tokenValue; // backward compatibility
+                console.log('🔄 CSRF token refreshed:', csrfData.tokenName);
             }
             
             customerTable.ajax.reload(null, false); // Don't reset paging
