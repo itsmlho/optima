@@ -24,9 +24,38 @@ if (!function_exists('hasPermission')) {
             return false;
         }
 
+        // ✅ BYPASS: Allow admin and superadmin full access
+        $userRole = session()->get('role');
+        if (!empty($userRole) && in_array(strtolower($userRole), ['admin', 'superadmin', 'super_admin', 'administrator', 'super administrator'])) {
+            return true;
+        }
+
         $db = \Config\Database::connect();
         
-        // Check if user has permission through role
+        // ═══════════════════════════════════════════════════════════════
+        // PRIORITY 1: Check User-Specific Permissions (HIGHEST PRIORITY)
+        // ═══════════════════════════════════════════════════════════════
+        $userPermission = $db->query("
+            SELECT up.granted
+            FROM user_permissions up
+            INNER JOIN permissions p ON up.permission_id = p.id
+            WHERE up.user_id = ? 
+            AND p.key_name = ?
+            AND (up.expires_at IS NULL OR up.expires_at > NOW())
+            ORDER BY up.created_at DESC
+            LIMIT 1
+        ", [$userId, $permissionKey])->getRow();
+        
+        if ($userPermission !== null) {
+            // User-specific permission found
+            // granted = 1 → ALLOW (override role)
+            // granted = 0 → DENY (revoke, even if role has it)
+            return (bool) $userPermission->granted;
+        }
+        
+        // ═══════════════════════════════════════════════════════════════
+        // PRIORITY 2: Check Role Permissions (DEFAULT BEHAVIOR)
+        // ═══════════════════════════════════════════════════════════════
         $result = $db->query("
             SELECT COUNT(*) as count 
             FROM role_permissions rp
@@ -35,6 +64,7 @@ if (!function_exists('hasPermission')) {
             WHERE ur.user_id = ? 
             AND p.key_name = ?
             AND rp.granted = 1
+            AND ur.is_active = 1
         ", [$userId, $permissionKey])->getRowArray();
 
         return $result && $result['count'] > 0;
@@ -57,6 +87,12 @@ if (!function_exists('hasModuleAccess')) {
 
         if (!$userId) {
             return false;
+        }
+
+        // ✅ BYPASS: Allow admin and superadmin full access
+        $userRole = session()->get('role');
+        if (!empty($userRole) && in_array(strtolower($userRole), ['admin', 'superadmin', 'super_admin', 'administrator', 'super administrator'])) {
+            return true;
         }
 
         $db = \Config\Database::connect();

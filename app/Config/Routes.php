@@ -139,6 +139,13 @@ $routes->group('unitRolling', static function ($routes) {
     $routes->get('history', 'UnitRolling::history');
 });
 
+// ── Unit Audit Location Approval (Marketing Side) ──
+$routes->get('marketing/audit-approval-location', 'UnitAudit::approvalLocation', ['filter' => 'permission:view_marketing']);
+$routes->get('marketing/unit-audit/getPendingApprovals', 'UnitAudit::getPendingLocationApprovals', ['filter' => 'permission:view_marketing']);
+$routes->get('marketing/unit-audit/getApprovalDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:view_marketing']);
+$routes->post('marketing/unit-audit/approveLocation/(:num)', 'UnitAudit::approveLocationAudit/$1', ['filter' => 'permission:approve_marketing']);
+$routes->post('marketing/unit-audit/rejectLocation/(:num)', 'UnitAudit::rejectLocationAudit/$1', ['filter' => 'permission:approve_marketing']);
+
 // Marketing Routes
 $routes->group('marketing',  static function ($routes) {
     $routes->get('/', 'Marketing::index');
@@ -519,6 +526,22 @@ $routes->group('service', static function ($routes) {
     // Fallback for direct controller access
     $routes->get('unit_audit', 'UnitAudit::index', ['filter' => 'permission:view_service']);
     $routes->get('unit_audit/getCustomers', 'UnitAudit::getCustomers');
+
+    // ── Unit Audit Location (Service Side) ──
+    $routes->get('unit-audit/location', 'UnitAudit::locationIndex', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/getCustomersWithLocations', 'UnitAudit::getCustomersWithLocations', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/getLocationsForCustomer/(:num)', 'UnitAudit::getLocationsForCustomer/$1', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/getLocationUnits/(:num)', 'UnitAudit::getLocationUnits/$1', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/getLocationDetails/(:num)', 'UnitAudit::getLocationDetails/$1', ['filter' => 'permission:view_service']);
+    $routes->post('unit-audit/createLocationAudit', 'UnitAudit::createLocationAudit', ['filter' => 'permission:create_service']);
+    $routes->get('unit-audit/getLocationAudits', 'UnitAudit::getLocationAudits', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/getLocationAuditDetail/(:num)', 'UnitAudit::getLocationAuditDetail/$1', ['filter' => 'permission:view_service']);
+    $routes->get('unit-audit/printLocationAudit/(:num)', 'UnitAudit::printLocationAudit/$1', ['filter' => 'permission:view_service']);
+    $routes->post('unit-audit/markAuditPrinted/(:num)', 'UnitAudit::markAuditPrinted/$1', ['filter' => 'permission:create_service']);
+    $routes->post('unit-audit/markAuditInProgress/(:num)', 'UnitAudit::markAuditInProgress/$1', ['filter' => 'permission:create_service']);
+    $routes->post('unit-audit/submitAuditResults', 'UnitAudit::submitAuditResults', ['filter' => 'permission:create_service']);
+    $routes->post('unit-audit/submitToMarketing/(:num)', 'UnitAudit::submitToMarketing/$1', ['filter' => 'permission:create_service']);
+    $routes->get('unit-audit/inputResults/(:num)', 'UnitAudit::inputAuditResults/$1', ['filter' => 'permission:create_service']);
 
     // PMP and other service pages
     $routes->get('pmps', 'Service::pmps');
@@ -1113,7 +1136,8 @@ $routes->group('admin', static function ($routes) {
         $routes->get('get-roles', 'Admin\RoleController::getRoles');
         $routes->get('get-role/(:num)', 'Admin\RoleController::getRole/$1');
         $routes->get('get-permissions', 'Admin\RoleController::getPermissions');
-        $routes->post('save-role', 'Admin\RoleController::saveRole');
+        $routes->post('saveRole', 'Admin\RoleController::saveRole');
+        $routes->post('save-role', 'Admin\RoleController::saveRole'); // Alias
     });
     
     // Activity Log Routes - DEPRECATED: Use ActivityLogViewer instead  
@@ -1208,6 +1232,33 @@ $routes->group('admin', static function ($routes) {
         $routes->post('addUser/(:num)', 'PositionController::addUser/$1');
         $routes->delete('removeUser/(:num)', 'PositionController::removeUser/$1');
     });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// PERMISSION MANAGEMENT ROUTES (Comprehensive Permission System)
+// ═══════════════════════════════════════════════════════════════
+$routes->group('permission-management', ['filter' => 'permission:settings.permission.view'], static function ($routes) {
+    // Permission List
+    $routes->get('/', 'PermissionManagement::index');
+    $routes->post('get-permissions', 'PermissionManagement::getPermissions');
+    
+    // Role Permission Assignment
+    $routes->get('role-permissions', 'PermissionManagement::rolePermissions');
+    $routes->get('role-permissions/(:num)', 'PermissionManagement::rolePermissions/$1');
+    $routes->get('get-role-permissions/(:num)', 'PermissionManagement::getRolePermissions/$1');
+    $routes->post('save-role-permissions', 'PermissionManagement::saveRolePermissions');
+    
+    // User Custom Permissions
+    $routes->get('user-permissions', 'PermissionManagement::userPermissions');
+    $routes->get('user-permissions/(:num)', 'PermissionManagement::userPermissions/$1');
+    $routes->get('get-user-permissions/(:num)', 'PermissionManagement::getUserPermissions/$1');
+    $routes->post('grant-user-permission', 'PermissionManagement::grantUserPermission');
+    $routes->post('revoke-user-permission', 'PermissionManagement::revokeUserPermission');
+    $routes->post('bulk-update-user-permissions', 'PermissionManagement::bulkUpdateUserPermissions');
+    
+    // Audit Trail
+    $routes->get('audit-trail', 'PermissionManagement::auditTrail');
+    $routes->post('get-audit-log', 'PermissionManagement::getAuditLog');
 });
 
 // API Routes untuk AJAX calls

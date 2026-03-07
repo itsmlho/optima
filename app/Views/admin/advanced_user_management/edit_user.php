@@ -469,8 +469,7 @@ helper('permission_helper');
      📊 JAVASCRIPT DATA VARIABLES
      ======================================== -->
 <script>
-// Base configuration
-const BASE_URL = '<?= base_url() ?>';
+// Base configuration (BASE_URL already defined in layouts/base.php)
 const USERS_LIST_URL = '<?= base_url('admin/advanced-users') ?>';
 const CSRF_TOKEN = '<?= csrf_token() ?>';
 const CSRF_HASH = '<?= csrf_hash() ?>';
