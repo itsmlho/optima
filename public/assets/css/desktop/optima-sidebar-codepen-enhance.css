@@ -1,0 +1,545 @@
+/**
+ * ============================================================================
+ * OPTIMA Sidebar - CodePen Style Enhancement
+ * ============================================================================
+ * Non-invasive CSS overlay untuk transform existing sidebar ke CodePen style
+ * Tidak mengubah HTML structure, hanya visual enhancement
+ * 
+ * Features:
+ * - Floating sidebar dengan rounded corners
+ * - Dark theme (#18283b)
+ * - Collapsible (256px ↔ 80px)
+ * - Smooth animations
+ * - Gradient active highlight
+ * - Modern scrollbar
+ * 
+ * @version 1.0.0
+ * @date March 6, 2026
+ * ============================================================================
+ */
+
+:root {
+    --codepen-sidebar-width: 256px;
+    --codepen-sidebar-width-min: 80px;
+    --codepen-sidebar-bg: #ffffff;
+    --codepen-sidebar-border: #e3e6f0;
+    --codepen-text-primary: #2c3e50;
+    --codepen-text-secondary: #6c757d;
+    --codepen-accent-blue: #0061f2;
+    --codepen-accent-blue-light: #e7f1ff;
+}
+
+/* ============================================================================
+   SIDEBAR CONTAINER - Floating dengan Rounded Corners
+   ============================================================================ */
+.sidebar.sidebar-enhanced {
+    position: fixed !important;
+    left: 1vw;
+    top: 80px;
+    height: calc(100% - 90px) !important;
+    width: var(--codepen-sidebar-width);
+    background: var(--codepen-sidebar-bg) !important;
+    border: 1px solid var(--codepen-sidebar-border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.1) !important;
+    overflow: hidden;
+    transition: width 0.3s ease;
+    z-index: 1040;
+}
+
+/* Collapsed State */
+body.sidebar-collapsed .sidebar.sidebar-enhanced {
+    width: var(--codepen-sidebar-width-min);
+}
+
+/* ============================================================================
+   SIDEBAR BRAND - Logo Area
+   ============================================================================ */
+.sidebar .sidebar-brand {
+    background: var(--codepen-sidebar-bg) !important;
+    border-bottom: 1px solid var(--codepen-sidebar-border) !important;
+    padding: 1rem !important;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.sidebar .sidebar-brand-icon,
+.sidebar .sidebar-brand-text {
+    color: var(--codepen-accent-blue) !important;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar .sidebar-brand-text {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-left: 0.5rem;
+}
+
+/* Hide text when collapsed */
+body.sidebar-collapsed .sidebar .sidebar-brand-text {
+    opacity: 0;
+    pointer-events: none;
+}
+
+body.sidebar-collapsed .sidebar .sidebar-brand-icon {
+    margin: 0 auto;
+}
+
+/* ============================================================================
+   TOGGLE BUTTON - Hamburger Menu di Header
+   ============================================================================ */
+.sidebar-toggle-btn {
+    position: absolute;
+    right: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 10;
+}
+
+.sidebar-toggle-burger {
+    position: relative;
+    width: 16px;
+    height: 2px;
+    background: var(--codepen-dark-primary);
+    border-radius: 99px;
+    transition: background 0.2s;
+}
+
+.sidebar-toggle-burger::before,
+.sidebar-toggle-burger::after {
+    content: '';
+    position: absolute;
+    width: 10px;
+    height: 2px;
+    background: var(--codepen-text-primary);
+    border-radius: 99px;
+    transition: 0.2s;
+}
+
+.sidebar-toggle-burger::before {
+    top: -6px;
+    transform: translate(2px, 8px) rotate(30deg);
+}
+
+.sidebar-toggle-burger::after {
+    top: 6px;
+    transform: translate(2px, -8px) rotate(-30deg);
+}
+
+/* Collapsed burger animation */
+body.sidebar-collapsed .sidebar-toggle-burger {
+    background: var(--codepen-text-primary);
+}
+
+body.sidebar-collapsed .sidebar-toggle-burger::before,
+body.sidebar-collapsed .sidebar-toggle-burger::after {
+    width: 16px;
+    background: var(--codepen-text-secondary);
+    transform: translate(0, 0) rotate(0deg);
+}
+
+/* ============================================================================
+   SIDEBAR NAV - Menu Container
+   ============================================================================ */
+.sidebar .sidebar-nav {
+    background: var(--codepen-sidebar-bg) !important;
+    padding: 0.5rem 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: calc(100% - 120px); /* Header + Footer space */
+}
+
+/* Modern Scrollbar */
+.sidebar .sidebar-nav::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sidebar .sidebar-nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar .sidebar-nav::-webkit-scrollbar-thumb {
+    background: #d1d3e2;
+    border-radius: 99px;
+}
+
+.sidebar .sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--codepen-accent-blue);
+}
+
+/* ============================================================================
+   MENU ITEMS - Styling dengan Gradient Highlight
+   ============================================================================ */
+.sidebar .nav-link,
+.sidebar .nav-dropdown-item {
+    color: var(--codepen-text-secondary) !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0.7rem 1rem !important;
+    border-radius: 0;
+    position: relative;
+    margin: 0;
+}
+
+.sidebar .nav-link i,
+.sidebar .nav-dropdown-item i {
+    min-width: 3rem;
+    text-align: center;
+    font-size: 1rem;
+    color: var(--codepen-text-secondary);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar .nav-link span,
+.sidebar .nav-dropdown-item span {
+    transition: opacity 0.3s ease;
+}
+
+/* Hide text when collapsed */
+body.sidebar-collapsed .sidebar .nav-link span,
+body.sidebar-collapsed .sidebar .nav-dropdown-item span {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Hover Effect - CodePen Style dengan warna OPTIMA */
+.sidebar .nav-link:hover,
+.sidebar .nav-dropdown-item:hover {
+    color: var(--codepen-accent-blue) !important;
+    background: linear-gradient(90deg, rgba(0, 97, 242, 0.08) 0%, rgba(0, 97, 242, 0.02) 100%) !important;
+    border-left: 3px solid var(--codepen-accent-blue);
+    padding-left: calc(1rem - 3px) !important;
+    transform: translateX(0);
+}
+
+.sidebar .nav-link:hover i,
+.sidebar .nav-dropdown-item:hover i {
+    color: var(--codepen-accent-blue);
+    transform: scale(1.1);
+}
+
+/* Active State - Solid Blue Optima dengan highlight */
+.sidebar .nav-link.active,
+.sidebar .nav-dropdown-item.active {
+    background: var(--codepen-accent-blue) !important;
+    color: #fff !important;
+    font-weight: 600;
+    border-left: 4px solid #004bb5;
+    padding-left: calc(1rem - 4px) !important;
+    box-shadow: 0 2px 8px rgba(0, 97, 242, 0.25);
+}
+
+.sidebar .nav-link.active i,
+.sidebar .nav-dropdown-item.active i {
+    color: #fff;
+    transform: scale(1.05);
+}
+
+/* Separator Lines */
+.sidebar hr {
+    margin: 0.5rem 1rem;
+    border-color: var(--codepen-sidebar-border) !important;
+    opacity: 1;
+}
+
+/* ============================================================================
+   SIDEBAR HEADINGS - Section Labels
+   ============================================================================ */
+.sidebar .sidebar-heading {
+    color: var(--codepen-text-secondary) !important;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 0.5rem 1rem 0.25rem;
+    margin-top: 0.5rem;
+    transition: opacity 0.3s ease;
+}
+
+body.sidebar-collapsed .sidebar .sidebar-heading {
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ============================================================================
+   DROPDOWN MENUS - Nested Navigation
+   ============================================================================ */
+.sidebar .nav-dropdown {
+    background: rgba(0, 97, 242, 0.03);
+    padding: 0.25rem 0;
+}
+
+.sidebar .nav-dropdown-header {
+    color: var(--codepen-text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.35rem 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+body.sidebar-collapsed .sidebar .nav-dropdown-header {
+    display: none;
+}
+
+/* ============================================================================
+   USER PROFILE FOOTER
+   ============================================================================ */
+.sidebar .sidebar-user-status {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: linear-gradient(to top, #f8f9fc 0%, #ffffff 100%) !important;
+    border-top: 1px solid var(--codepen-sidebar-border) !important;
+    border-radius: 0 0 12px 12px;
+    padding: 0.6rem 0.75rem;
+    transition: all 0.3s ease;
+    min-height: auto;
+    max-height: 56px;
+}
+
+.sidebar .sidebar-user-status .user-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--codepen-accent-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+}
+
+.sidebar .sidebar-user-status .user-info {
+    margin-left: 0.75rem;
+    transition: opacity 0.3s ease;
+    min-width: 0;
+    flex: 1;
+}
+
+body.sidebar-collapsed .sidebar .sidebar-user-status .user-info {
+    opacity: 0;
+    pointer-events: none;
+}
+
+body.sidebar-collapsed .sidebar .sidebar-user-status {
+    padding: 0.6rem 0;
+    display: flex;
+    justify-content: center;
+}
+
+.sidebar .sidebar-user-status .user-name {
+    color: var(--codepen-text-primary);
+    font-weight: 600;
+    font-size: 0.825rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 1px;
+}
+
+.sidebar .sidebar-user-status .user-role {
+    color: var(--codepen-text-secondary);
+    font-size: 0.7rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ============================================================================
+   CONTENT AREA ADJUSTMENT - Auto-adjust margin ketika sidebar collapse
+   ============================================================================ */
+.main-content {
+    margin-left: calc(var(--codepen-sidebar-width) + 2vw) !important;
+    margin-right: 1.5vw !important;
+    padding: 1.5vw !important;
+    transition: margin-left 0.3s ease;
+}
+
+body.sidebar-collapsed .main-content {
+    margin-left: calc(var(--codepen-sidebar-width-min) + 2vw) !important;
+}
+
+/* ============================================================================
+   RESPONSIVE DESIGN - Mobile Behavior
+   ============================================================================ */
+@media (max-width: 768px) {
+    .sidebar.sidebar-enhanced {
+        left: -100%;
+        top: 0;
+        height: 100% !important;
+        border-radius: 0 !important;
+        border: none !important;
+        transition: left 0.3s ease;
+        width: 256px;
+    }
+
+    .sidebar.sidebar-enhanced.mobile-show {
+        left: 0;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding: 1rem !important;
+        padding-top: 70px !important;
+    }
+
+    body.sidebar-collapsed .main-content {
+        margin-left: 0 !important;
+    }
+}
+
+/* Mobile Overlay */
+.sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1039;
+    display: none;
+}
+
+.sidebar-overlay.show {
+    display: block;
+}
+
+/* Mobile Toggle Button */
+.nav-mobile-toggle {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 50px;
+    height: 50px;
+    background: var(--codepen-accent-blue);
+    border-radius: 12px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.nav-mobile-toggle i {
+    color: #fff;
+    font-size: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .nav-mobile-toggle {
+        display: flex;
+    }
+}
+
+/* ============================================================================
+   ANIMATIONS & SMOOTH TRANSITIONS
+   ============================================================================ */
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.sidebar.sidebar-enhanced {
+    animation: slideInLeft 0.3s ease;
+}
+
+/* ============================================================================
+   COLLAPSED MENU GROUPS - Special handling
+   ============================================================================ */
+body.sidebar-collapsed .sidebar .sidebar-collapsed-menu {
+    display: none;
+}
+
+body.sidebar-collapsed .sidebar .nav-group-link span {
+    display: none;
+}
+
+/* ============================================================================
+   PRINT STYLES - Hide sidebar saat print
+   ============================================================================ */
+@media print {
+    .sidebar.sidebar-enhanced {
+        display: none !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    .admin-footer {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+}
+
+/* ============================================================================
+   FOOTER ADJUSTMENT - Match dengan sidebar floating
+   ============================================================================ */
+.admin-footer {
+    margin-left: calc(var(--codepen-sidebar-width) + 2vw) !important;
+    margin-right: 1.5vw !important;
+    background: #ffffff !important;
+    border-top: 1px solid var(--codepen-sidebar-border) !important;
+    padding: 1rem 1.5rem !important;
+    transition: margin-left 0.3s ease;
+}
+
+body.sidebar-collapsed .admin-footer {
+    margin-left: calc(var(--codepen-sidebar-width-min) + 2vw) !important;
+}
+
+/* Footer styling improvements */
+.admin-footer p,
+.admin-footer .text-muted {
+    font-size: 0.8rem;
+    color: var(--codepen-text-secondary) !important;
+}
+
+.admin-footer img {
+    filter: grayscale(20%);
+    transition: filter 0.2s ease;
+}
+
+.admin-footer img:hover {
+    filter: grayscale(0%);
+}
+
+/* Mobile footer - full width */
+@media (max-width: 768px) {
+    .admin-footer {
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding: 1rem !important;
+    }
+}

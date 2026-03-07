@@ -1,4 +1,57 @@
-# 📋 RECENT CHANGES LOG - March 5-6, 2026
+# 📋 RECENT CHANGES LOG - March 5-7, 2026
+
+## 🚨 CRITICAL FIX - March 7, 2026
+
+### **CSRF Configuration Bug Fix**
+
+#### **Issue:**
+- 403 Forbidden errors on ALL AJAX POST requests
+- Root cause: `.env` files overriding `app/Config/Security.php` with incorrect values
+- Token name mismatch: JavaScript sending `csrf_test_name`, PHP expecting `csrf_token_name`
+
+#### **Files Fixed:**
+1. **`.env`** (Development)
+   - ✅ `security.tokenName = 'csrf_test_name'` (was: `csrf_token_name`)
+   - ✅ `security.tokenRandomize = false` (was: `true`)
+   - ✅ `security.regenerate = false` (confirmed)
+
+2. **`.env_production`** (Production)
+   - ✅ `security.tokenName = 'csrf_test_name'` (was: `csrf_token_name`)
+   - ✅ `security.tokenRandomize = false` (was: `true`)
+   - ✅ `security.regenerate = false` (confirmed)
+
+3. **`app/Views/layouts/base.php`**
+   - ✅ Enhanced `getCsrfTokenData()` with 3-layer fallback (cookie → meta tag → empty)
+   - ✅ Added debug logging for troubleshooting
+   - ✅ Try-catch for Safari/Edge Tracking Prevention cookie blocking
+
+4. **`public/assets/js/optima-datatable-config.js`**
+   - ✅ Updated CSRF handling to use dynamic `getCsrfTokenData()`
+   - ✅ Added debug logging for AJAX requests
+
+5. **`app/Views/marketing/customer_management.php`**
+   - ✅ Statistics AJAX updated to use `getCsrfTokenData()`
+   - ✅ Window focus event CSRF refresh
+
+#### **New Files Created:**
+- 📄 `docs/CSRF_PRODUCTION_FIX.md` - Detailed fix documentation
+- 📄 `public/test_csrf.php` - Configuration verification tool
+- 📄 `check_production_env.bat` - Pre-deployment validation script
+- 📄 `restart_apache.bat` - Apache restart helper
+
+#### **Deployment Requirements:**
+- ⚠️ **MUST restart Apache** after uploading `.env_production` to production
+- ⚠️ **MUST clear cache**: `php spark cache:clear`
+- ⚠️ **MUST clear sessions**: `rm -rf writable/session/*`
+- ⚠️ **MUST test** with `test_csrf.php` on production
+
+#### **Impact:**
+- ✅ All AJAX POST requests now working (Customer Management, DataTables, etc.)
+- ✅ Browser Tracking Prevention handled gracefully (Safari/Edge)
+- ✅ Debug logging added for easier troubleshooting
+- ⚠️ Requires Apache restart to load new `.env` config
+
+---
 
 ## 🔄 Schema Changes (Database)
 

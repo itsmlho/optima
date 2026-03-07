@@ -46,6 +46,9 @@ $routes->group('health', static function ($routes) {
 if (ENVIRONMENT !== 'production') {
     $routes->get('test/quotations',    'TestQuotations::testDataTables');
     $routes->get('debug/battery-data', 'DebugBattery::checkBatteryData');
+    
+    // Demo Routes - Modern Sidebar
+    $routes->get('demo/modernSidebar', 'Demo::modernSidebar');
 }
 
 // Customer AJAX Endpoints - MUST be before other routes to avoid conflicts

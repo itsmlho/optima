@@ -80,9 +80,6 @@ $currentLang = service('request')->getLocale();
     <!-- OPTIMA DataTable CSS - Centralized Table Styling System -->
     <link href="<?= base_url('assets/css/desktop/optima-datatable.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-datatable.css') ?>" rel="stylesheet">
 
-    <!-- OPTIMA Sidebar CodePen Enhancement CSS - Modern Floating Sidebar -->
-    <link href="<?= base_url('assets/css/desktop/optima-sidebar-codepen-enhance.css') ?>?v=<?= filemtime(FCPATH.'assets/css/desktop/optima-sidebar-codepen-enhance.css') ?>" rel="stylesheet">
-
     <!-- Sidebar Scroll Management -->
     <script src="<?= base_url('assets/js/sidebar-scroll.js') ?>?v=<?= filemtime(FCPATH.'assets/js/sidebar-scroll.js') ?>"></script>
    
@@ -155,70 +152,22 @@ $currentLang = service('request')->getLocale();
         // ============================================================
         // GLOBAL CSRF TOKEN HELPER - Available to ALL views/pages
         // Reads from cookie dynamically to prevent stale token issues
-        // UPDATED: Returns object with {name, value, hash} for dynamic CSRF
         // ============================================================
-        window.getCsrfTokenData = function() {
-            // Priority 1: Try reading from cookies
-            try {
-                const cookies = document.cookie.split(';');
-                
-                // CI4 CSRF cookie starts with 'csrf_cookie_name' prefix (default)
-                // But actual name is dynamic like: csrf_cookie_name_abc123
-                for (let cookie of cookies) {
-                    const [name, value] = cookie.trim().split('=');
-                    // Match cookies that start with csrf
-                    if (name && name.startsWith('csrf')) {
-                        const tokenData = {
-                            cookieName: name,
-                            tokenName: '<?= csrf_token() ?>', // Now reads from corrected .env
-                            tokenValue: decodeURIComponent(value),
-                            hash: decodeURIComponent(value) // alias
-                        };
-                        console.log('🔐 [getCsrfTokenData] Found CSRF cookie:', tokenData.tokenName, '=', tokenData.tokenValue.substring(0, 20) + '...');
-                        return tokenData;
-                    }
-                }
-            } catch (e) {
-                console.warn('⚠️ [getCsrfTokenData] Cookie access blocked (Tracking Prevention?):', e.message);
-            }
-            
-            // Priority 2: Fallback to meta tag (always works, not blocked by tracking prevention)
-            const metaCsrf = document.querySelector('meta[name="csrf-token"]');
-            if (metaCsrf && metaCsrf.content) {
-                const fallbackData = {
-                    cookieName: '<?= config('Security')->cookieName ?? 'csrf_cookie_name' ?>',
-                    tokenName: '<?= csrf_token() ?>', // Now reads from corrected .env
-                    tokenValue: metaCsrf.content,
-                    hash: metaCsrf.content
-                };
-                console.log('📋 [getCsrfTokenData] Using meta tag fallback:', fallbackData.tokenName, '=', fallbackData.tokenValue.substring(0, 20) + '...');
-                return fallbackData;
-            }
-            
-            // Priority 3: Last resort - empty token (will fail, but at least won't crash)
-            console.error('❌ [getCsrfTokenData] No CSRF token found! Neither cookie nor meta tag available.');
-            return {
-                cookieName: 'csrf_cookie_name',
-                tokenName: '<?= csrf_token() ?>', // Now reads from corrected .env
-                tokenValue: '',
-                hash: ''
-            };
-        };
-        
-        // Legacy function - returns only value for backward compatibility
         window.getCsrfToken = function() {
-            return window.getCsrfTokenData().tokenValue;
+            const cookieName = '<?= config('Security')->cookieName ?? 'csrf_cookie_name' ?>';
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === cookieName) {
+                    return decodeURIComponent(value);
+                }
+            }
+            // Fallback to meta tag
+            const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+            return metaCsrf ? metaCsrf.getAttribute('content') : '';
         };
-        
-        // Global token variables (updated dynamically)
-        // DEBUG: Check what csrf_token() returns
-        console.log('🔍 [DEBUG] csrf_token() from PHP:', '<?= csrf_token() ?>');
-        console.log('🔍 [DEBUG] csrf_hash() from PHP:', '<?= csrf_hash() ?>');
-        console.log('🔍 [DEBUG] Config tokenName:', '<?= config('Security')->tokenName ?? 'NOT_FOUND' ?>');
-        
-        window.csrfTokenName = '<?= csrf_token() ?>'; // Now reads from corrected .env
-        window.csrfTokenValue = window.getCsrfToken();
-        window.csrfToken = window.csrfTokenValue; // Alias for backward compatibility
+        // Alias for backward compatibility
+        window.csrfToken = window.getCsrfToken();
         // Refresh token alias on each AJAX call via jQuery global setup (set below after jQuery loads)
 
         // Global function for mark all as read
@@ -916,9 +865,6 @@ $currentLang = service('request')->getLocale();
     
     <!-- UI Helpers (Select2, Toasts, Button States, Validation) -->
     <script src="<?= base_url('assets/js/ui_helpers.js') ?>?v=<?= time() ?>"></script>
-    
-    <!-- OPTIMA Sidebar CodePen Enhancement - Modern Floating Sidebar -->
-    <script src="<?= base_url('assets/js/sidebar-codepen-enhance.js') ?>?v=<?= time() ?>"></script>
     
     <!-- Global JavaScript Variables -->
     <script>

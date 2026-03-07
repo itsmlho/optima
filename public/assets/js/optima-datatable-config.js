@@ -26,31 +26,56 @@ window.OptimaDataTable = (function () {
     // ============================================
 
     /**
-     * Get CSRF token — delegasi ke window.getCsrfToken() dari base.php
-     * Fallback ke manual cookie parsing jika belum tersedia
-     * Cookie name: 'csrf_cookie_name' (sesuai Security.php)
-     * Token field name: 'csrf_test_name' (sesuai Security.php tokenName)
-     * Header name: 'X-CSRF-TOKEN' (sesuai Security.php headerName)
+     * Get CSRF token data — delegasi ke window.getCsrfTokenData() dari base.php
+     * Returns object with {tokenName, tokenValue, hash}
      */
-    function getCsrfToken() {
-        // Prioritas 1: window.getCsrfToken() dari base.php (paling fresh, baca cookie tiap kali)
-        if (typeof window.getCsrfToken === 'function') {
-            return window.getCsrfToken();
+    function getCsrfTokenData() {
+        // Use new getCsrfTokenData() from base.php (returns {tokenName, tokenValue})
+        if (typeof window.getCsrfTokenData === 'function') {
+            return window.getCsrfTokenData();
         }
-        // Prioritas 2: window.csrfToken (snapshot saat load, mungkin stale)
-        if (window.csrfToken) {
-            return window.csrfToken;
-        }
-        // Prioritas 3: Manual cookie parsing dengan nama yang benar dari Security.php
+        
+        // Fallback manual parsing (with try-catch for tracking prevention)
         try {
-            const cookieName = 'csrf_cookie_name';
             const cookies = document.cookie.split(';');
             for (let c of cookies) {
                 const [name, val] = c.trim().split('=');
-                if (name === cookieName) return decodeURIComponent(val);
+                if (name && name.startsWith('csrf')) {
+                    return {
+                        tokenName: window.csrfTokenName || 'csrf_test_name',
+                        tokenValue: decodeURIComponent(val),
+                        hash: decodeURIComponent(val)
+                    };
+                }
             }
-        } catch (e) { }
-        return null;
+        } catch (e) {
+            console.warn('⚠️ [getCsrfTokenData] Cookie blocked, using meta tag');
+        }
+        
+        // Meta tag fallback (not blocked by tracking prevention)
+        const metaCsrf = document.querySelector('meta[name="csrf-token"]');
+        if (metaCsrf && metaCsrf.content) {
+            return {
+                tokenName: window.csrfTokenName || 'csrf_test_name',
+                tokenValue: metaCsrf.content,
+                hash: metaCsrf.content
+            };
+        }
+        
+        // Last fallback
+        return {
+            tokenName: window.csrfTokenName || 'csrf_test_name',
+            tokenValue: window.csrfToken || '',
+            hash: window.csrfToken || ''
+        };
+    }
+    
+    /**
+     * Legacy function for backward compatibility
+     */
+    function getCsrfToken() {
+        const data = getCsrfTokenData();
+        return data.tokenValue || data.hash;
     }
 
     // ============================================
@@ -80,19 +105,22 @@ window.OptimaDataTable = (function () {
         ajax: {
             timeout: 30000,  // 30 seconds timeout for AJAX requests
             beforeSend: function (xhr) {
-                // Add CSRF token to request header
-                const token = getCsrfToken();
-                if (token) {
-                    xhr.setRequestHeader('X-CSRF-TOKEN', token);
+                // Add CSRF token to request header (use fresh token)
+                const csrfData = getCsrfTokenData();
+                console.log('🔐 [DataTable beforeSend] CSRF:', csrfData.tokenName, '=', csrfData.tokenValue ? csrfData.tokenValue.substring(0, 20) + '...' : 'EMPTY');
+                if (csrfData.tokenValue) {
+                    xhr.setRequestHeader('X-CSRF-TOKEN', csrfData.tokenValue);
                 }
                 xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             },
             data: function (d) {
-                // Add CSRF token to POST data
-                const token = getCsrfToken();
-                if (token) {
-                    const tokenName = window.csrfTokenName || 'csrf_test_name';
-                    d[tokenName] = token;
+                // Add CSRF token to POST data with dynamic name
+                const csrfData = getCsrfTokenData();
+                if (csrfData.tokenName && csrfData.tokenValue) {
+                    d[csrfData.tokenName] = csrfData.tokenValue;
+                    console.log('📤 [DataTable data] Adding CSRF:', csrfData.tokenName, '=', csrfData.tokenValue.substring(0, 20) + '...');
+                } else {
+                    console.error('❌ [DataTable data] No CSRF token to add!');
                 }
                 return d;
             },
