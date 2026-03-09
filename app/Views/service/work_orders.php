@@ -302,6 +302,7 @@ $assetService = new \App\Services\AssetMinificationService();
             </div>
             <div class="modal-body p-4">
                 <form id="workOrderForm" action="<?= base_url('service/work-orders/store') ?>" method="post" novalidate>
+                    <?= csrf_field() ?>
                     <input type="hidden" id="work_order_id" name="work_order_id">
                     
                     <div class="card shadow-sm mb-4">
@@ -1196,6 +1197,20 @@ $(document).ready(function() {
         let formData = new FormData(this);
         let url = $(this).attr('action');
         
+        // CRITICAL: Ensure CSRF token is included (FormData should get it from form automatically via csrf_field())
+        // Double-check and add if missing
+        const csrfData = getCsrfTokenData();
+        if (csrfData && !formData.has(csrfData.tokenName)) {
+            formData.append(csrfData.tokenName, csrfData.tokenValue);
+            console.log('✅ CSRF token manually added to FormData:', csrfData.tokenName);
+        }
+        
+        // DEBUG: Log all form data being sent
+        console.log('📤 Form data being submitted:');
+        for (let pair of formData.entries()) {
+            console.log('  -', pair[0] + ':', pair[1]);
+        }
+        
         // Clear previous errors
         clearFormErrors();
         
@@ -1209,27 +1224,37 @@ $(document).ready(function() {
                 $('#btnSubmitWo').prop('disabled', true).text('Saving...');
             },
             success: function(response) {
+                console.log('✅ Success response:', response);
                 if (response.success) {
                     showAlert('success', response.message);
                     $('#workOrderModal').modal('hide');
                     reloadProgressTable();
                     updateStatistics();
                 } else {
+                    console.error('❌ Server returned success=false:', response);
                     showAlert('error', response.message);
+                    if (response.errors) {
+                        displayFormErrors(response.errors);
+                    }
                 }
             },
             error: function(xhr, status, error) {
-                console.error('AJAX Error:', error, 'Status:', status);
+                console.error('❌ AJAX Error:', error, 'Status:', status);
+                console.error('❌ XHR Status Code:', xhr.status);
+                console.error('❌ Response Text:', xhr.responseText);
                 
                 try {
                     let response = JSON.parse(xhr.responseText);
+                    console.error('❌ Parsed Response:', response);
                     if (response.errors) {
+                        console.error('❌ Validation Errors:', response.errors);
                         displayFormErrors(response.errors);
                     } else {
                         showAlert('error', response.message || 'An error occurred while saving data');
                     }
                 } catch (e) {
-                    showAlert('error', 'An error occurred while saving data');
+                    console.error('❌ Could not parse response:', e);
+                    showAlert('error', 'An error occurred while saving data: ' + error);
                 }
             },
             complete: function() {
@@ -2584,32 +2609,60 @@ $(document).ready(function() {
     // Subcategory change handler for auto priority
     $('#subcategory_id').on('change', function() {
         let subcategoryId = $(this).val();
+        console.log('📌 Subcategory changed:', subcategoryId);
         if (subcategoryId) {
+            const csrfData = getCsrfTokenData();
             // Get priority for subcategory
             $.ajax({
                 url: '<?= base_url('service/work-orders/get-subcategory-priority') ?>',
                 type: 'POST',
-                data: { subcategory_id: subcategoryId },
+                data: { 
+                    subcategory_id: subcategoryId,
+                    [csrfData.tokenName]: csrfData.tokenValue
+                },
                 success: function(response) {
+                    console.log('✅ Priority response:', response);
                     if (response.success && response.priority_id) {
                         setPriority(response.priority_id);
+                    } else {
+                        console.warn('⚠️ No priority found for subcategory');
                     }
+                },
+                error: function(xhr, status, error) {
+                    console.error('❌ Error getting priority:', error);
                 }
             });
+        } else {
+            console.log('⚠️ No subcategory selected, clearing priority');
+            $('#priority_id').val('');
+            $('#priority_display').val('');
         }
     });
 
     function setPriority(priorityId) {
+        console.log('🎯 Setting priority:', priorityId);
+        const csrfData = getCsrfTokenData();
         // Find priority name and set display
         $.ajax({
             url: '<?= base_url('service/work-orders/get-priority') ?>',
             type: 'POST',
-            data: { priority_id: priorityId },
+            data: { 
+                priority_id: priorityId,
+                [csrfData.tokenName]: csrfData.tokenValue
+            },
             success: function(response) {
+                console.log('✅ Priority details:', response);
                 if (response.success) {
                     $('#priority_id').val(priorityId);
                     $('#priority_display').val(response.priority_name);
+                    console.log('✅ Priority set:', priorityId, '-', response.priority_name);
                 }
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Error getting priority details:', error);
+                // Set anyway
+                $('#priority_id').val(priorityId);
+                $('#priority_display').val('Priority ID: ' + priorityId);
             }
         });
     }
@@ -3016,10 +3069,14 @@ $(document).ready(function() {
                     
                     if (response.data.length > 0) {
                         response.data.forEach(function(unit) {
-                            const pelanggan = unit.pelanggan || 'N/A';
+                            // Format: "1 - Counter Balance - 3.5 TON - [STATUS] (Kontrak / Lokasi)"
                             const jenis = unit.jenis || 'N/A';
                             const kapasitas = unit.kapasitas || 'N/A';
-                            const displayText = `${unit.no_unit} - ${pelanggan} (${jenis} - ${kapasitas})`;
+                            const status = unit.status || 'N/A';
+                            const pelanggan = unit.pelanggan || 'Belum Ada Kontrak';
+                            const lokasi = unit.lokasi || 'N/A';
+                            
+                            const displayText = `${unit.no_unit} - ${jenis} - ${kapasitas} - [${status}] (${pelanggan} / ${lokasi})`;
                             unitSelect.append(`<option value="${unit.id}">${displayText}</option>`);
                         });
                         
@@ -3071,7 +3128,14 @@ $(document).ready(function() {
         unitList.empty();
         
         units.forEach(function(unit) {
-            let displayName = unit.no_unit + ' - ' + (unit.pelanggan || 'Unknown') + ' (' + (unit.merk_unit + ' ' + unit.model_unit || unit.unit_type || 'Unknown') + ')';
+            // Format: "1 - Counter Balance - 3.5 TON - [STATUS] (Kontrak / Lokasi)"
+            const jenis = unit.jenis || unit.unit_type || 'N/A';
+            const kapasitas = unit.kapasitas || 'N/A';
+            const status = unit.status || 'N/A';
+            const pelanggan = unit.pelanggan || 'Belum Ada Kontrak';
+            const lokasi = unit.lokasi || 'N/A';
+            
+            let displayName = `${unit.no_unit} - ${jenis} - ${kapasitas} - [${status}] (${pelanggan} / ${lokasi})`;
             unitList.append(`
                 <a class="dropdown-item unit-item" href="#" data-unit-id="${unit.id}" data-unit='${JSON.stringify(unit)}'>
                     ${displayName}
@@ -3095,8 +3159,19 @@ $(document).ready(function() {
     window.filterUnits = function() {
         let searchTerm = $('#unitSearch').val().toLowerCase();
         let filteredUnits = window.allUnits.filter(unit => {
-            let displayName = (unit.no_unit + ' ' + (unit.pelanggan || '') + ' ' + (unit.merk_unit || '') + ' ' + (unit.model_unit || '') + ' ' + (unit.unit_type || '')).toLowerCase();
-            return displayName.includes(searchTerm);
+            // Search across all relevant fields
+            const searchableText = [
+                unit.no_unit,
+                unit.pelanggan,
+                unit.lokasi,
+                unit.jenis,
+                unit.kapasitas,
+                unit.status,
+                unit.merk_unit,
+                unit.model_unit
+            ].filter(Boolean).join(' ').toLowerCase();
+            
+            return searchableText.includes(searchTerm);
         });
         displayUnits(filteredUnits);
     }

@@ -376,12 +376,27 @@ class Kontrak extends BaseController
         // Load simple logging helper
         helper('simple_activity_log');
         
+        // Get customer_location_id from form to lookup customer_id
+        $customerLocationId = (int)$this->request->getPost('customer_location_id') ?: (int)$this->request->getPost('location_id');
+        $customerId = null;
+        
+        // Query customer_id from customer_location
+        if ($customerLocationId > 0) {
+            $location = $this->db->table('customer_locations')
+                ->select('customer_id')
+                ->where('id', $customerLocationId)
+                ->get()
+                ->getRowArray();
+            $customerId = $location['customer_id'] ?? null;
+        }
+        
         // Validasi input menggunakan model validation dengan struktur database baru
+        // Note: customer_location_id REMOVED from kontrak table (March 5, 2026)
         $data = [
             'no_kontrak'           => trim((string)$this->request->getPost('contract_number')),
             'customer_po_number'   => $this->request->getPost('po_number'),
             'rental_type'          => $this->request->getPost('rental_type') ?: 'CONTRACT',
-            'customer_location_id' => (int)$this->request->getPost('customer_location_id') ?: (int)$this->request->getPost('location_id'),
+            'customer_id'          => $customerId,  // Use customer_id instead of customer_location_id
             'nilai_total'          => 0, // Akan dihitung otomatis dari spesifikasi
             'total_units'          => 0, // Akan dihitung otomatis dari spesifikasi
             'jenis_sewa'           => strtoupper($this->request->getPost('jenis_sewa') ?: 'BULANAN'),
@@ -453,13 +468,21 @@ class Kontrak extends BaseController
 
         // Get customer name for logging
         $customerInfo = '';
-        if (!empty($data['customer_location_id'])) {
-            $customerLocation = $this->db->query("SELECT c.customer_name, cl.location_name 
-                                                 FROM customer_locations cl 
-                                                 LEFT JOIN customers c ON cl.customer_id = c.id 
-                                                 WHERE cl.id = ?", [$data['customer_location_id']])->getRowArray();
+        if (!empty($data['customer_id'])) {
+            // Get customer info and first location from kontrak_unit if available
+            $customerLocation = $this->db->query("SELECT c.customer_name, 
+                                                         (SELECT cl.location_name 
+                                                          FROM kontrak_unit ku 
+                                                          JOIN customer_locations cl ON cl.id = ku.customer_location_id 
+                                                          WHERE ku.kontrak_id = ? 
+                                                          LIMIT 1) as location_name
+                                                  FROM customers c 
+                                                  WHERE c.id = ?", [$newId, $data['customer_id']])->getRowArray();
             if ($customerLocation) {
-                $customerInfo = $customerLocation['customer_name'] . ' - ' . $customerLocation['location_name'];
+                $customerInfo = $customerLocation['customer_name'];
+                if (!empty($customerLocation['location_name'])) {
+                    $customerInfo .= ' - ' . $customerLocation['location_name'];
+                }
             }
         }
 
@@ -521,9 +544,23 @@ class Kontrak extends BaseController
         log_message('debug', "Contract ID from URL: $id");
         log_message('debug', "POST data: " . json_encode($this->request->getPost()));
         
+        // Get customer_location_id from form to lookup customer_id  
+        $customerLocationId = (int)$this->request->getPost('customer_location_id');
+        $customerId = null;
+        
+        // Query customer_id from customer_location
+        if ($customerLocationId > 0) {
+            $location = $this->db->table('customer_locations')
+                ->select('customer_id')
+                ->where('id', $customerLocationId)
+                ->get()
+                ->getRowArray();
+            $customerId = $location['customer_id'] ?? null;
+        }
+        
         // Validate required fields first with new database structure
+        // Note: customer_location_id validation REMOVED (March 5, 2026 - moved to kontrak_unit)
         $rules = [
-            'customer_location_id' => 'required|is_natural_no_zero',
             'start_date'      => 'required|valid_date',
             'end_date'        => 'required|valid_date',
             'status'          => 'required|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]'
@@ -585,11 +622,13 @@ class Kontrak extends BaseController
             ]);
         }
 
+        // Note: customer_location_id REMOVED from kontrak table (March 5, 2026)
+        // Location tracking is now in kontrak_unit table for multi-location support
         $data = [
             'no_kontrak'           => $contractNumber,
             'customer_po_number'   => $this->request->getPost('po_number'),
             'rental_type'          => $this->request->getPost('rental_type') ?: 'CONTRACT',
-            'customer_location_id' => (int)$this->request->getPost('customer_location_id'),
+            'customer_id'          => $customerId,  // Use customer_id instead of customer_location_id
             // nilai_total dihitung dari kontrak_unit (jika field ada di form, gunakan; sinon biarkan)
             // total_units TIDAK disimpan dari form — dihitung live dari kontrak_unit
             'tanggal_mulai'        => $this->request->getPost('start_date'),
@@ -631,13 +670,21 @@ class Kontrak extends BaseController
             
             // Get customer info for logging
             $customerInfo = '';
-            if (!empty($data['customer_location_id'])) {
-                $customerLocation = $this->db->query("SELECT c.customer_name, cl.location_name 
-                                                     FROM customer_locations cl 
-                                                     LEFT JOIN customers c ON cl.customer_id = c.id 
-                                                     WHERE cl.id = ?", [$data['customer_location_id']])->getRowArray();
+            if (!empty($data['customer_id'])) {
+                // Get customer info and first location from kontrak_unit if available
+                $customerLocation = $this->db->query("SELECT c.customer_name, 
+                                                             (SELECT cl.location_name 
+                                                              FROM kontrak_unit ku 
+                                                              JOIN customer_locations cl ON cl.id = ku.customer_location_id 
+                                                              WHERE ku.kontrak_id = ? 
+                                                              LIMIT 1) as location_name
+                                                      FROM customers c 
+                                                      WHERE c.id = ?", [$contractId, $data['customer_id']])->getRowArray();
                 if ($customerLocation) {
-                    $customerInfo = $customerLocation['customer_name'] . ' - ' . $customerLocation['location_name'];
+                    $customerInfo = $customerLocation['customer_name'];
+                    if (!empty($customerLocation['location_name'])) {
+                        $customerInfo .= ' - ' . $customerLocation['location_name'];
+                    }
                 }
             }
 
@@ -744,13 +791,21 @@ class Kontrak extends BaseController
                 
                 // Get customer info for logging
                 $customerInfo = 'Unknown';
-                if (!empty($contract['customer_location_id'])) {
-                    $customerLocation = $this->db->query("SELECT c.customer_name, cl.location_name 
-                                                         FROM customer_locations cl 
-                                                         LEFT JOIN customers c ON cl.customer_id = c.id 
-                                                         WHERE cl.id = ?", [$contract['customer_location_id']])->getRowArray();
+                if (!empty($contract['customer_id'])) {
+                    // Get customer info and first location from kontrak_unit if available
+                    $customerLocation = $this->db->query("SELECT c.customer_name, 
+                                                                 (SELECT cl.location_name 
+                                                                  FROM kontrak_unit ku 
+                                                                  JOIN customer_locations cl ON cl.id = ku.customer_location_id 
+                                                                  WHERE ku.kontrak_id = ? 
+                                                                  LIMIT 1) as location_name
+                                                          FROM customers c 
+                                                          WHERE c.id = ?", [$id, $contract['customer_id']])->getRowArray();
                     if ($customerLocation) {
-                        $customerInfo = $customerLocation['customer_name'] . ' - ' . $customerLocation['location_name'];
+                        $customerInfo = $customerLocation['customer_name'];
+                        if (!empty($customerLocation['location_name'])) {
+                            $customerInfo .= ' - ' . $customerLocation['location_name'];
+                        }
                     }
                 }
 
@@ -1897,9 +1952,11 @@ class Kontrak extends BaseController
             $totalValue = array_sum(array_column($units, 'monthly_rate'));
             
             // Create new renewal contract
+            // Note: customer_location_id REMOVED from kontrak table (March 5, 2026)
+            // Using customer_id instead; location tracking is in kontrak_unit table
             $renewalData = [
                 'no_kontrak' => $contractNumber,
-                'customer_location_id' => $locationId,
+                'customer_id' => $customerId,  // Use customer_id instead of customer_location_id
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'nilai_kontrak' => $totalValue,

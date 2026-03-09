@@ -26,6 +26,7 @@ class InventoryUnitModel extends Model
         'keterangan',
         'harga_sewa_bulanan', // Harga sewa per bulan untuk kontrak
         'harga_sewa_harian',  // Harga sewa per hari untuk kontrak
+        'rate_changed_at',    // Last rate change timestamp
         
         // ⚠️ DEPRECATED FIELDS - Removed after Phase 1A migration (2026-03-25)
         // Use vw_unit_with_contracts VIEW or kontrak_unit junction table instead
@@ -35,6 +36,8 @@ class InventoryUnitModel extends Model
         
         'area_id',
         'kontrak_spesifikasi_id', // Foreign key ke kontrak_spesifikasi
+        
+        // Unit specifications
         'tipe_unit_id',
         'model_unit_id',
         'kapasitas_unit_id',
@@ -46,13 +49,36 @@ class InventoryUnitModel extends Model
         'roda_id',
         'ban_id',
         'valve_id',
+        'fuel_type',  // ENUM: DIESEL, LPG, ELECTRIC, GASOLINE (previously stored in departemen)
+        
+        // Accessories and workflow
         'aksesoris',
         'spk_id',
         'delivery_instruction_id',
         'di_workflow_id',
         'workflow_status',
+        'hour_meter', // Current hour meter reading (decimal)
+        
+        // Contract-related temporal fields
+        'on_hire_date',
+        'off_hire_date',
         'contract_disconnect_date',
         'contract_disconnect_stage',
+        
+        // Temporary assignment fields
+        'is_temporary_assignment',
+        'maintenance_location',
+        'temporary_for_contract_id',
+        'expected_return_date',
+        
+        // Asset management fields
+        'asset_tag',
+        'acquisition_cost',
+        'depreciation_method',  // ENUM: STRAIGHT_LINE, DECLINING
+        'useful_life_years',
+        'salvage_value',
+        'ownership_status',     // ENUM: OWNED, LEASED, CONSIGNMENT
+        'warehouse_location_id',
     ];
 
     protected $useTimestamps = true;
