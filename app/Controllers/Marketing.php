@@ -6974,15 +6974,17 @@ class Marketing extends BaseDataTableController
                 ]);
             }
             
-            // Get customer location if exists
+            // Get customer location if exists from kontrak_unit (new schema)
             $customer_location = null;
-            if (!empty($kontrak['customer_location_id'])) {
-                $locationId = (int)$kontrak['customer_location_id'];
+            if (!empty($kontrak['customer_id'])) {
+                // Query first location from kontrak_unit table
                 $customer_location = $this->db->query("SELECT cl.*, c.customer_name 
-                                                     FROM customer_locations cl 
-                                                     LEFT JOIN customers c ON cl.customer_id = c.id 
-                                                     WHERE cl.id = ?", 
-                                                     [$locationId])->getRowArray();
+                                                     FROM kontrak_unit ku
+                                                     JOIN customer_locations cl ON cl.id = ku.customer_location_id
+                                                     JOIN customers c ON cl.customer_id = c.id
+                                                     WHERE ku.kontrak_id = ?
+                                                     LIMIT 1", 
+                                                     [$id])->getRowArray();
             }
 
             // Get user info
@@ -8183,10 +8185,11 @@ class Marketing extends BaseDataTableController
             // Generate contract number
             $contractNumber = $this->generateContractNumberInternal();
 
-            // Create contract record with customer_location_id
+            // Create contract record with correct schema (customer_id, not customer_location_id)
+            // Note: customer_location_id moved to kontrak_unit table per March 5, 2026 schema change
             $contractData = [
                 'no_kontrak' => $contractNumber,
-                'customer_location_id' => $customerLocation['id'],
+                'customer_id' => $quotation['created_customer_id'],  // Use customer_id instead
                 'nilai_total' => $quotation['total_amount'],
                 'tanggal_mulai' => date('Y-m-d'),
                 'tanggal_berakhir' => date('Y-m-d', strtotime('+12 months')),
@@ -8194,9 +8197,9 @@ class Marketing extends BaseDataTableController
                 'dibuat_oleh' => session()->get('user_id')
             ];
 
-            log_message('info', 'Creating contract with location: ' . json_encode([
+            log_message('info', 'Creating contract with customer: ' . json_encode([
                 'customer_id' => $quotation['created_customer_id'],
-                'location_id' => $customerLocation['id'],
+                'primary_location_id' => $customerLocation['id'],
                 'location_name' => $customerLocation['location_name'],
                 'is_primary' => $customerLocation['is_primary']
             ]));
@@ -8861,9 +8864,11 @@ class Marketing extends BaseDataTableController
             $newContractNumber = $originalContract['no_kontrak'] . '-R' . $renewalCount;
 
             // Create new contract
+            // Note: customer_location_id REMOVED from kontrak table (March 5, 2026)
+            // Using customer_id instead; location tracking is in kontrak_unit table
             $newContractData = [
                 'no_kontrak' => $newContractNumber,
-                'customer_location_id' => $originalContract['customer_location_id'],
+                'customer_id' => $originalContract['customer_id'],  // Use customer_id instead
                 'no_po_marketing' => $this->request->getPost('po_number') ?? $originalContract['no_po_marketing'],
                 'nilai_total' => $newRates ?? $originalContract['nilai_total'],
                 'total_units' => $originalContract['total_units'],

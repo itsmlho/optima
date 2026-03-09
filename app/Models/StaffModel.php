@@ -130,8 +130,7 @@ class StaffModel extends Model
                            ->join('areas a', 'asa.area_id = a.id')
                            ->join('customer_locations cl', 'a.id = cl.area_id')
                            ->join('customers c', 'c.id = cl.customer_id')
-                           ->join('kontrak ktr', 'ktr.customer_location_id = cl.id')
-                           ->join('kontrak_unit ku', 'ku.kontrak_id = ktr.id AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0')
+                           ->join('kontrak_unit ku', 'ku.customer_location_id = cl.id AND ku.status IN (\'ACTIVE\',\'TEMP_ACTIVE\') AND ku.is_temporary = 0')
                            ->where('ku.unit_id', $unitId)
                            ->where('s.is_active', 1)
                            ->where('asa.is_active', 1);

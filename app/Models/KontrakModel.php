@@ -16,7 +16,7 @@ class KontrakModel extends Model
         'no_kontrak',
         'customer_po_number',   // Nomor PO dari customer (opsional)
         'rental_type',          // CONTRACT, PO_ONLY, DAILY_SPOT
-        'customer_location_id',
+        // customer_location_id REMOVED - moved to kontrak_unit table (March 5, 2026)
         // nilai_total DIHAPUS dari allowedFields:
         // nilai real dihitung otomatis dari kontrak_unit → inventory_unit.harga_sewa_bulanan
         // Lihat: findWithDynamicCalculation() dan getContractsForDataTable()
@@ -49,7 +49,7 @@ class KontrakModel extends Model
         // no_kontrak TIDAK lagi unique: satu nomor surat bisa mencakup banyak unit
         // (legacy: dulu 1 baris per unit dengan nomor sama → sekarang 1 baris per kesepakatan)
         'no_kontrak'           => 'permit_empty|max_length[100]',
-        'customer_location_id' => 'permit_empty|is_natural_no_zero',
+        // customer_location_id REMOVED - moved to kontrak_unit table (March 5, 2026)
         'tanggal_mulai'        => 'permit_empty|valid_date',
         'tanggal_berakhir'     => 'permit_empty|valid_date',
         'status'               => 'permit_empty|in_list[ACTIVE,EXPIRED,PENDING,CANCELLED]',
@@ -61,10 +61,7 @@ class KontrakModel extends Model
             'required' => 'Nomor kontrak harus diisi.',
             'is_unique' => 'Nomor kontrak sudah digunakan.'
         ],
-        'customer_location_id' => [
-            'required' => 'Customer location harus dipilih.',
-            'is_natural_no_zero' => 'Customer location harus berupa angka yang valid.'
-        ],
+        // customer_location_id validation REMOVED (March 5, 2026)
         'tanggal_mulai' => [
             'required' => 'Tanggal mulai harus diisi.',
             'valid_date' => 'Format tanggal mulai tidak valid.'

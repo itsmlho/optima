@@ -397,10 +397,9 @@ class ContractPOHistoryModel extends Model
         return $this->select('contract_po_history.*,
                              kontrak.nomor_kontrak,
                              customers.nama_perusahaan,
-                             customer_location.nama_lokasi')
+                             (SELECT cl.nama_lokasi FROM kontrak_unit ku JOIN customer_location cl ON cl.id = ku.customer_location_id WHERE ku.kontrak_id = kontrak.id LIMIT 1) as nama_lokasi')
                     ->join('kontrak', 'kontrak.id = contract_po_history.contract_id')
                     ->join('customers', 'customers.id = kontrak.customer_id')
-                    ->join('customer_location', 'customer_location.id = kontrak.location_id', 'left')
                     ->where('contract_po_history.status', $status)
                     ->orderBy('contract_po_history.effective_from', 'DESC')
                     ->findAll();
